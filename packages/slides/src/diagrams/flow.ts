@@ -2,9 +2,11 @@
  * Flows: a chain of steps laid out in rows that snake (left to right, then right to left, so every
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
+
 import { type KeyStage, keyStage } from "../themes";
 import { finishOf } from "./finish";
 import { LIMITS } from "./limits";
+import { diagramPolish, nodeFill, snug } from "./polish";
 import type { Flow } from "./schema";
 import { STROKE, sub, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, n, text, textWidth, wrap } from "./svg";
@@ -39,7 +41,18 @@ function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
 function box(x: Ctx, b: Box, label: string, fs: number): string {
   const { c } = x;
   const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.name);
+  if (diagramPolish()) return polishBox(x, b, lines, fs);
   return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs })}`;
+}
+
+/** BAKEOFF polish arm: a node as wide as its words, filled to read on any ground, no outline. */
+function polishBox(x: Ctx, b: Box, lines: string[], fs: number): string {
+  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(Math.min(b.h / 2, fs * 0.9))}" fill="${nodeFill(x.c, !!x.dark)}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs })}`;
+}
+/** BAKEOFF polish arm: `b` narrowed to its label's widest line at `fs`. */
+function snugBox(x: Ctx, b: Box, label: string, fs: number): Box {
+  const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.name);
+  return snug(b, Math.max(...lines.map((l) => textWidth(l, x, fs, WEIGHT.name))), fs);
 }
 
 /** Where the segment from `b`'s centre towards (tx, ty) leaves `b`, plus a small gap. */
@@ -418,7 +431,7 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         if (!b || !l) return;
         void s;
         out.push(
-          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"/>`,
+          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${diagramPolish() ? nodeFill(c, !!x.dark) : c.tint}"${diagramPolish() ? "" : ` stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"`}/>`,
           text(x, b.cx, b.cy, l, { weight: WEIGHT.name, fs }),
         );
       });
@@ -582,7 +595,13 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     const r = Math.floor(i / cols);
     const pos = i % cols;
     const col = r % 2 === 0 ? pos : cols - 1 - pos;
-    return { cx: ox + col * (bw + gapX) + bw / 2, cy: oy + r * (bh + gapY) + bh / 2, w: bw, h: bh };
+    const b0 = {
+      cx: ox + col * (bw + gapX) + bw / 2,
+      cy: oy + r * (bh + gapY) + bh / 2,
+      w: bw,
+      h: bh,
+    };
+    return diagramPolish() ? snugBox(x, b0, f.steps[i]?.label ?? "", fs) : b0;
   });
   const out: string[] = [];
   const style = { fs: noteFs, fill: c.ink, weight: WEIGHT.label };
@@ -622,6 +641,10 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     const b = boxes[i];
     const lines = plan.lines[i];
     if (!b || !lines) return;
+    if (diagramPolish()) {
+      out.push(polishBox(x, b, lines, fs));
+      return;
+    }
     out.push(
       `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
       text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs }),
@@ -655,6 +678,10 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   const widest = Math.max(base, w * (k <= 4 ? 0.48 : 0.4));
   let boxes = ring(base);
   for (let i = 1; i <= 4 && !fitsIn(boxes); i++) boxes = ring(base + ((widest - base) * i) / 4);
+  if (diagramPolish()) {
+    const f0 = boxSize(x, boxes, labels);
+    boxes = boxes.map((b, i) => snugBox(x, b, labels[i] ?? "", f0));
+  }
   const out: string[] = [];
   const small = Math.max(sub(fs), x.minFs);
   boxes.forEach((b, i) => {

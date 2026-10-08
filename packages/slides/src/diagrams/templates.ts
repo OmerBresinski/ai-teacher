@@ -21,6 +21,7 @@ import {
   type Scene,
   scene,
 } from "./place";
+import { diagramPolish, nodeFill, snug } from "./polish";
 import type { Cycle, Hydrograph, Layers, Particles, River, Timeline } from "./schema";
 import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import {
@@ -1487,7 +1488,16 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
     bad(x, "the cycle's steps do not fit the space");
     return "";
   }
-  const { fs, lines, boxes, ang, bw, bh } = fit;
+  const { fs, lines, ang, bw, bh } = fit;
+  // BAKEOFF polish arm (uk-seasons fault 2): each box as wide as its words, not the ring's slab.
+  const boxes = diagramPolish()
+    ? fit.boxes.map((b, i) => {
+        const lw = Math.max(...(lines[i] as string[]).map((l) => textWidth(l, x, fs, 600)));
+        const half = snug({ w: b.x1 - b.x0 }, lw, fs).w / 2;
+        const mid = (b.x0 + b.x1) / 2;
+        return { ...b, x0: mid - half, x1: mid + half };
+      })
+    : fit.boxes;
   const rx = (w - bw) / 2 - 2;
   const ry = (h - bh) / 2 - 2;
   const inside = (b: Box, [px, py]: Pt) =>
@@ -1529,7 +1539,9 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
   }
   boxes.forEach((b, i) => {
     out.push(
-      `<rect x="${n(b.x0)}" y="${n(b.y0)}" width="${n(b.x1 - b.x0)}" height="${n(b.y1 - b.y0)}" rx="10" fill="${x.c.tint}" stroke="${x.c.accent}" stroke-width="2"/>`,
+      diagramPolish()
+        ? `<rect x="${n(b.x0)}" y="${n(b.y0)}" width="${n(b.x1 - b.x0)}" height="${n(b.y1 - b.y0)}" rx="${n((b.y1 - b.y0) / 2)}" fill="${nodeFill(x.c, !!x.dark)}"/>`
+        : `<rect x="${n(b.x0)}" y="${n(b.y0)}" width="${n(b.x1 - b.x0)}" height="${n(b.y1 - b.y0)}" rx="10" fill="${x.c.tint}" stroke="${x.c.accent}" stroke-width="2"/>`,
     );
     const l = lines[i] as string[];
     const bb = blockSize(x, l, fs, 600);
