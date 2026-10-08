@@ -177,9 +177,11 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
   const fs = x.fs;
   const col = stripColours(x.c, !!x.dark, x.themeId);
   const pad = fs * 0.6;
-  const labelW = Math.max(...s.rows.map((r) => textWidth(r.label, x, fs, WEIGHT.name)));
+  // Slack on the measured words, so a fallback font never pushes them off the drawing.
+  const slack = 1.2;
+  const labelW = slack * Math.max(...s.rows.map((r) => textWidth(r.label, x, fs, WEIGHT.name)));
   const counts = s.rows.map((r) => `${r.light} ${s.unit}`);
-  const countW = Math.max(...counts.map((t) => textWidth(t, x, fs, WEIGHT.value)));
+  const countW = slack * Math.max(...counts.map((t) => textWidth(t, x, fs, 700)));
   const stripW = w - labelW - countW - pad * 2;
   const gap = Math.max(1, Math.min(4, (stripW / s.units) * 0.1));
   const u = (stripW - gap * (s.units - 1)) / s.units;
@@ -191,8 +193,8 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
   const keyH = fs * 1.8;
   const rowGap = fs * 0.7;
   const rh = Math.min(
-    Math.max(u, fs * 1.4),
-    fs * 2.2,
+    Math.max(u * 2.2, fs * 1.8),
+    fs * 3,
     (h - keyH - rowGap * s.rows.length) / s.rows.length,
   );
   if (rh < fs * 1.1) {
@@ -202,7 +204,7 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
   const totalH = s.rows.length * rh + (s.rows.length - 1) * rowGap + rowGap + keyH;
   const oy = (h - totalH) / 2;
   const x0 = labelW + pad;
-  const mr = Math.min(u, rh) * 0.24;
+  const mr = Math.min(u, rh) * 0.3;
   const out: string[] = [];
   s.rows.forEach((r, i) => {
     const y = oy + i * (rh + rowGap);
