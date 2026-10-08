@@ -248,6 +248,25 @@ What the code says today, read on `master` at `9752445`:
     [vision sizing/billing rules](https://developers.openai.com/api/docs/guides/images-vision).
     The earlier ~550-token thumbnail observation is a measurement, not an image upper bound.
     No new paid benchmark is authorized by this amendment.
+    **TEACH-216 amendment (2026-10-08): streamed calls.** Until now `withGenerationBudget`
+    refused every `doStream` with `UnestimableCallError`. No decision forbade streaming: nothing
+    in the pipeline streamed, so the wrapper failed closed. The lesson writer (base4, on
+    `openai/gpt-6.1-sol` at effort `low`) streams, so a streamed call now goes through the same
+    gate as a generate:
+    - the same estimate and synchronous reservation before dispatch;
+    - the same refusals (unestimable, no `maxOutputTokens`, over the cap);
+    - the reservation is held while the stream is open, so concurrent calls see it;
+    - settlement comes from the complete usage on the stream's `finish` part.
+    A stream that errors, is cancelled by its reader or aborted, or finishes without complete usage
+    leaves its reservation uncertain. So does a stream nobody reads: if no read is pending for
+    `streamIdleMs` (option on `withGenerationBudget`, default `STREAM_IDLE_MS` = 300 s), the
+    reservation is marked uncertain and the abort listener is released, so a dropped stream cannot
+    hold its reservation for the life of the process. The clock runs only while no read is
+    pending; a provider slow to send its next part (the writer reasoning) holds a read open and is
+    bounded by the call deadlines (180 s / 300 s), which the default sits at or above.
+    A complete `finish` read later still settles it once. The cap
+    is not checked between parts: the reservation already covers the requested maximum output.
+    The `ai` log line for a stream was already written on its `finish` part.
 16. **Logging (ADR 0015).** Never prompts, model output or document content. The existing `ai`
     pino line from `@tj/ai`'s middleware gains, when the caller supplies them, `lessonId`,
     `jobId`, `stage`, `promptVersion`, `costUsd`; one `generation summary` info line per job

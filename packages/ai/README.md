@@ -67,6 +67,9 @@ AI SDK call. The SDK's default `maxRetries` is 2; callers can override it per ca
 reserves synchronously from the shared Budget, including schema/deadline retries. The wrapper
 settles complete usage before structured-output validation and retains an uncertain estimate on
 timeouts, aborts and incomplete usage; late complete usage settles at most once.
+A streamed call (`doStream`) is admitted the same way and holds its reservation while the stream
+is open. It settles from the usage on the `finish` part. A stream that errors, is cancelled or
+aborted, or ends without usage stays uncertain (ADR 0025 §15, TEACH-216 amendment).
 
 `createBudget(caps, { spent })` copies confirmed prior aggregates exactly. `totals()` keeps them
 separate from optional `reserved`/`uncertain` aggregates; both participate in admission. Saved

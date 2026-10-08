@@ -110,6 +110,14 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.2,
     cacheWriteInputPerMTok: 2.5,
   },
+  // The lab writer's model (lab/ab arm T, effort low). OpenAI's pricing page, read 2026-10-08:
+  // $2 in, $0.10 cached in (half `gpt-6-sol`'s), $10 out.
+  "openai/gpt-6.1-sol": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.1,
+    cacheWriteInputPerMTok: 2.5,
+  },
   "google/gemini-3.8-flash": {
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,

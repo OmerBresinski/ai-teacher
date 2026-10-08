@@ -146,7 +146,13 @@ test("a Luna route (gateway or direct id) takes the measured fast bounds; Bedroc
     // No fast row: the class table's bound.
     expect(callTimeoutMs("check-input.v4", id)).toBe(180_000);
   }
-  for (const id of ["us.openai.gpt-6-luna-v1:0", "openai/gpt-6-sol", "us.anthropic.claude-x"]) {
+  for (const id of [
+    "us.openai.gpt-6-luna-v1:0",
+    "openai/gpt-6-sol",
+    "openai/gpt-6.1-sol",
+    "gpt-6.1-sol",
+    "us.anthropic.claude-x",
+  ]) {
     expect(isFastModelId(id)).toBe(false);
     expect(callTimeoutMs("generate-slide.v31", id)).toBe(180_000);
     expect(callTimeoutMs("evaluate.v12", id)).toBe(300_000);
