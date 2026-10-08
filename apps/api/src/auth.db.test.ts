@@ -310,7 +310,8 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     const runtime = createEventsRuntime({
       jobs: { db: db.unsafeDb } as JobsContext,
       logger: silentLogger,
-      config: { heartbeatMs: 50, pollMs: 50 },
+      // Recheck the session every 200 ms instead of the production 15 s.
+      config: { heartbeatMs: 50, pollMs: 50, authorizationTiming: { recheckMs: 200 } },
     });
     const streamingApp = createApp({
       env: TEST_ENV,
@@ -350,7 +351,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
         /* heartbeat frames until authorization expires */
       }
       expect(controller.signal.aborted).toBe(false);
-      expect(Date.now() - revokedAt).toBeLessThan(30_000);
+      expect(Date.now() - revokedAt).toBeLessThan(5_000);
       expect(runtime.openStreams(workspaceId)).toBe(0);
       expect(runtime.hub.size()).toBe(0);
     } finally {

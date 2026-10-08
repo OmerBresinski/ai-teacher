@@ -23,6 +23,13 @@ export interface EventsConfig {
   replayLimit: number;
   heartbeatMs: number;
   pollMs: number;
+  /**
+   * Test seam, never read from the environment: how often an open stream rechecks its session and
+   * how long one check stays valid (`SESSION_REVALIDATE_MS` and `SESSION_AUTHORIZATION_MAX_AGE_MS`
+   * when unset; the lease clamps the maximum to 30 seconds). Lets a revocation test finish in well
+   * under a second instead of waiting out the production interval.
+   */
+  authorizationTiming?: { recheckMs?: number; maxAgeMs?: number };
 }
 
 export function loadEventsConfig(

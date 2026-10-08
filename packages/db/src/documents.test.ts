@@ -424,8 +424,9 @@ describeDb("documents repository", () => {
     });
 
     test("pages 250 rows as 100, 100, 50 in a stable, disjoint order", async () => {
-      const ids: string[] = [];
-      for (let i = 0; i < 250; i++) ids.push((await seedLesson(`Lesson ${i}`)).id);
+      // Seeded concurrently over the pool: one insert at a time took over 5 s in CI with the other
+      // DB packages running beside it. Rows that share an `updated_at` exercise the id tie-break.
+      await Promise.all(Array.from({ length: 250 }, (_, i) => seedLesson(`Lesson ${i}`)));
       const seen = new Set<string>();
       let cursor: string | undefined;
       const sizes: number[] = [];

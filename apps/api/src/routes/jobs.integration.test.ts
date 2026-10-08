@@ -4,7 +4,7 @@
  * Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { createDb, workspaces } from "@tj/db";
+import { workspaces } from "@tj/db";
 import { withTestDb } from "@tj/db/testing";
 import {
   JOB_PROGRESS_STAGES,
@@ -32,33 +32,6 @@ import { createEventsRuntime, type EventsRuntime } from "../events/runtime";
 import { silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
 
-/**
- * This suite gets its own database, `<TEST_DATABASE_URL database>_api`, created on the fly from
- * `TEST_DATABASE_URL`. turbo runs `@tj/db`, `@tj/jobs` and `@tj/api` tests in parallel and the
- * sibling suites `TRUNCATE … CASCADE` the shared test database between tests, which would wipe
- * the Workspaces (and job events) this suite's worker loop is writing to mid-run.
- */
-async function dedicatedTestDbUrl(suffix: string): Promise<string | undefined> {
-  const base = process.env.TEST_DATABASE_URL;
-  if (!base) return undefined;
-  const url = new URL(base);
-  const name = `${url.pathname.slice(1)}${suffix}`;
-  const admin = createDb(base, { max: 1 });
-  try {
-    const [row] = await admin.sql`select 1 from pg_database where datname = ${name}`;
-    if (!row) await admin.sql.unsafe(`create database "${name}"`);
-  } catch (err) {
-    // Concurrent creation from another test file is fine; anything else surfaces in withTestDb.
-    if (!(err instanceof Error && /already exists/.test(err.message))) throw err;
-  } finally {
-    await admin.close();
-  }
-  url.pathname = `/${name}`;
-  return url.toString();
-}
-
-const dedicatedUrl = await dedicatedTestDbUrl("_api").catch(() => undefined);
-if (dedicatedUrl) process.env.TEST_DATABASE_URL = dedicatedUrl;
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
 if (!t.ok) console.warn(`skipping /jobs + /events integration tests: ${t.reason}`);
@@ -221,9 +194,8 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     return { res: app.request(path, { headers: headers(ws, extra), signal: ac.signal }), ac };
   }
   /**
-   * `workspaces.owner_user_id` gains a FK to `users` with TEACH-20 (better-auth). The shared
-   * compose test database may already carry that migration, so seed the owners when the table
-   * exists; a no-op before it lands.
+   * `workspaces.owner_user_id` has a FK to `users` since TEACH-20 (better-auth), so seed the
+   * owners when the table exists; a no-op on a schema from before it.
    */
   async function ensureOwnerUsers(ids: string[]) {
     const [row] = await sql<
@@ -285,9 +257,8 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     await close();
   });
 
-  // No `truncateTenantTables()` here: turbo runs `@tj/db`, `@tj/jobs` and this suite against the
-  // same TEST_DATABASE_URL in parallel, and truncating `workspaces` cascades into a sibling's
-  // in-flight job events. Every test uses fresh Workspace ids, so isolation comes for free.
+  // No `truncateTenantTables()` here: every test uses fresh Workspace ids, so isolation comes for
+  // free and the worker loop's in-flight job events are never cascaded away mid-test.
   beforeEach(async () => {
     workspaceA = newId<WorkspaceId>();
     workspaceB = newId<WorkspaceId>();

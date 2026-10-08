@@ -21,8 +21,6 @@ import type { EventsRuntime } from "./runtime";
 export interface StreamJobEventsOptions {
   workspaceId: WorkspaceId;
   authorization: StreamAuthorization;
-  /** Test seam for scaled timing; the lease clamps its maximum to 30 seconds. */
-  authorizationTiming?: { recheckMs?: number; maxAgeMs?: number };
   /** Per-job stream when set; workspace firehose otherwise. */
   jobId?: JobId;
   /** Parsed `Last-Event-ID`; replay starts after it. */
@@ -72,7 +70,7 @@ export function streamJobEvents(
         finish();
         stream.abort();
       };
-      const lease = streamAuthorizationLease(opts.authorization, abort, opts.authorizationTiming);
+      const lease = streamAuthorizationLease(opts.authorization, abort, config.authorizationTiming);
 
       stream.onAbort(finish);
       c.req.raw.signal.addEventListener("abort", abort, { once: true });

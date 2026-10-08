@@ -168,10 +168,11 @@ everywhere — React workspaces preload happy-dom + Testing Library from `@tj/co
 Playwright owns `e2e/**/*.spec.ts`), the `withTestDb()` harness and factories, the test-only magic-link capture
 route, running subsets, e2e locally, flake guidance.
 
-Integration tests use `TEST_DATABASE_URL` (default
+Integration tests derive their databases from `TEST_DATABASE_URL` (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a test
-run cannot clobber your development data. The test database exists as long as the volume was created
-by our init script — if `doctor` reports it missing, run `bun run db:reset`. `bun run test` skips
+run cannot clobber your development data. Each package gets its own, `<that database>_<package>`
+(e.g. `teaching_journey_test_api`), created on first use. The base test database exists as long as
+the volume was created by our init script — if `doctor` reports it missing, run `bun run db:reset`. `bun run test` skips
 DB suites with a printed reason when the database is unreachable; `bun run test:db` sets
 `REQUIRE_TEST_DB=1` so they fail instead. `turbo.json` passes `DATABASE_URL`, `TEST_DATABASE_URL`
 and `REQUIRE_TEST_DB` through to the `test` task, so a value exported in the shell (as CI does)
@@ -398,7 +399,7 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | --- | ------------ | ----------------- | -------- |
 | `quality` | `bun run lint`, `typecheck`, `skills:check`, `env:generate --check`, `verify-bootstrap`; commitlint on the PR title | the same five commands; `echo "<title>" \| bunx --bun commitlint` | yes |
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
-| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`), then `bun run eval:schema` (the free half of the F06 eval set, [`docs/eval.md`](docs/eval.md)); uploads `coverage/` | `bun run test:db && bun run eval:schema` | yes |
+| `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`), then `bun run eval:schema` (the free half of the F06 eval set, [`docs/eval.md`](docs/eval.md)); uploads `coverage/` on pushes to `master` only | `bun run test:db && bun run eval:schema` | yes |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
 | `e2e-shard` | four jobs at once (`e2e shard 1/4` … `4/4`), each with its own Postgres service + `teaching_journey_test`: Playwright's headless Chromium (cached) and `bun run test:e2e --shard=n/4` in `apps/web` (the suite builds web itself, so no turbo `build` first); a failed shard uploads its blob report. Skipped on a PR that changes only documentation (`detect`) | `cd apps/web && bunx --bun playwright test --shard=1/4` (needs the compose Postgres) | via `e2e` |
 | `e2e` | the required check for the shards: passes when `detect` succeeded and every shard passed or was skipped (`e2e report`, not required, merges a failed run's blob reports into one `playwright-report` artifact) | `bunx playwright install chromium && bun run test:e2e` (the whole suite, needs the compose Postgres) | yes |

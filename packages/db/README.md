@@ -148,7 +148,8 @@ bun run db:studio       # drizzle-kit studio against DATABASE_URL
 
 ## Testing
 
-`bun test` in this package. Tests connect to `TEST_DATABASE_URL` only and **skip visibly** (with
+`bun test` in this package. Tests connect only to a database derived from `TEST_DATABASE_URL`,
+one per package (`teaching_journey_test_db` here, created on first use), and **skip visibly** (with
 the reason) when it is unset or unreachable. `bun run test:db` at the root ensures Postgres is up,
 migrates, and runs them with the URL set.
 

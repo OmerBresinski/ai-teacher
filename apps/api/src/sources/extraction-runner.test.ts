@@ -104,19 +104,23 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
   });
 
   test("concurrency: one slot + one queue position; the third upload is refused before spawning", async () => {
+    // The deadline only has to outlast the checks; aborting ends the test as soon as they pass.
     const r = runner({
-      deadlineMs: 5_000,
+      deadlineMs: 10_000,
       maxConcurrent: 1,
       maxQueue: 1,
       childEnv: { FAKE_CHILD_MODE: "hang" },
     });
-    const first = r.run(input).catch((e: unknown) => e);
+    const controller = new AbortController();
+    const { signal } = controller;
+    const first = r.run(input, { signal }).catch((e: unknown) => e);
     await Bun.sleep(50);
-    const second = r.run(input).catch((e: unknown) => e);
+    const second = r.run(input, { signal }).catch((e: unknown) => e);
     await Bun.sleep(20);
     expect(r.load).toEqual({ running: 1, queued: 1 });
     await expect(r.run(input)).rejects.toBeInstanceOf(ExtractionBusyError);
-    // Free everything: both hung children die at the deadline; nothing leaks.
+    // Free everything: the hung child is killed, the queued run leaves the queue; nothing leaks.
+    controller.abort();
     const [a, b] = await Promise.all([first, second]);
     expect(a).toBeInstanceOf(ExtractionFailedError);
     expect(b).toBeInstanceOf(ExtractionFailedError);
@@ -125,12 +129,13 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
 
   test("a queued upload whose client aborts leaves the queue without running", async () => {
     const r = runner({
-      deadlineMs: 5_000,
+      deadlineMs: 10_000,
       maxConcurrent: 1,
       maxQueue: 2,
       childEnv: { FAKE_CHILD_MODE: "hang" },
     });
-    const first = r.run(input).catch((e: unknown) => e);
+    const running = new AbortController();
+    const first = r.run(input, { signal: running.signal }).catch((e: unknown) => e);
     await Bun.sleep(50);
     const controller = new AbortController();
     const queued = r.run(input, { signal: controller.signal });
@@ -138,8 +143,10 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
     expect(r.load.queued).toBe(1);
     controller.abort();
     await expect(queued).rejects.toMatchObject({ why: "aborted" });
-    expect(r.load.queued).toBe(0);
+    expect(r.load).toEqual({ running: 1, queued: 0 });
+    running.abort();
     await first;
+    expect(r.load).toEqual({ running: 0, queued: 0 });
   }, 15_000);
 });
 

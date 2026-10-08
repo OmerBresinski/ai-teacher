@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { REQUIRE_TEST_DB_MESSAGE, withTestDb } from "./testing";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { packageTestDatabaseUrl, REQUIRE_TEST_DB_MESSAGE, withTestDb } from "./testing";
 
 /** Swap env vars for the duration of `fn` and restore them afterwards (other files read them). */
 async function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<void>) {
@@ -48,4 +51,42 @@ describe("withTestDb availability contract", () => {
       },
     );
   }, 15_000);
+});
+
+describe("packageTestDatabaseUrl", () => {
+  const base = "postgres://postgres:postgres@localhost:5432/teaching_journey_test";
+  const databaseOf = (url: string) => new URL(url).pathname.slice(1);
+
+  test("appends the package name without its scope, from the package or any folder inside it", () => {
+    const fromPackage = packageTestDatabaseUrl(base, join(import.meta.dir, ".."));
+    expect(fromPackage).toBe(`${base}_db`);
+    expect(packageTestDatabaseUrl(base, import.meta.dir)).toBe(fromPackage);
+  });
+
+  test("keeps credentials, host and query parameters", () => {
+    const url = new URL(packageTestDatabaseUrl(`${base}?sslmode=disable`, import.meta.dir));
+    expect(url.username).toBe("postgres");
+    expect(url.host).toBe("localhost:5432");
+    expect(url.search).toBe("?sslmode=disable");
+    expect(databaseOf(url.toString())).toBe("teaching_journey_test_db");
+  });
+
+  test("turns any package name into a lower-case identifier suffix", () => {
+    const dir = mkdtempSync(join(tmpdir(), "tj-test-db-name-"));
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "@acme/Web-App.v2" }));
+      expect(databaseOf(packageTestDatabaseUrl(base, dir))).toBe(
+        "teaching_journey_test_web_app_v2",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("shortens a long base name so the suffix survives the 63-byte identifier limit", () => {
+    const long = `postgres://localhost/${"x".repeat(70)}`;
+    const name = databaseOf(packageTestDatabaseUrl(long, import.meta.dir));
+    expect(name).toHaveLength(63);
+    expect(name.endsWith("x_db")).toBe(true);
+  });
 });

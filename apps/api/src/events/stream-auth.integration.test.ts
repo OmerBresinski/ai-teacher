@@ -52,7 +52,11 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
       const runtime = createEventsRuntime({
         jobs: { db: db.unsafeDb } as JobsContext,
         logger: silentLogger,
-        config: { heartbeatMs: 10, pollMs: 10 },
+        config: {
+          heartbeatMs: 10,
+          pollMs: 10,
+          authorizationTiming: { recheckMs: 20, maxAgeMs: 100 },
+        },
       });
       const controller = new AbortController();
       const app = new Hono<AppEnv>().get("/events", (c) => {
@@ -61,7 +65,6 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
         return streamJobEvents(c, runtime, {
           workspaceId,
           authorization: auth,
-          authorizationTiming: { recheckMs: 20, maxAgeMs: 100 },
           closeOnTerminal: false,
           onClose: () => {
             releases++;

@@ -167,7 +167,7 @@ const CONTRACT = [
     runtimeOnly: true,
     files: [{ file: "root", commented: true }, "api", "db", "jobs"],
     description:
-      "Database the test suites and Playwright use (`@tj/db/testing`, docs/testing.md). Tests TRUNCATE tables here, so it must never equal DATABASE_URL. Never read by a running server.",
+      "Base test database. Playwright uses it as is; the `bun test` suites each derive their own package database from it, `<name>_<package>` (`@tj/db/testing`, docs/testing.md). Tests TRUNCATE tables in these databases, so it must never equal DATABASE_URL. Never read by a running server.",
   },
 
   // --- runtime (api + worker) ----------------------------------------------------------------

@@ -84,9 +84,10 @@ See `apps/web/src/routes/sign-in.page.test.tsx` (module mocks), `apps/web/src/li
 
 ## Server tests and the database harness
 
-Integration tests connect to **`TEST_DATABASE_URL`** (default
+Integration tests derive their databases from **`TEST_DATABASE_URL`** (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a
-test run cannot touch development data. The harness is `withTestDb()` from `@tj/db/testing`:
+test run cannot touch development data; each package connects to its own database (see "One
+database per package" below). The harness is `withTestDb()` from `@tj/db/testing`:
 
 ```ts
 import { afterAll, beforeEach, describe } from "bun:test";
@@ -112,9 +113,13 @@ What it guarantees:
 - **Truncate between tests**: `truncateTenantTables()` runs `TRUNCATE … RESTART IDENTITY CASCADE`
   over every application table. Add new tenant tables there; `packages/db/src/schema.test.ts`
   reminds you.
-- **Cross-process serialisation**: `turbo run test` runs `@tj/db`, `@tj/jobs` and `@tj/api` in
-  parallel against the same database, so `withTestDb()` holds a Postgres session-level advisory
-  lock until `close()`. **Always call `close()` in `afterAll`.**
+- **One database per package**: `withTestDb()` uses `<TEST_DATABASE_URL database>_<package
+  name>` (`packageTestDatabaseUrl`, scope dropped, e.g. `teaching_journey_test_api` for `@tj/api`,
+  whichever folder of the package `bun test` runs from), creating it on first use, so the packages turbo runs in parallel never truncate each other's rows. Until TEACH-190
+  part e they shared one database behind one lock and took turns. Processes of the same package
+  are still serialised by a Postgres session-level advisory lock held until `close()`. **Always
+  call `close()` in `afterAll`.** The base `TEST_DATABASE_URL` database must exist (compose and
+  CI create it); the derived ones need the `CREATEDB` privilege (the `postgres` user has it).
 - **Skip visibly, or fail loudly.** With no `TEST_DATABASE_URL` or an unreachable server,
   `withTestDb()` returns `{ ok: false, reason }` and the file prints `skipping …: <reason>`. With
   **`REQUIRE_TEST_DB=1`** it *throws* instead, so the file fails with
@@ -128,10 +133,9 @@ where Postgres is a job service), runs `bun run db:migrate` for both databases, 
 S3 storage contract (`packages/storage/src/s3.test.ts`), gated on the `S3_*` variables of the
 Railway Bucket (not a database concern); it prints its reason.
 
-pg-boss: the `@tj/jobs` and `@tj/api` integration suites use pg-boss schema `pgboss_test`, so the
-development `pgboss` schema is never touched. `apps/api/src/routes/jobs.integration.test.ts`
-additionally creates and uses `<test database>_api` (derived from `TEST_DATABASE_URL`) because its
-SSE streams are long-lived and would otherwise hold the advisory lock for the whole run.
+pg-boss: the `@tj/jobs`, `@tj/worker` and `@tj/api` integration suites use pg-boss schema
+`pgboss_test` (on their own package database, through `t.db.url`), so the development `pgboss`
+schema is never touched and the packages' queues never mix.
 
 ## Factories and authenticated requests
 
@@ -235,8 +239,9 @@ Traces and screenshots are kept for failures only; in CI a failed shard uploads 
 - SSE/pg-boss timing: assert with `expect.poll` or `waitFor` loops bounded well above the job's
   duration (the specs use 15 s for a 1.5 s job). Never compare wall-clock durations tighter than
   the pg-boss polling interval (500 ms) unless the test controls the clock.
-- Shared database: if two suites interfere, the missing piece is `close()` in `afterAll` (the
-  advisory lock) or a table missing from `truncateTenantTables()`.
+- Shared database: suites of the same package share its database; if two interfere, the missing
+  piece is `close()` in `afterAll` (the advisory lock) or a table missing from
+  `truncateTenantTables()`.
 - Isolation in e2e comes from fresh users (`uniqueEmail()`), not truncation; do not assert on
   global counts.
 - A `REQUIRE_TEST_DB` failure is an environment problem (`bun run doctor`), not a flake.
@@ -244,7 +249,7 @@ Traces and screenshots are kept for failures only; in CI a failed shard uploads 
 ## CI
 
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
-under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. e2e runs as four `e2e-shard` jobs at
+under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded on pushes to `master` only. e2e runs as four `e2e-shard` jobs at
 once, each with its own Postgres service + `teaching_journey_test`,
 `bunx --bun playwright install --only-shell chromium` (browser cache keyed on the Playwright
 version; no `--with-deps`, since the runner image has the libraries; the step names any linked

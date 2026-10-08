@@ -138,8 +138,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
   }
 
   beforeAll(async () => {
-    // Its own pg-boss schema: the worker's integration suite runs `lesson.plan` jobs in
-    // `pgboss_test` at the same time, and this suite's stub loop must not take them.
+    // Its own pg-boss schema: `jobs.integration.test.ts` uses `pgboss_test` in this package's test
+    // database, and this suite's stub loop must not take a job it left behind.
     boss = createBoss(url, {
       schema: "pgboss_test_lessons",
       max: 2,
