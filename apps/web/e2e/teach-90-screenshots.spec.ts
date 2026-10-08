@@ -1,4 +1,4 @@
-import { test } from "./fixtures";
+import { expect, test } from "./fixtures";
 
 test("captures library card reference states", async ({ signedInPage: { page } }) => {
   await page.goto("/lessons");
@@ -11,7 +11,12 @@ test("captures library card reference states", async ({ signedInPage: { page } }
   await page.goto("/series");
   await page.screenshot({ path: "/tmp/teach-90-series.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Theme" }).click();
-  await page.getByRole("menuitemradio", { name: "Dark" }).click();
+  // The theme is set only on /settings (TEACH-33 part a); set it the way the app stores it.
+
+  await page.evaluate(() => localStorage.setItem("tj-theme", "dark"));
+
+  await page.reload();
+
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({ path: "/tmp/teach-90-dark.png", fullPage: true });
 });
