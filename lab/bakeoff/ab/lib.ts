@@ -334,6 +334,8 @@ export async function fillAndCheck(
 
 export type LibAsk = {
   key: string;
+  /** The slide asks pupils something (D30): the model must not show the answer. */
+  question?: boolean;
   shows: string;
   words: string;
   yearGroup: string;
@@ -344,7 +346,13 @@ export type LibAsk = {
 export type Drawn = { src: string; aspect: number; alt?: string };
 export type LibDeps = {
   filler: Filler;
-  render: (id: string, params: J, outDir?: string) => Promise<Drawn & { warnings: string[] }>;
+  /** `step`: draw that build (0-based) instead of the final one (question slides). */
+  render: (
+    id: string,
+    params: J,
+    outDir?: string,
+    step?: number,
+  ) => Promise<Drawn & { warnings: string[] }>;
 };
 /** A model figure: drawn by the library, or the base4 kind to fall back to, or nothing (logged). */
 export async function libDiagram(
@@ -380,15 +388,28 @@ export async function libDiagram(
     });
     return fallback();
   }
+  // D30 (b): what the intent asks against what the model can draw (lib-meta.json `cannot`).
+  const cannot = capabilityRefusals(id, String(spec.intent ?? ask.shows));
+  if (cannot.length) {
+    log({ ev: "lib-capability-refused", key: ask.key, model: id, refusals: cannot });
+    return fallback();
+  }
+  // D30 (a): a question slide draws the model's last build before its answer, or no model.
+  let step: number | undefined;
+  if (ask.question) {
+    step = await questionStep(id, r.params);
+    log({ ev: "lib-question-step", key: ask.key, model: id, step: step ?? null });
+    if (step === undefined) return fallback();
+  }
   try {
     const out = ask.lib?.outDir
       ? `${ask.lib.outDir}/lib/${ask.key.replace(/[^\w.-]+/g, "_")}`
       : undefined;
-    const d = await deps.render(id, r.params, out);
+    const d = await deps.render(id, r.params, out, step);
     if (out)
       writeFileSync(
         `${out}/params.json`,
-        JSON.stringify({ model: id, intent: spec.intent, params: r.params }, null, 1),
+        JSON.stringify({ model: id, intent: spec.intent, params: r.params, step }, null, 1),
       );
     log({
       ev: "lib-drawn",
@@ -406,6 +427,52 @@ export async function libDiagram(
     log({ ev: "lib-render-failed", key: ask.key, model: id, err: String(e).slice(0, 200) });
     return fallback();
   }
+}
+
+/* ------------------------------------------------------------------ D30: questions, capability */
+
+type MetaEntry = { answerKeys: string[]; cannot: { what: string; when: string[] }[] };
+let metaCache: Record<string, MetaEntry> | undefined;
+/** Per-model data (ab/lib-meta.json): build keys that show the answer, and what a model cannot draw. */
+export function libMeta(): Record<string, MetaEntry> {
+  metaCache ??= JSON.parse(readFileSync(`${import.meta.dir}/lib-meta.json`, "utf8")).models;
+  return metaCache as Record<string, MetaEntry>;
+}
+/** The things `intent` asks of model `id` that it cannot draw (empty: it can, as far as we know). */
+export function capabilityRefusals(id: string, intent: string): Refusal[] {
+  return (libMeta()[id]?.cannot ?? [])
+    .filter((c) => c.when.some((w) => new RegExp(w, "i").test(intent)))
+    .map((c) => ({ path: "intent", reason: `${id} cannot draw ${c.what}` }));
+}
+/** A slide that asks pupils something: a question template, or a question mark in its own words. */
+export function isQuestionSlide(slide: Record<string, unknown> | undefined): boolean {
+  if (!slide) return false;
+  if (["hinge", "question-set", "practice", "quiz"].includes(String(slide.template))) return true;
+  const { figure: _f, picture: _p, ...words } = slide;
+  return JSON.stringify(words).includes("?");
+}
+/**
+ * The build a question slide draws: the last of the model's own builds (builds(P).steps, keys as
+ * the model names them) before the first that shows the answer (lib-meta.json answerKeys).
+ * Undefined when there is no such build, the model has no build list, or no answer keys are known.
+ */
+export async function questionStep(id: string, params: J): Promise<number | undefined> {
+  const keys = libMeta()[id]?.answerKeys;
+  if (!keys?.length) return undefined;
+  const { models, kit } = await library();
+  const m = models.get(id) as
+    | (LibModel & { builds?: (p: J) => { steps: { key: string }[] } })
+    | undefined;
+  if (!m?.builds) return undefined;
+  let steps: { key: string }[];
+  try {
+    steps = m.builds(kit.withDefaults(m.params, params)).steps;
+  } catch {
+    return undefined;
+  }
+  const first = steps.findIndex((s) => keys.includes(s.key.split(":")[0] as string));
+  if (first === 0) return undefined;
+  return first < 0 ? undefined : first - 1;
 }
 
 /** Fill-call estimate for the ledger hold: luna, one attempt (diagram calls observed $0.0013 each). */

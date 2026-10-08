@@ -1465,6 +1465,8 @@ export type DiagramAsk = {
   spec?: unknown;
   /** lib arm: lesson context for a library model's fill call, and where its builds strip goes. */
   lib?: { lesson: string; outDir?: string };
+  /** lib arm (D30): the slide asks pupils something, so the model must not show the answer. */
+  question?: boolean;
 };
 /** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
 function diagramSystem(): string {

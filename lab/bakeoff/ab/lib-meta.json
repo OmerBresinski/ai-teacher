@@ -1,0 +1,75 @@
+{
+  "note": "lib arm (D30 fixes): per-model data the code reads after the fill call. answerKeys: build keys (the model's own builds(P).steps[].key) that show the answer; a question slide draws the last build before the first of them, or no model. cannot: what the model cannot draw, with the intent patterns (case-insensitive regex) that ask for it. Not prompt text.",
+  "models": {
+    "fractions": {
+      "answerKeys": [
+        "name",
+        "compare",
+        "answer",
+        "sum",
+        "decimal",
+        "percent",
+        "share",
+        "tenths",
+        "hundredths"
+      ],
+      "cannot": [
+        {
+          "what": "unequal parts (fractions draws equal parts only)",
+          "when": [
+            "\\bunequal\\b",
+            "not equal",
+            "different[- ]sized?",
+            "\\buneven\\b",
+            "\\b(?:small|smaller|large|larger|big|bigger) part\\b"
+          ]
+        }
+      ]
+    },
+    "equal_groups": {
+      "answerKeys": [
+        "groups",
+        "share",
+        "count",
+        "left",
+        "sentence",
+        "facts",
+        "turn",
+        "add",
+        "split",
+        "sum"
+      ],
+      "cannot": [
+        {
+          "what": "marking some of the groups as taken (it draws N ÷ G only)",
+          "when": [
+            "highlight(?:s|ing)? (?:two|three|four|five|[2-9]) (?:rings|groups)",
+            "leaving (?:one|two|[1-9]) (?:ring|group)s? un"
+          ]
+        }
+      ]
+    },
+    "bar_model": { "answerKeys": ["answer", "calc", "unknown"], "cannot": [] },
+    "hist_map": {
+      "answerKeys": [],
+      "cannot": [
+        {
+          "what": "places outside its regions (UK, south, North Sea, Europe, Mediterranean, world outline)",
+          "when": [
+            "south america",
+            "\\bamazon",
+            "\\bbrazil",
+            "\\bafrica\\b",
+            "\\basia\\b",
+            "australia",
+            "antarctica",
+            "north america",
+            "rainforest"
+          ]
+        }
+      ]
+    },
+    "timeline": { "answerKeys": [], "cannot": [] },
+    "seasons_weather": { "answerKeys": [], "cannot": [] }
+  }
+}

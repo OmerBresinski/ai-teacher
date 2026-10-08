@@ -74,6 +74,7 @@ export function renderModel(
   id: string,
   params: Record<string, unknown>,
   outDir?: string,
+  step?: number,
 ): Promise<Drawn & { warnings: string[]; frames: number }> {
   const job = queue.then(async () => {
     if (idle) clearTimeout(idle);
@@ -96,6 +97,12 @@ export function renderModel(
         warn.add(w);
       if (outDir) frames.push(await el.screenshot());
     }
+    // A question slide (D30) draws build `step` (no answer yet); else the final build.
+    if (step !== undefined)
+      await page.evaluate(
+        (kk: number) => (globalThis as unknown as { LIBR: Libr }).LIBR.show(kk),
+        Math.min(step, N),
+      );
     // Final build (k = N is the summary, every build shown), cropped to the drawing.
     const box = (await page.evaluate(() =>
       (globalThis as unknown as { LIBR: Libr }).LIBR.bbox(),

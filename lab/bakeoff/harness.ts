@@ -11,6 +11,7 @@ import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/dia
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type AbArm, abArm, abFiles, abFixes, abR1t, abR1t2, abShared, sha } from "./ab/arms";
 import { continueForFit } from "./ab/continue";
+import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
@@ -1142,7 +1143,10 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       theme: themeId,
       // lib arm: a library model's fill call reads the lesson; its builds strip goes under the run.
       ...(a.kind === "model"
-        ? { lib: { lesson: `${brief.subject}: ${brief.topic}`, outDir: o.outDir } }
+        ? {
+            lib: { lesson: `${brief.subject}: ${brief.topic}`, outDir: o.outDir },
+            question: isQuestionSlide(plan.slides[i] as Record<string, unknown> | undefined),
+          }
         : {}),
     };
     log({ ev: "diagram-start", key: k, kind: a.kind });
