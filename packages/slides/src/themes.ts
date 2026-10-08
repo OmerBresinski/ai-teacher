@@ -393,13 +393,19 @@ export const BODY_SMALL = 0.85;
 /** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
 const DISPLAY_HEADING = 1.15;
 
-const STAGED = new WeakMap<Theme, KeyStage>();
+/** The key stages, as a set: `in` on `KEY_STAGE_TYPE` would also accept "constructor" or "toString". */
+const STAGES = new Set<string>(Object.keys(KEY_STAGE_TYPE));
 const asStage = (band: string | undefined | null): KeyStage | undefined => {
-  const k = (band ?? "").toLowerCase();
-  return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
+  const k = typeof band === "string" ? band.toLowerCase() : "";
+  return STAGES.has(k) ? (k as KeyStage) : undefined;
 };
+/**
+ * A theme read at a key stage carries the stage as a real field, so a spread copy downstream
+ * (`{ ...theme, colors }`) keeps it.
+ */
+type StagedTheme = Theme & { keyStage?: KeyStage };
 /** The key stage `t` is read at (undefined: the theme's own sizes). */
-export const keyStageOf = (t: Theme): KeyStage | undefined => STAGED.get(t);
+export const keyStageOf = (t: Theme): KeyStage | undefined => asStage((t as StagedTheme).keyStage);
 /**
  * `t` read at `band`'s key stage: a copy that carries the stage, the catalogue theme untouched.
  * An unknown band gives `t` itself (the theme's own sizes).
@@ -407,8 +413,7 @@ export const keyStageOf = (t: Theme): KeyStage | undefined => STAGED.get(t);
 export function atKeyStage(t: Theme, band: string | undefined | null): Theme {
   const ks = asStage(band);
   if (!ks) return t;
-  const staged = { ...t };
-  STAGED.set(staged, ks);
+  const staged: StagedTheme = { ...t, keyStage: ks };
   return staged;
 }
 
@@ -438,7 +443,7 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
 
 /** THE type scale at `t`'s key stage (`atKeyStage`). Undefined at no stage (the theme's own ladder). */
 export function typeScale(t: Theme): TypeScale | undefined {
-  const ks = STAGED.get(t);
+  const ks = keyStageOf(t);
   return ks ? scaleAt(t.sizes, ks) : undefined;
 }
 
@@ -452,9 +457,11 @@ const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
 /**
  * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
  * the step-down ladder, so an option card or a question stem still steps one display stop under
- * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
+ * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`. At a key stage
+ * there is no display body: options read at the stage's body like everything else.
  */
-export const displayBodyStop = (theme: Theme): number | undefined => DISPLAY_BODY[theme.id];
+export const displayBodyStop = (theme: Theme): number | undefined =>
+  typeScale(theme) ? undefined : DISPLAY_BODY[theme.id];
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
@@ -547,9 +554,27 @@ export function isThemeId(id: string): boolean {
   return THEMES.some((t) => t.id === id);
 }
 
-export function getTheme(id: string | undefined | null): Theme {
-  return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);
+const BOUND_THEMES = new Map<string, Theme>();
+/**
+ * The theme `id`; with `ageBand`, read at that key stage (`atKeyStage`), one copy per theme and
+ * stage. No band, or one that is not a key stage: the catalogue theme, its own sizes.
+ */
+export function getTheme(id: string | undefined | null, ageBand?: string | null): Theme {
+  const t = THEMES.find((x) => x.id === id) ?? (THEMES[0] as Theme);
+  const ks = asStage(ageBand);
+  if (!ks) return t;
+  const key = `${t.id}@${ks}`;
+  let b = BOUND_THEMES.get(key);
+  if (!b) {
+    b = atKeyStage(t, ks);
+    BOUND_THEMES.set(key, b);
+  }
+  return b;
 }
+
+/** A lesson's theme at the lesson's own key stage. Nothing on master calls it yet (TEACH-110 part b). */
+export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
+  getTheme(lesson.themeId, lesson.ageBand);
 
 /**
  * What a piece of text is doing on the slide. The legibility floor is a property

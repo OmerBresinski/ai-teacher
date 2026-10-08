@@ -1,0 +1,2297 @@
+{
+  "version": 1,
+  "id": "fit-REGEN-y5-maths-fractions-of-amounts-muwkcaeg",
+  "title": "Fractions of amounts",
+  "themeId": "splash",
+  "slides": [
+    {
+      "id": "f5muwkcbvw",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f1emuwkctvi",
+          "type": "image",
+          "x": 480,
+          "y": 0,
+          "w": 480,
+          "h": 540,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a10e9a-cb70-7667-a231-fa1abdea258c.png",
+          "alt": "Twenty-four counters arranged in four equal groups of six on a classroom table, with each group easy to distinguish.",
+          "fit": "cover",
+          "name": "Photo",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "simple-lesson.t8",
+            "model": "code",
+            "at": "2026-10-06T10:56:28.734Z"
+          },
+          "authoredBy": "ai",
+          "source": {
+            "id": "01a10e9a-cb6f-7271-9e3f-7d6fcdc32602",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          }
+        },
+        {
+          "id": "f1hmuwkctvi",
+          "type": "text",
+          "x": 58,
+          "y": 182,
+          "w": 403,
+          "h": 150,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Fractions of amounts"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "title",
+            "autoHeight": true
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "simple-lesson.t8",
+            "model": "code",
+            "at": "2026-10-06T10:56:28.734Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f9muwkcivd",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "p88",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "By the end of this lesson I can"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p92",
+          "type": "text",
+          "x": 58,
+          "y": 133,
+          "w": 40,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p93",
+          "type": "text",
+          "x": 98,
+          "y": 133,
+          "w": 804,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calculate unit fractions of whole-number amounts by dividing the amount by the denominator."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p94",
+          "type": "text",
+          "x": 58,
+          "y": 222,
+          "w": 40,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p95",
+          "type": "text",
+          "x": 98,
+          "y": 222,
+          "w": 804,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calculate non-unit fractions of amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p96",
+          "type": "text",
+          "x": 58,
+          "y": 346,
+          "w": 40,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p97",
+          "type": "text",
+          "x": 98,
+          "y": 346,
+          "w": 804,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "solve word problems involving fractions of quantities, money and measures, showing the calculation and giving the answer with the correct unit."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Objective 3",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f14muwkcta0",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p0",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find a unit fraction"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p5",
+          "type": "text",
+          "x": 459,
+          "y": 126,
+          "w": 443,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A unit fraction has a numerator of 1."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p6",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 237,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p7",
+          "type": "text",
+          "x": 497,
+          "y": 224,
+          "w": 405,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The denominator tells us how many equal parts to make."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p8",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 335,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p9",
+          "type": "text",
+          "x": 497,
+          "y": 322,
+          "w": 405,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "To find ¼ of 24, divide 24 into 4 equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p10",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 126,
+          "w": 363,
+          "h": 371,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20202%20206%22%20width%3D%22363%22%20height%3D%22371%22%20role%3D%22img%22%20aria-label%3D%22One%20quarter%20of%2024%3A%2024%2C%206%2C%206%2C%206%2C%206%2C%2024%22%3E%3Ctitle%3EOne%20quarter%20of%2024%3A%2024%2C%206%2C%206%2C%206%2C%206%2C%2024%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Fredoka%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%230A5CA2%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22101%22%20y%3D%2222.4%22%3EOne%20quarter%20of%3C%2Ftspan%3E%3Ctspan%20x%3D%22101%22%20y%3D%2256%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C81.2)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2230%22%20y%3D%22106.15%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2249.75%22%20y%3D%2270%22%20width%3D%2230.75%22%20height%3D%2254.8%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2265.13%22%20y%3D%22106.15%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2286%22%20y%3D%2270%22%20width%3D%2230.75%22%20height%3D%2254.8%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22101.38%22%20y%3D%22106.15%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22122.25%22%20y%3D%2270%22%20width%3D%2230.75%22%20height%3D%2254.8%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22137.63%22%20y%3D%22106.15%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22158.5%22%20y%3D%2270%22%20width%3D%2230.75%22%20height%3D%2254.8%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22173.88%22%20y%3D%22106.15%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M47%2C61.25%20Q47%2C51.25%2057%2C51.25%20L109.5%2C51.25%20Q119.5%2C51.25%20119.5%2C41.25%20Q119.5%2C51.25%20129.5%2C51.25%20L182%2C51.25%20Q192%2C51.25%20192%2C61.25%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22119.5%22%20y%3D%2226.25%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "One quarter of 24: 24, 6, 6, 6, 6, 24",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Slide 3. Point out the four equal parts and the one shaded part. Explain that the denominator gives the number of equal groups, not the size of each group.\n24 ÷ 4 = 6, so ¼ of 24 = 6."
+    },
+    {
+      "id": "f1omuwkcwaf",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "p11",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Quick check"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p16",
+          "type": "text",
+          "x": 58,
+          "y": 105,
+          "w": 53,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p17",
+          "type": "text",
+          "x": 111,
+          "y": 105,
+          "w": 791,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What is ⅓ of 21?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p18",
+          "type": "text",
+          "x": 58,
+          "y": 177,
+          "w": 53,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p19",
+          "type": "text",
+          "x": 111,
+          "y": 177,
+          "w": 791,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What is ⅛ of 40?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p20",
+          "type": "text",
+          "x": 58,
+          "y": 249,
+          "w": 53,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p21",
+          "type": "text",
+          "x": 111,
+          "y": 249,
+          "w": 791,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Sam says ⅕ of 30 is 5. Is Sam correct? Explain."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Slide 4. Pupils answer on mini-whiteboards. Check that they divide by the denominator. If needed, ask how many equal groups must be made.\nAnswers: 1. 21 ÷ 3 = 7. 2. 40 ÷ 8 = 5. 3. No. 30 ÷ 5 = 6. The denominator tells us to make 5 equal parts; each part contains 6."
+    },
+    {
+      "id": "f1zmuwkczsr",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p23",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find more than one part"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p28",
+          "type": "text",
+          "x": 459,
+          "y": 126,
+          "w": 443,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Divide by the denominator: 20 ÷ 5 = 4."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p29",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 237,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p30",
+          "type": "text",
+          "x": 497,
+          "y": 224,
+          "w": 405,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Multiply by the numerator: 4 × 3 = 12."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p31",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 335,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p32",
+          "type": "text",
+          "x": 497,
+          "y": 322,
+          "w": 405,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "So ⅗ of 20 = 12."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p33",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 126,
+          "w": 363,
+          "h": 371,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20202%20206%22%20width%3D%22363%22%20height%3D%22371%22%20role%3D%22img%22%20aria-label%3D%22Three%20fifths%20of%2020%3A%2020%2C%204%2C%204%2C%204%2C%204%2C%204%2C%2020%22%3E%3Ctitle%3EThree%20fifths%20of%2020%3A%2020%2C%204%2C%204%2C%204%2C%204%2C%204%2C%2020%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Fredoka%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%230A5CA2%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22101%22%20y%3D%2222.4%22%3EThree%20fifths%20of%3C%2Ftspan%3E%3Ctspan%20x%3D%22101%22%20y%3D%2256%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C81.2)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2230%22%20y%3D%22106.15%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2249.75%22%20y%3D%2270%22%20width%3D%2223.5%22%20height%3D%2254.8%22%20fill%3D%22%230A5CA2%22%20rx%3D%225.9%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2261.5%22%20y%3D%22106.15%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2278.75%22%20y%3D%2270%22%20width%3D%2223.5%22%20height%3D%2254.8%22%20fill%3D%22%230A5CA2%22%20rx%3D%225.9%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2290.5%22%20y%3D%22106.15%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22107.75%22%20y%3D%2270%22%20width%3D%2223.5%22%20height%3D%2254.8%22%20fill%3D%22%230A5CA2%22%20rx%3D%225.9%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22119.5%22%20y%3D%22106.15%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22136.75%22%20y%3D%2270%22%20width%3D%2223.5%22%20height%3D%2254.8%22%20fill%3D%22%23dde8f2%22%20rx%3D%225.9%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22148.5%22%20y%3D%22106.15%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22165.75%22%20y%3D%2270%22%20width%3D%2223.5%22%20height%3D%2254.8%22%20fill%3D%22%23dde8f2%22%20rx%3D%225.9%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22177.5%22%20y%3D%22106.15%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M47%2C61.25%20Q47%2C51.25%2057%2C51.25%20L109.5%2C51.25%20Q119.5%2C51.25%20119.5%2C41.25%20Q119.5%2C51.25%20129.5%2C51.25%20L182%2C51.25%20Q192%2C51.25%20192%2C61.25%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22119.5%22%20y%3D%2226.25%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Three fifths of 20: 20, 4, 4, 4, 4, 4, 20",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Slide 5. Explain that a non-unit fraction has a numerator greater than 1. Trace one part to show ⅕, then the three shaded parts to show ⅗. Emphasise: divide to find one part, then multiply to find the required number of parts."
+    },
+    {
+      "id": "f2cmuwkd23a",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "p34",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 99,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose the calculation that correctly finds ⅔ of 24."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p35",
+          "type": "option",
+          "x": 58,
+          "y": 154,
+          "w": 413,
+          "h": 85,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "24 ÷ 3 = 8"
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "A",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p36",
+          "type": "option",
+          "x": 489,
+          "y": 154,
+          "w": 413,
+          "h": 85,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "24 ÷ 2 × 3 = 36"
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "B",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p37",
+          "type": "option",
+          "x": 58,
+          "y": 261,
+          "w": 413,
+          "h": 85,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "24 ÷ 3 × 2 = 16"
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "C",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p38",
+          "type": "option",
+          "x": 489,
+          "y": 261,
+          "w": 413,
+          "h": 85,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "24 × 2 = 48"
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "D",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "p35",
+            "correct": false
+          },
+          {
+            "id": "p36",
+            "correct": false
+          },
+          {
+            "id": "p37",
+            "correct": true
+          },
+          {
+            "id": "p38",
+            "correct": false
+          }
+        ]
+      },
+      "notes": "C: 24 ÷ 3 × 2 = 16.\nSlide 6. All pupils choose an option before discussing. A finds only one third; B swaps the numerator and denominator; D misses the division. Ask pupils to explain why C finds two equal parts."
+    },
+    {
+      "id": "f2gmuwkd5rq",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p40",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A fraction of money"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p45",
+          "type": "text",
+          "x": 459,
+          "y": 126,
+          "w": 443,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the amount spent: ¾ of £28."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p46",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 237,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p47",
+          "type": "text",
+          "x": 497,
+          "y": 224,
+          "w": 405,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "£28 ÷ 4 = £7; £7 × 3 = £21."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p48",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 335,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p49",
+          "type": "text",
+          "x": 497,
+          "y": 322,
+          "w": 405,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Aisha spends £21 on a book."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p50",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 126,
+          "w": 363,
+          "h": 371,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20303%20309%22%20width%3D%22363%22%20height%3D%22371%22%20role%3D%22img%22%20aria-label%3D%22Three%20quarters%20of%20%C2%A328%3A%20Money%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A328%22%3E%3Ctitle%3EThree%20quarters%20of%20%C2%A328%3A%20Money%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A37%2C%20%C2%A328%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Fredoka%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%230A5CA2%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22151.5%22%20y%3D%2222.4%22%3EThree%20quarters%20of%20%C2%A328%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C47.6)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%222%22%20y%3D%2230.7%22%3EMoney%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%224.75%22%20y%3D%22121.95%22%20width%3D%2267.25%22%20height%3D%22125%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2238.38%22%20y%3D%22193.2%22%3E%C2%A37%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2277.5%22%20y%3D%22121.95%22%20width%3D%2267.25%22%20height%3D%22125%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22111.13%22%20y%3D%22193.2%22%3E%C2%A37%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22150.25%22%20y%3D%22121.95%22%20width%3D%2267.25%22%20height%3D%22125%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22183.88%22%20y%3D%22193.2%22%3E%C2%A37%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22223%22%20y%3D%22121.95%22%20width%3D%2267.25%22%20height%3D%22125%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22256.63%22%20y%3D%22193.2%22%3E%C2%A37%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M2%2C113.2%20Q2%2C103.2%2012%2C103.2%20L137.5%2C103.2%20Q147.5%2C103.2%20147.5%2C93.2%20Q147.5%2C103.2%20157.5%2C103.2%20L283%2C103.2%20Q293%2C103.2%20293%2C113.2%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22147.5%22%20y%3D%2278.2%22%3E%C2%A328%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Three quarters of £28: Money, £7, £7, £7, £7, £28",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Slide 7. Model identifying the whole amount, the fraction and what the question asks. The shaded parts show money spent. Stress that the answer needs the pound sign."
+    },
+    {
+      "id": "f2rmuwkd93s",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p51",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A fraction of a length"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p56",
+          "type": "text",
+          "x": 459,
+          "y": 126,
+          "w": 443,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The whole length is 35 m."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p57",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 202,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p58",
+          "type": "text",
+          "x": 497,
+          "y": 189,
+          "w": 405,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find ⅖ of it."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p59",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 258,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p60",
+          "type": "text",
+          "x": 497,
+          "y": 245,
+          "w": 405,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "35 ÷ 5 = 7; 7 × 2 = 14."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p61",
+          "type": "shape",
+          "shape": "diamond",
+          "x": 467,
+          "y": 314,
+          "w": 15,
+          "h": 15,
+          "fill": "#0A5CA2",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p62",
+          "type": "text",
+          "x": 497,
+          "y": 301,
+          "w": 405,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The gardener uses 14 m of rope."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p63",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 126,
+          "w": 363,
+          "h": 371,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20227%20232%22%20width%3D%22363%22%20height%3D%22371%22%20role%3D%22img%22%20aria-label%3D%22Find%20two%20fifths%20of%2035%20m%3A%20Whole%3A%2035%20m%2C%20%C3%B7%205%2C%20One%20fifth%3A%207%20m%2C%20%C3%97%202%2C%20Two%20fifths%3A%2014%20m%22%3E%3Ctitle%3EFind%20two%20fifths%20of%2035%20m%3A%20Whole%3A%2035%20m%2C%20%C3%B7%205%2C%20One%20fifth%3A%207%20m%2C%20%C3%97%202%2C%20Two%20fifths%3A%2014%20m%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22109.5%22%20y1%3D%2238.67%22%20x2%3D%22109.5%22%20y2%3D%2290.63%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22109.5%2C95.67%20105.72%2C89.37%20109.5%2C90.31%20113.28%2C89.37%22%20fill%3D%22%2310252F%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22400%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22119.5%22%20y%3D%2275.92%22%3E%C3%B7%205%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22109.5%22%20y1%3D%22136.33%22%20x2%3D%22109.5%22%20y2%3D%22188.29%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22109.5%2C193.33%20105.72%2C187.03%20109.5%2C187.98%20113.28%2C187.03%22%20fill%3D%22%2310252F%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22400%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22119.5%22%20y%3D%22173.58%22%3E%C3%97%202%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%22215%22%20height%3D%2232.67%22%20rx%3D%2212.5%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22109.5%22%20y%3D%2227.08%22%3EWhole%3A%2035%20m%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%2299.67%22%20width%3D%22215%22%20height%3D%2232.67%22%20rx%3D%2212.5%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22109.5%22%20y%3D%22124.75%22%3EOne%20fifth%3A%207%20m%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%22197.33%22%20width%3D%22215%22%20height%3D%2232.67%22%20rx%3D%2212.5%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22109.5%22%20y%3D%22222.42%22%3ETwo%20fifths%3A%2014%20m%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Find two fifths of 35 m: Whole: 35 m, ÷ 5, One fifth: 7 m, × 2, Two fifths: 14 m",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Slide 8. Model the same method for a measure. Explain that dividing changes the amount but not the unit: the answer is still a length in metres. Ask pupils to identify which step finds one fifth."
+    },
+    {
+      "id": "f35muwkddeu",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "p64",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Quick check"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p69",
+          "type": "text",
+          "x": 58,
+          "y": 105,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p70",
+          "type": "text",
+          "x": 111,
+          "y": 105,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "⅙ of the counters are blue. How many counters are blue?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p71",
+          "type": "text",
+          "x": 58,
+          "y": 217,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p72",
+          "type": "text",
+          "x": 111,
+          "y": 217,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Leo spends ⅜ of his money. How much does he spend?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p73",
+          "type": "text",
+          "x": 58,
+          "y": 329,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p74",
+          "type": "text",
+          "x": 111,
+          "y": 329,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "⅘ of the water is poured into a bucket. How many litres are poured?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Slide 9. Allow independent working time before sharing answers. This checks word problems involving quantities, money and measures. Support with the prompt ‘Find one part first’; do not supply the calculations. Check units as well as arithmetic.\nAnswers: 1. 42 ÷ 6 = 7. There are 7 blue counters. 2. 32 ÷ 8 = 4; 4 × 3 = 12. Leo spends £12. 3. 25 ÷ 5 = 5; 5 × 4 = 20. 20 litres are poured."
+    },
+    {
+      "id": "f3hmuwkdg6o",
+      "kind": "exit-ticket",
+      "elements": [
+        {
+          "id": "p76",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Exit ticket"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p81",
+          "type": "text",
+          "x": 58,
+          "y": 105,
+          "w": 53,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p82",
+          "type": "text",
+          "x": 111,
+          "y": 105,
+          "w": 791,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find ⅐ of 56."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p83",
+          "type": "text",
+          "x": 58,
+          "y": 177,
+          "w": 53,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p84",
+          "type": "text",
+          "x": 111,
+          "y": 177,
+          "w": 791,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find ⅚ of 42."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p85",
+          "type": "text",
+          "x": 58,
+          "y": 249,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#465F6B",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p86",
+          "type": "text",
+          "x": 111,
+          "y": 249,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A bag contains 36 apples. ¾ of them are red. How many apples are red?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "color": "#10252F"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:04.787Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Slide 10. Collect responses to assess each objective separately. Look for division by the denominator, multiplication by the numerator when needed, and a correctly labelled answer to the word problem.\nAnswers: 1. 56 ÷ 7 = 8. 2. 42 ÷ 6 = 7; 7 × 5 = 35. 3. 36 ÷ 4 = 9; 9 × 3 = 27. There are 27 red apples."
+    }
+  ],
+  "createdAt": "2026-10-06T10:56:03.496Z",
+  "updatedAt": "2026-10-06T11:08:50.250Z",
+  "fitVersion": 3,
+  "subject": "Maths",
+  "ageBand": "ks2",
+  "yearGroup": "Year 5",
+  "language": "en-GB",
+  "brief": {
+    "topic": "Fractions of amounts",
+    "durationMin": 60,
+    "slideCount": 10
+  },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Calculate unit fractions of whole-number amounts by dividing the amount by the denominator."
+      },
+      {
+        "id": "o2",
+        "text": "Calculate non-unit fractions of amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number."
+      },
+      {
+        "id": "o3",
+        "text": "Solve word problems involving fractions of quantities, money and measures, showing the calculation and giving the answer with the correct unit."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [],
+    "questions": [],
+    "misconceptions": [],
+    "outline": [
+      {
+        "id": "s1",
+        "kind": "title",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s2",
+        "kind": "objectives",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s3",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s4",
+        "kind": "starter",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s5",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s6",
+        "kind": "multiple-choice",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s7",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s8",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s9",
+        "kind": "starter",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s10",
+        "kind": "exit-ticket",
+        "factRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "durationMin": 60
+  },
+  "generation": {
+    "jobId": "REGEN-y5-maths-fractions-of-amounts-generate",
+    "stage": "repaired",
+    "startedAt": "2026-10-06T10:56:05.423Z",
+    "promptVersions": {
+      "planned": "simple-lesson.t8",
+      "generated": "simple-lesson.t8",
+      "evaluated": "evaluate.v10",
+      "repaired": "repair.v18"
+    },
+    "usage": {
+      "calls": 4,
+      "inputTokens": 5321,
+      "outputTokens": 3115,
+      "costUsd": 0.0363817
+    },
+    "findings": [],
+    "completedAt": "2026-10-06T10:56:57.660Z"
+  }
+}
