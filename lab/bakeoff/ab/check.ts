@@ -263,7 +263,9 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
         lines: 8,
       },
       "b3-ms": { paths: /^\$\.(properties\.misconception|required)\b/, lines: 1 },
+      "b4-ms": { paths: /^\$\.(properties\.misconception|required)\b/, lines: 1 },
     };
+    OWN["b4-r1t"] = OWN["b3-r1t"] as { paths: RegExp; lines: number };
     const own = OWN[a];
     if (own) {
       const stray = jd.filter((l) => !own.paths.test(l));
@@ -289,6 +291,8 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
         fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     }
+    if (a === "base4" && (jd.length || b.system !== r.system))
+      fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);
     if (a === "base3" && (jd.length || b.system !== r.system))
       fail(`base3 ${id}: its request differs from k1 (base3 is k1's files + code fixes)`);
     // D11: K1 changes only the flow's minItems and maxItems; the system text is byte for byte base2's.

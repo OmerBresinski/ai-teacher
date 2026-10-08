@@ -133,23 +133,29 @@ export function flattenR1t(slide: J): J {
 }
 
 if (import.meta.main) {
-  for (const [arm, make] of [
-    ["r1t", r1tSchema],
-    ["ms", msSchema],
+  // D19a: each structural arm on base3 (b3-*) and on base4 (b4-*, base4 = b3-r2); one wording slot per arm.
+  for (const [arm, make, baseArm, out] of [
+    ["r1t", r1tSchema, "base3", "b3-r1t"],
+    ["ms", msSchema, "base3", "b3-ms"],
+    ["r1t", r1tSchema, "base4", "b4-r1t"],
+    ["ms", msSchema, "base4", "b4-ms"],
   ] as const) {
-    const desc = descriptions(arm);
+    // The prompt-engineer's descriptions go in only on the coordinator's go (`--with-wording`).
+    const desc = process.argv.includes("--with-wording") ? descriptions(arm) : {};
     for (const st of STAGES) {
-      const base = JSON.parse(readFileSync(`${AB}/prompts/base3/T/schema.${st}.json`, "utf8")) as J;
-      const out = make(base, desc);
+      const base = JSON.parse(
+        readFileSync(`${AB}/prompts/${baseArm}/T/schema.${st}.json`, "utf8"),
+      ) as J;
+      const made = make(base, desc);
       writeFileSync(
-        `${AB}/prompts/b3-${arm}/T/schema.${st}.json`,
-        `${JSON.stringify(out, null, 1)}\n`,
+        `${AB}/prompts/${out}/T/schema.${st}.json`,
+        `${JSON.stringify(made, null, 1)}\n`,
       );
       console.log(
-        arm,
+        out,
         st,
-        JSON.stringify(out).length,
-        "bytes (base3",
+        JSON.stringify(made).length,
+        `bytes (${baseArm}`,
         JSON.stringify(base).length,
         ")",
       );

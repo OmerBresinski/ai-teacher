@@ -27,6 +27,9 @@ export const AB_ARMS = [
   "b3-r1",
   "b3-r1t",
   "b3-ms",
+  "base4",
+  "b4-r1t",
+  "b4-ms",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -139,6 +142,33 @@ export const AB_CONFIG: Record<
     fixes: true,
     delta: "base3 + a nullable misconception slot before the flow",
   },
+  // D19a (8 Oct): base4 = b3-r2 (base3 + R2), files byte for byte; the structural arms rebased onto it.
+  base4: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta: "D19a base: base3 + R2 (= b3-r2)",
+  },
+  "b4-r1t": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    r1t: true,
+    delta:
+      "base4 + R1 stage 1: question pictures as 0-4 one-thing tiles; items carry needs_picture",
+  },
+  "b4-ms": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta: "base4 + a nullable misconception slot before the flow",
+  },
   // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
   // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
   "b3-r2": {
@@ -168,6 +198,9 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b3-r1": { ref: "base3" },
   "b3-r1t": { ref: "base3" },
   "b3-ms": { ref: "base3" },
+  base4: { ref: "b3-r2" },
+  "b4-r1t": { ref: "base4" },
+  "b4-ms": { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
