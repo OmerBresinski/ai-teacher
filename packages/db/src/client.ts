@@ -61,3 +61,37 @@ export function createDb(url: string, opts: CreateDbOptions = {}): DbHandle {
     },
   };
 }
+
+/** One transaction, seen both as a Drizzle client and as a raw `executeSql` (see `withSqlTransaction`). */
+export interface SqlTransaction {
+  /** Drizzle over the transaction's connection; `forWorkspace(tx.db, …)` scopes it as usual. */
+  db: Db;
+  /**
+   * Run parameterised SQL (`$1`, `$2`, …) on the same connection, in pg-boss's adapter shape
+   * (`send(name, data, { db: tx })` inserts the job inside this transaction).
+   */
+  executeSql: (text: string, values?: unknown[]) => Promise<{ rows: unknown[] }>;
+}
+
+/**
+ * Run `fn` inside one postgres.js transaction on `sql`, so rows written through `tx.db` and
+ * statements run through `tx.executeSql` commit (or roll back) together. A throw in `fn` rolls
+ * everything back and rethrows. Nothing is visible to other sessions until it returns.
+ */
+export async function withSqlTransaction<R>(
+  sql: Sql,
+  fn: (tx: SqlTransaction) => Promise<R>,
+): Promise<R> {
+  const result = await sql.begin(async (connection) => {
+    // A transaction handle has no `options`, which Drizzle reads for its type parsers; it runs
+    // on the pool's connection with the pool's parsers, so it borrows them.
+    const client = Object.assign(connection, { options: sql.options }) as unknown as Sql;
+    return fn({
+      db: drizzle(client, { schema }),
+      executeSql: async (text, values = []) => ({
+        rows: [...(await connection.unsafe(text, values as never[]))],
+      }),
+    });
+  });
+  return result as R;
+}

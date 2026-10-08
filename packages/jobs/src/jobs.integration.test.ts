@@ -12,6 +12,7 @@ import type { PgBoss } from "pg-boss";
 import pino from "pino";
 import { createBoss, ensureQueues } from "./boss";
 import { cancel, enqueue } from "./enqueue";
+import { emitJobEvent, nowIso } from "./events";
 import { type BossJob, type RunJobOutcome, runJob } from "./run-job";
 import {
   defineJob,
@@ -135,6 +136,72 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       expect(row?.data).toEqual({ jobId, workspaceId, payload: { message: "hi", steps: 5 } });
       expect(row?.retryLimit).toBe(1);
       await boss.deleteJob("ping", jobId);
+    });
+  });
+
+  // TEACH-135 part b: `enqueue` commits the pg-boss job and its `queued` row in one transaction.
+  describe("enqueue commits the job and its queued event together", () => {
+    test("a worker claiming jobs as fast as it can never sees one before its queued row", async () => {
+      const claimed = new Set<string>();
+      let racing = true;
+      // A tight fetch loop standing in for a worker: the moment a job is visible it writes
+      // `started`, as `runJob` does first.
+      const racer = (async () => {
+        while (racing) {
+          const jobs = await boss.fetch<JobData>("ping", { batchSize: 10 });
+          for (const job of jobs) {
+            await emitJobEvent(ctx, {
+              type: "started",
+              jobId: job.data.jobId,
+              workspaceId: job.data.workspaceId,
+              at: nowIso(),
+            });
+            claimed.add(job.id);
+          }
+        }
+      })();
+      const ids: JobId[] = [];
+      for (let i = 0; i < 50; i++) {
+        const jobId = await enqueue(ctx, "ping", { message: `race ${i}` }, { workspaceId });
+        if (!jobId) throw new Error("enqueue returned null");
+        ids.push(jobId);
+      }
+      const allClaimed = await waitFor(async () => ids.every((id) => claimed.has(id)), 10_000);
+      racing = false;
+      await racer;
+      expect(allClaimed).toBe(true);
+      for (const jobId of ids) {
+        expect((await eventsFor(jobId)).map((e) => e.type)).toEqual(["queued", "started"]);
+      }
+      await boss.deleteAllJobs("ping");
+    }, 30_000);
+
+    test("a deduplicated send returns null and leaves no job and no queued row", async () => {
+      const opts = { workspaceId, singletonKey: "teach-135", singletonSeconds: 60 };
+      const first = await enqueue(ctx, "ping", { message: "first" }, opts);
+      const second = await enqueue(ctx, "ping", { message: "second" }, opts);
+      expect(first).not.toBeNull();
+      expect(second).toBeNull();
+      expect(await boss.findJobs("ping", { key: "teach-135" })).toHaveLength(1);
+      const [row] = await sql<{ count: number }[]>`
+        select count(*)::int as count from job_events
+        where workspace_id = ${workspaceId} and type = 'queued'`;
+      expect(row?.count).toBe(1);
+      await boss.deleteAllJobs("ping");
+    });
+
+    test("a failed queued insert rolls the pg-boss job back with it", async () => {
+      // No such Workspace: the `job_events.workspace_id` foreign key refuses the `queued` row.
+      const jobId = newId<JobId>();
+      await expect(
+        enqueue(
+          ctx,
+          "ping",
+          { message: "orphan?" },
+          { workspaceId: newId<WorkspaceId>(), id: jobId },
+        ),
+      ).rejects.toThrow();
+      expect(await boss.findJobs("ping", { id: jobId })).toHaveLength(0);
     });
   });
 

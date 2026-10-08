@@ -1,7 +1,10 @@
 import {
   getTerminalJobEvent,
+  insertJobEvent,
   isUniqueViolation,
   JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX,
+  notifyJobEvent,
+  withSqlTransaction,
 } from "@tj/db";
 import {
   type JobId,
@@ -40,6 +43,11 @@ export interface EnqueueOptions {
  * Validate `payload` with `JobPayloadSchemas[name]` (throws a `ZodError` **before** pg-boss is
  * touched), mint a `JobId`, `send` it to pg-boss with that id, and record the `queued` event.
  *
+ * The job and its `queued` row commit together, in one transaction (pg-boss inserts through the
+ * transaction's `executeSql`): no worker can claim the job, and write `started`, before `queued`
+ * exists, and a failed event write leaves no job behind (TEACH-135 part b). The NOTIFY that
+ * wakes the SSE streams goes out after the commit.
+ *
  * Returns the `JobId` — the pg-boss job id is the same UUID, so `job_events.job_id` and
  * `pgboss.job.id` join directly. Returns `null` only when `singletonKey` deduplicated the send
  * (no event is written in that case).
@@ -56,32 +64,28 @@ export async function enqueue<N extends JobName>(
   const jobId = opts.id ?? newId<JobId>();
   const data: JobData<N> = { jobId, workspaceId: opts.workspaceId, payload: parsed };
 
-  const sent = await ctx.boss.send(name, data, {
-    id: jobId,
-    singletonKey: opts.singletonKey,
-    singletonSeconds: opts.singletonSeconds,
-    retryLimit: JOB_RETRY_LIMIT,
-  });
-  if (sent === null) return null;
-  if (sent !== jobId) {
-    // pg-boss honours `options.id`; if that ever changes we must not lie to the caller.
-    throw new Error(`enqueue: pg-boss returned id ${sent}, expected ${jobId}`);
-  }
-
-  try {
-    await emitJobEvent(ctx, {
+  const queued = await withSqlTransaction(ctx.sql, async (tx) => {
+    const sent = await ctx.boss.send(name, data, {
+      id: jobId,
+      singletonKey: opts.singletonKey,
+      singletonSeconds: opts.singletonSeconds,
+      retryLimit: JOB_RETRY_LIMIT,
+      db: tx,
+    });
+    if (sent === null) return null;
+    if (sent !== jobId) {
+      // pg-boss honours `options.id`; if that ever changes we must not lie to the caller.
+      throw new Error(`enqueue: pg-boss returned id ${sent}, expected ${jobId}`);
+    }
+    return insertJobEvent(tx.db, {
       type: "queued",
       jobId,
       workspaceId: opts.workspaceId,
       at: nowIso(),
     });
-  } catch (error) {
-    // The job is in pg-boss but nobody can follow it (no `queued` row, and the caller gets no id):
-    // take it back out so it does not run as an orphan. If even that fails, the original error
-    // is the one worth reporting.
-    await ctx.boss.cancel(name, jobId).catch(() => undefined);
-    throw error;
-  }
+  });
+  if (queued === null) return null;
+  await notifyJobEvent(ctx.sql, { id: queued.id, jobId, workspaceId: opts.workspaceId });
   return jobId;
 }
 
