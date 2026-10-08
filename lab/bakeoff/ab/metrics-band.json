@@ -1,0 +1,32 @@
+{
+  "visualShownReps": [0.788, 0.886],
+  "writerAsk": {
+    "b3-r2-1": 0.944,
+    "b3-r2-2": 0.9,
+    "base4-3": 0.912,
+    "base4-4": 0.818,
+    "b3-r2-wo1": 0.968,
+    "b3-r2-wo2": 0.853
+  },
+  "delivery": 0.949,
+  "widened": [0.776, 0.919],
+  "textOnlyShare": [0.081, 0.224],
+  "ranges": {
+    "dangling": [2, 2],
+    "danglingHits": [2, 4],
+    "shippedOverflow": [0, 0],
+    "labelStrings": [0, 0],
+    "labelsDropped": [7, 10],
+    "labelsLost": [3, 6],
+    "recallSubtitle": [6, 6],
+    "textChars": [186.6, 197.8]
+  },
+  "band": {
+    "visualShown": [0.776, null],
+    "dangling": [null, 2],
+    "shippedOverflow": [null, 0],
+    "labelStrings": [null, 0],
+    "labelsDropped": [null, 10]
+  },
+  "note": "gate per rep with --gate; textOnlyShare is 1 - visualShown and is not gated"
+}
