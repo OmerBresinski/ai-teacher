@@ -142,7 +142,7 @@ export function gateVerdict(s: { rms: number; haze: number; colour: number }, g 
 }
 
 /** The judge pool's gate: fetch each candidate's thumbnail, refuse low-contrast or hazy frames. */
-export function photoGate(log: (e: object) => void) {
+export function photoGate(log: (e: object) => void, refuse = true) {
   return async (c: { id: string; src: { tiny?: string; medium?: string } }) => {
     const url = c.src.tiny ?? c.src.medium;
     if (!url) return true;
@@ -158,12 +158,17 @@ export function photoGate(log: (e: object) => void) {
       const v = gateVerdict(s);
       if (!v.pass || v.advice.length)
         log({
-          ev: v.pass ? "photo-gate-advice" : "photo-gate-refused",
+          ev: v.pass
+            ? "photo-gate-advice"
+            : refuse
+              ? "photo-gate-refused"
+              : "photo-gate-would-refuse",
           id: c.id,
           ...s,
           why: [...v.why, ...v.advice],
         });
-      return v.pass;
+      // polish2: the gate only logs (its verdict is recorded, every candidate stays).
+      return refuse ? v.pass : true;
     } catch (e) {
       log({ ev: "photo-gate-error", id: c.id, err: String(e).slice(0, 120) });
       return true;

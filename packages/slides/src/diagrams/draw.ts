@@ -13,7 +13,15 @@
 import type { ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { diagramGeometryFaults } from "./geometry";
-import { diagramElement, mendSpec, parseDiagram, simplerDiagrams, withLongLabels } from "./index";
+import {
+  diagramElement,
+  mendSpec,
+  parseDiagram,
+  simplerDiagrams,
+  svgDataUrl,
+  withLongLabels,
+} from "./index";
+import { clashPair, diagramPolish, dropLabels, labelGate, reportLabelDrop } from "./polish";
 import { context } from "./svg";
 
 export type DrawnDiagram =
@@ -26,6 +34,8 @@ export type DrawnDiagram =
       rung: number;
       /** The spec actually drawn (store it with the slide if you keep specs). */
       spec: unknown;
+      /** polish2: clashing labels left out so the drawing could stay. */
+      droppedLabels?: string[];
     }
   | { ok: false; reasons: string[] };
 
@@ -87,6 +97,41 @@ export function drawDiagram(
           if (element) return { ok: true, element, fs, rung, spec: form };
         }
       }
+      // polish2 (D30): a label clash never costs the drawing. With every refit tried, the first form
+      // and size whose only faults are clashes draws, and one label of each clashing pair goes.
+      if (diagramPolish() && labelGate() === "label")
+        for (const [rung, form] of forms.entries()) {
+          if (!parseDiagram(form)) continue;
+          for (let fs = base.fs; fs >= floor; fs -= 1) {
+            const faults = readabilityFaults(form, theme, { w: rect.w, h: rect.h, fs });
+            const pairs = faults.map(clashPair);
+            if (!faults.length || pairs.some((p) => !p)) continue;
+            const element = diagramElement(form, theme, { ...rect, fs }, ids);
+            if (!element) continue;
+            // Of each clashing pair the shorter label goes (a tick number before an axis title).
+            const go: string[] = [];
+            const shorter = (p: [string, string]) => (p[1].length <= p[0].length ? p[1] : p[0]);
+            for (const p of pairs as [string, string][])
+              if (!go.includes(p[0]) && !go.includes(p[1])) go.push(shorter(p));
+            const src = element.src as string;
+            const svg = decodeURIComponent(src.slice(src.indexOf(",") + 1));
+            const cut = dropLabels(svg, go);
+            const alt = String((form as { alt?: unknown }).alt ?? "");
+            for (const label of cut.dropped) {
+              const pair = (pairs as [string, string][]).find((p) => p.includes(label));
+              const clash = pair ? (pair[0] === label ? pair[1] : pair[0]) : "";
+              reportLabelDrop({ label, clash, alt });
+            }
+            return {
+              ok: true,
+              element: { ...element, src: svgDataUrl(cut.svg) },
+              fs,
+              rung,
+              spec: form,
+              droppedLabels: cut.dropped,
+            };
+          }
+        }
       return { ok: false, reasons: last.length ? last : ["it does not draw"] };
     });
   } catch {

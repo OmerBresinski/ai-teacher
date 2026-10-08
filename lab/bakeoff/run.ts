@@ -9,8 +9,8 @@ import {
   usePhotoGate,
 } from "../../packages/generation/src/stages/illustrate";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
-import { setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
-import { abPolish, isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
+import { onLabelDrop, setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
+import { abPolish, abPolish2, isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
 import { photoGate } from "./ab/polish";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
@@ -50,7 +50,13 @@ useJudgeVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).judge);
 // Round 6: the arm's picture director (dir-stage and y1fix = v12; every other arm v11).
 useDirectorVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).director);
 // polish arm (rootcause/uk-seasons.md): renderer fixes, 768 px judge input and the photo gate.
-if (abPolish()) {
+if (abPolish2()) {
+  // polish2 (D30): base4's judge input; the colour gate and label drops only log.
+  const say = (e: object) => console.error(JSON.stringify({ t: Date.now(), ...e }));
+  setDiagramPolish(true, "label");
+  onLabelDrop((e) => say({ ev: "label-dropped", ...e }));
+  usePhotoGate(photoGate(say, false));
+} else if (abPolish()) {
   setDiagramPolish(true);
   useJudgeImage(768);
   usePhotoGate(photoGate((e) => console.error(JSON.stringify({ t: Date.now(), ...e }))));

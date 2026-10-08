@@ -85,6 +85,23 @@ export async function renderLesson(file: string, out = `${dirname(file)}/render`
     { slide: number; detail: string }[]
   >;
   for (let n = 1; n <= body.slides.length; n++) {
+    // D30 blank slides (y1fix-1 y5 and y8 slide 10, 13:37:36): the shared vite dev server reloaded
+    // the page mid-shot (a source edit in the worktree) and a pure white frame was saved. The shot
+    // is retaken until the slide's own words are on the page; a slide that never shows them is a fault.
+    const word = slideWord(body.slides[n - 1]);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await shoot(n);
+      if (!word || (await page.evaluate((w: string) => document.body.innerText.includes(w), word)))
+        break;
+      if (attempt === 2)
+        dom.overflow.push({ slide: n, detail: `blank render: "${word}" never showed` });
+    }
+    for (const c of await page.evaluate(svgTextClips)) clips.push({ slide: n, ...c });
+    const t = await page.evaluate(renderedTextFaults);
+    for (const k of ["offCanvas", "overflow", "overlaps"] as const)
+      for (const d of t[k]) dom[k].push({ slide: n, detail: d });
+  }
+  async function shoot(n: number) {
     await page.goto(`${WEB}/l/${body.id}/present?slide=${n}`);
     await page
       .getByRole("button", { name: "Stay in this window" })
@@ -116,10 +133,6 @@ export async function renderLesson(file: string, out = `${dirname(file)}/render`
     await page.mouse.move(700, 300);
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${out}/slide-${String(n).padStart(2, "0")}.png` });
-    for (const c of await page.evaluate(svgTextClips)) clips.push({ slide: n, ...c });
-    const t = await page.evaluate(renderedTextFaults);
-    for (const k of ["offCanvas", "overflow", "overlaps"] as const)
-      for (const d of t[k]) dom[k].push({ slide: n, detail: d });
   }
   await browser.close();
   // Diagram labels cut by their SVG's edge (ported from arm C 426bb30f geometry.ts): the slide-model
@@ -289,4 +302,27 @@ if (import.meta.main) {
   const [file, out] = process.argv.slice(2);
   if (!file) throw new Error("usage: bun lab/bakeoff/render.ts <lesson.json> [outDir]");
   console.log("rendered", await renderLesson(file, out));
+}
+
+/** The first words a slide draws (its heading, usually), to tell a painted slide from a blank page. */
+export function slideWord(slide: unknown): string | undefined {
+  const find = (v: unknown): string | undefined => {
+    if (Array.isArray(v)) {
+      for (const x of v) {
+        const f = find(x);
+        if (f) return f;
+      }
+      return undefined;
+    }
+    if (!v || typeof v !== "object") return undefined;
+    const o = v as Record<string, unknown>;
+    if (o.type === "text" && typeof o.text === "string" && o.text.trim().length >= 3)
+      return o.text.trim().split(/\s+/).slice(0, 3).join(" ");
+    for (const k of ["elements", "doc", "content"]) {
+      const f = find(o[k]);
+      if (f) return f;
+    }
+    return undefined;
+  };
+  return find(slide);
 }

@@ -39,6 +39,7 @@ export const AB_ARMS = [
   "lib",
   "locale",
   "polish",
+  "polish2",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -61,6 +62,8 @@ export const AB_CONFIG: Record<
     stageBank?: boolean;
     lib?: boolean;
     polish?: boolean;
+    /** polish2 (D30): base4's judge input, a log-only colour gate, per-label clash fallback. */
+    polish2?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -279,6 +282,20 @@ export const AB_CONFIG: Record<
     delta:
       "base4 + code fixes: code title subtitle, snug nodes, label gap gate, strips kind, 768 px judge, photo gate, picture stage timings",
   },
+  // polish2 (D30, 9 Oct): polish without the 768 px judge (base4's judge input), the colour gate
+  // logging only, and a label clash refitted then dropped per label, never the whole diagram.
+  // Writer files = polish's (recall clause removed, strips).
+  polish2: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    delta:
+      "polish minus the 768 px judge; colour gate logs only; label clashes refit then drop one label, never the diagram",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -328,6 +345,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   lib: { ref: "base4" },
   locale: { ref: "base4" },
   polish: { ref: "base4" },
+  polish2: { ref: "polish" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -347,6 +365,7 @@ export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
+export const abPolish2 = () => (current ? Boolean(AB_CONFIG[current].polish2) : false);
 export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */

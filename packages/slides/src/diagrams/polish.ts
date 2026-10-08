@@ -31,9 +31,59 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 let on = false;
-/** Turn the polish arm's drawing on or off (run.ts sets it once for `--arm polish`). */
-export function setDiagramPolish(v: boolean): void {
+/**
+ * What a label clash costs (polish2, D30): "diagram" (polish) refuses the whole drawing when no
+ * refit clears it; "label" refits first and then drops only the clashing labels.
+ */
+export type LabelGate = "diagram" | "label";
+let gate: LabelGate = "diagram";
+/** Turn the polish arm's drawing on or off (run.ts sets it once for `--arm polish` / `polish2`). */
+export function setDiagramPolish(v: boolean, labelGate: LabelGate = "diagram"): void {
   on = v;
+  gate = labelGate;
+}
+export const labelGate = (): LabelGate => gate;
+/** Where a dropped label is reported (run.ts points it at the run log). */
+let dropSink: (e: { label: string; clash: string; alt: string }) => void = () => {};
+export function onLabelDrop(f: typeof dropSink): void {
+  dropSink = f;
+}
+export const reportLabelDrop = (e: { label: string; clash: string; alt: string }) => dropSink(e);
+
+/** The label pair a clash fault names (`the labels "a" and "b" touch|overlap`), else undefined. */
+export function clashPair(fault: string): [string, string] | undefined {
+  const m = /^the labels "(.*)" and "(.*)" (?:touch|overlap)$/.exec(fault);
+  return m ? [m[1] as string, m[2] as string] : undefined;
+}
+const unesc = (t: string) =>
+  t
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&");
+/**
+ * `svg` without the <text> elements whose words are one of `labels` (the clashing labels chosen to
+ * go). Returns the SVG and the labels actually removed.
+ */
+export function dropLabels(svg: string, labels: string[]): { svg: string; dropped: string[] } {
+  const dropped: string[] = [];
+  // A label's leader (labelled.ts: a line ending on a dot, drawn just before the label) goes with it.
+  const out = svg.replace(
+    /(<line\b[^>]*\/>\s*<circle\b[^>]*\/>\s*)?<text\b[^>]*>([\s\S]*?)<\/text>/g,
+    (whole, lead: string | undefined, inner: string) => {
+      const words = [...inner.matchAll(/<tspan\b[^>]*>([\s\S]*?)<\/tspan>/g)]
+        .map((m) => unesc(m[1] as string))
+        .join(" ");
+      const hit = labels.find((l) => l === words && !dropped.includes(l));
+      if (!hit) return whole;
+      dropped.push(hit);
+      if (!lead) return "";
+      const at = (k: string) => new RegExp(`\\s${k}="([^"]*)"`).exec(lead)?.[1];
+      const isLeader = at("x2") === at("cx") && at("y2") === at("cy") && at("x2") !== undefined;
+      return isLeader ? "" : lead;
+    },
+  );
+  return { svg: out, dropped };
 }
 export const diagramPolish = (): boolean => on;
 /** Run `f` with the switch at `v`, then restore it (synchronous; tests and the before/after renders). */
