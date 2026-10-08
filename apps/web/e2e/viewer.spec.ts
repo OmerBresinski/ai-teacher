@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 const status = (page: import("@playwright/test").Page) => page.getByRole("status");
 
 test.describe("lesson viewer", () => {
-  test("shows every slide in the rail and walks the deck", async ({
+  test("shows every slide in the rail and walks the deck", { tag: "@smoke" }, async ({
     signedInPage: { page, paths },
   }) => {
     // The card's Open goes to the editor; the read-only viewer lives on `/view` (TEACH-103).
@@ -59,7 +59,7 @@ test.describe("lesson viewer", () => {
     await expect(page).toHaveURL(/\/lessons$/);
   });
 
-  test("Make a copy creates a new lesson and opens it", async ({
+  test("Make a copy creates a new lesson and opens it", { tag: "@smoke" }, async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.lesson("demo-water-cycle", "/view"));

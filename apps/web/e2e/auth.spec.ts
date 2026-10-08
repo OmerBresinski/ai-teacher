@@ -17,9 +17,9 @@ import {
 const cast = (kind: "slides" | "activity" | "support" | "answers") => `[data-cast="${kind}"]`;
 
 test.describe("auth", () => {
-  test("a protected page redirects to /sign-in and remembers where you were going", async ({
-    page,
-  }) => {
+  test("a protected page redirects to /sign-in and remembers where you were going", {
+    tag: "@smoke",
+  }, async ({ page }) => {
     await page.goto("/dev/jobs");
     await expect(page).toHaveURL(/\/sign-in\?/);
     const search = new URL(page.url()).searchParams;
@@ -35,10 +35,9 @@ test.describe("auth", () => {
     expect(searchWithQuery.get("redirect")).toBe("/lessons/new?topic=The+cycle&source=1");
   });
 
-  test("magic link from the form signs in and lands on the redirect target", async ({
-    page,
-    request,
-  }) => {
+  test("magic link from the form signs in and lands on the redirect target", {
+    tag: "@smoke",
+  }, async ({ page, request }) => {
     const email = uniqueEmail("form");
     await page.goto("/sign-in?redirect=%2Fdev%2Fjobs");
     await page.getByLabel("Email address").fill(email.toUpperCase());
@@ -178,10 +177,9 @@ test.describe("auth", () => {
     );
   });
 
-  test("sign out returns to /sign-in and protected pages are locked again", async ({
-    page,
-    request,
-  }) => {
+  test("sign out returns to /sign-in and protected pages are locked again", {
+    tag: "@smoke",
+  }, async ({ page, request }) => {
     await signIn(page, request);
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
 
@@ -197,7 +195,10 @@ test.describe("auth", () => {
     expect(new URL(page.url()).searchParams.get("redirect")).toBe("/");
   });
 
-  test("a used magic link sends you to /sign-in with an explanation", async ({ page, request }) => {
+  test("a used magic link sends you to /sign-in with an explanation", { tag: "@smoke" }, async ({
+    page,
+    request,
+  }) => {
     const email = await signIn(page, request);
     const link = await lastMagicLink(request, email);
     await page.getByRole("button", { name: "Sign out" }).click();
@@ -223,11 +224,9 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
 
-  test("a mail scanner that fetches the link does not use it up (TEACH-246)", async ({
-    page,
-    request,
-    browser,
-  }) => {
+  test("a mail scanner that fetches the link does not use it up (TEACH-246)", {
+    tag: "@smoke",
+  }, async ({ page, request, browser }) => {
     const email = uniqueEmail("scanner");
     await page.goto("/sign-in?redirect=%2Fdev%2Fjobs");
     await page.getByLabel("Email address").fill(email);

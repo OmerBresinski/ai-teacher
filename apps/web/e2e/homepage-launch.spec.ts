@@ -90,7 +90,7 @@ for (const javaScriptEnabled of [false, true]) {
   test.describe(`hero form with JavaScript ${javaScriptEnabled ? "enabled" : "disabled"}`, () => {
     test.use({ javaScriptEnabled });
 
-    test("hands the typed topic to the application", async ({ page }) => {
+    test("hands the typed topic to the application", { tag: "@smoke" }, async ({ page }) => {
       await serveHomepage(page);
       await page.goto(`${site}/`);
       const topic = page.getByRole("textbox", { name: "What are you teaching?" });
@@ -102,7 +102,7 @@ for (const javaScriptEnabled of [false, true]) {
       expect(url.searchParams.get("topic")).toBe("Year 7 science, solids, liquids and gases");
     });
 
-    test("does not navigate when the field is empty", async ({ page }) => {
+    test("does not navigate when the field is empty", { tag: "@smoke" }, async ({ page }) => {
       const requests: string[] = [];
       await serveHomepage(page, requests);
       await page.goto(`${site}/`);
@@ -118,7 +118,9 @@ for (const javaScriptEnabled of [false, true]) {
 }
 
 test.describe("navigation and links", () => {
-  test("the upload link opens the application with a source", async ({ page }) => {
+  test("the upload link opens the application with a source", { tag: "@smoke" }, async ({
+    page,
+  }) => {
     await serveHomepage(page);
     await page.goto(`${site}/`);
     const upload = page.getByRole("link", {
@@ -131,7 +133,9 @@ test.describe("navigation and links", () => {
     );
   });
 
-  test("the navigation reaches every top-level destination", async ({ page }) => {
+  test("the navigation reaches every top-level destination", { tag: "@smoke" }, async ({
+    page,
+  }) => {
     await serveHomepage(page);
     await page.goto(`${site}/`);
     const nav = page.locator("#main-nav");
@@ -164,7 +168,9 @@ test.describe("navigation and links", () => {
 });
 
 test.describe("top lessons", () => {
-  test("a lesson page renders its exported images with real alt text", async ({ page }) => {
+  test("a lesson page renders its exported images with real alt text", { tag: "@smoke" }, async ({
+    page,
+  }) => {
     await serveHomepage(page);
     const lesson = routes().find(({ route }) => /^\/examples\/.+\//.test(route));
     if (!lesson) throw new Error("No example lesson was emitted");
@@ -199,9 +205,9 @@ test.describe("top lessons", () => {
 
 test.describe("slide viewer", () => {
   for (const javaScriptEnabled of [true, false]) {
-    test(`${javaScriptEnabled ? "steps through slides" : "shows every slide"} with JavaScript ${javaScriptEnabled ? "on" : "off"}`, async ({
-      browser,
-    }) => {
+    test(`${javaScriptEnabled ? "steps through slides" : "shows every slide"} with JavaScript ${javaScriptEnabled ? "on" : "off"}`, {
+      tag: "@smoke",
+    }, async ({ browser }) => {
       const context = await browser.newContext({ javaScriptEnabled });
       const page = await context.newPage();
       await serveHomepage(page);
@@ -252,7 +258,9 @@ test.describe("slide viewer", () => {
 });
 
 test.describe("every route", () => {
-  test("loads without a page error and fits a 390 viewport", async ({ page }) => {
+  test("loads without a page error and fits a 390 viewport", { tag: "@smoke" }, async ({
+    page,
+  }) => {
     await serveHomepage(page);
     const problems: string[] = [];
     for (const width of [1440, 390]) {
@@ -284,7 +292,7 @@ test.describe("accessibility", () => {
     ["FAQ", "/help/"],
     ["privacy", "/privacy/"],
   ] as [string, string | null][]) {
-    test(`axe reports no serious violation on ${label}`, async ({ page }) => {
+    test(`axe reports no serious violation on ${label}`, { tag: "@smoke" }, async ({ page }) => {
       const target = route ?? routes().find(({ route: r }) => /^\/examples\/.+\//.test(r))?.route;
       if (!target) throw new Error("No example lesson was emitted");
       await serveHomepage(page);

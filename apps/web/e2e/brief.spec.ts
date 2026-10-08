@@ -12,9 +12,9 @@ import { MATERIAL, tinyPdf } from "./source-fixtures";
 test.use({ seed: false });
 
 test.describe("lesson brief", () => {
-  test("Next posts the brief, plans the objectives, and the year group is remembered", async ({
-    signedInPage: { page },
-  }) => {
+  test("Next posts the brief, plans the objectives, and the year group is remembered", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     await page.goto("/lessons/new");
     await expect(page).toHaveTitle("New lesson · DayBack");
     // The intake sits outside the library shell.
@@ -56,9 +56,9 @@ test.describe("lesson brief", () => {
 });
 
 test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
-  test("a PDF and a paste upload through POST /sources, show as chips, and travel as sourceIds", async ({
-    signedInPage: { page },
-  }) => {
+  test("a PDF and a paste upload through POST /sources, show as chips, and travel as sourceIds", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     await page.goto("/lessons/new");
     await page.getByRole("button", { name: "Add materials" }).click();
     const zone = page.getByRole("dialog", { name: "Add your materials" });

@@ -16,7 +16,9 @@ const eventTexts = async (page: Page): Promise<string[]> =>
 const describe = (text: string): string => text.replace(/^\d{2}:\d{2}:\d{2}\.\d{3}\s*/, "");
 
 test.describe("jobs / SSE demo", () => {
-  test("run ping → events stream in → completed", async ({ signedInPage: { page } }) => {
+  test("run ping → events stream in → completed", { tag: "@smoke" }, async ({
+    signedInPage: { page },
+  }) => {
     await page.goto("/dev/jobs");
     await page.getByRole("button", { name: "Run ping" }).click();
 

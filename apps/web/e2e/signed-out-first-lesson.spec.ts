@@ -10,9 +10,9 @@ import { expect, test } from "./fixtures";
 test.use({ seed: false });
 
 test.describe("signed-out first lesson", () => {
-  test("homepage topic → brief → objectives → generating, with no sign-in step", async ({
-    page,
-  }) => {
+  test("homepage topic → brief → objectives → generating, with no sign-in step", {
+    tag: "@smoke",
+  }, async ({ page }) => {
     // Row 1: no redirect, topic prefilled, no drop zone and no Blank lesson (ruling 110).
     await page.goto("/lessons/new?topic=Volcanoes");
     await expect(page).toHaveURL(/\/lessons\/new\?topic=Volcanoes$/);
@@ -59,7 +59,9 @@ test.describe("signed-out first lesson", () => {
     expect(page.url()).not.toContain("/sign-in");
   });
 
-  test("account-only pages still send a visitor to /sign-in (row 6)", async ({ page }) => {
+  test("account-only pages still send a visitor to /sign-in (row 6)", { tag: "@smoke" }, async ({
+    page,
+  }) => {
     for (const path of ["/", "/worksheets", "/l/00000000-0000-4000-8000-000000000000/print"]) {
       await page.goto(path);
       await expect(page).toHaveURL(/\/sign-in\?/);
@@ -70,7 +72,9 @@ test.describe("signed-out first lesson", () => {
     await expect(page).toHaveURL(/\/sign-in\?/);
   });
 
-  test("an anonymous visitor is sent to /sign-in from the library (row 7)", async ({ page }) => {
+  test("an anonymous visitor is sent to /sign-in from the library (row 7)", {
+    tag: "@smoke",
+  }, async ({ page }) => {
     await page.goto("/lessons/new?topic=Rocks");
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page).toHaveURL(/\/lessons\/new\?lesson=/);

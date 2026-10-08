@@ -40,7 +40,7 @@ test.describe("worksheet editor", () => {
     expect(await page.locator(".ws-print-root .ws-page").count()).toBe(editorPages);
   });
 
-  test("row 2: a typing burst is one undo step and autosaves", async ({
+  test("row 2: a typing burst is one undo step and autosaves", { tag: "@smoke" }, async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));

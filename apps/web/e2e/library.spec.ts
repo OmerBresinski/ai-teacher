@@ -108,7 +108,9 @@ test.describe("library shell", () => {
     await printed.close();
   });
 
-  test("Delete can be undone from a card menu", async ({ signedInPage: { page } }) => {
+  test("Delete can be undone from a card menu", { tag: "@smoke" }, async ({
+    signedInPage: { page },
+  }) => {
     await page.goto("/lessons");
     const card = page.locator("article").filter({ hasText: "The water cycle" }).first();
     await card.hover();

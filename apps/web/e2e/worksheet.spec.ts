@@ -20,9 +20,9 @@ test.describe("worksheet beside a generated lesson (API level)", () => {
   // The paced fake writes the whole lesson (~10 s) before the sheet is requested.
   test.setTimeout(120_000);
 
-  test("POST /worksheet → framed → checked; the lesson row is untouched", async ({
-    signedInPage: { page },
-  }) => {
+  test("POST /worksheet → framed → checked; the lesson row is untouched", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     const api = page.request;
     const origin = { origin: E2E_WEB_URL };
     const created = await api.post(`${E2E_API_URL}/lessons`, {
