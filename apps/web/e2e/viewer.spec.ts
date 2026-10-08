@@ -79,6 +79,8 @@ test.describe("lesson viewer", () => {
   test("a missing id is a 404", async ({ signedInPage: { page } }) => {
     await page.goto("/l/00000000-0000-4000-8000-000000000000");
     await expect(page.getByText("Page not found")).toBeVisible();
+    // DRILL (reverted before merge): proves a failing shard fails the required e2e check.
+    expect(1, "deliberate failure for the e2e gate drill").toBe(2);
   });
 
   // TEACH-161 row 8: the viewer shows the slides as they are, with no credits page appended.
