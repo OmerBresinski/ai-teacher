@@ -33,6 +33,7 @@ export const AB_ARMS = [
   "b4-r1t2",
   "b4-ex",
   "b4-r1t3",
+  "judge20",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -196,6 +197,16 @@ export const AB_CONFIG: Record<
     r1t3: true,
     delta: "b4-r1t2 + findDirected fetches every director picture + tiles laid out as a 2-4 grid",
   },
+  // Round 6 (8 Oct): base4 with the prompt-engineer's picture judge v20 (arms3/judge); writer files = base4.
+  judge20: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "base4 with picture judge v20 (seen before the verdicts; age, stage and size only from the picture)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -239,6 +250,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b4-r1t2": { ref: "b4-r1t" },
   "b4-ex": { ref: "base4" },
   "b4-r1t3": { ref: "b4-r1t" },
+  judge20: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -353,6 +365,14 @@ export const PICTURE_VERSIONS = {
   director: "picture-director.v11",
   judge: "pick-or-requery-photo.v17",
 };
+/** Per-arm picture versions over PICTURE_VERSIONS (judge20 runs judge v20; every other arm v17). */
+export const ARM_PICTURE_VERSIONS: Partial<Record<AbArm, Partial<typeof PICTURE_VERSIONS>>> = {
+  judge20: { judge: "pick-or-requery-photo.v20" },
+};
+export const pictureVersions = (a: AbArm | undefined) => ({
+  ...PICTURE_VERSIONS,
+  ...(a ? ARM_PICTURE_VERSIONS[a] : {}),
+});
 
 export const SHARED_PINNED = [
   "shared/user.txt",

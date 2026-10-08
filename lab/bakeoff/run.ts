@@ -3,7 +3,8 @@
 //        [--no-visuals] [--no-notes] [--no-repair] [--no-render] <brief-id> [...]
 // Keys are read from ~/.dayback-openai-key and ~/.dayback-pexels-key (never printed).
 import { existsSync, readFileSync } from "node:fs";
-import { isAbArm, pinFaults, setAbArm } from "./ab/arms";
+import { useJudgeVersion } from "../../packages/generation/src/stages/illustrate";
+import { isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
 import { renderLesson } from "./render";
@@ -37,6 +38,8 @@ const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i -
 // A/B (7 Oct): `--arm base|a1|a2|a3` runs arm T with that A/B arm's pinned writer prompt and schema.
 const armArg = opt("--arm", "T") as string;
 if (isAbArm(armArg)) setAbArm(armArg);
+// Round 6: the arm's picture judge (judge20 = v20; every other arm v17).
+useJudgeVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).judge);
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));

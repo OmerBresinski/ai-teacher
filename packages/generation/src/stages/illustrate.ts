@@ -15,6 +15,10 @@ import {
   pickOrRequerySchemaFor,
 } from "../prompts/pick-or-requery-photo";
 import {
+  pickOrRequeryPromptV20,
+  pickOrRequerySchemaForV20,
+} from "../prompts/pick-or-requery-photo-v20";
+import {
   SHORTLIST_MAX,
   shortlistPhotosPrompt,
   shortlistSchemaFor,
@@ -32,6 +36,24 @@ import { isDesignerStamp } from "./objectives-first";
 import { audienceOf, generationOf, slideText } from "./shared";
 
 /** Between Generate's last (85) and Evaluate's first (90). */
+
+/**
+ * BAKEOFF (arm judge20, 8 Oct): which picture judge prompt runs. v17 by default (base and every other
+ * arm byte-exact); the lab sets v20 for its judge20 arm through PICTURE_VERSIONS.
+ */
+let judgeVersion: "pick-or-requery-photo.v17" | "pick-or-requery-photo.v20" =
+  "pick-or-requery-photo.v17";
+export function useJudgeVersion(v: string): void {
+  if (v !== pickOrRequeryPrompt.version && v !== pickOrRequeryPromptV20.version)
+    throw new Error(`unknown picture judge ${v}`);
+  judgeVersion = v as typeof judgeVersion;
+}
+const judgePrompt = () =>
+  judgeVersion === pickOrRequeryPromptV20.version ? pickOrRequeryPromptV20 : pickOrRequeryPrompt;
+const judgeSchemaFor = (brief: Pick<ImageBrief, "mustShow">) =>
+  (judgeVersion === pickOrRequeryPromptV20.version
+    ? pickOrRequerySchemaForV20(brief)
+    : pickOrRequerySchemaFor(brief)) as ReturnType<typeof pickOrRequerySchemaFor>;
 export const PROGRESS_ILLUSTRATED = 88;
 
 const EMPTY_MESSAGE = "No photograph was found for this slide. Add one from the image panel.";
@@ -159,7 +181,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
                   ...generation.promptVersions,
                   generated: joinVersions(
                     generation.promptVersions.generated,
-                    pickOrRequeryPrompt.version,
+                    judgePrompt().version,
                   ),
                 }
               : generation.promptVersions,
@@ -532,6 +554,8 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         fits: verdict.fits,
         visible: verdict.visible,
         why: verdict.why,
+        // judge v20 (arm judge20): what the judge says the picture itself shows; v17 has none.
+        seen: (verdict as { seen?: string[] }).seen,
       },
       shown: shortlisted.map((c) => ({ id: c.id, alt: c.alt.slice(0, 120) })),
     });
@@ -545,7 +569,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         visible: verdict.visible,
         count: verdict.count ?? "one",
         alt: picked.alt,
-        promptVersion: pickOrRequeryPrompt.version,
+        promptVersion: judgePrompt().version,
         thumbnail: picked.src.tiny,
       };
       taken.add(picked.pageUrl);
@@ -742,7 +766,7 @@ async function judge(
     stage: "illustrate",
     cls: "standard",
     effort: "low",
-    prompt: pickOrRequeryPrompt,
+    prompt: judgePrompt() as typeof pickOrRequeryPrompt,
     input: {
       topic: lesson.brief?.topic ?? lesson.title,
       answers: lesson.brief?.answers,
@@ -767,7 +791,7 @@ async function judge(
         thumbnail: c.src.tiny,
       })),
     },
-    schema: pickOrRequerySchemaFor(brief),
+    schema: judgeSchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,
     images: pool.map((c) => ({ id: c.id, url: c.src.tiny })),
     ...(judgeImageDetail() ? { imageDetail: judgeImageDetail() } : {}),

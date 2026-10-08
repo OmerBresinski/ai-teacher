@@ -109,8 +109,17 @@ for (const a of AB_ARMS) {
     fail(`director is not ${PICTURE_VERSIONS.director}`);
   else if (!judge.includes(`"${PICTURE_VERSIONS.judge}"`))
     fail(`picture judge is not ${PICTURE_VERSIONS.judge}`);
+  else if (
+    !readFileSync(
+      `${REPO}/packages/generation/src/prompts/pick-or-requery-photo-v20.ts`,
+      "utf8",
+    ).includes('"pick-or-requery-photo.v20"')
+  )
+    fail("judge20: pick-or-requery-photo-v20.ts is not v20");
   else
-    ok(`pictures: ${PICTURE_VERSIONS.director}, ${PICTURE_VERSIONS.judge} (round 5) in every arm`);
+    ok(
+      `pictures: ${PICTURE_VERSIONS.director}, ${PICTURE_VERSIONS.judge} (round 5) in every arm but judge20 (v20)`,
+    );
 }
 
 // 3. compiled requests
@@ -291,6 +300,8 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
         fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     }
+    if (a === "judge20" && (jd.length || b.system !== r.system))
+      fail(`judge20 ${id}: its request differs from base4 (the judge is code only)`);
     if ((a === "b4-r1t2" || a === "b4-r1t3") && (jd.length || b.system !== r.system))
       fail(`b4-r1t2 ${id}: its request differs from b4-r1t (stage 2 is code only)`);
     // b4-ex: only the two example lines (number-line, line-graph) may change; no schema path.
