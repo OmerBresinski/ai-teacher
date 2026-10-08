@@ -48,13 +48,14 @@ test.describe("lesson editor", () => {
     const count = await rows(page).count();
     expect(count).toBe(7);
     await expect(rows(page).first()).toHaveAttribute("aria-selected", "true");
-    // One full-size slide at fit: it sits inside the canvas with the 40px gutter on each side.
+    // One full-size slide at fit: it sits inside the canvas with a 16px gutter at each side and
+    // 76px above and below for the toolbar and the footer (ruling 186).
     const canvas = await page.getByRole("group", { name: "Slide canvas" }).boundingBox();
     const slide = await frame(page).boundingBox();
     if (!canvas || !slide) throw new Error("no layout");
     expect(Math.abs(slide.width / slide.height - 16 / 9)).toBeLessThan(0.02);
-    expect(slide.width).toBeLessThanOrEqual(canvas.width - 80 + 1);
-    expect(slide.height).toBeLessThanOrEqual(canvas.height - 80 + 1);
+    expect(slide.width).toBeLessThanOrEqual(canvas.width - 32 + 1);
+    expect(slide.height).toBeLessThanOrEqual(canvas.height - 152 + 1);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "/l/:id");

@@ -1,5 +1,6 @@
 import { cn } from "@tj/ui";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { SlidesActor } from "./cast/SlidesActor";
 
 /*
@@ -31,7 +32,10 @@ export function EditChatBubble({
   announcement,
   onOpen,
   takeFocus = false,
+  host,
 }: {
+  /** Layout A: the canvas row; the bubble sits at its bottom right, centred on the zoom row. */
+  host?: HTMLElement | null;
   state: BubbleState;
   /** Read out once when an answer lands while the pane is closed. */
   announcement: string;
@@ -44,7 +48,7 @@ export function EditChatBubble({
   useEffect(() => {
     if (takeFocus) button.current?.focus();
   }, []);
-  return (
+  const node = (
     <>
       <button
         ref={button}
@@ -52,12 +56,17 @@ export function EditChatBubble({
         data-edit-chat-bubble={state}
         aria-label={bubbleLabel(state)}
         onClick={onOpen}
-        className="fixed right-4 bottom-19 z-40 inline-flex size-14 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+        className={cn(
+          "z-40 inline-flex items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+          // Layout A: 48 px, centred on the zoom row (bottom 16, 32 high), 16 px clear of the zoom
+          // controls and 8 px above the filmstrip.
+          host ? "absolute right-4 bottom-2 size-12" : "fixed right-4 bottom-19 size-14",
+        )}
       >
         <SlidesActor
           context="bubble"
           state={state === "reply" ? "done" : state}
-          className="size-[54px]"
+          className={host ? "size-[46px]" : "size-[54px]"}
         />
         {state === "reply" || state === "failed" ? (
           <span
@@ -75,4 +84,5 @@ export function EditChatBubble({
       </span>
     </>
   );
+  return host ? createPortal(node, host) : node;
 }

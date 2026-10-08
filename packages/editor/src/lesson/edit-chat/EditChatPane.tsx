@@ -14,6 +14,8 @@ import {
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
+import { sidePaneClass } from "../SidePaneDock";
+import type { PaneMode } from "../shell-layout";
 import {
   useActiveSlide,
   useSelection,
@@ -526,7 +528,15 @@ export function EditChatPane({
   open = true,
   onReopen,
   focusTick,
+  bubbleHost,
+  paneMode = "docked",
+  paneWidth = 320,
 }: {
+  /** Layout A's shell rules (`shell-layout.ts`): reserved or over the filmstrip, and the fluid width. */
+  paneMode?: PaneMode;
+  paneWidth?: number;
+  /** Layout A: the canvas row the bubble sits in (bottom right, on the zoom row). */
+  bubbleHost?: HTMLElement | null;
   /** Closed, the pane shows as the bubble; the request carries on in `EditChatProvider`. */
   open?: boolean;
   /** The bubble's click: open the pane again. */
@@ -548,10 +558,13 @@ export function EditChatPane({
       <aside
         aria-label={EDIT_CHAT_LABEL}
         data-edit-chat
+        data-side-pane={paneMode}
         hidden={!open}
+        style={{ width: paneWidth }}
         className={cn(
-          "relative w-(--edit-chat-width,320px) shrink-0 flex-col bg-card text-foreground shadow-(--edit-chat-shadow) max-[1281px]:w-[296px]",
+          "shrink-0 flex-col bg-card text-foreground shadow-(--edit-chat-shadow)",
           open ? "flex" : "hidden",
+          sidePaneClass(paneMode),
         )}
         onKeyDown={(e) => {
           if (e.key === "Escape" && !e.defaultPrevented) {
@@ -568,6 +581,7 @@ export function EditChatPane({
           announcement={unread?.text ?? ""}
           takeFocus={closedHere.current}
           onOpen={() => onReopen?.()}
+          host={bubbleHost}
         />
       )}
     </>

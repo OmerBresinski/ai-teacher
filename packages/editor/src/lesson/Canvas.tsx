@@ -30,6 +30,7 @@ import { pointOnSlide, useImageDrop } from "./canvas/use-image-drop";
 import { useLesson } from "./document-context";
 import { isInTextField } from "./keys";
 import { ResidualBadge } from "./ResidualBadge";
+import { CANVAS_GUTTER_X, CANVAS_GUTTER_Y } from "./shell-layout";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { boxesOf, hitTest } from "./transform/hit-test";
 import { type MarginHandle, type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
@@ -71,7 +72,35 @@ export type CanvasProps = {
   images?: ImageSearchClient;
   /** Travels as the report context for a placed picture. */
   lessonId?: string;
+  /**
+   * How many px at the canvas's right edge something lies over (the Dayback pane at 1280 px or
+   * less, ruling 186). The slide keeps its fitted size and moves left into its own margin, as far
+   * as the margin allows, to stay clear of it.
+   */
+  clearRight?: number;
+  /** False while the Dayback pane is open: no bubble at the bottom right, so the zoom row moves in. */
+  bubble?: boolean;
+  /**
+   * Px at the right the slide is fitted clear of even while nothing lies there: the Dayback pane's
+   * reserved width (`shell-layout.ts`, rule 3), so opening the pane only recentres the slide.
+   */
+  fitInset?: number;
 };
+
+/** Air kept between the slide and a pane lying over the canvas. */
+const CLEAR_AIR = 16;
+
+/**
+ * How far the slide moves left to clear `clearRight` px at the right edge of a `viewW`-wide canvas,
+ * never more than the slack beside a `contentW`-wide slide (gutters included), so it is never cut
+ * off on the left and never re-fitted.
+ */
+export function clearShift(viewW: number, contentW: number, gutterX: number, clearRight: number) {
+  if (clearRight <= 0) return 0;
+  const slack = Math.max(0, (viewW - contentW) / 2);
+  const needed = clearRight + CLEAR_AIR - (slack + gutterX);
+  return Math.round(Math.max(0, Math.min(needed, slack)));
+}
 
 export function Canvas({
   slide,
@@ -81,6 +110,9 @@ export function Canvas({
   onInsert,
   images,
   lessonId,
+  clearRight = 0,
+  bubble = true,
+  fitInset = 0,
 }: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
@@ -93,6 +125,8 @@ export function Canvas({
   const [scale, setScale] = useState(1);
   /** What 'fit' resolves to: the scroll region minus the gutter, measured on the region itself. */
   const [fitScale, setFitScale] = useState(1);
+  /** The scroll region's width, for moving the slide clear of a pane over the canvas. */
+  const [viewW, setViewW] = useState(0);
   const [focused, setFocused] = useState(false);
   /** The in-flight geometry of a drag, painted by `SlideView` instead of the cache (ADR 0022 §4). */
   const [preview, setPreview] = useState<PreviewMap | null>(null);
@@ -187,6 +221,11 @@ export function Canvas({
   const compactChrome = useCompactChrome();
   const mobile = useMobileEditor();
   const gutter = compactChrome ? 16 : GUTTER;
+  // Ruling 186: the filmstrip sits under the canvas, so the slide is bounded by height; a narrow
+  // side gutter lets the Dayback pane take the width the old slide column used. The top and bottom
+  // gutters keep the contextual toolbar and the canvas footer off the slide.
+  const gutterX = mobile ? gutter : CANVAS_GUTTER_X;
+  const gutterY = mobile ? gutter : CANVAS_GUTTER_Y;
 
   /* ---- fit ---------------------------------------------------------------- */
   // Measured on the scroller, not on the content box inside it: the content is sized from the
@@ -198,13 +237,17 @@ export function Canvas({
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
+      setViewW(width);
       setFitScale(
-        Math.max(0.05, Math.min((width - gutter * 2) / SLIDE_W, (height - gutter * 2) / SLIDE_H)),
+        Math.max(
+          0.05,
+          Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
+        ),
       );
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [gutter]);
+  }, [gutterX, gutterY, fitInset]);
   const effectiveZoom = zoom === "fit" ? fitScale : zoom;
 
   /* ---- zoom about the pointer ------------------------------------------ */
@@ -307,12 +350,15 @@ export function Canvas({
   };
 
   /* ---- layout ----------------------------------------------------------- */
-  const contentW = SLIDE_W * scale + gutter * 2;
-  const contentH = SLIDE_H * scale + gutter * 2;
+  const contentW = SLIDE_W * scale + gutterX * 2;
+  const contentH = SLIDE_H * scale + gutterY * 2;
+  // Padding on the right moves the centred slide left by `shift` without re-fitting it; the slack
+  // bound keeps the region from growing a scrollbar.
+  const shift = clearShift(viewW, contentW, gutterX, clearRight);
   const steps = slideStepCount(slide);
 
   return (
-    <main className="relative min-w-0 flex-1 bg-canvas" data-canvas>
+    <main className="relative min-w-0 flex-1 bg-canvas" data-canvas data-clear-right={clearRight}>
       {/* A labelled scroll region, not a control and not a tab stop: the pointer handlers are pan
           (space plus drag), and the keys that act on the canvas are bound by `useCanvasKeys` while
           focus is anywhere inside it. Tab lands on the slide stage (`SelectionLayer`), so the focus
@@ -344,7 +390,17 @@ export function Canvas({
         onPointerUp={onPanUp}
         onContextMenu={onContextMenu}
       >
-        <div style={{ minWidth: "100%", minHeight: "100%", width: contentW, height: contentH }}>
+        <div
+          data-canvas-content
+          className="transition-[padding] duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
+          style={{
+            minWidth: "100%",
+            minHeight: "100%",
+            width: contentW + shift * 2,
+            height: contentH,
+            paddingRight: shift * 2,
+          }}
+        >
           <SlideScaler zoom={effectiveZoom} gutter={gutter} onScale={onScale}>
             <div
               ref={stage}
@@ -474,7 +530,7 @@ export function Canvas({
           </>
         ) : null}
       </div>
-      <CanvasFooter scale={scale} steps={steps} />
+      <CanvasFooter clearRight={clearRight} bubble={bubble} scale={scale} steps={steps} />
       <ElementContextMenu
         slide={slide}
         menu={menu}
@@ -520,7 +576,18 @@ export const stepZoom = (current: number, dir: 1 | -1): number =>
 /* Footer                                                              */
 /* ------------------------------------------------------------------ */
 
-function CanvasFooter({ scale, steps }: { scale: number; steps: number }) {
+function CanvasFooter({
+  scale,
+  steps,
+  clearRight,
+  bubble,
+}: {
+  scale: number;
+  steps: number;
+  clearRight: number;
+  bubble: boolean;
+}) {
+  const mobile = useMobileEditor();
   const zoom = useZoom();
   const { previewStep, showGuides, snap } = useSessionUi();
   const { setZoom, setPreviewStep, toggleGuides, toggleSnap } = useSessionActions();
@@ -530,7 +597,13 @@ function CanvasFooter({ scale, steps }: { scale: number; steps: number }) {
     // the zoom control and the canvas options — plus the residual entry when there is one.
     <div
       data-canvas-footer
-      className="pointer-events-none absolute right-4 bottom-4 flex h-8 items-center gap-2"
+      className={cn(
+        "pointer-events-none absolute bottom-4 flex h-8 items-center gap-2",
+        // Clear of the Dayback bubble at the bottom right (ruling 186).
+        mobile || !bubble ? "right-4" : "right-20",
+      )}
+      // Clear of a pane lying over the canvas (ruling 186, 1280 px or less).
+      style={clearRight > 0 ? { right: clearRight + 16 } : undefined}
     >
       <ResidualBadge className="pointer-events-auto" />
       {steps > 0 ? (

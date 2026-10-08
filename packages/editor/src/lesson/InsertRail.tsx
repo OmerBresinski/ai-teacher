@@ -4,10 +4,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Tooltip,
 } from "@tj/ui";
 import {
   CircleHelp,
+  Ellipsis,
   Image as ImageIcon,
   ListChecks,
   Minus,
@@ -50,6 +54,8 @@ export type InsertRailProps = {
   /** Pexels search + pick for the Add image panel, injected by the app. */
   images?: ImageSearchClient;
   showLabels?: boolean;
+  /** Ruling 186: Text, Image and Shape on the rail; everything else behind one "More". */
+  minimal?: boolean;
 };
 
 /**
@@ -64,6 +70,7 @@ export const InsertRail = memo(function InsertRail({
   onHelp,
   images,
   showLabels,
+  minimal = false,
 }: InsertRailProps) {
   const lesson = useLesson();
   const theme = renderTheme(lesson);
@@ -74,47 +81,8 @@ export const InsertRail = memo(function InsertRail({
   // question slide must still land after the one on the canvas rather than at the end.
   const activeSlideId = useActiveSlide(lesson.slides)?.id ?? null;
 
-  return (
-    <Rail aria-label="Insert" showLabels={showLabels}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <RailButton label="Text" shortcut={hint("t")}>
-            <Type aria-hidden {...ICON} />
-          </RailButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="start" aria-label="Text">
-          {TEXT_PRESETS.map((p) => (
-            <DropdownMenuItem
-              key={p.preset}
-              onSelect={() => onInsert(makeText(p.preset, theme), { edit: true })}
-            >
-              {p.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AddImagePanel onInsert={onInsert} images={images}>
-        <RailButton label="Image" shortcut={hint("i")} active={imagePanel !== null}>
-          <ImageIcon aria-hidden {...ICON} />
-        </RailButton>
-      </AddImagePanel>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <RailButton label="Shape" shortcut={hint("r")}>
-            <Square aria-hidden {...ICON} />
-          </RailButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="start" aria-label="Shape">
-          {SHAPE_KINDS.map((s) => (
-            <DropdownMenuItem key={s.shape} onSelect={() => onInsert(makeShape(s.shape, theme))}>
-              {s.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
+  const more = (
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <RailButton label="Line" shortcut={hint("l")}>
@@ -158,11 +126,75 @@ export const InsertRail = memo(function InsertRail({
       <RailButton label="Embed" onClick={() => onInsert(makeEmbed())}>
         <Video aria-hidden {...ICON} />
       </RailButton>
+    </>
+  );
+
+  return (
+    <Rail aria-label="Insert" showLabels={showLabels} className={minimal ? "w-12" : undefined}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <RailButton label="Text" shortcut={hint("t")}>
+            <Type aria-hidden {...ICON} />
+          </RailButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="right" align="start" aria-label="Text">
+          {TEXT_PRESETS.map((p) => (
+            <DropdownMenuItem
+              key={p.preset}
+              onSelect={() => onInsert(makeText(p.preset, theme), { edit: true })}
+            >
+              {p.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AddImagePanel onInsert={onInsert} images={images}>
+        <RailButton label="Image" shortcut={hint("i")} active={imagePanel !== null}>
+          <ImageIcon aria-hidden {...ICON} />
+        </RailButton>
+      </AddImagePanel>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <RailButton label="Shape" shortcut={hint("r")}>
+            <Square aria-hidden {...ICON} />
+          </RailButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="right" align="start" aria-label="Shape">
+          {SHAPE_KINDS.map((s) => (
+            <DropdownMenuItem key={s.shape} onSelect={() => onInsert(makeShape(s.shape, theme))}>
+              {s.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {minimal ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <RailButton label="More">
+              <Ellipsis aria-hidden {...ICON} />
+            </RailButton>
+          </PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            aria-label="More to add"
+            className="w-auto p-1.5"
+          >
+            {/* A column like the rail itself: the content's own wrapper is a plain block. */}
+            <div className="flex flex-col items-center gap-1">{more}</div>
+          </PopoverContent>
+        </Popover>
+      ) : (
+        more
+      )}
 
       {/* `?` is otherwise the only way to reach the shortcuts sheet — every action needs a
           visible control too (SPEC §0 principle 5). */}
       <div className="mt-auto flex flex-col items-center gap-1 pt-1.5">
-        <RailSeparator />
+        {minimal ? null : <RailSeparator />}
         <LessonInfo />
         <Tooltip label="Keyboard shortcuts" shortcut="?" side="right">
           <RailButton label="Keyboard shortcuts" onClick={onHelp}>

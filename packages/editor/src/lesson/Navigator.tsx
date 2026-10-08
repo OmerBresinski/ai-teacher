@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
 } from "@tj/ui";
-import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSlideLint } from "../layout/use-slide-lint";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
@@ -51,7 +51,21 @@ const FULL = { thumbW: 168, thumbH: 94, gap: 8, numW: 28 };
 const COMPACT = { thumbW: 60, thumbH: 33.75, gap: 6, numW: 22 };
 /** Air between the slide number's right edge and the thumbnail, inside `numW`. */
 const NUM_GAP = 10;
+/** The bottom filmstrip (ruling 186): 96x54 thumbs in a row, the number under each. */
+const STRIP = { thumbW: 96, thumbH: 54, gap: 10, numW: 0 };
+/** The filmstrip's thumb width, shared with the generating screen so nothing moves at Ready. */
+export const FILMSTRIP_THUMB_WIDTH = STRIP.thumbW;
 type Geometry = typeof FULL;
+const STRIP_DOTS_KEY = "tj:filmstrip-dots";
+
+/** Browser preference: whether the filmstrip is folded to dots. */
+export function readFilmstripDots(): boolean {
+  try {
+    return window.localStorage.getItem(STRIP_DOTS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /** Browser preference: whether the rail is collapsed to the compact thumbs. */
 export const NAVIGATOR_MODE_KEY = "tj:navigator";
@@ -82,7 +96,7 @@ export function navigatorThumbWidth(mode: NavigatorMode): number {
 /** A theme colour at `pct` percent over whatever is behind it. */
 const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
-export function Navigator() {
+export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   const lesson = useLesson();
   const history = useHistory();
   const session = useSessionActions();
@@ -110,8 +124,19 @@ export function Navigator() {
     }
   };
 
-  const g = mode === "full" ? FULL : COMPACT;
-  const rowH = g.thumbH + g.gap;
+  const g = strip ? STRIP : mode === "full" ? FULL : COMPACT;
+  // Along the list's axis: a row's height in the rail, a column's width in the filmstrip.
+  const rowH = strip ? g.thumbW + g.gap : g.thumbH + g.gap;
+  const [dots, setDots] = useState(readFilmstripDots);
+  const toggleDots = () =>
+    setDots((d) => {
+      try {
+        window.localStorage.setItem(STRIP_DOTS_KEY, d ? "0" : "1");
+      } catch {
+        /* private mode */
+      }
+      return !d;
+    });
 
   const list = lesson.slides;
   const index = useMemo(() => new Map(list.map((s, i) => [s.id, i])), [list]);
@@ -159,6 +184,7 @@ export function Navigator() {
     estimateSize: () => rowH,
     overscan: 6,
     getItemKey: (i) => list[i]?.id ?? i,
+    horizontal: strip,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `rowH` is the trigger — the estimate changed
@@ -274,6 +300,18 @@ export function Navigator() {
     const i = activeId ? (index.get(activeId) ?? 0) : 0;
     const mod = e.metaKey || e.ctrlKey;
     const keys: Record<string, () => void> = {
+      ...(strip
+        ? {
+            ArrowRight: () => {
+              if (mod) nudgeSlides(1);
+              else goTo(i + 1, e.shiftKey);
+            },
+            ArrowLeft: () => {
+              if (mod) nudgeSlides(-1);
+              else goTo(i - 1, e.shiftKey);
+            },
+          }
+        : {}),
       // ⌘⇧↑/↓ moves the selection to the very top/bottom of the deck; plain ⌘ nudges by one;
       // neither held moves the active slide instead.
       ArrowDown: () => {
@@ -323,39 +361,44 @@ export function Navigator() {
       const el = scroller.current;
       if (!el) return 0;
       const rect = el.getBoundingClientRect();
-      const y = clientY - rect.top + el.scrollTop - 8;
+      const y = strip
+        ? clientY - rect.left + el.scrollLeft - 12
+        : clientY - rect.top + el.scrollTop - 8;
       return Math.max(0, Math.min(listRef.current.length, Math.round(y / rowH)));
     },
-    [rowH],
+    [rowH, strip],
   );
 
   // Row handlers read the slide id off `data-id` rather than closing over it per row, so the same
   // handler instance is reused for every row and the row memo holds.
-  const onRowPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const id = e.currentTarget.dataset.id;
-    if (!id) return;
-    // The pressed row takes focus itself: rows are keyed by slide id, so a reorder moves the node
-    // and its focus together. preventDefault keeps the browser from scrolling it into view.
-    e.preventDefault();
-    e.currentTarget.focus({ preventScroll: true });
-    dragStart.current = { y: e.clientY, id, started: false };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }, []);
+  const onRowPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      const id = e.currentTarget.dataset.id;
+      if (!id) return;
+      // The pressed row takes focus itself: rows are keyed by slide id, so a reorder moves the node
+      // and its focus together. preventDefault keeps the browser from scrolling it into view.
+      e.preventDefault();
+      e.currentTarget.focus({ preventScroll: true });
+      dragStart.current = { y: strip ? e.clientX : e.clientY, id, started: false };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [strip],
+  );
 
   const onRowPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const start = dragStart.current;
       if (!start) return;
       if (!start.started) {
-        if (Math.abs(e.clientY - start.y) < 4) return;
+        if (Math.abs((strip ? e.clientX : e.clientY) - start.y) < 4) return;
         start.started = true;
       }
       const sel = selectionRef.current;
       const moving = sel.includes(start.id) ? sel : [start.id];
-      setDrag({ ids: moving, at: insertionAt(e.clientY) });
+      setDrag({ ids: moving, at: insertionAt(strip ? e.clientX : e.clientY) });
     },
-    [insertionAt],
+    [insertionAt, strip],
   );
 
   const historyRef = useRef(history);
@@ -396,6 +439,238 @@ export function Navigator() {
   );
 
   const draggingIds = drag ? new Set(drag.ids) : null;
+
+  const slideMenu = (
+    <>
+      {/* The context menu: a controlled DropdownMenu whose trigger is a 1px anchor at the pointer.
+          The anchor keeps its last position after the menu closes: the content stays mounted for
+          its fade-out and would otherwise re-position to the top-left corner for a frame. */}
+      <DropdownMenu open={menuAt !== null} onOpenChange={(o) => !o && setMenuAt(null)}>
+        <DropdownMenuTrigger asChild>
+          <span
+            aria-hidden
+            style={{
+              position: "fixed",
+              left: menuAt?.x ?? lastMenuAt.current?.x ?? 0,
+              top: menuAt?.y ?? lastMenuAt.current?.y ?? 0,
+              width: 1,
+              height: 1,
+            }}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side={strip ? "top" : "right"} align="start" aria-label="Slide">
+          <DropdownMenuItem onSelect={duplicate}>
+            Duplicate
+            <DropdownMenuShortcut>{hint("$mod+d")}</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              const s = menuAt && list.find((x) => x.id === menuAt.id);
+              if (s) session.copySlide(s);
+            }}
+          >
+            Copy
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!clipboardSlide}
+            onSelect={() => {
+              if (!menuAt || !clipboardSlide) return;
+              const made = history.dispatch(reducers.pasteSlide, clipboardSlide, menuAt.id);
+              if (made) choose([made.id], made.id);
+            }}
+          >
+            Paste after
+          </DropdownMenuItem>
+          {onRegenerate ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => menuAt && regenerateSlide(deps, menuAt.id)}>
+                Regenerate slide…
+              </DropdownMenuItem>
+            </>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => nudgeSlides(-1)}>Move up</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => nudgeSlides(1)}>Move down</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={list.length <= ids.length}
+            onSelect={remove}
+          >
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+
+  const addSlide = (label: boolean) => (
+    <AddSlidePicker
+      themeId={lesson.themeId}
+      facts={lesson.facts}
+      onPick={addAfterCurrent}
+      onInsert={insertAfterCurrent}
+      side="top"
+      trigger={
+        label ? (
+          <Button variant="ghost" size="sm" className="h-6 flex-1 justify-start px-1.5">
+            <Plus aria-hidden size={16} strokeWidth={1.5} />
+            {mode === "full" ? "Add slide" : <span className="sr-only">Add slide</span>}
+          </Button>
+        ) : (
+          <IconButton label="Add slide" size="sm">
+            <Plus aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+        )
+      }
+    />
+  );
+
+  const rows = (
+    <div
+      style={
+        strip
+          ? { width: virtualizer.getTotalSize(), height: "100%", position: "relative" }
+          : { height: virtualizer.getTotalSize(), position: "relative" }
+      }
+    >
+      {virtualizer.getVirtualItems().map((item) => {
+        const slide = list[item.index];
+        if (!slide) return null;
+        return (
+          // The row settles into its new place instead of snapping there: `getItemKey` is the
+          // slide id, so a row's DOM node follows its slide and only the INDEX moves.
+          <div
+            key={item.key}
+            className="transition-transform duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              ...(strip ? { height: "100%" } : { width: "100%" }),
+              transform: strip ? `translateX(${item.start}px)` : `translateY(${item.start}px)`,
+            }}
+          >
+            <NavigatorRow
+              slide={slide}
+              number={item.index + 1}
+              theme={theme}
+              geometry={g}
+              strip={strip}
+              active={slide.id === activeId}
+              selected={selected.has(slide.id)}
+              dragging={!!draggingIds?.has(slide.id)}
+              residuals={residuals.get(slide.id)}
+              busy={busySlideIds.has(slide.id)}
+              onPointerDown={onRowPointerDown}
+              onPointerMove={onRowPointerMove}
+              onPointerUp={onRowPointerUp}
+              onContextMenu={onRowContextMenu}
+            />
+          </div>
+        );
+      })}
+
+      {drag ? (
+        <span
+          aria-hidden
+          data-drop-indicator
+          className={cn(
+            "pointer-events-none absolute z-10 rounded-full bg-primary",
+            strip ? "w-0.5" : "h-0.5",
+          )}
+          // The gap above each thumb is 8px (py-2 plus the row's top edge); the line sits
+          // centred in that gap rather than inside the target thumb.
+          style={
+            strip
+              ? { left: drag.at * rowH + 12 - g.gap / 2, top: 10, height: g.thumbH }
+              : { top: drag.at * rowH + 8 - g.gap / 2, left: g.numW + 4, width: g.thumbW }
+          }
+        >
+          {drag.ids.length > 1 ? (
+            <span className="-top-2 absolute right-0 rounded-key bg-primary px-1 text-eyebrow text-primary-foreground">
+              {drag.ids.length} slides
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const listboxProps = {
+    ref: scroller,
+    role: "listbox",
+    "aria-label": "Slides",
+    "aria-multiselectable": true,
+    tabIndex: -1,
+    onKeyDown,
+    onFocus: () => {
+      focusWithin.current = true;
+    },
+    onBlur: (e: React.FocusEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focusWithin.current = false;
+    },
+  } as const;
+
+  if (strip) {
+    const activeIndex = activeId ? (index.get(activeId) ?? 0) : 0;
+    return (
+      <nav
+        data-navigator
+        data-navigator-mode={dots ? "dots" : "strip"}
+        aria-label="Slide strip"
+        className={cn(
+          "relative flex shrink-0 items-center gap-1 border-border border-t bg-background pr-20 pl-2",
+          dots ? "h-9" : "h-[88px]",
+        )}
+      >
+        {dots ? (
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
+            <span className="mr-2 text-ink-3 text-meta tabular-nums" data-tabular>
+              {activeIndex + 1} / {list.length}
+            </span>
+            {list.map((sl, i) => (
+              <button
+                key={sl.id}
+                type="button"
+                aria-label={`Slide ${i + 1}`}
+                aria-current={sl.id === activeId ? "true" : undefined}
+                onClick={() => goTo(i)}
+                className={cn(
+                  "block size-2 rounded-full transition-colors duration-(--duration-fast)",
+                  sl.id === activeId ? "bg-foreground" : "bg-border-strong hover:bg-ink-3",
+                )}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            {...listboxProps}
+            className="relative h-full min-w-0 flex-1 overflow-x-auto overflow-y-hidden px-1 outline-none [scrollbar-width:thin]"
+          >
+            {rows}
+          </div>
+        )}
+        <div className="flex shrink-0 items-center gap-0.5 pl-1">
+          {addSlide(false)}
+          <IconButton
+            data-navigator-toggle
+            label={dots ? "Show slide strip" : "Collapse slide strip"}
+            size="sm"
+            onClick={toggleDots}
+          >
+            {dots ? (
+              <ChevronUp aria-hidden size={16} strokeWidth={1.5} />
+            ) : (
+              <ChevronDown aria-hidden size={16} strokeWidth={1.5} />
+            )}
+          </IconButton>
+        </div>
+        {slideMenu}
+      </nav>
+    );
+  }
 
   return (
     <aside
@@ -506,66 +781,7 @@ export function Navigator() {
         </IconButton>
       </div>
 
-      {/* The context menu: a controlled DropdownMenu whose trigger is a 1px anchor at the pointer.
-          The anchor keeps its last position after the menu closes: the content stays mounted for
-          its fade-out and would otherwise re-position to the top-left corner for a frame. */}
-      <DropdownMenu open={menuAt !== null} onOpenChange={(o) => !o && setMenuAt(null)}>
-        <DropdownMenuTrigger asChild>
-          <span
-            aria-hidden
-            style={{
-              position: "fixed",
-              left: menuAt?.x ?? lastMenuAt.current?.x ?? 0,
-              top: menuAt?.y ?? lastMenuAt.current?.y ?? 0,
-              width: 1,
-              height: 1,
-            }}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="start" aria-label="Slide">
-          <DropdownMenuItem onSelect={duplicate}>
-            Duplicate
-            <DropdownMenuShortcut>{hint("$mod+d")}</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              const s = menuAt && list.find((x) => x.id === menuAt.id);
-              if (s) session.copySlide(s);
-            }}
-          >
-            Copy
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!clipboardSlide}
-            onSelect={() => {
-              if (!menuAt || !clipboardSlide) return;
-              const made = history.dispatch(reducers.pasteSlide, clipboardSlide, menuAt.id);
-              if (made) choose([made.id], made.id);
-            }}
-          >
-            Paste after
-          </DropdownMenuItem>
-          {onRegenerate ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => menuAt && regenerateSlide(deps, menuAt.id)}>
-                Regenerate slide…
-              </DropdownMenuItem>
-            </>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => nudgeSlides(-1)}>Move up</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => nudgeSlides(1)}>Move down</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            disabled={list.length <= ids.length}
-            onSelect={remove}
-          >
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {slideMenu}
     </aside>
   );
 }
@@ -580,6 +796,7 @@ const NavigatorRow = memo(function NavigatorRow({
   number,
   theme,
   geometry,
+  strip = false,
   active,
   selected,
   dragging,
@@ -591,6 +808,7 @@ const NavigatorRow = memo(function NavigatorRow({
   number: number;
   theme: Theme;
   geometry: Geometry;
+  strip?: boolean;
   active: boolean;
   selected: boolean;
   dragging: boolean;
@@ -634,7 +852,9 @@ const NavigatorRow = memo(function NavigatorRow({
       className={cn(
         // One rounded object per row, at the thumbnail's own radius, so rest, hover, press and
         // selected are four intensities of one shape.
-        "group mx-1 flex cursor-default items-start gap-0 rounded-chip px-1 pb-2 outline-none select-none",
+        strip
+          ? "group flex h-full cursor-default flex-col items-center gap-1 rounded-chip px-[5px] pt-2.5 outline-none select-none"
+          : "group mx-1 flex cursor-default items-start gap-0 rounded-chip px-1 pb-2 outline-none select-none",
         "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
         !(active || selected) && "hover:bg-accent active:bg-accent-active",
       )}
@@ -643,11 +863,13 @@ const NavigatorRow = memo(function NavigatorRow({
         // Selection wears the open lesson's own accent, so the editor belongs to the deck in it;
         // focus stays on `--primary`. A row in the multi-selection but not open takes the same
         // accent one step quieter, with a hairline of the same tint.
-        background: active
-          ? tint(theme.colors.accent, 6)
-          : selected
-            ? tint(theme.colors.accent, 3)
-            : undefined,
+        background: strip
+          ? undefined
+          : active
+            ? tint(theme.colors.accent, 6)
+            : selected
+              ? tint(theme.colors.accent, 3)
+              : undefined,
         boxShadow:
           selected && !active ? `inset 0 0 0 1px ${tint(theme.colors.accent, 14)}` : undefined,
       }}
@@ -656,10 +878,12 @@ const NavigatorRow = memo(function NavigatorRow({
         aria-hidden
         data-tabular
         className={cn(
-          "shrink-0 pt-1 text-right font-semibold text-meta tabular-nums",
-          active ? "text-foreground" : "text-ink-3",
+          strip
+            ? "order-last text-[11px] leading-none tabular-nums"
+            : "shrink-0 pt-1 text-right font-semibold text-meta tabular-nums",
+          active ? "font-semibold text-foreground" : "text-ink-3",
         )}
-        style={{ width: geometry.numW - NUM_GAP, marginRight: NUM_GAP }}
+        style={strip ? undefined : { width: geometry.numW - NUM_GAP, marginRight: NUM_GAP }}
       >
         {number}
       </span>

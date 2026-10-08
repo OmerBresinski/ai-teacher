@@ -39,23 +39,6 @@
 [data-mobile-generation] .mobile-generation-next {
   min-height: 72px;
 }
-[data-companion-layout="side"] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(220px, 23vw, 320px);
-  grid-template-rows: minmax(0, 1fr) 48px;
-}
-[data-companion-layout="side"] > :first-child {
-  grid-area: 1 / 1;
-  padding: 24px;
-}
-[data-companion-layout="side"] > [data-generating-bar] {
-  grid-area: 2 / 1;
-}
-[data-companion-layout="side"] > [data-canvas-companion] {
-  grid-area: 1 / 2 / 3 / 3;
-  display: flex;
-  align-items: center;
-}
 .mobile-generation-footer {
   display: flex;
   align-items: center;

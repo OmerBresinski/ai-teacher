@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tj/ui";
+import { FileText } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import {
@@ -116,10 +117,13 @@ export function LessonWorksheets({
         ? "Review worksheet choice"
         : intent.intent && !intent.attempted
           ? "Worksheet waiting…"
-          : "Worksheets";
+          : "Worksheet";
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => onOpenChange(true)}>
+      {/* The lesson's one Worksheet entry (ruling 186): the list of its sheets, with the maker
+          inside. */}
+      <Button variant="ghost" size="sm" data-lesson-worksheets onClick={() => onOpenChange(true)}>
+        <FileText aria-hidden size={16} strokeWidth={1.5} />
         {label}
       </Button>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,7 +210,7 @@ export function LessonWorksheets({
               })
             }
           >
-            {list.data?.length ? "Add another worksheet" : "Make worksheet"}
+            {list.data?.length ? "Make another worksheet" : "Make a worksheet"}
           </Button>
           {cooldown && !active ? (
             <p className="text-muted-foreground text-sm">

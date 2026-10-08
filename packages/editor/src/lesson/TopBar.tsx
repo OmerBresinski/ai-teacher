@@ -9,7 +9,16 @@ import {
   PopoverTrigger,
   Tooltip,
 } from "@tj/ui";
-import { ArrowLeft, ChevronDown, FileText, ListChecks, Play, Redo2, Undo2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Ellipsis,
+  FileText,
+  ListChecks,
+  Play,
+  Redo2,
+  Undo2,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
@@ -19,13 +28,13 @@ import type { Autosave } from "../model/use-autosave";
 import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
 import { ThemeCallout } from "./ThemeDialog";
-import { useCompactChrome } from "./use-compact-chrome";
 import { useMobileEditor } from "./use-mobile-editor";
 
 /*
- * The editor's top bar (TeachDeck `components/v2/editor/TopBar.tsx`): back arrow → title (inline
- * rename) → undo / redo at the left; the save indicator, the selected-theme callout, Share, Export
- * and the filled Present at the right. 48px (`--topbar-height`), hairline below, on the card surface.
+ * The editor's top bar (ruling 186): back arrow → title (inline rename) → undo / redo → Saved at
+ * the left; the selected-theme callout, ⋯ (Share, Facts, Worksheet), Export and the filled Present
+ * at the right. The theme callout stays in the bar, never in ⋯ (ruling 123). On a phone the bar
+ * keeps its compact shape: Undo and Redo fold into More. 48px (`--topbar-height`), hairline below.
  */
 
 export type TopBarProps = {
@@ -50,6 +59,11 @@ export type TopBarProps = {
   onToggleFacts?: () => void;
   factsOpen?: boolean;
   autosave: Autosave<Lesson>;
+  /**
+   * The app's Worksheet control (the lesson's sheets, with the maker inside), listed in ⋯ as the
+   * one Worksheet entry (ruling 186); it replaces the built-in Worksheet button when given.
+   */
+  worksheetsSlot?: ReactNode;
 };
 
 /** Below 1180px Facts and Worksheet show as icons (names kept for screen readers), so Present and
@@ -66,9 +80,9 @@ export function TopBar({
   onToggleFacts,
   factsOpen = false,
   autosave,
+  worksheetsSlot,
 }: TopBarProps) {
   const lesson = useLesson();
-  const compactChrome = useCompactChrome();
   const mobile = useMobileEditor();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
   const worksheetId = lesson.artefacts?.worksheetId;
@@ -95,7 +109,11 @@ export function TopBar({
           <span className={NARROW_LABEL}>Facts</span>
         </Button>
       ) : null}
-      {worksheetId && onOpenWorksheet ? (
+      {/* One Worksheet entry: the app's list-and-maker when it gives one, else the direct open or
+          the creation flow. */}
+      {worksheetsSlot ? (
+        worksheetsSlot
+      ) : worksheetId && onOpenWorksheet ? (
         <Button
           variant="ghost"
           size="sm"
@@ -111,13 +129,64 @@ export function TopBar({
           <span className={NARROW_LABEL}>Worksheet</span>
         </Button>
       ) : null}
-      {exportSlot}
     </>
   );
 
+  if (!mobile) {
+    return (
+      <AppBar data-topbar className="h-(--topbar-height) shrink-0">
+        <AppBarGroup>
+          <IconButton label="Back to library" onClick={onBack}>
+            <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+          <InlineTitle
+            title={lesson.title}
+            fieldLabel="Lesson title"
+            renameLabel="Rename lesson"
+            onCommit={(t) => dispatch(reducers.setTitle, t)}
+          />
+          <PanelSeparator />
+          <IconButton label="Undo" disabled={!canUndo} onClick={undo}>
+            <Undo2 aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+          <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
+            <Redo2 aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+          <SaveIndicator autosave={autosave} />
+        </AppBarGroup>
+
+        <AppBarGroup className="ml-auto gap-2">
+          {/* Ruling 123: the selected theme, named, stays in the bar and never folds into ⋯. */}
+          {onOpenTheme ? (
+            <ThemeCallout themeId={lesson.themeId} onClick={onOpenTheme} className="shrink-0" />
+          ) : null}
+          {/* Everything used now and then sits in one menu; Export stays visible and Present is
+              the only fill in the editor (ruling 186). */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <IconButton label="More lesson actions" data-lesson-actions>
+                <Ellipsis aria-hidden size={16} strokeWidth={1.5} />
+              </IconButton>
+            </PopoverTrigger>
+            <PopoverContent aria-label="Lesson actions" align="end" className="w-56 p-1.5">
+              {/* A column of full-width rows: the content's own wrapper is a plain block. */}
+              <div className="flex flex-col items-stretch gap-0.5 [&_button]:w-full [&_button]:justify-start">
+                {secondaryActions}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {exportSlot}
+          <Button variant="primary" size="sm" aria-label="Present" onClick={() => void present()}>
+            <Play aria-hidden size={16} strokeWidth={1.5} />
+            Present
+          </Button>
+        </AppBarGroup>
+      </AppBar>
+    );
+  }
+
   return (
-    <AppBar data-topbar data-mobile-topbar={mobile} className="h-(--topbar-height) shrink-0">
-      {/* The editor's h1 is the title field's static twin, for the landmark outline. */}
+    <AppBar data-topbar data-mobile-topbar className="h-(--topbar-height) shrink-0">
       <AppBarGroup>
         <IconButton label="Back to library" onClick={onBack}>
           <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
@@ -128,65 +197,43 @@ export function TopBar({
           renameLabel="Rename lesson"
           onCommit={(t) => dispatch(reducers.setTitle, t)}
         />
-        {!mobile ? (
-          <>
-            <PanelSeparator />
-            <IconButton label="Undo" disabled={!canUndo} onClick={undo}>
-              <Undo2 aria-hidden size={16} strokeWidth={1.5} />
-            </IconButton>
-            <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
-              <Redo2 aria-hidden size={16} strokeWidth={1.5} />
-            </IconButton>
-          </>
-        ) : null}
       </AppBarGroup>
 
       <AppBarGroup className="ml-auto gap-2">
         <SaveIndicator autosave={autosave} />
-        {/* Ruling 123: the selected theme, named, beside the design controls and never folded
-            into More, so it is visible on a phone too. */}
+        {/* Ruling 123: the theme callout is visible on a phone too. */}
         {onOpenTheme ? (
           <ThemeCallout
             themeId={lesson.themeId}
             onClick={onOpenTheme}
-            compact={mobile}
+            compact
             className="shrink-0"
           />
         ) : null}
-        {/* Share and Export are the same kind of object, so they take one shape — a ghost label —
-            and Present is the only fill in the editor. */}
-        {compactChrome || mobile ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" aria-label="More lesson actions">
-                {!mobile ? "More" : null} <ChevronDown aria-hidden />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              aria-label="Lesson actions"
-              className="flex w-60 flex-col items-stretch gap-1 p-2"
-            >
-              {mobile ? (
-                <>
-                  <Button variant="ghost" disabled={!canUndo} onClick={undo}>
-                    <Undo2 />
-                    Undo
-                  </Button>
-                  <Button variant="ghost" disabled={!canRedo} onClick={redo}>
-                    <Redo2 />
-                    Redo
-                  </Button>
-                </>
-              ) : null}
-              {secondaryActions}
-            </PopoverContent>
-          </Popover>
-        ) : (
-          secondaryActions
-        )}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" aria-label="More lesson actions">
+              <ChevronDown aria-hidden />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            aria-label="Lesson actions"
+            className="flex w-60 flex-col items-stretch gap-1 p-2"
+          >
+            <Button variant="ghost" disabled={!canUndo} onClick={undo}>
+              <Undo2 />
+              Undo
+            </Button>
+            <Button variant="ghost" disabled={!canRedo} onClick={redo}>
+              <Redo2 />
+              Redo
+            </Button>
+            {secondaryActions}
+            {exportSlot}
+          </PopoverContent>
+        </Popover>
         <Button variant="primary" size="sm" aria-label="Present" onClick={() => void present()}>
           <Play aria-hidden size={16} strokeWidth={1.5} />
-          {!mobile ? "Present" : null}
         </Button>
       </AppBarGroup>
     </AppBar>

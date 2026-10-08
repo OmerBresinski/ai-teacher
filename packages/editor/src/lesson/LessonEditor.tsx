@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -43,6 +44,8 @@ import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
 import { RegenerateDialog } from "./RegenerateDialog";
 import { ResidualFindingsContext, useComputedResidualFindings } from "./residual-findings";
+import { SidePaneDock, usePaneWidth } from "./SidePaneDock";
+import { paneMode as shellPaneMode } from "./shell-layout";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
@@ -56,8 +59,8 @@ import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
 
 /*
- * The lesson editor shell (TeachDeck `components/v2/editor/EditorShell.tsx`): TopBar over
- * InsertRail | Navigator | Canvas, with the shell's own shortcuts on one `keydown` listener and the
+ * The lesson editor shell (ruling 186): TopBar over InsertRail | Canvas above the Navigator's
+ * filmstrip | the side pane (Dayback, ruling 186; the Facts panel), with the shell's own shortcuts on one `keydown` listener and the
  * `?` help sheet. The document lives in the TanStack Query cache under `queryKey` and is edited
  * through `useDocumentHistory` (ADR 0022 §4); the session state — selection, zoom, clipboard — is
  * React state owned here and handed down through `EditorSessionProvider`. Saving is the app's
@@ -94,7 +97,10 @@ export type LessonEditorProps = {
   images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
   exportSlot?: ReactNode;
-  /** Optional generation companion finishing alongside the editable lesson. */
+  /**
+   * Optional generation companion finishing alongside the editable lesson. On a desktop it sits in
+   * the right pane slot (ruling 186), so the slide keeps its size while it shows and when it goes.
+   */
   companion?: ReactNode;
   /**
    * The generated worksheet (`lesson.artefacts.worksheetId`), once the app has fetched it, so the
@@ -123,6 +129,13 @@ export type LessonEditorProps = {
    * generated). Read once at mount; an id not in the deck opens the first slide as usual.
    */
   initialSlideId?: Id;
+  /** The app's Worksheet control (list and maker), the one Worksheet entry in ⋯ (ruling 186). */
+  worksheetsSlot?: ReactNode;
+  /**
+   * The Dayback pane on the right (ruling 186): docked above 1280 px, over the filmstrip at 1280 px
+   * or less. `content` stays mounted while closed so its work carries on.
+   */
+  sidePane?: { open: boolean; label: string; content: ReactNode };
 };
 
 /**
@@ -167,8 +180,11 @@ export function LessonEditor({
   proposalsBusy = false,
   editorRef,
   initialSlideId,
+  worksheetsSlot,
+  sidePane,
 }: LessonEditorProps) {
   const mobile = useMobileEditor();
+  const paneW = usePaneWidth();
   const autosave = useAutosave(onSave);
   const { lesson, ...history } = useDocumentHistory({
     queryKey,
@@ -184,6 +200,8 @@ export function LessonEditor({
   // "Edit with Dayback" (TEACH-97): open or closed is remembered for the teacher on this browser.
   const [chatOpen, setChatOpen] = useState(readPaneOpen);
   const [chatFocusTick, setChatFocusTick] = useState(0);
+  /** The canvas row: the closed chat's bubble sits at its bottom right, on the zoom row, clear of the filmstrip. */
+  const [bubbleHost, setBubbleHost] = useState<HTMLElement | null>(null);
   const chatAvailable = onPromptEdit !== undefined && !mobile;
   const editChat = useMemo<EditChatApi>(
     () => ({
@@ -202,6 +220,19 @@ export function LessonEditor({
     }),
     [chatAvailable, chatOpen],
   );
+  // The shell rules (`shell-layout.ts`): measured on the canvas row, which the pane never narrows.
+  const [canvasBox, setCanvasBox] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    if (!bubbleHost) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setCanvasBox({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    ro.observe(bubbleHost);
+    return () => ro.disconnect();
+  }, [bubbleHost]);
+  const paneMode = canvasBox.w > 0 ? shellPaneMode(canvasBox.w, canvasBox.h, paneW) : "docked";
+  const hasPane = !mobile && (chatAvailable || sidePane !== undefined || Boolean(companion));
+  const paneOpen = !mobile && (Boolean(sidePane?.open) || Boolean(companion) || editChat.open);
   const proposalsEnabled =
     onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined;
   // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
@@ -480,11 +511,12 @@ export function LessonEditor({
                             }
                             factsOpen={factsOpen}
                             autosave={autosave}
+                            worksheetsSlot={worksheetsSlot}
                           />
                           {mobile && companion ? (
                             <aside data-editor-companion="mobile">{companion}</aside>
                           ) : null}
-                          <div className="flex min-h-0 flex-1">
+                          <div className="relative flex min-h-0 flex-1">
                             {mobile ? (
                               <MobileLessonEditor
                                 initialSlideId={initialSlideId}
@@ -506,33 +538,68 @@ export function LessonEditor({
                             ) : (
                               <>
                                 <InsertRail
+                                  minimal
                                   onInsert={insert}
                                   onHelp={() => setHelpOpen(true)}
                                   images={images}
                                 />
-                                <Navigator />
-                                <Canvas
-                                  slide={slide}
-                                  theme={theme}
-                                  onFocusChange={setCanvasFocused}
-                                  onScaleChange={onScaleChange}
-                                  onInsert={insert}
-                                  images={images}
-                                  lessonId={lessonId}
-                                />
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                  <div ref={setBubbleHost} className="relative flex min-h-0 flex-1">
+                                    <Canvas
+                                      slide={slide}
+                                      theme={theme}
+                                      onFocusChange={setCanvasFocused}
+                                      onScaleChange={onScaleChange}
+                                      onInsert={insert}
+                                      images={images}
+                                      lessonId={lessonId}
+                                      bubble={!(chatAvailable && editChat.open)}
+                                      fitInset={hasPane && paneMode === "docked" ? paneW : 0}
+                                      clearRight={paneOpen ? paneW : 0}
+                                    />
+                                  </div>
+                                  {/* Docked, the filmstrip makes room for the open pane; overlay, the pane lies over it. */}
+                                  <div
+                                    className="transition-[padding] duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
+                                    style={{
+                                      paddingRight: paneOpen && paneMode === "docked" ? paneW : 0,
+                                    }}
+                                  >
+                                    <Navigator strip />
+                                  </div>
+                                </div>
                               </>
                             )}
                             {!mobile && companion ? (
-                              <aside data-editor-companion="desktop">{companion}</aside>
+                              <SidePaneDock
+                                open
+                                label="Dayback"
+                                mode={paneMode}
+                                data-editor-companion="desktop"
+                              >
+                                {companion}
+                              </SidePaneDock>
                             ) : null}
                             {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
+                            {!mobile && sidePane ? (
+                              <SidePaneDock
+                                open={sidePane.open}
+                                label={sidePane.label}
+                                mode={paneMode}
+                              >
+                                {sidePane.content}
+                              </SidePaneDock>
+                            ) : null}
                             {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
-                              flight carries on (TEACH-97). */}
+                              flight carries on (TEACH-97). It sits in layout A's right pane slot. */}
                             {chatAvailable ? (
                               <EditChatPane
                                 open={editChat.open}
                                 onReopen={editChat.openAndFocus}
                                 focusTick={chatFocusTick}
+                                bubbleHost={bubbleHost}
+                                paneMode={paneMode}
+                                paneWidth={paneW}
                               />
                             ) : null}
                           </div>

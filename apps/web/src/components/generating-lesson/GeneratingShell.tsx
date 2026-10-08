@@ -2,11 +2,13 @@ import type { Id, Lesson } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
 import { renderTheme, SlideScaler, SlideView } from "@tj/editor";
 import {
-  navigatorThumbWidth,
-  navigatorWidthVar,
-  readNavigatorMode,
-  useCompactChrome,
+  clearShift,
+  FILMSTRIP_THUMB_WIDTH,
+  paneMode,
+  readFilmstripDots,
+  SidePaneDock,
   useMobileEditor,
+  usePaneWidth,
 } from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
@@ -14,6 +16,7 @@ import { ArrowDown, ArrowLeft, Check, Lock, Square } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -25,15 +28,17 @@ import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus
 /*
  * The generating screen is the editor's shell with the work happening inside it (generating-state
  * PRD §3, TEACH-199): the top bar at the editor's height with the title read-only, the stage line
- * in the centre and Stop at the right; a five-stage strip under it; then the insert rail's column
- * with nothing in it, the navigator's column and the canvas, at the editor's widths, so the editor
- * mounts on top at Ready without a reflow. Under the canvas the lock line says, in words, that the
- * slides can be read and not edited.
+ * in the centre and Stop at the right; a five-stage strip over the canvas's top gutter; then the
+ * insert rail's column
+ * with nothing in it and the canvas over the editor's bottom filmstrip (ruling 186), where the
+ * slides land as they are written, at the editor's sizes, so the editor mounts on top at Ready
+ * without a reflow. Under the slide the lock line says, in words, that the slides can be read and
+ * not edited.
  *
  * The finished thumbs are buttons (TEACH-252): the canvas follows the newest slide until the
  * teacher picks an earlier one, then stays on their pick while new slides land; picking the newest
  * again — by click, by arrow, or with the footer's "Newest" — returns it to following. One roving
- * tab stop (the shown slide's button), arrows and Home/End move it, as in the editor's rail.
+ * tab stop (the shown slide's button), arrows and Home/End move it, as in the editor's strip.
  * Viewing only: the lock line stands and nothing here writes.
  *
  * Presentational: the events and the lesson come in, the stage is derived by `stageOf`. The
@@ -99,12 +104,20 @@ export function GeneratingShell({
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
   const theme = renderTheme(lesson);
-  // The editor's persisted navigator preference, so the column is the width the editor will
+  // The editor's filmstrip preference (thumbs or dots), so the strip is the height the editor will
   // mount at and nothing reflows at Ready.
-  const [preferredNavigatorMode] = useState(readNavigatorMode);
-  const compactChrome = useCompactChrome();
-  const navigatorMode = compactChrome ? "compact" : preferredNavigatorMode;
-  const thumbWidth = navigatorThumbWidth(navigatorMode);
+  const [dots] = useState(readFilmstripDots);
+  const thumbWidth = FILMSTRIP_THUMB_WIDTH;
+  // The companion sits in the editor's right pane slot under the same shell rules (rulings 186,
+  // 187): reserved, the slide is fitted beside it; overlay, it lies over the canvas and the slide
+  // moves left into its margin, exactly as the editor does, so nothing moves at Ready.
+  const paneW = usePaneWidth();
+  const canvasSize = useElementSize<HTMLElement>();
+  const mode = canvasSize.size
+    ? paneMode(canvasSize.size.width, canvasSize.size.height, paneW)
+    : "docked";
+  const shift = canvasCompanion && mode === "overlay" ? slideShift(canvasSize.size, paneW) : 0;
+  const reserve = canvasCompanion && mode === "docked" ? paneW : 0;
   const newest = lesson.slides.at(-1);
   // `null` follows the newest slide; an id pins the canvas to that slide while more arrive.
   const [selectedId, setSelectedId] = useState<Id | null>(null);
@@ -129,6 +142,8 @@ export function GeneratingShell({
     const at = lesson.slides.findIndex((s) => s.id === shown.id);
     const last = lesson.slides.length - 1;
     const to: Record<string, number> = {
+      ArrowRight: Math.min(last, at + 1),
+      ArrowLeft: Math.max(0, at - 1),
       ArrowDown: Math.min(last, at + 1),
       ArrowUp: Math.max(0, at - 1),
       Home: 0,
@@ -247,125 +262,183 @@ export function GeneratingShell({
         </AppBarGroup>
       </AppBar>
 
-      <StageStrip state={state} />
-
       <div className="flex min-h-0 flex-1">
         {/* The insert rail's column, empty: the tools arrive at Ready and the canvas does not move. */}
         <div
           aria-hidden="true"
           data-insert-rail-placeholder
-          className="w-(--rail-width) shrink-0 border-border border-r bg-background"
+          className="w-12 shrink-0 border-border border-r bg-background"
         />
 
-        {/* Scrolls once the outline is long. With finished slides the shown thumb's button is the
-            column's tab stop (axe scrollable-region-focusable); before the first one lands the
-            column itself is, so the skeleton rows can still be scrolled from the keyboard. */}
-        <nav
-          aria-label="Slides"
-          data-navigator-mode={navigatorMode}
-          tabIndex={lesson.slides.length === 0 ? 0 : -1}
-          className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3 outline-none focus-visible:shadow-focus"
-          style={{ width: navigatorWidthVar(navigatorMode) }}
-        >
-          <ul className="flex flex-col gap-2">
-            {lesson.slides.map((slide, i) => (
-              <ThumbRow
-                key={slide.id}
-                id={slide.id}
-                number={i + 1}
-                current={slide.id === shown?.id}
-                arriveDelay={arrivals(i)}
-                onView={view}
-                onKeyDown={onThumbsKeyDown}
-              >
-                <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
-              </ThumbRow>
-            ))}
-            {pending.map((_, i) => {
-              const position = lesson.slides.length + i;
-              return (
-                <SkeletonRow key={`slot-${position}`} number={position + 1} width={thumbWidth} />
-              );
-            })}
-          </ul>
-        </nav>
-
-        <main
-          className="relative flex min-w-0 flex-1 flex-col bg-canvas"
-          data-canvas
-          data-has-slides={Boolean(shown)}
-          data-companion-layout={canvasCompanion ? "side" : undefined}
-        >
-          <div className="min-h-0 flex-1 p-10">
-            {shown ? (
-              <SlideScaler zoom="fit">
-                <div
-                  key={shown.id}
-                  data-canvas-slide={shown.id}
-                  className={cn(
-                    "overflow-hidden rounded-dialog shadow-3",
-                    // The arrival fade belongs to a slide that has just landed; a slide the
-                    // teacher is looking at has not.
-                    following &&
-                      arrivals(lesson.slides.length - 1) !== null &&
-                      "motion-safe:animate-arrive",
-                  )}
-                >
-                  <SlideView slide={shown} theme={theme} mode="view" />
-                </div>
-              </SlideScaler>
-            ) : canvasCompanion ? null : (
-              <div className="flex h-full flex-col items-center justify-center text-center">
-                {/* The title in Lora before the first slide; the strip's dot is the spinner. */}
-                <Display as="span" size="lg" className="block">
-                  {lesson.title}
-                </Display>
-                <p className="mt-2 text-body text-ink-3">
-                  {stopped ? "No slides were written before it stopped." : "Planning your lesson"}
-                </p>
-              </div>
-            )}
-          </div>
-          {/* Where the editor's zoom group sits, so the swap at Ready is a text change. While the
-              teacher is on an earlier slide, the way back to the newest sits beside the line. */}
-          <div
-            data-generating-bar
-            className="relative flex h-12 shrink-0 items-center justify-center"
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main
+            className="relative flex min-w-0 flex-1 flex-col bg-canvas"
+            data-canvas
+            data-has-slides={Boolean(shown)}
+            ref={canvasSize.ref}
           >
-            {themeCallout ? (
-              <div className="absolute left-3" data-generating-theme>
-                {themeCallout}
-              </div>
-            ) : null}
+            {/* The editor canvas's gutters: 16px at the sides, 76px above and below. */}
             <div
-              data-testid="generating-lock"
-              className="flex items-center gap-1.5 text-meta font-medium text-ink-3"
+              className="min-h-0 flex-1 px-4 py-[76px]"
+              style={shift || reserve ? { paddingRight: 16 + shift * 2 + reserve } : undefined}
             >
-              {state.terminal === "completed" ? (
-                <span aria-hidden className="size-[5px] rounded-full bg-success" />
-              ) : (
-                <Lock aria-hidden size={14} strokeWidth={1.5} />
+              {shown ? (
+                <SlideScaler zoom="fit">
+                  <div
+                    key={shown.id}
+                    data-canvas-slide={shown.id}
+                    className={cn(
+                      "overflow-hidden rounded-dialog shadow-3",
+                      // The arrival fade belongs to a slide that has just landed; a slide the
+                      // teacher is looking at has not.
+                      following &&
+                        arrivals(lesson.slides.length - 1) !== null &&
+                        "motion-safe:animate-arrive",
+                    )}
+                  >
+                    <SlideView slide={shown} theme={theme} mode="view" />
+                  </div>
+                </SlideScaler>
+              ) : canvasCompanion ? null : (
+                <div className="flex h-full flex-col items-center justify-center text-center">
+                  {/* The title in Lora before the first slide; the strip's dot is the spinner. */}
+                  <Display as="span" size="lg" className="block">
+                    {lesson.title}
+                  </Display>
+                  <p className="mt-2 text-body text-ink-3">
+                    {stopped ? "No slides were written before it stopped." : "Planning your lesson"}
+                  </p>
+                </div>
               )}
-              <span>{lockLine(state)}</span>
             </div>
-            {!following && newest ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-3"
-                data-generating-newest
-                onClick={() => view(newest.id)}
+            {/* Where the editor's zoom group sits, so the swap at Ready is a text change. While the
+              teacher is on an earlier slide, the way back to the newest sits beside the line. */}
+            <div
+              data-generating-bar
+              className="absolute inset-x-0 bottom-2 flex h-12 items-center justify-center"
+              // Clear of the companion in the right pane slot.
+              style={canvasCompanion ? { right: paneW } : undefined}
+            >
+              {themeCallout ? (
+                <div className="absolute left-3" data-generating-theme>
+                  {themeCallout}
+                </div>
+              ) : null}
+              <div
+                data-testid="generating-lock"
+                className="flex items-center gap-1.5 text-meta font-medium text-ink-3"
               >
-                <ArrowDown aria-hidden size={14} strokeWidth={1.5} />
-                Newest slide
-              </Button>
-            ) : null}
-          </div>
-          {canvasCompanion ? <div data-canvas-companion>{canvasCompanion}</div> : null}
-        </main>
+                {state.terminal === "completed" ? (
+                  <span aria-hidden className="size-[5px] rounded-full bg-success" />
+                ) : (
+                  <Lock aria-hidden size={14} strokeWidth={1.5} />
+                )}
+                <span>{lockLine(state)}</span>
+              </div>
+              {!following && newest ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-3"
+                  data-generating-newest
+                  onClick={() => view(newest.id)}
+                >
+                  <ArrowDown aria-hidden size={14} strokeWidth={1.5} />
+                  Newest slide
+                </Button>
+              ) : null}
+            </div>
+            {/* The stage strip lies over the canvas's top gutter, where the editor's contextual
+                toolbar floats, so it takes no row of its own and nothing moves when the editor
+                takes over at Ready. Last in `main` so the companion grid's `:first-child` is
+                still the slide. */}
+            <div className="absolute inset-x-0 top-0 z-10" data-generating-strip-overlay>
+              <StageStrip state={state} />
+            </div>
+          </main>
+
+          {/* The editor's filmstrip (ruling 186): slides land here as they are written. Scrolls
+            sideways once the lesson is long. With finished slides the shown thumb's button is
+            the strip's tab stop (axe scrollable-region-focusable); before the first one lands
+            the strip itself is, so the skeletons can still be scrolled from the keyboard. */}
+          <nav
+            aria-label="Slides"
+            data-navigator-mode={dots ? "dots" : "strip"}
+            tabIndex={lesson.slides.length === 0 ? 0 : -1}
+            className={cn(
+              "flex shrink-0 items-center overflow-x-auto overflow-y-hidden border-border border-t bg-background pr-20 pl-3 outline-none focus-visible:shadow-focus [scrollbar-width:thin]",
+              dots ? "h-9 justify-center" : "h-[88px]",
+            )}
+          >
+            <ul className={cn("flex items-center", dots ? "gap-1.5" : "gap-2.5")}>
+              {lesson.slides.map((slide, i) => (
+                <ThumbRow
+                  key={slide.id}
+                  id={slide.id}
+                  number={i + 1}
+                  current={slide.id === shown?.id}
+                  dot={dots}
+                  arriveDelay={arrivals(i)}
+                  onView={view}
+                  onKeyDown={onThumbsKeyDown}
+                >
+                  <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
+                </ThumbRow>
+              ))}
+              {pending.map((_, i) => {
+                const position = lesson.slides.length + i;
+                return (
+                  <SkeletonRow
+                    key={`slot-${position}`}
+                    number={position + 1}
+                    width={thumbWidth}
+                    dot={dots}
+                  />
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+        {canvasCompanion ? (
+          <SidePaneDock
+            open
+            label="Dayback"
+            mode={mode}
+            data-canvas-companion
+            className="justify-center"
+          >
+            {canvasCompanion}
+          </SidePaneDock>
+        ) : null}
       </div>
     </div>
   );
+}
+
+/** The editor canvas's gutters (ruling 186): 16px at the sides, 76px above and below. */
+const GUTTER_X = 16;
+const GUTTER_Y = 76;
+
+/** How far the editor moves the slide left to clear an overlay pane, for a canvas this size. */
+function slideShift(size: { width: number; height: number } | null, paneW: number): number {
+  if (!size) return 0;
+  const slideW = Math.min(size.width - GUTTER_X * 2, ((size.height - GUTTER_Y * 2) * 16) / 9);
+  return clearShift(size.width, slideW + GUTTER_X * 2, GUTTER_X, paneW);
+}
+
+/** The element's content size, kept current by a ResizeObserver. */
+function useElementSize<T extends HTMLElement>() {
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: T | null) => {
+    observer.current?.disconnect();
+    if (!el) return;
+    observer.current = new ResizeObserver(([entry]) => {
+      if (entry) setSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.current.observe(el);
+  }, []);
+  return { ref, size };
 }
 
 /* ------------------------------------------------------------------ */
@@ -466,14 +539,15 @@ function useArrivals(count: number, live: boolean): (index: number) => number | 
 const thumbButtonId = (id: Id) => `generating-slide-${id}`;
 
 /**
- * A finished slide in the navigator column: the editor's number column and 168px thumb as one
- * button, the shown one ringed in the accent and the column's one tab stop. Pressing it puts that
- * slide on the canvas; the rows never edit anything.
+ * A finished slide in the filmstrip: the editor's 96px thumb with its number under it as one
+ * button (a dot when the strip is folded), the shown one ringed in the accent and the strip's one
+ * tab stop. Pressing it puts that slide on the canvas; nothing here edits anything.
  */
 function ThumbRow({
   id,
   number,
   current,
+  dot,
   arriveDelay,
   onView,
   onKeyDown,
@@ -482,6 +556,7 @@ function ThumbRow({
   id: Id;
   number: number;
   current: boolean;
+  dot: boolean;
   arriveDelay: number | null;
   onView: (id: Id) => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
@@ -492,7 +567,7 @@ function ThumbRow({
       data-slide-thumb={number - 1}
       data-current={current || undefined}
       className={cn(
-        "w-full",
+        "shrink-0",
         arriveDelay !== null && "[--tj-arrive-distance:4px] motion-safe:animate-arrive",
       )}
       style={arriveDelay !== null ? { animationDelay: `${arriveDelay}ms` } : undefined}
@@ -506,15 +581,22 @@ function ThumbRow({
         onClick={() => onView(id)}
         onKeyDown={onKeyDown}
         className={cn(
-          "flex w-full cursor-default items-center rounded-chip px-1 py-0.5 text-left outline-none",
+          "flex cursor-default flex-col items-center gap-1 rounded-chip outline-none",
           "transition-colors duration-(--duration-fast) ease-(--ease-out-soft)",
-          current ? "bg-brand-quiet" : "hover:bg-accent active:bg-accent-active",
+          dot && "[&:focus-visible]:shadow-focus",
         )}
       >
-        <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
-          {number}
-        </span>
+        {dot ? (
+          <span
+            aria-hidden
+            className={cn(
+              "block size-2 rounded-full",
+              current ? "bg-foreground" : "bg-border-strong",
+            )}
+          />
+        ) : null}
         <span
+          hidden={dot}
           data-generating-thumb
           className={cn(
             "block shrink-0 overflow-hidden rounded-chip bg-card",
@@ -525,6 +607,7 @@ function ThumbRow({
         >
           {children}
         </span>
+        {dot ? null : <span className="text-meta text-ink-3 tabular-nums">{number}</span>}
       </button>
     </li>
   );
@@ -535,16 +618,21 @@ function ThumbRow({
  * placeholders named by kind (`aria-disabled` options a screen reader hears as "Slide 4,
  * Content, not written yet") and the danger hairline on a stopped run are TEACH-200's.
  */
-function SkeletonRow({ number, width }: { number: number; width: number }) {
+function SkeletonRow({ number, width, dot }: { number: number; width: number; dot: boolean }) {
+  if (dot) {
+    return (
+      <li aria-hidden="true" className="shrink-0">
+        <span className="block size-2 rounded-full bg-border" />
+      </li>
+    );
+  }
   return (
-    <li aria-hidden="true" className="flex w-full items-center px-1 py-0.5">
-      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
-        {number}
-      </span>
+    <li aria-hidden="true" className="flex shrink-0 flex-col items-center gap-1">
       <Skeleton
         className="aspect-video shrink-0 rounded-chip ring-1 ring-border"
         style={{ width }}
       />
+      <span className="text-meta text-ink-3 tabular-nums">{number}</span>
     </li>
   );
 }

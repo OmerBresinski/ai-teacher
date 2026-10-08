@@ -19,24 +19,36 @@ const abc = (lesson: { slides: { id: string }[] }) => {
 };
 
 describe("Navigator", () => {
-  test("responsive compact chrome preserves the desktop navigator preference", () => {
-    const previous = localStorage.getItem("tj:navigator");
-    localStorage.setItem("tj:navigator", "full");
+  test("the filmstrip shows 96px thumbs and folds to dots, remembered on this browser", () => {
+    const previous = localStorage.getItem("tj:filmstrip-dots");
+    localStorage.removeItem("tj:filmstrip-dots");
     try {
-      const { container } = renderEditor();
+      const { container, unmount } = renderEditor();
+      const nav = () => container.querySelector<HTMLElement>("[data-navigator]");
       const thumb = () => container.querySelector<HTMLElement>("[data-navigator-thumb]");
-      expect(thumb()?.style.width).toBe("168px");
-      document.documentElement.style.setProperty("--editor-compact", "1");
-      fireEvent(window, new Event("resize"));
-      expect(thumb()?.style.width).toBe("60px");
-      expect(localStorage.getItem("tj:navigator")).toBe("full");
-      document.documentElement.style.removeProperty("--editor-compact");
-      fireEvent(window, new Event("resize"));
-      expect(thumb()?.style.width).toBe("168px");
+      expect(nav()).toHaveAttribute("data-navigator-mode", "strip");
+      expect(thumb()?.style.width).toBe("96px");
+      fireEvent.click(screen.getByRole("button", { name: "Collapse slide strip" }));
+      expect(nav()).toHaveAttribute("data-navigator-mode", "dots");
+      expect(thumb()).toBeNull();
+      // One dot per slide; a dot opens its slide.
+      fireEvent.click(screen.getByRole("button", { name: "Slide 2" }));
+      expect(screen.getByRole("button", { name: "Slide 2" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      expect(localStorage.getItem("tj:filmstrip-dots")).toBe("1");
+      unmount();
+      const again = renderEditor();
+      expect(again.container.querySelector("[data-navigator]")).toHaveAttribute(
+        "data-navigator-mode",
+        "dots",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Show slide strip" }));
+      expect(localStorage.getItem("tj:filmstrip-dots")).toBe("0");
     } finally {
-      document.documentElement.style.removeProperty("--editor-compact");
-      if (previous === null) localStorage.removeItem("tj:navigator");
-      else localStorage.setItem("tj:navigator", previous);
+      if (previous === null) localStorage.removeItem("tj:filmstrip-dots");
+      else localStorage.setItem("tj:filmstrip-dots", previous);
     }
   });
 
@@ -91,12 +103,13 @@ describe("Navigator", () => {
     const { a, b, c } = abc(read());
     const first = rows()[0];
     if (!first) throw new Error("no row");
-    // Rows are 102px tall (94 + 8); the insertion index is the row boundary nearest the pointer.
+    // Filmstrip columns are 106px wide (96 + 10); the insertion index is the column boundary
+    // nearest the pointer.
     fireEvent.pointerDown(first, pointer(20, 10));
-    fireEvent.pointerMove(first, pointer(20, 60));
-    fireEvent.pointerMove(first, pointer(20, 8 + 3 * 102));
+    fireEvent.pointerMove(first, pointer(70, 10));
+    fireEvent.pointerMove(first, pointer(12 + 3 * 106, 10));
     expect(container.querySelector("[data-drop-indicator]")).not.toBeNull();
-    fireEvent.pointerUp(first, pointer(20, 8 + 3 * 102));
+    fireEvent.pointerUp(first, pointer(12 + 3 * 106, 10));
     expect(ids(read())).toEqual([b, c, a]);
     expect(container.querySelector("[data-drop-indicator]")).toBeNull();
   });

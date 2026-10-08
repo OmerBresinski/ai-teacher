@@ -45,6 +45,7 @@ test.describe("facts panel and proposals", () => {
     const lessonId = await seedGenerated(page);
     await page.goto(`/l/${lessonId}`);
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
+    await page.getByRole("button", { name: "More lesson actions" }).click();
     await page.getByRole("button", { name: "Facts" }).click();
     const panel = page.getByRole("complementary", { name: "Facts" });
     await expect(panel).toBeVisible();

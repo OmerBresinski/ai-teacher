@@ -240,20 +240,35 @@ describe("GeneratingShell", () => {
     ).toHaveLength(0);
   });
 
-  it("honours the editor's compact navigator preference so nothing reflows at Ready", () => {
-    window.localStorage.setItem("tj:navigator", "compact");
+  it("slides land in the editor's bottom filmstrip, folded to dots when the editor is", () => {
+    renderAt(RUN_UP_TO.writing);
+    const nav = () => document.querySelector('nav[aria-label="Slides"]') as HTMLElement;
+    // Ruling 186: the strip sits under the canvas, as in the editor, not in a left column.
+    expect(nav().dataset.navigatorMode).toBe("strip");
+    expect(nav().previousElementSibling?.hasAttribute("data-canvas")).toBe(true);
+    const thumb = document.querySelector("[data-generating-thumb] > *") as HTMLElement | null;
+    expect(thumb?.style.width).toBe("96px");
+    cleanup();
+    window.localStorage.setItem("tj:filmstrip-dots", "1");
     try {
       renderAt(RUN_UP_TO.writing);
-      const nav = document.querySelector('nav[aria-label="Slides"]') as HTMLElement;
-      expect(nav.dataset.navigatorMode).toBe("compact");
-      expect(nav.style.width).toBe("var(--navigator-width-sm)");
+      expect(nav().dataset.navigatorMode).toBe("dots");
+      expect(document.querySelector("[data-generating-thumb]")).toHaveAttribute("hidden");
+      expect(screen.getAllByRole("button", { name: /^Slide \d+$/ }).length).toBeGreaterThan(0);
     } finally {
-      window.localStorage.removeItem("tj:navigator");
+      window.localStorage.removeItem("tj:filmstrip-dots");
     }
-    cleanup();
+  });
+
+  it("the arrows along the strip move the shown slide", () => {
     renderAt(RUN_UP_TO.writing);
-    const nav = document.querySelector('nav[aria-label="Slides"]') as HTMLElement;
-    expect(nav.style.width).toBe("var(--navigator-width)");
+    const buttons = screen.getAllByRole("button", { name: /^Slide \d+$/ });
+    const last = buttons.at(-1) as HTMLElement;
+    fireEvent.keyDown(last, { key: "ArrowLeft" });
+    const before = buttons.at(-2) as HTMLElement;
+    expect(before).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(before, { key: "ArrowRight" });
+    expect(last).toHaveAttribute("aria-current", "true");
   });
 
   it("Cmd+Period stops the run", () => {
