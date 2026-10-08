@@ -20,8 +20,10 @@ import {
   type AbArm,
   abFiles,
   CODE_PINNED,
+  codeOnlyFault,
   menuKinds,
   PICTURE_VERSIONS,
+  pinOf,
   REPO,
   ROUND5_SYSTEM_CHARS,
   ROUND5_T_PIN,
@@ -31,6 +33,7 @@ import {
   schemaKinds,
   setAbArm,
   sha,
+  sharedReads,
   tPin,
 } from "./arms";
 
@@ -163,6 +166,7 @@ for (const a of AB_ARMS) {
     };
     if (req.user !== r5.user) fail(`${a} ${id}: user turn differs from round 5's`);
     if (a === "base") {
+      const failsBefore = bad;
       // The request as sent (after localise) against round 5's files, byte for byte.
       const st = brief.keyStage === "ks1" ? "KS1" : brief.keyStage === "ks2" ? "KS2" : "KS3-5";
       const v = abFiles("base", st, ROUND5_VERBATIM);
@@ -170,7 +174,8 @@ for (const a of AB_ARMS) {
         fail(`base ${id}: sent system is not round 5's`);
       if (JSON.stringify(req.schema) !== JSON.stringify(JSON.parse(readFileSync(v.schema, "utf8"))))
         fail(`base ${id}: sent schema is not round 5's`);
-      if (!bad) ok(`base ${id}: system, schema, user, model and effort = round 5`);
+      // Audit F9: printed unless this check failed (an unrelated arm's failure no longer hides it).
+      if (bad === failsBefore) ok(`base ${id}: system, schema, user, model and effort = round 5`);
     }
     if (req.model !== r5.model || req.effort !== r5.effort) fail(`${a} ${id}: model/effort differ`);
     if (a === "base" && req.system.length !== r5.systemChars)
@@ -306,13 +311,9 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
         fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     }
-    if ((a === "judge20" || a === "dir-stage") && (jd.length || b.system !== r.system))
-      fail(`judge20 ${id}: its request differs from base4 (the judge is code only)`);
-    if (
-      (a === "b4-r1t2" || a === "b4-r1t3" || a === "y1fix") &&
-      (jd.length || b.system !== r.system)
-    )
-      fail(`b4-r1t2 ${id}: its request differs from b4-r1t (stage 2 is code only)`);
+    // Audit F9: each failure names its own arm.
+    const codeOnly = codeOnlyFault(a, id, jd.length > 0 || b.system !== r.system);
+    if (codeOnly) fail(codeOnly);
     // b4-ex: only the two example lines (number-line, line-graph) may change; no schema path.
     if (a === "b4-ex") {
       const ex = (l: string) =>
@@ -406,6 +407,8 @@ if (process.argv.includes("--pin")) {
         const path = `${AB}/prompts/${a}/${f}`;
         if (existsSync(path)) pins[path.slice(AB.length + 1)] = sha(readFileSync(path));
       }
+      // Audit F8: the head shared files each arm reads (outside git), by hash or "absent".
+      for (const { key, path } of sharedReads(a)) pins[key] = pinOf(path);
     }
     for (const f of CODE_PINNED) pins[`code:${f}`] = sha(readFileSync(`${REPO}/${f}`));
     writeFileSync(`${AB}/PINS.json`, JSON.stringify(pins, null, 1));

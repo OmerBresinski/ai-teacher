@@ -9,13 +9,23 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
-import { type AbArm, abArm, abFiles, abFixes, abR1t, abR1t2, abShared, sha } from "./ab/arms";
+import {
+  type AbArm,
+  abArm,
+  abCodeArm,
+  abFiles,
+  abFixes,
+  abR1t,
+  abR1t2,
+  abShared,
+  sha,
+} from "./ab/arms";
 import { continueForFit } from "./ab/continue";
 import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
-import { isEngland, type Locale, setLocale } from "./locale";
+import { isEngland, type Locale, locale, localise, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
 import {
@@ -227,6 +237,18 @@ export function placedPictureText(
  * at the token limit, JSON that does not close, or fewer slides than the brief allows fails the run
  * (one retry in ab/run.sh) instead of saving the flow's placeholders as a headings-only deck.
  */
+/** request.json (audit F7): hashes of the system and user exactly as sent (localised), and the locale. */
+export function sentShas(system: string, user: string, l: Locale = locale()) {
+  const sys = localise(system, l);
+  const usr = localise(user, l);
+  return {
+    sentSystemSha: sha(sys),
+    sentSystemChars: sys.length,
+    sentUserSha: sha(usr),
+    locale: l,
+  };
+}
+
 export function writerIncomplete(o: {
   finishReason?: string | null;
   text: string;
@@ -1520,12 +1542,16 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     effort: p.effort,
     user,
     systemChars: p.system.length,
-    // A/B: which arm, and the exact system and schema sent (hashes; the texts are pinned files).
+    // A/B: which arm, and the system and schema (hashes; the texts are pinned files). systemSha is
+    // the arm's template before localising (the legacy importer's key); sentSystemSha and
+    // sentUserSha hash the localised text actually sent, for this locale (audit F7).
     ...(abArm()
       ? {
           abArm: abArm(),
+          ...(abCodeArm() ? { codeArm: abCodeArm() } : {}),
           systemSha: sha(p.system),
           schemaSha: sha(JSON.stringify(p.schema)),
+          ...sentShas(p.system, user),
         }
       : {}),
   });
@@ -1557,10 +1583,10 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
           chars: parser.text.length,
           estUsd: est,
         });
-        writeJson(`${o.outDir}/cost.json`, {
-          ...ledger.parts,
-          note: "main call failed; estimate only",
-        });
+        writeJson(
+          `${o.outDir}/cost.json`,
+          ledger.costJson({ note: "main call failed; estimate only" }),
+        );
         throw e;
       });
   ledger.add("main", main.usd);
@@ -1584,15 +1610,11 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     : undefined;
   if (incomplete) {
     log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
-    writeJson(`${o.outDir}/cost.json`, {
-      ...ledger.parts,
-      total: main.usd,
-      note: "writer output incomplete",
-    });
+    writeJson(`${o.outDir}/cost.json`, ledger.costJson({ note: "writer output incomplete" }));
     throw new Error(`writer output incomplete: ${incomplete}`);
   }
   if (o.writerOnly) {
-    writeJson(`${o.outDir}/cost.json`, { ...ledger.parts, total: main.usd, main: main.usd });
+    writeJson(`${o.outDir}/cost.json`, ledger.costJson());
     log({
       ev: "summary",
       writerOnly: true,
@@ -1600,7 +1622,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       usd: main.usd,
       ms: main.ms,
     });
-    return { lessonFile, timings, cost: { main: main.usd, total: main.usd }, checks: [] };
+    return { lessonFile, timings, cost: ledger.costJson(), checks: [] };
   }
   const n = plan.slides.length;
   // Early jobs for slides that turned out to have no picture still land (cost is spent) but are not placed.

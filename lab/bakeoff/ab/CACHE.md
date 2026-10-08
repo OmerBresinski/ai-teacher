@@ -17,7 +17,12 @@ the API.
 - **Exact key.** sha256 of method + URL + body. The body uses sorted keys. Data URLs and uploaded files
   are replaced by their own sha256. The model id, every parameter, system, user, schema and images are
   therefore all in the key. Headers are left out of the key, including the API keys. A served response
-  always matches the key exactly. Nothing fuzzy is ever served.
+  always matches the key exactly. Nothing fuzzy is ever served: the legacy importer serves only the
+  writer, and only when the text actually sent is provably the old run's (audit F1, below).
+- **Bytes, not text.** Bodies are stored and served as raw bytes. A photo download replays byte-exact,
+  and a stored body is served only if it still hashes to its recorded sha. Only JSON and SSE bodies are
+  decoded, to zero their usage (audit F2; before this fix a replayed JPEG came back with every invalid
+  UTF-8 byte as U+FFFD).
 - **Order.** The n-th call of a key in a lesson gets the replayed run's n-th recorded response. A retry
   or regeneration of the same request is not collapsed into one response. Failed responses (non-2xx)
   are never served.
@@ -55,16 +60,22 @@ times. The outcome was the same: no notes.
 
 ## Importer for older runs (`ab/cache-import.ts`)
 
-Older runs have no `calls.jsonl`. For those, `--replay` imports from their logs. Each import is stored
-under the live request's exact key, with `verify` set in `calls.jsonl`:
+Older runs have no `calls.jsonl`. For those, `--replay` imports from their logs. Only the **writer**
+can be tied to the live request exactly, so only the writer is imported. It is stored under the live
+request's exact key, with `verify: "exact-sha"` in `calls.jsonl`:
 
-- **writer** `exact-sha`: model, effort, sha(system) and sha(schema) must equal request.json's
-  `systemSha` and `schemaSha`, and the user text must be the same. The response is `stream.txt` played
+- **writer** `exact-sha`: model, effort, sha(template system) and sha(schema) must equal request.json's
+  `systemSha` and `schemaSha`, and the user text must be the same. The text actually sent must also be
+  the old run's: request.json's `sentSystemSha` and `sentUserSha` when it has them (written from 8 Oct,
+  audit F7). Older request.json files have only the template sha, so the sent system and user must
+  equal the template (no locale token filled). That holds for the old run too, so the match is exact.
+  A locale arm's old writer (base5) is therefore not importable. The response is `stream.txt` played
   as SSE.
-- **lesson notes** `lesson-context`: the first notes call whose user turn contains the logged context
-  block. The rest of that request, the slides as shown, was never logged.
-- **repair** `slide-json`: the logged row whose exact slide JSON is in the request. Faults are logged
-  before they are reworded, so they cannot be compared.
+- **Not replayable from old logs** (audit F1, 8 Oct): lesson notes and repairs. Their full requests
+  were never logged. The old matchers (`lesson-context`: the notes user turn contains the logged
+  context block; `slide-json`: the request contains the logged slide JSON) are retired. They served
+  base4's notes to a code arm whose slides had changed (notes describing a picture the slide no longer
+  had). These calls are now called fresh, or refused under `--offline`.
 - **Not importable:** picture, judge, image and diagram-spec requests were never logged. Old runs use
   `--reuse-visuals <lessonDir>` for those. Runs from now on replay them through the cache.
 
@@ -99,15 +110,24 @@ caveat), $0 spent, $0.235 saved.
   The cache is not involved.
 - Paired metrics against base4-3: writerSame 6/6, slidesChanged 0, delta {}.
 
-**polish2's code-only parts** (`--arm base4 --code-arm polish2`, same flags): $0, writerSame 6/6.
-polish2's own arm cannot replay base4, because its writer files differ (its prompts are polish's).
+**polish2's code-only parts, redone 8 Oct (audit F1).** The first proof imported base4's notes and
+repairs through the retired loose matchers, so its notes were written for slides it does not ship. It is
+superseded. The redo runs both sides with the exact-only importer, offline, so the writer is the only
+imported call and notes and repairs are refused in both (outputs in `cache/proof/base4-3-replay-v2/`
+and `cache/proof/polish2code-v2-base4-3/`):
 
-- **60/72 slides identical.** The 12 that differ:
+```
+run.ts --arm base4 [--code-arm polish2] --cap 0.10 --pg 5636 --no-render --objectives-from round5/runs/T/<b> \
+  --replay ab/runs/base4-3 --reuse-visuals ab/runs/base4-3/T/<b> --offline --out cache/proof/<dir> <b>
+```
+
+- Both sides: 6 lessons, 6 writer imports (exact-sha), 0 calls made, $0. Notes and repairs refused
+  (4 to 14 per lesson), identically on both sides. Every lesson finished (summary event).
+- **61/72 slides identical**, writerSame 6/6. The 11 that differ:
   - all 6 title slides: the code title subtitle "Year N Subject" replaces the writer's recall line;
-  - 5 redrawn diagram SVGs (y12 s10, y8 s4 and s9, y11 s12, y1 s10), with 18 `label-dropped` events
-    from the per-label clash fallback;
+  - 4 redrawn diagram SVGs (y12 s10, y8 s4 and s9, y11 s12; the first proof also had y1 s10);
   - y11 s4: relaid text at full width, with one more element.
-- Paired metric delta: `elements` +1 (y11 s4). textChars, visualShown, textOnlyTeach, dangling and
-  labelStrings show no change.
-- Overflow was not measured, because the web on 4959 was down, so there is no render or geom.json. Run
-  `render.ts` on the proof dirs to add it.
+- Paired metric delta: `elements` +1 (y11 s4), slidesChanged 5 from slide 3. No other metric changes.
+- This proves the code-only effect on unrepaired slides without notes. A code-only claim about repairs
+  or notes needs those stages called fresh (not `--offline`), and pays for them.
+- Overflow was not measured (`--no-render`). Run `render.ts` on the proof dirs to add it.

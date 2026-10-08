@@ -22,6 +22,7 @@ import {
 } from "./ab/arms";
 import { createCache, loadRun, loadStore, type ReqForm, seedStore, summary } from "./ab/cache";
 import { legacyImporter } from "./ab/cache-import";
+import { lessonDone, moveToCrashed } from "./ab/done";
 import { photoGate } from "./ab/polish";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
@@ -130,10 +131,13 @@ for (const id of briefs) {
     throw new Error(`--challenge must be support, core or stretch, not ${challenge}`);
   if (challenge) brief.challenge = challenge as Brief["challenge"];
   const outDir = `${runs}/${arm.id}/${id}${challenge ? `.${challenge}` : ""}`;
-  if (existsSync(`${outDir}/lesson.json`)) {
-    console.log(`SKIP ${id}: ${outDir} exists (use a fresh --out)`);
+  // Audit F6: only a finished lesson (summary event) is skipped; an unfinished one is moved aside.
+  if (lessonDone(outDir)) {
+    console.log(`SKIP ${id}: ${outDir} is finished (use a fresh --out)`);
     continue;
   }
+  if (existsSync(outDir))
+    console.log(`${id}: unfinished ${outDir} moved to ${moveToCrashed(outDir)}`);
   // Reads come only from the replayed run (or the whole store with --cache-any): a run without
   // --replay calls fresh, and a changed request never matches a recorded key, so it is called fresh.
   const src = replayDir
@@ -185,6 +189,17 @@ for (const id of briefs) {
     ...(opt("--replay-repair") ? { replayRepair: opt("--replay-repair") } : {}),
     modelTheme: flag("--model-theme"),
     ...(opt("--bank-cap") ? { bankCapUsd: Number(opt("--bank-cap")) } : {}),
+  }).catch(async (e) => {
+    // Audit F6: a crashed or refused lesson leaves <arm>/ for crashed/, with its cache summary.
+    await cache.drain();
+    globalThis.fetch = realFetch;
+    if (existsSync(outDir)) {
+      const cs = summary(cache.stats, policy, "lesson did not finish");
+      appendFileSync(`${outDir}/log.jsonl`, `${JSON.stringify(cs)}\n`);
+      writeFileSync(`${outDir}/cache.json`, JSON.stringify(cs, null, 1));
+      console.log(id, "did not finish:", String(e).slice(0, 200), "->", moveToCrashed(outDir));
+    }
+    throw e;
   });
   await cache.drain();
   globalThis.fetch = realFetch;

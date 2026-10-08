@@ -112,6 +112,20 @@ export class Ledger {
     return Object.values(this.parts).reduce((a, b) => a + b, 0);
   }
   /**
+   * cost.json's body: every booked part, the picture director's outside spend, and `total` as their
+   * sum. Every cost.json is written from this (audit F4: an incomplete writer's total was main only,
+   * dropping picture spend made while streaming, so run.sh's SPEND under-booked it).
+   */
+  costJson(extra: Record<string, unknown> = {}) {
+    const outside = this.outside();
+    const parts: Record<string, number> = {
+      ...this.parts,
+      ...(outside ? { picturesDirector: outside } : {}),
+    };
+    const total = Object.values(parts).reduce((a, b) => a + b, 0);
+    return { ...parts, total: Number(total.toFixed(7)), ...extra };
+  }
+  /**
    * Other runs sharing one budget (`shareBudget`): their committed spend, counted against this
    * cap too, so two arms run side by side can't each spend the whole cap.
    */

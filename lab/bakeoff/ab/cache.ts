@@ -141,6 +141,9 @@ export function usageOf(text: string, contentType: string): unknown {
     } catch {}
   return undefined;
 }
+/** A content type whose body is text that may report usage (JSON or SSE); all others stay bytes. */
+export const isUsageText = (contentType: string) =>
+  contentType.includes("json") || contentType.includes("event-stream");
 /** The body with its usage zeroed (JSON or SSE); other bodies unchanged. */
 export function zeroUsage(text: string, contentType: string): string {
   if (contentType.includes("event-stream"))
@@ -261,14 +264,18 @@ export function createCache(o: CacheOpts, realFetch: typeof fetch = globalThis.f
       `${JSON.stringify({ ...s, from, at: Date.now() })}\n`,
     );
   };
-  const served = (s: Stored, text: string) => {
+  const served = (s: Stored, bytes: Uint8Array) => {
     const h = new Headers({
       "content-type": s.contentType,
       "x-ab-cache": "hit",
       "x-ab-cache-usd": String(s.usd),
       "x-ab-cache-usage": JSON.stringify(s.usage ?? null),
     });
-    return new Response(zeroUsage(text, s.contentType), { status: s.status, headers: h });
+    // Only text bodies that can carry usage are decoded; every other body (photos) is served byte-exact.
+    const body = isUsageText(s.contentType)
+      ? zeroUsage(new TextDecoder().decode(bytes), s.contentType)
+      : bytes;
+    return new Response(body, { status: s.status, headers: h });
   };
 
   const cachedFetch = async (
@@ -287,10 +294,12 @@ export function createCache(o: CacheOpts, realFetch: typeof fetch = globalThis.f
     const base = { key, n, method: form.method, url: form.url.replace(/[?#].*$/, ""), stage };
     // 1. The replayed run's response for this exact key, in call order.
     const hit = o.source?.get(key)?.[n];
-    const hitText = hit ? readBlob(hit.bodySha)?.toString("utf8") : undefined;
-    if (hit && hitText !== undefined) {
+    // Raw bytes, never decoded: a stored body is served only if it still hashes to its recorded sha.
+    const raw = hit ? readBlob(hit.bodySha) : undefined;
+    const hitBytes = raw && sha(raw) === hit?.bodySha ? new Uint8Array(raw) : undefined;
+    if (hit && hitBytes !== undefined) {
       keep(key, form, blobs, hit, "replay");
-      putBlob(hit.bodySha, hitText);
+      putBlob(hit.bodySha, hitBytes);
       stats.cached += 1;
       stats.savedUsd += hit.usd;
       book(stage, "cached", hit.usd);
@@ -304,7 +313,7 @@ export function createCache(o: CacheOpts, realFetch: typeof fetch = globalThis.f
         bodySha: hit.bodySha,
         usage: hit.usage,
       });
-      return served(hit, hitText);
+      return served(hit, hitBytes);
     }
     // 2. An old run's logs (importer), only for a request it can tie to that run exactly.
     for (const imp of o.importers ?? []) {
@@ -335,7 +344,7 @@ export function createCache(o: CacheOpts, realFetch: typeof fetch = globalThis.f
         bodySha,
         usage: s.usage,
       });
-      return served(s, got.text);
+      return served(s, new TextEncoder().encode(got.text));
     }
     // 3. A fresh call (refused when offline).
     if (o.offline) {
@@ -346,8 +355,9 @@ export function createCache(o: CacheOpts, realFetch: typeof fetch = globalThis.f
     const res = await realFetch(input as never, init);
     const contentType = res.headers.get("content-type") ?? "";
     const finish = (bytes: Uint8Array) => {
-      const text = new TextDecoder().decode(bytes);
-      const usage = usageOf(text, contentType);
+      const usage = isUsageText(contentType)
+        ? usageOf(new TextDecoder().decode(bytes), contentType)
+        : undefined;
       const usd = res.ok ? (o.price?.(form, usage) ?? 0) : 0;
       const bodySha = sha(bytes);
       const s: Stored = { status: res.status, contentType, bodySha, usd, usage };

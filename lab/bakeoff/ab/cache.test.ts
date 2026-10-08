@@ -219,6 +219,91 @@ describe("record and replay", () => {
   });
 });
 
+describe("binary bodies (audit F2)", () => {
+  test("a cached JPEG replays byte-exact, with an identical hash, and is stored as raw bytes", async () => {
+    const { createHash } = require("node:crypto");
+    const h = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+    // A JPEG's bytes include ones that are invalid UTF-8 (0xff, 0xd8, 0x80, 0x9f, 0xc3 alone).
+    const jpeg = new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xe0,
+      0x00,
+      0x10,
+      0x4a,
+      0x46,
+      0x49,
+      0x46,
+      0x80,
+      0x9f,
+      0xc3,
+      0xff,
+      0xd9,
+      ...Array.from({ length: 4096 }, (_, i) => (i * 37 + 11) & 0xff),
+    ]);
+    const PHOTO = "https://images.pexels.com/photos/1/photo.jpeg?w=1280";
+    const d = dirs();
+    let calls = 0;
+    const api = (async () => {
+      calls += 1;
+      return new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } });
+    }) as unknown as typeof fetch;
+    const first = createCache({ ...d, price }, api);
+    const got1 = new Uint8Array(await (await first.fetch(PHOTO)).arrayBuffer());
+    await first.drain();
+    expect(h(got1)).toBe(h(jpeg));
+    const rec = JSON.parse(readFileSync(`${d.runDir}/calls.jsonl`, "utf8").trim());
+    expect(rec.bodySha).toBe(h(jpeg));
+    expect(h(new Uint8Array(readFileSync(`${d.runDir}/calls/blobs/${rec.bodySha}`)))).toBe(h(jpeg));
+
+    const replay = dirs();
+    const again = createCache(
+      {
+        ...replay,
+        source: loadRun(d.runDir),
+        sourceBlobs: [`${d.runDir}/calls/blobs`],
+        offline: true,
+        price,
+      },
+      api,
+    );
+    const res = await again.fetch(PHOTO);
+    expect(res.headers.get("x-ab-cache")).toBe("hit");
+    expect(res.headers.get("content-type")).toBe("image/jpeg");
+    const got2 = new Uint8Array(await res.arrayBuffer());
+    expect(got2.length).toBe(jpeg.length);
+    expect(h(got2)).toBe(h(jpeg));
+    expect(calls).toBe(1);
+    // The replay's own store holds the raw bytes under the same sha (never a decoded string).
+    expect(h(new Uint8Array(readFileSync(`${replay.storeDir}/blobs/${h(jpeg)}`)))).toBe(h(jpeg));
+    expect(h(new Uint8Array(readFileSync(`${replay.runDir}/calls/blobs/${h(jpeg)}`)))).toBe(
+      h(jpeg),
+    );
+  });
+  test("a stored body that no longer hashes to its sha is not served", async () => {
+    const d = dirs();
+    const api = fakeApi();
+    const first = createCache({ ...d, price }, api.f);
+    await (await first.fetch(OPENAI, post(reqBody()))).text();
+    await first.drain();
+    const rec = JSON.parse(readFileSync(`${d.runDir}/calls.jsonl`, "utf8").trim());
+    writeFileSync(`${d.runDir}/calls/blobs/${rec.bodySha}`, "corrupt");
+    const again = createCache(
+      {
+        runDir: `${d.runDir}-r`,
+        storeDir: `${d.storeDir}-r`,
+        source: loadRun(d.runDir),
+        sourceBlobs: [`${d.runDir}/calls/blobs`],
+        offline: true,
+        price,
+      },
+      api.f,
+    );
+    await expect(again.fetch(OPENAI, post(reqBody()))).rejects.toThrow(/offline/);
+  });
+});
+
 describe("chat wrappers on a hit", () => {
   test("chat and chatStream return the original usage, $0, cached: true", async () => {
     const d = dirs();
@@ -310,7 +395,19 @@ describe("legacy importer", () => {
     );
     return { d, schema };
   };
-  const form = { method: "POST", url: OPENAI, body: null };
+  const sentForm = (system: string, user: string) => ({
+    method: "POST",
+    url: OPENAI,
+    body: {
+      json: {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      },
+    },
+  });
+  const form = sentForm("SYS", "U");
   test("the writer is imported only when model, effort, system sha, schema sha and user all match", () => {
     const { d, schema } = lesson();
     const meta = {
@@ -327,16 +424,42 @@ describe("legacy importer", () => {
     const got = legacyImporter(d)({ form, meta });
     expect(got).toMatchObject({ verify: "exact-sha", usd: 0.04, text: sseOf('{"slides":[]}') });
   });
-  test("a repair is imported only for the logged slide JSON", () => {
+  test("audit F1: repairs and notes are never imported (not replayable from old logs)", () => {
     const { d } = lesson();
+    writeFileSync(`${d}/notes.json`, JSON.stringify({ slides: [{ notes: "n" }] }));
     const imp = legacyImporter(d);
+    // The logged slide JSON is in the request, as the old loose matcher required: still refused.
     expect(
-      imp({ form, meta: { name: "slide", user: 'Slide 4: {"heading":"G"}' } }),
+      imp({ form, meta: { name: "slide", user: 'Slide 4: {"heading":"H"}' } }),
     ).toBeUndefined();
-    expect(imp({ form, meta: { name: "slide", user: 'Slide 4: {"heading":"H"}' } })).toMatchObject({
-      text: jsonOf('{"fix":"x"}'),
-      verify: "slide-json",
+    expect(imp({ form, meta: { name: "notes", user: "U plus slides" } })).toBeUndefined();
+    expect(jsonOf("x")).toContain('"content":"x"');
+  });
+  test("audit F1: the writer needs the text actually sent to be the old run's", () => {
+    const { d, schema } = lesson();
+    const meta = {
+      name: "lesson",
+      model: "gpt-6.1-sol",
+      effort: "low",
+      system: "SYS",
+      user: "U",
+      schema,
+    };
+    // A localised system (a locale token filled) is not provably what the old run sent: refused.
+    expect(legacyImporter(d)({ form: sentForm("SYS India", "U"), meta })).toBeUndefined();
+    expect(legacyImporter(d)({ form: sentForm("SYS", "U India"), meta })).toBeUndefined();
+    // A new request.json records the sent shas: the import follows them.
+    const { createHash } = require("node:crypto");
+    const h = (x: string) => createHash("sha256").update(x).digest("hex");
+    const req = JSON.parse(readFileSync(`${d}/request.json`, "utf8"));
+    writeFileSync(
+      `${d}/request.json`,
+      JSON.stringify({ ...req, sentSystemSha: h("SYS India"), sentUserSha: h("U") }),
+    );
+    expect(legacyImporter(d)({ form: sentForm("SYS India", "U"), meta })).toMatchObject({
+      verify: "exact-sha",
     });
+    expect(legacyImporter(d)({ form: sentForm("SYS", "U"), meta })).toBeUndefined();
   });
 });
 
