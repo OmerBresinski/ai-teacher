@@ -12,7 +12,7 @@ export {
   navigatorWidthVar,
   readNavigatorMode,
 } from "./Navigator";
-export type { PromptEditAnswer, PromptEditRequest } from "./proposals-context";
+export type { PromptEditAnswer, PromptEditPartial, PromptEditRequest } from "./proposals-context";
 export { ALL_SHORTCUTS, HELP_GROUPS, type HelpShortcut, SHELL_SHORTCUTS } from "./shortcuts";
 export {
   displayInTheme,

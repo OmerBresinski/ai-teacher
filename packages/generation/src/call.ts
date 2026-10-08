@@ -16,7 +16,9 @@ import {
   NoOutputGeneratedError,
   Output,
   type OutputInterface,
+  parsePartialJson,
   type Schema,
+  streamText,
 } from "ai";
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
@@ -96,6 +98,12 @@ export interface CallStructuredOptions<I, T> {
    * required (nullable rather than optional), which strict mode demands. Off by default.
    */
   strict?: boolean | undefined;
+  /**
+   * Stream the answer (TEACH-97 streamed edit): the call runs on `streamText` and each parsed
+   * partial object is handed here as it grows. Partials are unvalidated and for display only; the
+   * call still returns the validated object at the end, exactly as without it.
+   */
+  onPartial?: ((partial: unknown) => void) | undefined;
   /** Per attempt; defaults to the bound for this prompt (TEACH-235). */
   timeoutMs?: number;
   /**
@@ -387,6 +395,31 @@ export async function callStructured<I, T>(
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     try {
+      const onPartial = options.onPartial;
+      if (onPartial) {
+        const streamed = await withCallDeadline(deps.signal, timeoutMs, async (abortSignal) => {
+          const result = streamText({
+            model,
+            system: prompt.system,
+            ...userTurn(text, images),
+            output,
+            abortSignal,
+            maxOutputTokens,
+            maxRetries: 0,
+            ...providerOptionsFor(modelId, effort, options.strict === true),
+          });
+          let sofar = "";
+          for await (const delta of result.textStream) {
+            sofar += delta;
+            const { value } = await parsePartialJson(sofar);
+            if (value !== undefined && value !== null && typeof value === "object")
+              onPartial(value);
+          }
+          return { output: await result.output, usage: await result.usage };
+        });
+        const usage = usageOf(streamed.usage);
+        return { output: streamed.output as T, usage, attempts: 1, modelId, editorialMisses: [] };
+      }
       const result = await withCallDeadline(deps.signal, timeoutMs, (abortSignal) =>
         generateText({
           model,

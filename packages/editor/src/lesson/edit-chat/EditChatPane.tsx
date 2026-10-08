@@ -1,25 +1,18 @@
-import {
-  richDocToPlainText,
-  type Slide,
-  type SlideElement,
-  type TextElement,
-} from "@tj/domain/documents";
-import { Button, cn, IconButton, Spinner, Textarea } from "@tj/ui";
-import { ArrowUp, Sparkles, X } from "lucide-react";
+import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
+import { cn } from "@tj/ui";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as reducers from "../../model/reducers";
-import { getTheme } from "../../model/themes";
 import { useHistory, useLesson } from "../document-context";
-import { type PromptEditAnswer, useProposals } from "../proposals-context";
+import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
 import {
   useActiveSlide,
   useSelection,
   useSessionActions,
   useSessionRead,
 } from "../use-editor-session";
+import { ChatThread, type ChatView } from "./ChatThread";
 import { type BubbleState, EditChatBubble } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
-import { SlidesAtWork } from "./SlidesAtWork";
 import {
   type Alternative,
   type BoxChange,
@@ -46,6 +39,11 @@ import {
  * removing it widens the scope to the whole lesson. Each message gets a one-line reply naming what
  * changed and where; an applied change has Undo (that change exactly, never over a hand edit) and
  * "Show on slide". Changes apply at once (172). The thread is kept per lesson across reloads.
+ * The pane reads as a familiar chat (`ChatThread`, chat-d); this file holds its behaviour.
+ *
+ * Streaming: the answer streams in (`onPromptEdit`'s `onPartial`, SSE from the route). Partials
+ * fill the reply and its change card for display only; the slide changes, and Undo or Use this
+ * enable, only when the checked answer arrives. Stop aborts the request, which stops the model.
  *
  * Paths: text edits on a box or a slide run the fast path (`onPromptEdit`). The agent path (slide
  * structure, pictures, diagrams, animation, the whole lesson) waits on the saved slide spec
@@ -60,10 +58,8 @@ const STOPPED = "Stopped. Nothing changed.";
 const FAILED = "That edit didn’t work. Try again.";
 const CHANGED_SINCE = "That text has changed since, so I left it as it is.";
 const TYPED_MEANWHILE = "You changed that text while I was working, so I kept yours.";
-const TYPED_IN_ONE = "You changed one of those boxes while I was working, so I kept yours.";
-const OUT_OF_DATE = "Out of date: that text has changed again.";
-const TRY_AGAIN = "Try again on your text";
-const IDENTIFIER =
+export const TRY_AGAIN = "Try again on your text";
+export const IDENTIFIER =
   "To protect personal data, I can’t send email addresses, ID numbers or pupils’ names. Take it out and try again.";
 /** The server's instruction limit (`EDIT_INSTRUCTION_MAX`), as the composer's `maxLength`. */
 const INSTRUCTION_MAX = 500;
@@ -99,6 +95,8 @@ export function EditChatPane({
   const [thread, setThread] = useState<Turn[]>(() => readThread(lessonId));
   const [draft, setDraft] = useState("");
   const [widened, setWidened] = useState(false);
+  /** Answers as they stream in, by turn id: shown in the reply, never applied. */
+  const [streams, setStreams] = useState<Record<string, PromptEditPartial>>({});
   const pending = useRef<{ id: string; controller: AbortController } | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
   const list = useRef<HTMLOListElement | null>(null);
@@ -127,7 +125,7 @@ export function EditChatPane({
   useEffect(() => {
     const el = list.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [thread]);
+  }, [thread, streams]);
 
   const selectedScope = useMemo(
     () => scopeOf(lesson, activeSlideId, selection),
@@ -177,10 +175,6 @@ export function EditChatPane({
       : last.reply.kind === "failed" || last.reply.kind === "stopped"
         ? "failed"
         : "done";
-  const pendingTurn = thread.find((t) => t.id === pendingId);
-  const castSlideId = pendingTurn?.scope.slideId ?? last?.change?.slideId ?? activeSlideId;
-  const castSlide = lesson.slides.find((s) => s.id === castSlideId);
-  const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
   const bubble: BubbleState = busy
     ? "working"
     : unread
@@ -383,10 +377,19 @@ export function EditChatPane({
         answer = await onPromptEdit(
           { slide, elementId, instruction, history: historyOf(current, thread) },
           controller.signal,
+          (partial) => {
+            if (!controller.signal.aborted) setStreams((all) => ({ ...all, [id]: partial }));
+          },
         );
       } catch {
         answer = { action: "failed", reason: controller.signal.aborted ? STOPPED : FAILED };
       }
+      // The streamed partial is display only: the checked answer replaces it, and Stop drops it.
+      setStreams((all) => {
+        if (!(id in all)) return all;
+        const { [id]: _, ...rest } = all;
+        return rest;
+      });
       if (pending.current?.id !== id || controller.signal.aborted) return;
       pending.current = null;
       if (answer.action === "edit") {
@@ -455,122 +458,53 @@ export function EditChatPane({
     void send(draft, scope);
   };
 
+  const close = () => {
+    closedHere.current = true;
+    onClose();
+  };
+  const view: ChatView = {
+    lesson,
+    thread,
+    draft,
+    setDraft,
+    send: (said, s, label) => void send(said, s, label),
+    submit,
+    scope,
+    chip,
+    widen: scope.slideId ? () => setWidened(true) : undefined,
+    suggestions,
+    busy,
+    stop,
+    undo: undoTurn,
+    show: showOnSlide,
+    takeLate: applyLate,
+    lateCurrent: (t) => (t.late ? lateIsCurrent(lesson, t.late) : false),
+    castState,
+    close,
+    field,
+    list,
+    streams,
+  };
+
   return (
     <>
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc closes the pane from anywhere inside it */}
       <aside
         aria-label={EDIT_CHAT_LABEL}
         data-edit-chat
         hidden={!open}
         className={cn(
-          "w-(--edit-chat-width,360px) shrink-0 flex-col border-border border-l bg-card",
+          "relative w-(--edit-chat-width,320px) shrink-0 flex-col bg-card text-foreground shadow-(--edit-chat-shadow) max-[1281px]:w-[296px]",
           open ? "flex" : "hidden",
         )}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && !e.defaultPrevented) {
+            e.preventDefault();
+            close();
+          }
+        }}
       >
-        <header className="flex h-10 shrink-0 items-center gap-2 border-border border-b px-3">
-          <Sparkles aria-hidden size={16} strokeWidth={1.5} className="text-ink-3" />
-          <h2 className="m-0 font-semibold text-body">{EDIT_CHAT_LABEL}</h2>
-          <IconButton
-            label="Close Edit with Dayback"
-            size="sm"
-            className="ml-auto"
-            onClick={() => {
-              closedHere.current = true;
-              onClose();
-            }}
-          >
-            <X aria-hidden size={16} strokeWidth={1.5} />
-          </IconButton>
-        </header>
-        <SlidesAtWork state={castState} slide={castSlide} theme={theme} />
-        <ol
-          ref={list}
-          aria-label="Edits"
-          aria-live="polite"
-          className="m-0 flex flex-1 list-none flex-col gap-3 overflow-y-auto p-3"
-        >
-          {thread.length === 0 ? (
-            <li className="text-ink-3 text-meta">
-              Say what to change. Select a text box or a slide first, or ask about the slide you are
-              on.
-            </li>
-          ) : null}
-          {thread.map((t) => (
-            <TurnItem
-              key={t.id}
-              turn={t}
-              onUndo={() => undoTurn(t)}
-              onShow={() => showOnSlide(t)}
-              onStop={stop}
-              onAlternative={(a) => void send(a.instruction, a.scope, a.label)}
-              onUseLate={() => applyLate(t)}
-              lateCurrent={t.late ? lateIsCurrent(lesson, t.late) : false}
-              busy={busy}
-            />
-          ))}
-        </ol>
-        <form
-          onSubmit={submit}
-          className="flex shrink-0 flex-col gap-2 border-border border-t p-3"
-          data-edit-chat-composer
-        >
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              data-edit-chat-scope
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background py-0.5 pr-1 pl-2.5 text-meta"
-            >
-              {chip}
-              {scope.slideId ? (
-                <button
-                  type="button"
-                  aria-label={`Remove ${chip}: edit the whole lesson`}
-                  className="inline-flex size-5 items-center justify-center rounded-full text-ink-3 hover:bg-muted hover:text-foreground"
-                  onClick={() => setWidened(true)}
-                >
-                  <X aria-hidden size={12} strokeWidth={1.75} />
-                </button>
-              ) : (
-                <span className="w-1.5" />
-              )}
-            </span>
-          </div>
-          {suggestions.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5" data-edit-chat-suggestions>
-              {suggestions.map((s: Suggestion) => (
-                <Button
-                  key={s.label}
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void send(s.instruction, scope, s.label)}
-                >
-                  {s.label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
-          <div className="flex items-end gap-1.5">
-            <Textarea
-              ref={field}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  void send(draft, scope);
-                }
-              }}
-              placeholder="Say what to change"
-              aria-label="What to change"
-              maxLength={500}
-              rows={2}
-              className="min-h-0 resize-none"
-            />
-            <IconButton label="Send" type="submit" disabled={busy || draft.trim() === ""}>
-              <ArrowUp aria-hidden size={18} strokeWidth={1.75} />
-            </IconButton>
-          </div>
-        </form>
+        <ChatThread view={view} />
       </aside>
       {open ? null : (
         <EditChatBubble
@@ -581,136 +515,5 @@ export function EditChatPane({
         />
       )}
     </>
-  );
-}
-
-function TurnItem({
-  turn,
-  onUndo,
-  onShow,
-  onStop,
-  onAlternative,
-  onUseLate,
-  lateCurrent,
-  busy,
-}: {
-  turn: Turn;
-  onUndo: () => void;
-  onShow: () => void;
-  onStop: () => void;
-  onAlternative: (a: Alternative) => void;
-  onUseLate: () => void;
-  /** Whether the kept suggestion can still be used (its boxes unchanged since it arrived). */
-  lateCurrent: boolean;
-  busy: boolean;
-}) {
-  const { reply, late } = turn;
-  const pendingLate = late && !late.used ? late : undefined;
-  return (
-    <li className="flex flex-col gap-1.5" data-edit-turn={reply.kind} data-edit-turn-id={turn.id}>
-      <div className="flex flex-col items-end gap-0.5">
-        <p className="m-0 max-w-[85%] rounded-lg bg-muted px-2.5 py-1.5 text-body">{turn.said}</p>
-        <span className="text-ink-3 text-meta">{turn.scopeLabel}</span>
-      </div>
-      <div className="flex flex-col gap-1.5" data-edit-reply>
-        {reply.kind === "pending" ? (
-          <div className="flex items-center gap-2 text-ink-3 text-meta">
-            <Spinner size={16} />
-            <span>{reply.text}</span>
-            <Button type="button" variant="ghost" size="xs" className="ml-auto" onClick={onStop}>
-              Stop
-            </Button>
-          </div>
-        ) : (
-          <p
-            className={cn(
-              "m-0 text-body",
-              reply.kind === "edit" && turn.change?.undone && "text-ink-3 line-through",
-              (reply.kind === "stopped" || reply.kind === "no-change") && "text-ink-3",
-            )}
-            role={reply.kind === "refuse" || reply.kind === "failed" ? "alert" : undefined}
-          >
-            {reply.text}
-          </p>
-        )}
-        {pendingLate && reply.kind === "edit" ? (
-          <p className="m-0 text-body">{TYPED_IN_ONE}</p>
-        ) : null}
-        {pendingLate ? <LatePreview boxes={pendingLate.boxes} current={lateCurrent} /> : null}
-        {reply.kind === "edit" && turn.change && !(pendingLate && lateCurrent) ? (
-          <div className="flex gap-1.5">
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              disabled={turn.change.undone === true}
-              onClick={onUndo}
-            >
-              {turn.change.undone ? "Undone" : "Undo"}
-            </Button>
-            <Button type="button" variant="ghost" size="xs" onClick={onShow}>
-              Show on slide
-            </Button>
-          </div>
-        ) : null}
-        {pendingLate ? (
-          <div className="flex flex-wrap gap-1.5">
-            {lateCurrent ? (
-              <Button type="button" variant="primary" size="xs" onClick={onUseLate}>
-                Use this
-              </Button>
-            ) : null}
-            {reply.alternative ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={busy}
-                onClick={() => reply.alternative && onAlternative(reply.alternative)}
-              >
-                {reply.alternative.label}
-              </Button>
-            ) : null}
-          </div>
-        ) : reply.alternative ? (
-          <div className="min-w-0">
-            {/* An offer is a sentence: it wraps inside the pane rather than running off it. */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              data-edit-offer
-              className="h-auto max-w-full justify-start whitespace-normal py-1 text-left leading-snug"
-              disabled={busy}
-              onClick={() => reply.alternative && onAlternative(reply.alternative)}
-            >
-              {reply.alternative.label}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
-/**
- * A kept late answer, quietly: the teacher's text as it is (struck through, muted) and the
- * suggested text under it. Out of date once the box has changed again.
- */
-function LatePreview({ boxes, current }: { boxes: readonly BoxChange[]; current: boolean }) {
-  return (
-    <div className="flex flex-col gap-1 text-meta" data-edit-late={current ? "current" : "stale"}>
-      {boxes.map((b) => (
-        <div key={b.elementId} className="flex flex-col gap-0.5">
-          <p className="m-0 text-ink-3 line-through" data-edit-late-before>
-            {richDocToPlainText(b.before)}
-          </p>
-          <p className={cn("m-0", current ? "text-foreground" : "text-ink-3")} data-edit-late-after>
-            {richDocToPlainText(b.after)}
-          </p>
-        </div>
-      ))}
-      {current ? null : <p className="m-0 text-ink-3">{OUT_OF_DATE}</p>}
-    </div>
   );
 }

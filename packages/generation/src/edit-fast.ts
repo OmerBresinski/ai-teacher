@@ -105,6 +105,29 @@ export interface EditFastDeps {
   logger: Logger;
   signal?: AbortSignal | undefined;
   context?: PipelineContext | undefined;
+  /**
+   * Stream the answer as it is written (TEACH-97): each call is streamed and its partial answer
+   * handed here, for display only. Nothing in a partial has been checked; the result returned at
+   * the end is the only thing to apply. A retry round starts again from an empty partial.
+   */
+  onPartial?: ((partial: EditFastPartial) => void) | undefined;
+}
+
+/** A partial answer for display: the summary so far and each text box's new text so far. */
+export type EditFastPartial = { summary: string; texts: { elementId: string; text: string }[] };
+
+/** The display partial of a raw streamed answer; null while it is not (yet) an edit. */
+export function editFastPartial(raw: unknown): EditFastPartial | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const out = raw as { action?: unknown; summary?: unknown; changes?: unknown };
+  if (out.action !== undefined && out.action !== "edit") return null;
+  const texts: EditFastPartial["texts"] = [];
+  if (Array.isArray(out.changes))
+    for (const c of out.changes as { target?: unknown; text?: unknown }[]) {
+      const m = typeof c?.target === "string" ? ELEMENT_TEXT.exec(c.target) : null;
+      if (m?.[2] && typeof c.text === "string") texts.push({ elementId: m[2], text: c.text });
+    }
+  return { summary: typeof out.summary === "string" ? out.summary : "", texts };
 }
 
 export class EditTargetError extends Error {}
@@ -406,6 +429,12 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
       // Every key of the schema is required (nullable), so strict mode accepts it: off-schema
       // answers (`type` for `action`) are refused by the provider rather than retried here.
       strict: true,
+      onPartial: deps.onPartial
+        ? (raw: unknown) => {
+            const partial = editFastPartial(raw);
+            if (partial) deps.onPartial?.(partial);
+          }
+        : undefined,
     });
 
   let attempts = 0;

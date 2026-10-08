@@ -38,9 +38,23 @@ export type PromptEditAnswer =
       offer?: string | undefined;
     };
 
+/**
+ * An answer as it streams in (TEACH-97): the summary so far and each box's new text so far.
+ * Unchecked and for display only; only the final answer is ever applied.
+ */
+export type PromptEditPartial = { summary: string; texts: { elementId: Id; text: string }[] };
+
 export type ProposalsApi = {
-  /** Edit with a prompt: the app calls `POST /lessons/:id/edit`. Absent → no chat pane. */
-  onPromptEdit?: (request: PromptEditRequest, signal?: AbortSignal) => Promise<PromptEditAnswer>;
+  /**
+   * Edit with a prompt: the app calls `POST /lessons/:id/edit`. Absent → no chat pane. With
+   * `onPartial` the answer streams: partials arrive while the model writes, then the promise
+   * resolves with the checked answer.
+   */
+  onPromptEdit?: (
+    request: PromptEditRequest,
+    signal?: AbortSignal,
+    onPartial?: (partial: PromptEditPartial) => void,
+  ) => Promise<PromptEditAnswer>;
   /** The facts whose text changed, coalesced; the app enqueues `lesson.cascade`. */
   onFactsChanged?: (factIds: string[]) => void;
   /** The teacher confirmed the regenerate dialog; the app enqueues `lesson.regenerate`. */

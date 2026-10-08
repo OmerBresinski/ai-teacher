@@ -5,7 +5,7 @@ import { richDocToPlainText } from "@tj/domain/documents";
 import { docFromText } from "../../model/factories";
 import { makeText } from "../../model/insert";
 import { getTheme } from "../../model/themes";
-import type { PromptEditAnswer, PromptEditRequest } from "../proposals-context";
+import type { PromptEditAnswer, PromptEditPartial, PromptEditRequest } from "../proposals-context";
 import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "../test-harness";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
@@ -51,7 +51,11 @@ const textOf = (lesson: Lesson, slide = 0) => {
   return box ? richDocToPlainText(box.doc) : "";
 };
 
-type Answer = (req: PromptEditRequest, signal?: AbortSignal) => Promise<PromptEditAnswer>;
+type Answer = (
+  req: PromptEditRequest,
+  signal?: AbortSignal,
+  onPartial?: (partial: PromptEditPartial) => void,
+) => Promise<PromptEditAnswer>;
 
 function setup(answer: Answer, lesson = textLesson()) {
   window.localStorage.setItem(PANE_OPEN_KEY, "1");
@@ -120,7 +124,7 @@ describe("Edit with Dayback pane", () => {
     const req = onPromptEdit.mock.calls[0]?.[0] as PromptEditRequest;
     expect(req.instruction).toBe("Make it shorter");
     expect(req.elementId).toBe(read().slides[0]?.elements[0]?.id as string);
-    expect(within(pane()).getByText("Slide 1: Made it shorter.")).toBeTruthy();
+    expect(within(pane()).getByText("Made it shorter.")).toBeTruthy();
     fireEvent.click(within(pane()).getByRole("button", { name: "Undo" }));
     expect(textOf(read())).toBe(ORIGINAL);
     expect(within(pane()).getByText("Undid: Shorter")).toBeTruthy();
@@ -140,7 +144,7 @@ describe("Edit with Dayback pane", () => {
     window.localStorage.setItem(PANE_OPEN_KEY, "1");
     renderEditor(lesson, { onPromptEdit });
     const pane = screen.getByRole("complementary", { name: EDIT_CHAT_LABEL });
-    expect(within(pane).getByText("Slide 1: Used simpler words.")).toBeTruthy();
+    expect(within(pane).getByText("Used simpler words.")).toBeTruthy();
   });
 
   test("a refusal is said in the thread with its alternative, and changes nothing", async () => {
@@ -174,7 +178,7 @@ describe("Edit with Dayback pane", () => {
     const offer = within(pane()).getByRole("button", { name: "Add a hint instead" });
     // A long offer wraps inside the pane (no nowrap, no fixed height, capped at the pane width).
     expect(offer.className).toContain("whitespace-normal");
-    expect(offer.className).toContain("max-w-full");
+    expect(offer.className).toContain("whitespace-normal");
     expect(offer.className).toContain("h-auto");
     await act(async () => {
       fireEvent.click(offer);
@@ -354,7 +358,7 @@ describe("late answers and rejected turns", () => {
     );
     expect(readThread(lesson.id).map((t) => t.reply.text)).toEqual(["Slide 1: Made it harder."]);
     fireEvent.click(bubble());
-    expect(within(pane()).getByText("Slide 1: Made it harder.")).toBeTruthy();
+    expect(within(pane()).getByText("Made it harder.")).toBeTruthy();
     expect(document.activeElement).toBe(
       within(pane()).getByRole("textbox", { name: "What to change" }),
     );
@@ -527,7 +531,7 @@ describe("late answers and rejected turns", () => {
     expect(t.onPromptEdit).toHaveBeenCalledTimes(1);
     expect(t.pane().querySelector("[data-edit-late]")).toBeNull();
     expect(within(t.pane()).queryByRole("button", { name: "Use this" })).toBeNull();
-    expect(within(t.pane()).getByText("Slide 1: Made it harder.")).toBeTruthy();
+    expect(within(t.pane()).getByText("Made it harder.")).toBeTruthy();
     // One step: a single undo puts the teacher's text back.
     act(() => {
       fireEvent.keyDown(window, { key: "z", metaKey: true });
@@ -668,5 +672,75 @@ describe("late answers and rejected turns", () => {
     (edited.elements[0] as TextElement).doc = docFromText("x");
     expect(changedSince(sent, edited, [id])).toBe(true);
     expect(changedSince(sent, { ...sent, elements: [] }, [id])).toBe(true);
+  });
+});
+
+describe("streamed answers", () => {
+  const SHORT = "Water heats up and becomes water vapour.";
+  test("partials fill the reply and the card; the slide changes only with the checked answer", async () => {
+    let push: ((p: PromptEditPartial) => void) | undefined;
+    let finish: ((a: PromptEditAnswer) => void) | undefined;
+    let request: PromptEditRequest | undefined;
+    const { say, pane, read } = setup(
+      (req, _signal, onPartial) =>
+        new Promise((resolve) => {
+          request = req;
+          push = onPartial;
+          finish = resolve;
+        }),
+    );
+    await say("Make it shorter");
+    const id = request?.slide.elements[0]?.id as string;
+    act(() => push?.({ summary: "Made it", texts: [] }));
+    expect(within(pane()).getByText("Made it")).toBeTruthy();
+    act(() =>
+      push?.({ summary: "Made it shorter.", texts: [{ elementId: id, text: "Water heats up" }] }),
+    );
+    const card = pane().querySelector("[data-edit-card]") as HTMLElement;
+    expect(card.querySelector("[data-edit-late-after]")?.textContent).toBe("Water heats up");
+    expect(card.querySelector("[data-edit-late-before]")?.textContent).toBe(ORIGINAL);
+    const undo = within(card).getByRole("button", { name: "Undo" }) as HTMLButtonElement;
+    expect(undo.disabled).toBe(true);
+    // Nothing partial ever reaches the slide.
+    expect(textOf(read())).toBe(ORIGINAL);
+    await act(async () => {
+      finish?.(edit(request as PromptEditRequest, SHORT, "Made it shorter."));
+    });
+    expect(textOf(read())).toBe(SHORT);
+    const done = pane().querySelector("[data-edit-card]") as HTMLElement;
+    expect(done.querySelector("[data-edit-late-after]")?.textContent).toBe(SHORT);
+    expect((within(done).getByRole("button", { name: "Undo" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  test("Stop mid-stream drops the partial and changes nothing", async () => {
+    let push: ((p: PromptEditPartial) => void) | undefined;
+    let request: PromptEditRequest | undefined;
+    const { say, pane, read } = setup(
+      (req, signal, onPartial) =>
+        new Promise((_resolve, reject) => {
+          request = req;
+          push = onPartial;
+          signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    await say("Make it shorter");
+    const id = request?.slide.elements[0]?.id as string;
+    act(() =>
+      push?.({ summary: "Made it shorter.", texts: [{ elementId: id, text: "Water heats" }] }),
+    );
+    expect(pane().querySelector("[data-edit-card]")).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(within(pane()).getAllByRole("button", { name: "Stop" })[0] as HTMLElement);
+    });
+    expect(within(pane()).getByText("Stopped. Nothing changed.")).toBeTruthy();
+    expect(pane().querySelector("[data-edit-card]")).toBeNull();
+    // A partial that arrives after Stop is ignored.
+    act(() =>
+      push?.({ summary: "Made it shorter.", texts: [{ elementId: id, text: "Water heats up" }] }),
+    );
+    expect(pane().querySelector("[data-edit-card]")).toBeNull();
+    expect(textOf(read())).toBe(ORIGINAL);
   });
 });

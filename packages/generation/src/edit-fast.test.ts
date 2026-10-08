@@ -14,9 +14,11 @@ import {
   directionOf,
   EDIT_MESSAGES,
   type EditFastOutput,
+  type EditFastPartial,
   EditTargetError,
   echoes,
   editFast,
+  editFastPartial,
   leakFaults,
   packEditFast,
   refusalCheck,
@@ -56,6 +58,34 @@ const answer = (target: string, text: string | null, extra: Partial<EditFastOutp
   });
 
 const T = "s4/elements/b/text";
+
+describe("editFast streamed (TEACH-97 chat-d)", () => {
+  test("hands on display partials and still returns the checked answer", async () => {
+    const ai = createFakeAi({ script: [answer(T, "Water warms up and becomes a gas.")] });
+    const partials: EditFastPartial[] = [];
+    const res = await editFast(
+      { lesson: lesson(), slide: contentSlide(), elementId: "b", instruction: "Shorter" },
+      { ai, logger, onPartial: (p) => partials.push(p) },
+    );
+    expect(res.action).toBe("edit");
+    expect(partials.length).toBeGreaterThan(0);
+    expect(partials.at(-1)).toEqual({
+      summary: "Made it shorter.",
+      texts: [{ elementId: "b", text: "Water warms up and becomes a gas." }],
+    });
+    expect(ai.calls).toHaveLength(1);
+  });
+
+  test("a partial that is not an edit is not shown", () => {
+    expect(editFastPartial({ action: "refuse", summary: "x", changes: [] })).toBeNull();
+    expect(editFastPartial({ summary: "Made", changes: [{ target: "s4/elements/b/te" }] })).toEqual(
+      {
+        summary: "Made",
+        texts: [],
+      },
+    );
+  });
+});
 
 describe("editFast (TEACH-97 part d)", () => {
   test("applies the model's text to the selected box, on Luna with reasoning off", async () => {

@@ -27,10 +27,12 @@ export {
   EDIT_MESSAGES,
   type EditFastChange,
   type EditFastDeps,
+  type EditFastPartial,
   type EditFastRequest,
   type EditFastResult,
   EditTargetError,
   editFast,
+  editFastPartial,
 } from "./edit-fast";
 export {
   AGENT_MESSAGES,
