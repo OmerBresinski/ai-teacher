@@ -11,7 +11,10 @@ const PATH = "/dev/first-experience";
 const FIRST_SLIDE_MS = 2_600;
 const NEXT_SLIDE_MS = 2_400;
 
-/** Steps the fixture's pacing, one slide interval at a time, until the preview is ready. */
+/**
+ * Steps the fixture's pacing, one slide interval at a time, until the preview is ready. At most 20
+ * intervals (48 s of story time); the fixture's eight slides are ready after about 19 s.
+ */
 async function runUntilReady(page: Page, preview: Locator) {
   for (let step = 0; step < 20; step++) {
     if ((await preview.getAttribute("data-preview-state")) === "ready") return;
@@ -234,25 +237,29 @@ test.describe("first-experience design preview", () => {
     await expect(stage).toHaveAttribute("data-beat", "12");
     await expect(stage).toHaveAttribute("data-holder", "Slides");
     // Every frame of the next 2 s of the story's time, played by the clock rather than waited out.
-    const sampled = stage.evaluate(
-      (root) =>
-        new Promise<boolean>((resolve) => {
-          let seen = false;
-          const end = performance.now() + 2_000;
-          const look = () => {
-            const worksheet = root.querySelector('[data-actor="2"]');
-            if (worksheet && getComputedStyle(worksheet).visibility !== "hidden") {
-              const figure = worksheet.querySelector(".figure");
-              if (figure && getComputedStyle(figure).visibility !== "hidden") seen = true;
-            }
-            if (performance.now() < end) requestAnimationFrame(look);
-            else resolve(seen);
-          };
-          look();
-        }),
-    );
+    // The sampler is in place (awaited) before the clock moves, so no early frame goes unseen.
+    await stage.evaluate((root) => {
+      const state = { seen: false, done: false };
+      (window as unknown as { worksheetSeen: typeof state }).worksheetSeen = state;
+      const end = performance.now() + 2_000;
+      const look = () => {
+        const worksheet = root.querySelector('[data-actor="2"]');
+        if (worksheet && getComputedStyle(worksheet).visibility !== "hidden") {
+          const figure = worksheet.querySelector(".figure");
+          if (figure && getComputedStyle(figure).visibility !== "hidden") state.seen = true;
+        }
+        if (performance.now() < end) requestAnimationFrame(look);
+        else state.done = true;
+      };
+      look();
+    });
     await page.clock.runFor(2_000);
-    expect(await sampled).toBe(false);
+    const sampled = await page.evaluate(
+      () =>
+        (window as unknown as { worksheetSeen: { seen: boolean; done: boolean } }).worksheetSeen,
+    );
+    expect(sampled.done).toBe(true);
+    expect(sampled.seen).toBe(false);
     await expect(stage).toHaveAttribute("data-beat", "3", { timeout: 4_000 });
   });
 

@@ -78,7 +78,9 @@ test.describe("layout engine", () => {
     await expect(page).toHaveURL(/\/lessons$|\/$/);
     await page.getByRole("link", { name: "Open Simple circuits" }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Simple circuits" })).toBeVisible();
-    // Give a second migration every timer it would need (the clock plays 1.5 s at once).
+    // The migration waits for fonts (real time) and then an idle editor (the clock): let the fonts
+    // load, then give a second migration every timer it would need (1.5 s, played at once).
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await page.clock.runFor(1_500);
     await expect(page.getByText(/tidied to fit the new text sizes/)).toHaveCount(0);
     await expect(undo).toBeDisabled();

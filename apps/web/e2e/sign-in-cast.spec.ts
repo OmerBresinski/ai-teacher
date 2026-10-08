@@ -180,7 +180,7 @@ test("with reduced motion the cast never moves and GSAP is never fetched", async
   // Every chunk this page fetched, read for GSAP's banner: none of them may be GSAP. Read with
   // Bun's fetch: `page.request` here sometimes never answered (the reduced-motion flake on master).
   for (const url of scripts.filter((url) => isOwnScript(page, url))) {
-    const body = await (await fetch(url)).text();
+    const body = await (await fetch(url, { signal: AbortSignal.timeout(5_000) })).text();
     expect(body, url).not.toContain("GreenSock");
   }
 });
