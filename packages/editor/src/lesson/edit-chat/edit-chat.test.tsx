@@ -13,6 +13,7 @@ import {
   changedSince,
   historyOf,
   PANE_OPEN_KEY,
+  REDACTED,
   readThread,
   resolveFollowUp,
   scopeLabel,
@@ -383,6 +384,31 @@ describe("late answers and rejected turns", () => {
     await say("Add a note for jo.bloggs@school.org");
     expect(onPromptEdit).toHaveBeenCalledTimes(0);
     expect(within(pane()).getByRole("alert").textContent).toContain("email address");
+  });
+
+  test("a refused message with an identifier is not stored in clear", async () => {
+    const { say, pane, lesson } = setup(() => Promise.resolve({ action: "no-change", reason: "" }));
+    await say("Add a note for jo.bloggs@school.org");
+    expect(within(pane()).getByRole("alert")).toBeTruthy();
+    const raw = window.localStorage.getItem(threadKey(lesson.id)) ?? "";
+    expect(raw).not.toContain("jo.bloggs");
+    expect(readThread(lesson.id)[0]?.said).toBe(REDACTED);
+    expect(readThread(lesson.id)[0]?.instruction).toBe("");
+  });
+
+  test("a model offer with an identifier is dropped, so it can never be tapped", async () => {
+    const { clickBox, say, pane } = setup(() =>
+      Promise.resolve({
+        action: "refuse",
+        reason: "That would give the answer away.",
+        offer: "Add a hint for jo@school.org",
+        check: "model",
+      }),
+    );
+    clickBox();
+    await say("Put the answer in the question");
+    expect(within(pane()).getByRole("alert").textContent).toBe("That would give the answer away.");
+    expect(pane().querySelector("[data-edit-offer]")).toBeNull();
   });
 
   test("failed turns and turns the guard would reject stay out of the history", () => {

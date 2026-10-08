@@ -287,9 +287,24 @@ export function readThread(lessonId: string): Turn[] {
   }
 }
 
+/** What the stored thread keeps in place of a message that held an identifier. */
+export const REDACTED = "(Removed: it had an email address, an ID number or a pupil’s name.)";
+
+/**
+ * A turn as stored: a message with an identifier (refused before it was sent) is never written to
+ * the browser in clear. Its instruction is emptied too, so it never reaches a follow-up's history.
+ */
+const storable = (t: Turn): Turn =>
+  hasIdentifier(t.said) || hasIdentifier(t.instruction)
+    ? { ...t, said: REDACTED, instruction: "" }
+    : t;
+
 export function writeThread(lessonId: string, thread: readonly Turn[]): void {
   try {
-    window.localStorage.setItem(threadKey(lessonId), JSON.stringify(thread.slice(-THREAD_LIMIT)));
+    window.localStorage.setItem(
+      threadKey(lessonId),
+      JSON.stringify(thread.slice(-THREAD_LIMIT).map(storable)),
+    );
   } catch {
     // Storage full or refused: the thread lives for this page only.
   }

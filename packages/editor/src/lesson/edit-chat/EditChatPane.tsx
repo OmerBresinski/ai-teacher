@@ -328,8 +328,11 @@ export function EditChatPane({
         }));
         return;
       }
-      const alternative: Alternative | undefined = answer.offer
-        ? { label: answer.offer, instruction: answer.offer, scope: target }
+      // An offer that names a pupil (or an email, an ID number) is dropped: tapping it could only
+      // end in the "I can't send that" refusal.
+      const offer = answer.offer && !hasIdentifier(answer.offer) ? answer.offer : undefined;
+      const alternative: Alternative | undefined = offer
+        ? { label: offer, instruction: offer, scope: target }
         : answer.check === "fit"
           ? {
               label: "Try a shorter version",
