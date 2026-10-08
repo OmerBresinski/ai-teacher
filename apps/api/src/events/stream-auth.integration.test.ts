@@ -41,7 +41,7 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
       const auth: StreamAuthorization = {
         kind: "session",
         sessionId: "synthetic-session",
-        expiresAt: Date.now() + (mode === "expired" ? 80 : 10_000),
+        expiresAt: Date.now() + (mode === "expired" ? 300 : 10_000),
         revalidate: async () => {
           calls++;
           if (mode === "refused") return false;
@@ -52,10 +52,13 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
       const runtime = createEventsRuntime({
         jobs: { db: db.unsafeDb } as JobsContext,
         logger: silentLogger,
+        // The replay of the `started` row must win against the first recheck (lookup-failure) and
+        // the expiry (expired). At 20 ms and 80 ms a busy CI runner sometimes lost that race; both
+        // still end the stream well before the 1 s abort below.
         config: {
           heartbeatMs: 10,
           pollMs: 10,
-          authorizationTiming: { recheckMs: 20, maxAgeMs: 100 },
+          authorizationTiming: { recheckMs: 200, maxAgeMs: 500 },
         },
       });
       const controller = new AbortController();
@@ -85,6 +88,8 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
         expect(text).not.toContain("synthetic-private-error");
         if (mode === "refused") expect(text).not.toContain("event: started");
         else if (mode !== "shutdown-race") expect(text).toContain("event: started");
+        // The stream ended on the throwing second lookup, not on the 500 ms maximum age.
+        if (mode === "lookup-failure") expect(calls).toBe(2);
         expect(releases).toBe(1);
         expect(runtime.openStreams(workspaceId)).toBe(0);
         expect(runtime.hub.size()).toBe(0);
