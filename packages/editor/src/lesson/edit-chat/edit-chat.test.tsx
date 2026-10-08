@@ -164,8 +164,13 @@ describe("Edit with Dayback pane", () => {
     );
     clickBox();
     await say("Put the answer in the question");
+    const offer = within(pane()).getByRole("button", { name: "Add a hint instead" });
+    // A long offer wraps inside the pane (no nowrap, no fixed height, capped at the pane width).
+    expect(offer.className).toContain("whitespace-normal");
+    expect(offer.className).toContain("max-w-full");
+    expect(offer.className).toContain("h-auto");
     await act(async () => {
-      fireEvent.click(within(pane()).getByRole("button", { name: "Add a hint instead" }));
+      fireEvent.click(offer);
     });
     expect(onPromptEdit.mock.calls[1]?.[0].instruction).toBe("Add a hint instead");
   });

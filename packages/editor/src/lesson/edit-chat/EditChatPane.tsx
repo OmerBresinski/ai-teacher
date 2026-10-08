@@ -489,11 +489,14 @@ function TurnItem({
           </div>
         ) : null}
         {reply.alternative ? (
-          <div>
+          <div className="min-w-0">
+            {/* An offer is a sentence: it wraps inside the pane rather than running off it. */}
             <Button
               type="button"
               variant="secondary"
               size="xs"
+              data-edit-offer
+              className="h-auto max-w-full justify-start whitespace-normal py-1 text-left leading-snug"
               disabled={busy}
               onClick={() => reply.alternative && onAlternative(reply.alternative)}
             >

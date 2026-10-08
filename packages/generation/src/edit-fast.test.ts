@@ -19,6 +19,7 @@ import {
   editFast,
   leakFaults,
   packEditFast,
+  refusalCheck,
   textToDoc,
 } from "./edit-fast";
 import { editFastPrompt } from "./prompts/edit-fast";
@@ -106,6 +107,47 @@ describe("editFast (TEACH-97 part d)", () => {
     );
     expect(res).toMatchObject({ action: "refuse", reason: EDIT_MESSAGES.wontFit, check: "fit" });
     expect(ai.calls).toHaveLength(2);
+  });
+
+  test("a fit fault in round 1 stays a fit refusal when the retry misses on scope", async () => {
+    const long = Array.from({ length: 120 }, () => "Water warms up and turns into vapour.").join(
+      " ",
+    );
+    const ai = createFakeAi({ script: [answer(T, long), answer("s4/elements/h/text", "Boil")] });
+    const res = await editFast(
+      {
+        lesson: lesson(),
+        slide: contentSlide(),
+        elementId: "b",
+        instruction: "Add four more sentences",
+      },
+      { ai, logger },
+    );
+    expect(res).toMatchObject({ action: "refuse", reason: EDIT_MESSAGES.wontFit, check: "fit" });
+  });
+
+  test("a fit fault in round 1 stays a fit refusal when the retry answers out of shape", async () => {
+    const long = Array.from({ length: 120 }, () => "Water warms up and turns into vapour.").join(
+      " ",
+    );
+    const ai = createFakeAi({ script: [answer(T, long), "not json", "still not json"] });
+    const res = await editFast(
+      {
+        lesson: lesson(),
+        slide: contentSlide(),
+        elementId: "b",
+        instruction: "Add four more sentences",
+      },
+      { ai, logger },
+    );
+    expect(res).toMatchObject({ action: "refuse", reason: EDIT_MESSAGES.wontFit, check: "fit" });
+  });
+
+  test("refusalCheck names a leak, then fit, then direction, else shape", () => {
+    expect(refusalCheck(new Set(["shape", "fit"]))).toBe("fit");
+    expect(refusalCheck(new Set(["fit", "leak"]))).toBe("leak");
+    expect(refusalCheck(new Set(["scope", "direction"]))).toBe("direction");
+    expect(refusalCheck(new Set())).toBe("shape");
   });
 
   test("a stem that now states the keyed answer is refused", async () => {

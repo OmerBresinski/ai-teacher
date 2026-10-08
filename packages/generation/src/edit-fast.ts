@@ -13,7 +13,7 @@ import type { Logger } from "pino";
 import { z } from "zod";
 import { callStructured } from "./call";
 import { type EditFastInput, editFastPrompt } from "./prompts/edit-fast";
-import type { PipelineContext } from "./types";
+import { type PipelineContext, StageFailure } from "./types";
 
 /*
  * Edit with a prompt, fast path (TEACH-97 part d; rulings 171, 172, 173, 175, 176). A teacher
@@ -410,12 +410,24 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
 
   let attempts = 0;
   let retry: EditFastInput["retry"];
-  let lastCheck: "fit" | "leak" | "scope" | "shape" | "direction" = "shape";
+  // Every check that failed, over both rounds: the refusal names the most telling one, so a fit
+  // fault in round 1 is still "won't fit" when the retry then fails on shape or scope.
+  const seen = new Set<FailedCheck>();
   // The direction the edit must move the text: the instruction's own, or, for a bare follow-up
   // ("a bit more"), the last measurable instruction in the thread (TEACH-97 item 4).
   const direction = directionOf(req.instruction, req.history);
   for (let round = 0; round < 2; round++) {
-    const result = await call(retry);
+    let result: Awaited<ReturnType<typeof call>>;
+    try {
+      result = await call(retry);
+    } catch (error) {
+      // A retry that fails to answer in shape keeps the first round's verdict; an abort, a
+      // budget stop or a first-round failure is the route's error, as before.
+      if (round === 0 || seen.size === 0 || signal.aborted || !(error instanceof StageFailure))
+        throw error;
+      seen.add("shape");
+      break;
+    }
     attempts += result.attempts;
     const out = result.output;
     if (out.action === "refuse")
@@ -441,24 +453,24 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
     let faults: string[];
     if ("fault" in applied) {
       faults = [applied.fault];
-      lastCheck = applied.fault.startsWith("scope") ? "scope" : "shape";
+      seen.add(applied.fault.startsWith("scope") ? "scope" : "shape");
     } else {
       if (applied.changes.length === 0)
         return { action: "no-change", reason: EDIT_MESSAGES.noChange, attempts, ms: ms() };
       faults = [];
-      let leaked = false;
       for (const c of applied.changes) {
         const at = targetOf(input.slidePath, c.elementId);
         if (c.text.trim() === "") {
           faults.push(`${at}: the text is empty`);
+          seen.add("shape");
           continue;
         }
         const leak = leakFaults(req.slide, applied.slide, c.elementId);
         const fit = fitFaults(req.slide, applied.slide, c.elementId, req.lesson.themeId);
-        if (leak.length > 0) leaked = true;
+        if (leak.length > 0) seen.add("leak");
+        if (fit.length > 0) seen.add("fit");
         faults.push(...[...leak, ...fit].map((f) => `${at}: ${f}`));
       }
-      lastCheck = leaked ? "leak" : "fit";
       if (faults.length === 0 && direction) {
         const fault = directionFault(
           direction,
@@ -471,7 +483,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
         );
         if (fault) {
           faults.push(`${input.target}: ${fault}`);
-          lastCheck = "direction";
+          seen.add("direction");
         }
       }
       if (faults.length === 0)
@@ -489,15 +501,24 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
       previous: JSON.stringify(out),
     };
   }
-  const reason =
-    lastCheck === "direction" && direction
-      ? directionMessage(direction)
-      : lastCheck === "leak"
-        ? EDIT_MESSAGES.leaksAnswer
-        : lastCheck === "fit"
-          ? EDIT_MESSAGES.wontFit
-          : EDIT_MESSAGES.failed;
-  return { action: "refuse", reason, attempts, ms: ms(), check: lastCheck };
+  const check = refusalCheck(seen);
+  return { action: "refuse", reason: refusalReason(check, direction), attempts, ms: ms(), check };
+}
+
+type FailedCheck = "fit" | "leak" | "scope" | "shape" | "direction";
+
+/** The check a refusal names: a leak first, then fit, then direction, else a shape miss. */
+export function refusalCheck(seen: ReadonlySet<FailedCheck>): FailedCheck {
+  for (const c of ["leak", "fit", "direction", "scope"] as const) if (seen.has(c)) return c;
+  return "shape";
+}
+
+/** The teacher's words for a code refusal. */
+export function refusalReason(check: FailedCheck, direction?: EditDirection): string {
+  if (check === "leak") return EDIT_MESSAGES.leaksAnswer;
+  if (check === "fit") return EDIT_MESSAGES.wontFit;
+  if (check === "direction" && direction) return directionMessage(direction);
+  return EDIT_MESSAGES.failed;
 }
 
 /* ------------------------------------------------------------------ */
