@@ -9,6 +9,9 @@ import {
 } from "@tj/domain/documents/fixtures";
 import pino from "pino";
 import {
+  directionFault,
+  directionMessage,
+  directionOf,
   EDIT_MESSAGES,
   type EditFastOutput,
   EditTargetError,
@@ -209,6 +212,74 @@ describe("editFast (TEACH-97 part d)", () => {
     );
     expect(res.action).toBe("edit");
     expect(ai.calls[1]?.promptText).toContain("outside the selection");
+  });
+
+  test("a follow-up that lengthens after Shorter is retried with the fault", async () => {
+    const history = [
+      { instruction: "Make it shorter", summary: "Made it shorter.", slides: ["s4"] },
+    ];
+    const ai = createFakeAi({
+      script: [
+        answer(T, "Water warms up and turns into a gas called water vapour, slowly and surely."),
+        answer(T, "Water becomes vapour."),
+      ],
+    });
+    const res = await editFast(
+      {
+        lesson: lesson(),
+        slide: contentSlide(),
+        elementId: "b",
+        instruction: "a bit more",
+        history,
+      },
+      { ai, logger },
+    );
+    expect(res.action).toBe("edit");
+    expect(ai.calls[1]?.promptText).toContain("the change did not make it shorter");
+  });
+
+  test("a follow-up that goes the wrong way twice is refused in teacher words", async () => {
+    const history = [
+      { instruction: "Make it shorter", summary: "Made it shorter.", slides: ["s4"] },
+    ];
+    const longer = "Water warms up and turns into a gas called water vapour when heated.";
+    const ai = createFakeAi({ script: [answer(T, longer), answer(T, longer)] });
+    const res = await editFast(
+      {
+        lesson: lesson(),
+        slide: contentSlide(),
+        elementId: "b",
+        instruction: "a bit more",
+        history,
+      },
+      { ai, logger },
+    );
+    expect(res).toMatchObject({
+      action: "refuse",
+      reason: directionMessage("shorter"),
+      check: "direction",
+    });
+  });
+
+  test("directionOf: the instruction's own, else the thread's last measurable one", () => {
+    const h = (...i: string[]) =>
+      i.map((instruction) => ({ instruction, summary: "", slides: [] }));
+    expect(directionOf("Make it shorter")).toBe("shorter");
+    expect(directionOf("a bit more", h("Make it harder", "again"))).toBe("harder");
+    expect(directionOf("a bit more", h("Make it easier", "Use the word kettle"))).toBeUndefined();
+    expect(directionOf("a bit more")).toBeUndefined();
+    expect(directionOf("Use the word kettle", h("Make it shorter"))).toBeUndefined();
+  });
+
+  test("directionFault judges only what it can measure", () => {
+    expect(directionFault("shorter", "abcdef", "abc")).toBeUndefined();
+    expect(directionFault("shorter", "abc", "abcdef")).toContain("3 -> 6 characters");
+    expect(directionFault("harder", "Add 3 and 4", "Add 30 and 45")).toBeUndefined();
+    expect(directionFault("harder", "Add 30 and 45", "Add 3 and 4")).toContain("45 -> 4");
+    expect(directionFault("easier", "Name the gas", "Name it")).toBeUndefined();
+    expect(
+      directionFault("simpler", "Particles vibrate.", "Particles vibrate continuously everywhere."),
+    ).toContain("did not make it simpler");
   });
 
   test("only a text box can be edited", () => {

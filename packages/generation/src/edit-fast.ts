@@ -61,6 +61,10 @@ export const EDIT_MESSAGES = {
   failed: "That edit didn’t work. Try again, or word it differently.",
 } as const;
 
+/** Said when a follow-up twice went the wrong way: names the direction that was asked for. */
+export const directionMessage = (dir: EditDirection): string =>
+  `I couldn’t make it ${dir} this time, so I left it as it was. Try saying exactly what to change.`;
+
 export type EditFastRequest = {
   lesson: Lesson;
   /** The slide as the editor holds it now (it may be ahead of the saved lesson). */
@@ -91,7 +95,7 @@ export type EditFastResult =
       attempts: number;
       ms: number;
       /** Which check refused, when code refused: logged, and picks the pane's one-tap alternative. */
-      check?: "fit" | "leak" | "scope" | "shape" | "model" | undefined;
+      check?: "fit" | "leak" | "scope" | "shape" | "model" | "direction" | undefined;
       /** The model's one-tap offer on its own refusal: an instruction the teacher can send. */
       offer?: string | undefined;
     };
@@ -406,7 +410,10 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
 
   let attempts = 0;
   let retry: EditFastInput["retry"];
-  let lastCheck: "fit" | "leak" | "scope" | "shape" = "shape";
+  let lastCheck: "fit" | "leak" | "scope" | "shape" | "direction" = "shape";
+  // The direction the edit must move the text: the instruction's own, or, for a bare follow-up
+  // ("a bit more"), the last measurable instruction in the thread (TEACH-97 item 4).
+  const direction = directionOf(req.instruction, req.history);
   for (let round = 0; round < 2; round++) {
     const result = await call(retry);
     attempts += result.attempts;
@@ -452,6 +459,21 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
         faults.push(...[...leak, ...fit].map((f) => `${at}: ${f}`));
       }
       lastCheck = leaked ? "leak" : "fit";
+      if (faults.length === 0 && direction) {
+        const fault = directionFault(
+          direction,
+          applied.changes
+            .map((c) =>
+              textOfElement(req.slide.elements.find((e) => e.id === c.elementId) as SlideElement),
+            )
+            .join("\n"),
+          applied.changes.map((c) => c.text).join("\n"),
+        );
+        if (fault) {
+          faults.push(`${input.target}: ${fault}`);
+          lastCheck = "direction";
+        }
+      }
       if (faults.length === 0)
         return {
           action: "edit",
@@ -468,10 +490,91 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
     };
   }
   const reason =
-    lastCheck === "leak"
-      ? EDIT_MESSAGES.leaksAnswer
-      : lastCheck === "fit"
-        ? EDIT_MESSAGES.wontFit
-        : EDIT_MESSAGES.failed;
+    lastCheck === "direction" && direction
+      ? directionMessage(direction)
+      : lastCheck === "leak"
+        ? EDIT_MESSAGES.leaksAnswer
+        : lastCheck === "fit"
+          ? EDIT_MESSAGES.wontFit
+          : EDIT_MESSAGES.failed;
   return { action: "refuse", reason, attempts, ms: ms(), check: lastCheck };
+}
+
+/* ------------------------------------------------------------------ */
+/* Direction: follow-ups keep the last edit's way (TEACH-97 item 4)   */
+/* ------------------------------------------------------------------ */
+
+export type EditDirection = "shorter" | "simpler" | "harder" | "easier";
+
+/** A bare follow-up that repeats the last edit's direction. */
+const FOLLOW_UP =
+  /^\s*(a bit more|a little more|bit more|more|even more|a bit|a little|again|same again|keep going|further)\b[\s.!]*$/i;
+
+function ownDirection(instruction: string): EditDirection | undefined {
+  const i = instruction.toLowerCase();
+  if (/\b(shorten|shorter|trim|cut it)\b/.test(i)) return "shorter";
+  if (/\b(simplif|simpler|easier to read|plainer|weaker readers)/.test(i)) return "simpler";
+  if (/\b(harder|more challenging|top set|stretch them)\b/.test(i)) return "harder";
+  if (/\b(easier|less hard)\b/.test(i)) return "easier";
+  return undefined;
+}
+
+/**
+ * The direction an edit must move the text (research `chain.ts` `directionOf`): the instruction's
+ * own, or for a bare follow-up the latest measurable instruction in the thread.
+ */
+export function directionOf(
+  instruction: string,
+  history?: EditFastRequest["history"],
+): EditDirection | undefined {
+  const own = ownDirection(instruction);
+  if (own || !FOLLOW_UP.test(instruction)) return own;
+  for (const turn of [...(history ?? [])].reverse()) {
+    const d = ownDirection(turn.instruction);
+    if (d) return d;
+    if (!FOLLOW_UP.test(turn.instruction)) return undefined;
+  }
+  return undefined;
+}
+
+const numbersIn = (t: string) => (t.match(/\d+/g) ?? []).map(Number);
+function readability(t: string) {
+  const w = t.split(/\s+/).filter(Boolean);
+  const sentences = t.split(/[.!?\n]+/).filter((x) => x.trim()).length || 1;
+  return {
+    words: w.length,
+    perSentence: w.length / sentences,
+    long: w.filter((x) => x.replace(/\W/g, "").length > 8).length,
+  };
+}
+
+/**
+ * Did the edit move the text the asked-for way (research `directionFault`)? Judged only where it
+ * is measurable: length for shorter, words for simpler, the largest number for harder or easier
+ * when both versions have numbers. The fault is written for the model's retry.
+ */
+export function directionFault(
+  dir: EditDirection,
+  before: string,
+  after: string,
+): string | undefined {
+  if (dir === "shorter" && after.length >= before.length)
+    return `the change did not make it shorter (${before.length} -> ${after.length} characters); make it shorter than it is now`;
+  if (dir === "simpler") {
+    const a = readability(before);
+    const b = readability(after);
+    if (!(b.words < a.words || b.perSentence < a.perSentence || b.long < a.long))
+      return `the change did not make it simpler (words ${a.words} -> ${b.words}, long words ${a.long} -> ${b.long}); use fewer or shorter words than it has now`;
+  }
+  const na = numbersIn(before);
+  const nb = numbersIn(after);
+  if ((dir === "harder" || dir === "easier") && na.length > 0 && nb.length > 0) {
+    const ma = Math.max(...na);
+    const mb = Math.max(...nb);
+    if (dir === "harder" && mb <= ma)
+      return `the numbers did not get harder (largest ${ma} -> ${mb}); make them harder than they are now`;
+    if (dir === "easier" && mb >= ma)
+      return `the numbers did not get easier (largest ${ma} -> ${mb}); make them easier than they are now`;
+  }
+  return undefined;
 }
