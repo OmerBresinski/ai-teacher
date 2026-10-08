@@ -1,5 +1,9 @@
 # A/B response cache (8 Oct)
 
+## How to use
+- Code-only arm: `run.ts --arm <base> --replay <baseRun> --code-arm <arm> [--offline]`, then `metrics.py <arm>/T --paired-with <baseRun>/T`.
+- Prompt arm: run as before (no `--replay`): every call is fresh, so writer variance stays.
+
 Code-side changes (rendering, drawing, layout, gates, metrics) no longer need the prompt stack called
 again. A run replays its base's model responses at $0. Only calls whose compiled request changed go to
 the API.
@@ -72,8 +76,8 @@ python3 BAKEOFF/ab/metrics.py <armRun>/T --paired-with <baseRun>/T
 
 This compares slide by slide, from slide 3, and prints `writerSame` (stream sha equal), `slidesChanged`,
 the per-metric `delta` and each change. Without the flag the output is unchanged: the full run output
-was diffed against the old script. `metrics.py` sits outside git. Backups are in
-`cache/metrics.py.before-paired` and `cache/metrics.py.with-paired`.
+was diffed against the old script. The paired version is committed as `lab/bakeoff/ab/metrics.py`
+(a copy of `BAKEOFF/ab/metrics.py`, which is outside git; the two are identical).
 
 `bun lab/bakeoff/ab/cache-diff.ts <runA> <runB> [--ignore <regex>]` diffs shipped slides, ignoring ids.
 
