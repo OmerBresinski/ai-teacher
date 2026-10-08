@@ -236,7 +236,7 @@ describe("PresentView", () => {
   it("H, L, C, N and ? each toggle their control; Escape closes the sheet, the panel, the tool, then exits", async () => {
     const { onExit } = renderPresent();
     const pressed = (name: string) =>
-      screen.getByRole("button", { name, exact: true }).getAttribute("aria-pressed");
+      screen.getByRole("button", { name }).getAttribute("aria-pressed");
     key("h");
     expect(pressed("Highlighter")).toBe("true");
     key("l");
@@ -247,7 +247,7 @@ describe("PresentView", () => {
     // C collapses the pill to the counter; the tool buttons go with it, and C brings them back.
     key("c");
     expect(screen.getByRole("button", { name: "Expand controls" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Highlighter", exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Highlighter" })).toBeNull();
     key("c");
     expect(screen.getByRole("button", { name: "Collapse controls" })).toBeVisible();
     // N opens the presenter notes; ? the shortcuts sheet on top, grouped.

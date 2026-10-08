@@ -346,7 +346,12 @@ describe("ShapeToolbar label text controls", () => {
     const field = within(panel).getByRole("textbox");
     await waitFor(() => expect(field).toHaveFocus());
     fireEvent.keyDown(field, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Label" })).toBeNull());
+    // A selector, not `queryByRole`: the role query walks the whole editor tree on every retry.
+    await waitFor(
+      () => expect(document.querySelector('[role="dialog"][aria-label="Label"]')).toBeNull(),
+      // A short message instead of the default dump of the whole editor DOM, which takes minutes.
+      { onTimeout: () => new Error("the Label popover is still open after Escape") },
+    );
     expect(container.querySelector("[data-selection-frame]")).not.toBeNull();
     // Present, not `toBeVisible()`: happy-dom's computed-style walk does not finish on this tree.
     expect(toolbar("Shape")).toBeInTheDocument();

@@ -224,7 +224,7 @@ describe("LibraryPage", () => {
       ["Roman source investigation", "10 min"],
       ["Label a flowering plant", "5 min"],
       ["River vocabulary", "5 min"],
-    ]) {
+    ] as const) {
       const card = (await screen.findByText(title)).closest("article, tr");
       expect(card).toHaveTextContent(minutes);
     }
