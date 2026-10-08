@@ -1053,3 +1053,53 @@ async function judgeDirected(
   });
   return call.output;
 }
+
+/**
+ * A generated picture shown to the writer planner's judge (v17) as its one candidate, with the same
+ * gate as a stock pick (`directedGatePasses`). The data URL is exactly the picture the slide will
+ * show (a strip's panel is judged after it is cut and cropped). `onVerdict` gets the whole verdict
+ * (its boxes place the picture's crop). Throws only a budget stop or an abort.
+ */
+export async function judgeMadeDirected(args: {
+  lesson: Lesson;
+  index: number;
+  brief: ImageBrief;
+  deps: PipelineDeps;
+  dataUrl: string;
+  /** The picture is a library hit made for another request. */
+  reuse?: boolean;
+  onVerdict?: (verdict: DirectedVerdict) => void;
+}): Promise<boolean> {
+  const made = {
+    id: "made",
+    width: 1024,
+    height: 1024,
+    alt: args.brief.request ?? args.brief.subject,
+    photographer: "",
+    photographerUrl: "",
+    pageUrl: "made",
+    src: { large: args.dataUrl, medium: args.dataUrl, tiny: args.dataUrl },
+  } as PhotoResult;
+  const verdict = await judgeDirected(
+    {
+      lesson: args.lesson,
+      slide: undefined,
+      slideBrief: args.brief.request,
+      brief: args.brief,
+      images: args.deps.images as PhotoPlacer,
+      deps: args.deps,
+      index: args.index,
+    },
+    [made],
+    [],
+    args.reuse,
+  );
+  args.deps.logger.info({
+    stage: "illustrate",
+    slideIndex: args.index,
+    made: { fits: verdict.fits, why: verdict.why },
+  });
+  args.onVerdict?.(verdict);
+  // One candidate: any pick means this picture (the judge sometimes answers with a caption).
+  return verdict.pick !== null && directedGatePasses(args.brief, verdict);
+}
