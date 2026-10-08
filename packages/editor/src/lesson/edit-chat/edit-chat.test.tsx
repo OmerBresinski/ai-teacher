@@ -478,6 +478,35 @@ describe("late answers and rejected turns", () => {
     expect(textOf(t.read())).toBe(typed);
   }, 15_000);
 
+  test("a late answer while the pane is closed: typing kept, a dot, and “Use this” waiting on reopen", async () => {
+    const d = deferred();
+    const t = setup(d.answer);
+    const { typed } = await typeWhileOut(t);
+    fireEvent.click(within(t.pane()).getByRole("button", { name: "Close Edit with Dayback" }));
+    expect(d.signal()?.aborted).toBe(false);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: t.read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    expect(textOf(t.read())).toBe(typed);
+    const dot = screen.getByRole("button", { name: "Dayback, 1 new reply" });
+    expect(dot.querySelector("[data-edit-chat-dot='reply']")).toBeTruthy();
+    fireEvent.click(dot);
+    const preview = t.pane().querySelector("[data-edit-late]") as HTMLElement;
+    expect(preview.dataset.editLate).toBe("current");
+    expect(preview.querySelector("[data-edit-late-before]")?.textContent).toBe(typed);
+    await act(async () => {
+      fireEvent.click(within(t.pane()).getByRole("button", { name: "Use this" }));
+    });
+    expect(textOf(t.read())).toBe("Late.");
+    expect(t.onPromptEdit).toHaveBeenCalledTimes(1);
+  }, 15_000);
+
   test("“Use this” applies the suggestion at once, as one undoable step", async () => {
     const d = deferred();
     const t = setup(d.answer);

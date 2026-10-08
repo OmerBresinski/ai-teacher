@@ -7,7 +7,7 @@ import { expect, test } from "./fixtures";
  * priority actions fold into More instead.
  */
 
-const WIDTHS = [1024, 1280] as const;
+const WIDTHS = [1024, 1280, 1440] as const;
 
 async function expectInsideViewport(page: Page, target: ReturnType<Page["locator"]>) {
   await expect(target).toBeVisible();
@@ -28,6 +28,15 @@ test.describe("editor top bar at narrow widths", () => {
       await page.goto(paths.lesson("demo-water-cycle"));
       const bar = page.locator("[data-topbar]");
       await expect(bar).toBeVisible();
+      // Deterministic worst case: the web font has swapped in, and the save label reads its
+      // longest ("Unsaved changes"), which it does for a moment after any edit or load-time fix.
+      // Measuring whichever label happened to show made this flaky at 1024.
+      await page.evaluate(() => document.fonts.ready);
+      await bar.locator("[data-save-state]").evaluate((el) => {
+        const label = el.lastChild;
+        if (label?.nodeType === Node.TEXT_NODE) label.textContent = "Unsaved changes";
+      });
+      await expect(bar.locator("[data-save-state]")).toHaveText("Unsaved changes");
 
       await expectInsideViewport(page, bar.getByRole("button", { name: "Rename lesson" }));
       const present = bar.getByRole("button", { name: "Present", exact: true });
