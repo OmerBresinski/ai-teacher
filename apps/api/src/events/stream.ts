@@ -72,7 +72,12 @@ export function streamJobEvents(
         finish();
         stream.abort();
       };
-      const lease = streamAuthorizationLease(opts.authorization, abort, opts.authorizationTiming);
+      const timing =
+        opts.authorizationTiming ??
+        (runtime.config.authorizationRecheckMs === undefined
+          ? undefined
+          : { recheckMs: runtime.config.authorizationRecheckMs });
+      const lease = streamAuthorizationLease(opts.authorization, abort, timing);
 
       stream.onAbort(finish);
       c.req.raw.signal.addEventListener("abort", abort, { once: true });

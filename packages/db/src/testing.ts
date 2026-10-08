@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { newId, type UserId, type WorkspaceId } from "@tj/domain";
 import { sql as rawSql } from "drizzle-orm";
 import postgres from "postgres";
@@ -39,18 +40,24 @@ const migrated = new Set<string>();
  * });
  * ```
  *
- * The connection targets `TEST_DATABASE_URL` only, never `DATABASE_URL`, so a test run cannot
- * wipe development data. Concurrent test processes (turbo runs packages in parallel) are
- * serialised with an advisory lock held until `close()` — **always call `close()` in `afterAll`**. Truncation covers every table in the schema; add new tenant tables to
- * `truncateTenantTables` when they land (the invariant test in `schema.test.ts` reminds you).
+ * The connection targets a database derived from `TEST_DATABASE_URL` only, never `DATABASE_URL`,
+ * so a test run cannot wipe development data. Each package gets its own database,
+ * `<TEST_DATABASE_URL database>_<package directory>` (`packageTestDatabaseUrl`), created on first
+ * use, so packages that turbo runs in parallel never truncate each other's rows. Test processes of
+ * the same package are still serialised with an advisory lock held until `close()` — **always
+ * call `close()` in `afterAll`**. Truncation covers every table in the schema; add new tenant
+ * tables to `truncateTenantTables` when they land (the invariant test in `schema.test.ts` reminds
+ * you).
  */
 export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestDbResult> {
-  const url = process.env.TEST_DATABASE_URL;
-  if (!url) {
+  const base = process.env.TEST_DATABASE_URL;
+  if (!base) {
     return unavailable("TEST_DATABASE_URL is not set (run `bun run test:db`)");
   }
+  const url = packageTestDatabaseUrl(base);
   let lock: postgres.Sql;
   try {
+    await ensureDatabase(base, url);
     lock = await acquireTestDbLock(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -99,12 +106,43 @@ function unavailable(reason: string): WithTestDbResult {
 }
 
 /**
- * Cross-process serialisation of the test database. `turbo run test` runs `@tj/db`, `@tj/jobs`
- * and `@tj/api` in parallel and they all `TRUNCATE … CASCADE` the same `TEST_DATABASE_URL`, so
- * without coordination one package wipes the rows another one just inserted. Every
- * `withTestDb()` holds a Postgres **session-level advisory lock** (on a dedicated connection)
- * from here until `close()`; other processes block in `pg_advisory_lock` until it is released.
- * A process that dies without calling `close()` releases the lock when its connection drops.
+ * The test database for the package whose tests are running: `TEST_DATABASE_URL` with
+ * `_<package directory>` appended to the database name (`teaching_journey_test_api` for
+ * `apps/api`). `bun test` runs from the package directory under turbo, so the name follows the
+ * package. Until TEACH-190 part e every package shared one database behind one advisory lock, and
+ * the DB suites of @tj/api, @tj/db, @tj/jobs and @tj/worker took turns (35 to 55 s of waiting each
+ * in CI).
+ */
+export function packageTestDatabaseUrl(base: string, cwd: string = process.cwd()): string {
+  const url = new URL(base);
+  const suffix = basename(cwd)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
+  url.pathname = `/${url.pathname.slice(1)}_${suffix}`;
+  return url.toString();
+}
+
+/** Creates `url`'s database through the `base` connection when it does not exist yet. */
+async function ensureDatabase(base: string, url: string): Promise<void> {
+  const name = new URL(url).pathname.slice(1);
+  const admin = postgres(base, { max: 1, onnotice: () => undefined });
+  try {
+    const [row] = await admin`select 1 from pg_database where datname = ${name}`;
+    if (!row) await admin.unsafe(`create database "${name}"`);
+  } catch (err) {
+    // Another process may create the same database between the check and the create.
+    if (!(err instanceof Error && /already exists/.test(err.message))) throw err;
+  } finally {
+    await admin.end({ timeout: 5 });
+  }
+}
+
+/**
+ * Serialisation of one package's test database across processes (two runs of the same package,
+ * or a package's files run by hand next to turbo). Every `withTestDb()` holds a Postgres
+ * **session-level advisory lock** (on a dedicated connection) from here until `close()`; other
+ * processes on the same database block in `pg_advisory_lock` until it is released. A process that
+ * dies without calling `close()` releases the lock when its connection drops.
  */
 const TEST_DB_LOCK_KEY = 7_324_001;
 

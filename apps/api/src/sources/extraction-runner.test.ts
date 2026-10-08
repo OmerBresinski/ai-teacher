@@ -104,8 +104,10 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
   });
 
   test("concurrency: one slot + one queue position; the third upload is refused before spawning", async () => {
+    // The checks below happen within ~100 ms; 1 s leaves room on a slow runner and is what both
+    // hung children wait out at the end.
     const r = runner({
-      deadlineMs: 5_000,
+      deadlineMs: 1_000,
       maxConcurrent: 1,
       maxQueue: 1,
       childEnv: { FAKE_CHILD_MODE: "hang" },
@@ -125,7 +127,7 @@ describe("ChildProcessExtractionRunner (fake child)", () => {
 
   test("a queued upload whose client aborts leaves the queue without running", async () => {
     const r = runner({
-      deadlineMs: 5_000,
+      deadlineMs: 1_000,
       maxConcurrent: 1,
       maxQueue: 2,
       childEnv: { FAKE_CHILD_MODE: "hang" },

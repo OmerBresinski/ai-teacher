@@ -134,7 +134,7 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
-          --health-interval 5s
+          --health-interval 1s
           --health-timeout 5s
           --health-retries 12
     env:
@@ -164,8 +164,10 @@ jobs:
       - name: bun run eval:schema
         run: bun run eval:schema
 
+      # Pushes to master only (TEACH-190 part e): nothing downloads this artifact, and on a PR the
+      # step cost about 33 s, most of it the upload glob walking the workspace.
       - name: Upload coverage
-        if: always() && hashFiles('**/coverage/**') != ''
+        if: always() && github.event_name == 'push' && hashFiles('**/coverage/**') != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage
