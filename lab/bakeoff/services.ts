@@ -1,6 +1,7 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   appendFileSync,
   existsSync,
@@ -63,7 +64,7 @@ import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/src/templates/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
-import { AB_CONFIG, type AbArm, abArm, abR1t3, abShared, abStageBank } from "./ab/arms";
+import { AB_CONFIG, type AbArm, abArm, abPolish, abR1t3, abShared, abStageBank } from "./ab/arms";
 import { locale, localise } from "./locale";
 
 export const ROUNDS =
@@ -549,6 +550,64 @@ export type PhotoResult = {
 };
 
 /** The picture services for one run; `costs` collects bank and director spend. */
+/** polish arm: one picture slot's stage timings (search, generate, judge = shortlist + judge). */
+export type PicRecord = {
+  key: string;
+  t0: number;
+  holdMs?: number;
+  stages: Record<string, { n: number; ms: number; errs: string[] }>;
+};
+const picStore = new AsyncLocalStorage<PicRecord>();
+/** Time `f` as `stage` of the slot in scope (polish arm only; otherwise just `f`). */
+export async function picTimed<T>(stage: string, f: () => Promise<T>): Promise<T> {
+  const rec = picStore.getStore();
+  if (!rec) return f();
+  const t = Date.now();
+  rec.stages[stage] ??= { n: 0, ms: 0, errs: [] };
+  const st = rec.stages[stage];
+  try {
+    return await f();
+  } catch (e) {
+    st.errs.push(String((e as Error)?.name === "TimeoutError" ? `timeout: ${e}` : e).slice(0, 160));
+    throw e;
+  } finally {
+    st.n += 1;
+    st.ms += Date.now() - t;
+  }
+}
+/**
+ * The `pic-timing` line: total and per-stage time and, for a slot with no picture, the cause: the
+ * run cap's hold refused after waiting (the 60 s holdWhenFree wait), the slot aborted (a flow job
+ * the slide did not take), a stage's timeout or error, or nothing found.
+ */
+export function picTiming(
+  rec: PicRecord,
+  ok: boolean,
+  signal: AbortSignal | undefined,
+  ledger: Pick<Ledger, "committed" | "capUsd">,
+) {
+  const ms = Date.now() - rec.t0;
+  const errs = Object.entries(rec.stages).flatMap(([k, v]) => v.errs.map((e) => `${k}: ${e}`));
+  const cause = ok
+    ? undefined
+    : rec.holdMs === undefined
+      ? `cap hold refused after ${ms} ms (committed $${ledger.committed.toFixed(4)} of $${ledger.capUsd})`
+      : signal?.aborted
+        ? `aborted: ${String(signal.reason ?? "").slice(0, 80)}`
+        : (errs.find((e) => /timeout|abort/i.test(e)) ??
+          errs[0] ??
+          (Object.keys(rec.stages).length ? "no picture passed" : "no stage ran"));
+  return {
+    ev: "pic-timing",
+    key: rec.key,
+    ok,
+    ms,
+    holdMs: rec.holdMs ?? null,
+    stages: rec.stages,
+    ...(cause ? { cause } : {}),
+  };
+}
+
 export function pictureService(opts: {
   /** The lesson's picture style and theme palette, read when each generation starts. */
   styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
@@ -595,6 +654,11 @@ export function pictureService(opts: {
     opts.ledger,
     imageEstimate,
   );
+  // polish arm (uk-seasons addendum): each picture slot's stages (search, generate, judge) timed,
+  // with the cause when it ends with no picture, in log.jsonl as `pic-timing`.
+  const genGenerate = gen.generate.bind(gen);
+  (gen as { generate: unknown }).generate = (a: never) =>
+    picTimed("generate", () => genGenerate(a));
   const pex = im.createPexelsClient({ apiKey: key(".dayback-pexels-key") });
   const commons = im.createCommonsClient();
   const images = {
@@ -685,7 +749,27 @@ export function pictureService(opts: {
       base: Record<string, unknown>;
     },
   ): Promise<PhotoResult | undefined> {
-    return guarded(opts.ledger, `picture ${ask.key}`, STEP_EST.picture, () => findOne(ask, lesson));
+    if (!abPolish())
+      return guarded(opts.ledger, `picture ${ask.key}`, STEP_EST.picture, () =>
+        findOne(ask, lesson),
+      );
+    const rec: PicRecord = { key: ask.key, t0: Date.now(), stages: {} };
+    const logRun = (e: object) =>
+      appendFileSync(`${opts.runDir}/log.jsonl`, `${JSON.stringify({ t: Date.now(), ...e })}\n`);
+    const out = await picStore.run(rec, () =>
+      guarded(
+        opts.ledger,
+        `picture ${ask.key}`,
+        STEP_EST.picture,
+        () => {
+          rec.holdMs = Date.now() - rec.t0;
+          return findOne(ask, lesson);
+        },
+        logRun,
+      ),
+    );
+    logRun(picTiming(rec, out !== undefined, ask.signal, opts.ledger));
+    return out;
   }
   async function findOne(
     ask: PhotoAsk,
@@ -706,8 +790,9 @@ export function pictureService(opts: {
     };
     const poolImages = {
       ...images,
-      search: (q: string, o: object) => images.search(q, o).then(note),
-      searchCommons: (q: string, o: object) => images.searchCommons(q, o).then(note),
+      search: (q: string, o: object) => picTimed("search", () => images.search(q, o)).then(note),
+      searchCommons: (q: string, o: object) =>
+        picTimed("search", () => images.searchCommons(q, o)).then(note),
     };
     const deps = {
       ai,
@@ -730,9 +815,9 @@ export function pictureService(opts: {
       ...(ask.aspect ? { aspect: Math.round(ask.aspect * 100) / 100 } : {}),
     };
     const at = (x: unknown) =>
-      pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never).catch(
-        () => ({ outcome: "empty" }),
-      );
+      picTimed("judge", () =>
+        pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never),
+      ).catch(() => ({ outcome: "empty" }));
     // Illustration lessons: generic pictures are generated in the lesson's style (no stock photos);
     // named real things still come from Commons and Pexels (ruling 163 unchanged).
     // The director's route decides what is a real thing (brief.specific), not the arm's flag: the

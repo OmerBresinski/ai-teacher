@@ -48,6 +48,26 @@ export function useJudgeVersion(v: string): void {
     throw new Error(`unknown picture judge ${v}`);
   judgeVersion = v as typeof judgeVersion;
 }
+/**
+ * BAKEOFF polish arm (rootcause/uk-seasons.md fault 3): the judge sees each candidate at this long
+ * side with detail high, not the 280x200 thumbnail at detail low. Undefined (every other arm): tiny.
+ */
+let judgeLong: number | undefined;
+export function useJudgeImage(long?: number): void {
+  judgeLong = long;
+}
+/** BAKEOFF polish arm: a pixel gate over the judge's pool (dull, washed-out frames). None by default. */
+let photoGate: ((c: PhotoResult) => Promise<boolean>) | undefined;
+export function usePhotoGate(g?: (c: PhotoResult) => Promise<boolean>): void {
+  photoGate = g;
+}
+/** A candidate's URL at `long` px on its long side: Pexels resizes on the CDN; others use large. */
+export function judgeImageUrl(c: PhotoResult, long: number): string {
+  const big = c.src.large ?? c.src.medium ?? c.src.tiny;
+  if (!/^https:\/\/images\.pexels\.com\//.test(big)) return big;
+  const side = (c.width ?? 0) >= (c.height ?? 0) ? `w=${long}` : `h=${long}`;
+  return `${big.split("?")[0]}?auto=compress&cs=tinysrgb&${side}`;
+}
 const judgePrompt = () =>
   judgeVersion === pickOrRequeryPromptV20.version ? pickOrRequeryPromptV20 : pickOrRequeryPrompt;
 const judgeSchemaFor = (brief: Pick<ImageBrief, "mustShow">) =>
@@ -543,6 +563,17 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     // round there is no search left to run.
     const unlisted = pool.length > 0 && shortlisted.length === 0;
     if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
+    // BAKEOFF polish arm: dull or washed-out frames leave the pool before the judge sees it.
+    if (photoGate) {
+      const keep = await Promise.all(
+        shortlisted.map((c) => (photoGate as NonNullable<typeof photoGate>)(c)),
+      );
+      const dropped = shortlisted.filter((_, i) => !keep[i]).map((c) => c.id);
+      if (dropped.length) {
+        deps.logger.info({ stage: "illustrate", slideIndex: index, photoGateDropped: dropped });
+        shortlisted.splice(0, shortlisted.length, ...shortlisted.filter((_, i) => keep[i]));
+      }
+    }
     const verdict = await judge(args, shortlisted, tried);
     deps.logger.info({
       stage: "illustrate",
@@ -793,8 +824,15 @@ async function judge(
     },
     schema: judgeSchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,
-    images: pool.map((c) => ({ id: c.id, url: c.src.tiny })),
-    ...(judgeImageDetail() ? { imageDetail: judgeImageDetail() } : {}),
+    images: pool.map((c) => ({
+      id: c.id,
+      url: judgeLong ? judgeImageUrl(c, judgeLong) : c.src.tiny,
+    })),
+    ...(judgeLong
+      ? { imageDetail: "high" as const }
+      : judgeImageDetail()
+        ? { imageDetail: judgeImageDetail() }
+        : {}),
   });
   return call.output;
 }

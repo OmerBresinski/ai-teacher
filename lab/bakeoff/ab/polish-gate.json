@@ -1,0 +1,8 @@
+{
+  "colourMin": 0.101,
+  "rmsMin": 0.137,
+  "hazeMax": 0.41,
+  "active": ["colour"],
+  "n": 17,
+  "set": "base4 accepted stock pictures (b3-r2-1, b3-r2-2, nz-uk); 5th pct colour and rms, 95th pct haze"
+}

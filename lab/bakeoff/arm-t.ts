@@ -9,7 +9,8 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
-import { abArm, abFiles, abLib, abR1t3, abR2 } from "./ab/arms";
+import { abArm, abFiles, abLib, abPolish, abR1t3, abR2 } from "./ab/arms";
+import { polishTitleLead } from "./ab/polish";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
@@ -268,7 +269,14 @@ export function toInput(
   const lead = s.lead == null ? undefined : str(s.lead);
   switch (template) {
     case "title":
-      return { template, heading, lead, figure: fig("picture") };
+      // polish arm (uk-seasons fault 1): the subtitle is code's, never the writer's lead (24/24
+      // base4 leads were the flow's slide-1 recall prompt).
+      return {
+        template,
+        heading,
+        lead: abPolish() ? polishTitleLead(ctx.brief) : lead,
+        figure: fig("picture"),
+      };
     case "objectives":
       return {
         template,

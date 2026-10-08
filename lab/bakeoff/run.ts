@@ -3,9 +3,15 @@
 //        [--no-visuals] [--no-notes] [--no-repair] [--no-render] <brief-id> [...]
 // Keys are read from ~/.dayback-openai-key and ~/.dayback-pexels-key (never printed).
 import { existsSync, readFileSync } from "node:fs";
-import { useJudgeVersion } from "../../packages/generation/src/stages/illustrate";
+import {
+  useJudgeImage,
+  useJudgeVersion,
+  usePhotoGate,
+} from "../../packages/generation/src/stages/illustrate";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
-import { isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
+import { setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
+import { abPolish, isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
+import { photoGate } from "./ab/polish";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
 import { renderLesson } from "./render";
@@ -43,6 +49,12 @@ if (isAbArm(armArg)) setAbArm(armArg);
 useJudgeVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).judge);
 // Round 6: the arm's picture director (dir-stage and y1fix = v12; every other arm v11).
 useDirectorVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).director);
+// polish arm (rootcause/uk-seasons.md): renderer fixes, 768 px judge input and the photo gate.
+if (abPolish()) {
+  setDiagramPolish(true);
+  useJudgeImage(768);
+  usePhotoGate(photoGate((e) => console.error(JSON.stringify({ t: Date.now(), ...e }))));
+}
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));

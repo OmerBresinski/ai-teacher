@@ -38,6 +38,7 @@ export const AB_ARMS = [
   "y1fix",
   "lib",
   "locale",
+  "polish",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -59,6 +60,7 @@ export const AB_CONFIG: Record<
     r1t3?: boolean;
     stageBank?: boolean;
     lib?: boolean;
+    polish?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -264,6 +266,19 @@ export const AB_CONFIG: Record<
     delta:
       "base4 with the teacher's country in place of England (writer, objectives, objective repair); England byte-exact",
   },
+  // polish (9 Oct, rootcause/uk-seasons.md): base4 + code fixes (ab/polish.ts): code's title
+  // subtitle, snug flow/cycle nodes, label gap gate, strips kind, 768 px judge input, photo gate,
+  // per-stage picture timings. Writer files = base4's until arms3/polish/REQUEST.md lands.
+  polish: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    delta:
+      "base4 + code fixes: code title subtitle, snug nodes, label gap gate, strips kind, 768 px judge, photo gate, picture stage timings",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -312,6 +327,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   y1fix: { ref: "b4-r1t" },
   lib: { ref: "base4" },
   locale: { ref: "base4" },
+  polish: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -329,6 +345,8 @@ export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false)
 /** y1fix bank rule: stage requests never reuse stock bank rows. */
 export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank) : false);
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
+/** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
+export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
 export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */

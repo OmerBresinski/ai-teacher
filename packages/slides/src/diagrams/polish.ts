@@ -152,9 +152,19 @@ export type Strips = z.infer<typeof StripsSchema>;
 /** The strips' colours from the kit: the key-words callout tone (amber) for day, ink for night. */
 export function stripColours(c: Palette, dark: boolean, themeId?: string) {
   const tone = calloutTones({ id: themeId ?? "", dark } as never)["key-words"];
-  if (dark)
-    return { day: tone.icon, sun: tone.fill, night: mix(c.ink, c.surface, 0.3), moon: tone.ink };
-  return { day: tone.line, sun: tone.icon, night: mix(c.ink, c.surface, 0.9), moon: tone.fill };
+  // The kit tokens each role may take; the one with the most contrast against its ground wins.
+  // The first option at 3:1 against its ground (the kit's order of preference), else the strongest.
+  const best = (ground: string, options: string[]) =>
+    options.find((o) => contrastRatio(o, ground) >= 3) ??
+    options.reduce((a, b) => (contrastRatio(b, ground) > contrastRatio(a, ground) ? b : a));
+  const night = dark ? mix(c.ink, c.surface, 0.2) : mix(c.ink, c.surface, 0.9);
+  const day = best(night, dark ? [tone.icon, tone.ink] : [tone.line, tone.fill]);
+  return {
+    day,
+    sun: best(day, [tone.icon, tone.ink, tone.fill, c.ink, c.surface]),
+    night,
+    moon: best(night, [tone.fill, tone.ink, c.surface, c.bg, tone.icon]),
+  };
 }
 
 const sunMark = (cx: number, cy: number, r: number, fill: string) => {
@@ -185,7 +195,7 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
   const stripW = w - labelW - countW - pad * 2;
   const gap = Math.max(1, Math.min(4, (stripW / s.units) * 0.1));
   const u = (stripW - gap * (s.units - 1)) / s.units;
-  if (u < 10) {
+  if (u < 6) {
     x.faults?.push(`the strips' ${s.units} units are too narrow for the space`);
     return "";
   }
