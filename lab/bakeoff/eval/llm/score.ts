@@ -83,16 +83,18 @@ export const verifyCite = (
   return hay.includes(norm(c.quote).split(" ").slice(0, 8).join(" "));
 };
 
-// Fix 3 (eval v2): the model's own `look` is the backstop for an omitted check. In base5-1 y2 the model
-// listed slide 12 (a practice slide: "Draw a rectangle. Split it into halves. Shade one half.") in o1's
-// `look` and then cited no check at all. The slide was in the request in full; the output was complete JSON
-// of about 700 tokens against a cap of 8,000; and the user turn has no slide cap or kind filter beyond
-// teach/question. So it was an omission, not truncation. When an objective has no verified check, a question
-// slide after the first teaching slide that the model listed in `look` counts, and is named in checkedFromLook.
+// Fault 3 (base5-1 y2 s12): the model listed practice slide 12 in o1's `look` and then cited no check. The
+// slide was in the request in full; the output was complete JSON of about 700 tokens against a cap of 8,000;
+// the user turn has no slide cap or kind filter beyond teach/question. So it was an omission, not truncation.
+// v2 counted such look-only slides; v3 does not (coordinator, 9 Oct: too lenient). A look-only slide would
+// count only if it is a question slide AND the model cited it for this objective with a quote that passes the
+// same check as any citation, AND the model did not mark it failing; the first two together are already a
+// verified check, and the schema has no "fails" field, so nothing extra ever counts. Look-only slides are
+// reported in lookOnly (with the reason) for the prompt fix to be measured against; they never score.
 export function summariseObjectives(
   d: { slides: Slide[]; objectives: { id: string; text: string }[] },
   o: { objectives: ObjectiveRow[] },
-  opts: { lookBackstop?: boolean; text?: (s: Slide) => string } = {},
+  opts: { text?: (s: Slide) => string } = {},
 ) {
   const sl: Record<number, Slide> = Object.fromEntries(d.slides.map((s) => [s.n, s]));
   const text = opts.text ?? objectivesSlideText;
@@ -107,16 +109,18 @@ export function summariseObjectives(
     const ok = (c: Cite, role: string) => verifyCite(sl, c, role, text);
     const taught = [...new Set(r.taught.filter((c) => ok(c, "teach")).map((c) => c.slide))];
     const checked = [...new Set(r.checked.filter((c) => ok(c, "question")).map((c) => c.slide))];
-    const fromLook =
-      opts.lookBackstop === false || checked.length
-        ? []
-        : lookSlides(r.look).filter((n) => sl[n]?.role === "question" && n > firstTeach);
+    const lookOnly = lookSlides(r.look)
+      .filter((n) => sl[n]?.role === "question" && n > firstTeach && !checked.includes(n))
+      .map((n) => ({
+        slide: n,
+        reason: r.checked.some((c) => c.slide === n) ? "cite quote failed" : "no cite",
+      }));
     return {
       id: ob.id,
       text: ob.text,
       taught,
-      checked: checked.length ? checked : fromLook,
-      checkedFromLook: fromLook,
+      checked,
+      lookOnly,
       unverified: [
         ...r.taught.filter((c) => !ok(c, "teach")),
         ...r.checked.filter((c) => !ok(c, "question")),

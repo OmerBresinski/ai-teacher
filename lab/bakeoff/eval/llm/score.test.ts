@@ -94,12 +94,13 @@ describe("fix 2: a drawn table is shown by its cells, not only its alt", () => {
   });
 });
 
-describe("fix 3: an omitted check is backed by the model's own look list", () => {
+describe("fault 3: a look-only slide is reported, never counted (v3)", () => {
   // base5-1 y2: o1's look listed practice slide 12, checked was empty.
   const deck = {
     objectives: [
       { id: "o1", text: "Recognise halves and quarters of shapes." },
       { id: "o2", text: "Find half of a number." },
+      { id: "o3", text: "Calculate a mean rate." },
     ],
     slides: [
       ask(2, ["What is half of 4?"]),
@@ -107,6 +108,10 @@ describe("fix 3: an omitted check is backed by the model's own look list", () =>
       teach(6, ["Share 10 counters into two equal groups."]),
       ask(11, ["Find half of 18 apples."]),
       ask(12, ["Draw a rectangle. Split it into halves. Shade one half."]),
+      ask(13, [
+        "Calculate a mean rate",
+        "A reaction makes 48 cm³ in 60 s. Calculate its mean rate in cm³/s.",
+      ]),
     ],
   };
   const resp = {
@@ -123,30 +128,35 @@ describe("fix 3: an omitted check is backed by the model's own look list", () =>
         taught: [{ slide: 6, quote: "Share 10 counters into two equal groups." }],
         checked: [{ slide: 11, quote: "Find half of 18 apples." }],
       },
+      // polish2-1 y11: cited, but the quote merges the heading into the question, so it fails.
+      {
+        id: "o3",
+        look: "13",
+        taught: [],
+        checked: [{ slide: 13, quote: "Calculate a mean rate in cm³/s." }],
+      },
     ],
   };
-  test("a question slide in look counts when no check was cited", () => {
-    const [o1] = summariseObjectives(deck, resp);
-    expect(o1.checked).toEqual([12]);
-    expect(o1.checkedFromLook).toEqual([12]);
+  const [o1, o2, o3] = summariseObjectives(deck, resp);
+  test("a question slide in look with no cite does not count (v1 behaviour)", () => {
+    expect(o1.checked).toEqual([]);
+    expect(o1.lookOnly).toEqual([{ slide: 12, reason: "no cite" }]);
   });
-  test("a retrieval slide before the first teaching slide never counts", () => {
-    expect(summariseObjectives(deck, resp)[0].checked).not.toContain(2);
+  test("a cited slide whose quote fails the check does not count either", () => {
+    expect(o3.checked).toEqual([]);
+    expect(o3.lookOnly).toEqual([{ slide: 13, reason: "cite quote failed" }]);
   });
-  test("verified checks win; look adds nothing when one exists", () => {
-    const [, o2] = summariseObjectives(deck, resp);
+  test("retrieval slides before the first teaching slide, and verified checks, are not look-only", () => {
+    expect(o1.lookOnly.map((x) => x.slide)).not.toContain(2);
     expect(o2.checked).toEqual([11]);
-    expect(o2.checkedFromLook).toEqual([]);
+    expect(o2.lookOnly).toEqual([{ slide: 12, reason: "no cite" }]);
   });
-  test("teaching slides in look never become checks, and taught is never backed by look", () => {
+  test("teaching slides in look never become checks", () => {
     const r = summariseObjectives(deck, {
       objectives: [{ id: "o1", look: "3", taught: [], checked: [] }],
     });
     expect(r[0].checked).toEqual([]);
-    expect(r[0].taught).toEqual([]);
-  });
-  test("the backstop can be switched off (v1 behaviour)", () => {
-    expect(summariseObjectives(deck, resp, { lookBackstop: false })[0].checked).toEqual([]);
+    expect(r[0].lookOnly).toEqual([]);
   });
   test("look parsing takes lists, ranges and words", () => {
     expect(lookSlides("3, 4, 5, 12")).toEqual([3, 4, 5, 12]);
