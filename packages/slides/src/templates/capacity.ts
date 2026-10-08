@@ -303,7 +303,7 @@ const DIA = {
   },
 };
 
-function inputFor(
+export function inputFor(
   doc: TemplateDoc,
   v: TemplateDoc["variants"][number],
   n: number,

@@ -16,7 +16,8 @@
     "./reflow": "./src/reflow.ts",
     "./worksheet": "./src/worksheet/index.ts",
     "./diagrams": "./src/diagrams/index.ts",
-    "./templates": "./src/templates/index.ts"
+    "./templates": "./src/templates/index.ts",
+    "./templates/pupil-words": "./src/templates/pupil-words.ts"
   },
   "scripts": {
     "lint": "biome check .",
