@@ -17,7 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PipelineDeps } from "../types";
-import { isFatal } from "../writer/services";
+import { isFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   type PlacedPhoto,
@@ -487,10 +487,12 @@ export async function findDirected(args: {
       queries: artefactQueries(req.text, req.period),
       specific: true,
     };
-    const got = await args.stock(artefact).catch((error: unknown) => {
-      if (isFatal(error) || deps.signal.aborted) throw error;
-      return undefined;
-    });
+    const got = await args.stock(artefact).catch(
+      whenNonFatal(() => {
+        if (deps.signal.aborted) throw deps.signal.reason;
+        return undefined;
+      }),
+    );
     if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
   }
   log({ via: out.via, ms: out.ms });
@@ -654,12 +656,17 @@ export async function placeWriterPicture(args: {
       images: args.images,
       deps,
       taken,
-    }).catch((error: unknown) => {
+    }).catch(
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
-      if (isFatal(error) || deps.signal.aborted) throw error;
-      deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "stock failed");
-      return { outcome: "empty" as const };
-    });
+      whenNonFatal((error: unknown) => {
+        if (deps.signal.aborted) throw deps.signal.reason;
+        deps.logger.info(
+          { stage: "illustrate", slideIndex: ask.index, err: error },
+          "stock failed",
+        );
+        return { outcome: "empty" as const };
+      }),
+    );
     return r.outcome === "placed" ? r.photo : undefined;
   };
   try {
