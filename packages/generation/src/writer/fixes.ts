@@ -351,6 +351,24 @@ export function stripPointing(text: string): string {
  * the slide's steps, in order; any other kind's figure is dropped and code removes the sentences
  * that point at it.
  */
+/** seqSteps (BAKEOFF base4f): a flow spec's labelled links as steps, in the writer's order. */
+export function linkSteps(spec: Record<string, unknown> | undefined): string[] {
+  const n0 = spec?.nodes;
+  const l0 = spec?.links;
+  const nodes = Array.isArray(n0) ? n0.map((x) => str(x)) : [];
+  const links = Array.isArray(l0) ? (l0 as Record<string, unknown>[]) : [];
+  const out = links
+    .filter((l) => str(l?.label).trim())
+    .map((l) => {
+      const a = nodes[Number(l.from)] ?? "";
+      const b = nodes[Number(l.to)] ?? "";
+      const lab = str(l.label).trim();
+      if (!a || !b) return "";
+      return a === b ? `${a}: ${lab}` : `${a} \u2192 ${b}: ${lab}`;
+    })
+    .filter(Boolean);
+  return out.length === links.length ? out : [];
+}
 export function fixedFallback(
   slide: S,
   lost: { type: string; kind?: string; labels?: string[] },

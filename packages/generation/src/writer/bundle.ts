@@ -12,7 +12,12 @@ import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
  * bundle's sha256 pins.
  */
 
-type Prompts = typeof base4;
+/** Every bundle's files as strings (each generated module types its own bytes as literals). */
+type Prompts = {
+  [K in keyof typeof base4]: K extends "WRITER_PROMPT_SHA256"
+    ? Record<keyof (typeof base4)[K], { file: string; sha256: string; pinned: boolean }>
+    : string;
+};
 export type WriterBundle = Omit<Prompts, "WRITER_PROMPT_SHA256"> & {
   id: string;
   /** sha256 of each file as pinned in the lab. */
