@@ -13,7 +13,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import * as P from "./prompts.ts";
-import { objectivesSlideText, slideText, summariseObjectives } from "./score.ts";
+import {
+  objectivesSlideText,
+  slideText,
+  summariseObjectives,
+  withObjectivesRoles,
+} from "./score.ts";
 
 const WT =
   process.env.EVAL_WT ?? "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/bake-eval";
@@ -183,7 +188,8 @@ async function doRun(runArg: string) {
   }
   // 2. objectives
   if (want("objectives") && d.objectives.length) {
-    const user = P.objectivesUser(d, objectivesSlideText);
+    // v4: slides are marked teaching/question by what pupils do on them (score.ts objectivesRole).
+    const user = P.objectivesUser(withObjectivesRoles(d), objectivesSlideText);
     md.push(
       `### 2. Objectives taught and checked (${P.VERSIONS.objectives})\n\nUSER (this run):\n\n\`\`\`\n${user}\n\`\`\``,
     );

@@ -7,7 +7,8 @@ type Q = { text: string; options: string[] };
 export type Slide = {
   n: number;
   role: string;
-  texts: { text: string }[];
+  kind?: string;
+  texts: { text: string; name?: string }[];
   questions: Q[];
   pictures: Pic[];
 };
@@ -67,8 +68,149 @@ export const lookSlides = (look: string | undefined) => {
   return [...out];
 };
 
-// A cite counts when its slide has the right role and the first 8 words of its quote appear on that slide
-// (text the model was shown, plus questions and options).
+/* ---------- v4 (N1/F1): a slide's role in the objectives job comes from what pupils do on it ---------- */
+// deck.py sets `role` from the slide's kind, and the other jobs (answerable, reader, visual fit) keep that role so
+// their requests stay byte-identical. The objectives job re-derives it here: a slide is a check ("question") when it
+// is a question kind or has options, or when any of its text elements sets pupils a task. base4-3 y1 s10 (diagram)
+// "Point from youngest to oldest. Say what changes."; base5-2 y2 s4 (diagram) Caption "Say half or quarter for A
+// and B."; polish2-1 y11 s11 Caption "Calculate each mean rate for 0–20 s". Such a slide is then not "teaching",
+// so it cannot be cited as taught either (the audit's 5 false "taught" diagram practice slides).
+/** The kinds deck.py marks as question slides (eval/deck.py QUESTION_KINDS, unchanged). */
+export const QUESTION_KINDS = new Set([
+  "multiple-choice",
+  "starter",
+  "exit-ticket",
+  "open-response",
+  "check",
+  "quiz",
+  "practice",
+  "retrieval",
+  "true-false",
+  "questions",
+  "mini-whiteboard",
+  "hinge",
+  "exit",
+]);
+/**
+ * Whether a discussion slide's pupil task counts as a check. Default false, matching the writer's check
+ * definition in lab/ab-checkdef a195edc2 (CHECKDEF_TEMPLATES: discussion only teaches). Greg to rule. When
+ * true, a discussion slide is a check like any question kind. Changing it changes the objectives requests.
+ */
+export const DISCUSSION_COUNTS_AS_CHECK = false;
+// A sentence that sets pupils a task: an imperative answer cue at its start (after a list marker or "Now"), or a
+// question mark at its end. Reading cues are left out on purpose: "Compare how each store codes information…"
+// under a table (base5-1 y12 s4) and "Share 10 counters into two equal groups." over a sharing diagram whose points
+// give the answer (base5-1 y2 s6) are teaching, as both annotators agreed.
+export const TASK_CUE =
+  /^(identify|explain|describe|calculate|suggest|predict|find|work out|decide|write|state|name|sort|match|label|draw|discuss|evaluate|justify|tell|say|point|count|complete|choose|circle|show|give|fill|order|put|spot|answer|translate|correct|estimate|classify|shade|colour|color|tick|underline|solve|convert|plot|sketch|talk|try|turn to|agree or disagree|true or false|list|ask)\b/i;
+const LEAD_IN =
+  /^(?:\d+[.)]|[a-d][.)]|[•\-–]|now,?|then,?|next,?|your turn:?|try it:?|you try:?|on your whiteboard,?)\s*/i;
+export const isTaskSentence = (sent: string) => {
+  const t = sent.trim().replace(LEAD_IN, "").replace(LEAD_IN, "");
+  return TASK_CUE.test(t) || /\?\s*$/.test(t);
+};
+// Headings, labels and table cells neither set a task nor teach on their own: a heading question is a title
+// (base4-3 y8 s5 "Mon ou ma ? / Which one?"), a label names a part.
+const NEUTRAL_NAMES =
+  /^(heading|title|kind tag|label|key label|callout label|chunk label|card label|side panel label|table cell|table head)$/i;
+const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/).filter((x) => x.trim());
+/** The slide's first task text when its words are a pupil task: every text element that is not a heading, label or
+ * cell holds a task sentence, and task sentences are more than half of its sentences. A slide that also states
+ * content teaches: base5-1 y2 s6 (Lead "Share 10 counters…", Points "Each group has 5 counters."), a2-1 y1 s4
+ * ("A calf is a young cow. Point to the cow, then the calf."), base4-4 y12 s3 (a table captioned "Compare the
+ * stores. Which holds the least information?"). A slide whose words are the task is where pupils answer: base5-1 y2
+ * s4 ("Is each shaded part one half or one quarter? Explain how you know."). Every element is read (Caption, Point,
+ * Lead, Prompt, Text, Item, Step and the rest), not only Lead/Prompt/Text as deck.py does. */
+export const pupilTask = (s: Slide) => {
+  const els = s.texts.filter((t) => !NEUTRAL_NAMES.test((t.name ?? "").trim()));
+  if (!els.length || !els.every((t) => sentences(t.text).some(isTaskSentence))) return undefined;
+  const all = els.flatMap((t) => sentences(t.text));
+  return all.filter(isTaskSentence).length * 2 > all.length ? els[0].text : undefined;
+};
+export const objectivesRole = (s: Slide): string => {
+  if (s.role !== "teach" && s.role !== "question") return s.role;
+  if (s.role === "question") return "question"; // a question kind, or options (deck.py)
+  if (s.kind === "discussion") return DISCUSSION_COUNTS_AS_CHECK ? "question" : "teach";
+  return pupilTask(s) ? "question" : "teach";
+};
+/** The deck as the objectives job sees it: every slide with its objectives role. */
+export const withObjectivesRoles = <D extends { slides: Slide[] }>(d: D): D => ({
+  ...d,
+  slides: d.slides.map((s) => ({ ...s, role: objectivesRole(s) })),
+});
+
+/* ---------- quote matching ---------- */
+const toks = (s: string) => norm(s).split(" ").filter(Boolean);
+// N3 (base5-1 y8 s3): a table's cells reach the model row by row ("mon père; father; ma mère; mother"), and the
+// model quotes one column ("mon père; ma mère"). Each run of labels is also read column-wise for 2 to 6 columns.
+export const columnReadings = (cells: string[]) => {
+  const out: string[] = [];
+  for (let k = 2; k <= 6 && k < cells.length; k++)
+    for (let j = 0; j < k; j++) out.push(cells.filter((_, i) => i % k === j).join(" "));
+  return out;
+};
+// F2 (y8 French s6 "Il s'appelle Hugo. (His name is Hugo.) Il a douze ans."): the model drops a gloss in brackets.
+export const stripGlosses = (s: string) => s.replace(/\([^()]*\)/g, " ");
+const lcs = (a: string[], b: string[]) => {
+  const dp = new Array(b.length + 1).fill(0);
+  for (const x of a) {
+    let prev = 0;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j];
+      dp[j] = x === b[j - 1] ? prev + 1 : Math.max(dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[b.length];
+};
+export const FUZZY_MIN = 0.8;
+export const FUZZY_MIN_TOKENS = 4;
+/** Share of the quote's tokens found in order inside the best window of the text (window = 2 x quote length). */
+export const inOrderCoverage = (quote: string, text: string) => {
+  const q = toks(quote).slice(0, 12),
+    h = toks(text);
+  if (!q.length || !h.length) return 0;
+  const W = 2 * q.length;
+  let best = 0;
+  for (let i = 0; i < h.length && best < q.length; i++) {
+    if (!q.includes(h[i])) continue;
+    best = Math.max(best, lcs(q, h.slice(i, i + W)));
+  }
+  return best / q.length;
+};
+/** "exact" (the v1-v3 rule: the quote's first 8 normalised words appear as a run), "fuzzy" (in-order coverage of at
+ * least 0.8 over a window, on the text, the text without glosses, or a table read column-wise), or null. */
+export const matchQuote = (quote: string, texts: string[], cells: string[][] = []) => {
+  const hay = norm(texts.join("\n"));
+  if (hay.includes(norm(quote).split(" ").slice(0, 8).join(" "))) return "exact";
+  if (toks(quote).length < FUZZY_MIN_TOKENS) return null;
+  const variants = [
+    texts.join("\n"),
+    stripGlosses(texts.join("\n")),
+    ...cells.flatMap(columnReadings),
+  ];
+  return variants.some((v) => inOrderCoverage(quote, v) >= FUZZY_MIN) ? "fuzzy" : null;
+};
+
+// The texts a cite may quote: text the model was shown, plus questions and options; and the slide's cell runs
+// (diagram labels, table cells) for column-wise reading.
+const citeTexts = (s: Slide, text: (s: Slide) => string) => [
+  text(s),
+  ...s.questions.map((q) => [q.text, ...q.options].join(" ")),
+];
+const cellRuns = (s: Slide) => [
+  ...s.pictures
+    .filter((p) => !p.background && (p.labels ?? []).length > 3)
+    .map((p) => p.labels ?? []),
+  ...(() => {
+    const cells = s.texts
+      .filter((t) => /^table (cell|head)$/i.test(t.name ?? ""))
+      .map((t) => t.text);
+    return cells.length > 3 ? [cells] : [];
+  })(),
+];
+
+// A cite counts when its slide has the right role and its quote matches that slide (matchQuote).
 export const verifyCite = (
   slides: Record<number, Slide>,
   c: Cite,
@@ -77,10 +219,7 @@ export const verifyCite = (
 ) => {
   const s = slides[c.slide];
   if (!s || s.role !== role) return false;
-  const hay = norm(
-    text(s) + "\n" + s.questions.map((q) => [q.text, ...q.options].join(" ")).join("\n"),
-  );
-  return hay.includes(norm(c.quote).split(" ").slice(0, 8).join(" "));
+  return matchQuote(c.quote, citeTexts(s, text), cellRuns(s)) !== null;
 };
 
 // Fault 3 (base5-1 y2 s12): the model listed practice slide 12 in o1's `look` and then cited no check. The
@@ -91,11 +230,16 @@ export const verifyCite = (
 // same check as any citation, AND the model did not mark it failing; the first two together are already a
 // verified check, and the schema has no "fails" field, so nothing extra ever counts. Look-only slides are
 // reported in lookOnly (with the reason) for the prompt fix to be measured against; they never score.
+// v4 (F5, R7T y12 o1 checked only by starter s3, first teaching slide s4): a check must come after the first
+// slide that teaches that objective (its first verified taught slide, else the lesson's first teaching slide).
+// Rejected cites go to `early`. A slide may still count for more than one objective (the prompt says so; decided,
+// 9 Oct), so "taught" is not de-duplicated across objectives.
 export function summariseObjectives(
-  d: { slides: Slide[]; objectives: { id: string; text: string }[] },
+  d0: { slides: Slide[]; objectives: { id: string; text: string }[] },
   o: { objectives: ObjectiveRow[] },
   opts: { text?: (s: Slide) => string } = {},
 ) {
+  const d = withObjectivesRoles(d0);
   const sl: Record<number, Slide> = Object.fromEntries(d.slides.map((s) => [s.n, s]));
   const text = opts.text ?? objectivesSlideText;
   const firstTeach = Math.min(...d.slides.filter((s) => s.role === "teach").map((s) => s.n));
@@ -108,9 +252,12 @@ export function summariseObjectives(
     };
     const ok = (c: Cite, role: string) => verifyCite(sl, c, role, text);
     const taught = [...new Set(r.taught.filter((c) => ok(c, "teach")).map((c) => c.slide))];
-    const checked = [...new Set(r.checked.filter((c) => ok(c, "question")).map((c) => c.slide))];
+    const from = taught.length ? Math.min(...taught) : firstTeach;
+    const cited = [...new Set(r.checked.filter((c) => ok(c, "question")).map((c) => c.slide))];
+    const checked = cited.filter((n) => n > from);
+    const early = cited.filter((n) => n <= from);
     const lookOnly = lookSlides(r.look)
-      .filter((n) => sl[n]?.role === "question" && n > firstTeach && !checked.includes(n))
+      .filter((n) => sl[n]?.role === "question" && n > from && !cited.includes(n))
       .map((n) => ({
         slide: n,
         reason: r.checked.some((c) => c.slide === n) ? "cite quote failed" : "no cite",
@@ -120,6 +267,7 @@ export function summariseObjectives(
       text: ob.text,
       taught,
       checked,
+      early,
       lookOnly,
       unverified: [
         ...r.taught.filter((c) => !ok(c, "teach")),

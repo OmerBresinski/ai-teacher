@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const VERSIONS = {
   answerable: "bake-answerable.v3",
-  objectives: "bake-objectives.v3",
+  objectives: "bake-objectives.v4",
   picq: "bake-picture-questions.v2",
   picvqa: "bake-picture-answer.v1",
   reader: "bake-reader-quiz.v1",
