@@ -100,6 +100,7 @@ class TeachingAndTextOnlyF4F5(unittest.TestCase):
         def put(name, obj):
             with open(f"{d}/{name}", "w") as f: json.dump(obj, f)
         put("lesson.json", {"slides": slides}); put("main.json", {"text": json.dumps({"slides": plan})})
+        with open(f"{d}/log.jsonl", "w") as f: f.write('{"ev":"summary","dangling":[]}\n')
         if checks is not None: put("checks.json", {"summary": checks})
         if geom is not None: put("geom.json", {"summary": geom})
 
@@ -138,6 +139,17 @@ class TeachingAndTextOnlyF4F5(unittest.TestCase):
             a = M.run_metrics(f"{t}/tree/T"); b = M.run_metrics(f"{t}/text/T")
             self.assertEqual([x["label"] for x in a["labelsDroppedList"]], labels[1:])
             self.assertEqual((b["labelsDropped"], b["labelsLost"]), (3, 0))
+
+
+    def test_lesson_with_no_summary_is_failed_not_scored(self):  # pipeline F6: polish2-paired-base4-3 1-slide stubs
+        with tempfile.TemporaryDirectory() as t:
+            ok = f"{t}/T/y1"; os.makedirs(ok); d = ok
+            self.lesson(d, [slide(), slide(), slide(txt("Lead", "a"), photo("a cow", ["cow"]))], [{"template": "explain"}])
+            stub = f"{t}/T/y2"; os.makedirs(stub)
+            with open(f"{stub}/lesson.json", "w") as f: json.dump({"slides": [slide(txt("Title", "Halves"))] * 3}, f)
+            with open(f"{stub}/log.jsonl", "w") as f: f.write('{"ev":"design"}\n')
+            m = M.run_metrics(f"{t}/T")
+            self.assertEqual((m["lessons"], m["failedLessons"], m["failedList"], m["slides"]), (1, 1, ["y2"], 1))
 
 
 class GateF9AndRecallF10(unittest.TestCase):

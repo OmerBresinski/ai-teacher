@@ -32,6 +32,8 @@ figure labels it asked for; the picture judge's verdicts come from pictures.log.
   SVG text, whatever path lost them (F8).
 - recallSubtitle: lessons whose slide-1 subtitle is a pupil prompt (a question, or a recall cue in any
   language: Recall, Rappelle-toi, Name..., Say...), not a "Year N Subject" label (F10).
+- failedLessons: lesson dirs with no summary event in log.jsonl (early stub lesson.json, crashes). They
+  are listed in failedList and never scored (audit pipeline F6).
 - --gate <band.json>: per-rep verdicts against a band; an arm passes only if every rep does. No mean
   is ever compared with the band (F9).
 """
@@ -196,10 +198,16 @@ def slide_no(b):
     if isinstance(b, dict): return slide_no(b.get("slide"))
     m = re.match(r"\s*s?(\d+)\b", str(b)); return int(m.group(1)) if m else None
 def norm(s): return " ".join(re.sub(r"[^\w]+", " ", html.unescape(s).casefold()).split())
+def finished(r):
+    """A lesson counts only when its log has the harness's summary event (audit pipeline F6)."""
+    try:
+        with open(f"{r}/log.jsonl") as f: return any('"ev":"summary"' in line.replace(" ", "") for line in f)
+    except OSError: return False
 def lesson_measures(r):
     """Per slide (from 3) measures plus lesson-level ones, or None when the lesson did not finish."""
+    if not finished(r): return None  # an early stub lesson.json or a crash: a failed lesson, never a score
     lesson = load(f"{r}/lesson.json")
-    if not lesson or len(lesson.get("slides", [])) < 3: return None  # a crashed 1-slide stub
+    if not lesson or len(lesson.get("slides", [])) < 3: return None
     slides = lesson["slides"]; w = writer(r); ws = w.get("slides") or []
     aligned = len(ws) == len(slides) - 2
     checks = load(f"{r}/checks.json") or {}; csum = checks.get("summary") or {}
@@ -261,12 +269,13 @@ def run_metrics(runs_dir, retry=None, root=None):
     if retry: runs = [f"{retry}/{os.path.basename(r)}" if os.path.exists(f"{retry}/{os.path.basename(r)}") else r for r in runs]
     M = dict(lessons=0, slides=0, teach=0, visualShownTeach=0, visualSlidesShown=0, textChars=0, textOnlyTeach=0,
              shippedOverflow=0, shippedOverflowLessons=0, labelStrings=0, labelsAsked=0, labelsDropped=0, labelsLost=0,
-             dangling=0, danglingHits=0, danglingLegacy=0, recallSubtitle=0, missingGeom=0, stubsSkipped=0, harnessDisagree=0)
-    kinds = {}; LIST = []; DROP = []
+             dangling=0, danglingHits=0, danglingLegacy=0, recallSubtitle=0, missingGeom=0, failedLessons=0, harnessDisagree=0)
+    kinds = {}; LIST = []; DROP = []; FAILED = []
     for r in runs:
         L = lesson_measures(r)
         if L is None:
-            if os.path.exists(f"{r}/lesson.json"): M["stubsSkipped"] += 1
+            if os.path.exists(f"{r}/lesson.json") or os.path.exists(f"{r}/log.jsonl"):
+                M["failedLessons"] += 1; FAILED.append(os.path.relpath(r, root or runs_dir))
             continue
         M["lessons"] += 1; M["recallSubtitle"] += L["recall"]; over = 0
         if not L["geom"]: M["missingGeom"] += 1
@@ -283,7 +292,7 @@ def run_metrics(runs_dir, retry=None, root=None):
     vs = round(M["visualShownTeach"] / max(1, M["teach"]), 3)
     return dict(M, visualShown=vs, textOnlyShare=round(M["textOnlyTeach"] / max(1, M["teach"]), 3),
                 visualShare=round(M["visualSlidesShown"] / max(1, M["slides"]), 3), textChars=round(M["textChars"] / max(1, M["slides"]), 1),
-                shippedOverflowKinds=kinds, danglingList=LIST, labelsDroppedList=DROP,
+                shippedOverflowKinds=kinds, failedList=FAILED, danglingList=LIST, labelsDroppedList=DROP,
                 note="textOnlyShare = 1 - visualShown on the same teaching slides: one measure, gated once (visualShown)")
 
 # ---------------------------------------------------------------- per-rep gate (F9)
