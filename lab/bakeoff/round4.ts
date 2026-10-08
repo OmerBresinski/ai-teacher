@@ -12,6 +12,31 @@ export const CHECK_TEMPLATES = new Set([
   "discussion",
 ]);
 
+/**
+ * Arm checkdef: only slides where pupils answer check an objective (the writer's and
+ * objective-repair's definition); discussion only teaches, as in the evaluator (eval/deck.py).
+ */
+export const CHECKDEF_TEMPLATES = new Set(["hinge", "question-set", "practice", "exit-ticket"]);
+/**
+ * The slide kind each pupil-facing writer template renders as (saved runs, 9 Oct: base5-2 y2
+ * hinge -> multiple-choice, practice -> open-response, discussion -> discussion; b3-r2-wo1 y12
+ * question-set -> starter; lib-wo1 y9-weimar exit-ticket -> exit-ticket). The evaluator gives a
+ * slide the "question" role by this kind.
+ */
+export const RENDERED_KIND: Record<string, string> = {
+  hinge: "multiple-choice",
+  "question-set": "starter",
+  practice: "open-response",
+  "exit-ticket": "exit-ticket",
+  discussion: "discussion",
+  "big-visual": "diagram",
+  explain: "content",
+  compare: "content",
+  steps: "worked-example",
+  "equation-hero": "worked-example",
+  "picture-sequence": "worked-example",
+};
+
 export type FlowEntry = { slide: number; does?: string; teaches?: number[] };
 export type Coverage = { untaught: number[]; unchecked: number[]; missing: number[] };
 
@@ -25,6 +50,7 @@ export function coverage(
   flow: FlowEntry[],
   objectives: number,
   templateOf: (slide: number) => string | undefined,
+  checks: ReadonlySet<string> = CHECK_TEMPLATES,
 ): Coverage {
   const taught = new Set<number>();
   const checked = new Set<number>();
@@ -32,7 +58,7 @@ export function coverage(
     if (f.slide <= 2) continue;
     const t = templateOf(f.slide);
     const isCheck = t
-      ? CHECK_TEMPLATES.has(t)
+      ? checks.has(t)
       : /\b(check|quiz|practi[cs]e|question|exit)/i.test(f.does ?? "");
     for (const k of f.teaches ?? []) (isCheck ? checked : taught).add(k);
   }
@@ -75,10 +101,25 @@ export function objectiveRepairSchema(repairSchema: {
 type Plan = { flow: FlowEntry[]; slides: Record<string, unknown>[] };
 type Chat = (r: ChatReq) => Promise<{ out?: unknown; usd: number; ms: number }>;
 
+/** What a rejected repair still leaves missing, in the objective-repair prompt's words. */
+export function stillMissingText(after: Coverage, changed: number): string {
+  if (!changed) return "Your answer changed no slide after the objectives slide.";
+  const lines = [
+    ...after.untaught.map((k) => `Objective ${k} is still taught on no slide.`),
+    ...after.unchecked.map(
+      (k) => `Objective ${k} still has no slide where pupils answer a question or do a task on it.`,
+    ),
+  ];
+  return lines.join(" ");
+}
+
 /**
  * One targeted repair call when an objective is missing: slides are replaced one for one (count
  * unchanged, never the title or objectives slide), then coverage is checked once more. A repair
- * that still leaves an objective missing is discarded and the original plan kept.
+ * that still leaves an objective missing is discarded and the original plan kept. With `retry`
+ * (arm checkdef), a rejected answer gets one more turn: the same request plus that answer and what
+ * it still leaves missing; the new answer again replaces slides of the original plan.
+ * Every call's request, response and verdict is logged ("objective-repair-call"), then one summary.
  * `plan.slides` is deck-indexed as in the harness: flow slide k is `plan.slides[k - 1]` (title, objectives first).
  */
 export async function repairObjectives(o: {
@@ -90,10 +131,13 @@ export async function repairObjectives(o: {
   chat: Chat;
   log: (e: object) => void;
   onUsd: (usd: number) => void;
+  retry?: boolean;
+  /** Templates that check (default CHECK_TEMPLATES; arm checkdef: CHECKDEF_TEMPLATES). */
+  checks?: ReadonlySet<string>;
 }): Promise<{ plan: Plan; repaired: boolean; before: Coverage; after?: Coverage }> {
   const tplOf = (p: Plan) => (slide: number) =>
     (p.slides[slide - 1]?.template as string | undefined) ?? undefined;
-  const before = coverage(o.plan.flow, o.objectives.length, tplOf(o.plan));
+  const before = coverage(o.plan.flow, o.objectives.length, tplOf(o.plan), o.checks);
   if (!before.missing.length) return { plan: o.plan, repaired: false, before };
   const user = [
     o.context,
@@ -106,51 +150,84 @@ export async function repairObjectives(o: {
     "",
     `Missing objectives: ${before.missing.join(", ")}`,
   ].join("\n");
-  const r = await o
-    .chat({
+  const apply = (out: unknown) => {
+    const changes = ((out as { changes?: unknown })?.changes ?? []) as {
+      n: number;
+      teaches: number[];
+      slide: Record<string, unknown>;
+    }[];
+    const next: Plan = { flow: o.plan.flow.map((f) => ({ ...f })), slides: [...o.plan.slides] };
+    const changed: number[] = [];
+    for (const c of changes) {
+      const i = c.n - 1;
+      if (c.n <= 2 || i >= next.slides.length || !c.slide) continue;
+      next.slides[i] = c.slide;
+      const f = next.flow.find((x) => x.slide === c.n);
+      if (f) f.teaches = c.teaches;
+      changed.push(c.n);
+    }
+    const after = coverage(next.flow, o.objectives.length, tplOf(next), o.checks);
+    return { next, changed, after, ok: changed.length > 0 && after.missing.length === 0 };
+  };
+  const attempts = o.retry ? 2 : 1;
+  let turn = user;
+  let usd = 0;
+  let last: ReturnType<typeof apply> | undefined;
+  let retries = 0;
+  for (let a = 1; a <= attempts; a++) {
+    const req = {
       model: "gpt-6-luna",
       effort: "low",
       system: o.system,
-      user,
+      user: turn,
       schema: o.schema as ChatReq["schema"],
       name: "objective_repair",
       strict: false,
-    } as ChatReq)
-    .catch((e) => {
-      o.log({ ev: "objective-repair-error", err: String(e).slice(0, 200) });
+    } as ChatReq;
+    const r = await o.chat(req).catch((e) => {
+      o.log({ ev: "objective-repair-error", attempt: a, err: String(e).slice(0, 200) });
       return undefined;
     });
-  if (!r) return { plan: o.plan, repaired: false, before };
-  o.onUsd(r.usd);
-  const changes = ((r.out as { changes?: unknown })?.changes ?? []) as {
-    n: number;
-    teaches: number[];
-    slide: Record<string, unknown>;
-  }[];
-  const next: Plan = { flow: o.plan.flow.map((f) => ({ ...f })), slides: [...o.plan.slides] };
-  const changed: number[] = [];
-  for (const c of changes) {
-    const i = c.n - 1;
-    if (c.n <= 2 || i >= next.slides.length || !c.slide) continue;
-    next.slides[i] = c.slide;
-    const f = next.flow.find((x) => x.slide === c.n);
-    if (f) f.teaches = c.teaches;
-    changed.push(c.n);
+    if (!r) break;
+    o.onUsd(r.usd);
+    usd += r.usd;
+    last = apply(r.out);
+    o.log({
+      ev: "objective-repair-call",
+      attempt: a,
+      request: { model: req.model, effort: req.effort, system: req.system, user: req.user },
+      response: r.out ?? null,
+      changed: last.changed,
+      templates: last.changed.map((n) => last?.next.slides[n - 1]?.template ?? null),
+      stillMissing: last.after.missing,
+      verdict: last.ok ? "accept" : "reject",
+      usd: r.usd,
+      callMs: r.ms,
+    });
+    if (last.ok || a === attempts) break;
+    retries++;
+    turn = [
+      user,
+      "",
+      "Your answer:",
+      JSON.stringify(r.out ?? null),
+      "",
+      `${stillMissingText(last.after, last.changed.length)} Answer again: change slides of the lesson above so that each missing objective is taught on one slide and checked on another.`,
+    ].join("\n");
   }
-  const after = coverage(next.flow, o.objectives.length, tplOf(next));
-  const ok = changed.length > 0 && after.missing.length === 0;
+  if (!last) return { plan: o.plan, repaired: false, before };
   o.log({
     ev: "objective-repair",
     missing: before.missing,
-    changed,
-    stillMissing: after.missing,
-    kept: ok ? "repair" : "original",
-    usd: r.usd,
-    ms: r.ms,
+    changed: last.changed,
+    stillMissing: last.after.missing,
+    kept: last.ok ? "repair" : "original",
+    retries,
+    usd,
   });
-  return ok
-    ? { plan: next, repaired: true, before, after }
-    : { plan: o.plan, repaired: false, before, after };
+  return last.ok
+    ? { plan: last.next, repaired: true, before, after: last.after }
+    : { plan: o.plan, repaired: false, before, after: last.after };
 }
 
 /* ── notes, one call per lesson (HARNESS round 4) ─────────────────── */

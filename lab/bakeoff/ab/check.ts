@@ -331,6 +331,18 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
     // request byte for byte.
     if (a === "base5" && (jd.length || b.system !== r.system))
       fail(`base5 ${id}: its England request differs from polish2's`);
+    // checkdef: base5's request plus one changed system line (the flow step, carrying the checks
+    // definition); no schema path.
+    if (
+      a === "checkdef" &&
+      (jd.length ||
+        sd.del.length !== 1 ||
+        sd.add.length !== 1 ||
+        !sd.add[0].includes(
+          "a question-set, practice, hinge or exit-ticket slide. A slide that explains or models only teaches",
+        ))
+    )
+      fail(`checkdef ${id}: changes more than base5's flow line`);
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);
     if (a === "base3" && (jd.length || b.system !== r.system))

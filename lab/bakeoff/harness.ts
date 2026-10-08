@@ -12,9 +12,11 @@ import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/t
 import {
   type AbArm,
   abArm,
+  abCheckDef,
   abCodeArm,
   abFiles,
   abFixes,
+  abObjRetry,
   abR1t,
   abR1t2,
   abShared,
@@ -37,6 +39,7 @@ import {
   words as wordsOf,
 } from "./repair";
 import {
+  CHECKDEF_TEMPLATES,
   coverage,
   lessonNotes,
   notesText,
@@ -1902,6 +1905,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         chat,
         log,
         onUsd: (v) => ledger.add("repair", v),
+        retry: abObjRetry(),
+        checks: abCheckDef() ? CHECKDEF_TEMPLATES : undefined,
       }).finally(held);
       if (out.repaired) {
         plan.flow = out.plan.flow as Plan["flow"];

@@ -43,6 +43,7 @@ export const AB_ARMS = [
   "locale2",
   "locale3",
   "base5",
+  "checkdef",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -67,6 +68,10 @@ export const AB_CONFIG: Record<
     polish?: boolean;
     /** polish2 (D30): base4's judge input, a log-only colour gate, per-label clash fallback. */
     polish2?: boolean;
+    /** checkdef: one more objective-repair turn when the re-check rejects the first. */
+    objRetry?: boolean;
+    /** checkdef: only hinge, question-set, practice and exit-ticket slides count as checks. */
+    checkDef?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -340,6 +345,24 @@ export const AB_CONFIG: Record<
     delta:
       "polish2 + locale3's country line (England byte-exact to polish2); recall clause removed, code title, cycle sizing, strips, protected labels never dropped",
   },
+  // checkdef (9 Oct): base5 + one definition in the writer's flow step and in objective-repair: only
+  // a slide where pupils answer (question-set, practice, hinge, exit-ticket) checks an objective; an
+  // explaining or modelling slide only teaches. Code: base5's switches + objRetry (one more repair
+  // turn naming what is still missing when the re-check rejects the first) + checkDef (coverage
+  // counts only CHECKDEF_TEMPLATES as checks, so discussion slides no longer do).
+  checkdef: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    objRetry: true,
+    checkDef: true,
+    delta:
+      "base5 + checks defined: only question-set, practice, hinge or exit-ticket slides check (writer + objective-repair)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -393,6 +416,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
   base5: { ref: "polish2" },
+  checkdef: { ref: "base5" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -425,6 +449,8 @@ export const abStageBank = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].st
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
+export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
+export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);
 export const abLib = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].lib) : false);
 export const abR1t = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
