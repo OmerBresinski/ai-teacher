@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   COMMONS_BUSY_RETRIES,
+  COMMONS_LICENCES,
   COMMONS_USER_AGENT,
   CommonsError,
   commonsPhotosOf,
+  commonsSearch,
   coordinatesOf,
   createCommonsClient,
   judgeCommonsFile,
@@ -334,5 +336,41 @@ describe("Commons file downloads", () => {
   test("an Artist field past the cap is clipped in the credit", () => {
     const v = judgeCommonsFile(page(1, "CC BY 4.0", { artist: "z".repeat(900) }));
     expect(v.ok && v.credit.author.length).toBe(200);
+  });
+});
+
+// TEACH-251: COMMONS_LICENCES. "free" keeps only the files that owe no credit; it is off.
+describe("COMMONS_LICENCES", () => {
+  const pages = [
+    page(0, "CC BY-SA 4.0"),
+    page(1, "CC BY 4.0"),
+    page(2, "Public domain"),
+    page(3, "Public Domain Mark 1.0"),
+    page(4, "CC0"),
+  ];
+  const photos = commonsPhotosOf({ query: { pages } });
+  const client = { search: async () => photos } as never as Parameters<typeof commonsSearch>[0];
+  const run = (search: ReturnType<typeof commonsSearch>) =>
+    search("calf", { perPage: 5, signal: new AbortController().signal }).then((ps) =>
+      ps.map((p) => p.licenceClass).sort(),
+    );
+
+  test('defaults to "all": every reusable licence is a candidate', async () => {
+    expect(COMMONS_LICENCES).toBe("all");
+    expect(await run(commonsSearch(client))).toEqual([
+      "cc-by",
+      "cc-by-sa",
+      "cc0",
+      "public-domain",
+      "public-domain",
+    ]);
+  });
+
+  test('"free" keeps only CC0, public domain and the PD mark', async () => {
+    expect(await run(commonsSearch(client, "free"))).toEqual([
+      "cc0",
+      "public-domain",
+      "public-domain",
+    ]);
   });
 });

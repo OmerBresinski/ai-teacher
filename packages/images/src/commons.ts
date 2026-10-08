@@ -513,11 +513,34 @@ export function createCommonsClient(
 }
 
 /**
+ * Which Commons licences the director may place (TEACH-251): "all" (CC0, public domain, CC BY and
+ * BY-SA), or "free", only files that owe no credit (CC0, public domain and the PD mark). Off by
+ * default: "free" is the one-line switch if credited photos are ever to be avoided altogether.
+ */
+export type CommonsLicences = "all" | "free";
+export const COMMONS_LICENCES: CommonsLicences = "all";
+
+/** Whether a Commons photo's licence is allowed under `licences`. */
+export function commonsLicenceAllowed(
+  photo: Pick<CommonsPhoto, "licenceClass">,
+  licences: CommonsLicences = COMMONS_LICENCES,
+): boolean {
+  return (
+    licences === "all" || photo.licenceClass === "cc0" || photo.licenceClass === "public-domain"
+  );
+}
+
+/**
  * The placer's `searchCommons` from a client (the worker wires it beside Pexels for the writer
- * planner only). A busy Commons throws a busy `CommonsError`; the caller falls back to Pexels.
+ * planner only), keeping only the files `licences` allows. A busy Commons throws a busy
+ * `CommonsError`; the caller falls back to Pexels.
  */
 export function commonsSearch(
   client: CommonsClient,
+  licences: CommonsLicences = COMMONS_LICENCES,
 ): (query: string, opts: { perPage: number; signal: AbortSignal }) => Promise<CommonsPhoto[]> {
-  return (query, { perPage, signal }) => client.search({ query, perPage, signal });
+  return async (query, { perPage, signal }) =>
+    (await client.search({ query, perPage, signal })).filter((photo) =>
+      commonsLicenceAllowed(photo, licences),
+    );
 }

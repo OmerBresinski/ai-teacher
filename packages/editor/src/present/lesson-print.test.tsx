@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { lesson as baseLesson, creditedLesson } from "@tj/domain/documents/fixtures";
 import { LessonPrint } from "./LessonPrint";
 
-/* TEACH-251: no credits page; the credit a picture's licence requires is printed on its slide. */
+/* TEACH-251: no credits page, and with PDF_ATTRIBUTION "off" no credit on the slide either. */
 
 afterEach(cleanup);
 
@@ -62,15 +62,12 @@ describe("LessonPrint image credits", () => {
     expect(main().dataset.pageCount).toBe("2");
   });
 
-  it("prints a CC BY-SA picture's credit on its slide, and nothing for Pexels, Openverse or CC0", () => {
+  it("prints a CC BY-SA picture as it is, with no credit line (PDF_ATTRIBUTION off)", () => {
     render(<LessonPrint lesson={withCommons()} />);
-    const lines = [...main().querySelectorAll<HTMLElement>("[data-print-credit]")];
-    expect(lines.map((l) => l.textContent)).toEqual([
-      "Standing calf, Basile Morin, CC BY-SA 4.0, cropped",
-    ]);
-    expect(lines[0]?.closest("[data-slide-index]")?.getAttribute("data-slide-index")).toBe("5");
-    // The picture itself still prints, beside its credit.
-    expect(lines[0]?.closest("[data-slide-index]")?.querySelector('img[alt="calf"]')).toBeTruthy();
+    expect(main().querySelectorAll("[data-print-credit]")).toHaveLength(0);
+    expect(screen.queryByText(/Basile Morin/)).toBeNull();
+    const slide = main().querySelector('[data-slide-index="5"]');
+    expect(slide?.querySelector('img[alt="calf"]')).toBeTruthy();
   });
 });
 

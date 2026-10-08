@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { CAPTURE_READY_ATTR, waitForSlidePaint } from "../export/paint";
 import { printedSlide } from "../export/pdf-credit";
 import { parseSlideRange } from "../export/range";
+import { SlideCreditLine } from "../export/SlideCreditLine";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 
@@ -167,11 +168,7 @@ function PrintSlideView({
   return (
     <>
       <SlideView slide={printed.slide} theme={theme} mode="capture" revealAnswer={revealAnswer} />
-      {printed.credits.length > 0 ? (
-        <p className="td-print-credit" data-print-credit>
-          {printed.credits.join(" · ")}
-        </p>
-      ) : null}
+      <SlideCreditLine credits={printed.credits} />
     </>
   );
 }

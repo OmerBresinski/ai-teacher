@@ -46,8 +46,10 @@ const slide = {
 } as never as Slide;
 
 describe("printedSlide (TEACH-251)", () => {
-  it("defaults to the tiny line", () => {
-    expect(PDF_ATTRIBUTION).toBe("line");
+  it('defaults to "off": the slide prints whole, with no credit', () => {
+    expect(PDF_ATTRIBUTION).toBe("off");
+    expect(printedSlide(slide)).toEqual({ slide, credits: [] });
+    expect(printedSlide(slide).slide).toBe(slide);
   });
 
   it('"line": the slide prints whole, with a line for each CC BY or BY-SA picture only', () => {

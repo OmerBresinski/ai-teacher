@@ -233,22 +233,9 @@
 }
 
 /* The credit a CC BY or BY-SA picture's licence requires, on its own slide (TEACH-251): tiny grey
-   type in the slide's bottom-right corner, in slide pixels so it scales with the slide. */
+   line `SlideCreditLine` draws in the slide's bottom-right corner, positioned against these. */
 .td-print-scale,
 .td-handout-scale,
 .td-handout3-scale {
   position: relative;
-}
-
-.td-print-credit {
-  position: absolute;
-  right: 8px;
-  bottom: 4px;
-  max-width: 70%;
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: 9px;
-  line-height: 12px;
-  color: #8a867c;
-  text-align: right;
 }
