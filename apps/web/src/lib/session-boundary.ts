@@ -4,6 +4,7 @@ import {
   QueryClient,
   type UseMutationOptions,
 } from "@tanstack/react-query";
+import { clearEditThreads } from "./edit-threads";
 
 export class SessionChangedError extends Error {
   constructor() {
@@ -175,6 +176,8 @@ export class SessionBoundary {
   }
 
   async signOut(send: () => Promise<{ error?: unknown }>): Promise<void> {
+    // The edit chat's threads live in this browser: a shared computer must not keep them.
+    clearEditThreads();
     this.reset(null, true);
     const epoch = this.state.epoch;
     try {

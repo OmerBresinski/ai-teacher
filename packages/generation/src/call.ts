@@ -16,7 +16,9 @@ import {
   NoOutputGeneratedError,
   Output,
   type OutputInterface,
+  parsePartialJson,
   type Schema,
+  streamText,
 } from "ai";
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
@@ -91,6 +93,17 @@ export interface CallStructuredOptions<I, T> {
    */
   retryCapMisses?: boolean | undefined;
   maxOutputTokens: number;
+  /**
+   * OpenAI strict structured output (TEACH-97 edit-fast): only for a schema whose every key is
+   * required (nullable rather than optional), which strict mode demands. Off by default.
+   */
+  strict?: boolean | undefined;
+  /**
+   * Stream the answer (TEACH-97 streamed edit): the call runs on `streamText` and each parsed
+   * partial object is handed here as it grows. Partials are unvalidated and for display only; the
+   * call still returns the validated object at the end, exactly as without it.
+   */
+  onPartial?: ((partial: unknown) => void) | undefined;
   /** Per attempt; defaults to the bound for this prompt (TEACH-235). */
   timeoutMs?: number;
   /**
@@ -382,6 +395,31 @@ export async function callStructured<I, T>(
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     try {
+      const onPartial = options.onPartial;
+      if (onPartial) {
+        const streamed = await withCallDeadline(deps.signal, timeoutMs, async (abortSignal) => {
+          const result = streamText({
+            model,
+            system: prompt.system,
+            ...userTurn(text, images),
+            output,
+            abortSignal,
+            maxOutputTokens,
+            maxRetries: 0,
+            ...providerOptionsFor(modelId, effort, options.strict === true),
+          });
+          let sofar = "";
+          for await (const delta of result.textStream) {
+            sofar += delta;
+            const { value } = await parsePartialJson(sofar);
+            if (value !== undefined && value !== null && typeof value === "object")
+              onPartial(value);
+          }
+          return { output: await result.output, usage: await result.usage };
+        });
+        const usage = usageOf(streamed.usage);
+        return { output: streamed.output as T, usage, attempts: 1, modelId, editorialMisses: [] };
+      }
       const result = await withCallDeadline(deps.signal, timeoutMs, (abortSignal) =>
         generateText({
           model,
@@ -392,7 +430,7 @@ export async function callStructured<I, T>(
           maxOutputTokens,
           maxRetries: 0,
           // The same effort on the retry: a schema miss is a shape problem, not a thinking one.
-          ...providerOptionsFor(modelId, effort),
+          ...providerOptionsFor(modelId, effort, options.strict === true),
         }),
       );
       const usage = usageOf(result.usage);
@@ -611,7 +649,7 @@ export function imageMediaType(url: string): string {
  * (`NO_THINKING`), so effort has nothing to act on and the call runs as before. The `effort`
  * still reaches the log through the call context.
  */
-export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
+export function providerOptionsFor(modelId: string, effort: ReasoningEffort, strict = false) {
   if (isAnthropicModelId(modelId)) return {};
   // The on/off and two-level providers have nothing above `high`.
   const thinksHard = effort === "high" || effort === "xhigh";
@@ -624,7 +662,8 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
         // pipeline's schemas have optional fields, and zod validates the answer in full anyway.
         // Sent for every call: the direct provider strips the `openai/` prefix, so the routed id
         // is bare (`gpt-6-luna`) and a prefix check misses it. Only OpenAI reads this namespace.
-        strictJsonSchema: false,
+        // A caller whose schema lists every key opts in (`strict`).
+        strictJsonSchema: strict,
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).

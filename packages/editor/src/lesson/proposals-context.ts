@@ -1,4 +1,4 @@
-import type { Id } from "@tj/domain/documents";
+import type { Id, RichDoc, Slide } from "@tj/domain/documents";
 import { createContext, useContext } from "react";
 import type { RegenerateTarget } from "./use-editor-session";
 
@@ -9,7 +9,52 @@ import type { RegenerateTarget } from "./use-editor-session";
  * "changing…" overlay on the navigator thumbs while a job is in flight; `busy` the panel's spinner.
  */
 
+/**
+ * What the editor sends for an edit with a prompt (TEACH-97): the slide as it is now and the
+ * selected text box, or no box for the whole slide.
+ */
+export type PromptEditRequest = {
+  slide: Slide;
+  elementId?: Id | undefined;
+  instruction: string;
+  /** The thread's last 3 turns, oldest first; `slides` are the changed slides' paths (`s4`). */
+  history?: { instruction: string; summary: string; slides: string[] }[] | undefined;
+};
+
+/**
+ * The answer: each changed box's new doc and a one-line summary to apply as one undo step, or a
+ * reason in teacher words and no change (rulings 172, 173). `need` says why an escalation could
+ * not be a text edit (the agent path's reasons, `routeEdit` in `@tj/generation`).
+ */
+export type PromptEditAnswer =
+  | { action: "edit"; changes: { elementId: Id; doc: RichDoc }[]; summary: string }
+  | {
+      action: "refuse" | "escalate" | "no-change" | "failed";
+      reason: string;
+      need?: string | undefined;
+      /** Which check refused ("fit", "leak", …), when code refused. */
+      check?: string | undefined;
+      /** A refusal's one-tap offer: an instruction the teacher can send instead. */
+      offer?: string | undefined;
+    };
+
+/**
+ * An answer as it streams in (TEACH-97): the summary so far and each box's new text so far.
+ * Unchecked and for display only; only the final answer is ever applied.
+ */
+export type PromptEditPartial = { summary: string; texts: { elementId: Id; text: string }[] };
+
 export type ProposalsApi = {
+  /**
+   * Edit with a prompt: the app calls `POST /lessons/:id/edit`. Absent → no chat pane. With
+   * `onPartial` the answer streams: partials arrive while the model writes, then the promise
+   * resolves with the checked answer.
+   */
+  onPromptEdit?: (
+    request: PromptEditRequest,
+    signal?: AbortSignal,
+    onPartial?: (partial: PromptEditPartial) => void,
+  ) => Promise<PromptEditAnswer>;
   /** The facts whose text changed, coalesced; the app enqueues `lesson.cascade`. */
   onFactsChanged?: (factIds: string[]) => void;
   /** The teacher confirmed the regenerate dialog; the app enqueues `lesson.regenerate`. */

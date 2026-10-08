@@ -40,7 +40,13 @@ export type PipelineStageName =
  * job's one stage (ADR 0030 item 3) and the API's brief parse (ADR 0029 item 13), which runs
  * outside any job.
  */
-export type StageName = PipelineStageName | "cascade" | "regenerate" | "worksheet" | "parse-brief";
+export type StageName =
+  | PipelineStageName
+  | "cascade"
+  | "regenerate"
+  | "worksheet"
+  | "parse-brief"
+  | "edit-fast";
 
 /**
  * The checkpoint each pipeline stage writes to `Lesson.generation.stage` (ADR 0025 §3, §5);

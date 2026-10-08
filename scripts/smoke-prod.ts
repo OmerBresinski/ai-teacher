@@ -157,6 +157,15 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // TEACH-97: the edit pane streams its answer. A browser POSTs JSON and accepts
+      // `text/event-stream`; that shape must meet the same guard pair before any stream opens.
+      name: "app origin, POST /lessons/:id/edit streamed (SSE), reaches the session guard",
+      method: "POST",
+      path: "/lessons/0192f7a0-0000-7000-8000-000000000042/edit",
+      headers: { ...browser, "Content-Type": "application/json", Accept: "text/event-stream" },
+      expect: 401,
+    },
+    {
       // Images project: the Pexels proxy is browser-facing, so the new prefix needs the same
       // guard pair as every other browser-facing route (root AGENTS.md step 4).
       name: "app origin, GET /images/search, reaches the session guard",

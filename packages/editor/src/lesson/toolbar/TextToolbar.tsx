@@ -44,7 +44,9 @@ import {
 } from "../../text/doc-marks";
 import { docLinkHref, normaliseHref, setDocLink } from "../../text/links";
 import { useHistory } from "../document-context";
+import { useEditChat } from "../edit-chat/edit-chat-context";
 import { useSessionUi } from "../use-editor-session";
+import { PromptEditControl } from "./PromptEditControl";
 import { OpacityControl } from "./shared";
 
 /*
@@ -99,6 +101,7 @@ export function TextToolbar({
   slideId: string;
 }) {
   const { editingTextId } = useSessionUi();
+  const editChat = useEditChat();
   const active = useActiveEditor();
   const history = useHistory();
   const { run } = useEditSession(history);
@@ -254,6 +257,12 @@ export function TextToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Text" data-text-toolbar>
+      {editChat.available ? (
+        <>
+          <PromptEditControl />
+          <PanelSeparator />
+        </>
+      ) : null}
       <DropTrigger
         label="Text style"
         value={r.preset}

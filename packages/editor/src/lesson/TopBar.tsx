@@ -52,6 +52,10 @@ export type TopBarProps = {
   autosave: Autosave<Lesson>;
 };
 
+/** Below 1180px Facts and Worksheet show as icons (names kept for screen readers), so Present and
+ * the longest save label ("Unsaved changes") fit on one row at 1024. */
+const NARROW_LABEL = "max-[1180px]:sr-only";
+
 export function TopBar({
   onBack,
   onPresent,
@@ -88,7 +92,7 @@ export function TopBar({
           onClick={onToggleFacts}
         >
           <ListChecks aria-hidden size={16} strokeWidth={1.5} />
-          Facts
+          <span className={NARROW_LABEL}>Facts</span>
         </Button>
       ) : null}
       {worksheetId && onOpenWorksheet ? (
@@ -99,12 +103,12 @@ export function TopBar({
           onClick={() => onOpenWorksheet(worksheetId)}
         >
           <FileText aria-hidden size={16} strokeWidth={1.5} />
-          Worksheet
+          <span className={NARROW_LABEL}>Worksheet</span>
         </Button>
       ) : onNewWorksheet ? (
         <Button variant="ghost" size="sm" data-new-worksheet onClick={onNewWorksheet}>
           <FileText aria-hidden size={16} strokeWidth={1.5} />
-          Worksheet
+          <span className={NARROW_LABEL}>Worksheet</span>
         </Button>
       ) : null}
       {exportSlot}

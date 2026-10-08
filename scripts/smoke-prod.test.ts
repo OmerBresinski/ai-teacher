@@ -75,7 +75,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.filter((r) => !r.ok).map((r) => [r.name, r.actual])).toEqual([]);
-    expect(results.length).toBe(29);
+    expect(results.length).toBe(30);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -97,6 +97,7 @@ describe("smoke-prod", () => {
       "/lessons",
       "/briefs/parse",
       "/lessons/0192f7a0-0000-7000-8000-000000000042/cascade",
+      "/lessons/0192f7a0-0000-7000-8000-000000000042/edit",
       "/images/search?q=river",
       "/images/pick",
       "/images/report",

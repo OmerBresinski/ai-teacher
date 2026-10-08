@@ -25,6 +25,7 @@ export {
   materialiseSlides,
   variantsFor,
 } from "@tj/slides";
+export { clearEditThreads, EDIT_THREAD_PREFIX } from "./lesson/edit-chat/thread-storage";
 export { demoWorksheet } from "./model/demo-worksheet";
 export { type DemoDocument, demoWorkspace } from "./model/demo-workspace";
 export { cloneSlide, newLesson, newSlide } from "./model/factories";

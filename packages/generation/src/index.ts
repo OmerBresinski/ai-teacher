@@ -21,6 +21,26 @@ export {
   specRuleFinding,
 } from "./call";
 export {
+  EDIT_FAST_EFFORT,
+  EDIT_FAST_MODEL_ID,
+  EDIT_INSTRUCTION_MAX,
+  EDIT_MESSAGES,
+  type EditFastChange,
+  type EditFastDeps,
+  type EditFastPartial,
+  type EditFastRequest,
+  type EditFastResult,
+  EditTargetError,
+  editFast,
+  editFastPartial,
+} from "./edit-fast";
+export {
+  AGENT_MESSAGES,
+  type EditNeed,
+  type EditRoute,
+  routeEdit,
+} from "./edit-route";
+export {
   MODEL_FIELDS,
   type ModelField,
   mergeModelFields,
@@ -53,6 +73,7 @@ export {
   statusLine,
 } from "./planner/plan-pipeline";
 export * from "./prompts";
+export { type EditFastInput, editFastPrompt } from "./prompts/edit-fast";
 export * from "./shapes";
 export * from "./specs";
 export { checkInput } from "./stages/check-input";
