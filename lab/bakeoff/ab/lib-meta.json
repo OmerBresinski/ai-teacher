@@ -1,5 +1,5 @@
 {
-  "note": "lib arm (D30 fixes): per-model data the code reads after the fill call. answerKeys: build keys (the model's own builds(P).steps[].key) that show the answer; a question slide draws the last build before the first of them, or no model. cannot: what the model cannot draw, with the intent patterns (case-insensitive regex) that ask for it. Not prompt text.",
+  "note": "lib arm (D30 fixes): per-model data the code reads after the fill call. answerKeys: build keys (the model's own builds(P).steps[].key) that show the answer; a question slide draws the last build before the first of them, or no model. cannot: what the model cannot draw, with the intent patterns (case-insensitive regex) that ask for it. Not prompt text. drops: validate() warnings (case-insensitive regex on the reason) that mean the drawing leaves out something the params asked for; they count as refusals, so the repair call sees them (libfix2).",
   "models": {
     "fractions": {
       "answerKeys": [
@@ -22,6 +22,12 @@
             "different[- ]sized?",
             "\\buneven\\b",
             "\\b(?:small|smaller|large|larger|big|bigger) part\\b"
+          ]
+        },
+        {
+          "what": "two different shapes in one picture (fractions draws every fraction in one representation)",
+          "when": [
+            "\\b(square|rectangle|circle|bar)s?\\b.*?\\b(?!\\1)(square|rectangle|circle|bar)s?\\b"
           ]
         }
       ]
@@ -49,7 +55,10 @@
         }
       ]
     },
-    "bar_model": { "answerKeys": ["answer", "calc", "unknown"], "cannot": [] },
+    "bar_model": {
+      "answerKeys": ["answer", "calc", "unknown"],
+      "cannot": []
+    },
     "hist_map": {
       "answerKeys": [],
       "cannot": [
@@ -69,7 +78,18 @@
         }
       ]
     },
-    "timeline": { "answerKeys": [], "cannot": [] },
-    "seasons_weather": { "answerKeys": [], "cannot": [] }
-  }
+    "timeline": {
+      "answerKeys": [],
+      "cannot": []
+    },
+    "seasons_weather": {
+      "answerKeys": [],
+      "cannot": []
+    }
+  },
+  "drops": [
+    "only the first (?:one|two|three|\\w+) (?:is|are) shown",
+    "\\bleft off\\b",
+    "\\bnot (?:be )?(?:shown|drawn)\\b"
+  ]
 }

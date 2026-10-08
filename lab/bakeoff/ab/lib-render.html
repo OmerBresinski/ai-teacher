@@ -9,34 +9,55 @@ const LIB = 'file:///Users/gregwallace/Documents/experiments/ai-teacher/scratchp
 const { mountSlide, fontsReady } = await import(`${LIB}/kit/build.js`);
 const host = document.getElementById('host');
 let stage;
+const zoomCss = document.head.appendChild(document.createElement('style'));
+/** The kit's type scale (tokens.css .tk), read once at its own size. */
+const FS = (() => {
+  const probe = document.body.appendChild(document.createElement('div')); probe.className = 'tk';
+  const cs = getComputedStyle(probe);
+  const out = ['--fs-title', '--fs-h3', '--fs-label', '--fs-cap', '--fs-small', '--fs-min', '--fs-num', '--fs-big', '--fs-eq', '--fs-badge']
+    .map(n => [n, parseFloat(cs.getPropertyValue(n))]).filter(([, v]) => v > 0);
+  probe.remove(); return out;
+})();
 const DRAW = 'text,rect,circle,ellipse,path,line,polyline,polygon,image,use';
 window.LIBR = {
-  async render(id, params, theme) {
+  /** `zoom` scales the kit's type scale (the .tk --fs-* tokens) before the model lays out, so a model
+   *  that spreads across the 1280-wide stage still sets labels the slide kit's floor allows once its
+   *  crop is shrunk into a figure zone. The model measures its own text, so it lays out around it. */
+  async render(id, params, theme, zoom = 1) {
     const m = await import(`${LIB}/models/${id}.js`);
     if (stage) stage.destroy();
     host.textContent = '';
+    zoomCss.textContent = zoom === 1 ? '' : `#host .tk{${FS.map(([n, v]) => `${n}:${Math.round(v * zoom)}px`).join(';')}}`;
     stage = mountSlide(host, m, params, { theme });
     await fontsReady();
     stage.update(params, theme);
     return { N: stage.N, warnings: stage.warnings || [] };
   },
   show(k) { stage.show(k, true); return stage.warnings || []; },
-  /** Where the drawing is on the slide (CSS px from the slide's corner), padded: the figure zone's crop. */
+  /** Where the drawing is on the slide (CSS px from the slide's corner), padded: the figure zone's crop.
+   *  Only the model's own drawing counts (the engine's stage group): the engine's footer caption sits at
+   *  the slide's left edge and bottom, so counting it made every crop nearly the whole slide and the
+   *  drawing and its labels a third of their size in the zone. `minFs`: the smallest text in the crop
+   *  (CSS px = slide units), so the caller can check it against the slide kit's type floor. */
   bbox(pad = 18) {
     const sr = stage.slide.getBoundingClientRect();
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const el of stage.svg.querySelectorAll(DRAW)) {
+    const own = stage.svg.querySelector(':scope > g > g') || stage.svg;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, minFs = Infinity;
+    for (const el of own.querySelectorAll(DRAW)) {
       if (el.closest('defs,clipPath,mask,marker,pattern,symbol,.off') || el.classList.contains('grain')) continue;
       const r = el.getBoundingClientRect();
       if (!r.width && !r.height) continue;
-      if (r.width >= sr.width - 1) continue; // full-width grounds and rules are not the drawing's edge
-      if (getComputedStyle(el).opacity === '0' || getComputedStyle(el).visibility === 'hidden') continue;
+      if (r.width >= sr.width - 1 || r.height >= sr.height - 1) continue; // full-slide grounds and rules are not the drawing's edge
+      const cs = getComputedStyle(el);
+      if (cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none') continue;
       x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+      if (el.tagName === 'text' && el.textContent.trim()) minFs = Math.min(minFs, parseFloat(cs.fontSize));
     }
-    if (!Number.isFinite(x0)) return { x: 0, y: 0, w: sr.width, h: sr.height };
+    if (!Number.isFinite(minFs)) minFs = 0;
+    if (!Number.isFinite(x0)) return { x: 0, y: 0, w: sr.width, h: sr.height, minFs };
     x0 = Math.max(sr.left, x0 - pad); y0 = Math.max(sr.top, y0 - pad);
     x1 = Math.min(sr.right, x1 + pad); y1 = Math.min(sr.bottom, y1 + pad);
-    return { x: x0 - sr.left, y: y0 - sr.top, w: x1 - x0, h: y1 - y0 };
+    return { x: x0 - sr.left, y: y0 - sr.top, w: x1 - x0, h: y1 - y0, minFs };
   },
 };
 document.documentElement.dataset.ready = '1';
