@@ -31,13 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      web: ${{ steps.probe.outputs.web }}
       dockerfile: ${{ steps.probe.outputs.dockerfile }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: probe
         run: |
-          [ -f apps/web/package.json ] && echo "web=true" >> "$GITHUB_OUTPUT" || echo "web=false" >> "$GITHUB_OUTPUT"
           [ -f Dockerfile ] && echo "dockerfile=true" >> "$GITHUB_OUTPUT" || echo "dockerfile=false" >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
 
@@ -212,7 +210,8 @@ jobs:
     # Playwright (apps/web/e2e, TEACH-22) in six shards that run at once (TEACH-190 parts b and d).
     # Each shard is a required check by name ("e2e shard 1/6" to "6/6", README "CI"), so there is
     # no gate job to wait for and no `needs`: a shard starts with the run and can only pass by
-    # running. Changing the shard count means changing the required checks in the same PR.
+    # running. The total is part of every check name, so changing the shard count renames all
+    # of them: follow README "Phase 2" (change branch protection right before that PR merges).
     name: e2e shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -234,7 +233,7 @@ jobs:
           --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
           --health-interval 1s
           --health-timeout 5s
-          --health-retries 12
+          --health-retries 60
     env:
       # playwright.config.ts boots api + worker against this database and migrates it first.
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey_test
@@ -245,23 +244,27 @@ jobs:
           # A pull request checks out its merge commit; its first parent is the base branch tip,
           # so `HEAD^1..HEAD` is exactly what the PR changes.
           fetch-depth: 2
-      - uses: ./.github/actions/setup
+      # The scope script imports only Bun built-ins, so it runs before the install below.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
 
-      # A PR that changes only documentation passes every shard without running the suite
-      # (scripts/e2e-scope.ts); a push to master always runs it. `--no-renames` lists both sides
-      # of a move, so source moved into docs/ still counts as a source change. The default shell
-      # has no pipefail: if `git diff` fails, the script reads empty input and answers e2e=true.
+      # A PR that changes only documentation passes every shard without installing or running
+      # anything else (scripts/e2e-scope.ts). A push to master skips this step, and every later
+      # step runs unless the answer is exactly `false`, so a missing answer runs the suite.
+      # `--no-renames` lists both sides of a move, so source moved into docs/ still counts as a
+      # source change. The default shell has no pipefail: if `git diff` fails, the script reads
+      # empty input and answers e2e=true. Each later step repeats the same `if`; GitHub has no
+      # way to end a job early with success.
       - name: Scope
         id: scope
-        env:
-          EVENT: ${{ github.event_name }}
+        if: github.event_name == 'pull_request'
         run: |
-          if [ "$EVENT" = "pull_request" ]; then
-            git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts >> "$GITHUB_OUTPUT"
-          else
-            echo "e2e=true" >> "$GITHUB_OUTPUT"
-          fi
+          git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/setup
+        if: steps.scope.outputs.e2e != 'false'
 
       - name: Create the test database (mirrors infra/postgres/init)
         if: steps.scope.outputs.e2e != 'false'

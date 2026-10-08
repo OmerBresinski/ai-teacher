@@ -406,11 +406,11 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
 | `Eval` (`eval.yml`) | `bun run eval:paid` on Bedrock — only on `workflow_dispatch` or the `run-eval` PR label; uploads `eval-<sha>` (and `eval-master-latest` from `master`), posts the totals + delta comment `<!-- tj-eval-results -->` ([`docs/eval.md`](docs/eval.md)) | `AWS_BEARER_TOKEN_BEDROCK=… bun run eval:paid` (spends up to `AI_EVAL_RUN_COST_CAP_USD`) | no |
-| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
+| `detect` | probes for a `Dockerfile` so `docker-build-smoke` can be skipped without one (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
 
-### `test` and `e2e` are blocking
+### `test` and e2e are blocking
 
-The Postgres-backed `test` job and the Playwright `e2e` job were gated (`continue-on-error` behind a
+The Postgres-backed `test` job and the Playwright e2e job (since TEACH-190 part d, six `e2e shard n/6` jobs) were gated (`continue-on-error` behind a
 repository variable) while they stabilised (TEACH-23 Phase 1). Since 2026-09-04 they block like
 every other job, and the gate was removed on 2026-09-05 so a deleted or mistyped variable cannot
 silently un-gate them. The `build` job's bundle-budget step fails above 250 KB gzip (warns above
@@ -421,8 +421,12 @@ silently un-gate them. The `build` job's bundle-budget step fails above 250 KB g
 Applied on 2026-09-04 after six consecutive green `test`/`e2e` runs. `required_linear_history` is
 on, so PRs must be **squash-merged** (`gh pr merge N --squash`); merge commits are rejected.
 `docker-build-smoke` is required because the `Dockerfile` now always exists. Since TEACH-190 part d
-(2026-10-08) the six e2e shards are required by name instead of one `e2e` gate job; a PR that
-changes the shard count changes this list in the same PR. To re-apply or change:
+(2026-10-08) the six e2e shards are required by name instead of one `e2e` gate job. The total is
+part of every shard's name, so a PR that changes the shard count renames all of them, and branch
+protection (which is not part of any PR) must change at landing time: land every other open PR
+first, wait for the shard-count PR to be green, replace the contexts with the command below, then
+merge that PR straight away. Until it merges, every other PR is blocked on checks it cannot report.
+To re-apply or change:
 
 ```sh
 cat > /tmp/protection.json <<'JSON'
