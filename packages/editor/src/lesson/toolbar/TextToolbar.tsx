@@ -44,7 +44,7 @@ import {
 } from "../../text/doc-marks";
 import { docLinkHref, normaliseHref, setDocLink } from "../../text/links";
 import { useHistory } from "../document-context";
-import { useProposals } from "../proposals-context";
+import { useEditChat } from "../edit-chat/edit-chat-context";
 import { useSessionUi } from "../use-editor-session";
 import { PromptEditControl } from "./PromptEditControl";
 import { OpacityControl } from "./shared";
@@ -101,7 +101,7 @@ export function TextToolbar({
   slideId: string;
 }) {
   const { editingTextId } = useSessionUi();
-  const { onPromptEdit } = useProposals();
+  const editChat = useEditChat();
   const active = useActiveEditor();
   const history = useHistory();
   const { run } = useEditSession(history);
@@ -257,9 +257,9 @@ export function TextToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Text" data-text-toolbar>
-      {onPromptEdit ? (
+      {editChat.available ? (
         <>
-          <PromptEditControl element={element} slideId={slideId} />
+          <PromptEditControl />
           <PanelSeparator />
         </>
       ) : null}

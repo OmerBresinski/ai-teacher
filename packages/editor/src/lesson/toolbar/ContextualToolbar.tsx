@@ -73,6 +73,9 @@ export function ContextualToolbar({
 
   const bar = useRef<HTMLDivElement>(null);
   const [stageRect, setStageRect] = useState<{ left: number; top: number } | null>(null);
+  // The canvas column's sides: the bar stays over the canvas, never over the navigator or a
+  // docked pane (the facts panel, "Edit with Dayback").
+  const [area, setArea] = useState<{ left: number; right: number } | null>(null);
   const [size, setSize] = useState({ w: 0, h: 40 });
 
   const frame = useRef<number | null>(null);
@@ -85,6 +88,12 @@ export function ContextualToolbar({
     setStageRect((prev) =>
       r && (!prev || prev.left !== r.left || prev.top !== r.top)
         ? { left: r.left, top: r.top }
+        : prev,
+    );
+    const c = stageRef.current?.closest("[data-canvas]")?.getBoundingClientRect();
+    setArea((prev) =>
+      c && (!prev || prev.left !== c.left || prev.right !== c.right)
+        ? { left: c.left, right: c.right }
         : prev,
     );
     const b = bar.current?.getBoundingClientRect();
@@ -166,7 +175,13 @@ export function ContextualToolbar({
   const preferred = outsideSlide >= MIN_TOP ? outsideSlide : above >= MIN_TOP ? above : below;
   const top = Math.min(window.innerHeight - EDGE - size.h, Math.max(MIN_TOP, preferred));
   const half = size.w / 2;
-  const left = Math.min(window.innerWidth - EDGE - half, Math.max(EDGE + half, centreX));
+  const minX = (area?.left ?? 0) + EDGE + half;
+  const maxX = (area?.right ?? window.innerWidth) - EDGE - half;
+  // A bar wider than the canvas column centres on it rather than spilling one way.
+  const left =
+    minX > maxX
+      ? ((area?.left ?? 0) + (area?.right ?? window.innerWidth)) / 2
+      : Math.min(maxX, Math.max(minX, centreX));
 
   const controls =
     selected.length === 0 || !only ? (

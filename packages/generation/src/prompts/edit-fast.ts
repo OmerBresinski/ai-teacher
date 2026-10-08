@@ -18,9 +18,12 @@ export type EditFastInput = {
   /** The selected slide, as `{ kind, elements: { <id>: { text } } }` JSON. */
   slidePath: string;
   slideJson: string;
-  /** The selected node: `s4/elements/<id>/text`. */
+  /**
+   * The selected node: `s4/elements/<id>/text` with its `text`, or the whole slide (`s4`, no
+   * `text`), packed as the harness packs a slide selection (no "Selected element" line).
+   */
   target: string;
-  text: string;
+  text?: string | undefined;
   instruction: string;
   /** The second attempt: the checks the first answer failed, and that answer. */
   retry?: { faults: string[]; previous: string } | undefined;
@@ -36,7 +39,9 @@ export const editFastPrompt = {
       `Objectives:\n${input.objectives.map((o, i) => `${i + 1}. ${o}`).join("\n")}`,
       `Outline:\n${input.outline.join("\n")}`,
       `Slide ${input.slidePath}:\n${input.slideJson}`,
-      `Selected element: ${input.target} = ${JSON.stringify(input.text)}`,
+      ...(input.text === undefined
+        ? []
+        : [`Selected element: ${input.target} = ${JSON.stringify(input.text)}`]),
       `Teacher's instruction: ${input.instruction}`,
     ];
     const user = parts.join("\n\n");

@@ -7,7 +7,6 @@ import {
   richDocToPlainText,
   type Slide,
   type SlideElement,
-  type TextElement,
 } from "@tj/domain/documents";
 import { getTheme, lintAsDrawn, measureHeadless } from "@tj/slides";
 import type { Logger } from "pino";
@@ -64,15 +63,19 @@ export type EditFastRequest = {
   lesson: Lesson;
   /** The slide as the editor holds it now (it may be ahead of the saved lesson). */
   slide: Slide;
-  elementId: string;
+  /** The selected text box; absent → the whole slide (any of its text boxes may change). */
+  elementId?: string | undefined;
   instruction: string;
 };
+
+/** One text box's new content. */
+export type EditFastChange = { elementId: string; doc: RichDoc; text: string };
 
 export type EditFastResult =
   | {
       action: "edit";
-      doc: RichDoc;
-      text: string;
+      /** Every box the edit changed, on the request's slide; one box at element scope. */
+      changes: EditFastChange[];
       summary: string;
       attempts: number;
       ms: number;
@@ -83,7 +86,7 @@ export type EditFastResult =
       reason: string;
       attempts: number;
       ms: number;
-      /** Which check refused, when code refused: for the log line only. */
+      /** Which check refused, when code refused: logged, and picks the pane's one-tap alternative. */
       check?: "fit" | "leak" | "scope" | "shape" | "model" | undefined;
     };
 
@@ -133,8 +136,14 @@ export const targetOf = (slidePath: string, elementId: string) =>
 
 /** The user turn's input: the lesson with the editor's current slide laid over the saved one. */
 export function packEditFast(req: EditFastRequest): EditFastInput {
-  const el = req.slide.elements.find((e) => e.id === req.elementId);
-  if (el?.type !== "text") throw new EditTargetError("the selection is not a text box");
+  const el =
+    req.elementId === undefined
+      ? undefined
+      : req.slide.elements.find((e) => e.id === req.elementId);
+  if (req.elementId !== undefined && el?.type !== "text")
+    throw new EditTargetError("the selection is not a text box");
+  if (req.elementId === undefined && !req.slide.elements.some((e) => e.type === "text"))
+    throw new EditTargetError("the slide has no text to edit");
   const slides = req.lesson.slides.map((s) => (s.id === req.slide.id ? req.slide : s));
   const slidePath = slidePathOf(req.lesson, req.slide.id);
   const elements: Record<string, { text: string }> = {};
@@ -151,8 +160,9 @@ export function packEditFast(req: EditFastRequest): EditFastInput {
     }),
     slidePath,
     slideJson: JSON.stringify({ kind: req.slide.kind, elements }),
-    target: targetOf(slidePath, el.id),
-    text: richDocToPlainText(el.doc),
+    ...(el?.type === "text"
+      ? { target: targetOf(slidePath, el.id), text: richDocToPlainText(el.doc) }
+      : { target: slidePath }),
     instruction: req.instruction,
   };
 }
@@ -189,35 +199,74 @@ export function textToDoc(text: string, original: RichDoc): RichDoc {
   return { type: "doc", content: lines.map(para) };
 }
 
-type Applied = { text: string; doc: RichDoc; slide: Slide } | { fault: string };
+type Applied = { changes: EditFastChange[]; slide: Slide } | { fault: string };
 
-/** The model's changes, held to the selection: exactly one change, on the selected node, as text. */
-export function applyEdit(
-  out: EditFastOutput,
-  target: string,
-  slide: Slide,
-  elementId: string,
-): Applied {
-  if (out.changes.length !== 1) return { fault: `change exactly one node: ${target}` };
-  const change = out.changes[0] as EditFastOutput["changes"][number];
-  if (change.target !== target)
-    return { fault: `scope: ${change.target} is outside the selection` };
+const ELEMENT_TEXT = /^(s\d+)\/elements\/([^/]+)\/text$/;
+
+/** One change's new value as text, or the fault that stops it. */
+function changeText(change: EditFastOutput["changes"][number]): unknown | { fault: string } {
   const hasText = change.text !== null;
   const hasNode = change.node_json !== null;
-  if (hasText === hasNode) return { fault: `${target}: set exactly one of text or node_json` };
-  let text: unknown = change.text;
-  if (hasNode) {
-    try {
-      text = JSON.parse(change.node_json as string);
-    } catch {
-      return { fault: `node_json for ${target} is not JSON` };
-    }
+  if (hasText === hasNode)
+    return { fault: `${change.target}: set exactly one of text or node_json` };
+  if (hasText) return change.text;
+  try {
+    return JSON.parse(change.node_json as string);
+  } catch {
+    return { fault: `node_json for ${change.target} is not JSON` };
   }
-  if (typeof text !== "string") return { fault: `${target}: is text; put the new text in text` };
-  const el = slide.elements.find((e) => e.id === elementId) as TextElement;
-  const doc = textToDoc(text, el.doc);
-  const elements = slide.elements.map((e) => (e.id === elementId ? { ...el, doc } : e));
-  return { text: richDocToPlainText(doc), doc, slide: { ...slide, elements } };
+}
+
+const isFault = (x: unknown): x is { fault: string } =>
+  typeof x === "object" && x !== null && "fault" in x;
+
+/**
+ * The model's changes, held to the selection. At element scope (`target` names a box): exactly
+ * one change, on that box, as text. At slide scope (`target` is the slide, `s4`): one change per
+ * text box, each on `s4/elements/<id>/text`, or the slide node itself as
+ * `{ elements: { <id>: { text } } }`; nothing outside the slide's text boxes.
+ */
+export function applyEdit(out: EditFastOutput, target: string, slide: Slide): Applied {
+  const elementScope = ELEMENT_TEXT.test(target);
+  if (elementScope && out.changes.length !== 1)
+    return { fault: `change exactly one node: ${target}` };
+  const texts = new Map<string, string>();
+  for (const change of out.changes) {
+    const value = changeText(change);
+    if (isFault(value)) return value;
+    if (!elementScope && change.target === target) {
+      const elements = (value as { elements?: unknown } | null)?.elements;
+      if (typeof elements !== "object" || elements === null)
+        return { fault: `${target}: give each changed text box as elements.<id>.text` };
+      for (const [id, node] of Object.entries(elements as Record<string, unknown>)) {
+        const t = (node as { text?: unknown } | null)?.text;
+        if (typeof t !== "string") return { fault: `${target}/elements/${id}: text is a string` };
+        texts.set(id, t);
+      }
+      continue;
+    }
+    const m = change.target.match(ELEMENT_TEXT);
+    const inScope = elementScope ? change.target === target : m?.[1] === target;
+    if (!inScope || !m) return { fault: `scope: ${change.target} is outside the selection` };
+    if (typeof value !== "string")
+      return { fault: `${change.target}: is text; put the new text in text` };
+    texts.set(m[2] as string, value);
+  }
+  const changes: EditFastChange[] = [];
+  for (const [id, text] of texts) {
+    const el = slide.elements.find((e) => e.id === id);
+    if (el?.type !== "text") return { fault: `scope: ${id} is not a text box on this slide` };
+    const doc = textToDoc(text, el.doc);
+    const now = richDocToPlainText(doc);
+    if (now.trim() !== richDocToPlainText(el.doc).trim())
+      changes.push({ elementId: id, doc, text: now });
+  }
+  const byId = new Map(changes.map((c) => [c.elementId, c]));
+  const elements = slide.elements.map((e) => {
+    const c = byId.get(e.id);
+    return c && e.type === "text" ? { ...e, doc: c.doc } : e;
+  });
+  return { changes, slide: { ...slide, elements } };
 }
 
 /* ------------------------------------------------------------------ */
@@ -370,26 +419,32 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
       };
     if (out.changes.length === 0)
       return { action: "no-change", reason: EDIT_MESSAGES.noChange, attempts, ms: ms() };
-    const applied = applyEdit(out, input.target, req.slide, req.elementId);
+    const applied = applyEdit(out, input.target, req.slide);
     let faults: string[];
     if ("fault" in applied) {
       faults = [applied.fault];
       lastCheck = applied.fault.startsWith("scope") ? "scope" : "shape";
     } else {
-      if (applied.text.trim() === input.text.trim())
+      if (applied.changes.length === 0)
         return { action: "no-change", reason: EDIT_MESSAGES.noChange, attempts, ms: ms() };
-      if (applied.text.trim() === "") faults = [`${input.target}: the text is empty`];
-      else {
-        const fit = fitFaults(req.slide, applied.slide, req.elementId, req.lesson.themeId);
-        const leak = leakFaults(req.slide, applied.slide, req.elementId);
-        faults = [...leak, ...fit];
-        lastCheck = leak.length > 0 ? "leak" : "fit";
+      faults = [];
+      let leaked = false;
+      for (const c of applied.changes) {
+        const at = targetOf(input.slidePath, c.elementId);
+        if (c.text.trim() === "") {
+          faults.push(`${at}: the text is empty`);
+          continue;
+        }
+        const leak = leakFaults(req.slide, applied.slide, c.elementId);
+        const fit = fitFaults(req.slide, applied.slide, c.elementId, req.lesson.themeId);
+        if (leak.length > 0) leaked = true;
+        faults.push(...[...leak, ...fit].map((f) => `${at}: ${f}`));
       }
+      lastCheck = leaked ? "leak" : "fit";
       if (faults.length === 0)
         return {
           action: "edit",
-          doc: applied.doc,
-          text: applied.text,
+          changes: applied.changes,
           summary: out.summary.trim(),
           attempts,
           ms: ms(),
@@ -397,7 +452,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
         };
     }
     retry = {
-      faults: faults.map((f) => (f.startsWith(input.target) ? f : `${input.target}: ${f}`)),
+      faults: faults.map((f) => (f.startsWith(`${input.target}`) ? f : `${input.target}: ${f}`)),
       previous: JSON.stringify(out),
     };
   }

@@ -1,9 +1,12 @@
 /**
  * `POST /lessons/:id/edit` (TEACH-97 part d; rulings 171–173, 175, 176): edit with a prompt, fast
- * path. The editor sends the slide as it holds it now, the selected text box and the teacher's
- * instruction; one `editFast` call (gpt-6-luna, reasoning off, `@tj/generation`) rewrites that
- * box, the fit and answer-leak checks run on the result, and the answer is either the new doc for
- * the editor to apply as one undoable step, or a teacher-worded reason and no change. Nothing is
+ * path, behind the editor's chat pane. The editor sends the slide as it holds it now, the selected
+ * text box (or none, for the whole slide) and the teacher's instruction. The router's rules run
+ * first; a request the agent path would handle is answered in teacher words, as that path waits on
+ * the saved slide spec (part c). Otherwise one `editFast` call (gpt-6-luna, reasoning off,
+ * `@tj/generation`) rewrites the box or the slide's boxes, the fit and answer-leak checks run on
+ * the result, and the answer is either the new docs for the editor to apply as one undoable step,
+ * or a teacher-worded reason and no change. Nothing is
  * written here: the editor applies the edit and its autosave stores it, so Undo is the editor's
  * history. Behind the session guard and `aiLimiter` (`app.ts`), like every route that may end in a
  * model call.
@@ -14,7 +17,14 @@ import { zValidator } from "@hono/zod-validator";
 import type { CreatedAi } from "@tj/ai";
 import { forWorkspace, getDocument, type ScopableDb } from "@tj/db";
 import { guarded, type Lesson, type Slide, SlideSchema } from "@tj/domain/documents";
-import { EDIT_INSTRUCTION_MAX, EDIT_MESSAGES, EditTargetError, editFast } from "@tj/generation";
+import {
+  AGENT_MESSAGES,
+  EDIT_INSTRUCTION_MAX,
+  EDIT_MESSAGES,
+  EditTargetError,
+  editFast,
+  routeEdit,
+} from "@tj/generation";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -27,7 +37,8 @@ const lessonParam = z.object({ id: z.uuid() });
 
 export const LessonEditBodySchema = z.strictObject({
   slide: SlideSchema,
-  elementId: z.string().min(1).max(64),
+  /** The selected text box; absent → the whole slide. */
+  elementId: z.string().min(1).max(64).optional(),
   /** The input guard runs on the instruction before any model sees it, as on a brief. */
   instruction: guarded(z.string().trim().min(1).max(EDIT_INSTRUCTION_MAX)),
 });
@@ -52,6 +63,21 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
       const slide = body.slide as Slide;
       if (!lesson.slides.some((s) => s.id === slide.id)) {
         throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+      }
+      // The router's rules (code, no model). The agent path waits on part c (the saved slide
+      // spec), so a request that needs it is answered now, in teacher words, with no change.
+      const route = routeEdit(body.elementId ? "element" : "slide", body.instruction);
+      if (route.path === "agent") {
+        logger.info({ action: "escalate", check: `route:${route.need}`, ms: 0 }, "lesson edit");
+        return c.json(
+          {
+            action: "escalate" as const,
+            reason: AGENT_MESSAGES[route.need],
+            need: route.need,
+            ms: 0,
+          },
+          200,
+        );
       }
       if (ai === undefined || ai.kind === "unconfigured") {
         return c.json({ action: "failed" as const, reason: EDIT_MESSAGES.failed }, 200);
@@ -79,14 +105,27 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
         );
         if (result.action === "edit") {
           return c.json(
-            { action: "edit" as const, doc: result.doc, summary: result.summary, ms: result.ms },
+            {
+              action: "edit" as const,
+              changes: result.changes.map((x) => ({ elementId: x.elementId, doc: x.doc })),
+              summary: result.summary,
+              ms: result.ms,
+            },
             200,
           );
         }
-        return c.json({ action: result.action, reason: result.reason, ms: result.ms }, 200);
+        return c.json(
+          {
+            action: result.action,
+            reason: result.reason,
+            ms: result.ms,
+            ...(result.action !== "no-change" && result.check ? { check: result.check } : {}),
+          },
+          200,
+        );
       } catch (error) {
         if (error instanceof EditTargetError) {
-          throw new HTTPException(400, { message: "Select a text box to edit it with a prompt." });
+          throw new HTTPException(400, { message: "There is no text to change on this slide." });
         }
         logger.warn({ error: (error as Error).name }, "lesson edit failed");
         return c.json({ action: "failed" as const, reason: EDIT_MESSAGES.failed }, 200);

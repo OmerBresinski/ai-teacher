@@ -9,20 +9,30 @@ import type { RegenerateTarget } from "./use-editor-session";
  * "changing…" overlay on the navigator thumbs while a job is in flight; `busy` the panel's spinner.
  */
 
-/** What the editor sends for an edit with a prompt (TEACH-97 part d): the slide as it is now. */
-export type PromptEditRequest = { slide: Slide; elementId: Id; instruction: string };
+/**
+ * What the editor sends for an edit with a prompt (TEACH-97): the slide as it is now and the
+ * selected text box, or no box for the whole slide.
+ */
+export type PromptEditRequest = { slide: Slide; elementId?: Id | undefined; instruction: string };
 
 /**
- * The answer: the box's new doc and a one-line summary to apply as one undo step, or a reason in
- * teacher words and no change (rulings 172, 173).
+ * The answer: each changed box's new doc and a one-line summary to apply as one undo step, or a
+ * reason in teacher words and no change (rulings 172, 173). `need` says why an escalation could
+ * not be a text edit (the agent path's reasons, `routeEdit` in `@tj/generation`).
  */
 export type PromptEditAnswer =
-  | { action: "edit"; doc: RichDoc; summary: string }
-  | { action: "refuse" | "escalate" | "no-change" | "failed"; reason: string };
+  | { action: "edit"; changes: { elementId: Id; doc: RichDoc }[]; summary: string }
+  | {
+      action: "refuse" | "escalate" | "no-change" | "failed";
+      reason: string;
+      need?: string | undefined;
+      /** Which check refused ("fit", "leak", …), when code refused. */
+      check?: string | undefined;
+    };
 
 export type ProposalsApi = {
-  /** Edit with a prompt, fast path: the app calls `POST /lessons/:id/edit`. Absent → no button. */
-  onPromptEdit?: (request: PromptEditRequest) => Promise<PromptEditAnswer>;
+  /** Edit with a prompt: the app calls `POST /lessons/:id/edit`. Absent → no chat pane. */
+  onPromptEdit?: (request: PromptEditRequest, signal?: AbortSignal) => Promise<PromptEditAnswer>;
   /** The facts whose text changed, coalesced; the app enqueues `lesson.cascade`. */
   onFactsChanged?: (factIds: string[]) => void;
   /** The teacher confirmed the regenerate dialog; the app enqueues `lesson.regenerate`. */

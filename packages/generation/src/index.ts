@@ -25,12 +25,19 @@ export {
   EDIT_FAST_MODEL_ID,
   EDIT_INSTRUCTION_MAX,
   EDIT_MESSAGES,
+  type EditFastChange,
   type EditFastDeps,
   type EditFastRequest,
   type EditFastResult,
   EditTargetError,
   editFast,
 } from "./edit-fast";
+export {
+  AGENT_MESSAGES,
+  type EditNeed,
+  type EditRoute,
+  routeEdit,
+} from "./edit-route";
 export {
   MODEL_FIELDS,
   type ModelField,

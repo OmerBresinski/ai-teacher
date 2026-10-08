@@ -61,9 +61,11 @@ describe("editFast (TEACH-97 part d)", () => {
     );
     expect(res.action).toBe("edit");
     if (res.action !== "edit") return;
-    expect(res.text).toBe("Water warms up and becomes a gas.");
+    expect(res.changes).toHaveLength(1);
+    expect(res.changes[0]?.elementId).toBe("b");
+    expect(res.changes[0]?.text).toBe("Water warms up and becomes a gas.");
     expect(res.summary).toBe("Made it shorter.");
-    expect(res.doc.content?.[0]?.type).toBe("paragraph");
+    expect(res.changes[0]?.doc.content?.[0]?.type).toBe("paragraph");
     expect(ai.calls).toHaveLength(1);
     expect(ai.calls[0]?.modelClass).toBe("small");
     expect(JSON.stringify(ai.calls[0]?.providerOptions)).toContain('"reasoningEffort":"none"');
@@ -141,6 +143,41 @@ describe("editFast (TEACH-97 part d)", () => {
       { ai: createFakeAi({ script: [answer(T, same)] }), logger },
     );
     expect(res).toMatchObject({ action: "no-change", reason: EDIT_MESSAGES.noChange });
+  });
+
+  test("a slide-scope edit may change several of the slide's text boxes", async () => {
+    const out = JSON.stringify({
+      action: "edit",
+      reason: null,
+      changes: [
+        { target: "s4/elements/h/text", text: "Evaporating", node_json: null },
+        { target: T, text: "Water warms up and becomes a gas.", node_json: null },
+      ],
+      summary: "Made the slide simpler.",
+    });
+    const ai = createFakeAi({ script: [out] });
+    const res = await editFast(
+      { lesson: lesson(), slide: contentSlide(), instruction: "Simpler" },
+      { ai, logger },
+    );
+    expect(res.action).toBe("edit");
+    if (res.action !== "edit") return;
+    expect(res.changes.map((c) => c.elementId).sort()).toEqual(["b", "h"]);
+    const prompt = ai.calls[0]?.promptText ?? "";
+    expect(prompt).not.toContain("Selected element:");
+    expect(prompt).toContain("Slide s4:");
+  });
+
+  test("a slide-scope change on another slide is retried as out of scope", async () => {
+    const ai = createFakeAi({
+      script: [answer("s2/elements/b/text", "Other"), answer(T, "Water turns into a gas.")],
+    });
+    const res = await editFast(
+      { lesson: lesson(), slide: contentSlide(), instruction: "Simpler" },
+      { ai, logger },
+    );
+    expect(res.action).toBe("edit");
+    expect(ai.calls[1]?.promptText).toContain("outside the selection");
   });
 
   test("only a text box can be edited", () => {
