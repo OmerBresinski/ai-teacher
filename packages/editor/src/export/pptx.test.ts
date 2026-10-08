@@ -15,7 +15,6 @@ import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { getTheme } from "../model/themes";
 import { resolveTextStyle } from "../slide/elements/kit";
-import { creditSegments, imageCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
 import {
   answerText,
@@ -564,47 +563,38 @@ describe("exportLessonPptx", () => {
     expect(without.size).toBeLessThan(withAnswers.size);
   }, 30_000);
 
-  // TEACH-161 row 5: the credits slide closes the deck, after the Answers slide when there is one.
-  describe("image credits slide", () => {
-    const slideFiles = (zip: JSZip) =>
+  // TEACH-251: no credits slide; each slide's notes end on the credits its pictures' licences require.
+  describe("image credits", () => {
+    const slideFiles = (zip: JSZip, kind = "slides/slide") =>
       Object.keys(zip.files)
-        .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+        .filter((n) => new RegExp(`^ppt/${kind}\\d+\\.xml$`).test(n))
         .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]));
     const paragraphs = (xml: string) =>
       (xml.match(/<a:p>.*?<\/a:p>/g) ?? []).map((p) =>
         (p.match(/<a:t>(.*?)<\/a:t>/g) ?? []).map((t) => t.slice(5, -6)).join(""),
       );
+    /** A notes page's text: pptxgenjs keeps the line breaks inside one run. */
+    const text = async (zip: JSZip, file: string) =>
+      ((await zip.file(file)?.async("string")) ?? "")
+        .match(/<a:t>[\s\S]*?<\/a:t>/g)
+        ?.join("")
+        .replace(/\r\n/g, "\n") ?? "";
 
-    it("adds one last slide listing each credit, the photographer and Pexels as run links", async () => {
+    it("adds no credits slide, after the Answers slide or anywhere", async () => {
       const lesson = creditedLesson();
-      const blob = await exportLessonPptx(lesson, theme);
+      lesson.slides.push(newSlide("true-false", lesson.themeId));
+      const blob = await exportLessonPptx(lesson, theme, { includeAnswers: true });
       const zip = await JSZip.loadAsync(await blob.arrayBuffer());
       const files = slideFiles(zip);
       expect(files).toHaveLength(buildSlidePlan(lesson).length + 1);
-      const last = files.at(-1) ?? "";
-      const xml = (await zip.file(last)?.async("string")) ?? "";
-      expect(paragraphs(xml)).toEqual([
-        "Image credits",
-        "Photo by Ada on Pexels",
-        "Photo by Bob on Pexels",
-        "Sky by Cy, CC BY 2.0 · View the original",
-      ]);
-      expect(xml).toContain("<a:hlinkClick");
-      const rels =
-        (await zip
-          .file(last.replace("slides/", "slides/_rels/").concat(".rels"))
-          ?.async("string")) ?? "";
-      for (const url of [
-        "https://www.pexels.com/@ada",
-        "https://www.pexels.com/photo/1001/",
-        "https://www.pexels.com/@bob",
-        "https://openverse.org/x",
-      ]) {
-        expect(rels).toContain(`Target="${url}"`);
-      }
+      expect(paragraphs((await zip.file(files.at(-1) ?? "")?.async("string")) ?? "")[0]).toBe(
+        "Answers",
+      );
+      const all = await Promise.all(files.map((f) => zip.file(f)?.async("string") ?? ""));
+      expect(all.some((xml) => xml.includes("Image credits"))).toBe(false);
     }, 30_000);
 
-    it("every picture's credit is in the exported deck: Commons with its licence, generated as one line (TEACH-251)", async () => {
+    it("ends a slide's notes on the CC BY and BY-SA credits it owes, and nothing for the rest", async () => {
       const base = creditedLesson();
       const img = (id: string, source: unknown, fit: "cover" | "contain" = "cover") => ({
         id,
@@ -618,17 +608,16 @@ describe("exportLessonPptx", () => {
         fit,
         source,
       });
-      const commons = {
+      const commons = (file: string, licence: string) => ({
         provider: "commons",
-        id: "commons-131416315",
-        pageUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
+        id: `commons-${file}`,
+        pageUrl: `https://commons.wikimedia.org/wiki/File:${file}.jpg`,
         photographer: "Basile Morin",
-        photographerUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
+        photographerUrl: `https://commons.wikimedia.org/wiki/File:${file}.jpg`,
         author: "Basile Morin",
-        licence: "CC BY-SA 4.0",
-        licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
-        sourceUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
-      };
+        licence,
+        sourceUrl: `https://commons.wikimedia.org/wiki/File:${file}.jpg`,
+      });
       const gen = (id: string) => ({
         provider: "generated",
         id,
@@ -640,61 +629,37 @@ describe("exportLessonPptx", () => {
         ...base,
         slides: [
           ...base.slides,
-          { id: "c1", kind: "content", elements: [img("calf", commons), img("g1", gen("g1"))] },
+          {
+            id: "c1",
+            kind: "content",
+            notes: "Ask what the calf eats.",
+            elements: [
+              img("calf", commons("Standing_calf", "CC BY-SA 4.0")),
+              img("wall", commons("Roman_wall", "CC BY 2.0"), "contain"),
+              img("cow", commons("Cow", "CC0")),
+              img("map", commons("Old_map", "Public domain")),
+              img("g1", gen("g1")),
+            ],
+          },
           { id: "c2", kind: "content", elements: [img("g2", gen("g2"))] },
         ],
       } as never as Lesson;
-      const n = base.slides.length;
       const blob = await exportLessonPptx(lesson, theme);
       const zip = await JSZip.loadAsync(await blob.arrayBuffer());
       const files = slideFiles(zip);
-      const last = files.at(-1) ?? "";
-      const xml = (await zip.file(last)?.async("string")) ?? "";
-      const lines = paragraphs(xml);
-      // Every credited picture of the deck (Pexels, Openverse, Commons and the generated ones).
-      for (const credit of imageCredits(lesson))
-        expect(lines).toContain(
-          creditSegments(credit)
-            .map((seg) => seg.text)
-            .join(""),
-        );
-      expect(lines).toContain("Standing calf, Basile Morin, CC BY-SA 4.0, cropped");
-      expect(lines).toContain(
-        `Pictures on slides ${n + 1} and ${n + 2} were generated for this lesson.`,
+      expect(files).toHaveLength(buildSlidePlan(lesson).length);
+      const notes = slideFiles(zip, "notesSlides/notesSlide");
+      const calf = await text(zip, notes.at(-2) ?? "");
+      expect(calf).toContain(
+        "Ask what the calf eats.\n\nPicture credits:\nStanding calf, Basile Morin, CC BY-SA 4.0, cropped\nRoman wall, Basile Morin, CC BY 2.0</a:t>",
       );
-      expect(lines.filter((l) => l.includes("generated"))).toHaveLength(1);
-      const rels =
-        (await zip
-          .file(last.replace("slides/", "slides/_rels/").concat(".rels"))
-          ?.async("string")) ?? "";
-      expect(rels).toContain('Target="https://commons.wikimedia.org/wiki/File:Standing_calf.jpg"');
-      expect(rels).toContain('Target="https://creativecommons.org/licenses/by-sa/4.0"');
-    }, 30_000);
-
-    it("comes after the Answers slide", async () => {
-      const lesson = creditedLesson();
-      lesson.slides.push(newSlide("true-false", lesson.themeId));
-      const blob = await exportLessonPptx(lesson, theme, { includeAnswers: true });
-      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-      const files = slideFiles(zip);
-      expect(files).toHaveLength(buildSlidePlan(lesson).length + 2);
-      const [answers, credits] = await Promise.all(
-        files.slice(-2).map(async (f) => paragraphs((await zip.file(f)?.async("string")) ?? "")[0]),
+      for (const none of ["Cow", "Old map", "generated", "Pexels"])
+        expect(calf).not.toContain(none);
+      // A slide of generated pictures, and the Pexels and Openverse slides, owe nothing.
+      const rest = await Promise.all(
+        notes.filter((n) => n !== notes.at(-2)).map((n) => text(zip, n)),
       );
-      expect([answers, credits]).toEqual(["Answers", "Image credits"]);
-    }, 30_000);
-
-    it("is not added to a deck without a credited picture", async () => {
-      const [water] = demoLibrary();
-      if (!water) throw new Error("fixture");
-      const zip = await JSZip.loadAsync(
-        await (await exportLessonPptx(water, getTheme(water.themeId))).arrayBuffer(),
-      );
-      expect(slideFiles(zip)).toHaveLength(buildSlidePlan(water).length);
-      const all = await Promise.all(
-        slideFiles(zip).map(async (f) => (await zip.file(f)?.async("string")) ?? ""),
-      );
-      expect(all.some((xml) => xml.includes("Image credits"))).toBe(false);
+      expect(rest.some((t) => t.includes("Picture credits"))).toBe(false);
     }, 30_000);
   });
 

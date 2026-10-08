@@ -1,8 +1,9 @@
 /**
- * The "Image credits" page every lesson export ends on (Images project, Decisions 2 and 5): one
- * line per searched picture, worded by `photoCredit` from `source`, else the legacy
- * Openverse `credit` text. Nothing is drawn on the slides themselves. Shared by the print route
- * (PDF), the PowerPoint exporter and the PNG run, so the three can never list different pictures.
+ * Picture credits for the exports: `imageCredits` lists every credited picture (the PNG run's
+ * closing credits picture), `licenceCredits` only the ones a licence requires on the slide that
+ * shows them (TEACH-251: PowerPoint speaker notes, the PDF's line on the slide). PDF and PowerPoint
+ * end on no credits page. Each line is worded by `photoCredit` from `source`, else the legacy
+ * Openverse `credit` text.
  *
  * Pure and tiny, so `ExportControl` may import it statically. It must never import `./pptx`,
  * `./png` or `./docx`: that would pull a click-loaded exporter into a route chunk (ADR 0023 §4,
@@ -16,6 +17,7 @@ import {
   type Lesson,
   normaliseHref,
   type PhotoSource,
+  type Slide,
   type SlideElement,
 } from "@tj/domain/documents";
 
@@ -85,6 +87,29 @@ export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): 
   }
   if (generatedOn.length)
     out.splice(generatedAt, 0, { key: "generated", text: generatedLine(generatedOn), links: [] });
+  return out;
+}
+
+/** A Commons picture under CC BY or BY-SA: its licence requires the credit wherever it is shown. */
+export function requiresCredit(source: PhotoSource | undefined): boolean {
+  return source?.provider === "commons" && ATTRIBUTION.test(source.licence?.trim() ?? "");
+}
+
+/**
+ * The credits one slide owes by licence (TEACH-251): "{title}, {author}, {licence}[, cropped]" for
+ * each CC BY or BY-SA Commons picture on it, once each, in slide order. Pexels, CC0, public-domain
+ * and generated pictures owe nothing, so they are left out.
+ */
+export function licenceCredits(slide: Pick<Slide, "elements">): string[] {
+  const out: string[] = [];
+  for (const image of images(slide.elements)) {
+    if (!image.source || !requiresCredit(image.source)) continue;
+    const { text } = photoCredit(image.source, { cropped: isCropped(image) });
+    const plain = text.replace(/, cropped$/, "");
+    const at = out.findIndex((t) => t === plain || t === `${plain}, cropped`);
+    if (at < 0) out.push(text);
+    else if (text.endsWith(", cropped")) out[at] = text;
+  }
   return out;
 }
 

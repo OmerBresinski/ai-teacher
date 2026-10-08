@@ -710,6 +710,22 @@ function itemsSeenDirected(
   return brief.mustShow.filter((item) => seen.has(normaliseItem(item)));
 }
 
+/** A Commons file under CC BY or BY-SA: placing it means a credit on the slide (TEACH-251). */
+const owesCredit = (photo: PhotoResult) => {
+  const licence = (photo as { licenceClass?: string }).licenceClass;
+  return licence === "cc-by" || licence === "cc-by-sa";
+};
+
+/**
+ * The licence tie-break (TEACH-251), in code only: the shortlist holds the candidates worth a look,
+ * so the CC0 and public-domain files among them are shown to the judge ahead of the CC BY and BY-SA
+ * ones, each group in its own order. Of two equally good pictures the judge meets the one that
+ * owes no credit first. It never drops a candidate, so a better CC BY picture can still win.
+ */
+export function freeLicenceFirst<T extends PhotoResult>(photos: T[]): T[] {
+  return [...photos.filter((p) => !owesCredit(p)), ...photos.filter(owesCredit)];
+}
+
 /**
  * One photo slot for the picture director: queries (named thing, director's searches, the lesson
  * title for a real subject, fact hints, the subject), Commons first for a specific subject with
@@ -811,13 +827,14 @@ export async function pickDirectedPhoto(args: {
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
     const listed = await shortlistDirected(placeArgs, pool);
-    const shortlisted =
+    const shortlisted = freeLicenceFirst(
       round === 0
         ? [...listed, ...topHits.filter((t) => !listed.some((c) => c.id === t.id))].slice(
             0,
             SHORTLIST_MAX + 3,
           )
-        : listed;
+        : listed,
+    );
     deps.logger.info({
       stage: "illustrate",
       slideIndex: index,

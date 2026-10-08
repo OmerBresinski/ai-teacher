@@ -1,12 +1,7 @@
 import type { Lesson, Slide } from "@tj/domain/documents";
 import { useEffect, useMemo, useRef } from "react";
-import {
-  creditSegments,
-  IMAGE_CREDITS_TITLE,
-  type ImageCredit,
-  imageCredits,
-} from "../export/credits";
 import { CAPTURE_READY_ATTR, waitForSlidePaint } from "../export/paint";
+import { printedSlide } from "../export/pdf-credit";
 import { parseSlideRange } from "../export/range";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
@@ -22,9 +17,8 @@ export { useFittedLesson } from "../layout/refit";
  * dialog named. A range that will not parse prints the whole deck rather than nothing: the field that
  * produces it refuses to submit, so a bad one can only have been typed into the address bar.
  *
- * Every layout ends on one "Image credits" page in its own page size when a printed slide holds a
- * credited picture (TEACH-161; Images project Decision 2): only the slides in the range count, and a
- * deck without one prints exactly as before.
+ * No credits page (TEACH-251): a picture whose licence requires a credit is handled on its own
+ * slide by `printedSlide` (`../export/pdf-credit.ts`), a tiny grey line by default.
  *
  * `auto` prints as soon as the deck has painted (fonts and every image), so "Export PDF" is one
  * click; the route sets `data-capture-ready` on `<html>` at the same moment so a headless renderer
@@ -67,15 +61,6 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
     });
   }, [lesson.slides, slides]);
 
-  const credits = useMemo(
-    () =>
-      imageCredits(
-        lesson,
-        pages.map((p) => p.number - 1),
-      ),
-    [lesson, pages],
-  );
-
   // Ready only once the type and the pictures have landed, or the first page prints with fallback
   // fonts and empty image boxes. The one external subscription here: the document's paint. It
   // re-arms whenever what is on the page changes (a refetched lesson, another range or layout on
@@ -105,8 +90,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
     ? "@page { size: A4 portrait; margin: 12mm 8mm }"
     : "@page { size: 960pt 540pt; margin: 0 }";
   const total = lesson.slides.length;
-  const pageCount =
-    (handout3 ? Math.ceil(pages.length / 3) : pages.length) + (credits.length > 0 ? 1 : 0);
+  const pageCount = handout3 ? Math.ceil(pages.length / 3) : pages.length;
   const reveal = (slide: Slide) => answers && !!slide.question;
 
   return (
@@ -127,12 +111,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
                   <div key={slide.id} className="td-handout3-row" data-slide-index={number}>
                     <div className="td-handout3-slide">
                       <div className="td-handout3-scale">
-                        <SlideView
-                          slide={slide}
-                          theme={theme}
-                          mode="capture"
-                          revealAnswer={reveal(slide)}
-                        />
+                        <PrintSlideView slide={slide} theme={theme} revealAnswer={reveal(slide)} />
                       </div>
                     </div>
                     <div className="td-handout3-side">
@@ -153,12 +132,7 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
                   </p>
                   <div className="td-handout-slide">
                     <div className="td-handout-scale">
-                      <SlideView
-                        slide={slide}
-                        theme={theme}
-                        mode="capture"
-                        revealAnswer={reveal(slide)}
-                      />
+                      <PrintSlideView slide={slide} theme={theme} revealAnswer={reveal(slide)} />
                     </div>
                   </div>
                   <p className="td-handout-notes" data-empty={!slide.notes?.trim()}>
@@ -169,57 +143,35 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
               ) : (
                 <section key={slide.id} className="td-print-page" data-slide-index={number}>
                   <div className="td-print-scale">
-                    <SlideView
-                      slide={slide}
-                      theme={theme}
-                      mode="capture"
-                      revealAnswer={reveal(slide)}
-                    />
+                    <PrintSlideView slide={slide} theme={theme} revealAnswer={reveal(slide)} />
                   </div>
                 </section>
               ),
             )}
-        {credits.length > 0 ? (
-          <CreditsPage
-            credits={credits}
-            className={handout3 ? "td-handout3-page" : notes ? "td-handout-page" : "td-print-page"}
-          />
-        ) : null}
       </main>
     </>
   );
 }
 
-/**
- * The last page: every credited picture on the printed slides, worded as the credit badge words it.
- * Links stay clickable in a PDF saved from Chromium, and the addresses are printed beneath each line
- * in small text so a paper copy still carries them.
- */
-function CreditsPage({ credits, className }: { credits: ImageCredit[]; className: string }) {
+/** One printed slide, with the credit line its pictures' licences require (`printedSlide`). */
+function PrintSlideView({
+  slide,
+  theme,
+  revealAnswer,
+}: {
+  slide: Slide;
+  theme: ReturnType<typeof renderTheme>;
+  revealAnswer: boolean;
+}) {
+  const printed = printedSlide(slide);
   return (
-    <section className={`${className} td-credits-page`} data-credits-page>
-      <h1 className="td-credits-title">{IMAGE_CREDITS_TITLE}</h1>
-      <ul className="td-credits-list">
-        {credits.map((credit) => (
-          <li key={credit.key} className="td-credits-item">
-            <p className="td-credits-text">
-              {creditSegments(credit).map((segment, i) =>
-                segment.href ? (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: a fixed run of one line's text
-                  <a key={i} href={segment.href} target="_blank" rel="noopener noreferrer">
-                    {segment.text}
-                  </a>
-                ) : (
-                  segment.text
-                ),
-              )}
-            </p>
-            {credit.links.length > 0 ? (
-              <p className="td-credits-urls">{credit.links.map((l) => l.href).join("  ·  ")}</p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      <SlideView slide={printed.slide} theme={theme} mode="capture" revealAnswer={revealAnswer} />
+      {printed.credits.length > 0 ? (
+        <p className="td-print-credit" data-print-credit>
+          {printed.credits.join(" · ")}
+        </p>
+      ) : null}
+    </>
   );
 }

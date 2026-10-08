@@ -3,7 +3,12 @@ import { createFakeAi } from "@tj/ai/testing";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
-import { type DirectedPlacer, directedGatePasses, pickDirectedPhoto } from "./illustrate";
+import {
+  type DirectedPlacer,
+  directedGatePasses,
+  freeLicenceFirst,
+  pickDirectedPhoto,
+} from "./illustrate";
 import type { BankRequest, PictureBank } from "./photo-bank";
 import {
   findDirected,
@@ -247,6 +252,65 @@ describe("ruling 163 under strict (placement)", () => {
 
 describe("pickDirectedPhoto (judge v17, Commons first)", () => {
   const brief = writerAskBrief(ask());
+
+  // TEACH-251: of equally good pictures, the one that owes no credit; code only, no prompt change.
+  const licensed = (id: string, licenceClass: string) => ({
+    ...photo(id, "commons"),
+    licenceClass,
+  });
+
+  test("freeLicenceFirst puts CC0 and public-domain files ahead of CC BY and BY-SA, keeping order", () => {
+    const list = [
+      licensed("by-1", "cc-by"),
+      licensed("zero-1", "cc0"),
+      licensed("bysa-1", "cc-by-sa"),
+      licensed("pd-1", "public-domain"),
+      photo("pexels-1"),
+    ];
+    expect(freeLicenceFirst(list).map((p) => p.id)).toEqual([
+      "zero-1",
+      "pd-1",
+      "pexels-1",
+      "by-1",
+      "bysa-1",
+    ]);
+    expect(freeLicenceFirst(list)).toHaveLength(list.length);
+  });
+
+  test("the judge is shown the CC0 and public-domain candidates first, and its pick still stands", async () => {
+    const { images } = placer({
+      commons: async () => [
+        licensed("by-1", "cc-by"),
+        licensed("bysa-1", "cc-by-sa"),
+        licensed("zero-1", "cc0"),
+      ],
+    });
+    const ai = createFakeAi({
+      script: [
+        verdict({
+          pick: "by-1",
+          onSubject: true,
+          clear: true,
+          fits: true,
+          visible: ["Henry VIII"],
+        }),
+      ],
+    });
+    const r = await pickDirectedPhoto({
+      lesson: sampleBriefLesson(),
+      index: 0,
+      brief,
+      images,
+      deps: recordingDeps(ai),
+    });
+    const judged = JSON.stringify(ai.calls.at(-1));
+    const at = (id: string) => judged.indexOf(`Photo ${id}`);
+    expect(at("zero-1")).toBeGreaterThan(-1);
+    expect(at("zero-1")).toBeLessThan(at("by-1"));
+    expect(at("by-1")).toBeLessThan(at("bysa-1"));
+    // A tie-break, not a veto: a CC BY picture the judge prefers is placed.
+    expect(r.outcome).toBe("placed");
+  });
 
   test("Commons throwing during the requery falls back to Pexels; the slot is not failed", async () => {
     let commonsCalls = 0;

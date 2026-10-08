@@ -52,10 +52,10 @@ test.describe("lesson print route", () => {
   });
 });
 
-// TEACH-161 row 4: the "Image credits" page the print route ends on.
+// TEACH-251: the PDF ends on no credits page; a CC BY or BY-SA picture is credited on its own slide.
 test.describe("lesson print image credits", () => {
-  test("?auto=1 ends on one credits page; the PDF has slides + 1 pages; ?slides=1-2 lists A and B", async ({
-    signedInPage: { page, paths },
+  test("?auto=1 prints the slides and nothing more; the PDF has one page per slide", async ({
+    signedInPage: { page },
   }) => {
     await page.addInitScript(() => {
       window.print = () => {};
@@ -63,39 +63,15 @@ test.describe("lesson print image credits", () => {
     const id = await seedCreditedLesson(page);
     await page.goto(`/l/${id}/print?auto=1`);
     const main = page.locator(".td-print");
-    await expect(main.locator(".td-print-page")).toHaveCount(5);
-    const credits = main.locator("[data-credits-page]");
-    await expect(credits).toHaveCount(1);
-    await expect(main.locator("> section").last()).toHaveAttribute("data-credits-page");
-    await expect(credits.getByRole("heading", { level: 1, name: "Image credits" })).toBeVisible();
-    await expect(credits.getByRole("listitem")).toHaveText([
-      /^Photo by Ada on Pexels/,
-      /^Photo by Bob on Pexels/,
-      /^Sky by Cy, CC BY 2\.0 · View the original/,
-    ]);
-    await expect(credits.getByRole("link", { name: "Ada" })).toHaveAttribute(
-      "href",
-      "https://www.pexels.com/@ada",
-    );
-    await expect(credits.getByText("https://www.pexels.com/@ada", { exact: false })).toBeVisible();
-    await expect(main).toHaveAttribute("data-page-count", "5");
-    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
-    await page.emulateMedia({ media: "print" });
-    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(5);
-
-    await page.emulateMedia({ media: "screen" });
-    await page.goto(`/l/${id}/print?slides=1-2`);
-    await expect(main.locator("[data-credits-page]").getByRole("listitem")).toHaveText([
-      /^Photo by Ada on Pexels/,
-      /^Photo by Bob on Pexels/,
-    ]);
-    await expect(main).toHaveAttribute("data-page-count", "3");
-
-    // A lesson without credited pictures prints exactly as before.
-    await page.goto(paths.lesson("demo-water-cycle", "/print"));
-    await expect(main.locator(".td-print-page").first()).toBeVisible();
+    await expect(main.locator(".td-print-page")).toHaveCount(4);
     await expect(main.locator("[data-credits-page]")).toHaveCount(0);
     await expect(page.getByText("Image credits")).toHaveCount(0);
+    // Pexels and Openverse pictures owe no credit on the slide.
+    await expect(main.locator("[data-print-credit]")).toHaveCount(0);
+    await expect(main).toHaveAttribute("data-page-count", "4");
+    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
+    await page.emulateMedia({ media: "print" });
+    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(4);
   });
 });
 

@@ -3,70 +3,74 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { lesson as baseLesson, creditedLesson } from "@tj/domain/documents/fixtures";
 import { LessonPrint } from "./LessonPrint";
 
-/* TEACH-161: the "Image credits" page at the end of the lesson print route, in every layout. */
+/* TEACH-251: no credits page; the credit a picture's licence requires is printed on its slide. */
 
 afterEach(cleanup);
 
 const main = () => screen.getByRole("main");
-const creditsPage = () => main().querySelector<HTMLElement>("[data-credits-page]");
+
+const commons = (id: string, licence: string) => ({
+  provider: "commons" as const,
+  id,
+  pageUrl: `https://commons.wikimedia.org/wiki/File:${id}.jpg`,
+  photographer: "Basile Morin",
+  photographerUrl: `https://commons.wikimedia.org/wiki/File:${id}.jpg`,
+  author: "Basile Morin",
+  licence,
+  sourceUrl: `https://commons.wikimedia.org/wiki/File:${id}.jpg`,
+});
+
+/** The credited fixture with one more slide: a CC BY-SA calf, shown cropped, and a CC0 cow. */
+function withCommons() {
+  const base = creditedLesson();
+  const pic = (id: string, source: ReturnType<typeof commons>, fit: "cover" | "contain") => ({
+    id,
+    type: "image" as const,
+    x: 40,
+    y: 40,
+    w: 300,
+    h: 200,
+    src: "data:,",
+    alt: id,
+    fit,
+    source,
+  });
+  const slide = {
+    id: "commons-slide",
+    kind: "content" as const,
+    elements: [
+      pic("calf", commons("Standing_calf", "CC BY-SA 4.0"), "cover"),
+      pic("cow", commons("Cow", "CC0"), "contain"),
+    ],
+  };
+  return { ...base, slides: [...base.slides, slide] } as never as ReturnType<typeof creditedLesson>;
+}
 
 describe("LessonPrint image credits", () => {
-  it("ends the one-per-page print on a landscape credits page with links and visible addresses", () => {
-    render(<LessonPrint lesson={creditedLesson()} />);
-    const page = creditsPage();
-    if (!page) throw new Error("no credits page");
-    expect(page.className).toContain("td-print-page");
-    // Last in the document, after every slide page, and counted.
-    expect(main().lastElementChild).toBe(page);
-    expect(main().dataset.pageCount).toBe("5");
-    const view = within(page);
-    expect(view.getByRole("heading", { level: 1, name: "Image credits" })).toBeTruthy();
-    expect(view.getAllByRole("listitem").map((li) => li.querySelector("p")?.textContent)).toEqual([
-      "Photo by Ada on Pexels",
-      "Photo by Bob on Pexels",
-      "Sky by Cy, CC BY 2.0 · View the original",
-    ]);
-    const ada = view.getByRole("link", { name: "Ada" });
-    expect(ada.getAttribute("href")).toBe("https://www.pexels.com/@ada");
-    expect(page.querySelector(".td-credits-urls")?.textContent).toBe(
-      "https://www.pexels.com/@ada  ·  https://www.pexels.com/photo/1001/",
-    );
-    expect(view.getByRole("link", { name: "View the original" }).getAttribute("href")).toBe(
-      "https://openverse.org/x",
-    );
-  });
-
-  it("takes the A4 page of the notes and three-per-page layouts", () => {
-    const { unmount } = render(<LessonPrint lesson={creditedLesson()} options={{ notes: true }} />);
-    expect(creditsPage()?.className).toContain("td-handout-page");
+  it("ends on no credits page, in every layout", () => {
+    for (const options of [{}, { notes: true }, { handout3: true }]) {
+      const { unmount } = render(<LessonPrint lesson={withCommons()} options={options} />);
+      expect(main().querySelector("[data-credits-page]")).toBeNull();
+      expect(screen.queryByText("Image credits")).toBeNull();
+      unmount();
+    }
+    // One page per slide (five here), or three slides to a page: nothing is added.
+    const { unmount } = render(<LessonPrint lesson={withCommons()} />);
     expect(main().dataset.pageCount).toBe("5");
     unmount();
-    render(<LessonPrint lesson={creditedLesson()} options={{ handout3: true }} />);
-    expect(creditsPage()?.className).toContain("td-handout3-page");
-    // Four slides at three to a page is two pages, plus the credits.
-    expect(main().dataset.pageCount).toBe("3");
+    render(<LessonPrint lesson={withCommons()} options={{ handout3: true }} />);
+    expect(main().dataset.pageCount).toBe("2");
   });
 
-  it("lists only the pictures on the slides in the range", () => {
-    render(<LessonPrint lesson={creditedLesson()} options={{ slides: "1-2" }} />);
-    const items = within(creditsPage() as HTMLElement).getAllByRole("listitem");
-    expect(items.map((li) => li.querySelector("p")?.textContent)).toEqual([
-      "Photo by Ada on Pexels",
-      "Photo by Bob on Pexels",
+  it("prints a CC BY-SA picture's credit on its slide, and nothing for Pexels, Openverse or CC0", () => {
+    render(<LessonPrint lesson={withCommons()} />);
+    const lines = [...main().querySelectorAll<HTMLElement>("[data-print-credit]")];
+    expect(lines.map((l) => l.textContent)).toEqual([
+      "Standing calf, Basile Morin, CC BY-SA 4.0, cropped",
     ]);
-    expect(main().dataset.pageCount).toBe("3");
-  });
-
-  it("adds no page when nothing printed is credited", () => {
-    const { unmount } = render(<LessonPrint lesson={baseLesson()} />);
-    expect(creditsPage()).toBeNull();
-    expect(main().dataset.pageCount).toBe(String(baseLesson().slides.length));
-    expect(screen.queryByText("Image credits")).toBeNull();
-    unmount();
-    // Slide 4 has a picture with no credit at all.
-    render(<LessonPrint lesson={creditedLesson()} options={{ slides: "4" }} />);
-    expect(creditsPage()).toBeNull();
-    expect(main().dataset.pageCount).toBe("1");
+    expect(lines[0]?.closest("[data-slide-index]")?.getAttribute("data-slide-index")).toBe("5");
+    // The picture itself still prints, beside its credit.
+    expect(lines[0]?.closest("[data-slide-index]")?.querySelector('img[alt="calf"]')).toBeTruthy();
   });
 });
 
