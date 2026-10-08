@@ -204,6 +204,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       // The bytes go with the hit so the judge checks it against this request before it is used.
       const style = styleOf(best.row);
       const palette = ((best.row.flags ?? {}) as { palette?: string }).palette;
+      const stage = ((best.row.flags ?? {}) as { stage?: boolean }).stage === true;
       const dataUrl =
         style === "drawn"
           ? undefined
@@ -212,6 +213,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
         ...photoOf(best.row),
         ...(style ? { style } : {}),
         ...(palette ? { palette } : {}),
+        ...(stage ? { stage } : {}),
         ...(dataUrl ? { dataUrl } : {}),
       };
     },
@@ -322,6 +324,8 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
             faithful,
             style: req.style ?? "photo",
             ...(req.palette ? { palette: req.palette } : {}),
+            // BAKEOFF y1fix: made for a stage request, so a later stage request may reuse it.
+            ...(req.stage ? { stage: true } : {}),
           },
         },
         { width: w, height: h },

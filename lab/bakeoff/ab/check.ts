@@ -300,9 +300,12 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
         fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     }
-    if (a === "judge20" && (jd.length || b.system !== r.system))
+    if ((a === "judge20" || a === "dir-stage") && (jd.length || b.system !== r.system))
       fail(`judge20 ${id}: its request differs from base4 (the judge is code only)`);
-    if ((a === "b4-r1t2" || a === "b4-r1t3") && (jd.length || b.system !== r.system))
+    if (
+      (a === "b4-r1t2" || a === "b4-r1t3" || a === "y1fix") &&
+      (jd.length || b.system !== r.system)
+    )
       fail(`b4-r1t2 ${id}: its request differs from b4-r1t (stage 2 is code only)`);
     // b4-ex: only the two example lines (number-line, line-graph) may change; no schema path.
     if (a === "b4-ex") {

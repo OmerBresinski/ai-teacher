@@ -77,6 +77,13 @@ export interface BankRequest {
   style?: "illustration" | "house";
   /** The lesson's locked illustration palette (theme colours): a library row is reused only in it. */
   palette?: string;
+  /**
+   * BAKEOFF y1fix (bank rule, 9 Oct): a stage request (director v12 routes an unnamed living thing at a
+   * particular age, stage or sex to library-or-generate). It never reuses a stock-sourced bank row
+   * (a stock caption names age loosely: the y1 "young chicken" was a grown bird), and reuses a
+   * generated row only when that row was itself made for a stage request (`MadePicture.stage`).
+   */
+  stage?: boolean;
 }
 
 /**
@@ -85,6 +92,8 @@ export interface BankRequest {
  */
 export type MadePicture = PlacedPhoto & {
   dataUrl?: string;
+  /** BAKEOFF y1fix: a generated bank row made for a stage request (its stored flags.stage). */
+  stage?: boolean;
   style?: "photo" | "illustration" | "drawn" | "house";
   /** The palette a generated illustration was made in (`BankRequest.palette`). */
   palette?: string;
@@ -179,6 +188,15 @@ export interface BankOutcome {
  * relations, count, period); a refusal regenerates once, then nothing. A library or generator
  * failure never throws: it is a miss.
  */
+/** BAKEOFF y1fix bank rule: a stage request reuses only a generated row made for a stage request. */
+export function stageReuseOk(
+  req: Pick<BankRequest, "stage">,
+  hit: Pick<MadePicture, "source" | "stage">,
+): boolean {
+  if (!req.stage) return true;
+  return hit.source.provider === "generated" && hit.stage === true;
+}
+
 export async function findPicture(
   req: BankRequest,
   bank: PictureBank,
@@ -215,6 +233,7 @@ export async function findPicture(
   // judge refuses is marked and never reused (SOL-SIMPLE: rows from the old counting prompt).
   const usable = async (hit: MadePicture): Promise<boolean> => {
     if (!styleAllowed(req, hit) || !lookMatches(req, hit)) return false;
+    if (!stageReuseOk(req, hit)) return false;
     if (req.draw || hit.style === "drawn" || !judgeMade) return true;
     if (!hit.dataUrl) return false;
     const key = verdictKey(req, hit);

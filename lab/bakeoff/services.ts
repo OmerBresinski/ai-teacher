@@ -63,7 +63,7 @@ import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/src/templates/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
-import { AB_CONFIG, type AbArm, abArm, abR1t3, abShared } from "./ab/arms";
+import { AB_CONFIG, type AbArm, abArm, abR1t3, abShared, abStageBank } from "./ab/arms";
 import { locale, localise } from "./locale";
 
 export const ROUNDS =
@@ -876,6 +876,8 @@ export function pictureService(opts: {
             ...(direct ? { direct } : {}),
             // b4-r1t3 (rootcause/pictures.md fix A): every picture the director splits the slot into.
             ...(abR1t3() ? { allPictures: true } : {}),
+            // y1fix bank rule: a stage request never reuses a stock bank row.
+            ...(abStageBank() ? { stageBank: true } : {}),
             onOutcome: (o: object) =>
               appendFileSync(
                 `${opts.runDir}/log.jsonl`,

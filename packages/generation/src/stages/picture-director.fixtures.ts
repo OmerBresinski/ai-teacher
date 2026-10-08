@@ -11,6 +11,16 @@ export interface DirectorFixture {
   input: PictureDirectorInput;
   expect: PictureDirectorRoute[];
   split?: boolean;
+  /**
+   * BAKEOFF (9 Oct, Greg's ruling on stage animals): the routes expected under a lab arm that runs a
+   * different director (dir-stage and y1fix run v12: an adult with its young is generated). Other
+   * arms score `expect`.
+   */
+  expectByArm?: Record<string, PictureDirectorRoute[]>;
 }
+
+/** The routes a fixture expects under an arm (its `expectByArm` entry, else `expect`). */
+export const expectedRoutes = (f: DirectorFixture, arm?: string): PictureDirectorRoute[] =>
+  (arm && f.expectByArm?.[arm]) || f.expect;
 
 export const DIRECTOR_FIXTURES = rows as DirectorFixture[];

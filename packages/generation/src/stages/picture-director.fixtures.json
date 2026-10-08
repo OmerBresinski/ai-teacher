@@ -2,6 +2,7 @@
   {
     "id": "y1-animals-s1",
     "expect": ["pexels"],
+    "expectByArm": { "dir-stage": ["library-or-generate"], "y1fix": ["library-or-generate"] },
     "input": {
       "yearGroup": "Year 1",
       "subject": "Science",
@@ -52,6 +53,7 @@
   {
     "id": "y1-animals-s7",
     "expect": ["pexels"],
+    "expectByArm": { "dir-stage": ["library-or-generate"], "y1fix": ["library-or-generate"] },
     "input": {
       "yearGroup": "Year 1",
       "subject": "Science",

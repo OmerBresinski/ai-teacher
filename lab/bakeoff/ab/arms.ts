@@ -34,6 +34,8 @@ export const AB_ARMS = [
   "b4-ex",
   "b4-r1t3",
   "judge20",
+  "dir-stage",
+  "y1fix",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -207,6 +209,30 @@ export const AB_CONFIG: Record<
     delta:
       "base4 with picture judge v20 (seen before the verdicts; age, stage and size only from the picture)",
   },
+  // Round 6 (9 Oct): base4 with picture director v12 (arms3/dir-stage: stage animals generated).
+  "dir-stage": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "base4 with picture director v12 (an unnamed living thing at an age, stage or sex is generated)",
+  },
+  // Round 6 (9 Oct, Greg): the Year 1 fixes together: b4-r1t3 + D8 (in code for every arm) + director v12
+  // + the bank rule (a stage request never reuses a stock bank row).
+  y1fix: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    r1t: true,
+    r1t2: true,
+    r1t3: true,
+    stageBank: true,
+    delta: "b4-r1t3 + D8 + director v12 + stage requests never reuse stock bank rows",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -251,6 +277,8 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b4-ex": { ref: "base4" },
   "b4-r1t3": { ref: "b4-r1t" },
   judge20: { ref: "base4" },
+  "dir-stage": { ref: "base4" },
+  y1fix: { ref: "b4-r1t" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -265,6 +293,8 @@ export const abArm = () => current;
 export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false);
 /** b4-r1t3: every director picture fetched, several pictures laid out as tiles. */
 export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false);
+/** y1fix bank rule: stage requests never reuse stock bank rows. */
+export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
 export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
@@ -368,6 +398,8 @@ export const PICTURE_VERSIONS = {
 /** Per-arm picture versions over PICTURE_VERSIONS (judge20 runs judge v20; every other arm v17). */
 export const ARM_PICTURE_VERSIONS: Partial<Record<AbArm, Partial<typeof PICTURE_VERSIONS>>> = {
   judge20: { judge: "pick-or-requery-photo.v20" },
+  "dir-stage": { director: "picture-director.v12" },
+  y1fix: { director: "picture-director.v12" },
 };
 export const pictureVersions = (a: AbArm | undefined) => ({
   ...PICTURE_VERSIONS,

@@ -16,6 +16,10 @@ import {
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
+import {
+  PICTURE_DIRECTOR_VERSION_V12,
+  pictureDirectorPromptV12,
+} from "../prompts/picture-director-v12";
 import type { PlacedPhoto } from "./illustrate";
 import {
   type BankRequest,
@@ -27,6 +31,22 @@ import {
   sharedVerdictCache,
 } from "./photo-bank";
 
+/**
+ * BAKEOFF (arm dir-stage, 9 Oct): which director prompt runs. v11 by default (base and every other
+ * arm byte-exact); the lab sets v12 for its dir-stage arm. The batched path takes its system text
+ * from the arm's director-batch.txt; this picks the single-call text and both version labels.
+ */
+let directorVersion: string = PICTURE_DIRECTOR_VERSION;
+export function useDirectorVersion(v: string): void {
+  if (v !== PICTURE_DIRECTOR_VERSION && v !== PICTURE_DIRECTOR_VERSION_V12)
+    throw new Error(`unknown picture director ${v}`);
+  directorVersion = v;
+}
+const directorPrompt = (input: PictureDirectorInput) =>
+  directorVersion === PICTURE_DIRECTOR_VERSION_V12
+    ? pictureDirectorPromptV12(input)
+    : pictureDirectorPrompt(input);
+
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
 
 /** The director's answer, or undefined when the call fails (an abort still throws). */
@@ -34,14 +54,14 @@ export async function directPicture(
   input: PictureDirectorInput,
   deps: DirectorDeps,
 ): Promise<PictureDirection | undefined> {
-  const built = pictureDirectorPrompt(input);
+  const built = directorPrompt(input);
   try {
     const call = await callStructured({
       deps,
       stage: "illustrate",
       cls: "small",
       effort: "low",
-      prompt: { version: PICTURE_DIRECTOR_VERSION, system: built.system, user: () => built.user },
+      prompt: { version: directorVersion, system: built.system, user: () => built.user },
       input,
       schema: PictureDirectorSchema,
       maxOutputTokens: 3000,
@@ -96,7 +116,7 @@ export async function directPictures(
       stage: "illustrate",
       cls: "small",
       effort: "low",
-      prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+      prompt: { version: `${directorVersion}-batch`, system, user: () => user },
       input: slots,
       schema: PictureDirectorBatchSchema,
       maxOutputTokens: 3000 * Math.min(slots.length, 6),
@@ -403,6 +423,12 @@ export async function findDirected(args: {
    * instead of showing pictures[0] alone.
    */
   allPictures?: boolean;
+  /**
+   * BAKEOFF y1fix bank rule: the director's library-or-generate route on an unnamed generic picture is
+   * a stage request (director v12 sends living things at an age, stage or sex there), so the bank
+   * lookup skips stock rows and generated rows not made for a stage request.
+   */
+  stageBank?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -443,7 +469,10 @@ export async function findDirected(args: {
     });
     return undefined;
   }
-  const req = plan.request;
+  const req =
+    args.stageBank && isStageRequest(direction, plan)
+      ? { ...plan.request, stage: true }
+      : plan.request;
   const brief: ImageBrief =
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
@@ -507,6 +536,17 @@ export async function findDirected(args: {
   };
 }
 
+/** BAKEOFF y1fix: a stage request is the director's library-or-generate route for an unnamed generic photo. */
+export function isStageRequest(d: PictureDirection | undefined, plan: PicturePlan): boolean {
+  return (
+    d?.route === "library-or-generate" &&
+    plan.kind === "photo" &&
+    plan.request.route === "generic" &&
+    !plan.request.draw &&
+    !plan.request.named
+  );
+}
+
 /** BAKEOFF b4-r1t3: the director's pictures after the first, each fetched as its own one-picture slot. */
 async function directedTiles(
   args: Parameters<typeof findDirected>[0],
@@ -533,7 +573,9 @@ async function directedTiles(
         specific: plan.brief.specific || args.brief.specific === true,
       };
       const out = await findPicture(
-        plan.request,
+        args.stageBank && isStageRequest(one, plan)
+          ? { ...plan.request, stage: true }
+          : plan.request,
         args.bank,
         () => args.stock(brief),
         args.deps.signal,
