@@ -56,6 +56,12 @@ export const isEngland = (l: Locale | undefined): boolean => !l || l.country ===
 const COMPUTED: Record<string, (l: Locale) => string> = {
   setting: (l) =>
     isEngland(l) ? "" : ` Follow the curriculum, conventions and setting of ${l.country}.`,
+  // Arm "locale2" (8 Oct): the NZ locale run named Aotearoa and pōhutukawa but kept no months,
+  // hemisphere or festivals. Kinds of place fact, gated on the topic; no facts about any country.
+  place: (l) =>
+    isEngland(l)
+      ? ""
+      : ` Where the topic depends on place, use what is true for pupils in ${l.country}: which months each season falls in, the hemisphere, the climate, local plants and animals, festivals, currency and units.`,
 };
 
 /** `text` with every {{locale.<field>}} token filled from `l`. */

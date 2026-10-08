@@ -40,6 +40,7 @@ export const AB_ARMS = [
   "locale",
   "polish",
   "polish2",
+  "locale2",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -296,6 +297,19 @@ export const AB_CONFIG: Record<
     delta:
       "polish minus the 768 px judge; colour gate logs only; label clashes refit then drop one label, never the diagram",
   },
+  // locale2 (8 Oct, Greg): locale plus one computed sentence ({{locale.place}}) after the country line:
+  // where the topic depends on place, use the country's real facts (seasons by month, hemisphere,
+  // climate, plants and animals, festivals, currency, units). England byte-exact to base4
+  // (arms3/locale2/DIFF.md).
+  locale2: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "locale + the country's place facts where the topic depends on them (writer, objectives, objective repair); England byte-exact",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -344,6 +358,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   y1fix: { ref: "b4-r1t" },
   lib: { ref: "base4" },
   locale: { ref: "base4" },
+  locale2: { ref: "locale" },
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
 };

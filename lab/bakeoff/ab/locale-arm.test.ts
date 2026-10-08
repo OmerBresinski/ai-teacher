@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { type Brief, fillTemplate } from "../harness";
 import { ENGLAND, INDIA, type Locale, localise } from "../locale";
 import { AB, abFiles, STAGES } from "./arms";
+import { locale2Briefs } from "./locale2compile";
 import { compileLocale, nzUkBrief, ukObjectives } from "./localecompile";
 
 const NZ: Locale = { ...INDIA, country: "New Zealand", curriculum: "The New Zealand Curriculum" };
@@ -66,5 +67,49 @@ describe("arm locale", () => {
   });
   test("arm files exist under the A/B prompt root", () => {
     expect(read(`${AB}/prompts/locale/shared/objectives.txt`)).toContain("{{locale.setting}}");
+  });
+});
+
+describe("arm locale2", () => {
+  const PLACE = "Where the topic depends on place, use what is true for pupils in";
+  test("place is empty for England (and no locale), one sentence elsewhere", () => {
+    expect(localise("x.{{locale.place}} y", ENGLAND)).toBe("x. y");
+    expect(localise("x.{{locale.place}} y", NZ)).toBe(
+      `x. ${PLACE} New Zealand: which months each season falls in, the hemisphere, the climate, local plants and animals, festivals, currency and units. y`,
+    );
+  });
+  test("England compiles to base4's text for every prompt (locale given or absent)", () => {
+    const uk = nzUkBrief("uk");
+    for (const b of [uk, { ...uk, locale: undefined } as Brief])
+      expect(compileLocale("locale2", b, ukObjectives())).toEqual(
+        compileLocale("base4", b, ukObjectives()),
+      );
+  });
+  test("England writer systems equal base4's files; schemas are base4's", () => {
+    for (const st of STAGES) {
+      expect(localise(read(abFiles("locale2", st).system), ENGLAND)).toBe(
+        read(abFiles("base4", st).system),
+      );
+      expect(read(abFiles("locale2", st).schema)).toBe(read(abFiles("base4", st).schema));
+    }
+  });
+  test("NZ, US and India: the place line in writer, objectives and repair; no England", () => {
+    for (const [c, b] of Object.entries(locale2Briefs())) {
+      if (c === "uk") continue;
+      const r = compileLocale("locale2", b, ukObjectives());
+      for (const k of ["writer", "objectives", "objective-repair"] as const) {
+        expect(r[k], `${c} ${k}`).toContain(`${PLACE} ${b.locale?.country}:`);
+        expect(r[k], `${c} ${k}`).not.toContain("England");
+        expect(r[k], `${c} ${k}`).not.toContain("{{");
+      }
+    }
+  });
+  test("locale differs from locale2 only by the place sentence", () => {
+    const b = nzUkBrief("nz");
+    const a = compileLocale("locale2", b, ukObjectives());
+    const l = compileLocale("locale", b, ukObjectives());
+    const strip = (s: string) => s.replace(/ Where the topic depends on place[^.]*\./g, "");
+    for (const k of Object.keys(a) as (keyof typeof a)[]) expect(strip(a[k]), k).toBe(l[k]);
+    expect(l.writer).not.toContain(PLACE);
   });
 });
