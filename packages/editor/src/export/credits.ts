@@ -47,15 +47,23 @@ const link = (label: string, raw: string | undefined): ImageCreditLink[] => {
  * order, for an export of a range; omitted, the whole deck.
  */
 export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): ImageCredit[] {
-  const slides = slideIndices
-    ? [...new Set(slideIndices)].sort((a, b) => a - b).flatMap((i) => lesson.slides[i] ?? [])
-    : lesson.slides;
+  const order = slideIndices
+    ? [...new Set(slideIndices)].sort((a, b) => a - b)
+    : lesson.slides.map((_, i) => i);
   const seen = new Set<string>();
   const out: ImageCredit[] = [];
-  for (const slide of slides) {
+  /** Deck numbers of slides with a generated picture: one line for all of them. */
+  const generatedOn: number[] = [];
+  let generatedAt = -1;
+  for (const index of order) {
+    const slide = lesson.slides[index];
+    if (!slide) continue;
     for (const image of images(slide.elements)) {
       const { source, credit } = image;
-      if (source) {
+      if (source?.provider === "generated") {
+        if (generatedAt < 0) generatedAt = out.length;
+        if (!generatedOn.includes(index + 1)) generatedOn.push(index + 1);
+      } else if (source) {
         const line = photoCredit(source, { cropped: isCropped(image) });
         if (seen.has(line.key)) {
           // A picture shown cut down anywhere in the deck is credited as cropped.
@@ -75,7 +83,23 @@ export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): 
       }
     }
   }
+  if (generatedOn.length)
+    out.splice(generatedAt, 0, { key: "generated", text: generatedLine(generatedOn), links: [] });
   return out;
+}
+
+/** "and"-joined numbers: 1 / 1 and 3 / 1, 3, 4 and 8. */
+const listed = (ns: number[]) =>
+  ns.length < 2 ? String(ns[0]) : `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
+
+/**
+ * The one credits-page line for every generated picture (TEACH-251): "Pictures on slides 1, 3, 4
+ * and 8 were generated for this lesson." Each picture's own info dot keeps `GENERATED_CREDIT`.
+ */
+export function generatedLine(slideNumbers: number[]): string {
+  return slideNumbers.length === 1
+    ? `The picture on slide ${slideNumbers[0]} was generated for this lesson.`
+    : `Pictures on slides ${listed(slideNumbers)} were generated for this lesson.`;
 }
 
 /**

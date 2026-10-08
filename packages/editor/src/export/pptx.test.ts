@@ -15,6 +15,7 @@ import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { getTheme } from "../model/themes";
 import { resolveTextStyle } from "../slide/elements/kit";
+import { creditSegments, imageCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
 import {
   answerText,
@@ -601,6 +602,73 @@ describe("exportLessonPptx", () => {
       ]) {
         expect(rels).toContain(`Target="${url}"`);
       }
+    }, 30_000);
+
+    it("every picture's credit is in the exported deck: Commons with its licence, generated as one line (TEACH-251)", async () => {
+      const base = creditedLesson();
+      const img = (id: string, source: unknown, fit: "cover" | "contain" = "cover") => ({
+        id,
+        type: "image" as const,
+        x: 100,
+        y: 100,
+        w: 200,
+        h: 150,
+        src: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        alt: id,
+        fit,
+        source,
+      });
+      const commons = {
+        provider: "commons",
+        id: "commons-131416315",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
+        photographer: "Basile Morin",
+        photographerUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
+        author: "Basile Morin",
+        licence: "CC BY-SA 4.0",
+        licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Standing_calf.jpg",
+      };
+      const gen = (id: string) => ({
+        provider: "generated",
+        id,
+        pageUrl: "https://dayback.app",
+        photographer: "",
+        photographerUrl: "https://dayback.app",
+      });
+      const lesson = {
+        ...base,
+        slides: [
+          ...base.slides,
+          { id: "c1", kind: "content", elements: [img("calf", commons), img("g1", gen("g1"))] },
+          { id: "c2", kind: "content", elements: [img("g2", gen("g2"))] },
+        ],
+      } as never as Lesson;
+      const n = base.slides.length;
+      const blob = await exportLessonPptx(lesson, theme);
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const files = slideFiles(zip);
+      const last = files.at(-1) ?? "";
+      const xml = (await zip.file(last)?.async("string")) ?? "";
+      const lines = paragraphs(xml);
+      // Every credited picture of the deck (Pexels, Openverse, Commons and the generated ones).
+      for (const credit of imageCredits(lesson))
+        expect(lines).toContain(
+          creditSegments(credit)
+            .map((seg) => seg.text)
+            .join(""),
+        );
+      expect(lines).toContain("Standing calf, Basile Morin, CC BY-SA 4.0, cropped");
+      expect(lines).toContain(
+        `Pictures on slides ${n + 1} and ${n + 2} were generated for this lesson.`,
+      );
+      expect(lines.filter((l) => l.includes("generated"))).toHaveLength(1);
+      const rels =
+        (await zip
+          .file(last.replace("slides/", "slides/_rels/").concat(".rels"))
+          ?.async("string")) ?? "";
+      expect(rels).toContain('Target="https://commons.wikimedia.org/wiki/File:Standing_calf.jpg"');
+      expect(rels).toContain('Target="https://creativecommons.org/licenses/by-sa/4.0"');
     }, 30_000);
 
     it("comes after the Answers slide", async () => {

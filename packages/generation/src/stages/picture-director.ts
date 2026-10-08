@@ -17,7 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PipelineDeps } from "../types";
-import { isFatal, whenNonFatal } from "../writer/services";
+import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   type PlacedPhoto,
@@ -43,22 +43,25 @@ export async function directPicture(
   deps: DirectorDeps,
 ): Promise<PictureDirection | undefined> {
   const built = pictureDirectorPrompt(input);
-  try {
-    const call = await callStructured({
-      deps,
-      stage: "illustrate",
-      cls: "small",
-      effort: "low",
-      prompt: { version: PICTURE_DIRECTOR_VERSION, system: built.system, user: () => built.user },
-      input,
-      schema: PictureDirectorSchema,
-      maxOutputTokens: 3000,
-    });
-    return call.output;
-  } catch (error) {
-    if (isFatal(error) || deps.signal.aborted) throw error;
-    return undefined;
-  }
+  return nonFatal(
+    async () => {
+      const call = await callStructured({
+        deps,
+        stage: "illustrate",
+        cls: "small",
+        effort: "low",
+        prompt: { version: PICTURE_DIRECTOR_VERSION, system: built.system, user: () => built.user },
+        input,
+        schema: PictureDirectorSchema,
+        maxOutputTokens: 3000,
+      });
+      return call.output;
+    },
+    () => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+      return undefined;
+    },
+  );
 }
 
 /** The batched answer: one direction per slot, by the slot's id. */
@@ -98,21 +101,25 @@ export async function directPictures(
   const out = new Map<string, PictureDirection>();
   if (slots.length === 0) return out;
   const user = pictureDirectorBatchUser(slots);
-  try {
-    const call = await callStructured({
-      deps,
-      stage: "illustrate",
-      cls: "small",
-      effort: "low",
-      prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
-      input: slots,
-      schema: PictureDirectorBatchSchema,
-      maxOutputTokens: 3000 * Math.min(slots.length, 6),
-    });
-    for (const { id, ...direction } of call.output.slots) out.set(id, direction);
-  } catch (error) {
-    if (isFatal(error) || deps.signal.aborted) throw error;
-  }
+  // A failed batch leaves every slot to its own call; a stop is rethrown.
+  await nonFatal(
+    async () => {
+      const call = await callStructured({
+        deps,
+        stage: "illustrate",
+        cls: "small",
+        effort: "low",
+        prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+        input: slots,
+        schema: PictureDirectorBatchSchema,
+        maxOutputTokens: 3000 * Math.min(slots.length, 6),
+      });
+      for (const { id, ...direction } of call.output.slots) out.set(id, direction);
+    },
+    () => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+    },
+  );
   return out;
 }
 
@@ -656,8 +663,8 @@ export async function placeWriterPicture(args: {
       images: args.images,
       deps,
       taken,
-    }).catch(
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
+    }).catch(
       whenNonFatal((error: unknown) => {
         if (deps.signal.aborted) throw deps.signal.reason;
         deps.logger.info(
@@ -669,35 +676,41 @@ export async function placeWriterPicture(args: {
     );
     return r.outcome === "placed" ? r.photo : undefined;
   };
-  try {
-    if (isMapRequest(ask.shows)) {
-      const map = await stock({ ...b, specific: true });
-      if (map) {
-        args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
-        return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
+  return nonFatal(
+    async (): Promise<DirectedPhoto | undefined> => {
+      if (isMapRequest(ask.shows)) {
+        const map = await stock({ ...b, specific: true });
+        if (map) {
+          args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
+          return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
+        }
       }
-    }
-    return await findDirected({
-      bank: args.bank ?? STOCK_ONLY_BANK,
-      ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
-      brief: b,
-      slide: ask.slide,
-      lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-      country: args.country,
-      index: ask.index,
-      stock,
-      // A made picture is judged when the generator lands (TEACH-237); none is made before.
-      judgeMade: async () => false,
-      deps,
-      ...(args.look ? { look: args.look } : {}),
-      ...(args.direct ? { direct: args.direct } : {}),
-      ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
-    });
-  } catch (error) {
-    if (isFatal(error) || deps.signal.aborted) throw error;
-    deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "picture failed");
-    return undefined;
-  }
+      return await findDirected({
+        bank: args.bank ?? STOCK_ONLY_BANK,
+        ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
+        brief: b,
+        slide: ask.slide,
+        lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+        country: args.country,
+        index: ask.index,
+        stock,
+        // A made picture is judged when the generator lands (TEACH-237); none is made before.
+        judgeMade: async () => false,
+        deps,
+        ...(args.look ? { look: args.look } : {}),
+        ...(args.direct ? { direct: args.direct } : {}),
+        ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
+      });
+    },
+    (error) => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+      deps.logger.info(
+        { stage: "illustrate", slideIndex: ask.index, err: error },
+        "picture failed",
+      );
+      return undefined;
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -834,8 +847,8 @@ export function createWriterPictures(opts: {
           reason = o.reason;
           opts.onOutcome?.(ask.key, o);
         },
-      })
-        .then((photo) => {
+      }).then(
+        (photo) => {
           if (slot.state.status !== "pending") return;
           if (!photo) {
             slot.state = { status: "failed" };
@@ -872,8 +885,10 @@ export function createWriterPictures(opts: {
                 : {}),
             },
           };
-        })
-        .catch((error: unknown) => {
+        },
+        // A rejection here is a stop (placeWriterPicture's nonFatal rethrows only those) or the
+        // deadline's own abort: it is kept, and settle rethrows a stop.
+        (error: unknown) => {
           if (slot.state.status !== "pending") return;
           slot.state = { status: "failed" };
           // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
@@ -887,7 +902,8 @@ export function createWriterPictures(opts: {
             return;
           }
           slot.miss = "error";
-        });
+        },
+      );
       if (settled) slot.state = { status: "failed" };
       slots.set(k, slot);
     },

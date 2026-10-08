@@ -171,7 +171,7 @@ describe("photoCredit and Commons in the credits list", () => {
     );
     expect(list.map((c) => c.text)).toEqual([
       "Hadrian's Wall at Greenhead, Ada Lovelace, CC BY-SA 4.0, cropped",
-      GENERATED_CREDIT,
+      "The picture on slide 1 was generated for this lesson.",
     ]);
     // The PDF and PPTX runs link the title and the licence in place.
     expect(
@@ -201,5 +201,45 @@ describe("photoCredit and Commons in the credits list", () => {
     );
     expect(list).toHaveLength(1);
     expect(list[0]?.text).toBe("Hadrian's Wall at Greenhead, Ada Lovelace, CC BY 4.0, cropped");
+  });
+
+  it("generated pictures collapse into one line naming their slides; each info dot keeps its own", () => {
+    const gen = (id: string) => ({
+      provider: "generated" as const,
+      id,
+      pageUrl: "https://dayback.app",
+      photographer: "",
+      photographerUrl: "https://dayback.app",
+    });
+    const slide = (id: string, els: ImageElement[]) => ({
+      id,
+      kind: "content" as const,
+      elements: els,
+    });
+    const lesson: Lesson = {
+      ...baseLesson(),
+      slides: [
+        slide("s1", [imageElement("a", { source: gen("g1") })]),
+        slide("s2", [imageElement("b", { source: commons("CC0") })]),
+        slide("s3", [
+          imageElement("c", { source: gen("g2") }),
+          imageElement("d", { source: gen("g3") }),
+        ]),
+        slide("s4", [imageElement("e", { source: gen("g4") })]),
+        slide("s5", []),
+        slide("s6", []),
+        slide("s7", []),
+        slide("s8", [imageElement("f", { source: gen("g5") })]),
+      ],
+    };
+    expect(imageCredits(lesson).map((c) => c.text)).toEqual([
+      "Pictures on slides 1, 3, 4 and 8 were generated for this lesson.",
+      "Hadrian's Wall at Greenhead, Ada Lovelace, CC0",
+    ]);
+    // A range export names only its slides, by their deck numbers.
+    expect(imageCredits(lesson, [2, 3]).map((c) => c.text)).toEqual([
+      "Pictures on slides 3 and 4 were generated for this lesson.",
+    ]);
+    expect(photoCredit(gen("g1")).text).toBe(GENERATED_CREDIT);
   });
 });
