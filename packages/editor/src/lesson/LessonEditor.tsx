@@ -31,7 +31,7 @@ import {
 import { ActiveEditorProvider } from "../text/active-editor";
 import { Canvas, stepZoom } from "./Canvas";
 import { HistoryProvider, LessonProvider } from "./document-context";
-import { EditChatPane } from "./edit-chat/EditChatPane";
+import { EditChatPane, EditChatProvider } from "./edit-chat/EditChatPane";
 import { type EditChatApi, EditChatContext } from "./edit-chat/edit-chat-context";
 import { readPaneOpen, writePaneOpen } from "./edit-chat/thread";
 import { FactsPanel } from "./FactsPanel";
@@ -76,6 +76,8 @@ const INSERT_KEYS: Record<string, (theme: Theme) => SlideElement> = {
 
 export type LessonEditorProps = {
   lessonId: string;
+  /** The signed-in user's id: the edit chat's stored thread is kept per user (TEACH-97). */
+  userId?: string | undefined;
   /** The cache entry that holds the document — `queryKeys.libraryDocument(id)` in the app. */
   queryKey: QueryKey;
   /** Fetches the document for a first mount the loader has not filled (e.g. `fetchQuery(options)`). */
@@ -146,6 +148,7 @@ export type LessonEditorHandle = {
 
 export function LessonEditor({
   lessonId,
+  userId,
   queryKey,
   queryFn,
   onSave,
@@ -453,82 +456,91 @@ export function LessonEditor({
                 <ResidualFindingsContext.Provider value={residuals}>
                   <ProposalsContext.Provider value={proposals}>
                     <EditChatContext.Provider value={editChat}>
-                      <div
-                        className="flex h-dvh flex-col overflow-hidden bg-background"
-                        data-lesson-editor={lessonId}
+                      <EditChatProvider
+                        lessonId={lessonId}
+                        userId={userId}
+                        open={editChat.open}
+                        onClose={editChat.toggle}
                       >
-                        <TopBar
-                          onBack={onBack}
-                          onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
-                          onOpenTheme={() => setThemeOpen(true)}
-                          exportSlot={exportSlot}
-                          onOpenWorksheet={onOpenWorksheet}
-                          onNewWorksheet={onNewWorksheet}
-                          onToggleFacts={
-                            proposalsEnabled && lesson.facts
-                              ? () => setFactsOpen((open) => !open)
-                              : undefined
-                          }
-                          factsOpen={factsOpen}
-                          autosave={autosave}
-                        />
-                        {mobile && companion ? (
-                          <aside data-editor-companion="mobile">{companion}</aside>
-                        ) : null}
-                        <div className="flex min-h-0 flex-1">
-                          {mobile ? (
-                            <MobileLessonEditor
-                              initialSlideId={initialSlideId}
-                              canvas={{
-                                slide,
-                                theme,
-                                onFocusChange: setCanvasFocused,
-                                onScaleChange,
-                                onInsert: insert,
-                                images,
-                                lessonId,
-                              }}
-                              insert={{ onInsert: insert, onHelp: () => setHelpOpen(true), images }}
-                            />
-                          ) : (
-                            <>
-                              <InsertRail
-                                onInsert={insert}
-                                onHelp={() => setHelpOpen(true)}
-                                images={images}
-                              />
-                              <Navigator />
-                              <Canvas
-                                slide={slide}
-                                theme={theme}
-                                onFocusChange={setCanvasFocused}
-                                onScaleChange={onScaleChange}
-                                onInsert={insert}
-                                images={images}
-                                lessonId={lessonId}
-                              />
-                            </>
-                          )}
-                          {!mobile && companion ? (
-                            <aside data-editor-companion="desktop">{companion}</aside>
+                        <div
+                          className="flex h-dvh flex-col overflow-hidden bg-background"
+                          data-lesson-editor={lessonId}
+                        >
+                          <TopBar
+                            onBack={onBack}
+                            onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
+                            onOpenTheme={() => setThemeOpen(true)}
+                            exportSlot={exportSlot}
+                            onOpenWorksheet={onOpenWorksheet}
+                            onNewWorksheet={onNewWorksheet}
+                            onToggleFacts={
+                              proposalsEnabled && lesson.facts
+                                ? () => setFactsOpen((open) => !open)
+                                : undefined
+                            }
+                            factsOpen={factsOpen}
+                            autosave={autosave}
+                          />
+                          {mobile && companion ? (
+                            <aside data-editor-companion="mobile">{companion}</aside>
                           ) : null}
-                          {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
-                          {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
+                          <div className="flex min-h-0 flex-1">
+                            {mobile ? (
+                              <MobileLessonEditor
+                                initialSlideId={initialSlideId}
+                                canvas={{
+                                  slide,
+                                  theme,
+                                  onFocusChange: setCanvasFocused,
+                                  onScaleChange,
+                                  onInsert: insert,
+                                  images,
+                                  lessonId,
+                                }}
+                                insert={{
+                                  onInsert: insert,
+                                  onHelp: () => setHelpOpen(true),
+                                  images,
+                                }}
+                              />
+                            ) : (
+                              <>
+                                <InsertRail
+                                  onInsert={insert}
+                                  onHelp={() => setHelpOpen(true)}
+                                  images={images}
+                                />
+                                <Navigator />
+                                <Canvas
+                                  slide={slide}
+                                  theme={theme}
+                                  onFocusChange={setCanvasFocused}
+                                  onScaleChange={onScaleChange}
+                                  onInsert={insert}
+                                  images={images}
+                                  lessonId={lessonId}
+                                />
+                              </>
+                            )}
+                            {!mobile && companion ? (
+                              <aside data-editor-companion="desktop">{companion}</aside>
+                            ) : null}
+                            {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
+                            {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
                               flight carries on (TEACH-97). */}
-                          {chatAvailable ? (
-                            <EditChatPane
-                              lessonId={lessonId}
-                              open={editChat.open}
-                              onClose={editChat.toggle}
-                              onReopen={editChat.openAndFocus}
-                              focusTick={chatFocusTick}
-                            />
-                          ) : null}
+                            {chatAvailable ? (
+                              <EditChatPane
+                                open={editChat.open}
+                                onReopen={editChat.openAndFocus}
+                                focusTick={chatFocusTick}
+                              />
+                            ) : null}
+                          </div>
+                          <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                          <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                          {proposalsEnabled ? <RegenerateDialog /> : null}
                         </div>
-                        <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                        <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
-                        {proposalsEnabled ? <RegenerateDialog /> : null}
-                      </div>
+                      </EditChatProvider>
                     </EditChatContext.Provider>
                   </ProposalsContext.Provider>
                 </ResidualFindingsContext.Provider>

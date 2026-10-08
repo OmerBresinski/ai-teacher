@@ -20,6 +20,7 @@ import {
 } from "react";
 import { stageOf } from "@/components/generating-lesson/stage";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
+import { sessionBoundary } from "@/lib/session-boundary";
 import "@/components/lesson-creation/creation.css";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -254,6 +255,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     <LessonEditor
       companion={companionSlot}
       lessonId={lessonId}
+      userId={sessionBoundary.getSnapshot().identity ?? undefined}
       queryKey={options.queryKey}
       queryFn={() => queryClient.fetchQuery(options)}
       onSave={save}

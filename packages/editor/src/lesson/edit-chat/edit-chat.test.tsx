@@ -11,6 +11,7 @@ import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   canUndo,
   changedSince,
+  clearEditThreads,
   historyOf,
   PANE_OPEN_KEY,
   REDACTED,
@@ -20,6 +21,7 @@ import {
   suggestionsFor,
   type Turn,
   threadKey,
+  writeThread,
 } from "./thread";
 
 /*
@@ -742,5 +744,86 @@ describe("streamed answers", () => {
     );
     expect(pane().querySelector("[data-edit-card]")).toBeNull();
     expect(textOf(read())).toBe(ORIGINAL);
+  });
+});
+
+describe("request lifetime and stored threads", () => {
+  test("a resize to the mobile layout does not cancel a request, and its answer still applies", async () => {
+    let mobile = false;
+    const listeners = new Set<(e: { matches: boolean }) => void>();
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("760px") ? mobile : false,
+      media: query,
+      onchange: null,
+      addEventListener: (_: string, l: (e: { matches: boolean }) => void) => {
+        if (query.includes("760px")) listeners.add(l);
+      },
+      removeEventListener: (_: string, l: (e: { matches: boolean }) => void) => listeners.delete(l),
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => true,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      let seen: AbortSignal | undefined;
+      let finish: ((a: PromptEditAnswer) => void) | undefined;
+      let request: PromptEditRequest | undefined;
+      const { say, read, unmount } = setup(
+        (req, signal) =>
+          new Promise((resolve) => {
+            request = req;
+            seen = signal;
+            finish = resolve;
+          }),
+      );
+      await say("Make it shorter");
+      act(() => {
+        mobile = true;
+        for (const l of listeners) l({ matches: true });
+      });
+      expect(screen.queryByRole("complementary", { name: EDIT_CHAT_LABEL })).toBeNull();
+      expect(seen?.aborted).toBe(false);
+      await act(async () => {
+        finish?.(edit(request as PromptEditRequest, "Short.", "Made it shorter."));
+      });
+      // The answer still applied while the pane was gone.
+      expect(textOf(read())).toBe("Short.");
+      unmount();
+      expect(seen?.aborted).toBe(false);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  test("leaving the editor mid-request cancels it", async () => {
+    let seen: AbortSignal | undefined;
+    const { say, unmount } = setup(
+      (_req, signal) =>
+        new Promise(() => {
+          seen = signal;
+        }),
+    );
+    await say("Make it shorter");
+    unmount();
+    expect(seen?.aborted).toBe(true);
+  });
+
+  test("threads are kept per user and lesson, and sign-out clears them all", () => {
+    const turn = {
+      id: "t1",
+      said: "Shorter",
+      instruction: "Make it shorter",
+      scope: {},
+      scopeLabel: "Slide 1",
+      reply: { kind: "edit", text: "Slide 1: Made it shorter." },
+    } as Turn;
+    writeThread("lesson-1", [turn], "user-a");
+    expect(readThread("lesson-1", "user-a")).toHaveLength(1);
+    expect(readThread("lesson-1", "user-b")).toHaveLength(0);
+    expect(threadKey("lesson-1", "user-a")).not.toBe(threadKey("lesson-1", "user-b"));
+    window.localStorage.setItem("unrelated", "1");
+    clearEditThreads();
+    expect(readThread("lesson-1", "user-a")).toHaveLength(0);
+    expect(window.localStorage.getItem("unrelated")).toBe("1");
   });
 });

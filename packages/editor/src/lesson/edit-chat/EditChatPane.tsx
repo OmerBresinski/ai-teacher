@@ -1,6 +1,16 @@
 import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
 import { cn } from "@tj/ui";
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
@@ -67,21 +77,22 @@ const KEEP_SHORT = ". Keep it short.";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-export function EditChatPane({
+/**
+ * The pane's state and behaviour, owned at the editor level (`EditChatProvider`): a request
+ * survives the pane unmounting for any reason (the bubble, a resize to the mobile layout) and is
+ * cancelled only by Stop or by leaving the editor.
+ */
+function useEditChatController({
   lessonId,
-  open = true,
+  userId = "",
+  open,
   onClose,
-  onReopen,
-  focusTick,
 }: {
   lessonId: string;
-  /** Closed, the pane stays mounted (a request carries on) and shows as the bubble. */
-  open?: boolean;
+  /** The signed-in user: the stored thread is kept per user and lesson. */
+  userId?: string | undefined;
+  open: boolean;
   onClose: () => void;
-  /** The bubble's click: open the pane again. */
-  onReopen?: () => void;
-  /** Bumped by `openAndFocus`: the composer takes the cursor. */
-  focusTick: number;
 }) {
   const lesson = useLesson();
   const history = useHistory();
@@ -92,7 +103,7 @@ export function EditChatPane({
   const actions = useSessionActions();
   const readSession = useSessionRead();
 
-  const [thread, setThread] = useState<Turn[]>(() => readThread(lessonId));
+  const [thread, setThread] = useState<Turn[]>(() => readThread(lessonId, userId));
   const [draft, setDraft] = useState("");
   const [widened, setWidened] = useState(false);
   /** Answers as they stream in, by turn id: shown in the reply, never applied. */
@@ -103,7 +114,7 @@ export function EditChatPane({
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
 
-  useEffect(() => writeThread(lessonId, thread), [lessonId, thread]);
+  useEffect(() => writeThread(lessonId, thread, userId), [lessonId, thread, userId]);
   // Closing the pane never cancels: it stays mounted as the bubble and the answer applies under
   // the usual rules. Only Stop, or leaving the editor, cancels; a turn cut off by leaving reads
   // back as "Stopped. Nothing changed." (`readThread`), which is then the truth (ruling 173).
@@ -114,9 +125,6 @@ export function EditChatPane({
     },
     [],
   );
-  useEffect(() => {
-    if (focusTick > 0) field.current?.focus();
-  }, [focusTick]);
   // The chip follows the selection: a new selection undoes "Whole lesson".
   const selectionKey = selection.join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the selection changes
@@ -486,6 +494,54 @@ export function EditChatPane({
     streams,
   };
 
+  return { view, bubble, unread, closedHere };
+}
+
+type EditChatController = ReturnType<typeof useEditChatController>;
+const EditChatControllerContext = createContext<EditChatController | null>(null);
+
+/** Owns the chat for as long as the editor is open; the pane and the bubble read it. */
+export function EditChatProvider({
+  lessonId,
+  userId,
+  open,
+  onClose,
+  children,
+}: {
+  lessonId: string;
+  userId?: string | undefined;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const controller = useEditChatController({ lessonId, userId, open, onClose });
+  return (
+    <EditChatControllerContext.Provider value={controller}>
+      {children}
+    </EditChatControllerContext.Provider>
+  );
+}
+
+export function EditChatPane({
+  open = true,
+  onReopen,
+  focusTick,
+}: {
+  /** Closed, the pane shows as the bubble; the request carries on in `EditChatProvider`. */
+  open?: boolean;
+  /** The bubble's click: open the pane again. */
+  onReopen?: () => void;
+  /** Bumped by `openAndFocus`: the composer takes the cursor. */
+  focusTick: number;
+}) {
+  const controller = useContext(EditChatControllerContext);
+  if (!controller) throw new Error("EditChatPane renders inside EditChatProvider");
+  const { view, bubble, unread, closedHere } = controller;
+  const close = view.close;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focus on each bump only
+  useEffect(() => {
+    if (focusTick > 0) view.field.current?.focus();
+  }, [focusTick]);
   return (
     <>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc closes the pane from anywhere inside it */}

@@ -6,6 +6,9 @@ import {
   type Slide,
   type SlideElement,
 } from "@tj/domain/documents";
+import { EDIT_THREAD_PREFIX } from "./thread-storage";
+
+export { clearEditThreads, EDIT_THREAD_PREFIX } from "./thread-storage";
 
 /*
  * The "Edit with Dayback" thread (TEACH-97; rulings 172, 175, 176): what the chat pane keeps per
@@ -298,7 +301,9 @@ export function canUndo(lesson: Lesson, change: NonNullable<Turn["change"]>): bo
 /* ------------------------------------------------------------------ */
 
 export const PANE_OPEN_KEY = "dayback.edit-pane.open";
-export const threadKey = (lessonId: string) => `dayback.edit-thread.${lessonId}`;
+/** A thread is kept per user and lesson, so a shared computer never shows one teacher's to another. */
+export const threadKey = (lessonId: string, userId = "") =>
+  `${EDIT_THREAD_PREFIX}${userId ? `${userId}.` : ""}${lessonId}`;
 
 export function readPaneOpen(): boolean {
   try {
@@ -316,9 +321,9 @@ export function writePaneOpen(open: boolean): void {
   }
 }
 
-export function readThread(lessonId: string): Turn[] {
+export function readThread(lessonId: string, userId = ""): Turn[] {
   try {
-    const raw = window.localStorage.getItem(threadKey(lessonId));
+    const raw = window.localStorage.getItem(threadKey(lessonId, userId));
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     // A request in flight when the page closed never answered: say so rather than spin forever.
@@ -344,10 +349,10 @@ const storable = (t: Turn): Turn =>
     ? { ...t, said: REDACTED, instruction: "" }
     : t;
 
-export function writeThread(lessonId: string, thread: readonly Turn[]): void {
+export function writeThread(lessonId: string, thread: readonly Turn[], userId = ""): void {
   try {
     window.localStorage.setItem(
-      threadKey(lessonId),
+      threadKey(lessonId, userId),
       JSON.stringify(thread.slice(-THREAD_LIMIT).map(storable)),
     );
   } catch {
