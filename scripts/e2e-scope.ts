@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 // git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts
 //
-// Decides whether a pull request needs the Playwright e2e shards (ci.yml `detect`, TEACH-190
-// part b). Reads the changed paths on stdin, one per line, and prints `e2e=false` when every one of
-// them is documentation, `e2e=true` otherwise, ready to append to `$GITHUB_OUTPUT`. An empty list
-// prints `e2e=true`: when the diff cannot be read, the suite runs.
+// Decides whether a pull request needs the Playwright e2e suite (the Scope step of each ci.yml
+// `e2e-shard` job, TEACH-190 parts b and d). Reads the changed paths on stdin, one per line, and
+// prints `e2e=false` when every one of them is documentation, `e2e=true` otherwise, ready to
+// append to `$GITHUB_OUTPUT`. An empty list prints `e2e=true`: when the diff cannot be read, the
+// suite runs.
 //
 // Documentation is what turbo.json already leaves out of every task's inputs (the vendored agent
 // skills and their lock file) plus `docs/` and every Markdown file; no app imports a `.md` file.
-// Imports only Bun built-ins, so `detect` runs it without `bun install`.
+// Imports only Bun built-ins.
 
 /** Directories that hold vendored agent skills, wherever they sit (turbo.json input exclusions). */
 const SKILL_DIRS = new Set([".agents", ".claude", ".opencode"]);

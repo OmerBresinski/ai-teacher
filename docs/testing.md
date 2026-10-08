@@ -249,13 +249,14 @@ Traces and screenshots are kept for failures only; in CI a failed shard uploads 
 ## CI
 
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
-under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded on pushes to `master` only. e2e runs as four `e2e-shard` jobs at
+under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded on pushes to `master` only. e2e runs as six `e2e-shard` jobs at
 once, each with its own Postgres service + `teaching_journey_test`,
 `bunx --bun playwright install --only-shell chromium` (browser cache keyed on the Playwright
 version; no `--with-deps`, since the runner image has the libraries; the step names any linked
-library that goes missing and starts the shell once) and `bun run test:e2e --shard=n/4` in `apps/web`; a failed shard uploads its
-blob report. The `e2e` job is the one required check for all four: it passes when every shard
-passed or `detect` skipped them (a PR that changes only documentation, `scripts/e2e-scope.ts`).
-When a shard failed, the `e2e report` job merges the blob reports into one `playwright-report`
-artifact. Run one shard locally with `cd apps/web && bunx --bun playwright test --shard=1/4`.
-`test` and `e2e` are required status checks on `master` (README "CI").
+library that goes missing and starts the shell once) and `bun run test:e2e --shard=n/6` in
+`apps/web`; a failed shard uploads its blob report. Each shard is a required check by name
+(`e2e shard 1/6` to `6/6`); there is no gate job. On a PR that changes only documentation each
+shard's Scope step (`scripts/e2e-scope.ts`) skips the suite and the shard passes. When a shard
+failed, the `e2e report` job merges the blob reports into one `playwright-report` artifact. Run
+one shard locally with `cd apps/web && bunx --bun playwright test --shard=1/6`. `test` and the
+six shards are required status checks on `master` (README "CI").

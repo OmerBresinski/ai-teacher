@@ -31,36 +31,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      web: ${{ steps.probe.outputs.web }}
       dockerfile: ${{ steps.probe.outputs.dockerfile }}
-      # Empty when the scope step is skipped (a push to master) or printed nothing: e2e runs.
-      e2e: ${{ steps.scope.outputs.e2e || 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # A pull request checks out its merge commit; its first parent is the base branch tip,
-          # so `HEAD^1..HEAD` is exactly what the PR changes.
-          fetch-depth: 2
       - id: probe
         run: |
-          [ -f apps/web/package.json ] && echo "web=true" >> "$GITHUB_OUTPUT" || echo "web=false" >> "$GITHUB_OUTPUT"
           [ -f Dockerfile ] && echo "dockerfile=true" >> "$GITHUB_OUTPUT" || echo "dockerfile=false" >> "$GITHUB_OUTPUT"
-          cat "$GITHUB_OUTPUT"
-
-      # The script imports only Bun built-ins, so Bun is enough; no `bun install`.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        if: github.event_name == 'pull_request'
-        with:
-          bun-version-file: .bun-version
-
-      # A PR that changes only documentation skips the e2e shards (scripts/e2e-scope.ts); a push to
-      # master skips this step, so `e2e` falls back to true above. `--no-renames` lists both sides
-      # of a move, so source moved into docs/ still counts as a source change. The default shell
-      # has no pipefail: if `git diff` fails, the script reads empty input and answers e2e=true.
-      - id: scope
-        if: github.event_name == 'pull_request'
-        run: |
-          git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
 
   quality:
@@ -231,18 +207,19 @@ jobs:
           fi
 
   e2e-shard:
-    # Playwright (apps/web/e2e, TEACH-22) in four shards that run at once (TEACH-190 part b). Not a
-    # required check itself: the `e2e` job below reports for all four.
-    name: e2e shard ${{ matrix.shard }}/4
+    # Playwright (apps/web/e2e, TEACH-22) in six shards that run at once (TEACH-190 parts b and d).
+    # Each shard is a required check by name ("e2e shard 1/6" to "6/6", README "CI"), so there is
+    # no gate job to wait for and no `needs`: a shard starts with the run and can only pass by
+    # running. The total is part of every check name, so changing the shard count renames all
+    # of them: follow README "Phase 2" (change branch protection right before that PR merges).
+    name: e2e shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: detect
-    if: needs.detect.outputs.web == 'true' && needs.detect.outputs.e2e == 'true'
     strategy:
       # Let every shard finish, so a failure in one still leaves the others' results.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -254,18 +231,43 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
-          --health-interval 5s
+          --health-interval 1s
           --health-timeout 5s
-          --health-retries 12
+          --health-retries 60
     env:
       # playwright.config.ts boots api + worker against this database and migrates it first.
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey_test
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A pull request checks out its merge commit; its first parent is the base branch tip,
+          # so `HEAD^1..HEAD` is exactly what the PR changes.
+          fetch-depth: 2
+      # The scope script imports only Bun built-ins, so it runs before the install below.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # A PR that changes only documentation passes every shard without installing or running
+      # anything else (scripts/e2e-scope.ts). A push to master skips this step, and every later
+      # step runs unless the answer is exactly `false`, so a missing answer runs the suite.
+      # `--no-renames` lists both sides of a move, so source moved into docs/ still counts as a
+      # source change. The default shell has no pipefail: if `git diff` fails, the script reads
+      # empty input and answers e2e=true. Each later step repeats the same `if`; GitHub has no
+      # way to end a job early with success.
+      - name: Scope
+        id: scope
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
       - uses: ./.github/actions/setup
+        if: steps.scope.outputs.e2e != 'false'
 
       - name: Create the test database (mirrors infra/postgres/init)
+        if: steps.scope.outputs.e2e != 'false'
         run: |
           psql -h localhost -U postgres -d teaching_journey -v ON_ERROR_STOP=1 \
             -c "CREATE DATABASE teaching_journey_test;"
@@ -278,12 +280,14 @@ jobs:
       # runner cannot use.
       - name: Playwright version
         id: pw
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: apps/web
         run: |
           version="$(bunx --bun playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
+        if: steps.scope.outputs.e2e != 'false'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
@@ -299,6 +303,7 @@ jobs:
       # here, naming it, instead of at the first launch in the suite. Libraries Chromium loads at
       # runtime (dlopen) are not covered; the suite's first launch still catches those.
       - name: Install Chromium
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: apps/web
         run: |
           set -o pipefail
@@ -324,9 +329,10 @@ jobs:
       # Straight to Playwright, not `bun run test:e2e` at the root: turbo would first build every
       # package, and the suite runs api and worker from source and builds web itself (`webServer`).
       # The `build` job checks the build.
-      - name: Playwright shard ${{ matrix.shard }}/4
+      - name: Playwright shard ${{ matrix.shard }}/6
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: apps/web
-        run: bun run test:e2e --shard=${{ matrix.shard }}/4
+        run: bun run test:e2e --shard=${{ matrix.shard }}/6
 
       # A blob report carries the traces and screenshots; the `e2e report` job merges them.
       - name: Upload the shard's blob report
@@ -340,7 +346,7 @@ jobs:
 
   e2e-report:
     # When a shard failed: one HTML report (artifact `playwright-report`) from the failed shards'
-    # blob reports. Not a required check, so the `e2e` verdict never waits for it.
+    # blob reports. Not a required check, so nothing waits for it.
     name: e2e report
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -365,29 +371,6 @@ jobs:
           path: apps/web/playwright-report
           if-no-files-found: ignore
           retention-days: 7
-
-  e2e:
-    # The required check (README "CI"). It passes when every shard passed, or when `detect` skipped
-    # them all (no web app, or a docs-only PR). `if: always()` matters: GitHub counts a skipped
-    # required check as passing, so without it a failed shard would skip this job and let the PR
-    # merge. For the same reason a failed `detect`, which skips the shards, fails it.
-    name: e2e
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [detect, e2e-shard]
-    if: always()
-    steps:
-      - name: Verdict
-        env:
-          DETECT: ${{ needs.detect.result }}
-          SHARDS: ${{ needs.e2e-shard.result }}
-        run: |
-          echo "detect: $DETECT, e2e shards: $SHARDS"
-          if [ "$DETECT" = "success" ] && { [ "$SHARDS" = "success" ] || [ "$SHARDS" = "skipped" ]; }; then
-            exit 0
-          fi
-          echo "::error title=e2e::detect is '$DETECT' and the e2e shards are '$SHARDS'; e2e needs detect to succeed and the shards to pass or be skipped"
-          exit 1
 
   audit:
     name: audit

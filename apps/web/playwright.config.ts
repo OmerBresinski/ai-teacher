@@ -51,7 +51,7 @@ export default defineConfig({
   // real flake worth a look (the html report keeps the trace of the failed attempt).
   retries: CI ? 1 : 0,
   workers: CI ? 2 : undefined,
-  // CI runs the suite in four shards (ci.yml `e2e-shard`); each writes a blob report and the
+  // CI runs the suite in six shards (ci.yml `e2e-shard`); each writes a blob report and the
   // `e2e-report` job merges the failed shards' blobs into one HTML report.
   reporter: CI ? [["github"], ["blob"]] : [["list"], ["html", { open: "never" }]],
   outputDir: "test-results",
