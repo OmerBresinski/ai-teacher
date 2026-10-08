@@ -1,4 +1,11 @@
-import type { Id, Lesson, RichDoc, SlideElement } from "@tj/domain/documents";
+import {
+  findNamePatterns,
+  type Id,
+  type Lesson,
+  type RichDoc,
+  type Slide,
+  type SlideElement,
+} from "@tj/domain/documents";
 
 /*
  * The "Edit with Dayback" thread (TEACH-97; rulings 172, 175, 176): what the chat pane keeps per
@@ -179,17 +186,23 @@ export function resolveFollowUp(
   return { kind: "send", instruction: text, scope: moved };
 }
 
+/** Whether text would trip the server's input guard (an email, an ID number, "a pupil called"). */
+export const hasIdentifier = (text: string) => findNamePatterns(text).length > 0;
+
 /**
  * The thread's last 3 finished turns, oldest first, as the fast call's history: what was asked,
- * the reply the teacher saw, and the slides a change touched (`s4`).
+ * the reply the teacher saw, and the slides a change touched (`s4`). A failed turn is left out,
+ * and so is any turn the server's input guard would reject: otherwise one bad turn would fail
+ * every follow-up on the slide until it aged out (the thread outlives a reload).
  */
 export function historyOf(
   lesson: Lesson,
   thread: readonly Turn[],
 ): { instruction: string; summary: string; slides: string[] }[] {
   return thread
-    .filter((t) => t.reply.kind !== "pending" && t.instruction.trim() !== "")
-    .slice(-3)
+    .filter(
+      (t) => t.reply.kind !== "pending" && t.reply.kind !== "failed" && t.instruction.trim() !== "",
+    )
     .map((t) => {
       const n = t.change && !t.change.undone ? slideNumber(lesson, t.change.slideId) : 0;
       return {
@@ -197,7 +210,9 @@ export function historyOf(
         summary: t.reply.text.slice(0, 300),
         slides: n > 0 ? [`s${n}`] : [],
       };
-    });
+    })
+    .filter((h) => !hasIdentifier(h.instruction) && !hasIdentifier(h.summary))
+    .slice(-3);
 }
 
 /* ------------------------------------------------------------------ */
@@ -205,6 +220,19 @@ export function historyOf(
 /* ------------------------------------------------------------------ */
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Whether any of these boxes holds something else now than in the slide that was sent: the
+ * teacher typed while the request was out, or deleted the box. A late answer is then never
+ * written over their text (ruling 173).
+ */
+export function changedSince(sent: Slide, now: Slide, ids: readonly Id[]): boolean {
+  return ids.some((id) => {
+    const was = sent.elements.find((e) => e.id === id);
+    const is = now.elements.find((e) => e.id === id);
+    return was?.type !== "text" || is?.type !== "text" || !same(was.doc, is.doc);
+  });
+}
 
 /**
  * Whether a change can be undone exactly: every box it touched still holds what the change wrote.

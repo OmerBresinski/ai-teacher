@@ -46,7 +46,8 @@ export const LessonEditBodySchema = z.strictObject({
     .array(
       z.strictObject({
         instruction: guarded(z.string().trim().min(1).max(EDIT_INSTRUCTION_MAX)),
-        summary: z.string().max(300),
+        /** The reply the teacher saw: model-facing, so guarded like the instruction. */
+        summary: guarded(z.string().max(300)),
         slides: z.array(z.string().regex(/^s\d{1,3}$/)).max(40),
       }),
     )

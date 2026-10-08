@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson, SlideElement, TextElement } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
@@ -6,10 +6,12 @@ import { docFromText } from "../../model/factories";
 import { makeText } from "../../model/insert";
 import { getTheme } from "../../model/themes";
 import type { PromptEditAnswer, PromptEditRequest } from "../proposals-context";
-import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
+import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "../test-harness";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   canUndo,
+  changedSince,
+  historyOf,
   PANE_OPEN_KEY,
   readThread,
   resolveFollowUp,
@@ -295,5 +297,137 @@ describe("thread helpers", () => {
       JSON.stringify([{ ...applied, reply: { kind: "pending", text: "…" } }]),
     );
     expect(readThread("L")[0]?.reply.kind).toBe("stopped");
+  });
+});
+
+/*
+ * Review of 8 Oct (blockers 1 and 2, should-fixes 3 and 5): a late answer is never applied unseen
+ * or over the teacher's own typing, and one guard-rejected turn never poisons the follow-ups.
+ */
+describe("late answers and rejected turns", () => {
+  beforeAll(loadTextEditor);
+
+  /** A request that only answers when the test says so. */
+  function deferred() {
+    let resolve: (a: PromptEditAnswer) => void = () => {};
+    let signal: AbortSignal | undefined;
+    const answer: Answer = (_req, s) =>
+      new Promise((r) => {
+        signal = s;
+        resolve = r;
+      });
+    return { answer, resolve: (a: PromptEditAnswer) => resolve(a), signal: () => signal };
+  }
+
+  test("closing the pane mid-request cancels it: the slide does not change, and the thread says so", async () => {
+    const d = deferred();
+    const { say, read, lesson } = setup(d.answer);
+    await say("Make it harder");
+    const sent = read().slides[0] as NonNullable<Lesson["slides"][number]>;
+    fireEvent.click(screen.getByRole("button", { name: EDIT_CHAT_LABEL }));
+    expect(screen.queryByRole("complementary", { name: EDIT_CHAT_LABEL })).toBeNull();
+    expect(d.signal()?.aborted).toBe(true);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [{ elementId: sent.elements[0]?.id as string, doc: docFromText("Harder.") }],
+        summary: "Made it harder.",
+      });
+    });
+    expect(textOf(read())).toBe(ORIGINAL);
+    expect(readThread(lesson.id).map((t) => t.reply.text)).toEqual(["Stopped. Nothing changed."]);
+  });
+
+  test("a late answer never overwrites what the teacher typed meanwhile; it is offered again", async () => {
+    const d = deferred();
+    const { clickBox, say, read, pane, container, onPromptEdit } = setup(d.answer);
+    clickBox();
+    await say("Make it harder");
+    // The teacher opens the box and types while the request is out.
+    clickBox();
+    fireEvent.doubleClick(catcher(container), { clientX: 550, clientY: 100 });
+    await waitFor(() => expect(container.querySelector(".ProseMirror")).not.toBeNull(), {
+      timeout: 5_000,
+    });
+    const pm = container.querySelector(".ProseMirror") as HTMLElement & {
+      editor: { commands: { insertContent: (s: string) => void } };
+    };
+    act(() => pm.editor.commands.insertContent(" Mine."));
+    const typed = textOf(read());
+    expect(typed).toContain("Mine.");
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    expect(textOf(read())).toBe(typed);
+    expect(within(pane()).getByRole("alert").textContent).toBe(
+      "You changed that text while I was working, so I kept yours.",
+    );
+    await act(async () => {
+      fireEvent.click(within(pane()).getByRole("button", { name: "Try again on your text" }));
+    });
+    const retry = onPromptEdit.mock.calls[1]?.[0] as PromptEditRequest;
+    expect(retry.instruction).toBe("Make it harder");
+    expect(richDocToPlainText((retry.slide.elements[0] as TextElement).doc)).toBe(typed);
+  }, 15_000);
+
+  test("an instruction with an identifier is answered in the pane and never sent", async () => {
+    const { say, pane, onPromptEdit } = setup(() =>
+      Promise.resolve({ action: "no-change", reason: "" }),
+    );
+    await say("Add a note for jo.bloggs@school.org");
+    expect(onPromptEdit).toHaveBeenCalledTimes(0);
+    expect(within(pane()).getByRole("alert").textContent).toContain("email address");
+  });
+
+  test("failed turns and turns the guard would reject stay out of the history", () => {
+    const lesson = textLesson();
+    const s1 = lesson.slides[0]?.id as string;
+    const turn = (instruction: string, kind: Turn["reply"]["kind"], text: string): Turn => ({
+      id: instruction,
+      said: instruction,
+      instruction,
+      scope: { slideId: s1 },
+      scopeLabel: "Slide 1",
+      reply: { kind, text },
+    });
+    const history = historyOf(lesson, [
+      turn("Add 1234567 to it", "failed", "That edit didn’t work. Try again."),
+      turn("Make it easier", "no-change", "No change."),
+      turn("Shorter", "failed", "That edit didn’t work. Try again."),
+      turn("Harder", "refuse", "Ask jo@school.org"),
+      turn("Simpler", "no-change", "No change."),
+    ]);
+    expect(history.map((h) => h.instruction)).toEqual(["Make it easier", "Simpler"]);
+  });
+
+  test("“Try a shorter version” stays inside the instruction limit", async () => {
+    const long = `Add ${"more ".repeat(98)}`.slice(0, 500);
+    const { clickBox, say, pane, onPromptEdit } = setup(() =>
+      Promise.resolve({ action: "refuse", reason: "Too long.", check: "fit" }),
+    );
+    clickBox();
+    await say(long);
+    await act(async () => {
+      fireEvent.click(within(pane()).getByRole("button", { name: "Try a shorter version" }));
+    });
+    const sent = onPromptEdit.mock.calls[1]?.[0].instruction as string;
+    expect(sent.length).toBeLessThanOrEqual(500);
+    expect(sent.endsWith(". Keep it short.")).toBe(true);
+  });
+
+  test("changedSince: an edited or deleted box counts, an untouched one does not", () => {
+    const sent = textLesson().slides[0] as NonNullable<Lesson["slides"][number]>;
+    const id = sent.elements[0]?.id as string;
+    expect(changedSince(sent, structuredClone(sent), [id])).toBe(false);
+    const edited = structuredClone(sent);
+    (edited.elements[0] as TextElement).doc = docFromText("x");
+    expect(changedSince(sent, edited, [id])).toBe(true);
+    expect(changedSince(sent, { ...sent, elements: [] }, [id])).toBe(true);
   });
 });

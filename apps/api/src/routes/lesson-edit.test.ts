@@ -52,6 +52,14 @@ describe("POST /lessons/:id/edit", () => {
       },
     ],
     [
+      "a history summary with an identifier (it is model-facing, so guarded too)",
+      {
+        slide: multipleChoiceSlide(),
+        instruction: "a bit more",
+        history: [{ instruction: "x", summary: "Mailed jo@school.org", slides: [] }],
+      },
+    ],
+    [
       "an overlong instruction",
       { slide: multipleChoiceSlide(), elementId: "q", instruction: "x".repeat(501) },
     ],

@@ -1,4 +1,4 @@
-import type { Id, SlideElement, TextElement } from "@tj/domain/documents";
+import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
 import { Button, cn, IconButton, Spinner, Textarea } from "@tj/ui";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +15,9 @@ import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   type Alternative,
   canUndo,
+  changedSince,
   type EditScope,
+  hasIdentifier,
   historyOf,
   readThread,
   resolveFollowUp,
@@ -47,6 +49,12 @@ const WHOLE_LESSON =
 const STOPPED = "Stopped. Nothing changed.";
 const FAILED = "That edit didn’t work. Try again.";
 const CHANGED_SINCE = "That text has changed since, so I left it as it is.";
+const TYPED_MEANWHILE = "You changed that text while I was working, so I kept yours.";
+const IDENTIFIER =
+  "I can’t send that: it has an email address, an ID number or a pupil’s name in it. Take it out and try again.";
+/** The server's instruction limit (`EDIT_INSTRUCTION_MAX`), as the composer's `maxLength`. */
+const INSTRUCTION_MAX = 500;
+const KEEP_SHORT = ". Keep it short.";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
@@ -79,6 +87,16 @@ export function EditChatPane({
   lessonRef.current = lesson;
 
   useEffect(() => writeThread(lessonId, thread), [lessonId, thread]);
+  // Closing the pane (or leaving the editor) mid-request cancels it, so a late answer is never
+  // applied unseen: the slide stays as it was, and the stored turn reads back as "Stopped.
+  // Nothing changed." (`readThread`), which is then the truth (ruling 173).
+  useEffect(
+    () => () => {
+      pending.current?.controller.abort();
+      pending.current = null;
+    },
+    [],
+  );
   useEffect(() => {
     if (focusTick > 0) field.current?.focus();
   }, [focusTick]);
@@ -105,11 +123,20 @@ export function EditChatPane({
     setThread((all) => all.map((t) => (t.id === id ? patch(t) : t)));
   }, []);
 
-  /** Apply an answer's boxes as one undo step; returns the boxes before and after. */
+  /**
+   * Apply an answer's boxes as one undo step; returns the boxes before and after, or "changed"
+   * when the teacher edited one of them while the request was out (their text is kept).
+   */
   const apply = useCallback(
-    (slideId: Id, answer: Extract<PromptEditAnswer, { action: "edit" }>) => {
+    (sent: Slide, answer: Extract<PromptEditAnswer, { action: "edit" }>) => {
+      const slideId = sent.id;
       const slide = lessonRef.current.slides.find((s) => s.id === slideId);
       if (!slide) return null;
+      const ids = answer.changes.map((c) => c.elementId);
+      if (changedSince(sent, slide, ids)) {
+        // Deleted since: nothing to write into. Edited since: never overwrite the teacher.
+        return ids.every((id) => !slide.elements.some((e) => e.id === id)) ? null : "changed";
+      }
       const boxes = answer.changes.flatMap((c) => {
         const el = slide.elements.find((e) => e.id === c.elementId);
         return el?.type === "text"
@@ -224,6 +251,10 @@ export function EditChatPane({
         scopeLabel: scopeLabel(current, target),
         reply: { kind: "pending", text: "" },
       };
+      if (hasIdentifier(instruction)) {
+        setThread((all) => [...all, { ...base, reply: { kind: "refuse", text: IDENTIFIER } }]);
+        return;
+      }
       const slide = current.slides.find((s) => s.id === target.slideId);
       if (!slide) {
         // The whole lesson needs the agent path (part c): say so, and offer this slide instead.
@@ -273,7 +304,18 @@ export function EditChatPane({
       if (pending.current?.id !== id || controller.signal.aborted) return;
       pending.current = null;
       if (answer.action === "edit") {
-        const boxes = apply(slide.id, answer);
+        const boxes = apply(slide, answer);
+        if (boxes === "changed") {
+          update(id, (t) => ({
+            ...t,
+            reply: {
+              kind: "refuse",
+              text: TYPED_MEANWHILE,
+              alternative: { label: "Try again on your text", instruction, scope: target },
+            },
+          }));
+          return;
+        }
         if (!boxes) {
           update(id, (t) => ({ ...t, reply: { kind: "no-change", text: "No change." } }));
           return;
@@ -291,7 +333,7 @@ export function EditChatPane({
         : answer.check === "fit"
           ? {
               label: "Try a shorter version",
-              instruction: `${instruction}. Keep it short.`,
+              instruction: `${instruction.slice(0, INSTRUCTION_MAX - KEEP_SHORT.length)}${KEEP_SHORT}`,
               scope: target,
             }
           : undefined;
