@@ -225,8 +225,8 @@ cd apps/web && bun --bun playwright show-trace test-results/<test>/trace.zip
 
 Traces and screenshots are kept for failures only; in CI a failed shard uploads its
 `blob-report/` (which carries them) and the `e2e report` job merges those into the
-`playwright-report` artifact. `dist/e2e`, `playwright-report/`, `test-results/`, `blob-report/`, `all-blob-reports/`
-and `coverage/` are git-ignored.
+`playwright-report` artifact. `dist/e2e`, `playwright-report/`, `test-results/`, `blob-report/`,
+`all-blob-reports/` and `coverage/` are git-ignored.
 
 ## Flake guidance
 
@@ -251,6 +251,5 @@ Playwright version) and `bun run test:e2e --shard=n/4` in `apps/web`; a failed s
 blob report. The `e2e` job is the one required check for all four: it passes when every shard
 passed or `detect` skipped them (a PR that changes only documentation, `scripts/e2e-scope.ts`).
 When a shard failed, the `e2e report` job merges the blob reports into one `playwright-report`
-artifact. Run one shard
-locally with `cd apps/web && bunx --bun playwright test --shard=1/4`. `test` and `e2e` are required
-status checks on `master` (README "CI").
+artifact. Run one shard locally with `cd apps/web && bunx --bun playwright test --shard=1/4`.
+`test` and `e2e` are required status checks on `master` (README "CI").

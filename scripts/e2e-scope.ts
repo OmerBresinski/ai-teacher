@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// git diff --name-only HEAD^1 HEAD | bun scripts/e2e-scope.ts
+// git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts
 //
 // Decides whether a pull request needs the Playwright e2e shards (ci.yml `detect`, TEACH-190
 // part b). Reads the changed paths on stdin, one per line, and prints `e2e=false` when every one of

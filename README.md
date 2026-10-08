@@ -403,7 +403,7 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
 | `Eval` (`eval.yml`) | `bun run eval:paid` on Bedrock — only on `workflow_dispatch` or the `run-eval` PR label; uploads `eval-<sha>` (and `eval-master-latest` from `master`), posts the totals + delta comment `<!-- tj-eval-results -->` ([`docs/eval.md`](docs/eval.md)) | `AWS_BEARER_TOKEN_BEDROCK=… bun run eval:paid` (spends up to `AI_EVAL_RUN_COST_CAP_USD`) | no |
-| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`); on a PR, `scripts/e2e-scope.ts` reads the changed paths and turns the e2e shards off when all of them are documentation (`docs/`, Markdown, vendored agent skills) | `git diff --name-only origin/master... \| bun scripts/e2e-scope.ts` | -- |
+| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`); on a PR, `scripts/e2e-scope.ts` reads the changed paths and turns the e2e shards off when all of them are documentation (`docs/`, Markdown, vendored agent skills) | `git diff --name-only --no-renames origin/master... \| bun scripts/e2e-scope.ts` | -- |
 
 ### `test` and `e2e` are blocking
 
