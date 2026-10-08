@@ -890,6 +890,42 @@ const WORD_EQUATION =
 const WORD_FORMULA =
   /\b([a-z][a-z ]{1,30} = [a-z][a-z ]{1,30} [×÷/] [a-z][a-z ]{1,30})(?=[.;,]|$)/i;
 
+/** A phrase that only names the card's statement: "Word equation", "the symbol equation", "Formula". */
+const namesOf = (label: string) =>
+  `(?:(?:the|a|its|this)\\s+)?(?:${escapeRe(label)}|(?:word |symbol |balanced |chemical )?(?:equation|formula))\\s*(?::|\\bis\\b|\\bare\\b|=)?`;
+
+/**
+ * The words left for the column once a key card's statement is taken out of them. Its lead-in
+ * goes with it ("Word equation:", "The word equation is", ", and the formula is"), and so does
+ * the punctuation that joined them, so no "Word equation:." stub is left behind as a bullet. A
+ * sentence left with no words, or only a label, is dropped.
+ */
+export function withoutStatement(words: string, statement: string, label: string): string[] {
+  const names = namesOf(label);
+  const at = statement ? words.indexOf(statement) : -1;
+  let text = words;
+  if (at >= 0) {
+    const before = words.slice(0, at);
+    const cut = Math.max(
+      0,
+      ...[...before.matchAll(/[.!?]\s+/g)].map((m) => (m.index ?? 0) + m[0].length),
+    );
+    const prefix = before
+      .slice(cut)
+      .replace(new RegExp(`(?:^\\s*|,?\\s*\\b(?:and|so|where)\\s+|,\\s*)${names}\\s*$`, "i"), "")
+      .replace(/[\s,:;–—-]+$/, "");
+    let rest = words.slice(at + statement.length);
+    if (!prefix) rest = rest.replace(/^[\s,:;.!?–—-]+/, "");
+    text =
+      `${before.slice(0, cut)}${prefix}${prefix && /^\w/.test(rest) ? " " : ""}${rest}`.replace(
+        /\s+([.,;:!?])/g,
+        "$1",
+      );
+  }
+  const stub = new RegExp(`^${names}\\s*[.!?]?$`, "i");
+  return sentences(text).filter((x) => /[A-Za-z]/.test(x) && !stub.test(x));
+}
+
 /**
  * The structure a teaching slide's words already carry, for a slide generated before the hints
  * existed (or by a writer that does not give them):
@@ -936,13 +972,13 @@ export function inferStructure(
   }
   const eq = body.match(WORD_EQUATION) ?? body.match(WORD_FORMULA);
   if (eq && eq.index !== undefined) {
-    const statement = (eq[1] as string).trim();
+    // A label with no colon is caught by the match ("The word equation is carbon dioxide + …"):
+    // it is the lead-in, not part of the statement.
+    const statement = (eq[1] as string)
+      .replace(/^.*\b(?:equation|formula)\b(?:\s+(?:is|are))?\s+/i, "")
+      .trim();
     const label = statement.includes("→") ? "Word equation" : "Formula";
-    const without =
-      `${body.slice(0, eq.index).replace(/[:,]?\s*$/, "")}${body.slice(eq.index + eq[0].length)}`
-        .replace(/\s+\./g, ".")
-        .trim();
-    const left = sentences(without);
+    const left = withoutStatement(body, statement, label);
     return {
       structure: { keyCard: { label, text: statement } },
       lead: left[0] ?? "",
@@ -2426,9 +2462,7 @@ function splitContent(
   } else if (s.keyCard) {
     label = s.keyCard.label;
     statement = docFromText(s.keyCard.text);
-    left = sentences(words.replace(s.keyCard.text, "").replace(/\s+\./g, ".")).filter(
-      (x) => x.replace(/[^A-Za-z]/g, "").length > 0,
-    );
+    left = withoutStatement(words, s.keyCard.text, s.keyCard.label);
     if (left.length === 0) left = all;
   } else if (hints.points?.length) {
     // The writer's own list: its lead stays the lead, and the lead and its dots take the full
