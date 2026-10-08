@@ -3,7 +3,8 @@
 // Zealand both carry the definition, and locale3's line stays NZ-only.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { AB_CONFIG, AB_REF, abFiles, STAGES } from "./arms";
+import { CHECKDEF_TEMPLATES, coverage, RENDERED_KIND } from "../round4";
+import { AB, AB_CONFIG, AB_REF, abFiles, STAGES } from "./arms";
 import { compileLocale, nzUkBrief, ukObjectives } from "./localecompile";
 
 const read = (f: string) => readFileSync(f, "utf8");
@@ -16,7 +17,7 @@ describe("arm checkdef", () => {
   test("code switches are base5's plus objRetry, diffed against base5", () => {
     const { delta: _a, ...c } = AB_CONFIG.checkdef;
     const { delta: _b, ...b5 } = AB_CONFIG.base5;
-    expect(c).toEqual({ ...b5, objRetry: true });
+    expect(c).toEqual({ ...b5, objRetry: true, checkDef: true });
     expect(AB_CONFIG.base5.objRetry).toBeUndefined();
     expect(AB_REF.checkdef).toEqual({ ref: "base5" });
   });
@@ -45,4 +46,29 @@ describe("arm checkdef", () => {
       if (c === "nz") expect(x.writer).toContain(PLACE);
       else expect(x.writer).not.toContain(PLACE);
     });
+});
+
+describe("checkdef: generation's check slides = the evaluator's question kinds", () => {
+  // The objectives evaluator (v2, de1f06ac) takes each slide's role from eval/deck.py.
+  const deck = read(`${AB.replace(/\/ab$/, "")}/eval/deck.py`);
+  const m = deck.match(/^QUESTION_KINDS = \{([^}]*)\}/m);
+  const QUESTION_KINDS = new Set([...(m?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+  test("every writer template is a check exactly when its rendered kind is a question kind", () => {
+    expect(QUESTION_KINDS.size).toBeGreaterThan(0);
+    for (const [tpl, kind] of Object.entries(RENDERED_KIND))
+      expect([tpl, CHECKDEF_TEMPLATES.has(tpl)]).toEqual([tpl, QUESTION_KINDS.has(kind)]);
+    for (const tpl of CHECKDEF_TEMPLATES) expect(RENDERED_KIND[tpl]).toBeDefined();
+  });
+  test("checkDef coverage: a discussion slide no longer checks; the default still counts it", () => {
+    const flow = [
+      { slide: 3, teaches: [1] },
+      { slide: 4, teaches: [1] },
+    ];
+    const tpl = (k: number) => (k === 3 ? "explain" : "discussion");
+    expect(coverage(flow, 1, tpl).unchecked).toEqual([]);
+    expect(coverage(flow, 1, tpl, CHECKDEF_TEMPLATES).unchecked).toEqual([1]);
+    expect(
+      coverage(flow, 1, (k) => (k === 3 ? "explain" : "exit-ticket"), CHECKDEF_TEMPLATES).missing,
+    ).toEqual([]);
+  });
 });

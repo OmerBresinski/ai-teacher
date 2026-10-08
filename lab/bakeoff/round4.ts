@@ -12,6 +12,31 @@ export const CHECK_TEMPLATES = new Set([
   "discussion",
 ]);
 
+/**
+ * Arm checkdef: only slides where pupils answer check an objective (the writer's and
+ * objective-repair's definition); discussion only teaches, as in the evaluator (eval/deck.py).
+ */
+export const CHECKDEF_TEMPLATES = new Set(["hinge", "question-set", "practice", "exit-ticket"]);
+/**
+ * The slide kind each pupil-facing writer template renders as (saved runs, 9 Oct: base5-2 y2
+ * hinge -> multiple-choice, practice -> open-response, discussion -> discussion; b3-r2-wo1 y12
+ * question-set -> starter; lib-wo1 y9-weimar exit-ticket -> exit-ticket). The evaluator gives a
+ * slide the "question" role by this kind.
+ */
+export const RENDERED_KIND: Record<string, string> = {
+  hinge: "multiple-choice",
+  "question-set": "starter",
+  practice: "open-response",
+  "exit-ticket": "exit-ticket",
+  discussion: "discussion",
+  "big-visual": "diagram",
+  explain: "content",
+  compare: "content",
+  steps: "worked-example",
+  "equation-hero": "worked-example",
+  "picture-sequence": "worked-example",
+};
+
 export type FlowEntry = { slide: number; does?: string; teaches?: number[] };
 export type Coverage = { untaught: number[]; unchecked: number[]; missing: number[] };
 
@@ -25,6 +50,7 @@ export function coverage(
   flow: FlowEntry[],
   objectives: number,
   templateOf: (slide: number) => string | undefined,
+  checks: ReadonlySet<string> = CHECK_TEMPLATES,
 ): Coverage {
   const taught = new Set<number>();
   const checked = new Set<number>();
@@ -32,7 +58,7 @@ export function coverage(
     if (f.slide <= 2) continue;
     const t = templateOf(f.slide);
     const isCheck = t
-      ? CHECK_TEMPLATES.has(t)
+      ? checks.has(t)
       : /\b(check|quiz|practi[cs]e|question|exit)/i.test(f.does ?? "");
     for (const k of f.teaches ?? []) (isCheck ? checked : taught).add(k);
   }
@@ -106,10 +132,12 @@ export async function repairObjectives(o: {
   log: (e: object) => void;
   onUsd: (usd: number) => void;
   retry?: boolean;
+  /** Templates that check (default CHECK_TEMPLATES; arm checkdef: CHECKDEF_TEMPLATES). */
+  checks?: ReadonlySet<string>;
 }): Promise<{ plan: Plan; repaired: boolean; before: Coverage; after?: Coverage }> {
   const tplOf = (p: Plan) => (slide: number) =>
     (p.slides[slide - 1]?.template as string | undefined) ?? undefined;
-  const before = coverage(o.plan.flow, o.objectives.length, tplOf(o.plan));
+  const before = coverage(o.plan.flow, o.objectives.length, tplOf(o.plan), o.checks);
   if (!before.missing.length) return { plan: o.plan, repaired: false, before };
   const user = [
     o.context,
@@ -138,7 +166,7 @@ export async function repairObjectives(o: {
       if (f) f.teaches = c.teaches;
       changed.push(c.n);
     }
-    const after = coverage(next.flow, o.objectives.length, tplOf(next));
+    const after = coverage(next.flow, o.objectives.length, tplOf(next), o.checks);
     return { next, changed, after, ok: changed.length > 0 && after.missing.length === 0 };
   };
   const attempts = o.retry ? 2 : 1;
