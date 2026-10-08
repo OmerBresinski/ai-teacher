@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// bun run smoke:prod [--target bresinski|dayback] [--api <url>] [--web-origin <origin>] [--site <origin>]
+// bun run smoke:prod [--target dayback|bresinski] [--api <url>] [--web-origin <origin>] [--site <origin>]
 //
 // Black-box smoke check of the deployed api, run after every Railway deploy (AGENTS.md step 4).
 // It sends the exact request shapes a browser produces so a regression in the request guards
@@ -10,9 +10,9 @@
 //   exit 1  at least one did not (the table says which)
 //
 // Defaults are production; PR environments can be probed with --api / --web-origin. `--target`
-// picks a set of production origins: `bresinski` (live today) or `dayback` (after the TEACH-78
-// cutover). `--site` adds the marketing-site cases (dayback.app: 200, real 404, crawl files, www
-// and legacy /homepage redirects).
+// picks a set of production origins: `dayback` (the default since the TEACH-78 cutover) or the
+// legacy `bresinski` origins. `--site` adds the marketing-site cases (dayback.app: 200, real 404,
+// crawl files, www and legacy /homepage redirects).
 
 import { parseArgs } from "node:util";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
@@ -23,8 +23,8 @@ export const SMOKE_TARGETS = {
   dayback: { api: "https://api.dayback.app", webOrigin: "https://teach.dayback.app" },
 } as const;
 export type SmokeTarget = keyof typeof SMOKE_TARGETS;
-/** The default target. Flip to `dayback` in the post-cutover cleanup (TEACH-78). */
-export const DEFAULT_TARGET: SmokeTarget = "bresinski";
+/** The default target: production has served the dayback origins since the TEACH-78 cutover. */
+export const DEFAULT_TARGET: SmokeTarget = "dayback";
 export const PRODUCTION_API = SMOKE_TARGETS[DEFAULT_TARGET].api;
 export const PRODUCTION_WEB_ORIGIN = SMOKE_TARGETS[DEFAULT_TARGET].webOrigin;
 /** Per-request ceiling: a hung origin must fail the smoke check, not park `bun run land`. */
@@ -411,7 +411,7 @@ export async function runSmoke(
 async function main(): Promise<number> {
   let values: { target?: string; api?: string; "web-origin"?: string; site?: string };
   const usage =
-    "Usage: bun run smoke:prod [--target bresinski|dayback] [--api <url>] [--web-origin <origin>] [--site <origin>]";
+    "Usage: bun run smoke:prod [--target dayback|bresinski] [--api <url>] [--web-origin <origin>] [--site <origin>]";
   try {
     values = parseArgs({
       options: {
@@ -429,7 +429,7 @@ async function main(): Promise<number> {
   }
   const targetName = values.target ?? DEFAULT_TARGET;
   if (!Object.hasOwn(SMOKE_TARGETS, targetName)) {
-    throw new UserFacingError(`--target must be bresinski or dayback\n${usage}`, ExitCode.Usage);
+    throw new UserFacingError(`--target must be dayback or bresinski\n${usage}`, ExitCode.Usage);
   }
   const target = SMOKE_TARGETS[targetName as SmokeTarget];
   const api = (values.api ?? target.api).replace(/\/$/, "");
