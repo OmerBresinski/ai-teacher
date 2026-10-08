@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Lesson, RichDoc, Slide } from "@tj/domain/documents";
 import {
@@ -74,6 +75,33 @@ describe("editFast streamed (TEACH-97 chat-d)", () => {
       texts: [{ elementId: "b", text: "Water warms up and becomes a gas." }],
     });
     expect(ai.calls).toHaveLength(1);
+  });
+
+  test("Stop mid-stream: usage is unknown at abort, so the hold stays uncertain (never settled low)", async () => {
+    // Provider usage arrives only with the stream's finish part, so at an abort there is nothing
+    // true to settle: the reservation is kept as uncertain (counted conservatively). A per-edit
+    // budget ends with its request, so nothing carries over; a host budget keeps the hold.
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const ai = createFakeAi({
+      script: [
+        async () => {
+          await new Promise((r) => setTimeout(r, 200));
+          return answer(T, "Water warms up and becomes a gas.");
+        },
+      ],
+    });
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(), 30);
+    await expect(
+      editFast(
+        { lesson: lesson(), slide: contentSlide(), elementId: "b", instruction: "Shorter" },
+        { ai, logger, budget, signal: stop.signal, onPartial: () => {} },
+      ),
+    ).rejects.toBeDefined();
+    const totals = budget.totals();
+    expect(totals.calls).toBe(0);
+    expect(totals.uncertain?.calls).toBe(1);
+    expect(totals.reserved?.calls ?? 0).toBe(0);
   });
 
   test("a partial that is not an edit is not shown", () => {

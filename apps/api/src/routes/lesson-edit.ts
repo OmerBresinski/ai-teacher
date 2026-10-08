@@ -21,9 +21,16 @@
  * Logging (ADR 0015): `{ action, attempts, ms, check, modelId }`, never the instruction or text.
  */
 import { zValidator } from "@hono/zod-validator";
-import type { CreatedAi } from "@tj/ai";
+import type { Budget, CreatedAi } from "@tj/ai";
 import { forWorkspace, getDocument, type ScopableDb } from "@tj/db";
-import { guarded, type Lesson, type Slide, SlideSchema } from "@tj/domain/documents";
+import {
+  findNamePatterns,
+  guarded,
+  type Lesson,
+  richDocToPlainText,
+  type Slide,
+  SlideSchema,
+} from "@tj/domain/documents";
 import {
   AGENT_MESSAGES,
   EDIT_INSTRUCTION_MAX,
@@ -44,6 +51,28 @@ import { documentBodyLimit, NOT_FOUND_MESSAGE } from "./documents";
 
 const lessonParam = z.object({ id: z.uuid() });
 const NO_TEXT = "There is no text to change on this slide.";
+/** The client's slide carries personal data: refused before any model sees it (ruling 176). */
+export const SLIDE_IDENTIFIER =
+  "This slide has an email address, an ID number or a pupil’s name, so I can’t send it. Take it out and try again.";
+/** The client's slide names a box the saved slide does not have (a stale or forged slide). */
+export const SLIDE_CHANGED =
+  "That slide has changed. Wait a moment for it to save, then try again.";
+/** An SSE comment this often keeps proxies from closing a quiet stream while the model thinks. */
+export const HEARTBEAT_MS = 15_000;
+
+export type LessonEditOptions = {
+  /**
+   * The budget a request spends from. Absent: a fresh per-edit budget (`editFast`'s own cap). A
+   * host that keeps a workspace allowance passes it here and the same reservation middleware
+   * holds every call, streamed or not, to it.
+   */
+  budgetFor?: ((workspaceId: string) => Budget | undefined) | undefined;
+  heartbeatMs?: number | undefined;
+};
+
+/** Every text of a slide, for the identifier guard. */
+const slideTexts = (slide: Slide): string[] =>
+  slide.elements.flatMap((e) => (e.type === "text" ? [richDocToPlainText(e.doc)] : []));
 
 export const LessonEditBodySchema = z.strictObject({
   slide: SlideSchema,
@@ -65,7 +94,12 @@ export const LessonEditBodySchema = z.strictObject({
     .optional(),
 });
 
-export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined) {
+export function lessonEditRoutes(
+  unsafeDb: ScopableDb,
+  ai: CreatedAi | undefined,
+  options: LessonEditOptions = {},
+) {
+  const heartbeatMs = options.heartbeatMs ?? HEARTBEAT_MS;
   return new Hono<AppEnv>().post(
     "/lessons/:id/edit",
     documentBodyLimit(),
@@ -83,9 +117,22 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
       }
       const lesson = row.body as Lesson;
       const slide = body.slide as Slide;
-      if (!lesson.slides.some((s) => s.id === slide.id)) {
+      const stored = lesson.slides.find((s) => s.id === slide.id);
+      if (!stored) {
         throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
       }
+      // The client's slide is used as sent (unsaved typing matters), but it must be this slide:
+      // every box it names is one the saved slide has.
+      const known = new Set(stored.elements.map((e) => e.id));
+      if (
+        (body.elementId !== undefined && !known.has(body.elementId)) ||
+        slide.elements.some((e) => !known.has(e.id))
+      ) {
+        throw new HTTPException(400, { message: SLIDE_CHANGED });
+      }
+      // The identifier guard runs on the slide's text too, before any model call.
+      const identifier = slideTexts(slide).some((t) => findNamePatterns(t).length > 0);
+      const budget = options.budgetFor?.(workspaceId);
       const run = async (
         signal: AbortSignal,
         onPartial?: (partial: EditFastPartial) => void,
@@ -101,6 +148,10 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
             need: route.need,
             ms: 0,
           };
+        }
+        if (identifier) {
+          logger.info({ action: "refuse", check: "identifier", ms: 0 }, "lesson edit");
+          return { action: "refuse" as const, reason: SLIDE_IDENTIFIER, check: "identifier" };
         }
         if (ai === undefined || ai.kind === "unconfigured") {
           return { action: "failed" as const, reason: EDIT_MESSAGES.failed };
@@ -120,6 +171,7 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
               signal,
               context: { lessonId, jobId: c.get("requestId") },
               onPartial,
+              budget,
             },
           );
           logger.info(
@@ -168,15 +220,30 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
         const stop = new AbortController();
         stream.onAbort(() => stop.abort());
         const signal = AbortSignal.any([c.req.raw.signal, stop.signal]);
-        let last = "";
-        const answer = await run(signal, (partial) => {
-          const data = JSON.stringify(partial);
-          if (data === last || stream.aborted) return;
-          last = data;
-          void stream.writeSSE({ event: "partial", data });
-        });
-        if (!stream.aborted)
-          await stream.writeSSE({ event: "final", data: JSON.stringify(answer) });
+        // A write after the client has gone is dropped, never an unhandled rejection.
+        const write = (chunk: () => Promise<void>) => {
+          if (stream.aborted || stream.closed || signal.aborted) return Promise.resolve();
+          return chunk().catch(() => stop.abort());
+        };
+        const beat = setInterval(
+          () =>
+            void write(async () => {
+              await stream.write(": ping\n\n");
+            }),
+          heartbeatMs,
+        );
+        try {
+          let last = "";
+          const answer = await run(signal, (partial) => {
+            const data = JSON.stringify(partial);
+            if (data === last) return;
+            last = data;
+            void write(() => stream.writeSSE({ event: "partial", data }));
+          });
+          await write(() => stream.writeSSE({ event: "final", data: JSON.stringify(answer) }));
+        } finally {
+          clearInterval(beat);
+        }
       });
     },
   );

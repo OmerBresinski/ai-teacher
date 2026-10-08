@@ -1,4 +1,4 @@
-import { type CreatedAi, createBudget } from "@tj/ai";
+import { type Budget, type CreatedAi, createBudget } from "@tj/ai";
 import {
   type Lesson,
   plainTextOf,
@@ -111,6 +111,11 @@ export interface EditFastDeps {
    * the end is the only thing to apply. A retry round starts again from an empty partial.
    */
   onPartial?: ((partial: EditFastPartial) => void) | undefined;
+  /**
+   * The budget to spend from (a host's allowance, e.g. a workspace's). Absent: a fresh per-edit
+   * budget. Either way every call goes through the reservation middleware, streamed or not.
+   */
+  budget?: Budget | undefined;
 }
 
 /** A partial answer for display: the summary so far and each text box's new text so far. */
@@ -405,7 +410,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
   const start = performance.now();
   const ms = () => Math.round(performance.now() - start);
   const input = packEditFast(req);
-  const budget = createBudget(EDIT_FAST_BUDGET);
+  const budget = deps.budget ?? createBudget(EDIT_FAST_BUDGET);
   // Two rounds, each with `callStructured`'s own shape retry: never an unbounded wait.
   const deadline = AbortSignal.timeout(EDIT_FAST_TIMEOUT_MS * 3);
   const signal = deps.signal ? AbortSignal.any([deps.signal, deadline]) : deadline;

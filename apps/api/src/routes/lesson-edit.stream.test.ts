@@ -1,12 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { createFakeAi } from "@tj/ai/testing";
+import { createBudget } from "@tj/ai";
+import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { newId, type WorkspaceId } from "@tj/domain";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import { lesson as demoLesson, textElement } from "@tj/domain/documents/fixtures";
 import { Hono } from "hono";
 import type { AppEnv } from "../context";
 import { silentLogger } from "../test-helpers";
-import { lessonEditRoutes } from "./lesson-edit";
+import {
+  type LessonEditOptions,
+  lessonEditRoutes,
+  SLIDE_CHANGED,
+  SLIDE_IDENTIFIER,
+} from "./lesson-edit";
 
 /*
  * The streamed edit (TEACH-97 chat-d): with `Accept: text/event-stream` the route answers over
@@ -50,8 +56,8 @@ const reply = JSON.stringify({
   summary: "Made it shorter.",
 });
 
-function app() {
-  const ai = createFakeAi({ script: [reply] });
+function app(options: LessonEditOptions = {}, script: FakeScriptEntry[] = [reply]) {
+  const ai = createFakeAi({ script });
   const app = new Hono<AppEnv>()
     .use(async (c, next) => {
       c.set("workspaceId", ws);
@@ -59,7 +65,7 @@ function app() {
       c.set("requestId", "req-1" as never);
       await next();
     })
-    .route("/", lessonEditRoutes(stubDb(), ai));
+    .route("/", lessonEditRoutes(stubDb(), ai, options));
   return { app, ai };
 }
 
@@ -106,5 +112,102 @@ describe("POST /lessons/:id/edit, streamed", () => {
     });
     expect(res.headers.get("content-type")).toContain("application/json");
     expect(((await res.json()) as { action: string }).action).toBe("edit");
+  });
+});
+
+const sse = (a: Hono<AppEnv>, payload: string = body, signal?: AbortSignal) =>
+  a.request(`/lessons/${lessonId}/edit`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    body: payload,
+    ...(signal ? { signal } : {}),
+  });
+const finalOf = (text: string) =>
+  JSON.parse(/event: final\ndata: (.*)/.exec(text)?.[1] ?? "null") as {
+    action: string;
+    reason?: string;
+    check?: string;
+  };
+
+describe("POST /lessons/:id/edit, guards and budget", () => {
+  test("a capped budget is refused before any model call, streamed or not", async () => {
+    const capped = createBudget({ capUsd: 0, capTokens: 0 });
+    const { app: a, ai } = app({ budgetFor: () => capped });
+    const final = finalOf(await (await sse(a)).text());
+    expect(final.action).toBe("failed");
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  test("the streamed call reserves and settles on the budget it was given", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const { app: a } = app({ budgetFor: () => budget });
+    expect(finalOf(await (await sse(a)).text()).action).toBe("edit");
+    const totals = budget.totals();
+    expect(totals.calls).toBe(1);
+    expect(totals.inputTokens + totals.outputTokens).toBeGreaterThan(0);
+    expect(totals.reserved?.calls ?? 0).toBe(0);
+  });
+
+  test("personal data in the sent slide's text is refused before any model call", async () => {
+    const { app: a, ai } = app();
+    const withEmail = {
+      ...slide,
+      elements: [
+        textElement("b", "Send it to jo.bloggs@school.org.uk", { y: 140, h: 120 } as never),
+      ],
+    };
+    const res = await sse(
+      a,
+      JSON.stringify({ slide: withEmail, elementId: "b", instruction: "Shorter" }),
+    );
+    const final = finalOf(await res.text());
+    expect(final).toMatchObject({
+      action: "refuse",
+      reason: SLIDE_IDENTIFIER,
+      check: "identifier",
+    });
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  test("a box the saved slide does not have is a 400 and no model call", async () => {
+    const { app: a, ai } = app();
+    const forged = { ...slide, elements: [...slide.elements, textElement("zz", "Extra")] };
+    const res = await sse(
+      a,
+      JSON.stringify({ slide: forged, elementId: "b", instruction: "Shorter" }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain(SLIDE_CHANGED);
+    const res2 = await sse(a, JSON.stringify({ slide, elementId: "nope", instruction: "Shorter" }));
+    expect(res2.status).toBe(400);
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  test("a quiet stream carries heartbeat comments", async () => {
+    const slow: FakeScriptEntry = async () => {
+      await new Promise((r) => setTimeout(r, 120));
+      return reply;
+    };
+    const { app: a } = app({ heartbeatMs: 20 }, [slow]);
+    const text = await (await sse(a)).text();
+    expect(text).toContain(": ping");
+    expect(finalOf(text).action).toBe("edit");
+  });
+
+  test("Stop mid-stream aborts the model call and writes nothing after", async () => {
+    let aborted = false;
+    const slow: FakeScriptEntry = async (call) => {
+      await new Promise((r) => setTimeout(r, 150));
+      aborted = call.abortSignal?.aborted === true;
+      return reply;
+    };
+    const { app: a } = app({ heartbeatMs: 10 }, [slow]);
+    const stop = new AbortController();
+    const res = await sse(a, body, stop.signal);
+    setTimeout(() => stop.abort(), 30);
+    const text = await res.text().catch(() => "");
+    await new Promise((r) => setTimeout(r, 250));
+    expect(text).not.toContain("event: final");
+    expect(aborted).toBe(true);
   });
 });
