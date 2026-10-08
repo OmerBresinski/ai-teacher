@@ -101,3 +101,50 @@ describe("ImageView diagram builds", () => {
       expect(shown({ mode, diagramBuild: undefined })).toBe(svg);
   });
 });
+
+describe("ImageView diagram builds: review fixes", () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect/><g data-s="1"><circle/></g><g data-s="2"><path/></g><g data-ans="1"><text>9</text></g></svg>';
+  const diagram: ImageElement = {
+    ...base,
+    name: "Diagram",
+    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    builds: 2,
+  };
+  const view = (build: number, extra: Partial<Parameters<typeof ImageView>[0]> = {}) => (
+    <ImageView
+      element={diagram}
+      theme={theme}
+      mode="present"
+      slideId="s1"
+      hidden={false}
+      ghost={false}
+      revealAnswer={false}
+      diagramBuild={build}
+      {...extra}
+    />
+  );
+  const srcOf = (c: HTMLElement) =>
+    decodeURIComponent((c.querySelector("img")?.getAttribute("src") ?? "").split(",")[1] ?? "");
+
+  test("stepping back is static, and stays static when it re-renders (a resize)", () => {
+    const { container, rerender } = render(view(2));
+    expect(srcOf(container)).toContain("animation");
+    rerender(view(1));
+    expect(srcOf(container)).not.toContain("animation");
+    rerender(view(1, { theme: getTheme("chalk") }));
+    expect(srcOf(container)).not.toContain("animation");
+    rerender(view(2));
+    expect(srcOf(container)).toContain("animation");
+    cleanup();
+  });
+
+  test("diagramAnswer decides the answer part when the slide gives it", () => {
+    const q = { type: "open-response" as const };
+    const { container, rerender } = render(view(2, { question: q, diagramAnswer: true }));
+    expect(srcOf(container)).not.toContain('[data-ans="1"]{opacity:0}');
+    rerender(view(2, { question: q, diagramAnswer: false }));
+    expect(srcOf(container)).toContain('[data-ans="1"]{opacity:0}');
+    cleanup();
+  });
+});

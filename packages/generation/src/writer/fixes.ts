@@ -1,6 +1,7 @@
 import { writerBundle } from "./bundle";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
+import { nonFatalSync } from "./services";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -51,12 +52,11 @@ export function writerIncomplete(o: {
   if (o.finishReason === "content-filter" || o.finishReason === "content_filter")
     return "finish_reason content-filter";
   if (o.finishReason === "error") return "finish_reason error";
-  let out: { slides?: unknown[] };
-  try {
-    out = JSON.parse(o.text);
-  } catch {
-    return "writer JSON does not parse";
-  }
+  const out = nonFatalSync(
+    () => JSON.parse(o.text) as { slides?: unknown[] },
+    () => undefined,
+  );
+  if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
   const n = Array.isArray(out?.slides) ? out.slides.length : 0;
   if (n < o.minSlides - 2)

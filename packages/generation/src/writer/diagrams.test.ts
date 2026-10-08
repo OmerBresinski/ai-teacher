@@ -4,6 +4,7 @@ import { stripBuilds, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { DIAGRAM_SAMPLES, MEANING_SAMPLES, openaiSchemaFaults } from "@tj/slides/diagrams";
 
 import { getTheme } from "@tj/slides/themes";
+import { BudgetExceeded } from "../types";
 import pinnedDefs from "./bundles/base4/diagram-defs.gen.json" with { type: "json" };
 import {
   acceptWriterSpec,
@@ -163,6 +164,7 @@ describe("the drawer fallback (base4's round 5 drawer call)", () => {
       users.push(req.user);
       expect(req.model).toBe("gpt-6-luna");
       expect(req.strict).toBe(false);
+      expect(req.timeoutMs).toBeGreaterThan(0);
       n += 1;
       return { out: n === 1 ? { kind: "cycle", steps: 3 } : good };
     };
@@ -352,5 +354,32 @@ describe("the writer's pinned diagram defs are the drawer's own schema (TEACH-11
         n += 1;
       }
     expect(n).toBeGreaterThan(80);
+  });
+});
+
+describe("a budget or abort error stops the job (never a restage)", () => {
+  test("the drawer call's budget error and an abort in the slot probe are rethrown", async () => {
+    const over = new BudgetExceeded("usd");
+    await expect(
+      drawWriterDiagram(ask("particles", "side"), {
+        callDrawer: async () => {
+          throw over;
+        },
+        drawerSystem: "",
+        theme: studio,
+      }),
+    ).rejects.toBe(over);
+    const abort = Object.assign(new Error("aborted"), { name: "AbortError" });
+    const flow = samplesOf("flow")[0] as J;
+    await expect(
+      drawWriterDiagram(ask("flow", "side", "ks3", flow), {
+        callDrawer: noCall,
+        drawerSystem: "",
+        theme: studio,
+        probe: () => {
+          throw abort;
+        },
+      }),
+    ).rejects.toBe(abort);
   });
 });

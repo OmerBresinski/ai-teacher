@@ -1,5 +1,5 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   isDiagramMark,
   slideArtVariant,
@@ -218,6 +218,11 @@ export function SlideView({
               answerProgress={answerProgress}
               diagramBuild={
                 mode === "present" && step !== undefined ? diagramBuildAt(slide, step) : undefined
+              }
+              diagramAnswer={
+                mode === "present"
+                  ? !slide.question || answerRevealSteps(slide) === 0 || revealAnswer
+                  : undefined
               }
               question={slide.question}
               zIndex={i + 1}

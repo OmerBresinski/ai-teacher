@@ -36,6 +36,7 @@ export type ElementFrameProps = {
   /** Wrong options dimmed so far on a choice question (see `ElementViewProps`). */
   answerProgress?: number;
   diagramBuild?: number;
+  diagramAnswer?: boolean;
   question?: QuestionData;
   zIndex: number;
   /** Position of this element among those revealed at the same step, for the stagger. */
@@ -67,6 +68,7 @@ export function ElementFrame({
   revealAnswer,
   answerProgress,
   diagramBuild,
+  diagramAnswer,
   question,
   zIndex,
   staggerIndex = 0,
@@ -140,6 +142,7 @@ export function ElementFrame({
           revealAnswer={revealAnswer}
           answerProgress={answerProgress}
           diagramBuild={diagramBuild}
+          diagramAnswer={diagramAnswer}
           question={question}
           step={step}
           optionIndex={optionIndex}

@@ -80,6 +80,7 @@ import {
   WRITER_EFFORT,
   WRITER_MODEL,
   type WriterServices,
+  whenNonFatal,
   writerMaxTokens,
 } from "./services";
 
@@ -348,11 +349,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       schema: JSON.parse(P.pupilObjectivesSchema),
       name: "pupil_objectives",
       maxTokens: 1500,
-    }).catch((e) => {
-      if (isFatal(e)) throw e;
-      log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
-      return undefined;
-    });
+    }).catch(
+      whenNonFatal((e) => {
+        log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
+        return undefined;
+      }),
+    );
     const lines = (r?.out as { pupil?: unknown[] } | undefined)?.pupil ?? [];
     objectives.forEach((o, k) => {
       const line = lines[k];
@@ -525,11 +527,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       user: u,
       schema: repairSchemaFor(stageKey),
       name: "slide",
-    }).catch((e) => {
-      if (isFatal(e)) throw e;
-      log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
-      return undefined;
-    });
+    }).catch(
+      whenNonFatal((e) => {
+        log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
+        return undefined;
+      }),
+    );
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, ok: false });

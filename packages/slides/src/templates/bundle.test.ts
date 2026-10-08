@@ -54,6 +54,11 @@ describe("@tj/slides/templates", () => {
     "pupil-words.ts",
   ];
 
+  test("each marker is in the module it stands for, so its absence below means something", () => {
+    expect(bundle(`${import.meta.dir}/slot-limits.ts`, "browser")).toContain("slotLimitsSource");
+    expect(bundle(`${import.meta.dir}/fit-table.ts`, "browser")).toContain("fit-table.ts");
+  });
+
   test("no browser-reachable entry imports node:fs, the table CLIs or the catalogue", () => {
     expect(BROWSER.length).toBeGreaterThan(5);
     for (const entry of BROWSER) {

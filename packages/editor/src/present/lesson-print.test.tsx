@@ -69,3 +69,30 @@ describe("LessonPrint image credits", () => {
     expect(main().dataset.pageCount).toBe("1");
   });
 });
+
+/* TEACH-247: the print route (PDF) draws every figure in its own box, at the last build. */
+describe("LessonPrint drawn diagrams", () => {
+  it("each diagram and picture lands at its element box, the diagram as stored (every part)", () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect/><g data-s="1"><circle/></g></svg>';
+    const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    const base = baseLesson();
+    const first = base.slides[0];
+    if (!first) throw new Error("fixture");
+    const figures = [
+      { id: "dg1", name: "Diagram", x: 520, y: 160, w: 400, h: 300, src, builds: 1 },
+      { id: "dg2", name: "Diagram", x: 40, y: 120, w: 788, h: 235, src, builds: 1 },
+      { id: "ph1", name: "Picture", x: 40, y: 380, w: 200, h: 120, src: "data:," },
+    ].map((f) => ({ ...f, type: "image" as const, fit: "contain" as const, alt: f.id }));
+    const lesson = { ...base, slides: [{ ...first, elements: figures }] };
+    render(<LessonPrint lesson={lesson} options={{ slides: "1" }} />);
+    for (const f of figures) {
+      const frame = main().querySelector<HTMLElement>(`[data-element-id="${f.id}"]`);
+      if (!frame) throw new Error(`no frame for ${f.id}`);
+      expect([frame.style.left, frame.style.top, frame.style.width, frame.style.height]).toEqual(
+        [f.x, f.y, f.w, f.h].map((v) => `${v}px`),
+      );
+      expect(frame.querySelector("img")?.getAttribute("src")).toBe(f.src);
+    }
+  });
+});

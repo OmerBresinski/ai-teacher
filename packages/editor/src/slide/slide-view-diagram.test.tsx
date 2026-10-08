@@ -83,4 +83,30 @@ describe("a drawn diagram with builds", () => {
   test("the editor shows the stored drawing: the last build", () => {
     expect(svgAt("edit")).toBe(svgOfDataUrl(drawn.element.src) ?? "-");
   });
+
+  test("a question slide with no answer reveal shows the drawing's answer part", () => {
+    const bm = {
+      kind: "bar-model",
+      alt: "Two bars and their total.",
+      bars: [
+        { label: "Sam", parts: [{ value: 6, label: "6" }] },
+        { label: "Ali", parts: [{ value: 6, label: "6" }] },
+      ],
+      combined: "12",
+    };
+    const d = withBuilds(() =>
+      drawDiagram(bm, theme, { x: 520, y: 160, w: 400, h: 300 }, () => "b1"),
+    );
+    if (!d.ok) throw new Error(d.reasons.join("; "));
+    const n = buildCount(svgOfDataUrl(d.element.src) ?? "");
+    const q: Slide = {
+      ...stored,
+      question: { type: "open-response" },
+      elements: [{ ...d.element, builds: n }],
+    };
+    const { container } = render(<SlideView slide={q} theme={theme} mode="present" step={n} />);
+    const src = svgOfDataUrl(container.querySelector("img")?.getAttribute("src") ?? "") ?? "";
+    expect(src).toContain('data-ans="1"');
+    expect(src).not.toContain('[data-ans="1"]{opacity:0}');
+  });
 });

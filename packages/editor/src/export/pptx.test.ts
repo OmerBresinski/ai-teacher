@@ -491,6 +491,55 @@ describe("exportLessonPptx", () => {
     expect(String.fromCharCode(...head)).toBe("PK");
   }, 30_000);
 
+  it("puts a drawn diagram in as a PNG, never as SVG (TEACH-247)", async () => {
+    const [water] = demoLibrary();
+    if (!water) throw new Error("fixture");
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
+    const diagram = {
+      id: "dg1",
+      type: "image",
+      name: "Diagram",
+      x: 100,
+      y: 100,
+      w: 400,
+      h: 300,
+      src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+      alt: "A square",
+      fit: "contain",
+      builds: 1,
+    } as SlideElement;
+    const first = water.slides[0];
+    if (!first) throw new Error("fixture");
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [diagram] }] };
+    // A 1x1 PNG stands in for the browser canvas.
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const asked: number[][] = [];
+    const media = async (
+      rasteriseSvg: (s: string, w: number, h: number) => Promise<string | undefined>,
+    ) => {
+      const warnings: string[] = [];
+      const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+        rasteriseSvg,
+        onWarning: (m) => warnings.push(m),
+      });
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      return { files: Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/")), warnings };
+    };
+    const ok = await media(async (_s, w, h) => {
+      asked.push([w, h]);
+      return png;
+    });
+    expect(asked).toEqual([[400, 300]]);
+    expect(ok.files.some((f) => f.endsWith(".png"))).toBe(true);
+    expect(ok.files.some((f) => f.endsWith(".svg"))).toBe(false);
+    expect(ok.warnings).toEqual([]);
+    const failed = await media(async () => undefined);
+    expect(failed.files.some((f) => f.endsWith(".svg"))).toBe(false);
+    expect(failed.warnings).toEqual(["A diagram could not be drawn as a picture: A square"]);
+  }, 30_000);
+
   it("exports an image-match slide without throwing", async () => {
     const [water] = demoLibrary();
     if (!water) throw new Error("fixture");

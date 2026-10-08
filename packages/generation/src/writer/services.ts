@@ -39,6 +39,41 @@ export function isFatal(e: unknown): boolean {
   return cause !== undefined && cause !== e && isFatal(cause);
 }
 
+/**
+ * The one way the writer, picture and diagram paths recover from an error: a fatal one (budget,
+ * abort; `isFatal`) is rethrown so the job stops, any other goes to `onError`, whose value is
+ * returned. A bare `catch` in those modules is a test failure (`non-fatal.test.ts`).
+ */
+export async function nonFatal<T, F>(
+  fn: () => Promise<T> | T,
+  onError: (e: unknown) => F,
+): Promise<T | F> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (isFatal(e)) throw e;
+    return onError(e);
+  }
+}
+
+/** `nonFatal` for synchronous work (a parse, a layout probe, a draw). */
+export function nonFatalSync<T, F>(fn: () => T, onError: (e: unknown) => F): T | F {
+  try {
+    return fn();
+  } catch (e) {
+    if (isFatal(e)) throw e;
+    return onError(e);
+  }
+}
+
+/** A `promise.catch` handler that rethrows a fatal error and hands any other to `onError`. */
+export const whenNonFatal =
+  <F>(onError: (e: unknown) => F) =>
+  (e: unknown): F => {
+    if (isFatal(e)) throw e;
+    return onError(e);
+  };
+
 export type ChatReq = {
   model: string;
   effort?: Effort;

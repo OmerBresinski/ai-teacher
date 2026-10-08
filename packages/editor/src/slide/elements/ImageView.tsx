@@ -56,11 +56,14 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
  */
 function useBuiltSrc(element: ImageElement, build: number | undefined, answer: boolean): string {
   const reduced = useReducedMotion();
-  const last = useRef<number | undefined>(undefined);
-  const back = build !== undefined && last.current !== undefined && build < last.current;
-  useEffect(() => {
-    last.current = build;
-  }, [build]);
+  // Which way the build index last moved, latched until it moves again: a re-render for any other
+  // reason (a resize) keeps a stepped-back frame static.
+  const [moved, setMoved] = useState({ build, back: false });
+  let back = moved.back;
+  if (moved.build !== build) {
+    back = build !== undefined && moved.build !== undefined && build < moved.build;
+    setMoved({ build, back });
+  }
   return useMemo(() => {
     if (build === undefined || !element.builds) return element.src;
     const svg = svgOfDataUrl(element.src);
@@ -74,6 +77,7 @@ function Picture({
   theme,
   mode,
   diagramBuild,
+  diagramAnswer,
   question,
   revealAnswer,
 }: ElementViewProps<ImageElement>) {
@@ -85,7 +89,9 @@ function Picture({
   // on the stored value so a re-resolve is not a new picture.
   const src = element.src;
   // A question slide holds a drawing's answer part back until the answer is revealed.
-  const built = useBuiltSrc(element, diagramBuild, !question || revealAnswer);
+  // A question slide holds the drawing's answer back until the reveal, unless it has no answer
+  // reveal at all (then nothing would ever show it).
+  const built = useBuiltSrc(element, diagramBuild, diagramAnswer ?? (!question || revealAnswer));
   const shown = useResolvedImageSrc(src);
   const resolved = built === src ? shown : built;
   useEffect(() => {

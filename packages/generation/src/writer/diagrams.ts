@@ -37,6 +37,7 @@ import {
 } from "@tj/slides/diagrams";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
+import { nonFatal, nonFatalSync } from "./services";
 
 type J = Record<string, unknown>;
 
@@ -300,15 +301,17 @@ export function slotFault(
   theme: Theme,
   probe: SlotProbe = boxProbe,
 ): string {
-  if (!ask.slot) return "";
-  try {
-    const why = probe(spec, ask.slot.name ?? "side", ask.stage ?? "ks3", theme);
-    return why.length
-      ? `it does not fit its slot (${ask.slot.w} by ${ask.slot.h} points): ${why.slice(0, 2).join("; ")}`
-      : "";
-  } catch (e) {
-    return `it does not draw: ${String(e).slice(0, 120)}`;
-  }
+  const slot = ask.slot;
+  if (!slot) return "";
+  return nonFatalSync(
+    () => {
+      const why = probe(spec, slot.name ?? "side", ask.stage ?? "ks3", theme);
+      return why.length
+        ? `it does not fit its slot (${slot.w} by ${slot.h} points): ${why.slice(0, 2).join("; ")}`
+        : "";
+    },
+    (e) => `it does not draw: ${String(e).slice(0, 120)}`,
+  );
 }
 
 /**
@@ -322,19 +325,20 @@ export function acceptWriterSpec(
   theme: Theme,
   probe?: SlotProbe,
 ): { spec?: unknown; fault: string } {
-  try {
-    const sent = dropNulls(spec);
-    const meaning =
-      typeof (sent as J)?.kind === "string" && ((sent as J).kind as string) in MEANING_SCHEMAS;
-    const out = mendSpec(sent);
-    const fault =
-      meaningFaults(meaning ? sent : out) ||
-      diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) ||
-      slotFault(out, ask, theme, probe);
-    return fault ? { fault } : { spec: out, fault: "" };
-  } catch (e) {
-    return { fault: `it does not draw: ${String(e).slice(0, 120)}` };
-  }
+  return nonFatalSync(
+    (): { spec?: unknown; fault: string } => {
+      const sent = dropNulls(spec);
+      const meaning =
+        typeof (sent as J)?.kind === "string" && ((sent as J).kind as string) in MEANING_SCHEMAS;
+      const out = mendSpec(sent);
+      const fault =
+        meaningFaults(meaning ? sent : out) ||
+        diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) ||
+        slotFault(out, ask, theme, probe);
+      return fault ? { fault } : { spec: out, fault: "" };
+    },
+    (e) => ({ fault: `it does not draw: ${String(e).slice(0, 120)}` }),
+  );
 }
 
 /**
@@ -365,7 +369,11 @@ export type DrawerCall = (req: {
   schema: J;
   name: "diagram";
   strict: false;
+  timeoutMs: number;
 }) => Promise<{ out?: unknown }>;
+
+/** The drawer call's own deadline: a slow call is a fault (restage), never a stuck lesson. */
+export const DRAWER_TIMEOUT_MS = 40_000;
 
 export type DrawDeps = {
   callDrawer: DrawerCall;
@@ -398,25 +406,31 @@ async function drawerCall(
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    let out: unknown;
-    try {
-      out = (
-        await deps.callDrawer({
-          model: "gpt-6-luna",
-          effort: "low",
-          system: deps.drawerSystem,
-          user: fault
-            ? `${user}\n\nYour last spec did not draw: ${fault}\nFix that and send it again.`
-            : user,
-          schema,
-          name: "diagram",
-          strict: false,
-        })
-      ).out;
-    } catch (e) {
-      deps.log?.({ ev: "diagram-call", key: ask.key, attempt, err: String(e).slice(0, 200) });
-      return { fault: `the drawer call failed: ${String(e).slice(0, 120)}` };
-    }
+    // A budget or abort error stops the job (rethrown); any other failure is a fault.
+    let callFault = "";
+    const out: unknown = await nonFatal(
+      async () =>
+        (
+          await deps.callDrawer({
+            model: "gpt-6-luna",
+            effort: "low",
+            system: deps.drawerSystem,
+            user: fault
+              ? `${user}\n\nYour last spec did not draw: ${fault}\nFix that and send it again.`
+              : user,
+            schema,
+            name: "diagram",
+            strict: false,
+            timeoutMs: DRAWER_TIMEOUT_MS,
+          })
+        ).out,
+      (e) => {
+        deps.log?.({ ev: "diagram-call", key: ask.key, attempt, err: String(e).slice(0, 200) });
+        callFault = `the drawer call failed: ${String(e).slice(0, 120)}`;
+        return undefined;
+      },
+    );
+    if (callFault) return { fault: callFault };
     fault = out ? diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) : "no output";
     deps.log?.({ ev: "diagram-call", key: ask.key, attempt, ...(fault ? { fault } : {}) });
     if (!fault) return { spec: out, fault: "" };
@@ -439,28 +453,32 @@ export async function drawWriterDiagram(
     via,
     fault: "",
   });
-  try {
-    if (ask.spec !== undefined) {
-      const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe);
-      deps.log?.({
-        ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
-        key: ask.key,
-        kind: ask.kind,
-        ...(r.fault ? { fault: r.fault } : {}),
-      });
-      if (r.spec) return done(r.spec, "code");
-      const { spec, ...rest } = ask;
-      ask = {
-        ...rest,
-        shows: `${ask.shows}\nThe writer's spec, which did not draw (${r.fault}): ${JSON.stringify(spec)}`,
-      };
-    }
-    const r = await drawerCall(ask, deps);
-    if (r.spec) return done(withAskedCounts(r.spec, ask.labels), "drawer");
-    return { via: "none", fault: r.fault };
-  } catch (e) {
-    return { via: "none", fault: `it does not draw: ${String(e).slice(0, 120)}` };
-  }
+  return nonFatal(
+    async (): Promise<DrawnWriterDiagram> => {
+      if (ask.spec !== undefined) {
+        const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe);
+        deps.log?.({
+          ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
+          key: ask.key,
+          kind: ask.kind,
+          ...(r.fault ? { fault: r.fault } : {}),
+        });
+        if (r.spec) return done(r.spec, "code");
+        const { spec, ...rest } = ask;
+        ask = {
+          ...rest,
+          shows: `${ask.shows}\nThe writer's spec, which did not draw (${r.fault}): ${JSON.stringify(spec)}`,
+        };
+      }
+      const r = await drawerCall(ask, deps);
+      if (r.spec) return done(withAskedCounts(r.spec, ask.labels), "drawer");
+      return { via: "none", fault: r.fault };
+    },
+    (e): DrawnWriterDiagram => ({
+      via: "none",
+      fault: `it does not draw: ${String(e).slice(0, 120)}`,
+    }),
+  );
 }
 
 /**
@@ -476,14 +494,15 @@ export function writerDiagramElement(
   rect: { x: number; y: number; w: number; h: number; fs?: number },
   ids?: () => string,
 ): ImageElement | undefined {
-  try {
-    const r = withBuilds(() => drawDiagram(spec, atKeyStage(theme, stage), rect, ids));
-    if (!r.ok) return undefined;
-    const builds = buildCount(svgOfDataUrl(r.element.src) ?? "");
-    return builds ? { ...r.element, builds } : r.element;
-  } catch {
-    return undefined;
-  }
+  return nonFatalSync(
+    () => {
+      const r = withBuilds(() => drawDiagram(spec, atKeyStage(theme, stage), rect, ids));
+      if (!r.ok) return undefined;
+      const builds = buildCount(svgOfDataUrl(r.element.src) ?? "");
+      return builds ? { ...r.element, builds } : r.element;
+    },
+    () => undefined,
+  );
 }
 
 /**
