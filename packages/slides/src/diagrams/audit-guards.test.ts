@@ -174,9 +174,9 @@ describe("DIAGRAM-AUDIT coverage kinds", () => {
 });
 
 describe("DIAGRAM-AUDIT leftovers", () => {
-  const { drawFigure } = require("../figures/index");
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("catalysed against uncatalysed maps to one figure with a lower dashed peak", () => {
+  const { drawFigure } = require("./figures/index");
+
+  test("catalysed against uncatalysed maps to one figure with a lower dashed peak", () => {
     const g = {
       kind: "line-graph",
       alt: "P",
@@ -219,8 +219,8 @@ describe("DIAGRAM-AUDIT leftovers", () => {
     expect((names.match(/Legend sample/g) ?? []).length).toBe(2);
     expect(names).toContain("With catalyst");
   });
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("a similar pair never cuts a side label", () => {
+
+  test("a similar pair never cuts a side label", () => {
     const v = {
       vertices: { A: "A", B: "B", C: "C" },
       sides: {
@@ -233,8 +233,8 @@ describe("DIAGRAM-AUDIT leftovers", () => {
     const d = drawFigure("triangle", v, chalk, { x: 0, y: 0, w: 436, h: 356 });
     expect(JSON.stringify(d)).not.toContain("…");
   });
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("figure labels sit at the label weight", () => {
+
+  test("figure labels sit at the label weight", () => {
     const d = drawFigure(
       "energy-profile",
       { reactants: "A", products: "B", activationEnergy: 5, energyChange: -2 },
@@ -246,7 +246,7 @@ describe("DIAGRAM-AUDIT leftovers", () => {
 });
 
 describe("DIAGRAM-AUDIT figure options", () => {
-  const { drawFigure } = require("../figures/index");
+  const { drawFigure } = require("./figures/index");
   const { THEMES } = require("../themes");
   const tri = {
     base: { length: 2.5, label: "2.5 m" },
@@ -258,8 +258,8 @@ describe("DIAGRAM-AUDIT figure options", () => {
     d.children.filter((k) => k.name === n);
   const inside = (d: { children: { x: number; y: number; w: number; h: number }[] }) =>
     d.children.every((k) => k.x >= -1 && k.y >= -1 && k.x + k.w <= 437 && k.y + k.h <= 357);
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("dimension arrows with end ticks on the given sides only", () => {
+
+  test("dimension arrows with end ticks on the given sides only", () => {
     const d = drawFigure("right-triangle", { ...tri, dimensions: true }, chalk, rect);
     expect(named(d, "Dimension")).toHaveLength(2);
     expect(named(d, "Dimension tick")).toHaveLength(4);
@@ -268,8 +268,8 @@ describe("DIAGRAM-AUDIT figure options", () => {
         true,
       );
   });
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("the ladder scene draws a wall, ground and a railed ladder on the hypotenuse", () => {
+
+  test("the ladder scene draws a wall, ground and a railed ladder on the hypotenuse", () => {
     const d = drawFigure("right-triangle", { ...tri, scene: "ladder" }, chalk, rect);
     expect(named(d, "Wall")).toHaveLength(1);
     expect(named(d, "Ground")).toHaveLength(1);
@@ -277,8 +277,8 @@ describe("DIAGRAM-AUDIT figure options", () => {
     for (const t of THEMES)
       expect(inside(drawFigure("right-triangle", { ...tri, scene: "ladder" }, t, rect))).toBe(true);
   });
-  // Needs the figure templates as the drawer ships them (figures/*, not yet ported: P4-NOTES).
-  test.skip("the route scene draws two legs, a start, a finish and a dashed direct path", () => {
+
+  test("the route scene draws two legs, a start, a finish and a dashed direct path", () => {
     const d = drawFigure(
       "right-triangle",
       {
@@ -297,7 +297,7 @@ describe("DIAGRAM-AUDIT figure options", () => {
 });
 
 describe("DIAGRAM-AUDIT coordinate distance", () => {
-  const { EXTRA_FIGURES } = require("../figures/index");
+  const { EXTRA_FIGURES } = require("./figures/index");
   const { THEMES } = require("../themes");
   const f = EXTRA_FIGURES["coordinate-distance"];
   const v = { a: { x: 1, y: 2, label: "A" }, b: { x: 7, y: 10, label: "B" } };

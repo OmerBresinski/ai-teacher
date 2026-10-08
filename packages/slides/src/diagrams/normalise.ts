@@ -12,7 +12,7 @@
  * Pure. A spec that is not one of these, or does not parse, comes back unchanged.
  */
 
-import type { EnergyProfileValues } from "../figures/energy-profile";
+import type { EnergyProfileValues } from "./figures/energy-profile";
 import { parseDiagram } from "./index";
 import { resolveLabels } from "./labelled";
 import { fromMeaning } from "./meaning";
