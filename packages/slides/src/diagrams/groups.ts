@@ -53,7 +53,69 @@ function counter(x: Ctx, cx: number, cy: number, r: number, fill: string): strin
   return `${base}<circle cx="${n(cx - r * 0.32)}" cy="${n(cy - r * 0.32)}" r="${n(r * 0.3)}" fill="${x.c.bg}" fill-opacity="${tk(x).highlight}"/>`;
 }
 
+/**
+ * BAKEOFF base4f (unshared): an equal-groups request whose words say the counters are not shared
+ * yet ("Fourteen unshared counters in a single ring, ready for pupils to ... share") is drawn as one
+ * pile, so a question slide does not show its own answer (base4-4 y2 "Find half of 14").
+ * parseDiagram reads a `pile: true` spec (one group) as drawn.
+ */
+export const UNSHARED =
+  /\b(unshared|not (yet )?shared|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?(a single|one) (ring|pile|group)|all together|together in one)/i;
+const ROW_WORDS = /\b(in (a|one) (row|line)|one row|a row of|in a line|lined up)\b/i;
+/** The pile spec (one ring, every counter, no count) for a request that asks for unshared counters. */
+export function pileSpec(spec: unknown, words: string): EqualGroups | undefined {
+  const s = spec as { kind?: unknown; total?: unknown; alt?: unknown };
+  if (s?.kind !== "equal-groups" || typeof s.total !== "number" || !Number.isInteger(s.total))
+    return;
+  if (s.total < 2 || s.total > 40 || !UNSHARED.test(words)) return;
+  return {
+    kind: "equal-groups",
+    alt: typeof s.alt === "string" ? s.alt : `${s.total} counters, not yet shared.`,
+    title: null,
+    total: s.total,
+    groups: 1,
+    // The row the slide describes ("in one row", "in a line"), else a loose pile.
+    layout: ROW_WORDS.test(words) ? "rows" : "rings",
+    show_count: "none",
+    pile: true,
+  } as unknown as EqualGroups;
+}
+/**
+ * base4f (D48b): unshared counters fill the panel at a countable size. A row the words describe is
+ * one line across the panel (wrapping to two only when one line would shrink them); a pile is a
+ * loose block of short rows. No ring: a ring reads as a group, and the task is to make the groups.
+ */
+function drawPile(total: number, asRow: boolean, x: Ctx, w: number, h: number): string {
+  const maxD = Math.max(x.fs * 2.4, 28);
+  let best = { rows: 1, cols: total, d: 0 };
+  for (let rows = 1; rows <= Math.min(total, asRow ? 2 : 4); rows++) {
+    const cols = Math.ceil(total / rows);
+    const d = Math.min(maxD, (w * 0.92) / (cols * 1.35), (h * 0.86) / (rows * 1.35));
+    // A row stays one line while its counters stay countable (19 units, about 28px at 1440).
+    if (asRow && rows > 1 && best.d >= 19) break;
+    if (d > best.d) best = { rows, cols, d };
+  }
+  const { rows, cols, d } = best;
+  if (d < 12) {
+    x.faults?.push("the groups do not fit the space");
+    return "";
+  }
+  const step = d * 1.35;
+  const oy = (h - rows * step) / 2 + step / 2;
+  const out: string[] = [];
+  for (let r = 0; r < rows; r++) {
+    const inRow = Math.min(cols, total - r * cols);
+    // A pile is slightly irregular (offset alternate rows), a row is straight.
+    const ox = (w - inRow * step) / 2 + step / 2 + (!asRow && r % 2 ? step * 0.18 : 0);
+    for (let c = 0; c < inRow; c++)
+      out.push(counter(x, ox + c * step, oy + r * step, d / 2, x.c.accent));
+  }
+  return out.join("");
+}
+
 export function drawEqualGroups(s: EqualGroups, x: Ctx, w: number, h: number): string {
+  if ((s as { pile?: boolean }).pile && s.groups === 1)
+    return drawPile(s.total, s.layout === "rows", x, w, h);
   const per = s.total / s.groups;
   const g = s.groups;
   const out: string[] = [];

@@ -1206,6 +1206,26 @@ export function layoutTemplate(
       const plot = /graph|chart|profile|plot|axes/.test(kind);
       // Round 6 (r5 y12 s7): the caption runs the full width under a narrow plot; set at the
       // plot's width it took three lines and left the plot too flat to read.
+      // Chalkie fix 3b (BAKEOFF base4f, plotZone): a plot takes the whole visual zone, width and
+      // height; its words go to a caption strip in small type at the slide's foot, which takes
+      // from the zone only what the foot cannot hold.
+      if (plot) {
+        const ch = line ? measure(c, line, "small", G.width) : 0;
+        const foot = 540 - 16; // the strip's lowest baseline room on the 960 x 540 grid
+        const top = line ? Math.min(bandBottom + 10, foot - ch) : bandBottom + 10;
+        const ph = top - 10 - G.band.y;
+        if (ph < Math.round(G.band.h * 0.85)) c.over.push("plot under 85% of the zone height");
+        figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: ph });
+        if (line)
+          text(
+            c,
+            line,
+            "small",
+            { x: G.margin, y: top, w: G.width },
+            { color: theme.colors.muted, name: "Caption" },
+          );
+        break;
+      }
       const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
       const ph = G.band.h - lh;
       figurePanel(c, input.figure, {

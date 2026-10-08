@@ -15,6 +15,7 @@
 import type { EnergyProfileValues } from "./figures/energy-profile";
 import { parseDiagram } from "./index";
 import { resolveLabels } from "./labelled";
+import { mendParticleLabels } from "./labels3";
 import { fromMeaning } from "./meaning";
 import {
   type DiagramSpec,
@@ -489,6 +490,11 @@ export function simplerDiagrams(spec: unknown): unknown[] {
     const { title: _t, ...bare } = s;
     const { notes: _n, ...plain } = bare;
     out.push(bare as DiagramSpec, plain as DiagramSpec);
+    // labels3: a named lump that will not fit is dropped before the drawing is (BAKEOFF base4f).
+    if ((plain as { lump?: unknown }).lump) {
+      const { lump: _l, ...unnamed } = plain as typeof plain & { lump?: unknown };
+      out.push(unnamed as DiagramSpec);
+    }
   }
   if (["hydrograph", "timeline", "layers", "cycle", "river"].includes(s.kind) && s.title) {
     const { title: _t, ...bare } = s;
@@ -699,6 +705,8 @@ export function mendSpec(spec: unknown): unknown {
   // Round 8: a meaning-form spec becomes the form code draws first (meaning.ts).
   spec = fromMeaning(spec);
   spec = shadedFractionLabels(particleTitle(oneStateCompare(areaModelTable(spec))));
+  // labels3 (BAKEOFF base4f): spare particle labels never fill a literal slot.
+  spec = mendParticleLabels(spec);
   const s = spec as {
     kind?: unknown;
     events?: { date?: unknown }[];
