@@ -26,8 +26,75 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
   return wrapLanguageModel({
     model,
     middleware: {
-      wrapStream: async () => {
-        throw new UnestimableCallError();
+      // A streamed call (the lesson writer's) goes through the same gate as `wrapGenerate`: the
+      // reservation is taken before dispatch and held while the stream is open, so a concurrent
+      // call sees it, and it settles from the stream's `finish` part. A stream that errors, is
+      // cancelled or aborted, or ends without complete usage leaves its reservation uncertain
+      // (ADR 0025 §15); a complete `finish` arriving later still settles it once.
+      wrapStream: async ({ doStream, params }) => {
+        params.abortSignal?.throwIfAborted();
+        const estimate = estimatePreparedCall(modelId, params);
+        if (!estimate) throw new UnestimableCallError();
+        const admitted = budget.reserve(modelId, estimate);
+        if ("by" in admitted) throw new BudgetReservationError(admitted.by);
+        const { reservation } = admitted;
+        let settled = false;
+        const uncertain = () => {
+          if (!settled) budget.markUncertain(reservation);
+        };
+        params.abortSignal?.addEventListener("abort", uncertain, { once: true });
+        const release = () => params.abortSignal?.removeEventListener("abort", uncertain);
+        let result: Awaited<ReturnType<typeof doStream>>;
+        try {
+          result = await doStream();
+        } catch (error) {
+          uncertain();
+          release();
+          throw error;
+        }
+        const reader = result.stream.getReader();
+        const end = () => {
+          uncertain();
+          release();
+        };
+        return {
+          ...result,
+          stream: new ReadableStream({
+            async pull(controller) {
+              let next: Awaited<ReturnType<typeof reader.read>>;
+              try {
+                next = await reader.read();
+              } catch (error) {
+                end();
+                controller.error(error);
+                return;
+              }
+              if (next.done) {
+                end();
+                controller.close();
+                return;
+              }
+              const part = next.value;
+              if (part.type === "finish" && !settled) {
+                const input = part.usage.inputTokens;
+                const output = part.usage.outputTokens;
+                if (count(input.total) && count(output.total)) {
+                  settled = budget.settle(reservation, {
+                    inputTokens: input.total,
+                    outputTokens: output.total,
+                    cachedInputTokens: count(input.cacheRead) ? input.cacheRead : 0,
+                    cacheWriteInputTokens: count(input.cacheWrite) ? input.cacheWrite : 0,
+                  });
+                } else uncertain();
+              } else if (part.type === "error") uncertain();
+              controller.enqueue(part);
+            },
+            async cancel(reason) {
+              end();
+              await reader.cancel(reason);
+            },
+          }),
+        };
       },
       wrapGenerate: async ({ doGenerate, params }) => {
         params.abortSignal?.throwIfAborted();
