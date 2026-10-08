@@ -14,7 +14,7 @@ import { continueForFit } from "./ab/continue";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
-import { type Locale, setLocale } from "./locale";
+import { isEngland, type Locale, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
 import {
@@ -773,6 +773,8 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     if (expr.startsWith("context block")) return x.context ?? "";
     if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] });
+    // Arm "locale": the key stage is England's ladder, so other countries' briefs drop it.
+    if (expr === "keyStageNote") return isEngland(b.locale) ? ` (${b.keyStage})` : "";
     if (expr in x) return String(x[expr]);
     const v = get(expr);
     if (v === undefined) throw new Error(`template: no value for {{${expr}}}`);

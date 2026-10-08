@@ -1,0 +1,70 @@
+// Arm "locale" $0 tests: England compiles byte for byte to base4; another country reaches every prompt
+// and leaves no England behind; the computed tokens.
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { type Brief, fillTemplate } from "../harness";
+import { ENGLAND, INDIA, type Locale, localise } from "../locale";
+import { AB, abFiles, STAGES } from "./arms";
+import { compileLocale, nzUkBrief, ukObjectives } from "./localecompile";
+
+const NZ: Locale = { ...INDIA, country: "New Zealand", curriculum: "The New Zealand Curriculum" };
+const read = (f: string) => readFileSync(f, "utf8");
+
+describe("locale tokens", () => {
+  test("setting is empty for England (and no locale), one sentence elsewhere", () => {
+    expect(localise("in {{locale.country}}.{{locale.setting}} X", ENGLAND)).toBe("in England. X");
+    expect(localise("in {{locale.country}}.{{locale.setting}} X", NZ)).toBe(
+      "in New Zealand. Follow the curriculum, conventions and setting of New Zealand. X",
+    );
+  });
+  test("keyStageNote keeps England's key stage and drops it for other countries", () => {
+    const b = nzUkBrief("uk");
+    expect(fillTemplate("Year group: {{yearGroup}}{{keyStageNote}}", b)).toBe(
+      "Year group: Year 1 (ks1)",
+    );
+    expect(fillTemplate("{{keyStageNote}}x", { ...b, locale: undefined } as Brief)).toBe(" (ks1)x");
+    expect(fillTemplate("Year group: {{yearGroup}}{{keyStageNote}}", nzUkBrief("nz"))).toBe(
+      "Year group: Year 1",
+    );
+  });
+});
+
+describe("arm locale", () => {
+  test("England compiles to base4's text for every prompt (locale given or absent)", () => {
+    const uk = nzUkBrief("uk");
+    for (const b of [uk, { ...uk, locale: undefined } as Brief]) {
+      const a = compileLocale("locale", b, ukObjectives());
+      const base = compileLocale("base4", b, ukObjectives());
+      expect(a).toEqual(base);
+    }
+  });
+  test("England writer systems equal base4's files for every stage", () => {
+    for (const st of STAGES)
+      expect(localise(read(abFiles("locale", st).system), ENGLAND)).toBe(
+        read(abFiles("base4", st).system),
+      );
+  });
+  test("schemas are base4's", () => {
+    for (const st of STAGES)
+      expect(read(abFiles("locale", st).schema)).toBe(read(abFiles("base4", st).schema));
+  });
+  test("New Zealand reaches the writer, objectives, objective repair and director; no England", () => {
+    const nz = compileLocale("locale", nzUkBrief("nz"), ukObjectives());
+    for (const [k, v] of Object.entries(nz)) {
+      expect(v, k).toContain("New Zealand");
+      expect(v, k).not.toContain("England");
+      expect(v, k).not.toContain("{{");
+    }
+    expect(nz.writer).toContain("Follow the curriculum, conventions and setting of New Zealand.");
+    expect(nz.writer).toContain("Year group: Year 1\n");
+    expect(nz.director).toContain("taught in New Zealand.");
+  });
+  test("base4 still says England for the NZ brief (the bug this arm fixes)", () => {
+    expect(compileLocale("base4", nzUkBrief("nz"), ukObjectives()).writer).toContain(
+      "expert teacher in England",
+    );
+  });
+  test("arm files exist under the A/B prompt root", () => {
+    expect(read(`${AB}/prompts/locale/shared/objectives.txt`)).toContain("{{locale.setting}}");
+  });
+});

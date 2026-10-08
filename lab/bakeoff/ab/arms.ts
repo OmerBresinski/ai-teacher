@@ -37,6 +37,7 @@ export const AB_ARMS = [
   "dir-stage",
   "y1fix",
   "lib",
+  "locale",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -251,6 +252,18 @@ export const AB_CONFIG: Record<
     delta:
       "base4 + figure kind model: writer picks a library model by id with an intent, luna fills its params, schema + validate + one repair, library engine draws",
   },
+  // locale (8 Oct, Greg): base4 with the teacher's country in the writer, objectives and objective
+  // repair prompts ({{locale.country}}, {{locale.setting}}) and no key stage outside England.
+  // England compiles byte for byte to base4 (arms3/locale/DIFF.md).
+  locale: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "base4 with the teacher's country in place of England (writer, objectives, objective repair); England byte-exact",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -298,6 +311,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "dir-stage": { ref: "base4" },
   y1fix: { ref: "b4-r1t" },
   lib: { ref: "base4" },
+  locale: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */

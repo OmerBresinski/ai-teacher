@@ -46,9 +46,25 @@ export function setLocale(l: Locale | undefined): void {
 }
 export const locale = (): Locale => current;
 
+/** England is the prompts' home: a locale-neutral prompt reads for it exactly as base4 did. */
+export const isEngland = (l: Locale | undefined): boolean => !l || l.country === ENGLAND.country;
+
+/**
+ * Tokens computed from the locale (arm "locale", 8 Oct). {{locale.setting}} is the country line's
+ * second sentence, with its leading space: empty for England, so England's prompt stays byte-exact.
+ */
+const COMPUTED: Record<string, (l: Locale) => string> = {
+  setting: (l) =>
+    isEngland(l) ? "" : ` Follow the curriculum, conventions and setting of ${l.country}.`,
+};
+
 /** `text` with every {{locale.<field>}} token filled from `l`. */
 export function localise(text: string, l: Locale = current): string {
   return text.replace(/\{\{\s*locale\.(\w+)\s*\}\}/g, (m, k: string) =>
-    k in l ? String(l[k as keyof Locale]) : m,
+    k in COMPUTED
+      ? (COMPUTED[k] as (l: Locale) => string)(l)
+      : k in l
+        ? String(l[k as keyof Locale])
+        : m,
   );
 }
