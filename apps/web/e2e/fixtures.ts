@@ -4,9 +4,17 @@
  *
  * Sign-in never touches a mailbox: the spec asks the api for a magic link like the real form
  * does, then reads the link back from the test-only `GET /__test/last-magic-link` route (mounted
- * only under `NODE_ENV=test` + `ENABLE_TEST_ROUTES=1`, see apps/api/README.md) and visits it.
+ * only under `NODE_ENV=test` + `ENABLE_TEST_ROUTES=1`, see apps/api/README.md). `signIn` then opens
+ * it on the confirm page like a teacher (the sign-in specs); `signInByApi`, behind `signedInPage`,
+ * spends its token with one api call so the session lands without a page load (TEACH-139).
  */
-import { type APIRequestContext, test as base, expect, type Page } from "@playwright/test";
+import {
+  type APIRequestContext,
+  type BrowserContext,
+  test as base,
+  expect,
+  type Page,
+} from "@playwright/test";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL } from "../playwright.config";
@@ -64,7 +72,10 @@ export async function openMagicLink(page: Page, link: string): Promise<void> {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
-/** Full sign-in: request link → read it back → open it and press Sign in → land on `callbackPath`. */
+/**
+ * Full sign-in through the screens: request link → read it back → open it and press Sign in →
+ * land on `callbackPath`. For specs about signing in; everything else uses `signedInPage`.
+ */
 export async function signIn(
   page: Page,
   request: APIRequestContext,
@@ -77,6 +88,56 @@ export async function signIn(
     new RegExp(`^${escapeRegExp(E2E_WEB_URL)}${escapeRegExp(callbackPath)}`),
   );
   return email;
+}
+
+/**
+ * Sign in without the screens: request a link, read its token, spend it with `GET
+ * /auth/magic-link/verify` and put the session cookies into the page's browser context. Without a
+ * `callbackURL`, better-auth answers 200 JSON with the cookies (host-only `localhost`, so the web
+ * page on another port sends them too). The call goes through Bun's `fetch`, not `page.request`:
+ * under `bun --bun playwright` Playwright's request client throws on any response that sets a
+ * cookie ("… cannot be parsed as a URL"; Playwright 1.62.1 on Bun 1.3.6). Retry `page.request`
+ * after bumping either. The page is not moved.
+ */
+export async function signInByApi(
+  page: Page,
+  request: APIRequestContext,
+  email = uniqueEmail(),
+): Promise<string> {
+  await requestMagicLink(request, email);
+  const link = await lastMagicLink(request, email);
+  const token = new URL(link).searchParams.get("token");
+  if (!token) throw new Error(`magic link has no token: ${link}`);
+  const verify = new URL("/auth/magic-link/verify", E2E_API_URL);
+  verify.searchParams.set("token", token);
+  const res = await fetch(verify);
+  expect(res.ok, `GET /auth/magic-link/verify failed: ${res.status} ${await res.text()}`).toBe(
+    true,
+  );
+  const cookies = res.headers.getSetCookie().map(browserCookie);
+  if (cookies.length === 0) throw new Error("GET /auth/magic-link/verify set no cookie");
+  await page.context().addCookies(cookies);
+  return email;
+}
+
+/** One `Set-Cookie` line from the api as a Playwright cookie for `localhost`. */
+function browserCookie(line: string): Parameters<BrowserContext["addCookies"]>[0][number] {
+  const [pair = "", ...attributes] = line.split(";").map((part) => part.trim());
+  const split = pair.indexOf("=");
+  const attribute = (name: string) =>
+    attributes.find((a) => a.toLowerCase().startsWith(name.toLowerCase()));
+  const maxAge = attribute("Max-Age=");
+  const sameSite = attribute("SameSite=")?.split("=")[1]?.toLowerCase();
+  return {
+    name: pair.slice(0, split),
+    value: pair.slice(split + 1),
+    domain: new URL(E2E_API_URL).hostname,
+    path: attribute("Path=")?.split("=")[1] ?? "/",
+    httpOnly: attribute("HttpOnly") !== undefined,
+    secure: attribute("Secure") !== undefined,
+    sameSite: sameSite === "strict" ? "Strict" : sameSite === "none" ? "None" : "Lax",
+    expires: maxAge ? Date.now() / 1000 + Number(maxAge.split("=")[1]) : -1,
+  };
 }
 
 /** The `data-element-id`s under the slide frame in DOM order (the slide's draw order). */
@@ -168,16 +229,16 @@ export interface SignedIn {
 export const test = base.extend<{ signedInPage: SignedIn; seed: boolean }>({
   /** Whether `signedInPage` seeds the demo library first. Most specs assume the demo content. */
   seed: [true, { option: true }],
-  /** A page whose browser context holds a valid session for a brand-new user, sitting on `/`. */
+  /**
+   * A page whose browser context holds a valid session for a brand-new user, sitting on `/`.
+   * The session and the seed are in place before the one page load, so Home opens on the seeded
+   * lists.
+   */
   signedInPage: async ({ page, request, seed }, use) => {
-    const email = await signIn(page, request);
-    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    const email = await signInByApi(page, request);
     const ids = seed ? await seedLibrary(page) : {};
-    if (seed) {
-      // The library was fetched empty on landing; reload so the specs start from the seeded lists.
-      await page.reload();
-      await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    }
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
     await use({ page, email, ids, paths: seededPaths(ids) });
   },
 });

@@ -300,7 +300,8 @@ Sign out with `POST /auth/sign-out` (with the cookie and an `Origin` header).
 
 `GET /__test/last-magic-link?email=<address>` returns the last magic link the api "sent" to that
 address — `200 { email, url }`, or `404 not_found` before any was sent. Playwright's `signedInPage`
-fixture uses it to sign in without a mailbox ([`docs/testing.md`](../../docs/testing.md)).
+fixture uses it to sign in without a mailbox, then spends the link's token with
+`GET /auth/magic-link/verify` (no `callbackURL`, so better-auth answers 200 and sets the cookies) ([`docs/testing.md`](../../docs/testing.md)).
 
 `POST /__test/seed-library` inserts documents into the **caller's** Workspace (it sits behind the
 CSRF and session guards like `/documents`): the body is `{ documents: [{ key, kind, body,

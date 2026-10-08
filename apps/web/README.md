@@ -222,6 +222,7 @@ contracts (checked by `tsc`, not run).
 `ENABLE_TEST_ROUTES=1`), the worker and a `vite preview` of an e2e build (`dist/e2e`, with
 `VITE_API_URL=http://localhost:3811` baked in) against `TEST_DATABASE_URL`, on 3811/3822/4193.
 `e2e/fixtures.ts` provides `signedInPage` (magic link read back from the api's test-only
-`GET /__test/last-magic-link`). Specs: `e2e/auth.spec.ts`, `e2e/jobs.spec.ts` (including the
+`GET /__test/last-magic-link`, its token spent through the api so the session lands without the
+confirm page, the demo library seeded, then one load of `/`). Specs: `e2e/auth.spec.ts`, `e2e/jobs.spec.ts` (including the
 reload-mid-run replay proof), `e2e/a11y.spec.ts` (zero serious/critical axe violations on
 `/sign-in`, `/`, `/dev/jobs`). Files: `e2e/**/*.spec.ts` — never `*.test.*`.

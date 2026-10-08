@@ -78,8 +78,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   → back, one keyboard-only flow with focus restoration and nested Escape, and the 900×700
   narrow-viewport smoke for the lesson and worksheet editors), `kit` (opt-in,
   `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
-  pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` seeds `demoWorkspace()`
-  through `POST /__test/seed-library` and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
+  pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` signs in through the api
+  (`signInByApi`, no confirm page), seeds `demoWorkspace()` through `POST /__test/seed-library`, opens
+  `/` once and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
   `paths.key(uuid)`); `test.use({ seed: false })` opts a spec out. Ids are server-minted uuids, so
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —

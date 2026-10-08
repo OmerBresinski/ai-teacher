@@ -100,6 +100,8 @@ export default defineConfig({
         BETTER_AUTH_URL: E2E_API_URL,
         BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
         MAIL_PROVIDER: "console",
+        // The e2e database is not truncated and a full run sends about 200 links.
+        MAGIC_LINK_SENDS_DAILY_CAP: "100000",
         // Bun auto-loads apps/api/.env, which holds a developer's local Google client (TEACH-312).
         // Blank means unset (apps/api/src/env.ts), so e2e always runs with Google off (TEACH-31).
         GOOGLE_CLIENT_ID: "",
