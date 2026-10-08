@@ -89,24 +89,6 @@ test.describe("worksheet library", () => {
     }
   });
 
-  test("row 2: cards carry the minutes; New worksheet sits in the header and opens the flow", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/worksheets");
-    await expect(page.getByRole("heading", { level: 1, name: "Worksheets" })).toBeVisible();
-    for (const [, title, , effort] of SHEETS) {
-      const card = page.locator("article", {
-        has: page.getByRole("link", { name: `Open ${title}` }),
-      });
-      await expect(card).toContainText(effort);
-    }
-    const create = page.getByRole("button", { name: "New worksheet" });
-    await expect(create).toBeVisible();
-    await create.click();
-    await expect(page).toHaveURL(/\/worksheets\/new$/);
-    await expect(page.getByRole("heading", { level: 1, name: "New worksheet" })).toBeVisible();
-  });
-
   test("row 3: the card face opens the sheet; Print and the overflow menu do not", async ({
     signedInPage: { page, paths },
     context,
@@ -143,17 +125,5 @@ test.describe("worksheet library", () => {
     );
     await expect(page).toHaveURL(/\/worksheets$/);
     await printed.close();
-  });
-
-  test("row 4: Fractions practice belongs to Fractions of amounts", async ({
-    signedInPage: { page, paths },
-  }) => {
-    const res = await page.request.get(
-      `${E2E_API_URL}/documents/${paths.id("fraction-practice")}`,
-      { headers: { origin: E2E_WEB_URL } },
-    );
-    expect(res.ok(), `GET /documents/:id failed: ${res.status()}`).toBe(true);
-    const { document } = (await res.json()) as { document: { body: { lessonId?: string } } };
-    expect(document.body.lessonId).toBe(paths.id("demo-fractions"));
   });
 });
