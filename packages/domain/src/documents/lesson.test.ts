@@ -11,6 +11,8 @@ import { isLesson, LessonSchema, parseLesson } from "./lesson";
 import {
   answerRevealSteps,
   answerStepsTaken,
+  diagramBuildAt,
+  diagramBuildSteps,
   hasRevealableAnswer,
   type Slide,
   type SlideElement,
@@ -526,6 +528,31 @@ describe("slide helpers", () => {
     open.question = { type: "open-response", modelAnswer: "Because it is cold" };
     expect(answerRevealSteps(open)).toBe(1);
     expect(slideStepCount(open)).toBe(1);
+  });
+
+  test("a drawn diagram's builds are steps after the element reveals, before the answer (TEACH-247 b)", () => {
+    const mc = multipleChoiceSlide();
+    const diagram = {
+      id: "d1",
+      type: "image",
+      name: "Diagram",
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+      src: "data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E",
+      fit: "contain",
+      builds: 3,
+    } as SlideElement;
+    const s: Slide = { ...mc, elements: [...mc.elements, diagram] };
+    expect(SlideSchema.parse(s)).toEqual(s);
+    expect(diagramBuildSteps(s)).toBe(3);
+    // revealStep 1 + 3 builds + 3 answer steps.
+    expect(slideStepCount(s)).toBe(7);
+    expect([0, 1, 2, 3, 4, 5, 7].map((k) => diagramBuildAt(s, k))).toEqual([0, 0, 1, 2, 3, 3, 3]);
+    expect(answerStepsTaken(s, 4)).toBe(0);
+    expect(answerStepsTaken(s, 5)).toBe(1);
+    expect(diagramBuildAt(titleSlide(), 4)).toBe(0);
   });
 
   test("answerStepsTaken counts into the answer reveal and clamps at both ends", () => {

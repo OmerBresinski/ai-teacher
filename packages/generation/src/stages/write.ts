@@ -3,6 +3,7 @@ import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
+import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import { writerBundleOf } from "./objectives-first";
 
@@ -73,11 +74,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }) as Lesson;
   let out: Awaited<ReturnType<typeof runWriter>>;
   try {
+    const services = aiWriterServices(deps);
     out = await runWriter({
       brief: writerBrief(lesson),
       objectives,
       bundle: writerBundleOf(lesson),
-      services: aiWriterServices(deps),
+      services,
+      // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
+      // call on the small model (TEACH-247).
+      drawDiagrams: { callDrawer: (req) => services.chat({ ...req, model: SMALL_MODEL }) },
       onEditable: async (slides) => {
         // Editable: every slide is laid out; the checkpoint stays at `planned` until the end.
         const { updatedAt } = await deps.persist(toLesson(slides, "planned"));

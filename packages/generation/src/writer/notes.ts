@@ -1,7 +1,7 @@
 // The writer stage's objective coverage and notes:
 // objective coverage from the flow's `teaches`, one targeted objective repair, and one notes call
 // per lesson on the slides as rendered.
-import { type ChatReq, isFatal } from "./services";
+import { type ChatReq, nonFatal, whenNonFatal } from "./services";
 
 /** Templates whose slide checks pupils rather than teaching them. */
 export const CHECK_TEMPLATES = new Set([
@@ -116,11 +116,12 @@ export async function repairObjectives(o: {
       name: "objective_repair",
       strict: false,
     } as ChatReq)
-    .catch((e) => {
-      if (isFatal(e)) throw e;
-      o.log({ ev: "objective-repair-error", err: String(e).slice(0, 200) });
-      return undefined;
-    });
+    .catch(
+      whenNonFatal((e) => {
+        o.log({ ev: "objective-repair-error", err: String(e).slice(0, 200) });
+        return undefined;
+      }),
+    );
   if (!r) return { plan: o.plan, repaired: false, before };
   o.onUsd(r.usd);
   const changes = ((r.out as { changes?: unknown })?.changes ?? []) as {
@@ -248,25 +249,27 @@ export async function lessonNotes(o: {
 }): Promise<Map<number, SlideNotes>> {
   const got = new Map<number, SlideNotes>();
   for (let attempt = 0; attempt < 2 && !got.size; attempt++) {
-    try {
-      const r = await o.chat({
-        model: "gpt-6-luna",
-        effort: "low",
-        system: o.system,
-        user: o.user,
-        schema: o.schema as ChatReq["schema"],
-        name: "notes",
-        timeoutMs: o.timeoutMs ?? 60_000,
-      } as ChatReq);
-      o.onUsd(r.usd);
-      const rows = (r.out as { slides?: SlideNotes[] })?.slides;
-      if (!Array.isArray(rows)) throw new Error("notes: no slides array");
-      for (const s of rows) if (Number.isInteger(s?.n) && !got.has(s.n)) got.set(s.n, s);
-      o.log({ ev: "notes", attempt, slides: got.size, of: o.slides, usd: r.usd, ms: r.ms });
-    } catch (e) {
-      if (isFatal(e)) throw e;
-      o.log({ ev: "notes-error", attempt, err: String(e).slice(0, 200) });
-    }
+    await nonFatal(
+      async () => {
+        const r = await o.chat({
+          model: "gpt-6-luna",
+          effort: "low",
+          system: o.system,
+          user: o.user,
+          schema: o.schema as ChatReq["schema"],
+          name: "notes",
+          timeoutMs: o.timeoutMs ?? 60_000,
+        } as ChatReq);
+        o.onUsd(r.usd);
+        const rows = (r.out as { slides?: SlideNotes[] })?.slides;
+        if (!Array.isArray(rows)) throw new Error("notes: no slides array");
+        for (const s of rows) if (Number.isInteger(s?.n) && !got.has(s.n)) got.set(s.n, s);
+        o.log({ ev: "notes", attempt, slides: got.size, of: o.slides, usd: r.usd, ms: r.ms });
+      },
+      (e) => {
+        o.log({ ev: "notes-error", attempt, err: String(e).slice(0, 200) });
+      },
+    );
   }
   // the missing slides get one more call,
   // named in a line after the lesson (code wording; the prompt-engineer may own it).
@@ -274,24 +277,26 @@ export async function lessonNotes(o: {
     (n) => n >= (o.first ?? 1) && !got.has(n),
   );
   if (got.size && missing.length) {
-    try {
-      const r = await o.chat({
-        model: "gpt-6-luna",
-        effort: "low",
-        system: o.system,
-        user: `${o.user}\n\nWrite the notes for these slides only: ${missing.join(", ")}.`,
-        schema: o.schema as ChatReq["schema"],
-        name: "notes",
-        timeoutMs: o.timeoutMs ?? 60_000,
-      } as ChatReq);
-      o.onUsd(r.usd);
-      const rows = (r.out as { slides?: SlideNotes[] })?.slides ?? [];
-      for (const s of rows) if (missing.includes(s?.n) && !got.has(s.n)) got.set(s.n, s);
-      o.log({ ev: "notes-missing", asked: missing, got: rows.length, usd: r.usd, ms: r.ms });
-    } catch (e) {
-      if (isFatal(e)) throw e;
-      o.log({ ev: "notes-missing-error", asked: missing, err: String(e).slice(0, 200) });
-    }
+    await nonFatal(
+      async () => {
+        const r = await o.chat({
+          model: "gpt-6-luna",
+          effort: "low",
+          system: o.system,
+          user: `${o.user}\n\nWrite the notes for these slides only: ${missing.join(", ")}.`,
+          schema: o.schema as ChatReq["schema"],
+          name: "notes",
+          timeoutMs: o.timeoutMs ?? 60_000,
+        } as ChatReq);
+        o.onUsd(r.usd);
+        const rows = (r.out as { slides?: SlideNotes[] })?.slides ?? [];
+        for (const s of rows) if (missing.includes(s?.n) && !got.has(s.n)) got.set(s.n, s);
+        o.log({ ev: "notes-missing", asked: missing, got: rows.length, usd: r.usd, ms: r.ms });
+      },
+      (e) => {
+        o.log({ ev: "notes-missing-error", asked: missing, err: String(e).slice(0, 200) });
+      },
+    );
   }
   for (let n = o.first ?? 1; n <= o.slides; n++)
     if (!got.has(n)) got.set(n, { n, answers: null, misconceptions: null, background: null });

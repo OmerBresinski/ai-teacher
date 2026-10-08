@@ -3,6 +3,7 @@
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
 import type { KeyStage } from "../themes";
+import { part } from "./builds";
 import { finishOf } from "./finish";
 import { LIMITS } from "./limits";
 import type { Flow } from "./schema";
@@ -309,7 +310,7 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         const b = boxes[l.to as number] as Box;
         const [x1, y1] = edge(a, b.cx, b.cy, 4);
         const [x2, y2] = edge(b, a.cx, a.cy, 4);
-        out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
+        out.push(part(l.to as number, arrow(x1, y1, x2, y2, c.ink, STROKE.line)));
         x.strokes?.push([x1, y1, x2, y2]);
         x.arrows?.push({ tip: [x2, y2], target: target(b) });
         seg(`f${fi}`, x1, y1, x2, y2);
@@ -418,8 +419,11 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         if (!b || !l) return;
         void s;
         out.push(
-          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"/>`,
-          text(x, b.cx, b.cy, l, { weight: WEIGHT.name, fs }),
+          part(
+            i,
+            `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"/>` +
+              text(x, b.cx, b.cy, l, { weight: WEIGHT.name, fs }),
+          ),
         );
       });
       return out.join("");
@@ -591,6 +595,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     if (!next) return;
     const [x1, y1] = edge(b, next.cx, next.cy, 4);
     const [x2, y2] = edge(next, b.cx, b.cy, 4);
+    const at = out.length;
     out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
     x.strokes?.push([x1, y1, x2, y2]);
     x.arrows?.push({
@@ -603,7 +608,10 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
       },
     });
     const lines = plan.notes[i];
-    if (!lines) return;
+    if (!lines) {
+      out.splice(at, out.length - at, part(i + 1, out.slice(at).join("")));
+      return;
+    }
     if (Math.abs(y2 - y1) < 1) {
       out.push(text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, lines, { v: "bottom", ...style }));
     } else {
@@ -617,14 +625,18 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         }),
       );
     }
+    out.splice(at, out.length - at, part(i + 1, out.slice(at).join("")));
   });
   f.steps.forEach((_, i) => {
     const b = boxes[i];
     const lines = plan.lines[i];
     if (!b || !lines) return;
     out.push(
-      `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
-      text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs }),
+      part(
+        i,
+        `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>` +
+          text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs }),
+      ),
     );
   });
   return out.join("");
@@ -660,6 +672,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   boxes.forEach((b, i) => {
     const next = boxes[(i + 1) % k];
     if (!next) return;
+    const at = out.length;
     // A gentle outward bow, so the ring reads as a cycle.
     const mx = (b.cx + next.cx) / 2;
     const my = (b.cy + next.cy) / 2;
@@ -702,6 +715,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
         }),
       );
     }
+    out.splice(at, out.length - at, part(Math.min(i + 1, k - 1), out.slice(at).join("")));
   });
   const bfs = boxSize(
     x,
@@ -710,7 +724,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   );
   f.steps.forEach((s, i) => {
     const b = boxes[i];
-    if (b) out.push(box(x, b, s.label, bfs));
+    if (b) out.push(part(i, box(x, b, s.label, bfs)));
   });
   return out.join("");
 }

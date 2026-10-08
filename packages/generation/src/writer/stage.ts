@@ -1,7 +1,16 @@
 import type { Slide, Theme } from "@tj/domain/documents";
+import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
+import { writerDrawerSystem } from "./diagram-contract.gen";
+import {
+  type DrawerCall,
+  drawWriterDiagram,
+  layoutSlotProbe,
+  QUESTION_TEMPLATES,
+  withBuildCounts,
+} from "./diagrams";
 import {
   asPicture,
   asTableText,
@@ -71,6 +80,7 @@ import {
   WRITER_EFFORT,
   WRITER_MODEL,
   type WriterServices,
+  whenNonFatal,
   writerMaxTokens,
 } from "./services";
 
@@ -114,6 +124,11 @@ export type WriterRun = {
   bundle?: WriterBundleId;
   /** The pupil-wording call for slide 2; `false` keeps the teacher's wording (the evidence runs). */
   pupilWording?: boolean;
+  /**
+   * Draws the writer's diagrams before editable (TEACH-247): its own spec by code, else the drawer
+   * call (gpt-6-luna). Absent: every diagram slot stays a placeholder (or `visual`'s state).
+   */
+  drawDiagrams?: { callDrawer: DrawerCall };
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
 };
@@ -169,8 +184,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const notes = new Map<number, { notes: string; answers: string[] }>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
+  /** Diagrams drawn in this run, by `<slide>:<key>` (TEACH-247). */
+  const drawnDiagrams = new Map<string, VisualState>();
   const visualState = (i: number) => (key: string) => {
     const was = carried.get(`${i}:${key}`);
+    const drawn = drawnDiagrams.get(`${i}:${was?.key ?? key}`);
+    if (drawn) return drawn;
     if (was)
       return run.visual ? run.visual(i, was.key, was.ask) : ({ status: "pending" } as VisualState);
     const a = (asks.get(i) ?? []).find((x) => x.key === key);
@@ -179,7 +198,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const relay = (i: number) => {
     const s = plan.slides[i];
     if (!s) return;
-    laid.set(i, materialise(s, { ...base, index: i, plan, visual: visualState(i) }));
+    const lay = () => materialise(s, { ...base, index: i, plan, visual: visualState(i) });
+    // A drawn diagram carries its builds (Present shows its parts one per Next).
+    if (!run.drawDiagrams) return void laid.set(i, lay());
+    const m = withBuilds(lay);
+    laid.set(i, { ...m, slide: withBuildCounts(m.slide) });
   };
   const title = codeTitle(brief, base);
   laid.set(0, title);
@@ -247,6 +270,54 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(idx, visualsOf(s, idx, { ...base, plan }));
     relay(idx);
   }
+  // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
+  if (run.drawDiagrams) {
+    const { callDrawer } = run.drawDiagrams;
+    const jobs: Promise<void>[] = [];
+    for (const [i, list] of asks)
+      for (const a of list) {
+        const s = plan.slides[i];
+        if (a.type !== "diagram" || !s) continue;
+        const slot = slotOf(String(s.template ?? ""));
+        const box = slotBox(base.stage, slot);
+        jobs.push(
+          drawWriterDiagram(
+            {
+              key: a.key,
+              kind: a.kind,
+              shows: a.shows,
+              labels: a.labels,
+              ...(a.spec !== undefined ? { spec: a.spec } : {}),
+              words: wordsOf(s),
+              yearGroup: brief.yearGroup,
+              stage: base.stage,
+              slot: {
+                placement: slot === "full" ? "across the slide" : "beside text",
+                w: box.w,
+                h: box.h,
+                name: slot,
+              },
+              question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
+            },
+            {
+              callDrawer,
+              drawerSystem: writerDrawerSystem,
+              theme: base.theme,
+              probe: layoutSlotProbe,
+              log: (e) => log({ ...e, slide: i + 1 }),
+            },
+          ).then((r) => {
+            drawnDiagrams.set(
+              `${i}:${a.key}`,
+              r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
+            );
+            log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
+            relay(i);
+          }),
+        );
+      }
+    await Promise.all(jobs);
+  }
   const n = plan.slides.length;
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
@@ -278,11 +349,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       schema: JSON.parse(P.pupilObjectivesSchema),
       name: "pupil_objectives",
       maxTokens: 1500,
-    }).catch((e) => {
-      if (isFatal(e)) throw e;
-      log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
-      return undefined;
-    });
+    }).catch(
+      whenNonFatal((e) => {
+        log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
+        return undefined;
+      }),
+    );
     const lines = (r?.out as { pupil?: unknown[] } | undefined)?.pupil ?? [];
     objectives.forEach((o, k) => {
       const line = lines[k];
@@ -455,11 +527,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       user: u,
       schema: repairSchemaFor(stageKey),
       name: "slide",
-    }).catch((e) => {
-      if (isFatal(e)) throw e;
-      log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
-      return undefined;
-    });
+    }).catch(
+      whenNonFatal((e) => {
+        log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
+        return undefined;
+      }),
+    );
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, ok: false });

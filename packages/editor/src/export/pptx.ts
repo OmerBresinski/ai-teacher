@@ -596,6 +596,24 @@ async function iconDataUrl(
   }
 }
 
+/** An SVG data URL drawn to a PNG at `scale` times its box; undefined without a DOM or on failure. */
+async function svgAsPng(src: string, w: number, h: number, scale = 2): Promise<string | undefined> {
+  if (typeof document === "undefined" || typeof Image === "undefined") return undefined;
+  try {
+    const image = await loadImage(src);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const png = canvas.toDataURL("image/png");
+    return png.startsWith("data:image/png") ? png : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -678,6 +696,10 @@ type DrawContext = {
   /** `optionPositions(slide)`: the true-false fallback `optionState` needs. */
   optionIndex: Map<string, number>;
   imageOrigin: string | undefined;
+  /** Draws a diagram's SVG as a PNG data URL (TEACH-247); undefined when it cannot. */
+  rasteriseSvg: (src: string, w: number, h: number) => Promise<string | undefined>;
+  /** A visible export problem (a diagram that could not become a picture). */
+  warn: (message: string) => void;
 };
 
 async function drawElement(
@@ -727,7 +749,7 @@ async function drawElement(
       drawEmbed(pptxSlide, element, theme);
       return;
     case "image":
-      await drawImage(pptxSlide, element, theme, ctx.imageOrigin);
+      await drawImage(pptxSlide, element, theme, ctx);
       return;
     case "icon":
       await drawIcon(pptxSlide, element, theme);
@@ -1152,9 +1174,17 @@ async function drawImage(
   pptxSlide: PptxGenJS.Slide,
   element: ImageElement,
   theme: Theme,
-  imageOrigin: string | undefined,
+  ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn">,
 ): Promise<void> {
-  const data = await toDataUrl(element.src, imageOrigin);
+  // A drawn diagram (an SVG data URL) goes in as a PNG, never as SVG: PowerPoint, Keynote and
+  // Slides import SVG differently, a bitmap at twice the box reads the same everywhere (TEACH-247).
+  // One that cannot be drawn is a visible gap and a warning, never an embedded SVG.
+  const svg = element.src.startsWith("data:image/svg+xml");
+  const data = svg
+    ? await ctx.rasteriseSvg(element.src, element.w, element.h).catch(() => undefined)
+    : await toDataUrl(element.src, ctx.imageOrigin);
+  if (svg && !data)
+    ctx.warn(`A diagram could not be drawn as a picture: ${element.alt ?? element.id}`);
   if (!data) {
     drawMissingImage(pptxSlide, element, theme);
     return;
@@ -1250,6 +1280,10 @@ export type PptxExportOptions = {
   includeAnswers?: boolean;
   /** The api origin (`${VITE_API_URL}`): image fetches to it carry the session cookie. */
   imageOrigin?: string;
+  /** Draws a diagram's SVG as a PNG (default: the browser canvas). Tests pass their own. */
+  rasteriseSvg?: (src: string, w: number, h: number) => Promise<string | undefined>;
+  /** Export problems the teacher should know of (default: the console). */
+  onWarning?: (message: string) => void;
 };
 
 export const pptxFilename = (lesson: Lesson): string => `${slugify(lesson.title)}.pptx`;
@@ -1314,6 +1348,8 @@ export async function exportLessonPptx(
         revealAnswers,
         optionIndex: optionPositions(slide),
         imageOrigin: options.imageOrigin,
+        rasteriseSvg: options.rasteriseSvg ?? svgAsPng,
+        warn: options.onWarning ?? ((m) => console.warn(`[pptx] ${m}`)),
       };
       for (const element of slide.elements) {
         if (!visibleAt(element, step)) continue;

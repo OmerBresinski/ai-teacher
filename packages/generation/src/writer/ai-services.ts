@@ -5,6 +5,7 @@ import { providerOptionsFor } from "../call";
 import type { PipelineDeps } from "../types";
 import {
   type ChatReq,
+  nonFatalSync,
   SMALL_MODEL,
   WRITER_MODEL,
   type WriterReq,
@@ -30,17 +31,38 @@ export function writerRoute(_cls: unknown, context: AiCallContext | undefined): 
 }
 
 const usdOf = (modelId: string, u: { inputTokens?: number; outputTokens?: number } | undefined) => {
-  try {
-    return (
+  return nonFatalSync(
+    () =>
       costUsd(modelId, {
         inputTokens: u?.inputTokens ?? 0,
         outputTokens: u?.outputTokens ?? 0,
-      } as never) ?? 0
-    );
-  } catch {
-    return 0;
-  }
+      } as never) ?? 0,
+    () => 0,
+  );
 };
+
+/**
+ * A small call's options: its own deadline (`timeoutMs`) aborts it as a TimeoutError (non-fatal)
+ * while a cancel stays fatal; every call has an output cap (the budget estimates from it); and the
+ * request's `strict` is honoured: OpenAI strict JSON schema only when the request asks for it
+ * (base4's drawer ran non-strict on the wire schema, TEACH-247).
+ */
+export function chatCallOptions(r: ChatReq, signal: AbortSignal) {
+  const base = providerOptionsFor(r.model ?? SMALL_MODEL, r.effort ?? "low") as {
+    providerOptions?: Record<string, Record<string, unknown>>;
+  };
+  const providerOptions = base.providerOptions
+    ? {
+        ...base.providerOptions,
+        openai: { ...base.providerOptions.openai, strictJsonSchema: r.strict === true },
+      }
+    : undefined;
+  return {
+    abortSignal: r.timeoutMs ? AbortSignal.any([signal, AbortSignal.timeout(r.timeoutMs)]) : signal,
+    maxOutputTokens: r.maxTokens ?? SMALL_CALL_MAX_TOKENS,
+    ...(providerOptions ? { providerOptions } : {}),
+  };
+}
 
 /** The stage's calls on `@tj/ai`: every call carries the writer's context, so the route applies. */
 export function aiWriterServices(deps: PipelineDeps): WriterServices {
@@ -67,13 +89,7 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         system: r.system,
         prompt: r.user,
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
-        // A call's own deadline aborts it as a TimeoutError (non-fatal); a cancel stays fatal.
-        abortSignal: r.timeoutMs
-          ? AbortSignal.any([deps.signal, AbortSignal.timeout(r.timeoutMs)])
-          : deps.signal,
-        // The budget estimates a call from its output cap, so every call has one.
-        maxOutputTokens: r.maxTokens ?? SMALL_CALL_MAX_TOKENS,
-        ...providerOptionsFor(r.model ?? SMALL_MODEL, r.effort ?? "low"),
+        ...chatCallOptions(r, deps.signal),
       });
       return { out: result.output, usd: usdOf(SMALL_MODEL, result.usage), ms: Date.now() - t0 };
     },
