@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  Button,
   Display,
   isTheme,
   Label,
   RadioGroup,
   RadioGroupItem,
   SectionHeading,
+  Skeleton,
   type Theme,
   useTheme,
 } from "@tj/ui";
@@ -26,7 +28,7 @@ const THEME_ORDER: readonly Theme[] = ["light", "dark", "high-contrast", "system
  * theme, which lives in the browser through `useTheme`. This is the only place to change it.
  */
 export function SettingsPage() {
-  const { data: me } = useQuery(meQueryOptions);
+  const { data: me, isPending, isError, isRefetching, refetch } = useQuery(meQueryOptions);
   const { theme, setTheme } = useTheme();
 
   return (
@@ -38,14 +40,40 @@ export function SettingsPage() {
       </div>
       <div className="mt-8 flex max-w-2xl flex-col gap-10">
         <Section title="Account">
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-body sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-y-3">
-            <dt className="text-ink-2">Name</dt>
-            <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">
-              {me?.user.name || "Not set"}
-            </dd>
-            <dt className="text-ink-2">Email</dt>
-            <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">{me?.user.email}</dd>
-          </dl>
+          {isPending ? (
+            <div
+              role="status"
+              aria-busy="true"
+              aria-label="Loading your account"
+              className="flex flex-col gap-3"
+            >
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-5 w-64" />
+            </div>
+          ) : isError || !me ? (
+            <div className="flex flex-col items-start gap-2">
+              <p role="alert" className="text-body text-foreground">
+                We couldn’t load your account details.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isRefetching}
+                onClick={() => void refetch()}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-body sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-y-3">
+              <dt className="text-ink-2">Name</dt>
+              <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">
+                {me.user.name || "Not set"}
+              </dd>
+              <dt className="text-ink-2">Email</dt>
+              <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">{me.user.email}</dd>
+            </dl>
+          )}
         </Section>
         <Section title="Appearance">
           <RadioGroup

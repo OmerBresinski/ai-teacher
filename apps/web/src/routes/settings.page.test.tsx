@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ThemeProvider } from "@tj/ui";
 import { type Me, queryKeys } from "@/lib/query";
 import { SettingsPage } from "./settings.page";
@@ -10,12 +10,12 @@ const ME = {
   workspaceId: "w1",
 } as Me;
 
-function renderPage(me: Me = ME) {
+function renderPage(me: Me | null = ME) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
-  // The auth layout has already resolved `/me` by the time the page renders.
-  queryClient.setQueryData(queryKeys.me, me);
+  // Usually the auth layout has already resolved `/me` by the time the page renders.
+  if (me) queryClient.setQueryData(queryKeys.me, me);
   return render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
@@ -26,8 +26,12 @@ function renderPage(me: Me = ME) {
 }
 
 describe("SettingsPage", () => {
+  const realFetch = globalThis.fetch;
   beforeEach(() => {
     localStorage.clear();
+  });
+  afterEach(() => {
+    globalThis.fetch = realFetch;
   });
 
   it("is one page of plain sections: Account, then Appearance", () => {
@@ -69,5 +73,44 @@ describe("SettingsPage", () => {
     expect(within(group).getByRole("radio", { name: "Dark" })).toBeChecked();
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("tj-theme")).toBe("dark");
+  });
+
+  it("shows a loading placeholder, not blanks, while the account loads", () => {
+    globalThis.fetch = (() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+    renderPage(null);
+
+    const account = screen.getByRole("region", { name: "Account" });
+    expect(
+      within(account).getByRole("status", { name: "Loading your account" }),
+    ).toBeInTheDocument();
+    expect(within(account).queryByText("Not set")).toBeNull();
+    expect(within(account).queryByText("Name")).toBeNull();
+  });
+
+  it("says when the account could not load and retries on request", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1)
+        return new Response(JSON.stringify({ error: { code: "internal", message: "boom" } }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        });
+      return new Response(JSON.stringify(ME), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    renderPage(null);
+
+    const account = screen.getByRole("region", { name: "Account" });
+    expect(await within(account).findByRole("alert")).toHaveTextContent(
+      "We couldn’t load your account details.",
+    );
+    expect(within(account).queryByText("Not set")).toBeNull();
+
+    fireEvent.click(within(account).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(within(account).getByText("Ada Lovelace")).toBeInTheDocument());
+    expect(within(account).queryByRole("alert")).toBeNull();
   });
 });
