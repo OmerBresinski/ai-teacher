@@ -17,6 +17,8 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/test-results",
+      "!**/blob-report",
+      "!**/all-blob-reports",
       "!bun.lock",
       "!**/.agents",
       "!**/.claude",

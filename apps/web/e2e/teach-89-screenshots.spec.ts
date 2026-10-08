@@ -1,5 +1,7 @@
 import { expect, test } from "./fixtures";
 
+test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
+
 test("capture TEACH-89 shell states", async ({ signedInPage: { page } }) => {
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
   await page.screenshot({ path: "/tmp/teach-89-home-light.png", fullPage: true });
