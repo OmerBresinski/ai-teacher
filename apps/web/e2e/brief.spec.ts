@@ -1,10 +1,10 @@
 /**
- * The lesson intake at `/lessons/new` (F01 item 2, TEACH-122; #303): the brief step, planning to
- * objectives, and Skip planning straight to `/l/:id`.
+ * The lesson intake at `/lessons/new` (F01 item 2, TEACH-122; #303): planning to objectives, and
+ * the source uploads. The brief step's own checks (focus, prefill, the guard, the materials
+ * dialog) are unit tests in `src/routes/lesson-brief.page.test.tsx` (TEACH-301).
  * The e2e worker has no Bedrock token (or a developer's has one and spends real money), so the
  * spec asserts the hand-over to the lesson page and the request shape, not a finished deck.
  */
-import { GUARD_MESSAGE } from "@tj/domain/documents";
 import { E2E_API_URL } from "../playwright.config";
 import { expect, test } from "./fixtures";
 import { MATERIAL, tinyPdf } from "./source-fixtures";
@@ -12,48 +12,6 @@ import { MATERIAL, tinyPdf } from "./source-fixtures";
 test.use({ seed: false });
 
 test.describe("lesson brief", () => {
-  test("New lesson opens the focused intake with its heading focused", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons");
-    await page.getByRole("button", { name: "New lesson" }).click();
-    await expect(page).toHaveURL(/\/lessons\/new$/);
-    await expect(page).toHaveTitle("New lesson · DayBack");
-    // The intake sits outside the library shell; each step announces its heading.
-    await expect(page.getByRole("navigation", { name: "Library" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeFocused();
-    await expect(page.getByRole("textbox", { name: "Topic", exact: true })).toHaveValue("");
-    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Skip planning" })).toBeDisabled();
-    await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 4");
-    await expect(page.getByRole("button", { name: "Blank lesson" })).toBeVisible();
-  });
-
-  test("?topic= prefills the topic and never auto-submits (TEACH-309)", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons/new?topic=Fractions%20of%20amounts");
-    await expect(page.getByRole("textbox", { name: "Topic", exact: true })).toHaveValue(
-      "Fractions of amounts",
-    );
-    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
-    // Nothing has submitted: still the brief, not the plan it would open to.
-    await expect(page).toHaveURL(/\/lessons\/new\?topic=/);
-    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeVisible();
-  });
-
-  test("?source=1 opens the materials dialog with Choose files focused (TEACH-309)", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons/new?source=1");
-    await expect(page.getByRole("dialog", { name: "Add your materials" })).toBeVisible();
-    // `input[type=file]` also carries an implicit "button" role under the same accessible name
-    // (it is `aria-label`led "Choose files" too), so scope to the real `<button>` element.
-    const chooseFiles = page.locator("button", { hasText: "Choose files" });
-    await expect(chooseFiles).toBeFocused();
-    await expect(chooseFiles).toBeInViewport();
-  });
-
   test("Next posts the brief, plans the objectives, and the year group is remembered", async ({
     signedInPage: { page },
   }) => {
@@ -91,34 +49,6 @@ test.describe("lesson brief", () => {
     // The next brief opens with the class already set.
     await page.goto("/lessons/new");
     await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 5");
-  });
-
-  test("the guard blocks a pupil reference; Skip planning goes straight to the lesson", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons/new");
-    const topic = page.getByRole("textbox", { name: "Topic", exact: true });
-    await topic.fill("A pupil called Jamie struggles with the water cycle");
-    await expect(page.getByRole("status").filter({ hasText: GUARD_MESSAGE })).toBeVisible();
-    let posts = 0;
-    page.on("request", (request) => {
-      if (request.method() === "POST" && request.url().endsWith("/lessons")) posts += 1;
-    });
-    await page.getByRole("button", { name: "Next" }).click();
-    await expect(page).toHaveURL(/\/lessons\/new$/);
-    expect(posts).toBe(0);
-
-    await topic.fill("The water cycle");
-    await expect(page.getByText(GUARD_MESSAGE)).toHaveCount(0);
-    const posted = page.waitForRequest(
-      (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
-    );
-    await page.getByRole("button", { name: "Skip planning" }).click();
-    expect((await posted).postDataJSON()).toMatchObject({
-      brief: { topic: "The water cycle" },
-      skipPlanning: true,
-    });
-    await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
   });
 });
 
