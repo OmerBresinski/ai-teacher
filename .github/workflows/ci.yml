@@ -291,23 +291,33 @@ jobs:
       # Headless runs use Chromium's headless shell, so the full browser is never downloaded. No
       # `--with-deps` (TEACH-190 part c): the runner image already has the shell's libraries, and the
       # extra font packages it would add come from an Ubuntu mirror that stalled single shards for 5
-      # to 19 minutes. The app ships its own web fonts and no spec compares pixels. If an image ever
-      # drops a library, `ldd` names it here instead of the browser failing to start mid-suite.
+      # to 19 minutes. The app ships its own web fonts and no spec compares pixels. Playwright's own
+      # host check looks in `chrome-linux/`, which the x64 shell does not use, so this step checks the
+      # linked libraries itself (`ldd`) and starts the shell once: an image that drops a library fails
+      # here, naming it, instead of at the first launch in the suite. Libraries Chromium loads at
+      # runtime (dlopen) are not covered; the suite's first launch still catches those.
       - name: Install Chromium
         working-directory: apps/web
         run: |
+          set -o pipefail
           bunx --bun playwright install --only-shell chromium
-          shell="$(find ~/.cache/ms-playwright -type f \( -name chrome-headless-shell -o -name headless_shell \) | head -n 1)"
+          shell="$(find ~/.cache/ms-playwright -type f \( -name chrome-headless-shell -o -name headless_shell \) -print -quit)"
           if [ -z "$shell" ]; then
             echo "::error title=Chromium::no headless shell under ~/.cache/ms-playwright"
             exit 1
           fi
-          missing="$(ldd "$shell" | awk '/not found/ { print $1 }' | tr '\n' ' ')"
+          linked="$(ldd "$shell")"
+          missing="$(printf '%s\n' "$linked" | awk '/not found/ { print $1 }' | tr '\n' ' ')"
           if [ -n "$missing" ]; then
             echo "::error title=Chromium::$shell needs libraries the runner lacks: $missing; install them or restore --with-deps"
             exit 1
           fi
-          echo "every library of $shell resolves"
+          # One real start: renders a blank page and exits (the runner sandbox needs --no-sandbox).
+          if ! timeout 30 "$shell" --no-sandbox --dump-dom about:blank > /dev/null; then
+            echo "::error title=Chromium::$shell did not start; see the output above"
+            exit 1
+          fi
+          echo "Chromium headless shell ready: $shell"
 
       # Straight to Playwright, not `bun run test:e2e` at the root: turbo would first build every
       # package, and the suite runs api and worker from source and builds web itself (`webServer`).
