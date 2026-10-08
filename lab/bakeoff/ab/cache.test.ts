@@ -339,3 +339,18 @@ describe("legacy importer", () => {
     });
   });
 });
+
+describe("--code-arm", () => {
+  test("code switches come from the code arm; the prompt arm stays the run arm", async () => {
+    const a = await import("./arms");
+    try {
+      a.setAbArm("base4");
+      expect(a.abPolish2()).toBe(false);
+      a.setAbCodeArm("polish2");
+      expect([a.abPolish(), a.abPolish2(), a.abArm()]).toEqual([true, true, "base4"]);
+    } finally {
+      a.setAbCodeArm(undefined);
+      a.setAbArm(undefined);
+    }
+  });
+});

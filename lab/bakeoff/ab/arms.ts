@@ -401,23 +401,33 @@ export function setAbArm(a: AbArm | undefined) {
   current = a;
 }
 export const abArm = () => current;
+/**
+ * Cache (ab/CACHE.md): `run.ts --code-arm <arm>` takes the code switches below (polish, polish2,
+ * fixes, r2...) from another arm while prompts, schemas and picture versions stay the run arm's, so a
+ * code-only A/B replays its base's writer from the cache.
+ */
+let codeArm: AbArm | undefined;
+export function setAbCodeArm(a: AbArm | undefined) {
+  codeArm = a;
+}
+const code = () => codeArm ?? current;
 /** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
 /** R1 stage 1 (b3-r1t): the writer's items and tiles are flattened for the harness (writer-only scoring). */
 /** R1 stage 2 (b4-r1t2): code drops pointing items whose picture is not shown. */
-export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false);
+export const abR1t2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t2) : false);
 /** b4-r1t3: every director picture fetched, several pictures laid out as tiles. */
-export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false);
+export const abR1t3 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t3) : false);
 /** y1fix bank rule: stage requests never reuse stock bank rows. */
-export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank) : false);
+export const abStageBank = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].stageBank) : false);
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
-export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
-export const abPolish2 = () => (current ? Boolean(AB_CONFIG[current].polish2) : false);
-export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
-export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
+export const abPolish = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish) : false);
+export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
+export const abLib = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].lib) : false);
+export const abR1t = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
-export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
-export const abFixes = () => (current ? Boolean(AB_CONFIG[current].fixes) : false);
+export const abR2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r2) : false);
+export const abFixes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].fixes) : false);
 
 /** Round 5 as recorded: system length (JS chars) per stage in round5 request.json, and the T pin. */
 export const ROUND5_SYSTEM_CHARS: Record<(typeof STAGES)[number], number> = {

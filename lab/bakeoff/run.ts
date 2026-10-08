@@ -11,7 +11,15 @@ import {
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
 import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
 import { onLabelDrop, setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
-import { abPolish, abPolish2, isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
+import {
+  abPolish,
+  abPolish2,
+  isAbArm,
+  pictureVersions,
+  pinFaults,
+  setAbArm,
+  setAbCodeArm,
+} from "./ab/arms";
 import { createCache, loadRun, loadStore, type ReqForm, seedStore, summary } from "./ab/cache";
 import { legacyImporter } from "./ab/cache-import";
 import { photoGate } from "./ab/polish";
@@ -43,6 +51,7 @@ const VALUED = new Set([
   "--replay-repair",
   "--challenge",
   "--objectives-from",
+  "--code-arm",
 ]);
 // Response cache (ab/CACHE.md): `--replay <runDir>` (a directory) replays that run's recorded calls
 // (or imports an older run's logs); a file is still a recorded writer stream (`--replay <main.txt>`).
@@ -53,6 +62,12 @@ const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i -
 // A/B (7 Oct): `--arm base|a1|a2|a3` runs arm T with that A/B arm's pinned writer prompt and schema.
 const armArg = opt("--arm", "T") as string;
 if (isAbArm(armArg)) setAbArm(armArg);
+// Cache: `--code-arm <arm>` runs that arm's code switches on this arm's prompts (a code-only A/B).
+const codeArmArg = opt("--code-arm");
+if (codeArmArg) {
+  if (!isAbArm(codeArmArg)) throw new Error(`--code-arm ${codeArmArg} is not an A/B arm`);
+  setAbCodeArm(codeArmArg);
+}
 // Round 6: the arm's picture judge (judge20 = v20; every other arm v17).
 useJudgeVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).judge);
 // Round 6: the arm's picture director (dir-stage and y1fix = v12; every other arm v11).
