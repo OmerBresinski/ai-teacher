@@ -8,6 +8,7 @@ import { Button, cn, IconButton, Spinner, Textarea } from "@tj/ui";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as reducers from "../../model/reducers";
+import { getTheme } from "../../model/themes";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, useProposals } from "../proposals-context";
 import {
@@ -18,6 +19,7 @@ import {
 } from "../use-editor-session";
 import { type BubbleState, EditChatBubble } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
+import { SlidesAtWork } from "./SlidesAtWork";
 import {
   type Alternative,
   type BoxChange,
@@ -166,6 +168,19 @@ export function EditChatPane({
       ?.scrollIntoView({ block: "nearest" });
     setUnread(null);
   }, [open, unread]);
+  // Slides at the top of the pane: working while a request is out, then how the last one ended.
+  const last = thread[thread.length - 1];
+  const castState = busy
+    ? "working"
+    : !last
+      ? "idle"
+      : last.reply.kind === "failed" || last.reply.kind === "stopped"
+        ? "failed"
+        : "done";
+  const pendingTurn = thread.find((t) => t.id === pendingId);
+  const castSlideId = pendingTurn?.scope.slideId ?? last?.change?.slideId ?? activeSlideId;
+  const castSlide = lesson.slides.find((s) => s.id === castSlideId);
+  const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
   const bubble: BubbleState = busy
     ? "working"
     : unread
@@ -466,6 +481,7 @@ export function EditChatPane({
             <X aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
         </header>
+        <SlidesAtWork state={castState} slide={castSlide} theme={theme} />
         <ol
           ref={list}
           aria-label="Edits"
