@@ -2,7 +2,11 @@
 <html lang="en"><head><meta charset="utf-8">
 <!-- lib arm renderer: one library model, mounted by the library's own engine (kit/build.js). -->
 <link rel="stylesheet" href="file:///Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/research/animated-models/library/kit/tokens.css">
-<style>body{margin:0;background:#fff}#host{width:1280px}</style>
+<style>body{margin:0;background:#fff}#host{width:1280px}
+/* Stills, not playback: no transitions. The engine's .slide.instant rule loses to its own
+   reduced-motion rule (same specificity, later, both !important), so an "instant" jump back to a
+   question's build still faded for 160 ms and the screenshot caught the answer half-faded (libfix2). */
+#host .slide *,#host .slide{transition:none!important;animation:none!important}</style>
 </head><body><div id="host"></div>
 <script type="module">
 const LIB = 'file:///Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/research/animated-models/library';
@@ -33,7 +37,7 @@ window.LIBR = {
     stage.update(params, theme);
     return { N: stage.N, warnings: stage.warnings || [] };
   },
-  show(k) { stage.show(k, true); return stage.warnings || []; },
+  show(k) { stage.show(k, true); for (const a of document.getAnimations()) a.finish(); return stage.warnings || []; },
   /** Where the drawing is on the slide (CSS px from the slide's corner), padded: the figure zone's crop.
    *  Only the model's own drawing counts (the engine's stage group): the engine's footer caption sits at
    *  the slide's left edge and bottom, so counting it made every crop nearly the whole slide and the
