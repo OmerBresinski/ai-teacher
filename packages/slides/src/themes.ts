@@ -595,8 +595,16 @@ export function boundAgeBand(lesson: StagedLesson | null | undefined): string | 
   return planned?.startsWith(WRITER_STAMP_PREFIX) ? (lesson?.ageBand ?? undefined) : undefined;
 }
 
-/** A lesson's theme (or `themeId`, a re-theme's target) at the age band it renders at. */
-export const lessonTheme = (
+/** A lesson's theme at its own key stage, ungated (generation and the type-scale audit). */
+export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
+  getTheme(lesson.themeId, lesson.ageBand);
+
+/**
+ * The theme a lesson renders with (editor, presenter, print, export): `themeId` (default the
+ * lesson's; a re-theme's target) at the age band `boundAgeBand` allows, so only writer lessons
+ * are bound to their stage.
+ */
+export const renderTheme = (
   lesson: StagedLesson | null | undefined,
   themeId: string | null | undefined = lesson?.themeId,
 ): Theme => getTheme(themeId, boundAgeBand(lesson));

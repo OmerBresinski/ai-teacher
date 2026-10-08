@@ -3,7 +3,7 @@
  * §8). Nothing here may reach Tiptap's React editor, ProseMirror's view or any editing module;
  * `thumb.test.ts` builds this entry and checks.
  */
-export { DEFAULT_THEME_ID, getTheme, lessonTheme, THEMES } from "./model/themes";
+export { DEFAULT_THEME_ID, getTheme, renderTheme, THEMES } from "./model/themes";
 export {
   SlideFluid,
   type SlideFluidProps,

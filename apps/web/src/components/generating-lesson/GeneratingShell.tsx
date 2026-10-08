@@ -1,6 +1,6 @@
 import type { Id, Lesson } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
-import { lessonTheme, SlideScaler, SlideView } from "@tj/editor";
+import { renderTheme, SlideScaler, SlideView } from "@tj/editor";
 import {
   navigatorThumbWidth,
   navigatorWidthVar,
@@ -98,7 +98,7 @@ export function GeneratingShell({
   const state = stageOf(events, lesson.plan?.state === "proposed");
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
-  const theme = lessonTheme(lesson);
+  const theme = renderTheme(lesson);
   // The editor's persisted navigator preference, so the column is the width the editor will
   // mount at and nothing reflows at Ready.
   const [preferredNavigatorMode] = useState(readNavigatorMode);

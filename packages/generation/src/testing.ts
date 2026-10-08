@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Writable } from "node:stream";
 import { type Budget, createBudget } from "@tj/ai";
 import { createFakeAi, type FakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
@@ -423,3 +424,16 @@ export function memoryLogger(): { lines: string[]; logger: Logger } {
 }
 
 export * from "./planner/testing";
+
+/**
+ * A saved lesson writer answer and its notes answer (the Year 5 fractions evidence run), for
+ * tests that run the writer planner through the jobs with a fake model (TEACH-110 part b).
+ */
+export function writerFixture(): { main: string; notes: string } {
+  const dir = new URL("./writer/fixtures/replay/y5-maths-fractions-of-amounts/", import.meta.url);
+  const read = (f: string) => readFileSync(new URL(f, dir), "utf8");
+  return {
+    main: (JSON.parse(read("main.json")) as { text: string }).text,
+    notes: read("notes.json"),
+  };
+}

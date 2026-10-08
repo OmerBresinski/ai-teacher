@@ -31,7 +31,7 @@ import {
   SHAPE_KINDS,
   TEXT_PRESETS,
 } from "../model/insert";
-import { lessonTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { AddImagePanel } from "./AddImagePanel";
 import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
@@ -66,7 +66,7 @@ export const InsertRail = memo(function InsertRail({
   showLabels,
 }: InsertRailProps) {
   const lesson = useLesson();
-  const theme = lessonTheme(lesson);
+  const theme = renderTheme(lesson);
   const history = useHistory();
   const session = useSessionActions();
   const { imagePanel } = useSessionUi();

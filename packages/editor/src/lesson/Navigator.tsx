@@ -24,7 +24,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSlideLint } from "../layout/use-slide-lint";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
 import * as reducers from "../model/reducers";
-import { lessonTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
@@ -88,7 +88,7 @@ export function Navigator() {
   const session = useSessionActions();
   const activeSlideId = useActiveSlideId();
   const { clipboardSlide } = useSessionUi();
-  const theme = useMemo(() => lessonTheme(lesson), [lesson]);
+  const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const { bySlide: residuals } = useResidualFindings();
   const { busySlideIds, onRegenerate } = useProposals();
 

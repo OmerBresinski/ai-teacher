@@ -3,7 +3,7 @@ import type { LanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { createConfiguredAi, DEFAULT_MODEL_IDS, DEFAULT_REGION } from "./create-ai";
-import type { AiCallContext, ConfiguredAi } from "./types";
+import type { AiCallContext, ConfiguredAi, CreateAiOptions } from "./types";
 
 export interface FakeAiUsage {
   inputTokens?: number | undefined;
@@ -60,6 +60,8 @@ export interface CreateFakeAiOptions {
   modelIds?: Partial<Record<ModelClassType, string>> | undefined;
   logger?: pino.Logger | undefined;
   error?: unknown;
+  /** The same per-call route the real client takes (the writer's route, TEACH-110 part b). */
+  route?: CreateAiOptions["route"];
 }
 
 export type FakeAi = ConfiguredAi & {
@@ -156,6 +158,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     region: DEFAULT_REGION,
     modelIds,
     logger,
+    ...(options.route ? { route: options.route } : {}),
     createModel: (modelClass, modelId, context) =>
       new MockLanguageModelV4({
         provider: "bedrock",

@@ -24,7 +24,7 @@ import { ChevronDown } from "lucide-react";
 import { type ComponentType, type ReactNode, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Segmented } from "../kit/Segmented";
-import { lessonTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 import type { CreditsSlideProps } from "./CreditsSlide";
 import { type ImageCredit, imageCredits } from "./credits";
@@ -194,7 +194,7 @@ export function ExportControl({
     // pptxgenjs builds the whole file in one call: there is nothing to stop.
     setRun({ label: "Building the PowerPoint file", cancellable: false });
     const { exportLessonPptx, pptxFilename } = await exportLoaders.pptx();
-    const blob = await exportLessonPptx(deck, lessonTheme(deck), {
+    const blob = await exportLessonPptx(deck, renderTheme(deck), {
       includeAnswers: answers,
       imageOrigin,
     });
@@ -519,11 +519,11 @@ export function ExportControl({
             }}
           >
             {staged?.kind === "credits" ? (
-              <staged.Credits credits={staged.credits} theme={lessonTheme(lesson)} />
+              <staged.Credits credits={staged.credits} theme={renderTheme(lesson)} />
             ) : stagedSlide ? (
               <SlideView
                 slide={stagedSlide}
-                theme={lessonTheme(lesson)}
+                theme={renderTheme(lesson)}
                 mode="capture"
                 revealAnswer={answers && !!stagedSlide.question}
               />

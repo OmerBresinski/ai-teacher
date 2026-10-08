@@ -8,7 +8,7 @@ import {
 } from "../export/credits";
 import { CAPTURE_READY_ATTR, waitForSlidePaint } from "../export/paint";
 import { parseSlideRange } from "../export/range";
-import { lessonTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 
 /** The print route re-fits a lesson stored under older floors first (`../layout/refit.ts`). */
@@ -54,7 +54,7 @@ function chunk(items: Page[], size: number): Page[][] {
 
 export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
   const { auto = false, answers = false, notes = false, handout3 = false, slides = "" } = options;
-  const theme = lessonTheme(lesson);
+  const theme = renderTheme(lesson);
   const printed = useRef(false);
   const root = useRef<HTMLDivElement>(null);
 
