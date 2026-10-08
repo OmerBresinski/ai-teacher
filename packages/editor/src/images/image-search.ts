@@ -38,7 +38,7 @@ export type ReportReason = "unsuitable" | "wrong-subject" | "other";
 export type ReportContext = "search" | "placed";
 
 export interface ImageReport {
-  photo: { provider: "pexels"; id: string };
+  photo: { provider: "pexels" | "commons" | "generated"; id: string };
   reason: ReportReason;
   context: ReportContext;
   lessonId?: string;

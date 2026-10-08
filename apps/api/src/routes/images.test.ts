@@ -542,6 +542,27 @@ describe("POST /images/report", () => {
     expect(text).not.toContain("river");
   });
 
+  test("a placed Commons file or generated picture can be reported (TEACH-251)", async () => {
+    for (const [provider, id] of [
+      ["commons", "commons-1004"],
+      ["generated", "0b0b0000-0000-4000-8000-00000000ba4c"],
+    ] as const) {
+      const { logger, lines } = captureLogger();
+      const res = await postReport(reportApp(logger), {
+        ...report,
+        provider,
+        id,
+        context: "placed",
+      });
+      expect(res.status).toBe(204);
+      const reported = lines.map((l) => JSON.parse(l)).find((l) => l.msg === "image reported");
+      expect(reported?.provider).toBe(provider);
+      expect(reported?.photoId).toBe(id);
+    }
+    const res = await postReport(reportApp(), { ...report, provider: "openverse" });
+    expect(res.status).toBe(400);
+  });
+
   test("bad reason and non-JSON bodies are 400", async () => {
     const app = reportApp();
     const bad = await postReport(app, { ...report, reason: "meh" });

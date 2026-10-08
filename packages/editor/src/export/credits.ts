@@ -1,6 +1,6 @@
 /**
  * The "Image credits" page every lesson export ends on (Images project, Decisions 2 and 5): one
- * line per searched picture, "Photo by {photographer} on Pexels" from `source`, else the legacy
+ * line per searched picture, worded by `photoCredit` from `source`, else the legacy
  * Openverse `credit` text. Nothing is drawn on the slides themselves. Shared by the print route
  * (PDF), the PowerPoint exporter and the PNG run, so the three can never list different pictures.
  *
@@ -15,6 +15,7 @@ import {
   type ImageElement,
   type Lesson,
   normaliseHref,
+  type PhotoSource,
   type SlideElement,
 } from "@tj/domain/documents";
 
@@ -55,17 +56,10 @@ export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): 
     for (const image of images(slide.elements)) {
       const { source, credit } = image;
       if (source) {
-        const key = `pexels:${source.id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
-          key,
-          text: `Photo by ${source.photographer} on Pexels`,
-          links: [
-            ...link(source.photographer, source.photographerUrl),
-            ...link("Pexels", source.pageUrl),
-          ],
-        });
+        const line = photoCredit(source, { cropped: isCropped(image) });
+        if (seen.has(line.key)) continue;
+        seen.add(line.key);
+        out.push(line);
       } else if (credit?.trim()) {
         const key = `credit:${credit}`;
         if (seen.has(key)) continue;
@@ -75,6 +69,68 @@ export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): 
     }
   }
   return out;
+}
+
+/**
+ * Whether a placed picture is shown cut down (TEACH-251): a crop, a focal point, a transform, or
+ * Fill (`cover`), which trims whatever does not match the box. Counted on the safe side: a
+ * CC BY or BY-SA credit says "cropped" whenever the picture may have been.
+ */
+export function isCropped(image: Pick<ImageElement, "fit" | "crop" | "focal" | "imageTransform">) {
+  return image.fit === "cover" || !!image.crop || !!image.focal || !!image.imageTransform;
+}
+
+/** A Commons file's title from its file page (`…/wiki/File:Hadrian%27s_Wall.jpg` → "Hadrian's Wall"). */
+export function commonsTitle(sourceUrl: string | undefined): string | undefined {
+  const m = sourceUrl ? /\/wiki\/File:([^?#]+)/.exec(sourceUrl) : null;
+  if (!m?.[1]) return undefined;
+  let name = m[1];
+  try {
+    name = decodeURIComponent(name);
+  } catch {}
+  return (
+    name
+      .replace(/_/g, " ")
+      .replace(/\.[a-z0-9]{2,4}$/i, "")
+      .trim() || undefined
+  );
+}
+
+const ATTRIBUTION = /^cc[ -]by\b/i;
+export const GENERATED_CREDIT = "Picture generated for this lesson";
+
+/**
+ * One picture's credit, as the badge and every export word it (TEACH-251):
+ * - Pexels: "Photo by {photographer} on Pexels";
+ * - Commons: "{file title}, {author}, {licence}", with ", cropped" for a CC BY or BY-SA picture
+ *   shown cut down, the title linking the file page and the licence its deed;
+ * - generated: "Picture generated for this lesson".
+ */
+export function photoCredit(source: PhotoSource, opts: { cropped?: boolean } = {}): ImageCredit {
+  if (source.provider === "commons") {
+    const title = commonsTitle(source.sourceUrl ?? source.pageUrl) ?? "Wikimedia Commons file";
+    const author = source.author?.trim() || source.photographer || "Unknown author";
+    const licence = source.licence?.trim() || "see the file page";
+    const cropped = opts.cropped && ATTRIBUTION.test(licence) ? ", cropped" : "";
+    return {
+      key: `commons:${source.id}`,
+      text: `${title}, ${author}, ${licence}${cropped}`,
+      links: [
+        ...link(title, source.sourceUrl ?? source.pageUrl),
+        ...(source.licence ? link(licence, source.licenceUrl) : []),
+      ],
+    };
+  }
+  if (source.provider === "generated")
+    return { key: `generated:${source.id}`, text: GENERATED_CREDIT, links: [] };
+  return {
+    key: `pexels:${source.id}`,
+    text: `Photo by ${source.photographer} on Pexels`,
+    links: [
+      ...link(source.photographer, source.photographerUrl),
+      ...link("Pexels", source.pageUrl),
+    ],
+  };
 }
 
 export type CreditSegment = { text: string; href?: string };

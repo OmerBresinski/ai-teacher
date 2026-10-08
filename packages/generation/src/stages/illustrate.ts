@@ -642,6 +642,8 @@ export type DirectedPlacer = PhotoPlacer & { searchCommons?: CommonsSearch };
 /** A placed photo with what its source says it shows and where the judge saw each item. */
 export type DirectedPlacedPhoto = PlacedPhoto & {
   about?: string;
+  /** The photo's width over height, as the provider reports it. */
+  aspect?: number;
   boxes?: DirectedVerdict["boxes"];
 };
 
@@ -855,7 +857,11 @@ export async function pickDirectedPhoto(args: {
       };
       taken.add(picked.pageUrl);
       const placed = await store(images, picked, brief, evidence);
-      const withAbout: DirectedPlacedPhoto = { ...placed, about: picked.about || picked.alt };
+      const withAbout: DirectedPlacedPhoto = {
+        ...placed,
+        about: picked.about || picked.alt,
+        ...(picked.width > 0 && picked.height > 0 ? { aspect: picked.width / picked.height } : {}),
+      };
       return {
         outcome: "placed",
         photo: verdict.boxes.length ? { ...withAbout, boxes: verdict.boxes } : withAbout,

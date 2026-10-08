@@ -5,7 +5,7 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
-import type { ImageBrief, Lesson } from "@tj/domain/documents";
+import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
@@ -671,4 +671,225 @@ export async function placeWriterPicture(args: {
     deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "picture failed");
     return undefined;
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The writer stage's pictures (TEACH-251 part b): every photo ask placed off the writing clock,
+// read by the stage as a visual state. A teacher never sees a placeholder: once `settle` returns
+// (all placements done, or the deadline passed) no ask is pending, and an ask with no picture is
+// `failed`, so the stage lays the slide out text-only (or keeps its code-drawn figure).
+// ---------------------------------------------------------------------------------------------
+
+/** A photo ask as the writer stage reads it off a slide (`materialise.ts` `VisualAsk`). */
+export interface WriterPhotoAsk {
+  key: string;
+  type: "photo";
+  shows: string;
+  mustSee: string[];
+  named: boolean;
+  aspect?: number;
+  fixedShape?: boolean;
+  /** A same-subject set's panel: made together by the generator (TEACH-237), not searched. */
+  set?: string;
+}
+
+/** What the stage lays a picture slot out with (`materialise.ts` `VisualState`, photo part). */
+export type WriterPictureState =
+  | { status: "pending" }
+  | { status: "failed" }
+  | {
+      status: "photo";
+      photo: {
+        src: string;
+        alt: string;
+        aspect: number;
+        request?: string;
+        subjects?: { name: string; x: number; y: number; w: number; h: number }[];
+        about?: string;
+      };
+    };
+
+/** Why a slot has no picture, for the stage's reroute call and the run log. */
+export type WriterPictureMiss =
+  | PictureOutcome["reason"]
+  | "set-not-searched"
+  | "deadline"
+  | "error";
+
+export interface WriterPictures {
+  /** Start placing one ask (idempotent per slide and key). */
+  start(index: number, ask: WriterPhotoAsk, slide: SlideForPicture): void;
+  /** The ask's state now. After `settle`, never `pending`. */
+  state(index: number, key: string): WriterPictureState;
+  /** Wait for every started ask, at most `deadlineMs`; an ask still running counts as failed. */
+  settle(deadlineMs?: number): Promise<void>;
+  /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
+  vetoed(index: number, key: string): string | undefined;
+  /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
+  sources(): ReadonlyMap<string, PhotoSource>;
+}
+
+/** The longest the stage waits for pictures before laying the deck out without them. */
+export const WRITER_PICTURE_DEADLINE_MS = 45_000;
+
+const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
+  "director-none": "The picture director chose no picture for this slide.",
+  "director-failed": "The picture director could not be reached.",
+  "real-miss-no-fallback": "No real photograph of this was found, and none is generated for it.",
+  "generation-refused-or-failed": "No suitable picture was found.",
+  "set-not-searched": "Picture sets are made by the generator, which is not on yet.",
+  deadline: "The picture search ran out of time.",
+  error: "The picture search failed.",
+};
+
+export function createWriterPictures(opts: {
+  lesson: Lesson;
+  country: string;
+  images: DirectedPlacer;
+  deps: PipelineDeps;
+  direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
+  bank?: PictureBank;
+  look?: LessonLook;
+  style?: "photo" | "illustration";
+  onOutcome?: (key: string, o: PictureOutcome) => void;
+}): WriterPictures {
+  type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  const slots = new Map<string, Slot>();
+  const taken = new Set<string>();
+  const sources = new Map<string, PhotoSource>();
+  const id = (index: number, key: string) => `${index}:${key}`;
+  let settled = false;
+  return {
+    start(index, ask, slide) {
+      const k = id(index, ask.key);
+      if (slots.has(k)) return;
+      if (ask.set) {
+        slots.set(k, {
+          state: { status: "failed" },
+          miss: "set-not-searched",
+          done: Promise.resolve(),
+        });
+        return;
+      }
+      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
+      let reason: PictureOutcome["reason"];
+      const request = [ask.shows, ...ask.mustSee].join(". ");
+      slot.done = placeWriterPicture({
+        ask: {
+          key: ask.key,
+          shows: ask.shows,
+          mustSee: ask.mustSee,
+          named: ask.named,
+          ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}),
+          slide,
+          index,
+          ...(opts.style ? { style: opts.style } : {}),
+        },
+        lesson: opts.lesson,
+        country: opts.country,
+        images: opts.images,
+        deps: opts.deps,
+        taken,
+        ...(opts.direct ? { direct: opts.direct } : {}),
+        ...(opts.bank ? { bank: opts.bank } : {}),
+        ...(opts.look ? { look: opts.look } : {}),
+        onOutcome: (o) => {
+          reason = o.reason;
+          opts.onOutcome?.(ask.key, o);
+        },
+      })
+        .then((photo) => {
+          if (slot.state.status !== "pending") return;
+          if (!photo) {
+            slot.state = { status: "failed" };
+            slot.miss = reason ?? "generation-refused-or-failed";
+            return;
+          }
+          const aspect = (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1;
+          sources.set(photo.src, photo.source);
+          type Box = { item: string; left: number; top: number; right: number; bottom: number };
+          // As base4: only boxes with area become subjects.
+          const boxes = (photo as { boxes?: Box[] }).boxes?.filter(
+            (b) => b.right > b.left && b.bottom > b.top,
+          );
+          slot.state = {
+            status: "photo",
+            photo: {
+              src: photo.src,
+              alt: photo.alt,
+              aspect,
+              request,
+              ...((photo as { about?: string }).about
+                ? { about: (photo as { about?: string }).about }
+                : {}),
+              ...(boxes?.length
+                ? {
+                    subjects: boxes.map((b) => ({
+                      name: b.item,
+                      x: b.left,
+                      y: b.top,
+                      w: b.right - b.left,
+                      h: b.bottom - b.top,
+                    })),
+                  }
+                : {}),
+            },
+          };
+        })
+        .catch(() => {
+          if (slot.state.status !== "pending") return;
+          slot.state = { status: "failed" };
+          slot.miss = "error";
+        });
+      if (settled) slot.state = { status: "failed" };
+      slots.set(k, slot);
+    },
+    state(index, key) {
+      const slot = slots.get(id(index, key));
+      // An ask never started is not searched: after settle it is failed, never a placeholder.
+      if (!slot) return settled ? { status: "failed" } : { status: "pending" };
+      return slot.state;
+    },
+    async settle(deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, deadlineMs);
+      });
+      await Promise.race([Promise.all([...slots.values()].map((s) => s.done)), deadline]);
+      if (timer) clearTimeout(timer);
+      settled = true;
+      for (const slot of slots.values())
+        if (slot.state.status === "pending") {
+          slot.state = { status: "failed" };
+          slot.miss = "deadline";
+        }
+    },
+    vetoed(index, key) {
+      const slot = slots.get(id(index, key));
+      return slot?.miss ? MISS_LINE[slot.miss] : undefined;
+    },
+    sources: () => sources,
+  };
+}
+
+type ElementWithSource = { type: string; src?: string; source?: PhotoSource; children?: unknown[] };
+
+/**
+ * Credits onto a laid-out deck (TEACH-251 part b): each image element showing a placed picture
+ * gets that picture's `source`, so the editor's info dot, the report action and every export
+ * credit it truly (Pexels, Commons with its licence, or generated).
+ */
+export function withPhotoSources<T extends { elements: unknown[] }>(
+  slides: T[],
+  sources: ReadonlyMap<string, PhotoSource>,
+): T[] {
+  const tag = (els: unknown[]): unknown[] =>
+    els.map((raw) => {
+      const el = raw as ElementWithSource;
+      if (el.type === "group" && Array.isArray(el.children))
+        return { ...el, children: tag(el.children) };
+      const source = el.type === "image" && el.src ? sources.get(el.src) : undefined;
+      return source && !el.source ? { ...el, source } : el;
+    });
+  return slides.map((s) => ({ ...s, elements: tag(s.elements) }));
 }

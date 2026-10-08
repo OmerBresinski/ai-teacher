@@ -95,8 +95,10 @@ const PickBody = z.strictObject({
 });
 
 const ReportBody = z.strictObject({
-  provider: z.literal("pexels"),
-  id: z.string().min(1).max(32),
+  /** A placed picture may be a Commons file or a generated one (TEACH-251). */
+  provider: z.enum(["pexels", "commons", "generated"]),
+  // Commons ids are `commons-<pageid>`; a generated picture's id is a UUID.
+  id: z.string().min(1).max(64),
   reason: z.enum(["unsuitable", "wrong-subject", "other"]),
   context: z.enum(["search", "placed"]),
   lessonId: z.uuid().optional(),
