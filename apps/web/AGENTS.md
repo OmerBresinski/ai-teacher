@@ -49,7 +49,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
-  `a11y` rules are errors. Specs: `auth` (magic link, and "Continue with Google" against an api
+  `a11y` rules are errors. A new acceptance row is a `bun test` unless it needs what only a browser
+  gives; the list is in `docs/testing.md`, "Which level a test belongs at".
+  Specs: `auth` (magic link, and "Continue with Google" against an api
   with Google off: `playwright.config.ts` blanks `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, which Bun
   would otherwise load from `apps/api/.env`; TEACH-31), `library` (shell, cards, dialogs, keyboard-only flow,
   narrow viewport), `series` (detail page incl. real-pointer drag), `viewer`, `present`, `editor`

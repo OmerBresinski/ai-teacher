@@ -16,9 +16,9 @@ async function reachObjectives(page: import("@playwright/test").Page, topic: str
 }
 
 test.describe("real lesson intake over the fake worker", () => {
-  test("plans, confirms objectives, includes a worksheet, and reaches the real editor", async ({
-    signedInPage: { page },
-  }) => {
+  test("plans, confirms objectives, includes a worksheet, and reaches the real editor", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     test.setTimeout(100_000);
     const runtimeErrors: string[] = [];
     page.on("pageerror", (error) => runtimeErrors.push(error.message));

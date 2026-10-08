@@ -48,9 +48,9 @@ const widthOf = (el: Locator) =>
   el.evaluate((n) => Number.parseFloat((n as HTMLElement).style.width));
 
 test.describe("handoff: the editor end to end", () => {
-  test("open → edit text → drag → resize → undo → theme → layout → image → present → back", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("open → edit text → drag → resize → undo → theme → layout → image → present → back", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     test.setTimeout(60_000);
     // Open from the library, as a teacher does.
     await page.goto("/lessons");
@@ -150,9 +150,9 @@ test.describe("handoff: the editor end to end", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   });
 
-  test("keyboard only: insert, nudge, undo, help (focus restored, nested Escape), slides from the rail", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("keyboard only: insert, nudge, undo, help (focus restored, nested Escape), slides from the rail", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.goto(EDITOR(paths));
     await expect(rows(page)).toHaveCount(7);
     const count = await stageElements(page).count();
@@ -210,9 +210,9 @@ test.describe("handoff: the editor end to end", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
   });
 
-  test("narrow viewport (900×700): the editor keeps its rail, navigator and a slide that fits", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("narrow viewport (900×700): the editor keeps its rail, navigator and a slide that fits", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.setViewportSize({ width: 900, height: 700 });
     await page.goto(EDITOR(paths));
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
@@ -235,9 +235,9 @@ test.describe("handoff: the editor end to end", () => {
     await expectNoSeriousA11yViolations(page, "/l/:id (900px)");
   });
 
-  test("narrow viewport (900×700): the worksheet editor keeps the sheet and its toolbar in reach", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("narrow viewport (900×700): the worksheet editor keeps the sheet and its toolbar in reach", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.setViewportSize({ width: 900, height: 700 });
     await page.goto(paths.worksheet("fraction-practice"));
     await expect(page.getByRole("textbox", { name: "Sheet title" })).toBeVisible();

@@ -97,9 +97,9 @@ const openExport = async (page: import("@playwright/test").Page, tab: string) =>
 };
 
 test.describe("PowerPoint export", () => {
-  test("row 5: downloads <slug>.pptx with one slide per build step, plus the /files/ picture with the cookie", async ({
-    signedInPage: { page },
-  }) => {
+  test("row 5: downloads <slug>.pptx with one slide per build step, plus the /files/ picture with the cookie", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     const id = await seedPictureLesson(page);
     const cookies = await mockFileProxy(page);
     await page.goto(`/l/${id}`);
@@ -243,9 +243,9 @@ test.describe("image credits", () => {
     expect(rels).toContain('Target="https://www.pexels.com/@ada"');
   });
 
-  test("row 6: PNG of the whole deck downloads every slide, then <slug>-credits.png at 2x", async ({
-    signedInPage: { page },
-  }) => {
+  test("row 6: PNG of the whole deck downloads every slide, then <slug>-credits.png at 2x", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     test.setTimeout(90_000);
     const id = await seedCreditedLesson(page);
     await page.goto(`/l/${id}`);

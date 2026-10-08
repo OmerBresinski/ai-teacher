@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import JSZip from "jszip";
 import { expect, test } from "./fixtures";
 
-test("Export → Word downloads <slug>.docx with a real document part", async ({
+test("Export → Word downloads <slug>.docx with a real document part", { tag: "@smoke" }, async ({
   signedInPage: { page, paths },
 }) => {
   await page.goto(paths.worksheet("fraction-practice"));

@@ -12,9 +12,9 @@ import { expect, test } from "./fixtures";
 test.use({ seed: false });
 
 test.describe("lesson generation over the fake worker", () => {
-  test("brief → shell → slides arrive → editor unlocks in place with residuals", async ({
-    signedInPage: { page },
-  }) => {
+  test("brief → shell → slides arrive → editor unlocks in place with residuals", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     await page.goto("/lessons/new");
     await page.getByRole("textbox", { name: "Topic", exact: true }).fill("States of matter");
     await page.getByRole("combobox", { name: "Year group" }).click();
@@ -79,7 +79,7 @@ test.describe("lesson generation over the fake worker", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("Stop cancels the job; the partial lesson stays with a way back", async ({
+  test("Stop cancels the job; the partial lesson stays with a way back", { tag: "@smoke" }, async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");

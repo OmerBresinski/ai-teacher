@@ -22,7 +22,7 @@ import { expectNoSeriousA11yViolations, settled, switchTheme } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test, uniqueEmail } from "./fixtures";
 
 test.describe("accessibility (axe)", () => {
-  test("/ (signed in) has no serious or critical violations", async ({
+  test("/ (signed in) has no serious or critical violations", { tag: "@smoke" }, async ({
     signedInPage: { page },
   }) => {
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
@@ -47,7 +47,9 @@ test.describe("accessibility (axe)", () => {
   // /sign-in (TEACH-252), signed out, in each theme: the idle form, the sent state and a failed
   // round trip's alert.
   for (const theme of THEMES) {
-    test(`/sign-in is clean in the ${theme} theme: idle, sent and ?error=`, async ({ page }) => {
+    test(`/sign-in is clean in the ${theme} theme: idle, sent and ?error=`, {
+      tag: theme === "light" ? ["@smoke"] : [],
+    }, async ({ page }) => {
       await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
       await page.goto("/sign-in");
       await expect(

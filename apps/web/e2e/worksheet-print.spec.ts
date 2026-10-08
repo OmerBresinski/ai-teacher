@@ -21,9 +21,9 @@ const pdfPageCount = (pdf: Buffer) =>
   (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
 
 test.describe("worksheet print route", () => {
-  test("renders the demo worksheet as A4 pages with header, blocks and footer numbers", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("renders the demo worksheet as A4 pages with header, blocks and footer numbers", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.goto(paths.worksheet("fraction-practice", "/print"));
     await expect(page).toHaveTitle("Fractions practice · DayBack");
     const pages = page.locator(".ws-print-root .ws-page");

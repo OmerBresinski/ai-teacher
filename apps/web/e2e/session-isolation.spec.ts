@@ -2,7 +2,7 @@ import { E2E_WEB_URL, expect, signIn, test, uniqueEmail } from "./fixtures";
 
 test.use({ screenshot: "off" });
 
-test("an undecided restored session retries after a transient outage", async ({
+test("an undecided restored session retries after a transient outage", { tag: "@smoke" }, async ({
   signedInPage: { page, paths },
 }) => {
   await page.goto(paths.lesson("demo-water-cycle"));
@@ -34,9 +34,9 @@ test("an undecided restored session retries after a transient outage", async ({
   await expect(page.getByRole("heading", { name: "Lessons", exact: true })).toBeVisible();
 });
 
-test("transient /me failures preserve an active editor and pending local work", async ({
-  signedInPage: { page, paths },
-}) => {
+test("transient /me failures preserve an active editor and pending local work", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page, paths } }) => {
   const path = paths.lesson("demo-water-cycle");
   await page.goto(path);
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
@@ -62,9 +62,9 @@ test("transient /me failures preserve an active editor and pending local work", 
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
 });
 
-test("BFCache restoration revalidates a valid session and preserves the route", async ({
-  signedInPage: { page, paths },
-}) => {
+test("BFCache restoration revalidates a valid session and preserves the route", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page, paths } }) => {
   const path = paths.lesson("demo-water-cycle");
   await page.goto(path);
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
@@ -79,10 +79,9 @@ test("BFCache restoration revalidates a valid session and preserves the route", 
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
 });
 
-test("logout in another tab clears the editor; B signs in without reloading A's tab", async ({
-  signedInPage: { page, paths },
-  context,
-}) => {
+test("logout in another tab clears the editor; B signs in without reloading A's tab", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page, paths }, context }) => {
   await page.goto(paths.lesson("demo-water-cycle"));
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
   await page.evaluate(() => {
@@ -111,10 +110,9 @@ test("logout in another tab clears the editor; B signs in without reloading A's 
   await other.close();
 });
 
-test("an A Document response held past logout and B login cannot paint in B's tab", async ({
-  signedInPage: { page, paths },
-  context,
-}) => {
+test("an A Document response held past logout and B login cannot paint in B's tab", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page, paths }, context }) => {
   const other = await context.newPage();
   await other.goto("/lessons");
   let release!: () => void;
@@ -152,10 +150,9 @@ test("an A Document response held past logout and B login cannot paint in B's ta
   }
 });
 
-test("expiry and offline back navigation do not restore the private editor", async ({
-  signedInPage: { page, paths },
-  context,
-}) => {
+test("expiry and offline back navigation do not restore the private editor", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page, paths }, context }) => {
   await page.goto(paths.lesson("demo-water-cycle"));
   await expect(page.locator("[data-slide-frame]").first()).toBeVisible();
   await page.route("**/me", (route) =>
@@ -176,9 +173,9 @@ test("expiry and offline back navigation do not restore the private editor", asy
   await context.setOffline(false);
 });
 
-test("failed signOut clears private data and reports that revocation was not confirmed", async ({
-  signedInPage: { page },
-}) => {
+test("failed signOut clears private data and reports that revocation was not confirmed", {
+  tag: "@smoke",
+}, async ({ signedInPage: { page } }) => {
   await page.route("**/auth/sign-out", (route) =>
     route.fulfill({
       status: 500,

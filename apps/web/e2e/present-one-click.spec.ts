@@ -33,9 +33,9 @@ async function expectNoCover(page: Page): Promise<void> {
 }
 
 test.describe("TEACH-153: Present in one click", () => {
-  test("criterion 1: from the editor on slide 5, one click presents slide 5 fullscreen", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("criterion 1: from the editor on slide 5, one click presents slide 5 fullscreen", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await recordFullscreen(page);
     await page.goto(paths.lesson("demo-water-cycle"));
     const rows = page.getByRole("listbox", { name: "Slides" }).getByRole("option");

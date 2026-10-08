@@ -67,9 +67,9 @@ const resolved = (page: Page, value: string, property: "boxShadow" = "boxShadow"
   );
 
 test.describe("lesson editor", () => {
-  test("row 1: the editor opens with the title, every slide in the navigator, slide 1 at fit and Saved", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("row 1: the editor opens with the title, every slide in the navigator, slide 1 at fit and Saved", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.goto("/lessons");
     await page.getByRole("link", { name: "Open The water cycle" }).click();
     await expect(page).toHaveURL(new RegExp(`${EDITOR(paths)}$`));
@@ -277,9 +277,9 @@ test.describe("lesson editor", () => {
     );
   });
 
-  test("row 11: renaming the title autosaves and the library card shows it", async ({
-    signedInPage: { page },
-  }) => {
+  test("row 11: renaming the title autosaves and the library card shows it", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     await page.goto("/lessons");
     await page.getByRole("link", { name: "Open The water cycle" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();

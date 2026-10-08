@@ -15,6 +15,7 @@
     "test": "MODE=test bun test ${CI:+--coverage}",
     "test:watch": "bun test --watch",
     "test:e2e": "bun --bun playwright test",
+    "test:e2e:smoke": "bun --bun playwright test --grep @smoke",
     "test:e2e:ui": "bun --bun playwright test --ui"
   },
   "dependencies": {

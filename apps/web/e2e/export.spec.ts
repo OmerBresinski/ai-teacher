@@ -26,9 +26,9 @@ const water = () => {
 };
 
 test.describe("lesson print route", () => {
-  test("row 3: ?auto=1&notes=1 renders one A4 page per slide with notes and prints once", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("row 3: ?auto=1&notes=1 renders one A4 page per slide with notes and prints once", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.addInitScript(() => {
       window.__prints = 0;
       window.print = () => {
@@ -277,9 +277,9 @@ test.describe("library Import", () => {
   });
 
   // TEACH-113 row 6: export → import → the same document, modulo what the server mints.
-  test("JSON round-trip: an exported lesson imports as an equal document modulo id and timestamps", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("JSON round-trip: an exported lesson imports as an equal document modulo id and timestamps", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     const { readFile } = await import("node:fs/promises");
     await page.goto(paths.lesson("demo-water-cycle", "/view"));
     await page.getByRole("button", { name: "Export", exact: true }).click();

@@ -13,9 +13,9 @@ const kinds = (page: Page) => page.getByRole("list", { name: "Kinds" }).locator(
 const continueButton = (page: Page) => page.getByRole("button", { name: "Continue" });
 
 test.describe("worksheet creation", () => {
-  test("row 4: Exit ticket, Continue: the editor opens on the lesson's sheet with the frame and its lesson", async ({
-    signedInPage: { page },
-  }) => {
+  test("row 4: Exit ticket, Continue: the editor opens on the lesson's sheet with the frame and its lesson", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page } }) => {
     // Source and Kind are scanned here; their other checks are unit tests (TEACH-301).
     await page.goto("/worksheets/new");
     await expect(page).toHaveTitle("New worksheet · DayBack");

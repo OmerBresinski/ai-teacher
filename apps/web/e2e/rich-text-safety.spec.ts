@@ -16,9 +16,9 @@ const MARKER = "auditXss";
 const PAYLOAD = `javascript:void(document.body.dataset.${MARKER}=String(1))`;
 
 test.describe("rich-text link safety (TEACH-277)", () => {
-  test("a stored javascript: link renders as plain text in view and present", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("a stored javascript: link renders as plain text in view and present", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     // Simulate legacy stored content: the API answer is rewritten on the way to the renderer.
     const lessonId = paths.id("demo-water-cycle");
     await page.route(`**/documents/${lessonId}`, async (route) => {

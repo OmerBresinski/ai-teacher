@@ -52,9 +52,9 @@ test.describe("present mode", () => {
     await expectNoSeriousA11yViolations(page, "present (stage)");
   });
 
-  test("keys move the deck; B/W blank the screen; digits jump; O opens the overview", async ({
-    signedInPage: { page, paths },
-  }) => {
+  test("keys move the deck; B/W blank the screen; digits jump; O opens the overview", {
+    tag: "@smoke",
+  }, async ({ signedInPage: { page, paths } }) => {
     await page.goto(PRESENT(paths));
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 1 of");
