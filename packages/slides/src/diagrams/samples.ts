@@ -1,0 +1,392 @@
+/**
+ * One realistic spec per kind (and a second for the kinds with two shapes of use), as a writer
+ * would fill them. The snapshot tests and the visual page draw these.
+ */
+import type { DiagramSpecInput } from "./schema";
+import { TEMPLATE_SPECS } from "./template-specs";
+
+export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
+  "bar-model-ratio": {
+    kind: "bar-model",
+    alt: "Bar model: Amy's share is 3 parts and Ben's is 2 parts; together they are £60.",
+    title: "Share £60 in the ratio 3 : 2",
+    bars: [
+      { label: "Amy", parts: [{ label: "£12" }, {}, {}], total: "£36" },
+      { label: "Ben", parts: [{ label: "£12" }, {}], total: "£24" },
+    ],
+    combined: "£60",
+  },
+  "bar-model-fraction": {
+    kind: "bar-model",
+    alt: "A bar split into five equal parts with three shaded: three fifths of 40 is 24.",
+    bars: [
+      {
+        parts: [
+          { label: "8", shaded: true },
+          { label: "8", shaded: true },
+          { label: "8", shaded: true },
+          { label: "8" },
+          { label: "8" },
+        ],
+        total: "40",
+      },
+    ],
+  },
+  "line-graph-heating": {
+    kind: "line-graph",
+    alt: "Heating curve for water: temperature rises, stays at 0 °C while melting, rises, stays at 100 °C while boiling.",
+    title: "Heating curve of water",
+    x: { label: "Time (minutes)", min: 0, max: 20, step: 5 },
+    y: { label: "Temperature (°C)", min: -20, max: 120, step: 20 },
+    series: [
+      {
+        points: [
+          [0, -20],
+          [2, 0],
+          [6, 0],
+          [12, 100],
+          [18, 100],
+          [20, 115],
+        ],
+      },
+    ],
+    segments: [
+      { from: 2, to: 6, label: "melting" },
+      { from: 12, to: 18, label: "boiling" },
+    ],
+  },
+  "line-graph-hydrograph": {
+    kind: "line-graph",
+    alt: "Storm hydrograph: rainfall peaks at hour 6, river discharge peaks later at hour 14; the gap is the lag time.",
+    x: { label: "Time (hours)", min: 0, max: 30, step: 6 },
+    y: { label: "Discharge (m³/s)", min: 0, max: 40, step: 10 },
+    y2: { label: "Rainfall (mm)", min: 0, max: 20, step: 5 },
+    series: [
+      {
+        label: "Rainfall",
+        style: "bars",
+        axis: "right",
+        points: [
+          [2, 2],
+          [4, 8],
+          [6, 16],
+          [8, 10],
+          [10, 4],
+          [12, 1],
+        ],
+      },
+      {
+        label: "Discharge",
+        points: [
+          [0, 8],
+          [6, 9],
+          [10, 20],
+          [14, 34],
+          [18, 24],
+          [24, 14],
+          [30, 10],
+        ],
+      },
+    ],
+    annotations: [
+      { x: 14, y: 34, label: "peak discharge" },
+      { x: 6, y: 32, label: "peak rainfall" },
+    ],
+    intervals: [{ from: 6, to: 14, label: "lag time" }],
+  },
+  "flow-cycle": {
+    kind: "flow",
+    alt: "The water cycle: evaporation, condensation, precipitation, collection, and back to evaporation.",
+    layout: "cycle",
+    steps: [
+      { label: "Evaporation", arrow: "cools" },
+      { label: "Condensation", arrow: "falls" },
+      { label: "Precipitation", arrow: "flows" },
+      { label: "Collection", arrow: "heats" },
+    ],
+  },
+  "flow-chain": {
+    kind: "flow",
+    alt: "Digestion of starch: amylase in the mouth, then small intestine, then glucose absorbed into the blood.",
+    layout: "chain",
+    steps: [
+      { label: "Starch in food", arrow: "amylase" },
+      { label: "Maltose in the small intestine", arrow: "maltase" },
+      { label: "Glucose" },
+      { label: "Absorbed into the blood" },
+    ],
+  },
+  "labelled-particles": {
+    kind: "labelled-diagram",
+    alt: "Particles in a solid are in a regular pattern, touching; in a liquid touching but random; in a gas far apart.",
+    canvas: "wide",
+    shapes: [
+      { type: "particles", arrangement: "solid", x: 2, y: 25, w: 48, h: 55, caption: "Solid" },
+      { type: "particles", arrangement: "liquid", x: 56, y: 25, w: 48, h: 55, caption: "Liquid" },
+      { type: "particles", arrangement: "gas", x: 110, y: 25, w: 48, h: 55, caption: "Gas" },
+    ],
+    labels: [
+      { text: "regular rows", at: [20, 30], side: "top" },
+      { text: "random, touching", at: [80, 60], side: "top" },
+      { text: "far apart", at: [135, 45], side: "top" },
+    ],
+  },
+  // The y7 particle-model render (pw-merge): labels just under each box's caption.
+  "labelled-particles-states": {
+    kind: "labelled-diagram",
+    alt: "Ice has closely packed particles in a regular arrangement, liquid water has closely packed particles in an irregular arrangement, and air has widely spaced particles.",
+    title: "Ice, water and air",
+    canvas: "wide",
+    shapes: [
+      { type: "particles", arrangement: "solid", x: 5, y: 20, w: 40, h: 50, caption: "Solid: ice" },
+      {
+        type: "particles",
+        arrangement: "liquid",
+        x: 60,
+        y: 20,
+        w: 40,
+        h: 50,
+        caption: "Liquid: water",
+      },
+      { type: "particles", arrangement: "gas", x: 115, y: 20, w: 40, h: 50, caption: "Gas: air" },
+    ],
+    labels: [
+      { text: "Close, regular", at: [25, 80], side: "bottom" },
+      { text: "Close, irregular", at: [80, 80], side: "bottom" },
+      { text: "Far apart, irregular", at: [135, 80], side: "bottom" },
+    ],
+  },
+  // The y4 Roman roads render (pw6): each town named twice, and "Roman road" pointing at nothing.
+  "labelled-roads": {
+    kind: "labelled-diagram",
+    alt: "A road connects Londinium, now London, to Verulamium, now St Albans.",
+    title: "One Roman route",
+    canvas: "wide",
+    shapes: [
+      { type: "rect", x: 10, y: 35, w: 35, h: 25, fill: "accent", rounded: true },
+      { type: "rect", x: 115, y: 35, w: 35, h: 25, fill: "accent2", rounded: true },
+      {
+        type: "line",
+        points: [
+          [45, 47],
+          [115, 47],
+        ],
+      },
+      { type: "arrow", from: [55, 35], to: [105, 35] },
+      { type: "arrow", from: [105, 60], to: [55, 60] },
+    ],
+    labels: [
+      { text: "Londinium", at: [27, 25], side: "top" },
+      { text: "London", at: [27, 70], side: "bottom" },
+      { text: "Verulamium", at: [132, 25], side: "top" },
+      { text: "St Albans", at: [132, 70], side: "bottom" },
+      { text: "Roman road", at: [80, 80], side: "bottom" },
+    ],
+  },
+  "labelled-cell": {
+    kind: "labelled-diagram",
+    alt: "An animal cell: cell membrane, cytoplasm, nucleus and mitochondria.",
+    title: "Animal cell",
+    shapes: [
+      { type: "ellipse", cx: 50, cy: 50, rx: 44, ry: 36, fill: "surface" },
+      { type: "circle", cx: 46, cy: 46, r: 13, fill: "accent" },
+      { type: "ellipse", cx: 72, cy: 64, rx: 8, ry: 4, fill: "accent2" },
+      { type: "ellipse", cx: 26, cy: 68, rx: 7, ry: 3.5, fill: "accent2" },
+    ],
+    labels: [
+      { text: "nucleus", at: [46, 46], side: "left" },
+      { text: "cell membrane", at: [94, 50], side: "right" },
+      { text: "cytoplasm", at: [60, 30], side: "right" },
+      { text: "mitochondrion", at: [72, 64], side: "right" },
+    ],
+  },
+  "labelled-river": {
+    kind: "labelled-diagram",
+    alt: "River cross-section: a wide valley with the river channel at the bottom, the water surface and the bed.",
+    canvas: "wide",
+    shapes: [
+      {
+        type: "polygon",
+        points: [
+          [0, 15],
+          [45, 50],
+          [62, 78],
+          [98, 78],
+          [115, 50],
+          [160, 15],
+          [160, 100],
+          [0, 100],
+        ],
+        fill: "muted",
+      },
+      {
+        type: "polygon",
+        points: [
+          [55, 62],
+          [105, 62],
+          [98, 78],
+          [62, 78],
+        ],
+        fill: "accent2",
+      },
+      {
+        type: "line",
+        points: [
+          [62, 88],
+          [98, 88],
+        ],
+        dashed: true,
+      },
+    ],
+    labels: [
+      { text: "valley side", at: [25, 31], side: "top" },
+      { text: "water surface", at: [80, 62], side: "top" },
+      { text: "river bed", at: [80, 78], side: "bottom" },
+      { text: "bank", at: [108, 64], side: "right" },
+    ],
+  },
+  "number-line": {
+    kind: "number-line",
+    alt: "Number line from −5 to 5: a jump of +5 from −2 lands on 3.",
+    min: -5,
+    max: 5,
+    step: 1,
+    points: [
+      { value: -2, label: "start" },
+      { value: 3, label: "end" },
+    ],
+    jumps: [{ from: -2, to: 3, label: "+5" }],
+  },
+  "number-line-inequality": {
+    kind: "number-line",
+    alt: "The inequality x ≥ 2 on a number line from 0 to 10.",
+    title: "x ≥ 2",
+    min: 0,
+    max: 10,
+    step: 1,
+    points: [{ value: 2 }],
+    range: { from: 2, to: 10 },
+  },
+  table: {
+    kind: "table",
+    alt: "The three states of matter compared by arrangement, movement and energy.",
+    header: ["State", "Arrangement", "Movement"],
+    rows: [
+      ["Solid", "Regular, touching", "Vibrate in place"],
+      ["Liquid", "Random, touching", "Slide past each other"],
+      ["Gas", "Random, far apart", "Move fast in all directions"],
+    ],
+  },
+  particles: TEMPLATE_SPECS["particles-three"] as DiagramSpecInput,
+  hydrograph: TEMPLATE_SPECS["hydrograph-flashy"] as DiagramSpecInput,
+  timeline: TEMPLATE_SPECS["timeline-romans"] as DiagramSpecInput,
+  layers: TEMPLATE_SPECS["layers-earth"] as DiagramSpecInput,
+  cycle: TEMPLATE_SPECS["cycle-water"] as DiagramSpecInput,
+  river: TEMPLATE_SPECS["river-meander-section"] as DiagramSpecInput,
+  "bar-chart": {
+    kind: "bar-chart",
+    alt: "A bar chart of how pupils travel to school: walk 12, bus 8, car 6, bike 3.",
+    title: "How we travel to school",
+    x: { label: "Way of travelling" },
+    y: { label: "Number of pupils" },
+    bars: [
+      { label: "Walk", value: 12 },
+      { label: "Bus", value: 8 },
+      { label: "Car", value: 6 },
+      { label: "Bike", value: 3 },
+    ],
+  },
+  "bar-chart-pictogram": {
+    kind: "bar-chart",
+    alt: "A pictogram of books read: Mon 4, Tue 6, Wed 3; each circle is 2 books.",
+    title: "Books read this week",
+    style: "pictogram",
+    per: 2,
+    bars: [
+      { label: "Monday", value: 4 },
+      { label: "Tuesday", value: 6 },
+      { label: "Wednesday", value: 3 },
+    ],
+  },
+  "bar-chart-tally": {
+    kind: "bar-chart",
+    alt: "A tally chart of favourite fruit: apple 7, banana 5, pear 3.",
+    title: "Favourite fruit",
+    style: "tally",
+    bars: [
+      { label: "Apple", value: 7 },
+      { label: "Banana", value: 5 },
+      { label: "Pear", value: 3 },
+    ],
+  },
+  pie: {
+    kind: "pie",
+    alt: "A pie chart of land use: farmland half, woodland a quarter, towns and water the rest.",
+    title: "Land use in the valley",
+    slices: [
+      { label: "Farmland", value: 50 },
+      { label: "Woodland", value: 25 },
+      { label: "Towns", value: 15 },
+      { label: "Water", value: 10 },
+    ],
+  },
+  "pie-fraction": {
+    kind: "pie",
+    alt: "A circle cut into 8 equal parts with 3 shaded: three eighths.",
+    title: "Three eighths",
+    parts: 8,
+    shaded: 3,
+  },
+  venn: {
+    kind: "venn",
+    alt: "A Venn diagram sorting numbers 1 to 12 into multiples of 2 and multiples of 3.",
+    title: "Multiples of 2 and 3",
+    sets: ["Multiples of 2", "Multiples of 3"],
+    items: [
+      { text: "2", in: [0] },
+      { text: "4", in: [0] },
+      { text: "8", in: [0] },
+      { text: "6", in: [0, 1] },
+      { text: "12", in: [0, 1] },
+      { text: "3", in: [1] },
+      { text: "9", in: [1] },
+      { text: "5", in: [] },
+      { text: "7", in: [] },
+    ],
+  },
+  cubes: {
+    kind: "cubes",
+    alt: "One cube beside the same volume cut into 27 small cubes",
+    split: 3,
+    captions: ["One large cube", "27 small cubes"],
+    areas: true,
+  },
+  carroll: {
+    kind: "carroll",
+    alt: "A Carroll diagram sorting shapes by whether they have right angles and four sides.",
+    title: "Sorting shapes",
+    rows: ["Right angle", "No right angle"],
+    cols: ["4 sides", "Not 4 sides"],
+    cells: [
+      [["square", "rectangle"], ["right triangle"]],
+      [
+        ["rhombus", "kite"],
+        ["pentagon", "hexagon"],
+      ],
+    ],
+  },
+  "equal-groups-quarter-of-12": {
+    kind: "equal-groups",
+    alt: "12 counters shared into 4 equal groups of 3.",
+    total: 12,
+    groups: 4,
+  },
+  "fraction-shapes-halves": {
+    kind: "fraction-shapes",
+    alt: "A circle and a square, each cut into two equal parts with one part shaded.",
+    shapes: [
+      { shape: "circle", parts: 2, shaded: 1, name: "A" },
+      { shape: "square", parts: 2, cut: "diagonal", shaded: 1, name: "B" },
+    ],
+  },
+};

@@ -14,7 +14,8 @@
     "./factories": "./src/factories.ts",
     "./layouts": "./src/layouts.ts",
     "./reflow": "./src/reflow.ts",
-    "./worksheet": "./src/worksheet/index.ts"
+    "./worksheet": "./src/worksheet/index.ts",
+    "./diagrams": "./src/diagrams/index.ts"
   },
   "scripts": {
     "lint": "biome check .",
