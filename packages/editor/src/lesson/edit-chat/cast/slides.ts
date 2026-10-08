@@ -47,6 +47,8 @@ export type Pose = {
   ra: number;
   /** Bubble: the top card's trip from the front of the stack to the back (0..1). */
   card: number;
+  /** Pane: the pencil's angle, degrees from its held angle (the runtime aims it at the line). */
+  pa: number;
   /** Bubble: the rest of the stack moving up one place (0..1). */
   shift: number;
 };
@@ -73,6 +75,7 @@ export const REST: Pose = {
   ra: 0,
   card: 0,
   shift: 0,
+  pa: 0,
 };
 
 export type Ease = "lin" | "in" | "out" | "inout" | "back" | "hold";
@@ -106,14 +109,15 @@ export const ART = {
 /** The base pose per context. In the bubble Slides holds a little stack of slides at its front. */
 const HOLD: Partial<Pose> = { rx: -60, ry: 70, rb: -6 };
 export function base(context: CastContext): Pose {
-  return context === "bubble" ? { ...REST, ...HOLD } : { ...REST };
+  // In the pane the pencil is held upright and back, clear of the miniature's text, until it works.
+  return context === "bubble" ? { ...REST, ...HOLD } : { ...REST, pa: -90 };
 }
 
 /*
  * The clips. Keys are deltas from the context's base pose (a missing field is 0, or 1 for the
  * scales and the eye), so every beat starts and ends exactly on its base.
  */
-const LOOK_STACK = { fx: 6, fy: 3, gx: 2.5, gy: 2.2, lean: 1.2 };
+const LOOK_STACK = { fx: 5, fy: 3, gx: 2.5, gy: 2.5, lean: 1 };
 const LOOK_SLIDE = { fx: 7, fy: -1, gx: 3, gy: -0.4, lean: 1 };
 
 export const CLIPS: Record<string, Clip> = {
@@ -125,12 +129,60 @@ export const CLIPS: Record<string, Clip> = {
     loop: true,
     keys: [
       { t: 0, ...LOOK_STACK },
-      { t: 220, ...LOOK_STACK, ry: 6, sy: 0.975, sx: 1.015, ease: "inout" },
-      { t: 540, ...LOOK_STACK, ry: -8, gy: 0.4, sy: 1.025, sx: 0.99, card: 0.5, ease: "out" },
-      { t: 640, ...LOOK_STACK, ry: -9, gy: 0.2, sy: 1.02, sx: 0.992, card: 0.56, ease: "inout" },
-      { t: 960, ...LOOK_STACK, ry: 5, sy: 0.968, sx: 1.02, card: 1, ease: "in" },
-      { t: 1040, ...LOOK_STACK, ry: 5, sy: 0.97, sx: 1.019, card: 1, ease: "hold" },
-      { t: 1320, ...LOOK_STACK, sy: 1.008, sx: 0.997, card: 1, shift: 1, ease: "out" },
+      // anticipation: a small lean back and a squash as the hand dips under the top card
+      { t: 200, ...LOOK_STACK, lean: -1, sy: 0.955, sx: 1.025, ry: 6, ease: "inout" },
+      // the lift, up and to the right, clear of the face: the body stretches after it, eyes follow
+      {
+        t: 520,
+        ...LOOK_STACK,
+        lean: 2.2,
+        sy: 1.03,
+        sx: 0.985,
+        ry: -6,
+        fy: 1,
+        gx: 3,
+        gy: 0.3,
+        card: 0.5,
+        ease: "out",
+      },
+      {
+        t: 620,
+        ...LOOK_STACK,
+        lean: 2.4,
+        sy: 1.025,
+        sx: 0.988,
+        ry: -7,
+        fy: 1,
+        gx: 3,
+        gy: 0.2,
+        card: 0.56,
+        ease: "inout",
+      },
+      // the tuck behind: down into a contact squash, held two frames
+      {
+        t: 940,
+        ...LOOK_STACK,
+        lean: -0.6,
+        sy: 0.955,
+        sx: 1.025,
+        ry: 6,
+        gy: 2.6,
+        card: 1,
+        ease: "in",
+      },
+      {
+        t: 1020,
+        ...LOOK_STACK,
+        lean: -0.6,
+        sy: 0.958,
+        sx: 1.024,
+        ry: 6,
+        gy: 2.6,
+        card: 1,
+        ease: "hold",
+      },
+      // follow-through: it rocks past upright as the stack shuffles up, then settles
+      { t: 1300, ...LOOK_STACK, lean: 1.6, sy: 1.012, sx: 0.995, card: 1, shift: 1, ease: "out" },
       { t: 1600, ...LOOK_STACK, card: 1, shift: 1, ease: "inout" },
     ],
   },
@@ -159,9 +211,9 @@ export const CLIPS: Record<string, Clip> = {
     keys: [
       { t: 0 },
       { t: 120, sy: 0.96, sx: 1.025, eye: 0.45, smile: 0.8, ease: "out" },
-      { t: 300, fy: 7, gy: 2, sy: 0.975, sx: 1.018, smile: 1, eye: 0.25, ease: "inout" },
-      { t: 383, fy: 7, gy: 2, sy: 0.975, sx: 1.018, smile: 1, eye: 0.25, ease: "hold" },
-      { t: 560, fy: -2, gy: -0.5, sy: 1.03, sx: 0.985, smile: 1, eye: 1, ease: "out" },
+      { t: 300, fy: 7, gy: 2, lean: 3, sy: 0.975, sx: 1.018, smile: 1, eye: 0.25, ease: "inout" },
+      { t: 383, fy: 7, gy: 2, lean: 3, sy: 0.975, sx: 1.018, smile: 1, eye: 0.25, ease: "hold" },
+      { t: 560, fy: -2, gy: -0.5, lean: -0.8, sy: 1.03, sx: 0.985, smile: 1, eye: 1, ease: "out" },
       { t: 760, sy: 0.996, sx: 1.002, smile: 0.6, ease: "inout" },
       { t: 900, ease: "inout" },
     ],
@@ -214,7 +266,11 @@ function sorryPose(): Partial<Pose> {
 export const CONTEXTS = {
   // Ambient: a 44 px character in a 56 px bubble. Breath and blinks while idle, for a while only.
   bubble: {
-    size: 44,
+    // px per 300 art units (the stroke and eye sizes follow it); the whole pose, the stack and the
+    // hop sit inside the circle with margin in a 352-unit square view centred on the character.
+    size: 46,
+    viewBox: "-28 -10 352 352",
+    beatScale: { nod: 2.6 } as Record<string, number>,
     breath: true,
     breathScale: 0.8,
     idleFor: 24_000,
@@ -224,6 +280,8 @@ export const CONTEXTS = {
   // The open pane: 112 px, beside the miniature of the slide being edited. Blinks only at rest.
   pane: {
     size: 112,
+    viewBox: "10 40 280 250",
+    beatScale: {} as Record<string, number>,
     breath: false,
     breathScale: 0,
     idleFor: 16_000,
@@ -252,7 +310,8 @@ const ONE = new Set(["sx", "sy", "eye"]);
 const field = (k: Partial<Pose>, f: keyof Pose) => k[f] ?? (ONE.has(f) ? 1 : 0);
 
 /** The pose of a clip at `t` ms, on top of `from` (the base pose). Loops wrap. */
-export function poseAt(clip: Clip, t: number, from: Pose): Pose {
+/** `k` scales the clip's amplitude (a context's `beatScale`). */
+export function poseAt(clip: Clip, t: number, from: Pose, k = 1): Pose {
   const keys = clip.keys;
   const time = clip.loop ? ((t % clip.duration) + clip.duration) % clip.duration : t;
   const clamped = Math.min(Math.max(time, 0), clip.duration);
@@ -268,7 +327,7 @@ export function poseAt(clip: Clip, t: number, from: Pose): Pose {
     const va = field(a, f);
     const vb = field(b, f);
     const d = va + (vb - va) * e;
-    out[f] = ONE.has(f) ? from[f] * d : from[f] + d;
+    out[f] = ONE.has(f) ? from[f] * (1 + (d - 1) * k) : from[f] + d * k;
   }
   return out;
 }
@@ -335,16 +394,17 @@ export const blinkAt = (ms: number) =>
  * which draws behind the others: the travelling card swaps to the back only at the top of its arc,
  * where it overlaps nothing, so the swap is never seen.
  */
-export const CARD = { x: 196, y: 152, w: 84, h: 60, step: [7, -7] as const };
+export const CARD = { x: 230, y: 130, w: 64, h: 44, step: [6, -6] as const };
 export function stackAt(card: number, shift: number) {
-  const slot = (s: number) => [CARD.step[0] * s, CARD.step[1] * s] as const;
+  const slot = (n: number) => [CARD.step[0] * n, CARD.step[1] * n] as const;
   const up = Math.min(1, card / 0.5);
   const over = Math.max(0, (card - 0.5) / 0.5);
   const [bx, by] = slot(2);
+  // Up and to the right (away from the face), then over and down behind the stack.
   const top =
     card <= 0.5
-      ? { x: -10 * Math.sin(up * Math.PI * 0.5), y: -80 * up, rot: -7 * up }
-      : { x: -10 + (bx + 10) * over, y: -80 + (by + 80) * over, rot: -7 * (1 - over) };
+      ? { x: 16 * Math.sin(up * Math.PI * 0.5), y: -58 * up, rot: 6 * up }
+      : { x: 16 + (bx - 16) * over, y: -58 + (by + 58) * over, rot: 6 * (1 - over) };
   const places = [0, 1, 2].map((i) => {
     if (i === 0) return { ...top, behind: card > 0.5 };
     const [x0, y0] = slot(i);
@@ -355,9 +415,10 @@ export function stackAt(card: number, shift: number) {
 }
 
 /**
- * Pane: which line of the miniature is being redrawn, and how far. The line is covered as the
- * pencil pulls back (`cover` 0..1, the first 120 ms of a stroke), then uncovered left to right
- * as the pencil sweeps (`wipe` 0..1). The fourth part of the loop is the look, no line.
+ * Pane: which line of the miniature is being worked on, and how far. The pencil travels to the
+ * line's start while a soft highlight fades in (`cover` 0..1, the first 120 ms of a stroke), then
+ * the highlight sweeps left to right with the pencil (`wipe` 0..1). The slide's own text is never
+ * hidden. The fourth part of the loop is the look, no line.
  */
 export function inkAt(t: number) {
   const clip = CLIPS.touchUp as Clip;
@@ -369,6 +430,31 @@ export function inkAt(t: number) {
   const cover = Math.min(1, s / 120);
   const wipe = s <= 120 ? 0 : s >= 560 ? 1 : EASE.inout((s - 120) / 440);
   return { pass: loop * 3 + stroke, cover, wipe };
+}
+
+/** The pencil, drawn along +x from the hand, held at -38 degrees; its tip is 96 units out. */
+export const PENCIL = { held: -38, tip: 96 } as const;
+
+/**
+ * Aim the pencil at a point (art units): the arm reaches along the line from the shoulder and the
+ * pencil points the rest of the way, so its tip touches the point. The arm never folds shorter
+ * than 30 units.
+ */
+export function aim(point: { x: number; y: number }) {
+  const [sx, sy] = ART.pivots[1];
+  const dx = point.x - sx;
+  const dy = point.y - sy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const arm = Math.max(30, len - PENCIL.tip);
+  const hx = sx + ux * arm;
+  const hy = sy + uy * arm;
+  return {
+    rx: hx - ART.hand[0],
+    ry: hy - ART.hand[1],
+    pa: (Math.atan2(uy, ux) * 180) / Math.PI - PENCIL.held,
+  };
 }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -429,5 +515,6 @@ export function geometry(s: Pose, breath = 0, eyeR = 3) {
     mouth,
     eyes,
     hand: `translate(${r2(s.rx)} ${r2(s.ry)})`,
+    pencil: `translate(${r2(s.rx)} ${r2(s.ry)}) rotate(${r2(PENCIL.held + s.pa)} ${ART.hand[0]} ${ART.hand[1]})`,
   };
 }

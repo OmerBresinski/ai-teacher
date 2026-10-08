@@ -57,7 +57,7 @@ export function EditChatBubble({
         <SlidesActor
           context="bubble"
           state={state === "reply" ? "done" : state}
-          className="size-11 translate-x-px translate-y-0.5"
+          className="size-[54px]"
         />
         {state === "reply" || state === "failed" ? (
           <span

@@ -2,12 +2,17 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { act, cleanup, render } from "@testing-library/react";
 import { SlidesActor } from "./SlidesActor";
 import {
+  ART,
+  aim,
   base,
+  CARD,
   CLIPS,
   type Clip,
+  CONTEXTS,
   endOf,
   geometry,
   inkAt,
+  PENCIL,
   planFor,
   poseAt,
   REST,
@@ -86,8 +91,31 @@ describe("clips", () => {
   test("the travelling card swaps behind only at the top of its arc, clear of the stack", () => {
     expect(stackAt(0.49, 0)[0]?.behind).toBe(false);
     expect(stackAt(0.51, 0)[0]?.behind).toBe(true);
-    // at the swap it is lifted a full card height (60) above the back card
-    expect((stackAt(0.5, 0)[0]?.y ?? 0) - (stackAt(0, 0)[2]?.y ?? 0)).toBeLessThan(-60);
+    // at the swap it is lifted a full card height above the back card
+    expect((stackAt(0.5, 0)[0]?.y ?? 0) - (stackAt(0, 0)[2]?.y ?? 0)).toBeLessThan(-CARD.h);
+  });
+  test("the riffled card never covers the face: it stays right of the eyes and the mouth", () => {
+    const hold = base("bubble");
+    for (let c = 0; c <= 1; c += 0.05) {
+      const p = stackAt(c, 0)[0] as { x: number };
+      // card's left edge in art units, with the hand held at the front
+      expect(CARD.x + hold.rx + p.x).toBeGreaterThan(165);
+    }
+  });
+  test("the pencil's tip touches the line it aims at", () => {
+    const target = { x: 380, y: 40 };
+    const a = aim(target);
+    const hx = ART.hand[0] + a.rx;
+    const hy = ART.hand[1] + a.ry;
+    const ang = ((PENCIL.held + a.pa) * Math.PI) / 180;
+    expect(hx + Math.cos(ang) * PENCIL.tip).toBeCloseTo(target.x, 3);
+    expect(hy + Math.sin(ang) * PENCIL.tip).toBeCloseTo(target.y, 3);
+  });
+  test("the bubble's nod is scaled up to read at 46 px", () => {
+    const nod = CLIPS.nod as Clip;
+    const small = poseAt(nod, 300, base("bubble"), CONTEXTS.bubble.beatScale.nod);
+    const large = poseAt(nod, 300, base("pane"));
+    expect(small.fy).toBeGreaterThan(large.fy * 1.5);
   });
   test("failed holds a sheepish pose: hand to its head, eyes down, mouth flat; not sad", () => {
     const p = stillPose("pane", "failed");

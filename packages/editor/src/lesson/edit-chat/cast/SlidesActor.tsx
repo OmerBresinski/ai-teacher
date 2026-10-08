@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import {
   ART,
+  aim,
   BLINK,
   blinkAt,
   breathAt,
@@ -40,23 +41,35 @@ export function SlidesActor({
   context,
   state,
   className,
+  style,
   onFrame,
+  reach,
 }: {
   context: CastContext;
   state: CastState;
   className?: string;
+  style?: CSSProperties;
   /** Called on every painted frame with the playing clip and its time (the pane's miniature). */
   onFrame?: (f: FrameInfo) => void;
+  /** Pane: while working, the point (art units) the pencil's tip should touch, or null. */
+  reach?: (f: FrameInfo) => { x: number; y: number } | null;
 }) {
   const svg = useRef<SVGSVGElement | null>(null);
   const runtime = useRef<Runtime | null>(null);
   const frame = useRef(onFrame);
   frame.current = onFrame;
+  const aimAt = useRef(reach);
+  aimAt.current = reach;
 
   useEffect(() => {
     const el = svg.current;
     if (!el) return;
-    const r = new Runtime(el, context, (f) => frame.current?.(f));
+    const r = new Runtime(
+      el,
+      context,
+      (f) => frame.current?.(f),
+      (f) => aimAt.current?.(f) ?? null,
+    );
     runtime.current = r;
     return () => r.dispose();
   }, [context]);
@@ -73,7 +86,7 @@ export function SlidesActor({
   return (
     <svg
       ref={svg}
-      viewBox={ART.viewBox}
+      viewBox={CONTEXTS[context].viewBox}
       aria-hidden="true"
       data-cast="slides"
       data-cast-context={context}
@@ -84,7 +97,7 @@ export function SlidesActor({
       strokeLinecap="round"
       strokeLinejoin="round"
       overflow="visible"
-      style={{ overflow: "visible" }}
+      style={{ overflow: "visible", ...style }}
     >
       <path data-part="legs" d={g.legs} />
       <g data-part="body" transform={g.body}>
@@ -134,13 +147,12 @@ export function SlidesActor({
           })}
         </g>
       ) : (
-        <g data-part="pencil" transform={g.hand}>
-          <g transform={`rotate(-38 ${ART.hand[0]} ${ART.hand[1]})`}>
-            <path d="M264 88h46v13h-46Z" fill="#f5c054" />
-            <path d="M310 88l15 6.5-15 6.5Z" fill="#fff3cb" />
-            <path d="M321 92.5l4 2-4 2Z" fill="currentColor" stroke="none" />
-            <path d="M256 88h8v13h-8Z" fill="#e88f52" />
-          </g>
+        <g data-part="pencil" transform={g.pencil}>
+          <path d="M267 88h88v13h-88Z" fill="#f5c054" />
+          <path d="M267 94.5h88" strokeWidth={stroke * 0.5} />
+          <path d="M355 88l16 6.5-16 6.5Z" fill="#fff3cb" />
+          <path d="M368 93.2l5 1.3-5 1.3Z" fill="currentColor" stroke="none" />
+          <path d="M259 88h8v13h-8Z" fill="#e88f52" />
         </g>
       )}
     </svg>
@@ -155,6 +167,7 @@ type Nodes = {
   eyes: SVGEllipseElement[];
   mouth: SVGPathElement;
   hand: SVGGElement | null;
+  pencil: SVGGElement | null;
   cards: SVGGElement[];
   stack: SVGGElement | null;
 };
@@ -185,6 +198,10 @@ export class Runtime {
     private svg: SVGSVGElement,
     private context: CastContext,
     private onFrame: (f: { clip: string | null; t: number }) => void,
+    private reach: (f: {
+      clip: string | null;
+      t: number;
+    }) => { x: number; y: number } | null = () => null,
   ) {
     const q = <T extends Element>(s: string) => svg.querySelector(s) as T;
     this.nodes = {
@@ -194,7 +211,8 @@ export class Runtime {
       face: q("[data-part=face]"),
       eyes: [...svg.querySelectorAll<SVGEllipseElement>("[data-part=eye]")],
       mouth: q("[data-part=mouth]"),
-      hand: svg.querySelector("[data-part=stack]") ?? svg.querySelector("[data-part=pencil]"),
+      hand: svg.querySelector("[data-part=stack]"),
+      pencil: svg.querySelector("[data-part=pencil]"),
       stack: svg.querySelector("[data-part=stack]"),
       cards: [0, 1, 2].map((i) => q<SVGGElement>(`[data-card="${i}"]`)).filter(Boolean),
     };
@@ -297,11 +315,16 @@ export class Runtime {
       const local = t - this.clip.start;
       // A hover plays over the resting pose; a state's beat or loop plays over the context's base.
       const from = this.clip.name === "perk" ? base : stillPose(this.context, "idle");
-      pose = poseAt(clip, local, from);
+      const k = (CONTEXTS[this.context].beatScale as Record<string, number>)[this.clip.name] ?? 1;
+      pose = poseAt(clip, local, from, k);
+      // The pencil travels to the line being worked on and touches it (the pane's touch-up).
+      const target =
+        this.clip.name === "touchUp" ? this.reach({ clip: this.clip.name, t: local }) : null;
+      if (target) pose = { ...pose, ...aim(target) };
       fast = true;
       this.onFrame({ clip: this.clip.name, t: local });
       if (!clip.loop && local >= clip.duration) {
-        pose = poseAt(clip, clip.duration, from);
+        pose = poseAt(clip, clip.duration, from, k);
         this.clip = null;
         if (this.plan.kind === "beat") this.svg.dataset.castBeat = "still";
         if (this.plan.kind === "idle") {
@@ -379,6 +402,7 @@ export class Runtime {
     });
     set(n.mouth, "d", g.mouth);
     if (n.hand) set(n.hand, "transform", g.hand);
+    if (n.pencil) set(n.pencil, "transform", g.pencil);
     if (n.stack && n.cards.length === 3) {
       // Cards are named by their place at the start of each loop; the stack turns one place a loop.
       const loops =
