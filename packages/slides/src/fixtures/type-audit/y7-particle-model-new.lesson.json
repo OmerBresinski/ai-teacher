@@ -1,0 +1,1328 @@
+{
+  "version": 1,
+  "id": "fit-REGEN-y7-particle-model-new-muwkcag1",
+  "title": "The particle model",
+  "themeId": "studio",
+  "slides": [
+    {
+      "id": "f5muwkcbuo",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f1tmuwkcyf1",
+          "type": "image",
+          "x": 480,
+          "y": 0,
+          "w": 480,
+          "h": 540,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a110db-ad37-70d6-b0a1-615c5d2035f8.jpg",
+          "alt": "Melting ice cubes on a dark marble surface with visible texture and detail.",
+          "fit": "cover",
+          "name": "Photo",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "simple-lesson.t8",
+            "model": "code",
+            "at": "2026-10-06T10:56:34.621Z"
+          },
+          "authoredBy": "ai",
+          "source": {
+            "provider": "pexels",
+            "id": "10526899",
+            "pageUrl": "https://www.pexels.com/photo/ice-cubes-on-marble-surface-10526899/",
+            "photographer": "Ron Lach",
+            "photographerUrl": "https://www.pexels.com/@ron-lach",
+            "evidence": {
+              "visible": ["melting ice cubes", "liquid water puddle"],
+              "count": "several",
+              "alt": "Melting ice cubes on a dark marble surface with visible texture and detail.",
+              "promptVersion": "pick-or-requery-photo.v14",
+              "thumbnail": "https://images.pexels.com/photos/10526899/pexels-photo-10526899.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          }
+        },
+        {
+          "id": "f1wmuwkcyf1",
+          "type": "text",
+          "x": 58,
+          "y": 189,
+          "w": 403,
+          "h": 143,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The particle model"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "title",
+            "autoHeight": true
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "simple-lesson.t8",
+            "model": "code",
+            "at": "2026-10-06T10:56:34.621Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f9muwkcgju",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "p46",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 48,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "By the end of this lesson I can"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p50",
+          "type": "text",
+          "x": 58,
+          "y": 126,
+          "w": 46,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p51",
+          "type": "text",
+          "x": 104,
+          "y": 126,
+          "w": 798,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "describe the arrangement, spacing and movement of particles in solids, liquids and gases, and use the particle model to explain their shape, volume and compressibility."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p52",
+          "type": "text",
+          "x": 58,
+          "y": 267,
+          "w": 46,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p53",
+          "type": "text",
+          "x": 104,
+          "y": 267,
+          "w": 798,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "explain melting, freezing, evaporation and condensation in terms of changes in particle movement and arrangement as energy is transferred to or from a substance."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f31muwkdhi6",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p0",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 48,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Particles explain the three states"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p5",
+          "type": "text",
+          "x": 459,
+          "y": 119,
+          "w": 443,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Solids: fixed shape and volume."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p6",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 187,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p7",
+          "type": "text",
+          "x": 492,
+          "y": 175,
+          "w": 410,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Liquids: take the container’s shape, with fixed volume."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p8",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 271,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p9",
+          "type": "text",
+          "x": 492,
+          "y": 259,
+          "w": 410,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Gases: no fixed shape or volume; they spread to fill their container."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p10",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 355,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p11",
+          "type": "text",
+          "x": 492,
+          "y": 343,
+          "w": 410,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Compressing means squeezing into less space."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p12",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 439,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p13",
+          "type": "text",
+          "x": 492,
+          "y": 427,
+          "w": 410,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Only gases compress easily."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p4",
+          "type": "image",
+          "x": 58,
+          "y": 119,
+          "w": 363,
+          "h": 378,
+          "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+          "alt": "Particles explain the three states",
+          "fit": "cover",
+          "radius": 14,
+          "name": "Photo slot",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Explain that particles are tiny pieces of matter represented by circles. In solids, particles cannot move past one another, so the shape stays fixed. Liquid particles move past one another, allowing the shape to change. Gas particles move freely and spread out. Solids and liquids are difficult to compress because their particles are already close together; gases have large gaps that can be reduced. Particles themselves do not shrink when a gas is compressed."
+    },
+    {
+      "id": "f1nmuwkcxai",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "p14",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 43,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Quick check"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p19",
+          "type": "text",
+          "x": 58,
+          "y": 98,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p20",
+          "type": "text",
+          "x": 111,
+          "y": 98,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Water is poured from a cup into a wide bowl. Explain why its shape changes but its volume stays the same."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p21",
+          "type": "text",
+          "x": 58,
+          "y": 210,
+          "w": 53,
+          "h": 139,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p22",
+          "type": "text",
+          "x": 111,
+          "y": 210,
+          "w": 791,
+          "h": 139,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Air and a solid block are squeezed. Which compresses more easily? Explain using particle spacing, and describe how particles move in the solid."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Ask pupils to answer independently on mini-whiteboards, then compare explanations. Check that they distinguish particle movement from the movement of the whole object. Reteach if pupils say particles in solids do not move or that compressed particles become smaller.\nAnswers: 1. Liquid particles can move past one another, so water takes the bowl’s shape. The particles stay close together, so the same amount of water keeps the same volume. 2. Air compresses more easily because its particles are far apart, leaving gaps that can become smaller. Solid particles are already close together and vibrate in fixed positions."
+    },
+    {
+      "id": "f22muwkd2mk",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p24",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 48,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Energy transfers change the state"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p29",
+          "type": "text",
+          "x": 459,
+          "y": 126,
+          "w": 443,
+          "h": 23,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Melting"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "caption",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#0B6E86"
+          },
+          "name": "Chunk label",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p30",
+          "type": "text",
+          "x": 459,
+          "y": 154,
+          "w": 443,
+          "h": 140,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "energy enters a solid. Particles leave fixed positions and move past one another. Freezing reverses this as energy leaves."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Chunk",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p31",
+          "type": "text",
+          "x": 459,
+          "y": 332,
+          "w": 443,
+          "h": 23,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Evaporation"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "caption",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#0B6E86"
+          },
+          "name": "Chunk label",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p32",
+          "type": "text",
+          "x": 459,
+          "y": 360,
+          "w": 443,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "energy enters a liquid. Some faster particles escape from its surface and spread far apart as a gas."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Chunk",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p33",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 119,
+          "w": 363,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20363%20378%22%20width%3D%22363%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22Four%20changes%20of%20state%3A%20Gas%3A%20far%20apart%2C%20Condensation%2C%20Liquid%3A%20close%2C%20moving%2C%20Freezing%2C%20Solid%3A%20fixed%20positions%2C%20Melting%2C%20Liquid%3A%20close%2C%20moving%2C%20Evaporation%2C%20Gas%3A%20far%20apart%22%3E%3Ctitle%3EFour%20changes%20of%20state%3A%20Gas%3A%20far%20apart%2C%20Condensation%2C%20Liquid%3A%20close%2C%20moving%2C%20Freezing%2C%20Solid%3A%20fixed%20positions%2C%20Melting%2C%20Liquid%3A%20close%2C%20moving%2C%20Evaporation%2C%20Gas%3A%20far%20apart%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22181.5%22%20y%3D%2220%22%3EFour%20changes%20of%20state%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C42.5)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22113.06%22%20y1%3D%2238.95%22%20x2%3D%22236.9%22%20y2%3D%2238.95%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22241.94%2C38.95%20235.64%2C42.73%20236.58%2C38.95%20235.64%2C35.17%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22177.5%22%20y%3D%2227.7%22%3ECondensation%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22299.47%22%20y1%3D%2277.45%22%20x2%3D%22299.47%22%20y2%3D%22124.21%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22299.47%2C129.25%20295.69%2C122.95%20299.47%2C123.9%20303.25%2C122.95%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%22289.47%22%20y%3D%22110.7%22%3EFreezing%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22241.94%22%20y1%3D%22167.75%22%20x2%3D%22118.1%22%20y2%3D%22167.75%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22113.06%2C167.75%20119.36%2C163.97%20118.42%2C167.75%20119.36%2C171.53%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22177.5%22%20y%3D%22156.5%22%3EMelting%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2255.53%22%20y1%3D%22206.25%22%20x2%3D%2255.53%22%20y2%3D%22253.01%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%2255.53%2C258.05%2051.75%2C251.75%2055.53%2C252.7%2059.31%2C251.75%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2265.53%22%20y%3D%22239.5%22%3EEvaporation%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%224.45%22%20width%3D%22107.06%22%20height%3D%2269%22%20rx%3D%2211.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%2233.7%22%3EGas%3A%20far%3C%2Ftspan%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%2258.9%22%3Eapart%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22245.94%22%20y%3D%224.45%22%20width%3D%22107.06%22%20height%3D%2269%22%20rx%3D%2211.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%2221.1%22%3ELiquid%3A%3C%2Ftspan%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%2246.3%22%3Eclose%2C%3C%2Ftspan%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%2271.5%22%3Emoving%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22245.94%22%20y%3D%22133.25%22%20width%3D%22107.06%22%20height%3D%2269%22%20rx%3D%2211.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%22149.9%22%3ESolid%3A%3C%2Ftspan%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%22175.1%22%3Efixed%3C%2Ftspan%3E%3Ctspan%20x%3D%22299.47%22%20y%3D%22200.3%22%3Epositions%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%22133.25%22%20width%3D%22107.06%22%20height%3D%2269%22%20rx%3D%2211.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%22149.9%22%3ELiquid%3A%3C%2Ftspan%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%22175.1%22%3Eclose%2C%3C%2Ftspan%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%22200.3%22%3Emoving%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%22262.05%22%20width%3D%22107.06%22%20height%3D%2269%22%20rx%3D%2211.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%22291.3%22%3EGas%3A%20far%3C%2Ftspan%3E%3Ctspan%20x%3D%2255.53%22%20y%3D%22316.5%22%3Eapart%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Four changes of state: Gas: far apart, Condensation, Liquid: close, moving, Freezing, Solid: fixed positions, Melting, Liquid: close, moving, Evaporation, Gas: far apart",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Follow the chain from left to right. For freezing, explain that particles transfer energy to the surroundings, move less freely and become arranged in fixed positions, where they still vibrate. For melting, energy allows particles to leave their fixed positions; do not imply that temperature must rise during melting. For evaporation, explain that particles escape at the liquid’s surface; it can happen without boiling. In condensation, particles lose energy, slow down and become close together, but can still move past one another. Ask pupils to identify the two changes that transfer energy into the substance and the two that transfer energy out.\nCondensation: energy leaves a gas. Particles slow down and come close together, forming a liquid. Particles do not change size."
+    },
+    {
+      "id": "f2fmuwkd7nk",
+      "kind": "exit-ticket",
+      "elements": [
+        {
+          "id": "p34",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 43,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Exit ticket"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p39",
+          "type": "text",
+          "x": 58,
+          "y": 98,
+          "w": 46,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p40",
+          "type": "text",
+          "x": 104,
+          "y": 98,
+          "w": 798,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "An ice cube melts, then the water freezes again. Explain how energy transfer and particle movement change in each process."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p41",
+          "type": "text",
+          "x": 58,
+          "y": 239,
+          "w": 46,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p42",
+          "type": "text",
+          "x": 104,
+          "y": 239,
+          "w": 798,
+          "h": 122,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A puddle evaporates. Later, water vapour condenses into droplets. Explain the changes in particle movement and spacing, including the direction of energy transfer."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p43",
+          "type": "text",
+          "x": 58,
+          "y": 380,
+          "w": 46,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p44",
+          "type": "text",
+          "x": 104,
+          "y": 380,
+          "w": 798,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why is water vapour easier to compress than liquid water?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:05.482Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Collect individual answers before sharing the models. Look for correct energy-transfer directions, movement rather than changes in particle size, and close spacing in both solids and liquids. Use errors to plan retrieval and reteaching.\nAnswers: 1. During melting, energy transfers into the ice. Particles leave their fixed positions and move past one another while remaining close together. During freezing, energy transfers out of the water. Particles become arranged in fixed positions and vibrate there. 2. During evaporation, energy transfers into the liquid and some faster particles escape from its surface. In the gas, particles are far apart and move freely. During condensation, energy transfers out of the gas. Particles slow down and come close together to form liquid droplets. 3. Water vapour has large gaps between its particles that can be reduced. Liquid water’s particles are already close together, so it is difficult to compress."
+    }
+  ],
+  "createdAt": "2026-10-06T10:56:03.553Z",
+  "updatedAt": "2026-10-06T11:08:50.363Z",
+  "fitVersion": 3,
+  "subject": "Science",
+  "ageBand": "ks3",
+  "yearGroup": "Year 7",
+  "language": "en-GB",
+  "brief": {
+    "topic": "The particle model",
+    "durationMin": 60,
+    "slideCount": 6
+  },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Describe the arrangement, spacing and movement of particles in solids, liquids and gases, and use the particle model to explain their shape, volume and compressibility."
+      },
+      {
+        "id": "o2",
+        "text": "Explain melting, freezing, evaporation and condensation in terms of changes in particle movement and arrangement as energy is transferred to or from a substance."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [],
+    "questions": [],
+    "misconceptions": [],
+    "outline": [
+      {
+        "id": "s1",
+        "kind": "title",
+        "factRefs": ["o1", "o2"]
+      },
+      {
+        "id": "s2",
+        "kind": "objectives",
+        "factRefs": ["o1", "o2"]
+      },
+      {
+        "id": "s3",
+        "kind": "content",
+        "factRefs": ["o1", "o2"]
+      },
+      {
+        "id": "s4",
+        "kind": "starter",
+        "factRefs": ["o1", "o2"]
+      },
+      {
+        "id": "s5",
+        "kind": "content",
+        "factRefs": ["o1", "o2"]
+      },
+      {
+        "id": "s6",
+        "kind": "exit-ticket",
+        "factRefs": ["o1", "o2"]
+      }
+    ],
+    "durationMin": 60
+  },
+  "generation": {
+    "jobId": "REGEN-y7-particle-model-new-generate",
+    "stage": "repaired",
+    "startedAt": "2026-10-06T10:56:05.380Z",
+    "promptVersions": {
+      "planned": "simple-lesson.t8",
+      "generated": "simple-lesson.t8",
+      "evaluated": "evaluate.v10",
+      "repaired": "repair.v18"
+    },
+    "usage": {
+      "calls": 7,
+      "inputTokens": 10313,
+      "outputTokens": 2882,
+      "costUsd": 0.036214525
+    },
+    "findings": [],
+    "completedAt": "2026-10-06T10:56:59.367Z"
+  }
+}

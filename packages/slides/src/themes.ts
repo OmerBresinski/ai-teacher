@@ -452,9 +452,11 @@ const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
 /**
  * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
  * the step-down ladder, so an option card or a question stem still steps one display stop under
- * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
+ * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`. At a key stage
+ * there is no display body: options read at the stage's body like everything else.
  */
-export const displayBodyStop = (theme: Theme): number | undefined => DISPLAY_BODY[theme.id];
+export const displayBodyStop = (theme: Theme): number | undefined =>
+  typeScale(theme) ? undefined : DISPLAY_BODY[theme.id];
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
@@ -547,9 +549,27 @@ export function isThemeId(id: string): boolean {
   return THEMES.some((t) => t.id === id);
 }
 
-export function getTheme(id: string | undefined | null): Theme {
-  return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);
+const BOUND_THEMES = new Map<string, Theme>();
+/**
+ * The theme `id`; with `ageBand`, read at that key stage (`atKeyStage`), one copy per theme and
+ * stage. No band, or one that is not a key stage: the catalogue theme, its own sizes.
+ */
+export function getTheme(id: string | undefined | null, ageBand?: string | null): Theme {
+  const t = THEMES.find((x) => x.id === id) ?? (THEMES[0] as Theme);
+  const ks = asStage(ageBand);
+  if (!ks) return t;
+  const key = `${t.id}@${ks}`;
+  let b = BOUND_THEMES.get(key);
+  if (!b) {
+    b = atKeyStage(t, ks);
+    BOUND_THEMES.set(key, b);
+  }
+  return b;
 }
+
+/** A lesson's theme at the lesson's own key stage. Nothing on master calls it yet (TEACH-110 part b). */
+export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
+  getTheme(lesson.themeId, lesson.ageBand);
 
 /**
  * What a piece of text is doing on the slide. The legibility floor is a property

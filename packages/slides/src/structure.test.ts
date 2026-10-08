@@ -33,7 +33,7 @@ import { getTheme } from "./themes";
 
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
 /** Chalk & Cream, a low-stimulation theme and the dark one. */
-const THEMES = ["chalk", "exam-hall", "night-lab"].map(getTheme);
+const THEMES = ["chalk", "exam-hall", "night-lab"].map((id) => getTheme(id));
 const chalk = getTheme("chalk");
 const text = (d: RichDoc | undefined) => (d ? docLines(d).join(" ") : "");
 const named = (els: SlideElement[], name: string) => els.filter((e) => e.name === name);

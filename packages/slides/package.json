@@ -15,7 +15,8 @@
     "./layouts": "./src/layouts.ts",
     "./reflow": "./src/reflow.ts",
     "./worksheet": "./src/worksheet/index.ts",
-    "./diagrams": "./src/diagrams/index.ts"
+    "./diagrams": "./src/diagrams/index.ts",
+    "./templates": "./src/templates/index.ts"
   },
   "scripts": {
     "lint": "biome check .",
