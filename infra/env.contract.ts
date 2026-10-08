@@ -751,15 +751,14 @@ const CONTRACT = [
     name: "IMAGE_GENERATION_DAILY_CAP_USD",
     services: ["worker"],
     scope: "config",
-    local: "5",
-    railway: "prod",
+    local: null,
+    railway: "n/a",
     vercel: "n/a",
-    setBy: "template",
+    setBy: "manual",
     format: "number",
     files: ["worker"],
-    railwayValue: "5",
     description:
-      "USD the picture generator may spend in one UTC day, per worker process (TEACH-237). Once spent, a picture slot routed to generation keeps its placeholder, no generation call is made, and one log line says so.",
+      "Default 5. USD the picture generator may spend in one UTC day, per worker process (TEACH-237). Once spent, a picture slot routed to generation keeps its placeholder, no generation call is made, and one log line says so.",
   },
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
