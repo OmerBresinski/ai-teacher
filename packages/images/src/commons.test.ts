@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  COMMONS_BUSY_RETRIES,
   COMMONS_USER_AGENT,
+  CommonsError,
   commonsPhotosOf,
   coordinatesOf,
   createCommonsClient,
@@ -136,18 +138,30 @@ describe("Commons licence filter", () => {
     let inFlight = 0;
     let peak = 0;
     const stub = (async (url: string, init?: RequestInit) => {
-      inFlight += 1;
+      // One API request at a time; thumbnail fetches are not in the queue.
+      const api = url.includes("api.php");
+      if (api) inFlight += 1;
       peak = Math.max(peak, inFlight);
       seen.push({ url, agent: new Headers(init?.headers).get("User-Agent"), at: Date.now() });
-      await new Promise((r) => setTimeout(r, 5));
-      inFlight -= 1;
+      await Promise.resolve();
+      if (api) inFlight -= 1;
       if (url.includes("upload.wikimedia.org"))
         return new Response(new Uint8Array([255, 216, 255]), {
           headers: { "content-type": "image/jpeg" },
         });
       return new Response(JSON.stringify({ query: { pages: [page(1, "CC0")] } }));
     }) as unknown as typeof fetch;
-    const client = createCommonsClient({ fetch: stub });
+    // A fake clock: the request gap is asked for, never slept on a real timer.
+    let clock = 0;
+    const waits: number[] = [];
+    const client = createCommonsClient({
+      fetch: stub,
+      now: () => clock,
+      sleep: async (ms) => {
+        waits.push(ms);
+        clock += ms;
+      },
+    });
     const [a, b] = await Promise.all([
       client.search({ query: "Hadrian's Wall" }),
       client.search({ query: "Colosseum" }),
@@ -159,7 +173,9 @@ describe("Commons licence filter", () => {
     // The judge is shown an inlined thumbnail, never a Wikimedia URL it cannot fetch.
     expect(a?.[0]?.src.tiny).toBe("data:image/jpeg;base64,/9j/");
     const api = seen.filter((s) => s.url.includes("api.php"));
-    expect((api[1]?.at ?? 0) - (api[0]?.at ?? 0)).toBeGreaterThanOrEqual(200);
+    expect(api.length).toBe(2);
+    // The second search waited out the gap after the first.
+    expect(waits.some((w) => w >= 200)).toBe(true);
     const url = new URL(api[0]?.url ?? "");
     expect(url.searchParams.get("gsrnamespace")).toBe("6");
     expect(url.searchParams.get("maxlag")).toBe("5");
@@ -181,5 +197,70 @@ describe("Commons caption", () => {
   test("a Bundesarchiv boilerplate description is skipped; the title leads the alt", () => {
     const [p] = commonsPhotosOf({ query: { pages: [page(1, "CC BY-SA 4.0")] } });
     expect(p?.alt.startsWith("Hadrian's Wall 1")).toBe(true);
+  });
+});
+
+describe("Commons busy replies (maxlag, 429, Retry-After)", () => {
+  const ok = () => new Response(JSON.stringify({ query: { pages: [page(1, "CC0")] } }));
+  const thumb = () =>
+    new Response(new Uint8Array([255, 216, 255]), { headers: { "content-type": "image/jpeg" } });
+  function clientWith(replies: (() => Response)[]) {
+    const waits: number[] = [];
+    let clock = 0;
+    let calls = 0;
+    const stub = (async (url: string) => {
+      if (url.includes("upload.wikimedia.org")) return thumb();
+      const next = replies[Math.min(calls, replies.length - 1)];
+      calls += 1;
+      return (next as () => Response)();
+    }) as unknown as typeof fetch;
+    const client = createCommonsClient({
+      fetch: stub,
+      now: () => clock,
+      sleep: async (ms) => {
+        waits.push(ms);
+        clock += ms;
+      },
+    });
+    return { client, waits, calls: () => calls };
+  }
+
+  test("a 200 maxlag error, then 429 with Retry-After, are retried within budget, not empty", async () => {
+    const { client, waits, calls } = clientWith([
+      () => new Response(JSON.stringify({ error: { code: "maxlag", info: "lagged" } })),
+      () => new Response("", { status: 429, headers: { "Retry-After": "1" } }),
+      ok,
+    ]);
+    const photos = await client.search({ query: "Hadrian's Wall" });
+    expect(photos.length).toBe(1);
+    expect(calls()).toBe(3);
+    expect(waits).toContain(1000);
+  });
+
+  test("still busy after every retry: a busy CommonsError, never an empty list", async () => {
+    const { client, calls } = clientWith([
+      () => new Response("", { status: 429, headers: { "Retry-After": "1" } }),
+    ]);
+    const error = await client.search({ query: "Hadrian's Wall" }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CommonsError);
+    expect((error as CommonsError).busy).toBe(true);
+    expect((error as CommonsError).status).toBe(429);
+    expect(calls()).toBe(COMMONS_BUSY_RETRIES + 1);
+  });
+
+  test("a Retry-After past the cap reports busy at once", async () => {
+    const { client, calls, waits } = clientWith([
+      () => new Response("", { status: 503, headers: { "Retry-After": "120" } }),
+    ]);
+    const error = await client.search({ query: "x" }).catch((e: unknown) => e);
+    expect((error as CommonsError).busy).toBe(true);
+    expect(calls()).toBe(1);
+    expect(waits.every((w) => w < 1000)).toBe(true);
+  });
+
+  test("the User-Agent names DayBack and the site", () => {
+    expect(COMMONS_USER_AGENT).toContain("DayBack");
+    expect(COMMONS_USER_AGENT).toContain("https://dayback.app");
+    expect(COMMONS_USER_AGENT).not.toMatch(/teachdeck/i);
   });
 });

@@ -1,0 +1,257 @@
+{
+  "source": "lab/ab 92f1b36d base4 (b3-r2-1, b3-r2-2, base4-3, base4-4) runs/*/T/*: main.json writer pictures and log.jsonl rejected.request",
+  "cases": [
+    {
+      "run": "b3-r2-1",
+      "brief": "y1-science-animals-young",
+      "key": "4:col.0",
+      "ask": {
+        "shows": "An adult hen beside a small downy chick",
+        "mustSee": ["adult hen", "downy chick"],
+        "named": false
+      },
+      "request": "An adult hen beside a small downy chick. adult hen. downy chick"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y1-science-animals-young",
+      "key": "3:picture",
+      "ask": {
+        "shows": "Separate photographs in a two-by-two arrangement: cow top left, lamb top right, sheep bottom left, calf bottom right, without connecting lines",
+        "mustSee": ["adult cow", "small lamb", "adult sheep", "small calf"],
+        "named": false
+      },
+      "request": "Separate photographs in a two-by-two arrangement: cow top left, lamb top right, sheep bottom left, calf bottom right, without connecting lines. adult cow. small lamb. adult sheep. small calf"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y1-science-animals-young",
+      "key": "8:picture",
+      "ask": {
+        "shows": "A newly hatched female chick beside an adult hen of the same breed, photographed at the same scale",
+        "mustSee": [
+          "small downy chick",
+          "larger adult hen",
+          "long wing feathers",
+          "adult tail feathers"
+        ],
+        "named": false
+      },
+      "request": "A newly hatched female chick beside an adult hen of the same breed, photographed at the same scale. small downy chick. larger adult hen. long wing feathers. adult tail feathers"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y1-science-animals-young",
+      "key": "5:picture",
+      "ask": {
+        "shows": "Separate photographs in a two-by-two arrangement: puppy top left, hen top right, chick bottom left, dog bottom right, without connecting lines",
+        "mustSee": ["small puppy", "adult hen", "downy chick", "adult dog"],
+        "named": false
+      },
+      "request": "Separate photographs in a two-by-two arrangement: puppy top left, hen top right, chick bottom left, dog bottom right, without connecting lines. small puppy. adult hen. downy chick. adult dog"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y2-maths-halves-quarters",
+      "key": "0:picture",
+      "ask": {
+        "shows": "Two identical plates, each holding four strawberries",
+        "mustSee": ["two matching plates", "four strawberries each"],
+        "named": false
+      },
+      "request": "Two identical plates, each holding four strawberries. two matching plates. four strawberries each"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y8-french-my-family",
+      "key": "4:col.0",
+      "ask": {
+        "shows": "A boy standing next to his mother",
+        "mustSee": ["young boy", "his mother"],
+        "named": false
+      },
+      "request": "A boy standing next to his mother. young boy. his mother"
+    },
+    {
+      "run": "b3-r2-1",
+      "brief": "y8-french-my-family",
+      "key": "2:picture",
+      "ask": {
+        "shows": "An imaginary family with a central child, a father, mother, brother, sister and two grandparents, with the parents and grandparents visibly grouped",
+        "mustSee": [
+          "central child",
+          "father and mother",
+          "brother and sister",
+          "two older grandparents"
+        ],
+        "named": false
+      },
+      "request": "An imaginary family with a central child, a father, mother, brother, sister and two grandparents, with the parents and grandparents visibly grouped. central child. father and mother. brother and sister. two older grandparents"
+    },
+    {
+      "run": "b3-r2-2",
+      "brief": "y1-science-animals-young",
+      "key": "0:picture",
+      "ask": {
+        "shows": "Four separate photographs of a cow, sheep, hen and dog",
+        "mustSee": ["adult cow", "adult sheep", "adult hen", "adult dog"],
+        "named": false
+      },
+      "request": "Four separate photographs of a cow, sheep, hen and dog. adult cow. adult sheep. adult hen. adult dog"
+    },
+    {
+      "run": "b3-r2-2",
+      "brief": "y1-science-animals-young",
+      "key": "10:picture",
+      "ask": {
+        "shows": "A brown adult hen in profile, a different example from the growth sequence",
+        "mustSee": ["adult brown hen", "layered wing feathers", "long tail feathers"],
+        "named": false
+      },
+      "request": "A brown adult hen in profile, a different example from the growth sequence. adult brown hen. layered wing feathers. long tail feathers"
+    },
+    {
+      "run": "b3-r2-2",
+      "brief": "y1-science-animals-young",
+      "key": "11:picture",
+      "ask": {
+        "shows": "Eight separate photographs in two mixed rows: dog, lamb, hen, calf; chick, cow, puppy, sheep; no matching cues",
+        "mustSee": ["adult dog", "small lamb", "adult hen", "small calf जम"],
+        "named": false
+      },
+      "request": "Eight separate photographs in two mixed rows: dog, lamb, hen, calf; chick, cow, puppy, sheep; no matching cues. adult dog. small lamb. adult hen. small calf जम"
+    },
+    {
+      "run": "b3-r2-2",
+      "brief": "y2-maths-halves-quarters",
+      "key": "0:picture",
+      "ask": {
+        "shows": "Two plates, each holding four identical counters",
+        "mustSee": ["two matching plates", "four counters each"],
+        "named": false
+      },
+      "request": "Two plates, each holding four identical counters. two matching plates. four counters each"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "0:picture",
+      "ask": {
+        "shows": "Four separate photographs of familiar adult animals",
+        "mustSee": ["adult cow", "adult sheep", "adult hen", "adult dog"],
+        "named": false
+      },
+      "request": "Four separate photographs of familiar adult animals. adult cow. adult sheep. adult hen. adult dog"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "4:picture",
+      "ask": {
+        "shows": "Four equally sized separate photo panels: adult cow upper left, lamb upper right, adult sheep lower left, calf lower right; no connecting lines",
+        "mustSee": ["adult cow", "small lamb", "adult sheep", "small calf"],
+        "named": false
+      },
+      "request": "Four equally sized separate photo panels: adult cow upper left, lamb upper right, adult sheep lower left, calf lower right; no connecting lines. adult cow. small lamb. adult sheep. small calf"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "11:picture",
+      "ask": {
+        "shows": "A partly grown female chicken with emerging wing feathers and visible remaining down, standing alone",
+        "mustSee": ["partly grown body", "developing wing feathers", "remaining soft fluff"],
+        "named": false
+      },
+      "request": "A partly grown female chicken with emerging wing feathers and visible remaining down, standing alone. partly grown body. developing wing feathers. remaining soft fluff"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "10:col.0",
+      "ask": {
+        "shows": "Close view of a newly hatched chick showing its down",
+        "mustSee": ["soft fluffy down", "small chick wing"],
+        "named": false
+      },
+      "request": "Close view of a newly hatched chick showing its down. soft fluffy down. small chick wing"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "10:col.1",
+      "ask": {
+        "shows": "Close view of an adult hen showing its wing and body feathers",
+        "mustSee": ["overlapping adult feathers", "long wing feathers"],
+        "named": false
+      },
+      "request": "Close view of an adult hen showing its wing and body feathers. overlapping adult feathers. long wing feathers"
+    },
+    {
+      "run": "base4-3",
+      "brief": "y1-science-animals-young",
+      "key": "9:picture",
+      "ask": {
+        "shows": "Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows",
+        "mustSee": ["fully feathered hen", "small fluffy chick", "partly feathered youngster"],
+        "named": false
+      },
+      "request": "Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows. fully feathered hen. small fluffy chick. partly feathered youngster"
+    },
+    {
+      "run": "base4-4",
+      "brief": "y1-science-animals-young",
+      "key": "5:col.1",
+      "ask": {
+        "shows": "An adult hen beside a small chick",
+        "mustSee": ["adult feathered hen", "small fluffy chick"],
+        "named": false
+      },
+      "request": "An adult hen beside a small chick. adult feathered hen. small fluffy chick"
+    },
+    {
+      "run": "base4-4",
+      "brief": "y1-science-animals-young",
+      "key": "2:picture",
+      "ask": {
+        "shows": "An adult cow above two separate photographs of a calf and a puppy, with no pairing shown",
+        "mustSee": ["adult cow", "young calf", "young puppy"],
+        "named": false
+      },
+      "request": "An adult cow above two separate photographs of a calf and a puppy, with no pairing shown. adult cow. young calf. young puppy"
+    },
+    {
+      "run": "base4-4",
+      "brief": "y1-science-animals-young",
+      "key": "9:col.1",
+      "ask": {
+        "shows": "A close view of a hen's overlapping adult wing and tail feathers",
+        "mustSee": ["long wing feathers", "adult tail feathers"],
+        "named": false
+      },
+      "request": "A close view of a hen's overlapping adult wing and tail feathers. long wing feathers. adult tail feathers"
+    },
+    {
+      "run": "base4-4",
+      "brief": "y1-science-animals-young",
+      "key": "6:picture",
+      "ask": {
+        "shows": "Eight separate animal photographs in two rows: cow, sheep, hen and dog above; puppy, chick, calf and lamb below, with no connecting lines",
+        "mustSee": ["adult cow", "adult sheep", "adult hen", "adult dog puppies absent"],
+        "named": false
+      },
+      "request": "Eight separate animal photographs in two rows: cow, sheep, hen and dog above; puppy, chick, calf and lamb below, with no connecting lines. adult cow. adult sheep. adult hen. adult dog puppies absent"
+    },
+    {
+      "run": "base4-4",
+      "brief": "y2-maths-halves-quarters",
+      "key": "0:picture",
+      "ask": {
+        "shows": "Two identical plates, one holding two strawberries and the other holding four",
+        "mustSee": ["two matching plates", "two strawberries", "four strawberries"],
+        "named": false
+      },
+      "request": "Two identical plates, one holding two strawberries and the other holding four. two matching plates. two strawberries. four strawberries"
+    }
+  ]
+}

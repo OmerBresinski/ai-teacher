@@ -17,7 +17,8 @@ import type { PhotoResult } from "./pexels";
 
 const API_URL = "https://commons.wikimedia.org/w/api.php";
 /** Wikimedia asks for a descriptive agent with a way to reach the operator. */
-export const COMMONS_USER_AGENT = "DaybackLessonPhotos/0.1 (https://dayback.app) @tj/images";
+// The contact email Omer supplies goes after the URL; until then the site is the contact.
+export const COMMONS_USER_AGENT = "DayBackLessonPhotos/0.1 (https://dayback.app) @tj/images";
 /** The rendition width asked for; smaller renditions are derived from its thumb URL. */
 const LARGE_WIDTH = 1280;
 // Wikimedia's thumbnail host serves only its standard widths (20, 40, 60, 120, 250, 330, 500, 960,
@@ -27,6 +28,12 @@ const MEDIUM_WIDTH = 500;
 const TINY_WIDTH = 250;
 /** The least gap between two requests from one client. */
 const MIN_GAP_MS = 250;
+/** Retries after a busy reply (a `maxlag` error, 429 or 503) before the search reports busy. */
+export const COMMONS_BUSY_RETRIES = 2;
+/** The longest `Retry-After` honoured; a longer one reports busy at once. */
+export const COMMONS_MAX_RETRY_AFTER_MS = 5_000;
+/** The wait when a busy reply names none (Wikimedia's own `maxlag` advice is 5 s). */
+const DEFAULT_RETRY_AFTER_MS = 2_000;
 
 export type CommonsLicence = "public-domain" | "cc0" | "cc-by" | "cc-by-sa";
 
@@ -273,12 +280,41 @@ export function commonsPhotosOf(
 
 export class CommonsError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  /** Commons was busy (`maxlag`, 429 or 503) after every retry: busy, never "no photos". */
+  readonly busy: boolean;
+  constructor(status: number, message: string, busy = false) {
     super(message);
     this.name = "CommonsError";
     this.status = status;
+    this.busy = busy;
   }
 }
+
+/** The wait a busy reply asks for, in ms: `Retry-After` seconds, else the default. */
+export function retryAfterMs(header: string | null): number {
+  const secs = header === null ? Number.NaN : Number(header.trim());
+  return Number.isFinite(secs) && secs >= 0 ? secs * 1000 : DEFAULT_RETRY_AFTER_MS;
+}
+
+/** A `maxlag` refusal arrives as 200 with `{ error: { code: "maxlag" } }`. */
+function isMaxlag(body: unknown): boolean {
+  const error = (body as { error?: { code?: unknown } } | null)?.error;
+  return typeof error === "object" && error !== null && error.code === "maxlag";
+}
+
+const realSleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        reject(signal.reason);
+      },
+      { once: true },
+    );
+  });
 
 export interface CommonsSearchParams {
   query: string;
@@ -346,21 +382,30 @@ export interface CommonsClient {
 }
 
 export function createCommonsClient(
-  opts: { fetch?: typeof globalThis.fetch; userAgent?: string; apiUrl?: string } = {},
+  opts: {
+    fetch?: typeof globalThis.fetch;
+    userAgent?: string;
+    apiUrl?: string;
+    /** Waits (the request gap and busy retries); tests pass a fake clock. */
+    sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+    now?: () => number;
+  } = {},
 ): CommonsClient {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   const agent = opts.userAgent ?? COMMONS_USER_AGENT;
+  const sleep = opts.sleep ?? realSleep;
+  const now = opts.now ?? Date.now;
   // One request at a time per client, at least MIN_GAP_MS apart.
   let chain: Promise<unknown> = Promise.resolve();
   let last = 0;
   const politely = <T>(task: () => Promise<T>): Promise<T> => {
     const run = chain.then(async () => {
-      const wait = last + MIN_GAP_MS - Date.now();
-      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      const wait = last + MIN_GAP_MS - now();
+      if (wait > 0) await sleep(wait);
       try {
         return await task();
       } finally {
-        last = Date.now();
+        last = now();
       }
     });
     chain = run.catch(() => undefined);
@@ -395,17 +440,39 @@ export function createCommonsClient(
           "iiextmetadatafilter",
           "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
         );
-        // A deadline on the API call too: a stalled request held the whole queue.
-        const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
-        const res = await fetchFn(url.toString(), {
-          headers: { "User-Agent": agent, "Api-User-Agent": agent },
-          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-        });
-        if (!res.ok) throw new CommonsError(res.status, `Commons search failed (${res.status})`);
-        return commonsPhotosOf(await res.json(), {
-          allowDrawings: allowDrawings || diagrams,
-          ...(diagrams ? { diagrams } : {}),
-        });
+        // Busy (a `maxlag` error, 429 or 503) waits its `Retry-After` and tries again, up to
+        // COMMONS_BUSY_RETRIES times; then it reports busy, never an empty search.
+        for (let attempt = 0; ; attempt++) {
+          // A deadline on the API call too: a stalled request held the whole queue.
+          const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
+          const res = await fetchFn(url.toString(), {
+            headers: { "User-Agent": agent, "Api-User-Agent": agent },
+            signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+          });
+          const busyStatus = res.status === 429 || res.status === 503;
+          if (!res.ok && !busyStatus)
+            throw new CommonsError(res.status, `Commons search failed (${res.status})`);
+          const body: unknown = busyStatus ? undefined : await res.json();
+          if (!busyStatus && !isMaxlag(body))
+            return commonsPhotosOf(body, {
+              allowDrawings: allowDrawings || diagrams,
+              ...(diagrams ? { diagrams } : {}),
+            });
+          const wait = retryAfterMs(res.headers.get("Retry-After"));
+          if (attempt >= COMMONS_BUSY_RETRIES || wait > COMMONS_MAX_RETRY_AFTER_MS)
+            throw new CommonsError(busyStatus ? res.status : 503, "Commons is busy", true);
+          await sleep(wait, signal);
+        }
       }).then((photos) => inlineThumbnails(photos, inline, fetchFn, agent, signal)),
   };
+}
+
+/**
+ * The placer's `searchCommons` from a client (the worker wires it beside Pexels for the writer
+ * planner only). A busy Commons throws a busy `CommonsError`; the caller falls back to Pexels.
+ */
+export function commonsSearch(
+  client: CommonsClient,
+): (query: string, opts: { perPage: number; signal: AbortSignal }) => Promise<CommonsPhoto[]> {
+  return (query, { perPage, signal }) => client.search({ query, perPage, signal });
 }

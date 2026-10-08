@@ -5,7 +5,7 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
-import type { ImageBrief } from "@tj/domain/documents";
+import type { ImageBrief, Lesson } from "@tj/domain/documents";
 import { anchorQueries, type CountArray } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
@@ -16,12 +16,19 @@ import {
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
-import type { PlacedPhoto } from "./illustrate";
+import type { PipelineDeps } from "../types";
+import {
+  type DirectedPlacer,
+  type PlacedPhoto,
+  pickDirectedPhoto,
+  plainSubject,
+} from "./illustrate";
 import {
   type BankRequest,
   findPicture,
   historyPolicy,
   type MadePicture,
+  mustShowOf,
   type PictureBank,
   REAL_FALLBACK,
   sharedVerdictCache,
@@ -539,4 +546,126 @@ export interface PictureOutcome {
     | "director-failed"
     | "real-miss-no-fallback"
     | "generation-refused-or-failed";
+}
+
+// ---------------------------------------------------------------------------------------------
+// Placement for the writer planner (TEACH-251): one writer picture ask, through the director and
+// the ladder, to a placed photo or nothing (the slot keeps its placeholder).
+// ---------------------------------------------------------------------------------------------
+
+/** One picture the writer asked for: its `shows`, `must_see` and `subject`, on its slide. */
+export interface WriterPictureAsk {
+  /** Where the picture goes (`<slide>:<slot>`), for logs. */
+  key: string;
+  shows: string;
+  mustSee: string[];
+  /** The writer's `subject: "named"`. */
+  named: boolean;
+  /** The slot's width over height. */
+  aspect?: number;
+  slide: SlideForPicture;
+  /** The slide's index in the lesson. */
+  index: number;
+  /** The writer's `picture_style`: illustration lessons generate generic pictures (P5). */
+  style?: "photo" | "illustration";
+}
+
+/**
+ * The bank before the library and the generator land (TEACH-237, TEACH-84 part b): no stored
+ * pictures, nothing generated or drawn. Real and stock-first routes still search; a generate or
+ * draw route keeps its placeholder.
+ */
+export const STOCK_ONLY_BANK: PictureBank = {
+  lookup: async () => undefined,
+  remember: async () => undefined,
+  generate: async () => undefined,
+};
+
+/** A map is a real source, never a made picture: it is searched as a named thing first. */
+export const isMapRequest = (shows: string) => /\bmaps?\b/i.test(shows);
+
+/** The brief a writer ask is searched and judged with, as base4 built it. */
+export function writerAskBrief(ask: WriterPictureAsk): ImageBrief {
+  const request = [ask.shows, ...ask.mustSee].join(". ");
+  return {
+    subject: plainSubject(ask.shows).slice(0, 60),
+    request: request.slice(0, 400),
+    mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
+    purpose: "context",
+    specific: ask.named,
+    ...(ask.aspect ? { aspect: Math.round(ask.aspect * 100) / 100 } : {}),
+  };
+}
+
+/**
+ * One writer picture: a map searched as a named thing first, else the director (batched when
+ * `direct` is a batcher) and the ladder with `pickDirectedPhoto` as the stock path. Nothing here
+ * fails the lesson: a budget stop, an error or a refusal leaves the placeholder.
+ */
+export async function placeWriterPicture(args: {
+  ask: WriterPictureAsk;
+  lesson: Lesson;
+  country: string;
+  images: DirectedPlacer;
+  deps: PipelineDeps;
+  /** The batched director (`createDirectorBatcher`); absent, one call for this slot. */
+  direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
+  /** The library and generator; absent, `STOCK_ONLY_BANK`. */
+  bank?: PictureBank;
+  look?: LessonLook;
+  /** Pages already placed in this lesson. */
+  taken?: Set<string>;
+  onOutcome?: (o: PictureOutcome) => void;
+}): Promise<DirectedPhoto | undefined> {
+  const { ask, lesson, deps } = args;
+  const b = writerAskBrief(ask);
+  const taken = args.taken ?? new Set<string>();
+  const illustrated = ask.style === "illustration";
+  const stock = async (brief: ImageBrief): Promise<PlacedPhoto | undefined> => {
+    // Illustration lessons: generic pictures are generated in the lesson's style (no stock);
+    // named real things still come from Commons and Pexels (ruling 163).
+    if (illustrated && !brief.specific) return undefined;
+    const r = await pickDirectedPhoto({
+      lesson,
+      index: ask.index,
+      brief,
+      images: args.images,
+      deps,
+      taken,
+    }).catch((error: unknown) => {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "stock failed");
+      return { outcome: "empty" as const };
+    });
+    return r.outcome === "placed" ? r.photo : undefined;
+  };
+  try {
+    if (isMapRequest(ask.shows)) {
+      const map = await stock({ ...b, specific: true });
+      if (map) {
+        args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
+        return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
+      }
+    }
+    return await findDirected({
+      bank: args.bank ?? STOCK_ONLY_BANK,
+      ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
+      brief: b,
+      slide: ask.slide,
+      lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+      country: args.country,
+      index: ask.index,
+      stock,
+      // A made picture is judged when the generator lands (TEACH-237); none is made before.
+      judgeMade: async () => false,
+      deps,
+      ...(args.look ? { look: args.look } : {}),
+      ...(args.direct ? { direct: args.direct } : {}),
+      ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "picture failed");
+    return undefined;
+  }
 }

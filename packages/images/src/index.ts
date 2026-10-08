@@ -1,5 +1,7 @@
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
+  COMMONS_BUSY_RETRIES,
+  COMMONS_MAX_RETRY_AFTER_MS,
   COMMONS_USER_AGENT,
   type CommonsClient,
   type CommonsCredit,
@@ -8,6 +10,7 @@ export {
   type CommonsPhoto,
   type CommonsSearchParams,
   commonsPhotosOf,
+  commonsSearch,
   coordinatesOf,
   createCommonsClient,
   judgeCommonsFile,
