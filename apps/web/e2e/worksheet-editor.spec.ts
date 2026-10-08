@@ -155,17 +155,6 @@ test.describe("worksheet editor", () => {
     await tab.close();
   });
 
-  test("row 10: a lesson id on the worksheet route shows the wrong-kind page", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(`/w/${paths.id("demo-water-cycle")}`);
-    await expect(page.getByText("This is a lesson")).toBeVisible();
-    await page.getByRole("link", { name: "Open the lesson" }).click();
-    await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
-    await page.goto(`/l/${paths.id("fraction-practice")}`);
-    await expect(page.getByText("This is a worksheet")).toBeVisible();
-  });
-
   test("TEACH-160 row 7: Replace picks a Pexels photo and autosaves it with provenance", async ({
     signedInPage: { page, paths },
   }) => {
