@@ -262,7 +262,8 @@ export function GeneratingShell({
         </AppBarGroup>
       </AppBar>
 
-      <div className="flex min-h-0 flex-1">
+      {/* The pane slot is positioned against the body, under the bar, as in the editor. */}
+      <div className="relative flex min-h-0 flex-1">
         {/* The insert rail's column, empty: the tools arrive at Ready and the canvas does not move. */}
         <div
           aria-hidden="true"

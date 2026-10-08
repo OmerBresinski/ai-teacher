@@ -61,7 +61,7 @@ test.describe("lesson editor", () => {
     await expectNoSeriousA11yViolations(page, "/l/:id");
   });
 
-  test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 below slide 3 reorders", async ({
+  test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 past slide 3 reorders", async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
@@ -84,12 +84,12 @@ test.describe("lesson editor", () => {
     await page.keyboard.press("Meta+ArrowUp");
     await expect(rows(page).nth(1)).toHaveAttribute("aria-label", second ?? "");
 
-    // Pointer: slide 1 to below slide 3.
+    // Pointer: slide 1 to after slide 3, along the filmstrip (ruling 186).
     const first = await label(0);
     const from = await centre(rows(page).nth(0));
     const target = await rows(page).nth(2).boundingBox();
     if (!target) throw new Error("no row");
-    await drag(page, from, 0, target.y + target.height - from.y, 8);
+    await drag(page, from, target.x + target.width - from.x, 0, 8);
     await expect(rows(page).nth(2)).toHaveAttribute(
       "aria-label",
       first?.replace("Slide 1", "Slide 3") ?? "",
