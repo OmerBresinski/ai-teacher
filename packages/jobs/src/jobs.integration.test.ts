@@ -161,20 +161,65 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
         }
       })();
       const ids: JobId[] = [];
-      for (let i = 0; i < 50; i++) {
-        const jobId = await enqueue(ctx, "ping", { message: `race ${i}` }, { workspaceId });
-        if (!jobId) throw new Error("enqueue returned null");
-        ids.push(jobId);
+      try {
+        for (let i = 0; i < 50; i++) {
+          const jobId = await enqueue(ctx, "ping", { message: `race ${i}` }, { workspaceId });
+          if (!jobId) throw new Error("enqueue returned null");
+          ids.push(jobId);
+        }
+        expect(await waitFor(async () => ids.every((id) => claimed.has(id)), 10_000)).toBe(true);
+      } finally {
+        racing = false;
+        await racer;
+        await boss.deleteAllJobs("ping");
       }
-      const allClaimed = await waitFor(async () => ids.every((id) => claimed.has(id)), 10_000);
-      racing = false;
-      await racer;
-      expect(allClaimed).toBe(true);
       for (const jobId of ids) {
         expect((await eventsFor(jobId)).map((e) => e.type)).toEqual(["queued", "started"]);
       }
-      await boss.deleteAllJobs("ping");
     }, 30_000);
+
+    test("a worker fetching right after `send` resolves cannot see the job before the commit", async () => {
+      // Deterministic form of the race above: fetch from pg-boss's own pool while `enqueue`'s
+      // transaction is still open (between `send` and the `queued` insert).
+      let seenBeforeCommit: string[] = [];
+      const send = boss.send.bind(boss);
+      const watched = {
+        ...ctx,
+        boss: Object.assign(Object.create(boss), {
+          send: async (...args: Parameters<PgBoss["send"]>) => {
+            const id = await send(...args);
+            seenBeforeCommit = (await boss.fetch("ping", { batchSize: 10 })).map((job) => job.id);
+            return id;
+          },
+        }) as PgBoss,
+      };
+      try {
+        const jobId = await enqueue(watched, "ping", { message: "watch" }, { workspaceId });
+        if (!jobId) throw new Error("enqueue returned null");
+        expect(seenBeforeCommit).not.toContain(jobId);
+        expect((await boss.fetch("ping", { batchSize: 10 })).map((job) => job.id)).toContain(jobId);
+      } finally {
+        await boss.deleteAllJobs("ping");
+      }
+    });
+
+    test("a failed NOTIFY after the commit still returns the job, with its queued row", async () => {
+      // `sql` here fails as a tagged template (the NOTIFY) but still opens transactions.
+      const quiet = {
+        ...ctx,
+        sql: Object.assign(
+          () => {
+            throw new Error("notify down");
+          },
+          { begin: sql.begin.bind(sql), options: sql.options },
+        ) as unknown as JobsContext["sql"],
+      };
+      const jobId = await enqueue(quiet, "ping", { message: "quiet" }, { workspaceId });
+      if (!jobId) throw new Error("enqueue returned null");
+      expect((await eventsFor(jobId)).map((e) => e.type)).toEqual(["queued"]);
+      expect(await boss.findJobs("ping", { id: jobId })).toHaveLength(1);
+      await boss.deleteAllJobs("ping");
+    });
 
     test("a deduplicated send returns null and leaves no job and no queued row", async () => {
       const opts = { workspaceId, singletonKey: "teach-135", singletonSeconds: 60 };
@@ -193,14 +238,14 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
     test("a failed queued insert rolls the pg-boss job back with it", async () => {
       // No such Workspace: the `job_events.workspace_id` foreign key refuses the `queued` row.
       const jobId = newId<JobId>();
-      await expect(
-        enqueue(
-          ctx,
-          "ping",
-          { message: "orphan?" },
-          { workspaceId: newId<WorkspaceId>(), id: jobId },
-        ),
-      ).rejects.toThrow();
+      const error = await enqueue(
+        ctx,
+        "ping",
+        { message: "orphan?" },
+        { workspaceId: newId<WorkspaceId>(), id: jobId },
+      ).catch((caught: unknown) => caught);
+      // The `queued` insert's foreign key, not something before `send`.
+      expect((error as { cause?: { code?: string } }).cause?.code).toBe("23503");
       expect(await boss.findJobs("ping", { id: jobId })).toHaveLength(0);
     });
   });

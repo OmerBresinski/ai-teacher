@@ -46,7 +46,7 @@ export interface EnqueueOptions {
  * The job and its `queued` row commit together, in one transaction (pg-boss inserts through the
  * transaction's `executeSql`): no worker can claim the job, and write `started`, before `queued`
  * exists, and a failed event write leaves no job behind (TEACH-135 part b). The NOTIFY that
- * wakes the SSE streams goes out after the commit.
+ * wakes the SSE streams goes out after the commit, best effort.
  *
  * Returns the `JobId` — the pg-boss job id is the same UUID, so `job_events.job_id` and
  * `pgboss.job.id` join directly. Returns `null` only when `singletonKey` deduplicated the send
@@ -85,7 +85,12 @@ export async function enqueue<N extends JobName>(
     });
   });
   if (queued === null) return null;
-  await notifyJobEvent(ctx.sql, { id: queued.id, jobId, workspaceId: opts.workspaceId });
+  // The job and its `queued` row are committed: a failed NOTIFY must not make the caller undo its
+  // own state for a job that will run. NOTIFY only wakes the SSE streams early; they also read the
+  // table (degraded polling, the next event's NOTIFY), so `queued` still reaches them.
+  await notifyJobEvent(ctx.sql, { id: queued.id, jobId, workspaceId: opts.workspaceId }).catch(
+    () => undefined,
+  );
   return jobId;
 }
 

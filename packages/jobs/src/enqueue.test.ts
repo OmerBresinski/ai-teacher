@@ -78,7 +78,7 @@ describe("enqueue", () => {
     expect(opts.singletonKey).toBeUndefined();
   });
 
-  test("sends inside the transaction, so a failed queued write rolls the job back (no cancel)", async () => {
+  test("sends with the transaction as its executor and never cancels on a failed queued insert", async () => {
     const { ctx, send, cancel } = fakeCtx();
     await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId })).rejects.toThrow(
       'insert into "job_events"',

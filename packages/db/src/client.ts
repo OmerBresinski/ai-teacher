@@ -64,7 +64,11 @@ export function createDb(url: string, opts: CreateDbOptions = {}): DbHandle {
 
 /** One transaction, seen both as a Drizzle client and as a raw `executeSql` (see `withSqlTransaction`). */
 export interface SqlTransaction {
-  /** Drizzle over the transaction's connection; `forWorkspace(tx.db, …)` scopes it as usual. */
+  /**
+   * Drizzle over the transaction's connection; `forWorkspace(tx.db, …)` scopes it as usual. It is
+   * already a transaction: do not open another on it (`tx.db.transaction()`,
+   * `forWorkspace(tx.db, …).tx()`), which postgres.js cannot nest here and throws.
+   */
   db: Db;
   /**
    * Run parameterised SQL (`$1`, `$2`, …) on the same connection, in pg-boss's adapter shape
