@@ -49,8 +49,9 @@ ticket, **read the code paths it touches** — never describe them from memory o
   printing, making a worksheet) that no `bun test` can cover. It is tagged `@smoke`. A few more
   assertions in an existing e2e journey are fine when they add no test and no page load. A ticket
   that adds a Playwright test names the critical flow and why a `bun test` cannot cover it; review
-  treats any other new Playwright test as a blocker. (`docs/testing.md`, "Which level a test belongs
-  at".)
+  treats any other new Playwright test as a blocker. Opt-in `*-screenshots.spec.ts` files
+  (`TEACH_SCREENSHOTS=1`, never in CI) are not e2e tests under this rule. (`docs/testing.md`, "Which
+  level a test belongs at".)
 - Say what is out of scope and which ADR decides each design choice, so the implementor does not
   re-open it.
 

@@ -12,7 +12,7 @@ Server packages run on Bun; React components need a DOM environment and Testing 
 
 - `bun test` for `apps/api`, `apps/worker`, `packages/db`, `packages/domain`. Integration tests run against the docker-compose Postgres using a per-run schema.
 - ~~Vitest + React Testing Library + jsdom for `apps/web` and `packages/ui`.~~ Superseded by the 2026-09-04 amendment below: `bun test` + happy-dom + React Testing Library.
-- Playwright for end-to-end tests in `apps/web/e2e/`, with `@axe-core/playwright` asserting no serious/critical violations on every visited page.
+- Playwright for end-to-end tests in `apps/web/e2e/`, with `@axe-core/playwright` asserting no serious/critical violations ~~on every visited page~~ on the pages the journeys scan (amendment 2026-10-08).
 - Turborepo task `test` runs all unit/integration suites; `test:e2e` runs Playwright against a built preview in CI.
 
 ## Consequences

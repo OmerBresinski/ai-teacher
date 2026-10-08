@@ -126,8 +126,6 @@ test.describe("PowerPoint export", () => {
   });
 });
 
-test.describe("PNG export", () => {});
-
 // TEACH-161 rows 5–7: the credited lesson ends every PowerPoint and PNG export on "Image credits".
 test.describe("image credits", () => {
   /** Collect downloads as they land; resolves once `count` have arrived. */

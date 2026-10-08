@@ -1,6 +1,7 @@
 /**
- * axe-core helper (F18-R09, ADR 0014): every visited page must have zero `serious`/`critical`
+ * axe-core helper (F18-R09, ADR 0014): a scanned page must have zero `serious`/`critical`
  * violations. `moderate` and `minor` findings are printed so they stay visible without blocking.
+ * Journey specs call it where they pass a page worth scanning; there is no per-route suite.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";

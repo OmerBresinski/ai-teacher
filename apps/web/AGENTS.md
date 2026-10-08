@@ -76,7 +76,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes)
   and the brief → `/l/:id` flow;
-  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert; `teach-252-sign-in-screenshots` (opt-in) the DayBack `/sign-in` at 1440 in the three themes, a 390 phone, the sent state and `?error=INVALID_TOKEN`. `/sign-in` (TEACH-252) is one page for sign in and sign up, laid out like the homepage hero: one alert slot (sign-out notice, then send error, then Google start error, then `?error=`), legal links to `/homepage/terms/` and `/homepage/privacy/`, and the brand artwork in `components/brand/`: `DaybackMark` and the cast, the homepage hero's four characters around the card (`cast-artwork.tsx` converted from `homepage/src/hero-artwork.mjs`, `cast-rig.ts` a port of `hero-motion.js` plus gaze, smile and hop from `motion/cast.js`, mounted by `sign-in-cast.tsx`). The page passes the cast a mood (`idle`, `typing`, `sending`, `sent`, `error`, `leaving`) and what to look at; it is the first caller of `loadGsap()` (ADR 0028), and with reduced motion GSAP is never fetched and only the faces change. e2e: `sign-in-cast` (arrival, read-along, celebration, reduced motion).
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert; `teach-252-sign-in-screenshots` (opt-in) the DayBack `/sign-in` at 1440 in the three themes, a 390 phone, the sent state and `?error=INVALID_TOKEN`. `/sign-in` (TEACH-252) is one page for sign in and sign up, laid out like the homepage hero: one alert slot (sign-out notice, then send error, then Google start error, then `?error=`), legal links to `/homepage/terms/` and `/homepage/privacy/`, and the brand artwork in `components/brand/`: `DaybackMark` and the cast, the homepage hero's four characters around the card (`cast-artwork.tsx` converted from `homepage/src/hero-artwork.mjs`, `cast-rig.ts` a port of `hero-motion.js` plus gaze, smile and hop from `motion/cast.js`, mounted by `sign-in-cast.tsx`). The page passes the cast a mood (`idle`, `typing`, `sending`, `sent`, `error`, `leaving`) and what to look at; it is the first caller of `loadGsap()` (ADR 0028), and with reduced motion GSAP is never fetched and only the faces change.
   `generation` runs a lesson end to end over the fake
   worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal
@@ -105,8 +105,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   in the library navigates here (and preloads the chunk on hover); `NewDocumentDialog` stays only
   for the page's "Blank lesson" action (the only blank-lesson entry point). Unit:
   `lesson-brief.page.test.tsx` (focus, prefill, the guard, the materials dialog); e2e: `brief`
-  spec (planning and uploads end to end); `teach-177-screenshots` (opt-in) captures the brief;
-  `/lessons/new` is in the a11y route list.
+  spec (planning and uploads end to end); `teach-177-screenshots` (opt-in) captures the brief.
 - `/worksheets/new?lesson=<id>` is the worksheet creation flow (`worksheet-create.route.ts` +
   `worksheet-create.page.tsx`, TEACH-184): Source (recent lessons, a search box, Blank) then Kind
   (the nine recipes as live miniatures built from the lesson's facts, or `DEMO_LESSON_FACTS` with
@@ -121,7 +120,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   rate and rounding, so a sheet of questions reads the same in both. Unit:
   `worksheet-create.page.test.tsx` (Source, Kind, the keyboard path, example facts); e2e:
   `worksheet-create` spec (rows 4 and 6 into the real editor, axe on both steps);
-  `teach-184-screenshots` (opt-in); `/worksheets/new` is in the a11y route list.
+  `teach-184-screenshots` (opt-in).
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
   mode (`?from=edit|view` decides where exit lands). Each page imports `@tj/editor/styles/editor.css`.

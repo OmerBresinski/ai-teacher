@@ -45,7 +45,8 @@ creating or generating a lesson, editing it, presenting, exporting or printing, 
 that no `bun test` can cover. It is tagged `@smoke`. A few more assertions in an existing e2e
 journey are fine when they add no test and no page load. A ticket that adds a Playwright test names
 the critical flow and why a `bun test` cannot cover it; review treats any other new Playwright test
-as a blocker.
+as a blocker. Opt-in `*-screenshots.spec.ts` files (`TEACH_SCREENSHOTS=1`, never in CI) are not e2e
+tests under this rule.
 
 On 8 Oct 2026 the founder cut the suite to the critical journeys (211 tests to 106): the per-route
 a11y suite, the first-experience preview, the sign-in animation and the settings specs went, and the
@@ -237,10 +238,10 @@ Specs:
 - `jobs.spec.ts` — run `ping` → `queued … progress 100% … completed`; cancel mid-run →
   `cancelled` and never `completed`; **reload mid-run**: the events seen before the reload appear
   again, in order and without duplicates, then the stream finishes (ADR 0012 replay).
-- Axe (`@axe-core/playwright`, WCAG 2.1 A/AA + best-practice, `e2e/a11y.ts`) runs inside a few
-  journeys (library, series, worksheet creation, the generating view). `serious`/`critical` fail the
-  test; `moderate`/`minor` are printed with the page label. The per-route a11y suite
-  (`a11y.spec.ts`) was removed on 8 Oct 2026.
+- Axe (`@axe-core/playwright`, WCAG 2.1 A/AA + best-practice, `e2e/a11y.ts`) runs inside the journey
+  specs that call `expectNoSeriousA11yViolations` (13 of them, from the library to export and
+  present). `serious`/`critical` fail the test; `moderate`/`minor` are printed with the page label.
+  The per-route a11y suite (`a11y.spec.ts`) was removed on 8 Oct 2026.
 
 Timing: the `ping` job takes 300 ms per step (5 steps). Never `waitForTimeout` for SSE — use
 `expect.poll(...)` / auto-retrying `expect` on the event list (`getByRole("list", { name: "Job
