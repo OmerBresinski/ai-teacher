@@ -224,5 +224,5 @@ contracts (checked by `tsc`, not run).
 `e2e/fixtures.ts` provides `signedInPage` (magic link read back from the api's test-only
 `GET /__test/last-magic-link`, its token spent through the api so the session lands without the
 confirm page, the demo library seeded, then one load of `/`). Specs: `e2e/auth.spec.ts`, `e2e/jobs.spec.ts` (including the
-reload-mid-run replay proof), `e2e/a11y.spec.ts` (zero serious/critical axe violations on
-`/sign-in`, `/`, `/dev/jobs`). Files: `e2e/**/*.spec.ts` — never `*.test.*`.
+reload-mid-run replay proof) and the other critical journeys; no new e2e test unless a critical
+flow ships ([`docs/testing.md`](../../docs/testing.md)). Files: `e2e/**/*.spec.ts` — never `*.test.*`.

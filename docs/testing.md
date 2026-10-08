@@ -37,23 +37,26 @@ Rules:
 
 ## Which level a test belongs at
 
-An acceptance row is a `bun test` by default (happy-dom and Testing Library, `installFakeApi`,
-`renderEditor`/`renderWorksheetEditor`, route options called directly). It is a Playwright test only
-when it needs one of: a journey across pages and the real api or worker; a real caret, typing or
-selection in ProseMirror; a pointer drag or a hit by coordinates; layout measurement or computed
-CSS; print media or a download; fullscreen or a new tab; sign-in, sessions or cookies; an axe scan.
-A ticket that adds a Playwright test names which of these it needs.
+No new e2e tests by default. Every acceptance row is a `bun test` (happy-dom and Testing Library,
+`installFakeApi`, `renderEditor`/`renderWorksheetEditor`, route options called directly), including
+rows about one screen's behaviour, its layout or its accessibility. A Playwright test is added only
+when an absolutely critical flow ships: a journey a teacher cannot work without (signing in,
+creating or generating a lesson, editing it, presenting, exporting or printing, making a worksheet)
+that no `bun test` can cover. It is tagged `@smoke`. A few more assertions in an existing e2e
+journey are fine when they add no test and no page load. A ticket that adds a Playwright test names
+the critical flow and why a `bun test` cannot cover it; review treats any other new Playwright test
+as a blocker.
 
-This is the rule `packages/editor/AGENTS.md` already gives for the editor ("What needs a real caret,
-pointer or download is Playwright's", [`packages/editor/AGENTS.md`](../packages/editor/AGENTS.md)),
-applied to every app and package. Most acceptance rows of a screen (what is shown, what a click or a
-key sends, what is refused) are page or component tests; the e2e suite keeps the journeys and what
-only a real browser can check. TEACH-301 moved 45 e2e tests that broke it.
+On 8 Oct 2026 the founder cut the suite to the critical journeys (211 tests to 106): the per-route
+a11y suite, the first-experience preview, the sign-in animation and the settings specs went, and the
+editor, export and worksheet specs keep only their critical workflows, about 30 s of test time each.
+This narrows the editor's older rule ("What needs a real caret, pointer or download is
+Playwright's", [`packages/editor/AGENTS.md`](../packages/editor/AGENTS.md)): a detail that needs a
+real browser is no longer a reason for its own e2e test. Accessibility stays enforced by Biome's
+`a11y` rules at `error`, and some journeys still run an axe scan.
 
-A test that covers a new user journey gets the `@smoke` tag (`test("…", { tag: "@smoke" }, async (…)
-=> …)`, or on a `test.describe`); detail tests do not. `bun run test:e2e:smoke` in `apps/web` runs
-that set in about a minute, for a quick check before pushing. The merge check stays the full suite
-in its six shards.
+The `@smoke` tag marks the e2e journeys an agent runs before pushing: `cd apps/web && bun run
+test:e2e:smoke` runs them in under a minute. The merge check stays the full suite in its six shards.
 
 ## React workspaces: preloads in `@tj/config/bun-test`
 
@@ -234,15 +237,10 @@ Specs:
 - `jobs.spec.ts` — run `ping` → `queued … progress 100% … completed`; cancel mid-run →
   `cancelled` and never `completed`; **reload mid-run**: the events seen before the reload appear
   again, in order and without duplicates, then the stream finishes (ADR 0012 replay).
-- `a11y.spec.ts` — `@axe-core/playwright` (WCAG 2.1 A/AA + best-practice) on `/sign-in`, `/`,
-  `/dev/jobs` (idle and with events), every route we ship (one test per route) and every overlay.
-  The full rule set runs in the light theme; dark and high contrast run only the rules a theme
-  can change (`THEME_RULES` in `e2e/a11y.ts`: `color-contrast`, `link-in-text-block`,
-  `target-size`; the light theme alone carries the lessonco type scale and control sizes). A route test opens the page once, scans it in light after its
-  arrival animations (`settled`), then switches the open page with `switchTheme` (the `storage`
-  event the theme provider mirrors) for each of the other two. `serious`/`critical` fail the
-  test; `moderate`/`minor` are printed with the page label (currently one moderate
-  `page-has-heading-one` on every page — follow-up: `CardTitle` renders a `div`).
+- Axe (`@axe-core/playwright`, WCAG 2.1 A/AA + best-practice, `e2e/a11y.ts`) runs inside a few
+  journeys (library, series, worksheet creation, the generating view). `serious`/`critical` fail the
+  test; `moderate`/`minor` are printed with the page label. The per-route a11y suite
+  (`a11y.spec.ts`) was removed on 8 Oct 2026.
 
 Timing: the `ping` job takes 300 ms per step (5 steps). Never `waitForTimeout` for SSE — use
 `expect.poll(...)` / auto-retrying `expect` on the event list (`getByRole("list", { name: "Job
