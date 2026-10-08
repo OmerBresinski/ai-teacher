@@ -311,3 +311,80 @@ describe("round 4 sheet faults", () => {
     expect(p).not.toMatch(/side-by-side panels|Left to right/);
   });
 });
+
+describe("objective repair: call log and one retry (arm checkdef)", () => {
+  const slides = fx.templates.map((t) => (t ? { template: t, heading: "x" } : undefined));
+  const plan = { flow: fx.flow, slides: slides as Record<string, unknown>[] };
+  const bad = { changes: [{ n: 9, teaches: [3], slide: { template: "visual-text" } }] };
+  const good = {
+    changes: [
+      { n: 9, teaches: [3], slide: { template: "visual-text", heading: "Catalysts" } },
+      { n: 10, teaches: [2, 3], slide: { template: "hinge", heading: "Which is a catalyst?" } },
+    ],
+  };
+  const run = async (outs: unknown[], retry?: boolean) => {
+    const users: string[] = [];
+    const events: Record<string, unknown>[] = [];
+    let k = 0;
+    const chat = async (r: { user: string }) => {
+      users.push(r.user);
+      return { usd: 0.001, ms: 5, out: outs[k++] };
+    };
+    const r = await repairObjectives({
+      plan,
+      objectives: fx.objectives.map((o) => o.teacher),
+      context: "ctx",
+      system: "sys",
+      schema: {},
+      chat: chat as never,
+      log: (e) => events.push(e as Record<string, unknown>),
+      onUsd: () => {},
+      retry,
+    });
+    return { r, users, events };
+  };
+  test("without retry: one call, its request, response and reject verdict logged", async () => {
+    const { r, users, events } = await run([bad, good]);
+    expect(r.repaired).toBe(false);
+    expect(users.length).toBe(1);
+    const call = events.find((e) => e.ev === "objective-repair-call");
+    expect(call).toMatchObject({
+      attempt: 1,
+      response: bad,
+      verdict: "reject",
+      templates: ["visual-text"],
+    });
+    expect((call?.request as { user: string } | undefined)?.user).toBe(users[0]);
+    expect(events.at(-1)).toMatchObject({ ev: "objective-repair", kept: "original", retries: 0 });
+  });
+  test("with retry: a rejected answer gets one more turn naming what is missing", async () => {
+    const { r, users, events } = await run([bad, good], true);
+    expect(users.length).toBe(2);
+    expect(users[1].startsWith(users[0])).toBe(true);
+    expect(users[1]).toContain(JSON.stringify(bad));
+    expect(users[1]).toContain(
+      "Objective 3 still has no slide where pupils answer a question or do a task on it.",
+    );
+    expect(r.repaired).toBe(true);
+    expect(r.plan.slides[9]).toMatchObject({ template: "hinge" });
+    expect(events.filter((e) => e.ev === "objective-repair-call").map((e) => e.verdict)).toEqual([
+      "reject",
+      "accept",
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      ev: "objective-repair",
+      kept: "repair",
+      retries: 1,
+      usd: 0.002,
+    });
+  });
+  test("with retry: two rejects keep the original plan; an accepted first answer makes no retry", async () => {
+    const two = await run([bad, bad], true);
+    expect(two.r.repaired).toBe(false);
+    expect(two.r.plan).toBe(plan);
+    expect(two.events.at(-1)).toMatchObject({ kept: "original", retries: 1 });
+    const one = await run([good, bad], true);
+    expect(one.users.length).toBe(1);
+    expect(one.events.at(-1)).toMatchObject({ kept: "repair", retries: 0 });
+  });
+});

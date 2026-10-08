@@ -9,7 +9,17 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
-import { type AbArm, abArm, abFiles, abFixes, abR1t, abR1t2, abShared, sha } from "./ab/arms";
+import {
+  type AbArm,
+  abArm,
+  abFiles,
+  abFixes,
+  abObjRetry,
+  abR1t,
+  abR1t2,
+  abShared,
+  sha,
+} from "./ab/arms";
 import { continueForFit } from "./ab/continue";
 import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
@@ -1880,6 +1890,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         chat,
         log,
         onUsd: (v) => ledger.add("repair", v),
+        retry: abObjRetry(),
       }).finally(held);
       if (out.repaired) {
         plan.flow = out.plan.flow as Plan["flow"];

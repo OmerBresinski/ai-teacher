@@ -68,6 +68,8 @@ export const AB_CONFIG: Record<
     polish?: boolean;
     /** polish2 (D30): base4's judge input, a log-only colour gate, per-label clash fallback. */
     polish2?: boolean;
+    /** checkdef: one more objective-repair turn when the re-check rejects the first. */
+    objRetry?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -343,7 +345,8 @@ export const AB_CONFIG: Record<
   },
   // checkdef (9 Oct): base5 + one definition in the writer's flow step and in objective-repair: only
   // a slide where pupils answer (question-set, practice, hinge, exit-ticket) checks an objective; an
-  // explaining or modelling slide only teaches. Prompt only; code switches are base5's.
+  // explaining or modelling slide only teaches. Code: base5's switches + objRetry (one more repair
+  // turn naming what is still missing when the re-check rejects the first).
   checkdef: {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -352,6 +355,7 @@ export const AB_CONFIG: Record<
     r2: true,
     polish: true,
     polish2: true,
+    objRetry: true,
     delta:
       "base5 + checks defined: only question-set, practice, hinge or exit-ticket slides check (writer + objective-repair)",
   },
@@ -429,6 +433,7 @@ export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
 export const abPolish2 = () => (current ? Boolean(AB_CONFIG[current].polish2) : false);
+export const abObjRetry = () => (current ? Boolean(AB_CONFIG[current].objRetry) : false);
 export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */

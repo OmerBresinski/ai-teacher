@@ -13,10 +13,11 @@ const OLD = "A slide checks an objective when pupils answer a question or do a t
 const PLACE = "Where the topic depends on place, use what is true for pupils in New Zealand.";
 
 describe("arm checkdef", () => {
-  test("code switches are base5's, diffed against base5", () => {
+  test("code switches are base5's plus objRetry, diffed against base5", () => {
     const { delta: _a, ...c } = AB_CONFIG.checkdef;
     const { delta: _b, ...b5 } = AB_CONFIG.base5;
-    expect(c).toEqual(b5);
+    expect(c).toEqual({ ...b5, objRetry: true });
+    expect(AB_CONFIG.base5.objRetry).toBeUndefined();
     expect(AB_REF.checkdef).toEqual({ ref: "base5" });
   });
   test("writer systems are base5's with the one sentence swapped; schemas are base5's", () => {
