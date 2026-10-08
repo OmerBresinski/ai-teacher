@@ -2,7 +2,7 @@ Set the parameters of one teaching model so that it draws what one slide needs. 
 
 Every name, label, number and item comes from the slide's words, the intent or the lesson, written as they are there. Add nothing else. Leave out an optional parameter that none of them decides, so the model's own default applies.
 
-The slide decides each choice, not the default: where a parameter offers options, take the one that matches what the slide shows. Choose the representation and amount of detail that suit the year group.
+The slide decides each choice, not the default: where a parameter offers options, take the one that matches what the slide shows. That option draws everything the slide's words and the intent name: when they name more than one thing, an option that draws only one of them is wrong. Choose the representation and amount of detail that suit the year group.
 
 When the slide asks pupils to find something, use the model's setting that keeps it hidden, and show no answer.
 

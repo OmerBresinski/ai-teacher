@@ -270,9 +270,13 @@ export async function checkParams(
       warnings: [],
     };
   }
-  return v.ok
-    ? { params, refusals: [], warnings: v.warnings ?? [] }
-    : { refusals: v.refusals, warnings: [] };
+  if (!v.ok) return { refusals: v.refusals, warnings: [] };
+  // libfix2: a warning that the drawing leaves out what the params asked for (fractions "show" with
+  // two fractions draws only the first) is a refusal, in the model's own words, so the repair sees it.
+  const dropped = droppedWarnings(v.warnings ?? []);
+  return dropped.length
+    ? { refusals: dropped, warnings: [] }
+    : { params, refusals: [], warnings: v.warnings ?? [] };
 }
 
 /** Fill, check, and one repair with the refusal reasons. */
@@ -341,9 +345,18 @@ export type LibAsk = {
   yearGroup: string;
   spec?: unknown;
   lib?: { lesson: string; outDir?: string };
+  /** The figure zone, slide points (DiagramAsk.slot): labels are sized to meet the floor there. */
+  slot?: { w: number; h: number };
 };
 /** A rendered model: the final build as a PNG data URI, at its own aspect. */
-export type Drawn = { src: string; aspect: number; alt?: string };
+export type Drawn = {
+  src: string;
+  aspect: number;
+  alt?: string;
+  /** The crop's width in slide units (the library's 1280-wide stage) and its smallest text there. */
+  unitW?: number;
+  minFs?: number;
+};
 export type LibDeps = {
   filler: Filler;
   /** `step`: draw that build (0-based) instead of the final one (question slides). */
@@ -352,7 +365,8 @@ export type LibDeps = {
     params: J,
     outDir?: string,
     step?: number,
-  ) => Promise<Drawn & { warnings: string[] }>;
+    slot?: { w: number; h: number },
+  ) => Promise<Drawn & { warnings: string[]; zoom?: number }>;
 };
 /** A model figure: drawn by the library, or the base4 kind to fall back to, or nothing (logged). */
 export async function libDiagram(
@@ -405,7 +419,7 @@ export async function libDiagram(
     const out = ask.lib?.outDir
       ? `${ask.lib.outDir}/lib/${ask.key.replace(/[^\w.-]+/g, "_")}`
       : undefined;
-    const d = await deps.render(id, r.params, out, step);
+    const d = await deps.render(id, r.params, out, step, ask.slot);
     if (out)
       writeFileSync(
         `${out}/params.json`,
@@ -417,10 +431,20 @@ export async function libDiagram(
       model: id,
       attempts: r.attempts,
       aspect: d.aspect,
+      unitW: d.unitW,
+      minFs: d.minFs,
+      zoom: d.zoom,
       warnings: d.warnings,
     });
     return {
-      libDrawn: { src: d.src, aspect: d.aspect, alt: spec.alt ?? ask.shows, model: id },
+      libDrawn: {
+        src: d.src,
+        aspect: d.aspect,
+        unitW: d.unitW,
+        minFs: d.minFs,
+        alt: spec.alt ?? ask.shows,
+        model: id,
+      },
       usd: r.usd,
     };
   } catch (e) {
@@ -438,6 +462,16 @@ export function libMeta(): Record<string, MetaEntry> {
   metaCache ??= JSON.parse(readFileSync(`${import.meta.dir}/lib-meta.json`, "utf8")).models;
   return metaCache as Record<string, MetaEntry>;
 }
+/** validate() warnings that say the drawing leaves something out (lib-meta.json `drops`). */
+export function droppedWarnings(warnings: unknown[]): Refusal[] {
+  dropsCache ??= (
+    JSON.parse(readFileSync(`${import.meta.dir}/lib-meta.json`, "utf8")).drops ?? []
+  ).map((d: string) => new RegExp(d, "i"));
+  return warnings
+    .map((w) => (typeof w === "string" ? { path: "(all)", reason: w } : (w as Refusal)))
+    .filter((w) => dropsCache?.some((re) => re.test(String(w.reason))));
+}
+let dropsCache: RegExp[] | undefined;
 /** The things `intent` asks of model `id` that it cannot draw (empty: it can, as far as we know). */
 export function capabilityRefusals(id: string, intent: string): Refusal[] {
   return (libMeta()[id]?.cannot ?? [])
