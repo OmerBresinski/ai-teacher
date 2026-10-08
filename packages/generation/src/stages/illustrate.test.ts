@@ -10,7 +10,7 @@ import {
 } from "@tj/slides";
 import { memoryLogger, recordingDeps, SAMPLE_JOB_ID, sampleBriefLesson } from "../testing";
 import type { PhotoPlacer } from "../types";
-import { factQueryHints, illustrate } from "./illustrate";
+import { factQueryHints, illustrate, judgeMade } from "./illustrate";
 
 const meta: MaterialiseMeta = {
   promptVersion: "generate-slide.v4",
@@ -250,7 +250,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v17",
+        promptVersion: "pick-or-requery-photo.v17-seen",
         thumbnail: second.src.tiny,
       },
     });
@@ -268,7 +268,7 @@ describe("illustrate", () => {
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
     expect(state.lesson.generation?.promptVersions.generated).toContain(
-      "pick-or-requery-photo.v17",
+      "pick-or-requery-photo.v17-seen",
     );
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
@@ -426,7 +426,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v17",
+      promptVersion: "pick-or-requery-photo.v17-seen",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -926,5 +926,43 @@ describe("PICTURE-AUDIT #4: a gated pick with no requery tries the next candidat
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images }));
     expect(stores).toEqual(["ewe"]);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/ewe.jpg");
+  });
+});
+
+describe("D8: a library reuse is judged on its own stored caption", () => {
+  const brief = {
+    subject: "young hen",
+    request: "A young hen with fluffy down and a short tail",
+    mustShow: [],
+  } as unknown as ImageBrief;
+  const call = async (reuse: boolean) => {
+    const ai = judge(pick("made"));
+    const deps = recordingDeps(ai, {});
+    await judgeMade({
+      lesson: sampleBriefLesson() as unknown as Lesson,
+      index: 0,
+      brief,
+      deps,
+      dataUrl: "data:image/png;base64,AAAA",
+      reuse,
+      stored: {
+        alt: "Close-up of a curious young black chicken",
+        source: { provider: "pexels", photographer: "Ana P" },
+      },
+    });
+    return JSON.stringify(ai.calls[0]);
+  };
+  test("reuse: the judge reads the stored caption, never our request as the caption", async () => {
+    const sent = await call(true);
+    expect(sent).toContain("Close-up of a curious young black chicken");
+    expect(
+      sent.split("A young hen with fluffy down and a short tail").length - 1,
+    ).toBeLessThanOrEqual(
+      (await call(false)).split("A young hen with fluffy down and a short tail").length - 2,
+    );
+  });
+  test("a fresh made picture still carries its request (unchanged)", async () => {
+    const sent = await call(false);
+    expect(sent).not.toContain("Close-up of a curious young black chicken");
   });
 });

@@ -663,15 +663,32 @@ export async function judgeMade(args: {
   reuse?: boolean;
   /** BAKEOFF: the judge's whole verdict (its boxes place the picture's crop). */
   onVerdict?: (verdict: PickOrRequery) => void;
+  /**
+   * D8 (rootcause/y1-hen.md): a library hit's own stored caption and source. On reuse the judge reads
+   * these as the photo's caption, never this request (it agreed with itself: y1 "young hen" row).
+   */
+  stored?: {
+    alt?: string;
+    about?: string;
+    source?: {
+      provider?: string;
+      photographer?: string;
+      photographerUrl?: string;
+      pageUrl?: string;
+    };
+  };
 }): Promise<boolean> {
+  const stored = args.reuse ? args.stored : undefined;
   const made: PhotoResult = {
     id: "made",
     width: 1024,
     height: 1024,
-    alt: args.brief.request ?? args.brief.subject,
-    photographer: "",
-    photographerUrl: "",
-    pageUrl: "made",
+    alt: args.reuse
+      ? [stored?.alt, stored?.about].filter((x) => x?.trim()).join(" ")
+      : (args.brief.request ?? args.brief.subject),
+    photographer: stored?.source?.photographer ?? "",
+    photographerUrl: stored?.source?.photographerUrl ?? "",
+    pageUrl: stored?.source?.pageUrl ?? "made",
     src: { large: args.dataUrl, medium: args.dataUrl, tiny: args.dataUrl },
   } as PhotoResult;
   const verdict = await judge(
@@ -775,7 +792,7 @@ function itemsSeen(
  */
 export function gatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: Omit<PickOrRequery, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+  verdict: Omit<PickOrRequery, "kindMatches" | "boxes" | "seen"> & { kindMatches?: boolean | null },
 ): boolean {
   if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
   // BAKEOFF 6 Oct: a named sex, age or kind the picked subject is not (a cockerel for "hen").

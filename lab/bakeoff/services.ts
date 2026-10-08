@@ -854,6 +854,8 @@ export function pictureService(opts: {
                 deps: deps as never,
                 dataUrl: made.dataUrl,
                 ...(reuse ? { reuse } : {}),
+                // D8: a library hit is judged on its own stored caption and source, not our request.
+                ...(reuse ? { stored: made as never } : {}),
                 // A/B: round 5's judge v17 takes no picture style (round 9's v19 line is not sent).
                 onVerdict: (v: { boxes?: Box4[]; why?: string | null; fits?: boolean }) => {
                   madeBoxes = v.boxes;
