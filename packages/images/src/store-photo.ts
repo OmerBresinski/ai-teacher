@@ -10,6 +10,7 @@
  */
 import { newId, type StorageAdapter, storageKey, type WorkspaceId } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
+import { COMMONS_USER_AGENT, type CommonsPhoto } from "./commons";
 import type { PhotoResult } from "./pexels";
 
 export type PickTarget = "slide" | "worksheet";
@@ -78,9 +79,14 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
   if (!rendition.startsWith("https://")) {
     throw new StorePhotoError("fetch_failed", "The photo URL is not usable.");
   }
+  const commons = (photo as Partial<CommonsPhoto>).provider === "commons";
   let res: Response;
   try {
-    res = await fetchFn(rendition, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    res = await fetchFn(rendition, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      // Wikimedia's etiquette: a descriptive agent on every request, the file fetch included.
+      ...(commons ? { headers: { "User-Agent": COMMONS_USER_AGENT } } : {}),
+    });
   } catch {
     throw new StorePhotoError("fetch_failed", "The photo could not be downloaded.");
   }
@@ -121,11 +127,22 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
     bytes: bytes.length,
     contentType,
     source: {
-      provider: "pexels",
+      provider: commons ? "commons" : "pexels",
       id: photo.id,
       pageUrl: photo.pageUrl,
       photographer: photo.photographer,
       photographerUrl: photo.photographerUrl,
+      // Commons (ruling 139): the reuse terms, kept for the export credit; never on a slide.
+      ...(commons && (photo as CommonsPhoto).credit
+        ? {
+            author: (photo as CommonsPhoto).credit.author,
+            licence: (photo as CommonsPhoto).credit.licence,
+            ...((photo as CommonsPhoto).credit.licenceUrl
+              ? { licenceUrl: (photo as CommonsPhoto).credit.licenceUrl }
+              : {}),
+            sourceUrl: (photo as CommonsPhoto).credit.sourceUrl,
+          }
+        : {}),
     },
   };
 }

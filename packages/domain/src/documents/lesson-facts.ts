@@ -170,6 +170,11 @@ export type ImagePurpose = (typeof IMAGE_PURPOSES)[number];
 const MustShowItem = z.string().trim().min(1).max(120);
 export const ImageBriefSchema = z.strictObject({
   subject: z.string().trim().min(1).max(60),
+  /**
+   * The writer's whole picture request: the judge reads it; the search uses the clipped
+   * `subject`. Absent: the judge reads `subject`.
+   */
+  request: z.string().trim().min(1).max(400).optional(),
   mustShow: z
     .union([MustShowItem.transform((one) => [one]), z.array(MustShowItem).max(4)])
     .optional()
@@ -178,6 +183,23 @@ export const ImageBriefSchema = z.strictObject({
   // The same ceiling as Plan's `PlanImageBriefSchema` (TEACH-227 raised it to six; TEACH-237
   // aligned this one after a skeleton Plan accepted was refused here with a bare ZodError).
   avoid: z.array(MustShowItem).max(6).optional(),
+  /**
+   * A named, specific subject (a place, a building, an artefact, a person from history): the photo
+   * search goes to Wikimedia Commons first, then Pexels (ruling 139). Absent: judged from the
+   * subject's wording (`isSpecificSubject` in generation).
+   */
+  specific: z.boolean().optional(),
+  /** The proper name of the one thing the photo must show (the writer's `named`); searched first. */
+  named: z.string().trim().min(1).max(80).optional(),
+  /** Searches the picture director wrote (most specific first); tried before code's own. */
+  queries: z.array(z.string().trim().min(1).max(80)).max(4).optional(),
+  /** The time and place a historical subject belongs to (picture director): the judge's context. */
+  period: z.string().trim().min(1).max(120).optional(),
+  /**
+   * The picture zone's width over height (ruling 158): a photo is searched for, or generated, at
+   * that shape. Absent: the search's own default.
+   */
+  aspect: z.number().positive().finite().optional(),
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
 

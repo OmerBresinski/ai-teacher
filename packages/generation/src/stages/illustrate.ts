@@ -14,6 +14,7 @@ import {
   pickOrRequeryPrompt,
   pickOrRequerySchemaFor,
 } from "../prompts/pick-or-requery-photo";
+import type { PickOrRequery as DirectedVerdict } from "../prompts/pick-or-requery-photo-directed";
 import {
   SHORTLIST_MAX,
   shortlistPhotosPrompt,
@@ -566,6 +567,25 @@ function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery):
 export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
   if (!verdict.onSubject || !verdict.clear) return false;
   return brief.mustShow.length === 0 || itemsSeen(brief, verdict).length > 0;
+}
+
+/**
+ * The picture director's gate (the writer planner only; objectives-first keeps `gatePasses` and
+ * its judge): the subject, clearly, and the picture as a whole fits the request; a named sex, age
+ * or kind the picked subject is not (a cockerel for "hen") fails.
+ */
+export function directedGatePasses(
+  brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
+  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+): boolean {
+  if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
+  if (verdict.kindMatches === false) return false;
+  if (brief.mustShow.length === 0) return true;
+  // Items taken from the writer's request are the things the slide's words name (the sheep AND
+  // the lamb), so every one must be in view; a parts list needs one. A real thing's archive
+  // photograph (1923 Germany, a staging of The Tempest) is right with one item in view.
+  const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
+  return itemsSeen(brief, verdict).length >= need;
 }
 
 async function searchPortraits(
