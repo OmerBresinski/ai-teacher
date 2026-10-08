@@ -116,6 +116,16 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       beforeEditable: async () => {
         await pictures?.settle();
       },
+      // lostPic: single pictures for a lost compound picture, placed and settled after editable.
+      ...(pictures
+        ? {
+            placeMore: async (i, more, slide) => {
+              for (const a of more) if (a.type === "photo") pictures.start(i, a, slide);
+              await pictures.settle();
+            },
+            held: (i, key) => pictures.held(i, key),
+          }
+        : {}),
       onEditable: async (slides) => {
         // Editable: every slide is laid out; the checkpoint stays at `planned` until the end.
         const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned"));

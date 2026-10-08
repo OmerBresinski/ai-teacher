@@ -3,16 +3,18 @@ import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
-import { pointOf } from "../stages/picture-director";
+import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { writerDrawerSystem } from "./diagram-contract.gen";
 import {
+  acceptWriterSpec,
   DRAWER_TIMEOUT_MS,
   type DrawerCall,
   drawWriterDiagram,
   layoutSlotProbe,
   QUESTION_TEMPLATES,
+  questionSafe,
   withBuildCounts,
 } from "./diagrams";
 import {
@@ -23,6 +25,7 @@ import {
   pictureFallbackOk,
   tableRows,
 } from "./fallbacks";
+import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
 import {
   applyRepair,
   asksVisual,
@@ -59,6 +62,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { localise } from "./locale";
+import { lostPictureFallback } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
@@ -80,7 +84,7 @@ import {
   renderedLines,
   repairObjectives,
 } from "./notes";
-import { pastedPictureList } from "./picture-checks";
+import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
 import { writerSchema } from "./schema";
 import {
@@ -145,6 +149,13 @@ export type WriterRun = {
    * by code, and a model that cannot be drawn falls back to the drawer. Needs `drawDiagrams`.
    */
   library?: boolean;
+  /**
+   * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
+   * again one subject each) and wait for them; absent, the asks read `visual` as they are.
+   */
+  placeMore?: (index: number, asks: VisualAsk[], slide: SlideForPicture) => Promise<void>;
+  /** keepPic: a photo match6 dropped from an ask slide, for a slide that ends with no visual. */
+  held?: (index: number, key: string) => VisualState | undefined;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
   /**
@@ -216,7 +227,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
   /** Diagrams drawn in this run, by `<slide>:<key>` (TEACH-247). */
   const drawnDiagrams = new Map<string, VisualState>();
+  /** States code decided after the fact (match6 kept photo, orphan6, a stale drawing), by key. */
+  const override = new Map<string, VisualState>();
   const visualState = (i: number) => (key: string) => {
+    const o = override.get(`${i}:${key}`);
+    if (o) return o;
     const was = carried.get(`${i}:${key}`);
     const drawn = drawnDiagrams.get(`${i}:${was?.key ?? key}`);
     if (drawn) return drawn;
@@ -320,6 +335,28 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     });
     relay(idx);
   }
+  /** A diagram ask as the drawer reads it, sized to the slide's slot. */
+  const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
+    const slot = slotOf(String(s.template ?? ""));
+    const box = slotBox(base.stage, slot);
+    return {
+      key: a.key,
+      kind: a.kind,
+      shows: a.shows,
+      labels: a.labels,
+      ...(a.spec !== undefined ? { spec: a.spec } : {}),
+      words: wordsOf(s),
+      yearGroup: brief.yearGroup,
+      stage: base.stage,
+      slot: {
+        placement: slot === "full" ? ("across the slide" as const) : ("beside text" as const),
+        w: box.w,
+        h: box.h,
+        name: slot,
+      },
+      question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
+    };
+  };
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
   if (run.drawDiagrams) {
     const { callDrawer } = run.drawDiagrams;
@@ -526,19 +563,58 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
 
   // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {
-    const next = slideNoEmDash(next0);
+    // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
+    // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
+    // otherwise.
+    const sync = syncFigure(plan.slides[i] as S | undefined, slideNoEmDash(next0));
+    if (sync.action === "redrawn" || sync.action === "drop")
+      log({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why });
+    const next = sync.action === "drop" ? asWords(sync.slide as S) : (sync.slide as S);
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));
+    const oldState = new Map(oldAsks.map((a) => [a.key, visualState(i)(a.key)]));
     plan.slides[i] = next;
     const newAsks = visualsOf(next, i, { ...base, plan });
     asks.set(i, newAsks);
     for (const a of newAsks) {
-      const was = oldAsks.find((b) =>
-        sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }),
+      const was = oldAsks.find(
+        (b) =>
+          sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
+          // the same request is not the same drawing: a spec that changed is drawn again
+          (b.type !== "diagram" ||
+            a.type !== "diagram" ||
+            specKey((b as { spec?: unknown }).spec) === specKey(a.spec)),
       );
-      if (was && was.key !== a.key)
-        carried.set(`${i}:${a.key}`, oldCarried.get(was.key) ?? { key: was.key, ask: was });
-      else if (!was) carried.delete(`${i}:${a.key}`);
+      // a drawing whose numbers the new words no longer say is never carried
+      const v0 = was ? oldState.get(was.key) : undefined;
+      const stale = v0?.status === "diagram" ? figureTextMismatch(v0.spec, next as S) : undefined;
+      if (stale) log({ ev: "figure-stale", slide: i + 1, key: a.key, why: stale });
+      if (was && !stale) {
+        if (was.key !== a.key)
+          carried.set(`${i}:${a.key}`, oldCarried.get(was.key) ?? { key: was.key, ask: was });
+        continue;
+      }
+      carried.delete(`${i}:${a.key}`);
+      override.delete(`${i}:${a.key}`);
+      drawnDiagrams.delete(`${i}:${a.key}`);
+      // A new or changed writer spec is drawn by code at once (no drawer call after editable).
+      if (a.type === "diagram" && a.spec !== undefined && run.drawDiagrams) {
+        const ask = diagramAsk(a, next);
+        const r = acceptWriterSpec(a.spec, ask, base.theme, layoutSlotProbe);
+        if (r.spec)
+          drawnDiagrams.set(`${i}:${a.key}`, {
+            status: "diagram",
+            spec: ask.question ? questionSafe(r.spec) : r.spec,
+          });
+        log({
+          ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
+          slide: i + 1,
+          key: a.key,
+          late: true,
+        });
+      } else if (a.type === "diagram" && stale) {
+        override.set(`${i}:${a.key}`, { status: "failed" });
+      }
     }
     relay(i);
   };
@@ -682,6 +758,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
       return false;
     }
+    // orphan6 (BAKEOFF base4f): a fit repair that moved the only words naming a pictured thing drops
+    // the picture, unless the slide asks pupils to look, point, match or find (keepPic).
+    if (mode === "fit") {
+      const orphans = orphansAfterFit(o2.slide, moved);
+      const keep = orphans.length > 0 && asksToSee(wordsOf(o2.slide));
+      if (keep) log({ ev: "keep-pic", slide: i + 1, rule: "orphan6", orphans });
+      if (orphans.length && !keep) {
+        o2.slide = { ...o2.slide, picture: null };
+        override.set(`${i}:picture`, { status: "failed" });
+        log({ ev: "orphan6-drop", slide: i + 1, orphans, moved });
+      }
+    }
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, o2.slide);
@@ -726,6 +814,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
     log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
   }
+  // figureSync: after repair, every drawn figure is checked against its slide's words; one that
+  // disagrees is dropped, so the fallback below restages the slide without it.
+  for (let i = 0; i < n; i++)
+    for (const a of asks.get(i) ?? []) {
+      const v = visualState(i)(a.key);
+      if (a.type !== "diagram" || v.status !== "diagram") continue;
+      const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
+      if (!why) continue;
+      log({ ev: "figure-text-mismatch", slide: i + 1, key: a.key, why, dropped: true });
+      override.set(`${i}:${a.key}`, { status: "failed" });
+      relay(i);
+    }
 
   // ── a figure that cannot be shown (FOR-CODE item 5) ──
   // A diagram fault went to repair once above; a diagram that still cannot draw becomes a picture
@@ -874,6 +974,51 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
+    // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
+    // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
+    // ported: a partial split never ships).
+    const s0 = plan.slides[i] as S;
+    const n0 = notes.get(i);
+    const how0 = await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, next);
+      const all = asks.get(i) ?? [];
+      const now = plan.slides[i] as S;
+      if (kind === "split")
+        await run.placeMore?.(
+          i,
+          all.filter((a) => a.type === "photo"),
+          { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+        );
+      if (kind === "library" && run.drawDiagrams)
+        for (const a of all)
+          if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
+            const r = await drawWriterDiagram(diagramAsk(a, now), {
+              callDrawer: run.drawDiagrams.callDrawer,
+              drawerSystem: writerDrawerSystem,
+              theme: base.theme,
+              probe: layoutSlotProbe,
+              log: (e) => log({ ...e, slide: i + 1 }),
+            });
+            if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+          }
+      const got = all.every((a) => {
+        const st = visualState(i)(a.key).status;
+        return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
+      });
+      const ok = got && all.length > 0;
+      log({ ev: "lost-picture", slide: i + 1, try: kind, ok });
+      if (ok) {
+        relay(i);
+        return true;
+      }
+      restore(i, s0, n0, oldAsks);
+      return false;
+    });
+    if (how0) {
+      path.set(i, `picture-${how0}`);
+      return;
+    }
     // A reroute that asks for the picture that could not be shown again is rejected.
     const same = (after: S) =>
       visualsOf(after, i, { ...base, plan }).some(
@@ -899,7 +1044,38 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     path.set(i, `picture-${how}`);
   };
   for (let i = 0; i < n; i++) await fallback(i);
+  const beforeLost = new Map(Array.from({ length: n }, (_, i) => [i, plan.slides[i]] as const));
+  const asksBeforeLost = new Map(
+    Array.from({ length: n }, (_, i) => [i, asks.get(i) ?? []] as const),
+  );
   for (let i = 0; i < n; i++) await pictureLost(i);
+  // keepPic (BAKEOFF base4f, fill-only): a photo match6 dropped from an ask slide fills the slide
+  // only when it ended with no visual at all (no landed picture or diagram, no table); it never
+  // replaces one a fallback made, and never overflows.
+  for (let i = 0; i < n; i++)
+    for (const a of asksBeforeLost.get(i) ?? []) {
+      const h = a.type === "photo" ? run.held?.(i, a.key) : undefined;
+      if (h?.status !== "photo") continue;
+      const now = plan.slides[i] as S;
+      const statuses = (asks.get(i) ?? []).map((x) => visualState(i)(x.key).status);
+      if (!heldPhotoFills(now, statuses)) {
+        log({ ev: "keep-pic-unused", slide: i + 1, key: a.key, path: path.get(i) });
+        continue;
+      }
+      const nn = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, beforeLost.get(i) as S);
+      override.set(`${i}:${a.key}`, h);
+      relay(i);
+      if ((check()[i]?.faults ?? []).some((f) => OVERFLOW.test(f))) {
+        override.delete(`${i}:${a.key}`);
+        restore(i, now, nn, oldAsks);
+        log({ ev: "keep-pic-unused", slide: i + 1, key: a.key, why: "overflow" });
+        continue;
+      }
+      path.set(i, "picture-kept");
+      log({ ev: "keep-pic", slide: i + 1, key: a.key, rule: "match6" });
+    }
   // pointGuard (BAKEOFF base4f, D47): the code backstop. A slide that still points at nothing
   // (its picture lost, its rewrite still dangling) loses each pointing sentence and every question
   // about a lettered or left/right shape; "Answer from memory." where a task is left. The title

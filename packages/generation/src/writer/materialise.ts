@@ -146,11 +146,36 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
   (Array.isArray(s.sequence) ? s.sequence : []).forEach((x, n) => {
     if (isPic(x)) out.push({ key: `seq.${n}`, f: x });
   });
+  // lostPic (BAKEOFF base4f): a lost compound picture asked again one subject each; the first in
+  // the slot, the rest as tiles 1...
+  (Array.isArray(s.tiles) ? s.tiles : []).forEach((x, n) => {
+    if (isPic(x)) out.push({ key: `tile.${n + 1}`, f: x });
+  });
   (Array.isArray(s.columns) ? s.columns : []).forEach((c, n) => {
     const p = (c as S)?.picture;
     if (isPic(p)) out.push({ key: `col.${n}`, f: p });
   });
   return out;
+}
+
+/**
+ * The slide's tiles (picture = tile 0, `tiles` = tiles 1..) as one grid in its panel (BAKEOFF
+ * b4-r1t3 layout, used by lostPic). A tile that failed leaves the grid; when the first failed, the
+ * next one leads.
+ */
+function tiled(s: S, main: Figure | undefined, ctx: MaterialiseCtx, mark = false) {
+  if (!Array.isArray(s.tiles) || !s.tiles.length) return main;
+  const rest = (s.tiles as unknown[])
+    .map((t, n) => (isPic(t) ? figureNow(`tile.${n + 1}`, t as Pic, ctx, mark) : undefined))
+    .filter((f): f is Figure => !!f && "photo" in f);
+  if (main && !("photo" in main)) return main;
+  const all = [...(main ? [main, ...((main as { tiles?: Figure[] }).tiles ?? [])] : []), ...rest];
+  const [lead, ...more] = all;
+  if (!lead || !("photo" in lead)) return main;
+  const mode = ["together", "shuffled"].includes(String(s.tile_mode))
+    ? (s.tile_mode as "together" | "shuffled")
+    : "grid";
+  return (more.length ? { ...lead, tiles: more, tileMode: mode } : lead) as Figure;
 }
 
 /** The figure a slot shows now: the photo or drawing once landed, an open slot while pending. */
@@ -368,14 +393,14 @@ export function toInput(
         heading,
         questions: strs(s.questions),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
-        figure: fig("picture") ?? fig("figure"),
+        figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
     case "discussion":
       return {
         template,
         heading,
         lead: lead ?? str(s.question),
-        figure: fig("picture") ?? fig("figure"),
+        figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
     default:
       return {

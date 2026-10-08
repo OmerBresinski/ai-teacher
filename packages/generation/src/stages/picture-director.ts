@@ -17,6 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PictureMaker, PipelineDeps } from "../types";
+import { asksToSee, namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
 import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
@@ -773,7 +774,8 @@ export type WriterPictureMiss =
   | PictureOutcome["reason"]
   | "set-not-searched"
   | "deadline"
-  | "error";
+  | "error"
+  | "match6";
 
 export interface WriterPictures {
   /** Start placing one ask (idempotent per slide and key). */
@@ -786,6 +788,11 @@ export interface WriterPictures {
   vetoed(index: number, key: string): string | undefined;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
+  /**
+   * keepPic (BAKEOFF base4f): the photo match6 dropped from a slide that asks pupils to look,
+   * point, match or find; the stage uses it only when the slide ends with no visual.
+   */
+  held(index: number, key: string): WriterPictureState | undefined;
 }
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
@@ -799,6 +806,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "set-not-searched": "Picture sets are made by the generator, which is not on.",
   deadline: "The picture search ran out of time.",
   error: "The picture search failed.",
+  match6: "",
 };
 
 export function createWriterPictures(opts: {
@@ -822,12 +830,17 @@ export function createWriterPictures(opts: {
   type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
   type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
-  const stopper = new AbortController();
-  const signal = AbortSignal.any([opts.deps.signal, stopper.signal]);
-  const deps: PipelineDeps = { ...opts.deps, signal };
-  const direct =
+  // A second round (lostPic's single pictures after editable) gets a fresh stopper and batcher.
+  let stopper = new AbortController();
+  let deps: PipelineDeps = {
+    ...opts.deps,
+    signal: AbortSignal.any([opts.deps.signal, stopper.signal]),
+  };
+  const makeDirect = () =>
     opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
   const bank = opts.bank ?? opts.maker?.bank;
+  let direct = makeDirect();
+  const heldPhotos = new Map<string, WriterPictureState>();
   /** A budget stop or a cancel seen by any placement; `settle` rethrows it. */
   let fatal: unknown;
   const slots = new Map<string, Slot>();
@@ -872,21 +885,23 @@ export function createWriterPictures(opts: {
 
   // A rejection is a stop (placeWriterPicture's nonFatal and makePictureSet rethrow only those) or
   // the deadline's own abort: it is kept, and settle rethrows a stop.
-  const onError = (slot: Slot) => (error: unknown) => {
-    if (slot.state.status !== "pending") return;
-    slot.state = { status: "failed" };
-    // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
-    if (stopper.signal.aborted && !opts.deps.signal.aborted) {
-      slot.miss = "deadline";
-      return;
-    }
-    if (isFatal(error) || opts.deps.signal.aborted) {
-      fatal ??= error;
-      stopper.abort();
-      return;
-    }
-    slot.miss = "error";
-  };
+  const onError =
+    (slot: Slot, roundStop = stopper) =>
+    (error: unknown) => {
+      if (slot.state.status !== "pending") return;
+      slot.state = { status: "failed" };
+      // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
+      if (roundStop.signal.aborted && !opts.deps.signal.aborted) {
+        slot.miss = "deadline";
+        return;
+      }
+      if (isFatal(error) || opts.deps.signal.aborted) {
+        fatal ??= error;
+        roundStop.abort();
+        return;
+      }
+      slot.miss = "error";
+    };
 
   /** One ask through the director and the ladder, into `slot`. */
   const place = (slot: Slot, index: number, ask: WriterPhotoAsk, slide: SlideForPicture) => {
@@ -922,11 +937,37 @@ export function createWriterPictures(opts: {
         return;
       }
       sources.set(photo.src, photo.source);
+      const p = photo as typeof photo & { about?: string; boxes?: Box[] };
       slot.state = photoState(
-        photo as typeof photo & { about?: string; boxes?: Box[] },
+        p,
         (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1,
         requestOf(ask),
       );
+      // match6 + match6w (BAKEOFF base4f): a several-thing picture ships only when the judge saw
+      // every thing the slide's own words name; on a look, point, match or find slide the dropped
+      // photo is held (keepPic) for a slide that ends with no visual.
+      const words = `${slide.heading} ${slide.text ?? ""}`;
+      const seen = seenOf({
+        alt: photo.alt,
+        about: p.about,
+        request: requestOf(ask),
+        provider: photo.source?.provider,
+        source: photo.source,
+        subjects: (p.boxes ?? [])
+          .filter((b) => b.right > b.left && b.bottom > b.top)
+          .map((b) => ({ name: b.item })),
+      });
+      const named = namedUnmatched(unmatchedItems(ask.mustSee, seen), words);
+      if (named.length) {
+        const k = id(index, ask.key);
+        if (asksToSee(words)) heldPhotos.set(k, slot.state);
+        slot.state = { status: "failed" };
+        slot.miss = "match6";
+        opts.deps.logger.info(
+          { stage: "generate", picture: k, unmatched: named },
+          "writer picture dropped (match6)",
+        );
+      }
     }, onError(slot));
   };
 
@@ -982,7 +1023,7 @@ export function createWriterPictures(opts: {
         ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
         ...(maker.allow ? { allow: maker.allow } : {}),
         ...(maker.spent ? { spent: maker.spent } : {}),
-        signal,
+        signal: deps.signal,
         log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
       },
       opts.look,
@@ -1003,11 +1044,6 @@ export function createWriterPictures(opts: {
       const k = id(index, ask.key);
       if (slots.has(k)) return;
       const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
-      if (settled) {
-        slot.state = { status: "failed" };
-        slots.set(k, slot);
-        return;
-      }
       if (ask.set) {
         if (!opts.maker) {
           slots.set(k, {
@@ -1054,6 +1090,10 @@ export function createWriterPictures(opts: {
       if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
       // Placements still running stop spending (the deadline or the cancel).
       stopper.abort();
+      // A later round (lostPic) starts on a fresh stopper and batcher.
+      stopper = new AbortController();
+      deps = { ...opts.deps, signal: AbortSignal.any([opts.deps.signal, stopper.signal]) };
+      direct = makeDirect();
       if (opts.deps.signal.aborted)
         throw Object.assign(new Error("The lesson was stopped while its pictures were placed."), {
           name: "AbortError",
@@ -1069,8 +1109,10 @@ export function createWriterPictures(opts: {
     },
     vetoed(index, key) {
       const slot = slots.get(id(index, key));
-      return slot?.miss ? MISS_LINE[slot.miss] : undefined;
+      // match6 is not a veto: the reroute is not told (as the evidence ran).
+      return slot?.miss && slot.miss !== "match6" ? MISS_LINE[slot.miss] : undefined;
     },
+    held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
   };
 }
