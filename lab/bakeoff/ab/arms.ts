@@ -36,6 +36,7 @@ export const AB_ARMS = [
   "judge20",
   "dir-stage",
   "y1fix",
+  "lib",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -52,6 +53,11 @@ export const AB_CONFIG: Record<
     delta: string;
     fixes?: boolean;
     r2?: boolean;
+    r1t?: boolean;
+    r1t2?: boolean;
+    r1t3?: boolean;
+    stageBank?: boolean;
+    lib?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -233,6 +239,18 @@ export const AB_CONFIG: Record<
     stageBank: true,
     delta: "b4-r1t3 + D8 + director v12 + stage requests never reuse stock bank rows",
   },
+  // lib (9 Oct, Greg): base4 + the writer may call a library model; a luna call fills its params,
+  // code checks (schema, validate, one repair) and the library engine draws it (ab/lib.ts).
+  lib: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    lib: true,
+    delta:
+      "base4 + figure kind model: writer picks a library model by id with an intent, luna fills its params, schema + validate + one repair, library engine draws",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -279,6 +297,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   judge20: { ref: "base4" },
   "dir-stage": { ref: "base4" },
   y1fix: { ref: "b4-r1t" },
+  lib: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -295,6 +314,8 @@ export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false)
 export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false);
 /** y1fix bank rule: stage requests never reuse stock bank rows. */
 export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank) : false);
+/** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
+export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
 export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
@@ -376,6 +397,13 @@ export function pinFaults(arm: AbArm): string[] {
     if (existsSync(path) && pins[key] !== sha(readFileSync(path)))
       out.push(`${key} differs from its pin`);
   }
+  // lib arm: a stand-in prompt (marked "[PLACEHOLDER") never goes to a paid run.
+  for (const f of [
+    ...STAGES.map((st) => abFiles(arm, st).system),
+    ...SHARED_PINNED.map((x) => `${AB}/prompts/${arm}/${x}`),
+  ])
+    if (existsSync(f) && readFileSync(f, "utf8").includes("[PLACEHOLDER"))
+      out.push(`${f.slice(AB.length + 1)} still holds a placeholder prompt`);
   for (const f of CODE_PINNED)
     if (pins[`code:${f}`] !== sha(readFileSync(`${REPO}/${f}`)))
       out.push(`${f} (code) differs from its pin`);
@@ -428,4 +456,7 @@ export const SHARED_PINNED = [
   "shared/set-judge.txt",
   "shared/set-judge-schema.json",
   "shared/illustration-style.txt",
+  "shared/lib-fill.txt",
+  "shared/lib-fill-user.txt",
+  "shared/lib-repair-user.txt",
 ];

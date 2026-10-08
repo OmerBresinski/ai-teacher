@@ -1378,6 +1378,8 @@ export type DiagramAsk = {
   theme?: string;
   /** R2 (b3-r2): the writer's own spec; code draws it, or the drawer gets it as its request. */
   spec?: unknown;
+  /** lib arm: lesson context for a library model's fill call, and where its builds strip goes. */
+  lib?: { lesson: string; outDir?: string };
 };
 /** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
 function diagramSystem(): string {
@@ -1408,6 +1410,16 @@ export async function diagramSpec(
   ledger: Ledger,
   log: (e: object) => void,
 ): Promise<unknown | undefined> {
+  // lib arm (ab/lib.ts): a library model is filled, checked and drawn; when it is refused twice it
+  // falls back to base4's drawer for the nearest base4 kind, or no figure.
+  if (ask.kind === "model") {
+    const lib = await import("./ab/lib");
+    const r = await lib.libDiagram(ask, await lib.lunaDeps(ledger, log), log);
+    if (r.libDrawn) return { libDrawn: r.libDrawn };
+    if (!r.fallbackKind) return undefined;
+    const { spec: _spec, lib: _lib, ...rest } = ask;
+    ask = { ...rest, kind: r.fallbackKind };
+  }
   const kindSchema = (DiagramSpecSchema.options as { shape: { kind: { value: string } } }[]).find(
     (o) => o.shape.kind.value === ask.kind,
   );

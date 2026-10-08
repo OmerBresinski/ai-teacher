@@ -1,0 +1,115 @@
+{
+  "note": "lib arm fill-path fixtures (9 Oct): five base4 slides (runs/b3-r2-1, base4 = b3-r2 byte for byte) rewritten as the lib writer would write them, with a model figure in place of base4's. Hand-written, not model output. `stub` is the stub filler's answer: a library preset with a patch for this slide.",
+  "figures": [
+    {
+      "brief": "y1-science-animals-young",
+      "slide": 5,
+      "base4": "picture-sequence of three photos: chick, young hen, hen",
+      "template": "big-visual",
+      "heading": "A chick grows into a hen",
+      "lead": "A hen lays an egg. A chick hatches and grows into a hen.",
+      "points": [],
+      "figure": {
+        "kind": "model",
+        "model": "life_cycle",
+        "intent": "a chicken's life cycle in order: egg, chick, young hen, adult hen, and back to the egg",
+        "alt": "A chicken's life cycle: an egg hatches into a chick, which grows into a hen that lays eggs."
+      },
+      "stub": {
+        "model": "life_cycle",
+        "preset": "y2-frog",
+        "patch": { "organism": "chicken", "layout": "line" }
+      }
+    },
+    {
+      "brief": "y2-maths-halves-quarters",
+      "slide": 0,
+      "base4": "fraction-shapes: two squares, one half and one quarter shaded",
+      "template": "visual-text",
+      "heading": "Equal parts",
+      "lead": "Equal parts are the same size.",
+      "points": [
+        { "label": "One half", "text": "One of two equal parts." },
+        { "label": "One quarter", "text": "One of four equal parts." }
+      ],
+      "figure": {
+        "kind": "model",
+        "model": "fractions",
+        "intent": "one half and one quarter of the same-sized whole, side by side, so pupils see a quarter is smaller",
+        "alt": "Two equal wholes: one cut into two equal parts with one shaded, one cut into four equal parts with one shaded."
+      },
+      "stub": {
+        "model": "fractions",
+        "preset": "y1-half-pizza",
+        "patch": {
+          "operation": "compare",
+          "representation": "rectangle",
+          "fractions": [{ "value": "1/2" }, { "value": "1/4" }],
+          "whole": "One chocolate bar"
+        }
+      }
+    },
+    {
+      "brief": "y2-maths-halves-quarters",
+      "slide": 3,
+      "base4": "equal-groups: 12 counters in two rings of six",
+      "template": "visual-text",
+      "heading": "Find half of 12",
+      "lead": "Share 12 counters into two equal groups.",
+      "points": ["Each group has 6 counters.", "One half of 12 is 6."],
+      "figure": {
+        "kind": "model",
+        "model": "equal_groups",
+        "intent": "12 counters shared one at a time into 2 equal groups of 6",
+        "alt": "Twelve counters shared into two equal groups of six."
+      },
+      "stub": {
+        "model": "equal_groups",
+        "preset": "y2-groups-of-2",
+        "patch": { "groups": 2, "size": 6, "division": "sharing", "addition": false }
+      }
+    },
+    {
+      "brief": "y5-maths-fractions-of-amounts",
+      "slide": 1,
+      "base4": "equal-groups: 20 counters in five rings of four",
+      "template": "equation-hero",
+      "heading": "Find ⅕ of 20",
+      "lead": null,
+      "formula": "⅕ of 20 = 20 ÷ 5",
+      "points": ["Share 20 into 5 equal groups.", "⅕ of 20 is 4."],
+      "figure": {
+        "kind": "model",
+        "model": "fractions",
+        "intent": "one fifth of 20 counters: 20 shared into 5 equal groups, one group picked out",
+        "alt": "Twenty counters in five equal groups of four; one group is one fifth."
+      },
+      "stub": {
+        "model": "fractions",
+        "preset": "y3-quarter-of-12",
+        "patch": { "fractions": [{ "value": "1/5" }], "amount": 20 }
+      }
+    },
+    {
+      "brief": "y5-maths-fractions-of-amounts",
+      "slide": 4,
+      "base4": "bar-model: 20 in five parts of four, three shaded",
+      "template": "equation-hero",
+      "heading": "Find ⅗ of 20",
+      "lead": null,
+      "formula": "⅗ of 20 = 20 ÷ 5 × 3",
+      "points": ["One fifth: 20 ÷ 5 = 4", "Three fifths: 4 × 3 = 12", "⅗ of 20 is 12."],
+      "figure": {
+        "kind": "model",
+        "model": "bar_model",
+        "intent": "a bar of 20 split into 5 equal parts of 4, with 3 parts making 12",
+        "alt": "A bar of 20 in five equal parts of 4; three parts together make 12."
+      },
+      "stub": {
+        "model": "bar_model",
+        "preset": "y4-fraction-of",
+        "patch": { "story": "What is 3/5 of 20?", "amount": 20, "fraction": { "n": 3, "d": 5 } }
+      }
+    }
+  ]
+}

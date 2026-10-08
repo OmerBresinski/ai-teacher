@@ -9,7 +9,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
-import { abArm, abFiles, abR1t3, abR2 } from "./ab/arms";
+import { abArm, abFiles, abLib, abR1t3, abR2 } from "./ab/arms";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
@@ -34,6 +34,16 @@ const pts = (v: unknown): TemplatePoint[] =>
     : [];
 /** R2 (b3-r2): a structured figure is the writer's own spec; its words stand in for labels. */
 function r2Ask(key: string, f: Record<string, unknown>): VisualAsk | undefined {
+  // lib arm: a library model by id; its params are filled and checked after the writer (ab/lib.ts).
+  if (abLib() && f.kind === "model")
+    return {
+      key,
+      type: "diagram",
+      kind: "model",
+      shows: String(f.intent ?? ""),
+      labels: [],
+      spec: { model: f.model, intent: f.intent, alt: f.alt },
+    };
   const spec = abR2() ? writerSpecOf(f) : undefined;
   if (!spec) return undefined;
   return {
@@ -120,6 +130,9 @@ function figureNow(
         : {}),
     };
   if (v.status === "diagram") {
+    // lib arm: a library model's final build, a PNG placed as a picture in the figure zone.
+    const lib = (v.spec as { libDrawn?: { src: string; aspect: number; alt?: string } })?.libDrawn;
+    if (lib) return { photo: lib.src, alt: lib.alt ?? "", aspect: lib.aspect };
     const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string } })?.drawn;
     return d ? { drawn: d } : { diagram: v.spec };
   }

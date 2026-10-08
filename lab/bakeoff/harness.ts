@@ -1138,6 +1138,10 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       ...diagramContext(plan.slides[i] as Record<string, unknown> | undefined, brief.keyStage),
       stage: brief.keyStage,
       theme: themeId,
+      // lib arm: a library model's fill call reads the lesson; its builds strip goes under the run.
+      ...(a.kind === "model"
+        ? { lib: { lesson: `${brief.subject}: ${brief.topic}`, outDir: o.outDir } }
+        : {}),
     };
     log({ ev: "diagram-start", key: k, kind: a.kind });
     jobs.push(
