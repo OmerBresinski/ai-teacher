@@ -8,10 +8,14 @@ import { expect, type Page } from "@playwright/test";
 export const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
 /**
- * The axe rules a theme can change. The app theme only swaps colours (`data-theme` on `<html>`),
- * so structure is scanned once in the light theme and dark and high contrast run these alone.
+ * The axe rules a theme can change: its colours, and its control sizes (the light theme alone
+ * carries the lessonco design tokens, `packages/ui/src/styles/lessonco.css`, with their own type
+ * scale, control height and radii). Structure is scanned once, in light; dark and high contrast
+ * run these alone.
  */
-export const COLOUR_RULES = ["color-contrast", "link-in-text-block"] as const;
+export const THEME_RULES = ["color-contrast", "link-in-text-block", "target-size"] as const;
+
+export type AppTheme = "light" | "dark" | "high-contrast";
 
 interface Violation {
   id: string;
@@ -48,16 +52,17 @@ function isRecordedContrastException(violation: Violation): boolean {
 /**
  * Scan `page` with axe. Fails the test on serious/critical violations; logs the rest to the
  * console with the page `label` so they can be tracked down in the report. With `rules`, only
- * those rules run (`COLOUR_RULES` for the dark and high-contrast passes).
+ * those rules run; a `theme` other than light runs `THEME_RULES` (the full set ran in light).
  */
 export async function expectNoSeriousA11yViolations(
   page: Page,
   label: string,
   selector?: string,
-  options: { rules?: readonly string[] } = {},
+  options: { rules?: readonly string[]; theme?: AppTheme } = {},
 ): Promise<void> {
   const builder = new AxeBuilder({ page });
-  if (options.rules) builder.withRules([...options.rules]);
+  const rules = options.rules ?? (options.theme && options.theme !== "light" ? THEME_RULES : null);
+  if (rules) builder.withRules([...rules]);
   else builder.withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]);
   if (selector) builder.include(selector);
   const results = await builder.analyze();
@@ -101,17 +106,15 @@ export async function settled(page: Page, selector = '[role="dialog"], [role="me
     });
 }
 
-export type AppTheme = "light" | "dark" | "high-contrast";
-
 /**
- * Switch the open page to `theme` without a reload, the way another tab would: store it, set
- * `data-theme` and send the `storage` event the theme provider mirrors. Then wait for the colour
- * transitions to finish, so the next scan reads the final colours.
+ * Switch the open page to `theme` without a reload, the way another tab would: store it and send
+ * the `storage` event the theme provider mirrors, so the app itself sets `data-theme` (and its
+ * React state). Then wait for the colour transitions to finish, so the next scan reads the final
+ * colours.
  */
 export async function switchTheme(page: Page, theme: AppTheme): Promise<void> {
   await page.evaluate((value) => {
     localStorage.setItem("tj-theme", value);
-    document.documentElement.setAttribute("data-theme", value);
     window.dispatchEvent(new StorageEvent("storage", { key: "tj-theme", newValue: value }));
   }, theme);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

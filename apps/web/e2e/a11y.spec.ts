@@ -1,10 +1,10 @@
 /**
  * Accessibility gate (F18-R09): axe on every route we ship, in each of the three themes, plus the
  * open state of every dialog and the card menu. Serious/critical violations fail; moderate/minor
- * are reported. The light theme gets the full rule set; dark and high contrast run the colour
- * rules only (`COLOUR_RULES`), since the theme changes nothing else. A page opens in its first
- * theme through `localStorage` before the pre-paint script runs (`addInitScript` precedes every
- * page script); the route tests then switch the open page with `switchTheme`.
+ * are reported. The light theme gets the full rule set; dark and high contrast run only the rules
+ * a theme can change (`THEME_RULES`: contrast, link distinction, target size). A page opens in its
+ * first theme through `localStorage` before the pre-paint script runs (`addInitScript` precedes
+ * every page script); the route tests then switch the open page with `switchTheme`.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -18,13 +18,7 @@ import {
   newLesson,
   newSlide,
 } from "@tj/editor/starter";
-import {
-  type AppTheme,
-  COLOUR_RULES,
-  expectNoSeriousA11yViolations,
-  settled,
-  switchTheme,
-} from "./a11y";
+import { expectNoSeriousA11yViolations, settled, switchTheme } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test, uniqueEmail } from "./fixtures";
 
 test.describe("accessibility (axe)", () => {
@@ -49,8 +43,6 @@ test.describe("accessibility (axe)", () => {
   });
 
   const THEMES = ["light", "dark", "high-contrast"] as const;
-  /** Full rules in light; the colour rules alone in the other two themes. */
-  const scanFor = (theme: AppTheme) => (theme === "light" ? {} : { rules: COLOUR_RULES });
 
   // /sign-in (TEACH-252), signed out, in each theme: the idle form, the sent state and a failed
   // round trip's alert.
@@ -62,17 +54,12 @@ test.describe("accessibility (axe)", () => {
         page.getByRole("heading", { level: 1, name: "Welcome to DayBack" }),
       ).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expectNoSeriousA11yViolations(page, `/sign-in (${theme})`, undefined, scanFor(theme));
+      await expectNoSeriousA11yViolations(page, `/sign-in (${theme})`, undefined, { theme });
 
       await page.getByLabel("Email address").fill(uniqueEmail("a11y"));
       await page.getByRole("button", { name: "Email me a link" }).click();
       await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
-      await expectNoSeriousA11yViolations(
-        page,
-        `/sign-in sent (${theme})`,
-        undefined,
-        scanFor(theme),
-      );
+      await expectNoSeriousA11yViolations(page, `/sign-in sent (${theme})`, undefined, { theme });
 
       await page.goto("/sign-in?error=INVALID_TOKEN");
       await expect(page.getByRole("alert")).toBeVisible();
@@ -80,7 +67,7 @@ test.describe("accessibility (axe)", () => {
         page,
         `/sign-in?error=INVALID_TOKEN (${theme})`,
         undefined,
-        scanFor(theme),
+        { theme },
       );
     });
   }
@@ -134,7 +121,7 @@ test.describe("accessibility (axe)", () => {
       await expectNoSeriousA11yViolations(page, `${path} (light)`);
       for (const theme of ["dark", "high-contrast"] as const) {
         await switchTheme(page, theme);
-        await expectNoSeriousA11yViolations(page, `${path} (${theme})`, undefined, scanFor(theme));
+        await expectNoSeriousA11yViolations(page, `${path} (${theme})`, undefined, { theme });
       }
     });
   }
@@ -165,12 +152,7 @@ test.describe("accessibility (axe)", () => {
       await page.goto(`/l/${ids.locked}`);
       await expect(page.getByTestId("generating-shell")).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expectNoSeriousA11yViolations(
-        page,
-        `generating view (${theme})`,
-        undefined,
-        scanFor(theme),
-      );
+      await expectNoSeriousA11yViolations(page, `generating view (${theme})`, undefined, { theme });
 
       await page.goto(`/l/${ids.generated}`);
       await page.getByRole("button", { name: /thing(s)? to check$/ }).click();
@@ -180,12 +162,9 @@ test.describe("accessibility (axe)", () => {
       await popover.evaluate((el) =>
         Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
       );
-      await expectNoSeriousA11yViolations(
-        page,
-        `residual popover (${theme})`,
-        undefined,
-        scanFor(theme),
-      );
+      await expectNoSeriousA11yViolations(page, `residual popover (${theme})`, undefined, {
+        theme,
+      });
       await page.keyboard.press("Escape");
     }
   });
@@ -216,12 +195,7 @@ test.describe("accessibility (axe)", () => {
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await page.getByRole("button", { name: "Facts" }).click();
       await expect(page.getByRole("complementary", { name: "Facts" })).toBeVisible();
-      await expectNoSeriousA11yViolations(
-        page,
-        `facts panel (${theme})`,
-        undefined,
-        scanFor(theme),
-      );
+      await expectNoSeriousA11yViolations(page, `facts panel (${theme})`, undefined, { theme });
       await page
         .getByRole("listbox", { name: "Slides" })
         .getByRole("option")
@@ -233,12 +207,9 @@ test.describe("accessibility (axe)", () => {
       await dialog.evaluate((el) =>
         Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
       );
-      await expectNoSeriousA11yViolations(
-        page,
-        `regenerate dialog (${theme})`,
-        '[role="dialog"]',
-        scanFor(theme),
-      );
+      await expectNoSeriousA11yViolations(page, `regenerate dialog (${theme})`, '[role="dialog"]', {
+        theme,
+      });
       await page.keyboard.press("Escape");
     }
   });

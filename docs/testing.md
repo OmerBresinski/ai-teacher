@@ -214,9 +214,9 @@ Specs:
   again, in order and without duplicates, then the stream finishes (ADR 0012 replay).
 - `a11y.spec.ts` — `@axe-core/playwright` (WCAG 2.1 A/AA + best-practice) on `/sign-in`, `/`,
   `/dev/jobs` (idle and with events), every route we ship (one test per route) and every overlay.
-  The full rule set runs in the light theme; dark and high contrast run the colour rules only
-  (`COLOUR_RULES` in `e2e/a11y.ts`: `color-contrast`, `link-in-text-block`), since the app theme
-  changes nothing but colours. A route test opens the page once, scans it in light after its
+  The full rule set runs in the light theme; dark and high contrast run only the rules a theme
+  can change (`THEME_RULES` in `e2e/a11y.ts`: `color-contrast`, `link-in-text-block`,
+  `target-size`; the light theme alone carries the lessonco type scale and control sizes). A route test opens the page once, scans it in light after its
   arrival animations (`settled`), then switches the open page with `switchTheme` (the `storage`
   event the theme provider mirrors) for each of the other two. `serious`/`critical` fail the
   test; `moderate`/`minor` are printed with the page label (currently one moderate
