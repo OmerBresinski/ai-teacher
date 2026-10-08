@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { type Lesson, lessonFromBrief } from "@tj/domain/documents";
+import { GUARD_MESSAGE, type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { generatedLesson, lessonFacts } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
@@ -107,10 +107,24 @@ describe("real lesson intake", () => {
     globalThis.EventSource = originalEventSource;
     mock.restore();
   });
+  it("opens on the brief with its heading focused and nothing filled in", async () => {
+    show();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Let’s start with your idea." })).toHaveFocus(),
+    );
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip planning" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent("Year 4");
+    expect(screen.getByRole("button", { name: "Blank lesson" })).toBeVisible();
+  });
   it("preserves homepage topic and creates an idempotent proposed plan without minutes", async () => {
     search = { topic: "The water cycle" };
     show();
     expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("The water cycle");
+    // A prefilled topic never submits on its own (TEACH-309): nothing is posted before Next.
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(fakeApi.requests.filter((r) => r.path === "/lessons")).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().skipPlanning).toBe(false);
@@ -150,6 +164,21 @@ describe("real lesson intake", () => {
     }
   });
 
+  it("the guard blocks a pupil reference: a status message and no POST on Next", async () => {
+    show();
+    const topic = screen.getByRole("textbox", { name: "Topic" });
+    fireEvent.change(topic, {
+      target: { value: "A pupil called Jamie struggles with the water cycle" },
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(GUARD_MESSAGE);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(fakeApi.requests.filter((r) => r.path === "/lessons")).toHaveLength(0);
+    expect(navigate).not.toHaveBeenCalled();
+
+    fireEvent.change(topic, { target: { value: "The water cycle" } });
+    await waitFor(() => expect(screen.queryByText(GUARD_MESSAGE)).toBeNull());
+  });
+
   it("skip planning opens the real editor through the one-job path", async () => {
     search = { topic: "Rocks" };
     show();
@@ -158,10 +187,16 @@ describe("real lesson intake", () => {
     expect(post().skipPlanning).toBe(true);
     expect(navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/l/$lessonId" });
   });
-  it("preserves blank lesson and source controls including pasted text", () => {
+  it("preserves blank lesson and source controls including pasted text", async () => {
     search = { source: "1" };
     show();
     expect(screen.getByRole("dialog", { name: "Add your materials" })).toBeTruthy();
+    // `?source=1` opens on Choose files (TEACH-309); the file input shares its name, so take the
+    // real <button>.
+    const chooseFiles = screen
+      .getAllByRole("button", { name: "Choose files" })
+      .find((element) => element.tagName === "BUTTON");
+    await waitFor(() => expect(chooseFiles).toHaveFocus());
     expect(screen.getByRole("tab", { name: "Paste text" })).toBeTruthy();
     expect(screen.getByLabelText("Choose files", { selector: "input" })).toHaveAttribute(
       "accept",

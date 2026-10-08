@@ -233,6 +233,49 @@ describe("PresentView", () => {
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 
+  it("H, L, C, N and ? each toggle their control; Escape closes the sheet, the panel, the tool, then exits", async () => {
+    const { onExit } = renderPresent();
+    const pressed = (name: string) =>
+      screen.getByRole("button", { name, exact: true }).getAttribute("aria-pressed");
+    key("h");
+    expect(pressed("Highlighter")).toBe("true");
+    key("l");
+    expect(pressed("Laser pointer")).toBe("true");
+    expect(pressed("Highlighter")).toBe("false"); // a tool and the laser are exclusive
+    key("l");
+    expect(pressed("Laser pointer")).toBe("false");
+    // C collapses the pill to the counter; the tool buttons go with it, and C brings them back.
+    key("c");
+    expect(screen.getByRole("button", { name: "Expand controls" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Highlighter", exact: true })).toBeNull();
+    key("c");
+    expect(screen.getByRole("button", { name: "Collapse controls" })).toBeVisible();
+    // N opens the presenter notes; ? the shortcuts sheet on top, grouped.
+    key("n");
+    const notes = screen.getByRole("complementary", { name: "Presenter notes" });
+    key("h");
+    expect(pressed("Highlighter")).toBe("true");
+    key("?");
+    const sheet = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(sheet).toHaveClass("tj-stage");
+    for (const group of ["Moving", "Screen", "Tools", "Panels"]) {
+      expect(within(sheet).getByRole("heading", { name: group })).toBeVisible();
+    }
+    // Nested Escape: the sheet (Radix owns it inside the dialog), the notes, the highlighter, exit.
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
+    expect(notes).toBeInTheDocument();
+    key("Escape");
+    expect(screen.queryByRole("complementary", { name: "Presenter notes" })).toBeNull();
+    expect(pressed("Highlighter")).toBe("true");
+    key("Escape");
+    expect(pressed("Highlighter")).toBe("false");
+    expect(onExit).not.toHaveBeenCalled();
+    key("Escape");
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
   it("a tool then Esc: the tool closes first", async () => {
     const { onExit } = renderPresent();
     key("p");

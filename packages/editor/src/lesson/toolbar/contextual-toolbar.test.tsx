@@ -338,6 +338,19 @@ describe("ShapeToolbar label text controls", () => {
     expect(within(panel).getByRole("textbox")).toBeTruthy();
     expect(within(panel).queryByRole("button", { name: /^Label style/ })).toBeNull();
   });
+
+  test("Escape closes the Label popover and keeps the shape selected (row 10)", async () => {
+    const { container } = renderEditor(chromeLesson());
+    clickAt(container, 150, 130);
+    const panel = await openLabel();
+    const field = within(panel).getByRole("textbox");
+    await waitFor(() => expect(field).toHaveFocus());
+    fireEvent.keyDown(field, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Label" })).toBeNull());
+    expect(container.querySelector("[data-selection-frame]")).not.toBeNull();
+    // Present, not `toBeVisible()`: happy-dom's computed-style walk does not finish on this tree.
+    expect(toolbar("Shape")).toBeInTheDocument();
+  });
 });
 
 describe("LineToolbar (row 2)", () => {

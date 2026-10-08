@@ -55,6 +55,25 @@ describe("LibraryPage", () => {
     expect(screen.getAllByText("See all")).toHaveLength(3);
   });
 
+  it("New lesson opens the brief screen", async () => {
+    renderPage("home");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New lesson" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/lessons/new" });
+  });
+
+  it("typing in the search writes `q` to the URL, replacing the entry", async () => {
+    renderPage("lesson");
+
+    const input = await screen.findByRole("searchbox", { name: "Search by title" });
+    fireEvent.change(input, { target: { value: "water" } });
+    expect(navigate).toHaveBeenLastCalledWith({
+      to: "/lessons",
+      search: { q: "water" },
+      replace: true,
+    });
+  });
+
   it("filters kind pages through the URL search parameter and clears on Escape", async () => {
     search = { q: "water" };
     renderPage("lesson");
@@ -134,6 +153,15 @@ describe("LibraryPage", () => {
     expect(screen.getAllByRole("button", { name: "Clear search" })).toHaveLength(2);
   });
 
+  it("a Series search with no match clears back to /series", async () => {
+    search = { q: "zzz" };
+    renderPage("series");
+
+    expect(await screen.findByText("No titles match that")).toBeVisible();
+    fireEvent.click(screen.getAllByRole("button", { name: "Clear search" }).at(-1) as HTMLElement);
+    expect(navigate).toHaveBeenLastCalledWith({ to: "/series", search: {}, replace: true });
+  });
+
   it("renders the query error and retries the failed document query", async () => {
     fakeApi.failNext(
       (r) => r.path === "/documents" && r.query.get("kind") === "lesson",
@@ -175,6 +203,33 @@ describe("LibraryPage", () => {
     expect(screen.getByRole("heading", { name: "Earlier" })).toBeVisible();
     expect(screen.getByRole("table", { name: "Recent" })).toBeVisible();
     expect(screen.getByRole("table", { name: "Earlier" })).toBeVisible();
+    const headings = screen
+      .getByRole("table", { name: "Recent" })
+      .querySelectorAll('[role="columnheader"], th');
+    expect([...headings].map((th) => th.textContent?.trim())).toEqual([
+      "Thumbnail",
+      "Title",
+      "Year and subject",
+      "Size",
+      "Edited",
+      "Actions",
+    ]);
+  });
+
+  it("worksheet cards carry their minutes; New worksheet opens the creation flow", async () => {
+    renderPage("worksheet");
+
+    for (const [title, minutes] of [
+      ["Fractions practice", "20 min"],
+      ["Roman source investigation", "10 min"],
+      ["Label a flowering plant", "5 min"],
+      ["River vocabulary", "5 min"],
+    ]) {
+      const card = (await screen.findByText(title)).closest("article, tr");
+      expect(card).toHaveTextContent(minutes);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "New worksheet" }));
+    expect(navigate).toHaveBeenCalledWith({ to: "/worksheets/new", search: { lesson: undefined } });
   });
 
   it("deletes through a six-second Undo toast and restores the document", async () => {
