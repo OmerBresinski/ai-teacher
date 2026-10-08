@@ -178,8 +178,12 @@ database on ports that never collide with `bun run dev`:
 
 A production build bakes an absolute `VITE_API_URL` (`src/env.ts` rejects `/api`), so the e2e
 build is separate from `dist/` — `turbo run test:e2e` still depends on `build` so the normal
-build is verified first. `reuseExistingServer: !CI`: locally, leave the three processes running
-(`E2E_VERBOSE=1` pipes their stdout) and re-run specs in seconds.
+build is verified first locally; CI calls Playwright in `apps/web` directly, because the `build`
+job already checks the build. `reuseExistingServer: !CI`: locally, leave the three processes
+running (`E2E_VERBOSE=1` pipes their stdout) and re-run specs in seconds.
+
+The opt-in screenshot specs (`*-screenshots.spec.ts`) are left out of the run unless
+`TEACH_SCREENSHOTS=1`, so they never count towards a shard.
 
 Fixtures (`e2e/fixtures.ts`) — import `test`/`expect` from here:
 
@@ -219,9 +223,10 @@ cd apps/web && bun --bun playwright show-report  # html report (playwright-repor
 cd apps/web && bun --bun playwright show-trace test-results/<test>/trace.zip
 ```
 
-Traces and screenshots are kept for failures only; CI uploads `playwright-report/` and
-`test-results/` as an artifact when the job fails. `dist/e2e`, `playwright-report/`,
-`test-results/` and `coverage/` are git-ignored.
+Traces and screenshots are kept for failures only; in CI a failed shard uploads its
+`blob-report/` (which carries them) and the `e2e report` job merges those into the
+`playwright-report` artifact. `dist/e2e`, `playwright-report/`, `test-results/`, `blob-report/`,
+`all-blob-reports/` and `coverage/` are git-ignored.
 
 ## Flake guidance
 
@@ -239,7 +244,12 @@ Traces and screenshots are kept for failures only; CI uploads `playwright-report
 ## CI
 
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
-under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. `e2e` job: Postgres service +
-`teaching_journey_test`, `bunx --bun playwright install --with-deps chromium` (browser cache keyed on the
-Playwright version), `bun run test:e2e`, report uploaded on failure. Both jobs are required status
-checks on `master` (README "CI").
+under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. e2e runs as four `e2e-shard` jobs at
+once, each with its own Postgres service + `teaching_journey_test`,
+`bunx --bun playwright install --with-deps --only-shell chromium` (browser cache keyed on the
+Playwright version) and `bun run test:e2e --shard=n/4` in `apps/web`; a failed shard uploads its
+blob report. The `e2e` job is the one required check for all four: it passes when every shard
+passed or `detect` skipped them (a PR that changes only documentation, `scripts/e2e-scope.ts`).
+When a shard failed, the `e2e report` job merges the blob reports into one `playwright-report`
+artifact. Run one shard locally with `cd apps/web && bunx --bun playwright test --shard=1/4`.
+`test` and `e2e` are required status checks on `master` (README "CI").

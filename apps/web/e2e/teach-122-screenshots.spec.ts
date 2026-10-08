@@ -1,7 +1,6 @@
 /** TEACH-122 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-122-screenshots.spec.ts`. */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 }, seed: false });
 
 test("captures the brief empty, filled with its questions, and with a guard error", async ({

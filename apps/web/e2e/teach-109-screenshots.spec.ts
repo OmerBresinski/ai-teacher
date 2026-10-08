@@ -1,7 +1,6 @@
 /** TEACH-109 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-109-screenshots.spec.ts`. */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test("captures the worksheet editor with a block selected and with the slash menu open", async ({

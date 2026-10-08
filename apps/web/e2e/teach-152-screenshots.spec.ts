@@ -1,7 +1,6 @@
 /** TEACH-152 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-152-screenshots.spec.ts`. */
 import { addedElement, elementIds, expect, seededPaths, seedLibrary, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 }, seed: false });
 
 const shot = (name: string) => `/tmp/teach-152-${name}.png`;

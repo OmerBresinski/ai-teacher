@@ -1,7 +1,6 @@
 /** TEACH-105 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-105-screenshots.spec.ts`. */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("captures the slide toolbar, a shape toolbar with the More drawer, and the theme dialog", async ({

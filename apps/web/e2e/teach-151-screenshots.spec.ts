@@ -2,7 +2,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, seededPaths, seedLibrary, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 }, seed: false });
 
 const shot = (name: string) => `/tmp/teach-151-${name}.png`;

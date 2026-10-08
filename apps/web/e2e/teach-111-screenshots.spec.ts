@@ -2,7 +2,6 @@
 import { copyFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 const settled = (page: import("@playwright/test").Page) =>

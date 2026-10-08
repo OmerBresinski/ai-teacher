@@ -19,6 +19,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const CI = process.env.CI === "true";
 const E2E_KIT = process.env.E2E_KIT === "1";
+const SCREENSHOTS = process.env.TEACH_SCREENSHOTS === "1";
 // The optional kit gate cannot reuse a developer's production-mode e2e server: it needs Vite dev.
 const ports = E2E_KIT
   ? { api: 3813, worker: 3823, web: 4194 }
@@ -50,9 +51,9 @@ export default defineConfig({
   // real flake worth a look (the html report keeps the trace of the failed attempt).
   retries: CI ? 1 : 0,
   workers: CI ? 2 : undefined,
-  reporter: CI
-    ? [["github"], ["html", { open: "never" }]]
-    : [["list"], ["html", { open: "never" }]],
+  // CI runs the suite in four shards (ci.yml `e2e-shard`); each writes a blob report and the
+  // `e2e-report` job merges the failed shards' blobs into one HTML report.
+  reporter: CI ? [["github"], ["blob"]] : [["list"], ["html", { open: "never" }]],
   outputDir: "test-results",
   timeout: 30_000,
   expect: { timeout: 10_000 },
@@ -64,7 +65,9 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: /kit\.spec\.ts$/,
+      // Screenshot specs are opt-in visual references (`TEACH_SCREENSHOTS=1`). Leaving them out of
+      // the default run, rather than skipping them, keeps them from weighing on the shard split.
+      testIgnore: SCREENSHOTS ? /kit\.spec\.ts$/ : [/kit\.spec\.ts$/, /-screenshots\.spec\.ts$/],
       use: { ...devices["Desktop Chrome"] },
     },
     ...(E2E_KIT

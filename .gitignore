@@ -18,6 +18,8 @@ coverage/
 packages/generation/eval/results/
 playwright-report/
 test-results/
+blob-report/
+all-blob-reports/
 
 # TypeScript incremental state
 *.tsbuildinfo

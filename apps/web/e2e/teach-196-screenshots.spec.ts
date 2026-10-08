@@ -1,7 +1,6 @@
 /** TEACH-196 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-196-screenshots.spec.ts`. */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 test("captures a seeded sheet's foot in print view and the header toolbar with the moved control", async ({

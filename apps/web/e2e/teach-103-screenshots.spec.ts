@@ -5,8 +5,6 @@
  */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
-
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("captures the editor at rest, with a selection and guides, and the navigator", async ({

@@ -17,7 +17,6 @@ import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 // `@tj/web` does not declare `@tj/slides`; the spec type comes through the starter entry.
 type SlideSpec = NonNullable<NonNullable<Parameters<typeof demoLessonSlides>[1]>["specs"]>[number];
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.setTimeout(300_000);
 
