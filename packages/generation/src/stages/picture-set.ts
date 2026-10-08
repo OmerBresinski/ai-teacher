@@ -15,6 +15,8 @@ import {
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
+  pngSize,
+  splitGrid,
   splitPanels,
 } from "@tj/images";
 import { callStructured } from "../call";
@@ -87,10 +89,48 @@ export function soloImagePrompt(shows: string, look?: LessonLook): string {
   return housePhoto(look) ? housePhotoPrompt(body, look) : body;
 }
 
-/** One strip for the set: wide enough that each panel holds a whole subject. */
+/**
+ * One strip for the set: wide enough that each panel holds a whole subject. Two panels take the
+ * wide size (about 1000x1152 each, 0.87: inside the picture slots' ranges; base4's 1536x1024 gave
+ * 0.72 panels). Sets of 3 or 4 are a 2x2 grid (`GRID_SIZE`) or single pictures, never a strip.
+ */
 export function setSize(n: number): ImageSize {
-  if (n === 1) return "1024x1024";
-  return n >= 3 ? "2048x1152" : "1536x1024";
+  return n === 1 ? "1024x1024" : "2048x1152";
+}
+
+/** A 2x2 grid's size: 3:2 panels (about 750x500), inside every tile and compare range. */
+export const GRID_SIZE: ImageSize = "1536x1024";
+
+/**
+ * Sets of 3 or 4 as one 2x2 grid (true) or as single pictures (false, about $0.015-0.02 a set).
+ * The grid is new against base4 and stays off until a paid Year 1 check passes.
+ */
+export const SET_GRID_DEFAULT = false;
+
+/**
+ * The prompt-engineer's 2x2 grid opener, byte for byte (`picture-set.test.ts` holds its sha256).
+ * Code fills `{{n}}` and `{{panels}}` (the numbered list, reading order).
+ */
+export const TILE_GRID_OPENER = `One image divided into a 2 by 2 grid of {{n}} equal panels separated by thin pure white gaps, each subject centred in its own panel with clear margin on every side, never crossing a gap. Left to right, top to bottom: {{panels}}.
+`;
+
+/**
+ * The one image a set of 3 or 4 is generated as on the grid path: always 4 panels, a set of 3
+ * filled with a spare (its first picture again), then base4's same-subject or matched-set line and
+ * the no-text line.
+ */
+export function gridImagePrompt(shows: string[], look?: LessonLook, same = true): string {
+  const cells = [0, 1, 2, 3].map((j) => shows[j % shows.length] ?? "");
+  const listed = cells
+    .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
+    .join("; ");
+  const strip = setImagePrompt(cells, undefined, same).split("\n");
+  const body = [
+    TILE_GRID_OPENER.trim().replaceAll("{{n}}", "4").replaceAll("{{panels}}", listed),
+    ...strip.slice(1),
+  ].join("\n");
+  if (look?.style === "illustration") return lessonIllustrationPrompt(body, look);
+  return housePhoto(look) ? housePhotoPrompt(body, look) : body;
 }
 
 /**
@@ -126,11 +166,12 @@ export function setImagePrompt(shows: string[], look?: LessonLook, same = true):
 }
 
 // ---------------------------------------------------------------------------------------------
-// The set flow (TEACH-237), as base4 ran it: one strip of N panels at the set's shape; a strip
+// The set flow (TEACH-237). Base4's for a strip: one strip (2 panels, or 5 and more); a strip
 // that repeats a panel is refused; each panel judged alone against its own request, then one set
-// judge over all of them. One strip only (a second strip doubled the cost on a Year 1 lesson and
-// failed the same way): each panel the strip could not place gets one solo generation, judged
-// alone. A panel that is still missing keeps its slot empty.
+// judge over all of them; each panel the strip could not place gets one solo generation, judged
+// alone. New against base4: sets of 3 or 4 are single pictures by default, or one 2x2 grid behind
+// `SET_GRID_DEFAULT` (base4's 3- and 4-panel strips gave panels too tall for any slot). Panels are
+// never cropped to the slot: the slide takes each at its own shape within the slot's range.
 // ---------------------------------------------------------------------------------------------
 
 /** How many strips a set may generate before the solo fallback (base4: one). */
@@ -185,6 +226,8 @@ export interface PictureSetDeps {
     shows: string[],
     dataUrls: string[],
   ): Promise<{ same: boolean; odd: number[]; why?: string } | undefined>;
+  /** Sets of 3 or 4 as one 2x2 grid; absent, `SET_GRID_DEFAULT` (single pictures). */
+  grid?: boolean;
   /** May one more generation of `size` run (the daily cap)? Absent: always. */
   allow?(size: ImageSize): boolean | Promise<boolean>;
   /** What a generation cost, once it has run. */
@@ -235,6 +278,12 @@ export function setStyle(look?: LessonLook): SetPicture["style"] {
       : "photo";
 }
 
+/** How a set is generated: one strip (2, or 5 and more), a 2x2 grid, or single pictures. */
+export function setMode(n: number, grid = SET_GRID_DEFAULT): "strip" | "grid" | "solo" {
+  if (n === 3 || n === 4) return grid ? "grid" : "solo";
+  return n >= 2 ? "strip" : "solo";
+}
+
 /** Every panel of the set, placed or undefined (its slot stays empty). Never throws but an abort. */
 export async function makePictureSet(
   asks: SetAsk[],
@@ -242,17 +291,16 @@ export async function makePictureSet(
   look?: LessonLook,
 ): Promise<(SetPicture | undefined)[]> {
   const setKey = asks.map((a) => a.key).join("+");
-  const aspect = asks[0]?.aspect ?? 4 / 3;
+  const slotAspect = asks[0]?.aspect ?? 4 / 3;
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
-  const prompt = setImagePrompt(
-    shows,
-    look,
-    asks.every((a) => a.sameSubject !== false),
-  );
+  const same = asks.every((a) => a.sameSubject !== false);
+  const mode = setMode(asks.length, deps.grid);
+  let capped = false;
   const generate = async (p: string, size: ImageSize) => {
-    if (deps.allow && !(await deps.allow(size))) {
-      deps.log({ ev: "set-capped", set: setKey, size });
+    if (capped || (deps.allow && !(await deps.allow(size)))) {
+      if (!capped) deps.log({ ev: "set-capped", set: setKey, size });
+      capped = true;
       return undefined;
     }
     const made = await deps.generator.generate({
@@ -270,12 +318,14 @@ export async function makePictureSet(
     set: string,
   ): Promise<SetPicture> => {
     const saved = await deps.save(panel);
+    const dims = pngSize(panel);
     return {
       key: a.key,
       src: saved.src,
       alt: a.shows,
       request: [a.shows, ...a.mustSee].join(". "),
-      aspect,
+      // The panel's own shape: the slot takes it within its range (nothing is cropped here).
+      aspect: dims ? dims.width / dims.height : slotAspect,
       source: {
         provider: "generated",
         id: saved.id,
@@ -292,78 +342,112 @@ export async function makePictureSet(
   const rethrowAbort = (e: unknown) => {
     if (e instanceof Error && e.name === "AbortError") throw e;
   };
-  deps.log({ ev: "set-start", set: setKey, n: asks.length, aspect });
-  let best: { results: (SetPicture | undefined)[]; ok: number } | undefined;
-  for (let attempt = 0; attempt < STRIP_ATTEMPTS; attempt++) {
-    let panels: Uint8Array[];
-    let usd = 0;
-    try {
-      const made = await generate(prompt, setSize(asks.length));
-      // The daily cap is spent: every slot keeps its placeholder, and no solo is tried.
-      if (!made) return asks.map(() => undefined);
-      usd = made.costUsd;
-      panels = splitPanels(made.bytes, asks.length, aspect);
-      const dup = duplicatePanels(panels);
-      if (dup.length)
-        throw new Error(`strip repeats a panel: ${dup.map((pair) => pair.join("=")).join(", ")}`);
-    } catch (e) {
+  const judge = (a: SetAsk, url: string) =>
+    deps.judgePanel(a, url, slotAspect).catch((e): PanelVerdict => {
       rethrowAbort(e);
-      deps.log({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
-      break;
-    }
+      return { ok: false };
+    });
+  deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, aspect: slotAspect });
+
+  /** Panels judged alone and as a set; each passing panel placed. */
+  const settle = async (panels: Uint8Array[], judged: PanelVerdict[], usd: number, set: string) => {
     const urls = panels.map(dataUrl);
-    const judged = await Promise.all(
-      asks.map((a, k) =>
-        deps.judgePanel(a, urls[k] ?? "", aspect).catch((e): PanelVerdict => {
-          rethrowAbort(e);
-          return { ok: false };
-        }),
-      ),
-    );
-    const same = await deps.judgeSet(shows, urls).catch((e) => {
+    const verdict = await deps.judgeSet(shows, urls).catch((e) => {
       rethrowAbort(e);
       return undefined;
     });
-    const odd = new Set(same?.odd ?? []);
-    const pass = judged.map((j, k) => j.ok && (!same || same.same || !odd.has(k)));
+    const odd = new Set(verdict?.odd ?? []);
+    const pass = judged.map((j, k) => j.ok && (!verdict || verdict.same || !odd.has(k)));
     deps.log({
       ev: "set-attempt",
       set: setKey,
-      attempt,
+      mode,
       usd,
       panels: judged.map((j) => j.ok),
-      same: same ? same.same : "skipped",
+      same: verdict ? verdict.same : "skipped",
       odd: [...odd],
     });
-    const results = await Promise.all(
+    return Promise.all(
       asks.map((a, k) => {
         const bytes = panels[k];
-        return pass[k] && bytes ? place(a, bytes, judged[k]?.boxes, setKey) : undefined;
+        return pass[k] && bytes ? place(a, bytes, judged[k]?.boxes, set) : undefined;
       }),
     );
-    const ok = results.filter(Boolean).length;
-    if (!best || ok > best.ok) best = { results, ok };
-    if (ok === asks.length) break;
+  };
+
+  let first: (SetPicture | undefined)[] = asks.map(() => undefined);
+  try {
+    if (mode === "strip") {
+      // Base4: one strip only (a second doubled the cost and failed the same way).
+      for (let attempt = 0; attempt < STRIP_ATTEMPTS; attempt++) {
+        const made = await generate(setImagePrompt(shows, look, same), setSize(asks.length));
+        if (!made) return asks.map(() => undefined);
+        const panels = splitPanels(made.bytes, asks.length);
+        const dup = duplicatePanels(panels);
+        if (dup.length)
+          throw new Error(`strip repeats a panel: ${dup.map((pair) => pair.join("=")).join(", ")}`);
+        const judged = await Promise.all(
+          asks.map((a, k) => judge(a, dataUrl(panels[k] ?? new Uint8Array()))),
+        );
+        first = await settle(panels, judged, made.costUsd, setKey);
+        if (first.every(Boolean)) break;
+      }
+    } else if (mode === "grid") {
+      // One 2x2 grid; a set of 3 has a spare cell (its first picture again). Every cell is judged
+      // against its picture; a picture takes its own cell when that passes, else its spare.
+      const made = await generate(gridImagePrompt(shows, look, same), GRID_SIZE);
+      if (!made) return asks.map(() => undefined);
+      const cells = splitGrid(made.bytes, 4, { cols: 2, rows: 2 });
+      const n = asks.length;
+      const all = await Promise.all(
+        cells.map((cell, j) => judge(asks[j % n] as SetAsk, dataUrl(cell))),
+      );
+      const pick = asks.map((_, i) =>
+        all[i]?.ok ? i : ([i + n].find((j) => j < 4 && all[j]?.ok) ?? i),
+      );
+      const panels = pick.map((j) => cells[j] ?? new Uint8Array());
+      const judged = pick.map((j) => all[j] ?? { ok: false });
+      // Two pictures of the set on near-identical cells: the later one fails.
+      for (const [a, b] of duplicatePanels(panels)) judged[Math.max(a, b)] = { ok: false };
+      deps.log({ ev: "grid-pick", set: setKey, judged: all.map((v) => v.ok), pick });
+      first = await settle(panels, judged, made.costUsd, setKey);
+    } else {
+      // Single pictures (the default for 3 or 4 until the grid's paid check): each made alone in
+      // the lesson's look, judged alone, then all of them by the set judge.
+      const made = await Promise.all(
+        asks.map(async (a) => {
+          const m = await generate(soloImagePrompt(a.shows, look), setSize(1));
+          return m ? m : undefined;
+        }),
+      );
+      if (made.every((m) => !m)) return asks.map(() => undefined);
+      const panels = made.map((m) => m?.bytes ?? new Uint8Array());
+      const judged = await Promise.all(
+        asks.map((a, k) => (made[k] ? judge(a, dataUrl(panels[k] as Uint8Array)) : { ok: false })),
+      );
+      const usd = made.reduce((t, m) => t + (m?.costUsd ?? 0), 0);
+      first = await settle(panels, judged, usd, `${setKey}#solo`);
+    }
+  } catch (e) {
+    rethrowAbort(e);
+    deps.log({ ev: "set-error", set: setKey, mode, err: String(e).slice(0, 200) });
   }
-  // Partial-set fallback: each panel the strip could not place is generated alone, same request in
-  // the lesson's look, cropped to the slot's shape and judged alone; placed panels are kept.
+  // Partial-set fallback (one regenerate per slot): each panel not placed is generated alone, same
+  // request in the lesson's look, judged alone; placed panels are kept.
   const solo = async (a: SetAsk, k: number): Promise<SetPicture | undefined> => {
     try {
       const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
       if (!made) return undefined;
-      // One picture, not a strip: cropped to the card's shape, never split.
-      const panel = splitPanels(made.bytes, 1, aspect)[0] ?? made.bytes;
-      const verdict = await deps.judgePanel(a, dataUrl(panel), aspect);
+      const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
       deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
       if (!verdict.ok) return undefined;
-      return await place(a, panel, verdict.boxes, `${setKey}#solo${k}`);
+      return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
     } catch (e) {
       rethrowAbort(e);
       deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
       return undefined;
     }
   };
-  const first = best?.results ?? asks.map(() => undefined);
   const out = await Promise.all(asks.map((a, k) => first[k] ?? solo(a, k)));
   deps.log({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
   return out;

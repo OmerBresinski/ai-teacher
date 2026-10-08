@@ -14,8 +14,8 @@ import {
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
+  pngSize,
   sizeForAspect,
-  splitPanels,
 } from "@tj/images";
 
 export interface Logger {
@@ -97,9 +97,9 @@ export function savePicture(storage: StorageAdapter, workspaceId: WorkspaceId, i
 
 /**
  * The director's bank for one lesson job: a count is drawn in code (free, never capped); any other
- * generation runs at the slot's size under the daily cap, is cropped to the slot's exact shape
- * (`splitPanels(bytes, 1, aspect)`: the judge sees exactly what the slide shows), stored, and
- * returned with its bytes for the judge.
+ * generation runs at the size nearest the slot's shape under the daily cap and is stored whole, with
+ * its own aspect: the slide shows it at that shape (or trims only background, `placePhoto`), so the
+ * judge, which gets the same bytes, sees what the slide shows.
  */
 export function createGeneratingBank(opts: {
   generator?: Pick<ImageGenerator, "model" | "generate">;
@@ -137,23 +137,25 @@ export function createGeneratingBank(opts: {
       const prompt = directedImagePrompt(req.imagePrompt, faithful);
       const out = await opts.generator.generate({ prompt, size, signal });
       opts.cap.spent(out.costUsd);
-      const shown =
-        req.aspect && out.mime === "image/png"
-          ? (splitPanels(out.bytes, 1, req.aspect)[0] ?? out.bytes)
-          : out.bytes;
-      const saved = await opts.save(shown, out.mime);
+      const saved = await opts.save(out.bytes, out.mime);
+      // The picture's own shape (the model returns the size asked; the header is the fact).
+      const [sw, sh] = size.split("x").map(Number) as [number, number];
+      const dims = pngSize(out.bytes) ?? { width: sw, height: sh };
       opts.logger.info(
         { stage: "illustrate", generated: saved.id, size, costUsd: out.costUsd, ms: out.ms },
         "picture generated",
       );
-      return {
+      // No evidence yet: the judge's verdict is the evidence, added where the picture is placed.
+      const made: Omit<MadePicture, "evidence"> & { aspect: number } = {
         src: saved.src,
         alt: req.text.trim().slice(0, 300),
         source: generatedSource(saved.id, opts.generator.model),
+        aspect: dims.width / dims.height,
         style: req.style ?? "photo",
         ...(req.palette ? { palette: req.palette } : {}),
-        dataUrl: `data:${out.mime};base64,${Buffer.from(shown).toString("base64")}`,
-      } as MadePicture;
+        dataUrl: `data:${out.mime};base64,${Buffer.from(out.bytes).toString("base64")}`,
+      };
+      return made as unknown as MadePicture;
     },
   };
 }

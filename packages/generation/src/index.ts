@@ -115,6 +115,7 @@ export type {
 } from "./stages/photo-bank";
 export {
   directedSetJudges,
+  GRID_SIZE,
   makePictureSet,
   type PictureSetDeps,
   type SetAsk,

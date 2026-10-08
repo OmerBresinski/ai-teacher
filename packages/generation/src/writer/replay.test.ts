@@ -30,10 +30,31 @@ const stable = (e: El) => {
   const { id: _i, source: _s, style: _t, period: _p, ...rest } = e;
   return rest;
 };
+/**
+ * TEACH-237: a photo in a ranged slot (compare, picture-sequence, tiles) takes its own shape inside
+ * the run's box instead of being cropped to it, so its box may be smaller and its crop gone. Every
+ * other field, and every word box, is still the run's.
+ */
+function expectRangedPhoto(got: El, want: El, at: string) {
+  const { x, y, w, h, crop: _c, ...rest } = stable(got);
+  const { x: wx, y: wy, w: ww, h: wh, crop: _wc, ...wantRest } = stable(want);
+  expect({ at, el: rest }).toEqual({ at, el: wantRest });
+  const inside =
+    Number(x) >= Number(wx) - 1 &&
+    Number(y) >= Number(wy) - 1 &&
+    Number(x) + Number(w) <= Number(wx) + Number(ww) + 1 &&
+    Number(y) + Number(h) <= Number(wy) + Number(wh) + 1;
+  expect({ at, inside }).toEqual({ at, inside: true });
+}
+
 /** An element compared exactly, except a badge-aligned one's box (within `tol`) and badge size. */
-function expectSame(got: El, want: El, tol: number, at: string) {
+function expectSame(got: El, want: El, tol: number, at: string, ranged = false) {
   const g = stable(got);
   const w = stable(want);
+  if (ranged && w.type === "image" && w.name === "Photo") {
+    expectRangedPhoto(got, want, at);
+    return;
+  }
   if (!BADGE_ALIGNED.has(String(w.name))) {
     expect({ at, el: g }).toEqual({ at, el: w });
     return;
@@ -85,8 +106,11 @@ describe.each([
       });
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
       const tol = WIDER[b]?.[i] ?? TOLERANCE;
+      // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
+      const ranged =
+        want.elements.filter((e) => e.type === "image" && e.name === "Photo").length > 1;
       for (const [k, e] of got.entries())
-        expectSame(e, want.elements[k] as El, tol, `s${i + 1} #${k}`);
+        expectSame(e, want.elements[k] as El, tol, `s${i + 1} #${k}`, ranged);
     });
   });
 });

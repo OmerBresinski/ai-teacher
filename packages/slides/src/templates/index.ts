@@ -410,16 +410,51 @@ export function cutSubjects(
 }
 
 /**
+ * The aspect ranges of the multi-picture slots (TEACH-237): inside its range a picture takes its
+ * own shape within the slot's box, so nothing is cropped; outside, it takes the nearer end and
+ * `placePhoto` trims only background (or shows it whole on the wash). The box is the measured
+ * maximum the fit and capacity tables laid the words out round, so the words never move.
+ */
+export const PICTURE_RANGES = {
+  "picture-sequence": { 2: [0.85, 1.48], 3: [0.75, 1.48], 4: [0.65, 1.48] },
+  compare: [0.75, 1.78],
+  tiles: [1.0, 1.78],
+} as const satisfies Record<string, unknown>;
+export type AspectRange = readonly [number, number];
+
+/** The box a picture of `aspect` takes inside `rect` within `range`: centred, or on the bottom. */
+export function rangeBox(
+  rect: { x: number; y: number; w: number; h: number },
+  aspect: number,
+  range: AspectRange,
+  align: "center" | "bottom" = "center",
+): { x: number; y: number; w: number; h: number } {
+  const a = Math.min(range[1], Math.max(range[0], aspect));
+  const w = Math.min(rect.w, Math.round(rect.h * a));
+  const h = Math.min(rect.h, Math.round(w / a));
+  return {
+    x: Math.round(rect.x + (rect.w - w) / 2),
+    y: align === "bottom" ? rect.y + rect.h - h : Math.round(rect.y + (rect.h - h) / 2),
+    w,
+    h,
+  };
+}
+
+/**
  * A photo in a fixed box. `cover`: it fills the box, cropped only as `placePhoto` allows (round the
  * must-see subjects), else the whole picture is contained on a soft panel. Not `cover`: at its own
- * shape inside the box. An open slot (placeholder src, no aspect yet) takes the whole box.
+ * shape inside the box. An open slot (placeholder src, no aspect yet) takes the whole box. With a
+ * `range`, the box first takes the picture's shape within the range (`rangeBox`).
  */
 function photoBox(
   c: Ctx,
   f: { photo: string; alt?: string; aspect?: number; request?: string; subjects?: SubjectBox[] },
-  rect: { x: number; y: number; w: number; h: number },
+  box0: { x: number; y: number; w: number; h: number },
   cover = true,
+  range?: AspectRange,
+  align: "center" | "bottom" = "center",
 ) {
+  const rect = range && f.photo && f.aspect ? rangeBox(box0, f.aspect, range, align) : box0;
   let r = rect;
   let crop: { x: number; y: number; w: number; h: number } | undefined;
   const contain = (inner: typeof rect) => {
@@ -537,7 +572,7 @@ function tilePanel(
     if (!r) return;
     if ("photo" in f) {
       const { tiles: _t, tileMode: _m, caption: _c, ...one } = f;
-      photoBox(c, one, r, true);
+      photoBox(c, one, r, true, PICTURE_RANGES.tiles);
       any = true;
     } else if (figurePanel(c, f, r)) any = true;
     const cap = caps[i];
@@ -1228,7 +1263,8 @@ export function layoutTemplate(
             radius: Math.min(c.t.radius, 16),
           });
           const band = { x: x + pad, y: y + pad, w: iw, h: bh };
-          if (col.figure && "photo" in col.figure) photoBox(c, col.figure, band);
+          if (col.figure && "photo" in col.figure)
+            photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
           else if (col.figure) figurePanel(c, col.figure, band);
           const lab = text(
             c,
@@ -1345,7 +1381,15 @@ export function layoutTemplate(
       const y = Math.max(G.band.y, Math.round(bandMid - total / 2));
       seq.forEach((s, k) => {
         const x = G.margin + k * (w + arrowW);
-        if (s.figure && "photo" in s.figure) photoBox(c, s.figure, { x, y, w, h: picH }, true);
+        if (s.figure && "photo" in s.figure)
+          photoBox(
+            c,
+            s.figure,
+            { x, y, w, h: picH },
+            true,
+            PICTURE_RANGES["picture-sequence"][Math.min(4, Math.max(2, n)) as 2 | 3 | 4],
+            "bottom",
+          );
         else if (s.figure) figurePanel(c, s.figure, { x, y, w, h: picH });
         text(
           c,

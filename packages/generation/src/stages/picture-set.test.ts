@@ -1,5 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { isHistoricalSet, isSameSubjectSet, setImagePrompt, setSize } from "./picture-set";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { directedImagePrompt, encodePng, type ImageGenerator } from "@tj/images";
+import {
+  gridImagePrompt,
+  isHistoricalSet,
+  isSameSubjectSet,
+  makePictureSet,
+  type PictureSetDeps,
+  type SetAsk,
+  STRIP_ATTEMPTS,
+  setImagePrompt,
+  setIsGenerated,
+  setMode,
+  setSize,
+  soloImagePrompt,
+  TILE_GRID_OPENER,
+} from "./picture-set";
 
 describe("same-subject sets", () => {
   test("a sequence is always a set; compare cards only of one thing", () => {
@@ -24,7 +42,8 @@ describe("same-subject sets", () => {
     expect(p).toContain("(1) A puppy; (2) A young dog; (3) An adult dog.");
     expect(p).toContain("very same individual subject");
     expect(setSize(3)).toBe("2048x1152");
-    expect(setSize(2)).toBe("1536x1024");
+    // Two panels take the wide size (0.87 panels, inside the slot ranges; base4 used 1536x1024).
+    expect(setSize(2)).toBe("2048x1152");
   });
   test("an illustration lesson's locked look leads the strip", () => {
     const p = setImagePrompt(["A chick", "A hen"], { style: "illustration", palette: ["#111111"] });
@@ -72,22 +91,26 @@ describe("a solo panel is one picture, not a 1-panel strip (round 5)", () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// TEACH-237: the frames are base4's, and the set flow runs as base4 ran it.
+// TEACH-237: the frames are base4's; the set flow is base4's, with 2-panel strips at the wide size
+// and sets of 3 or 4 as single pictures (or one 2x2 grid behind its setting).
 // ---------------------------------------------------------------------------------------------
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { directedImagePrompt, encodePng, type ImageGenerator } from "@tj/images";
-import {
-  makePictureSet,
-  type PictureSetDeps,
-  type SetAsk,
-  STRIP_ATTEMPTS,
-  setIsGenerated,
-  soloImagePrompt,
-} from "./picture-set";
 
 const labSource = (f: string) =>
   readFileSync(join(import.meta.dir, "..", "prompts", "base4-pins", f), "utf8");
+
+describe("the grid opener is the prompt-engineer's, byte for byte", () => {
+  test("pinned at the lab's PINS.json hash and filled by code", () => {
+    const pin = labSource("tile-grid.tilesgen.txt");
+    const sha = (t: string) => createHash("sha256").update(t).digest("hex");
+    expect(sha(pin)).toBe("bf7f85b656a692e9cbbb3f4273f1f28d66dbc7764e69bb73f09383037bc97edd");
+    expect(TILE_GRID_OPENER).toBe(pin);
+    const p = gridImagePrompt(["A chick", "A young hen", "A hen"]).split("\n");
+    expect(p[0]).toBe(
+      "One image divided into a 2 by 2 grid of 4 equal panels separated by thin pure white gaps, each subject centred in its own panel with clear margin on every side, never crossing a gap. Left to right, top to bottom: (1) A chick; (2) A young hen; (3) A hen; (4) A chick.",
+    );
+    expect(p.slice(1)).toEqual(setImagePrompt(["A chick", "A hen"]).split("\n").slice(1));
+  });
+});
 
 describe("the generation prompts are base4's, byte for byte", () => {
   const lab = labSource("picture-set.base4.lab-source.txt");
@@ -205,24 +228,44 @@ const asks = (n: number): SetAsk[] =>
     .slice(0, n)
     .map((shows, k) => ({ key: `p${k}`, index: 3, shows, mustSee: [], aspect: 1 }));
 
-describe("the set flow (base4: one strip, then solos)", () => {
-  test("a good strip places every panel from one generation", async () => {
-    const f = fakes({ strips: [stripPng([30, 50, 70])], set: { same: true, odd: [] } });
-    const out = await makePictureSet(asks(3), f.deps);
-    expect(out.map((p) => p?.key)).toEqual(["p0", "p1", "p2"]);
+/** A light 2x2 grid with white gutters; cell k holds a dark square of sizes[k]. */
+function gridPng(sizes: number[], w = 150, h = 100): Uint8Array {
+  const width = 2 * w + 10;
+  const height = 2 * h + 10;
+  const rgb = new Uint8Array(width * height * 3).fill(255);
+  sizes.forEach((s, k) => {
+    const x0 = (k % 2) * (w + 10);
+    const y0 = Math.floor(k / 2) * (h + 10);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const o = ((y0 + y) * width + x0 + x) * 3;
+        const inside = Math.abs(x - w / 2) < s / 2 && Math.abs(y - h / 2) < s / 2;
+        rgb.fill(inside ? 40 : 236, o, o + 3);
+      }
+  });
+  return encodePng({ width, height, rgb });
+}
+
+describe("the set flow", () => {
+  test("2 panels: one wide strip places both, each at its own panel shape", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])], set: { same: true, odd: [] } });
+    const out = await makePictureSet(asks(2), f.deps);
+    expect(out.map((p) => p?.key)).toEqual(["p0", "p1"]);
     expect(f.made()).toBe(1);
-    expect(f.prompts[0]).toStartWith("2048x1152 One image divided into 3 equal");
+    expect(f.prompts[0]).toStartWith("2048x1152 One image divided into 2 equal");
     expect(out[0]?.source.provider).toBe("generated");
-    expect(out[0]?.set).toBe("p0+p1+p2");
+    expect(out[0]?.set).toBe("p0+p1");
+    // Whole panels (120 wide less a 2 px inset each side, 120 tall): nothing cropped to the slot.
+    expect(out[0]?.aspect).toBeCloseTo(116 / 120, 3);
   });
   test("a strip that repeats a panel is refused unjudged; each panel is made alone", async () => {
-    const f = fakes({ strips: [stripPng([40, 40, 40]), stripPng([30])] });
-    const out = await makePictureSet(asks(3), f.deps);
+    const f = fakes({ strips: [stripPng([40, 40]), stripPng([30])] });
+    const out = await makePictureSet(asks(2), f.deps);
     expect(STRIP_ATTEMPTS).toBe(1);
     expect(f.logs.some((l) => l.ev === "set-error" && /repeats a panel/.test(String(l.err)))).toBe(
       true,
     );
-    expect(f.made()).toBe(4);
+    expect(f.made()).toBe(3);
     expect(f.prompts.slice(1).every((p) => p.startsWith("1024x1024 One single photograph"))).toBe(
       true,
     );
@@ -230,31 +273,62 @@ describe("the set flow (base4: one strip, then solos)", () => {
   });
   test("one panel fails its judge: no second strip, one solo for that panel only", async () => {
     const f = fakes({
-      strips: [stripPng([30, 50, 70]), stripPng([60])],
-      panelOk: (ask, call) => !(ask.key === "p1" && call < 3),
+      strips: [stripPng([30, 50]), stripPng([60])],
+      panelOk: (ask, call) => !(ask.key === "p1" && call < 2),
       set: { same: true, odd: [] },
     });
-    const out = await makePictureSet(asks(3), f.deps);
+    const out = await makePictureSet(asks(2), f.deps);
     expect(f.made()).toBe(2);
-    expect(f.judged).toEqual(["p0", "p1", "p2", "p1"]);
-    expect(out.map((p) => p?.set)).toEqual(["p0+p1+p2", "p0+p1+p2#solo1", "p0+p1+p2"]);
+    expect(f.judged).toEqual(["p0", "p1", "p1"]);
+    expect(out.map((p) => p?.set)).toEqual(["p0+p1", "p0+p1#solo1"]);
   });
   test("the set judge's odd panel is remade alone; a failed solo leaves only that slot empty", async () => {
     const f = fakes({
-      strips: [stripPng([30, 50, 70]), stripPng([60])],
-      panelOk: (_ask, call) => call < 3,
-      set: { same: false, odd: [2] },
+      strips: [stripPng([30, 50]), stripPng([60])],
+      panelOk: (_ask, call) => call < 2,
+      set: { same: false, odd: [1] },
     });
-    const out = await makePictureSet(asks(3), f.deps);
-    expect(out.map((p) => p?.key)).toEqual(["p0", "p1", undefined]);
+    const out = await makePictureSet(asks(2), f.deps);
+    expect(out.map((p) => p?.key)).toEqual(["p0", undefined]);
     expect(f.made()).toBe(2);
   });
+  test("3 or 4 panels by default: single pictures, judged alone and as a set, never a strip", async () => {
+    const f = fakes({
+      strips: [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])],
+      panelOk: (ask, call) => !(ask.key === "p2" && call < 3),
+      set: { same: true, odd: [] },
+    });
+    const out = await makePictureSet(asks(3), f.deps);
+    expect(setMode(3)).toBe("solo");
+    expect(f.made()).toBe(4);
+    expect(f.prompts.every((p) => p.startsWith("1024x1024 One single photograph"))).toBe(true);
+    expect(out.map((p) => p?.set)).toEqual(["p0+p1+p2#solo", "p0+p1+p2#solo", "p0+p1+p2#solo2"]);
+  });
+  test("the grid setting: one 2x2 grid; a set of 3 uses its spare cell for a refused picture", async () => {
+    const f = fakes({
+      strips: [gridPng([20, 40, 60, 24])],
+      // cell 0 (p0) fails; cell 3 is p0's spare and passes
+      panelOk: (_ask, call) => call !== 0,
+      set: { same: true, odd: [] },
+    });
+    f.deps.grid = true;
+    const out = await makePictureSet(asks(3), f.deps);
+    expect(f.made()).toBe(1);
+    expect(f.prompts[0]).toStartWith(
+      "1536x1024 One image divided into a 2 by 2 grid of 4 equal panels",
+    );
+    expect(out.map((p) => p?.key)).toEqual(["p0", "p1", "p2"]);
+    expect(f.logs.find((l) => l.ev === "grid-pick")?.pick).toEqual([3, 1, 2]);
+    expect(out[0]?.aspect).toBeCloseTo(1.5, 1);
+  });
   test("the daily cap spent: no generation call, every slot keeps its placeholder, one log line", async () => {
-    const f = fakes({ strips: [stripPng([30, 50])], allow: false });
-    const out = await makePictureSet(asks(2), f.deps);
-    expect(out).toEqual([undefined, undefined]);
-    expect(f.made()).toBe(0);
-    expect(f.logs.filter((l) => l.ev === "set-capped")).toHaveLength(1);
+    for (const n of [2, 3]) {
+      const f = fakes({ strips: [stripPng([30, 50])], allow: false });
+      const out = await makePictureSet(asks(n), f.deps);
+      expect(out).toEqual(asks(n).map(() => undefined));
+      expect(f.made()).toBe(0);
+      expect(f.logs.filter((l) => l.ev === "set-capped")).toHaveLength(1);
+    }
   });
   test("named things and history are not generated sets (ruling 163)", () => {
     expect(setIsGenerated(asks(2), "science")).toBe(true);

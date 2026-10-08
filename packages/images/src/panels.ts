@@ -257,41 +257,20 @@ export function subjectBox(
 }
 
 /**
- * Cut a strip of `n` panels into `n` pictures of shape `aspect` (width / height). Each picture is
- * cropped inside its own panel by `keepTop`: nothing is ever padded or stretched, and the top edge
- * (heads) is always kept. Base4 instead centred one subject-sized window on each subject and padded
- * past the panel's edge with repeated edge pixels: tall panels of a 3- or 4-panel strip widened to
- * the slot's shape showed streaks, and a vertical window centred on the subject cut heads off.
- * Every panel of a strip is one generation, so near-equal panels give near-equal windows (one scale).
+ * Cut a strip of `n` panels into `n` whole pictures: each panel at its own shape, less its gutter and
+ * a 1.5% inset at each side (the gutter's soft edge). Nothing is cropped to a slot's shape, padded or
+ * stretched: the slide's picture slot takes the picture's shape within its aspect range and trims
+ * only background past it (`placePhoto`), and the judge sees the whole panel, which is what the slide
+ * shows. Base4 cropped each panel to the slot's shape and padded past the panel's edge with repeated
+ * edge pixels; on real 3- and 4-panel strips that window was over twice a panel's width.
  */
-export function splitPanels(png: Uint8Array, n: number, aspect: number): Uint8Array[] {
+export function splitPanels(png: Uint8Array, n: number): Uint8Array[] {
   const r = decodePng(png);
-  if (n === 1) return [encodePng(keepTop(r, aspect, subjectTop(r)))];
+  if (n === 1) return [png];
   return panelBounds(r, n).map(([a, b]) => {
     const inset = Math.round((b - a) * 0.015);
-    const panel = crop(r, a + inset, 0, b - a - 2 * inset, r.height);
-    return encodePng(keepTop(panel, aspect, subjectTop(panel)));
+    return encodePng(crop(r, a + inset, 0, b - a - 2 * inset, r.height));
   });
-}
-
-/** Just above the subject's top edge (0 when no subject stands out from the background). */
-function subjectTop(r: Raster): number {
-  const box = subjectBox(r);
-  return box ? Math.max(0, box.y - Math.round(r.height * 0.03)) : 0;
-}
-
-/**
- * The largest `aspect` window that keeps the top. A picture wider than the slot loses only its
- * sides (centred), at full height; a narrower one loses only rows above `top` (background over the
- * subject) and its bottom, so a subject's top (a head) is never cut off.
- */
-export function keepTop(r: Raster, aspect: number, top = 0): Raster {
-  if (r.width / r.height >= aspect) {
-    const w = Math.round(r.height * aspect);
-    return crop(r, Math.round((r.width - w) / 2), 0, w, r.height);
-  }
-  const h = Math.round(r.width / aspect);
-  return crop(r, 0, Math.max(0, Math.min(r.height - h, top)), r.width, h);
 }
 
 /** A 16x16 grey thumbnail, for telling near-identical panels apart. */
@@ -348,18 +327,20 @@ export function gridShape(n: number): { cols: number; rows: number } {
  * are cut at their white gutters with the strip's own rule (no gutter near a row edge refuses the
  * grid), then each row is cut as a strip. A last row may hold fewer panels.
  */
-export function splitGrid(
-  png: Uint8Array,
-  n: number,
-  aspect: number,
-  shape = gridShape(n),
-): Uint8Array[] {
+export function splitGrid(png: Uint8Array, n: number, shape = gridShape(n)): Uint8Array[] {
   const { cols, rows } = shape;
-  if (rows === 1) return splitPanels(png, n, aspect);
+  if (rows === 1) return splitPanels(png, n);
   const r = decodePng(png);
   const bands = panelBounds(transpose(r), rows);
   return bands.flatMap(([a, b], k) => {
     const inRow = Math.min(cols, n - k * cols);
-    return splitPanels(encodePng(crop(r, 0, a, r.width, b - a)), inRow, aspect);
+    return splitPanels(encodePng(crop(r, 0, a, r.width, b - a)), inRow);
   });
+}
+
+/** A PNG's width and height from its header; undefined when the bytes are not a PNG. */
+export function pngSize(bytes: Uint8Array): { width: number; height: number } | undefined {
+  if (bytes.length < 24 || !SIG.every((b, i) => bytes[i] === b)) return undefined;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: dv.getUint32(16), height: dv.getUint32(20) };
 }

@@ -43,7 +43,7 @@ const req: BankRequest = {
 const signal = new AbortController().signal;
 
 describe("the generating bank", () => {
-  test("generates at the slot's size, crops to its exact shape, and the judge sees that crop", async () => {
+  test("generates at the size nearest the slot, stores it whole, and the judge sees those bytes", async () => {
     const { generator, calls } = fakeGenerator();
     const saved: Uint8Array[] = [];
     const bank = createGeneratingBank({
@@ -59,7 +59,8 @@ describe("the generating bank", () => {
     expect(calls[0]?.size).toBe("1024x1024");
     expect(calls[0]?.prompt).toContain("No text anywhere in the image");
     const shown = decodePng(saved[0] as Uint8Array);
-    expect(shown.width).toBe(shown.height);
+    expect([shown.width, shown.height]).toEqual([300, 200]);
+    expect((made as { aspect?: number }).aspect).toBe(1.5);
     expect(made?.dataUrl).toBe(
       `data:image/png;base64,${Buffer.from(saved[0] as Uint8Array).toString("base64")}`,
     );

@@ -7,7 +7,6 @@ import {
   duplicatePanels,
   encodePng,
   gridShape,
-  keepTop,
   panelBounds,
   splitGrid,
   splitPanels,
@@ -50,14 +49,13 @@ describe("panels", () => {
       [216, 346],
     ]);
   });
-  test("every panel is the slot's shape, cropped inside its panel, top kept", () => {
+  test("every panel comes out whole: its gutter and a thin inset go, nothing else", () => {
     const r = strip([90, 110, 130], [20, 30, 40]);
-    const rs = splitPanels(encodePng(r), 3, 1.25).map(decodePng);
-    const bounds = panelBounds(r, 3);
+    const rs = splitPanels(encodePng(r), 3).map(decodePng);
     for (const [k, p] of rs.entries()) {
-      const [a, b] = bounds[k] ?? [0, 0];
-      expect(Math.abs(p.width / p.height - 1.25)).toBeLessThan(0.03);
-      expect(p.width).toBeLessThanOrEqual(b - a);
+      const [a, b] = panelBounds(r, 3)[k] ?? [0, 0];
+      const inset = Math.round((b - a) * 0.015);
+      expect([p.width, p.height]).toEqual([b - a - 2 * inset, r.height]);
     }
   });
 });
@@ -79,14 +77,14 @@ describe("no seams, no doubled panels", () => {
     expect(start).toBeLessThan(113);
   });
   test("near-identical panels are caught; different stages are not", () => {
-    const same = splitPanels(encodePng(strip([100, 100], [30, 30])), 2, 1.25);
+    const same = splitPanels(encodePng(strip([100, 100], [30, 30])), 2);
     expect(duplicatePanels(same)).toEqual([[0, 1]]);
-    const grow = splitPanels(encodePng(strip([100, 100], [16, 60])), 2, 1.25);
+    const grow = splitPanels(encodePng(strip([100, 100], [16, 60])), 2);
     expect(duplicatePanels(grow)).toEqual([]);
   });
-  test("a solo picture is cropped to the slot shape without looking for gutters", () => {
-    const one = decodePng(splitPanels(encodePng(strip([120], [30])), 1, 1.25)[0] as Uint8Array);
-    expect(Math.abs(one.width / one.height - 1.25)).toBeLessThan(0.02);
+  test("a solo picture is returned as it is, without looking for gutters", () => {
+    const png = encodePng(strip([120], [30]));
+    expect(splitPanels(png, 1)[0]).toBe(png);
   });
   test("a grid of 6 is cut row by row at its gutters; no row gutter refuses it", () => {
     const top = strip([60, 60, 60], [20, 24, 28], 60);
@@ -100,27 +98,8 @@ describe("no seams, no doubled panels", () => {
     };
     expect(gridShape(6)).toEqual({ cols: 3, rows: 2 });
     expect(gridShape(4)).toEqual({ cols: 4, rows: 1 });
-    expect(splitGrid(stack(8), 6, 1)).toHaveLength(6);
-    expect(() => splitGrid(stack(0), 6, 1)).toThrow(/no gutter/);
-  });
-});
-
-describe("keepTop", () => {
-  test("a wide picture loses only its sides; a narrow one keeps the subject's top", () => {
-    const r = strip([200], [40], 100);
-    const wide = keepTop(r, 1);
-    expect([wide.width, wide.height]).toEqual([100, 100]);
-    expect(
-      Buffer.from(wide.rgb.subarray(0, 300)).equals(Buffer.from(r.rgb.subarray(150, 450))),
-    ).toBe(true);
-    const tall = keepTop(crop(r, 0, 0, 50, 100), 1);
-    expect([tall.width, tall.height]).toEqual([50, 50]);
-    const below = crop(r, 0, 0, 50, 100);
-    expect(Buffer.from(keepTop(below, 1, 30).rgb.subarray(0, 150))).toEqual(
-      Buffer.from(below.rgb.subarray(30 * 150, 31 * 150)),
-    );
-    // never past the bottom
-    expect(keepTop(below, 1, 90).height).toBe(50);
+    expect(splitGrid(stack(8), 6)).toHaveLength(6);
+    expect(() => splitGrid(stack(0), 6)).toThrow(/no gutter/);
   });
 });
 
@@ -163,42 +142,29 @@ describe("real strips: never a stretched edge, never a head cut off", () => {
       expect(need).toBeGreaterThan(1.9 * widest);
     }
   });
-  test.each(cases)("%s: n panels at the slot shape, each a crop of its panel's top", (f, n) => {
+  test.each(cases)("%s: n whole panels, no stretched edge, no head cut", (f, n) => {
     const r = decodePng(load(f));
     const bounds = panelBounds(r, n);
-    const tiles = splitPanels(load(f), n, 1.4).map(decodePng);
+    const tiles = splitPanels(load(f), n).map(decodePng);
     expect(tiles).toHaveLength(n);
-    expect(duplicatePanels(splitPanels(load(f), n, 1.4))).toEqual([]);
+    expect(duplicatePanels(splitPanels(load(f), n))).toEqual([]);
     for (const [k, t] of tiles.entries()) {
       const [a, b] = bounds[k] ?? [0, 0];
-      expect(Math.abs(t.width / t.height - 1.4)).toBeLessThan(0.02);
-      expect(t.width).toBeLessThanOrEqual(b - a);
-      expect(streakShare(t)).toBeLessThan(0.02);
-      // The window starts at or above the subject's top: a head is never cut off.
       const inset = Math.round((b - a) * 0.015);
-      const panel = crop(r, a + inset, 0, b - a - 2 * inset, r.height);
-      const box = subjectBox(panel);
-      const row0 = Buffer.from(t.rgb.subarray(0, t.width * 3));
-      let y0 = -1;
-      for (let y = 0; y < panel.height && y0 < 0; y++)
-        if (
-          row0.equals(
-            Buffer.from(panel.rgb.subarray(y * panel.width * 3, (y + 1) * panel.width * 3)),
-          )
-        )
-          y0 = y;
-      expect(y0).toBeGreaterThanOrEqual(0);
-      expect(y0).toBeLessThanOrEqual(box?.y ?? 0);
+      // The whole panel at full height: the top (heads) and the bottom (feet) both stay.
+      expect([t.width, t.height]).toEqual([b - a - 2 * inset, r.height]);
+      expect(streakShare(t)).toBeLessThan(0.02);
+      const src = r.rgb.subarray((a + inset) * 3, (a + inset + t.width) * 3);
+      expect(Buffer.from(t.rgb.subarray(0, t.width * 3)).equals(Buffer.from(src))).toBe(true);
     }
   });
   test("a grid whose gutters are off-white is cut, not refused", () => {
     // A real 2x2 grid (1536x1024, halved): its gutters average about 244, under the strict 248.
-    const tiles = splitGrid(load("offwhite-grid-4.png"), 4, 4 / 3, { cols: 2, rows: 2 }).map(
-      decodePng,
-    );
+    const tiles = splitGrid(load("offwhite-grid-4.png"), 4, { cols: 2, rows: 2 }).map(decodePng);
     expect(tiles).toHaveLength(4);
     for (const t of tiles) {
-      expect(Math.abs(t.width / t.height - 4 / 3)).toBeLessThan(0.02);
+      // A 2x2 grid at 1536x1024 gives 3:2 panels: inside every tile and compare range.
+      expect(Math.abs(t.width / t.height - 1.5)).toBeLessThan(0.08);
       expect(streakShare(t)).toBeLessThan(0.02);
     }
   });

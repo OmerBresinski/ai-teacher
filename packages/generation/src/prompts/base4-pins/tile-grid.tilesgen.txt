@@ -1,0 +1,1 @@
+One image divided into a 2 by 2 grid of {{n}} equal panels separated by thin pure white gaps, each subject centred in its own panel with clear margin on every side, never crossing a gap. Left to right, top to bottom: {{panels}}.
