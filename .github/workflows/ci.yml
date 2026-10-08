@@ -283,9 +283,37 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Advisories both audit paths skip, as "<GHSA id>:<last day skipped, YYYY-MM-DD>", one reason
+      # each below. After the date the advisory fails the job again: look for a fixed release.
+      # - GHSA-vfj7-8cjw-p6xm, braces <=3.0.3, no fixed release on 8 Oct 2026. A stack-exhaustion
+      #   DoS from attacker-supplied glob patterns; braces comes only through the `mastra` dev CLI
+      #   behind `bun run studio:generation`, which runs locally against our own files.
+      AUDIT_IGNORE: GHSA-vfj7-8cjw-p6xm:2027-01-08
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
+
+      - name: Advisory exemptions
+        run: |
+          today="$(date -u +%F)"
+          ids=""
+          for entry in $AUDIT_IGNORE; do
+            # A malformed date would compare as never expired, so refuse it instead.
+            if [[ ! "$entry" =~ ^GHSA(-[0-9a-z]{4}){3}:[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "::error title=audit exemption::malformed AUDIT_IGNORE entry '$entry'; expected <GHSA id>:<YYYY-MM-DD>"
+              exit 1
+            fi
+            id="${entry%%:*}"
+            until="${entry#*:}"
+            if [[ "$today" > "$until" ]]; then
+              echo "::warning title=audit exemption expired::$id was skipped until $until and counts again"
+            else
+              echo "::notice title=audit exemption::$id skipped until $until (reason in ci.yml)"
+              ids="$ids $id"
+            fi
+          done
+          echo "IGNORE_IDS=${ids# }" >> "$GITHUB_ENV"
 
       - name: bun audit --audit-level=high
         id: bun_audit
@@ -294,8 +322,10 @@ jobs:
         # failed" after minutes of hanging). Classify the outcome so an outage falls through to the
         # OSV fallback below instead of turning the job red or, worse, silently green.
         run: |
+          ignore=()
+          for id in $IGNORE_IDS; do ignore+=("--ignore=$id"); done
           set +e
-          output="$(timeout 120 bun audit --audit-level=high 2>&1)"
+          output="$(timeout 120 bun audit --audit-level=high "${ignore[@]}" 2>&1)"
           code=$?
           set -e
           printf '%s\n' "$output"
@@ -326,7 +356,9 @@ jobs:
             exit 1
           fi
           jq -e '.results' osv.json >/dev/null || { echo "::error title=audit::osv-scanner produced no results"; exit 1; }
-          jq -r '[.results[]?.packages[]? | .package as $p | .vulnerabilities[]? |
+          jq -r --arg ignore "$IGNORE_IDS" '($ignore | split(" ")) as $skip |
+                  [.results[]?.packages[]? | .package as $p | .vulnerabilities[]? |
+                  select([.id] + (.aliases // []) | any(.[]; IN($skip[])) | not) |
                   "\(.database_specific.severity // "UNKNOWN")\t\(.id)\t\($p.name)@\($p.version)"] | .[]' osv.json \
             | sort | tee osv-summary.tsv
           high="$(awk -F'\t' '$1=="HIGH" || $1=="CRITICAL" || $1=="UNKNOWN"' osv-summary.tsv | wc -l | tr -d ' ')"
