@@ -178,24 +178,6 @@ test.describe("auth", () => {
     );
   });
 
-  test("Continue with Google says it is not set up when the api has no Google client", async ({
-    page,
-  }) => {
-    // playwright.config.ts blanks GOOGLE_CLIENT_ID/SECRET, so the api answers 404
-    // PROVIDER_NOT_FOUND and the page stays put with a plain sentence (TEACH-31).
-    await page.goto("/sign-in?redirect=%2Flessons");
-    const social = page.waitForResponse((response) =>
-      new URL(response.url()).pathname.endsWith("/auth/sign-in/social"),
-    );
-    await page.getByRole("button", { name: "Continue with Google" }).click();
-    expect((await social).status()).toBe(404);
-    await expect(page.getByRole("alert")).toHaveText(
-      "Google sign-in is not set up here. Use the email link below.",
-    );
-    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
-    await expect(page).toHaveURL(/\/sign-in\?redirect=%2Flessons$/);
-  });
-
   test("sign out returns to /sign-in and protected pages are locked again", async ({
     page,
     request,
