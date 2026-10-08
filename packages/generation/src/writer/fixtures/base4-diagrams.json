@@ -1,0 +1,6211 @@
+{
+  "note": "base4 (lab/ab 92f1b36d, runs base4-3, base4-4 and b3-r2-1/2, the same pinned files): every writer diagram figure (first ask per key) with what the lab did, and every drawn Diagram element, the spec(s) the lab drew for that slide, and the lab SVG's sha256",
+  "rows": [
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "A table compares sensory register, short-term memory and long-term memory by coding, capacity and duration.",
+          "header": ["Store", "Coding", "Capacity", "Duration"],
+          "rows": [
+            ["Sensory register", "Modality-specific", "Very large", "Very brief"],
+            ["Short-term memory", "Mainly acoustic", "About 7 ± 2 items", "About 18–30 seconds"],
+            ["Long-term memory", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+          ]
+        }
+      ],
+      "sha256": "9ffe5b4ef9f6f8b3ce7cac9df7400e73cb2a4b8ce30994c98b8902675b33624f",
+      "bytes": 4125
+    },
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "slide": 7,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Both curves show better recall for early words. Immediate recall also rises for final words; recall after a filled delay does not.",
+          "x": {
+            "label": "Position in word list",
+            "min": 1,
+            "max": 10,
+            "step": 1
+          },
+          "y": {
+            "label": "Recall likelihood",
+            "min": 0,
+            "max": 1
+          },
+          "qualitative": true,
+          "series": [
+            {
+              "label": "Immediate recall",
+              "points": [
+                [1, 0.85],
+                [2, 0.7],
+                [3, 0.5],
+                [4, 0.35],
+                [5, 0.3],
+                [6, 0.3],
+                [7, 0.4],
+                [8, 0.55],
+                [9, 0.75],
+                [10, 0.9]
+              ],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "30 s filled delay",
+              "points": [
+                [1, 0.85],
+                [2, 0.7],
+                [3, 0.5],
+                [4, 0.35],
+                [5, 0.3],
+                [6, 0.3],
+                [7, 0.3],
+                [8, 0.3],
+                [9, 0.3],
+                [10, 0.3]
+              ],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "3261d504431e01f2d07857cdb5cec4440dcdfd5e9023ff2655a723cd1eb07397",
+      "bytes": 2750
+    },
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "slide": 9,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "KF’s short-term memory performance differed: verbal memory was severely impaired, while visual memory was relatively better preserved.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "KF: STM performance"
+            },
+            {
+              "label": "Verbal: impaired"
+            },
+            {
+              "label": "Visual: better preserved"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1
+            },
+            {
+              "from": 0,
+              "to": 2
+            }
+          ]
+        }
+      ],
+      "sha256": "60c75f5f2927ee80338b94019b434caa43973d35d3c80a001f254f4fcd4f2f20",
+      "bytes": 1949
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "Three learning objectives for describing family members.",
+          "title": "Learning objectives",
+          "header": ["Objectives"],
+          "rows": [
+            ["Identify family members"],
+            ["Describe names, ages, traits"],
+            ["Write a family description"]
+          ]
+        }
+      ],
+      "sha256": "96626dfac746414d508d311eb748719281b0416e3425d245c5f3322f86e13917",
+      "bytes": 1733
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "slide": 3,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "labelled-diagram",
+          "alt": "A central teenage speaker is surrounded by six family panels; the parents and grandparents panels each show two people.",
+          "title": "moi / me",
+          "canvas": "square",
+          "shapes": [
+            {
+              "type": "circle",
+              "cx": 50,
+              "cy": 50,
+              "r": 9,
+              "fill": "accent"
+            },
+            {
+              "type": "rect",
+              "x": 30,
+              "y": 8,
+              "w": 40,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 45,
+              "cy": 15,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 5,
+              "y": 30,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 19,
+              "cy": 37,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 67,
+              "y": 30,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 81,
+              "cy": 37,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 5,
+              "y": 56,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 19,
+              "cy": 63,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 67,
+              "y": 56,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 81,
+              "cy": 63,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 20,
+              "y": 80,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 29,
+              "cy": 87,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "circle",
+              "cx": 39,
+              "cy": 87,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "rect",
+              "x": 52,
+              "y": 80,
+              "w": 28,
+              "h": 14,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "circle",
+              "cx": 61,
+              "cy": 87,
+              "r": 3,
+              "fill": "accent2"
+            },
+            {
+              "type": "circle",
+              "cx": 71,
+              "cy": 87,
+              "r": 3,
+              "fill": "accent2"
+            }
+          ],
+          "labels": [
+            {
+              "text": "mon père / father",
+              "at": [19, 37],
+              "side": "bottom"
+            },
+            {
+              "text": "ma mère / mother",
+              "at": [81, 37],
+              "side": "bottom"
+            },
+            {
+              "text": "mon frère / brother",
+              "at": [19, 63],
+              "side": "bottom"
+            },
+            {
+              "text": "ma sœur / sister",
+              "at": [81, 63],
+              "side": "bottom"
+            },
+            {
+              "text": "mes parents / parents",
+              "at": [34, 87],
+              "side": "bottom"
+            },
+            {
+              "text": "mes grands-parents / grandparents",
+              "at": [66, 87],
+              "side": "bottom"
+            }
+          ]
+        }
+      ],
+      "sha256": "74345e49d2992779a2e8519051d85cdebeb352bfb3ca307c3f0240d956b212ce",
+      "bytes": 5840
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "J’ai un frère becomes je n’ai pas de frère; j’ai une sœur becomes je n’ai pas de sœur.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "J’ai un frère"
+            },
+            {
+              "label": "Je n’ai pas de frère"
+            },
+            {
+              "label": "J’ai une sœur"
+            },
+            {
+              "label": "Je n’ai pas de sœur"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "negative"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "negative"
+            }
+          ]
+        }
+      ],
+      "sha256": "7d455f52992dea807332eaa5bec7f6746185d2d103e78f04c1ee70a202051014",
+      "bytes": 2793
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "Two matching rectangles: one has one of two equal parts shaded; the other has one of four equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "rectangle",
+              "parts": 2,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "½"
+            },
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "¼"
+            }
+          ]
+        }
+      ],
+      "sha256": "2a628864146e4adaf6b99db36ef11afd03643daa4a4ef1582575374608b1125b",
+      "bytes": 3391
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "Shape A is a circle with one of four equal parts shaded. Shape B is a square with one of two equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "circle",
+              "parts": 4,
+              "cut": "auto",
+              "shaded": 1,
+              "name": "A"
+            },
+            {
+              "shape": "square",
+              "parts": 2,
+              "cut": "diagonal",
+              "shaded": 1,
+              "name": "B"
+            }
+          ]
+        }
+      ],
+      "sha256": "0a3a963c5cca10b84e79adf5260a9543971ca725fd15f2981896a37f5836127f",
+      "bytes": 3615
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "slide": 4,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "labelled-diagram",
+          "alt": "Two identical rectangles: A is split into equal halves, while B has a narrow shaded part and a much wider part.",
+          "canvas": "wide",
+          "shapes": [
+            {
+              "type": "rect",
+              "x": 15,
+              "y": 20,
+              "w": 55,
+              "h": 60,
+              "fill": "none",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 15,
+              "y": 20,
+              "w": 27.5,
+              "h": 60,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 42.5,
+              "y": 20,
+              "w": 27.5,
+              "h": 60,
+              "fill": "surface",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 95,
+              "y": 20,
+              "w": 55,
+              "h": 60,
+              "fill": "none",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 95,
+              "y": 20,
+              "w": 11,
+              "h": 60,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 106,
+              "y": 20,
+              "w": 44,
+              "h": 60,
+              "fill": "surface",
+              "rounded": false
+            }
+          ],
+          "labels": [
+            {
+              "text": "A",
+              "at": [40, 72],
+              "side": "bottom"
+            },
+            {
+              "text": "B",
+              "at": [122, 72],
+              "side": "bottom"
+            }
+          ]
+        }
+      ],
+      "sha256": "49446c8ae4d44bbd0c2dc7ad52a917c6915e602b8f923f7fde527353c5ce9cfe",
+      "bytes": 2181
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Twelve counters in two rings, with six counters in each ring.",
+          "total": 12,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "e68a4450ef210cf75204839a28c3b04922ef2efc4d4baa7439ae51b287a150a4",
+      "bytes": 2777
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "slide": 7,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Twelve counters in four rings, with three counters in each ring.",
+          "total": 12,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "182d0d7b3cd897786c6396b9fd7edaa122fd8795383abad3a82a3b8b58bf877c",
+      "bytes": 3287
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Twenty counters are arranged in five rings, each containing four counters.",
+          "total": 20,
+          "groups": 5,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "ba7c6c640807a222d9fc89cfd54ef1baf26158f0e578e0316407d2a1a8757050",
+      "bytes": 4892
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Six rings each contain four counters, making twenty-four counters altogether.",
+          "total": 24,
+          "groups": 6,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "e735bcd04d613075eda0ff9344e1b1191b100e086afb6be48d51b176e344729e",
+      "bytes": 5821
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar of twenty-four has six equal parts of four, with five parts shaded.",
+          "bars": [
+            {
+              "label": "24",
+              "parts": [
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4"
+                }
+              ],
+              "total": "24"
+            }
+          ]
+        }
+      ],
+      "sha256": "4c034517b517d38f52a57ff594793504e7de0bae1c1a4da5ca10c8797462e7fb",
+      "bytes": 2173
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "slide": 7,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar of eighteen is split into three parts of six, with two parts shaded.",
+          "bars": [
+            {
+              "label": "18",
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                }
+              ],
+              "total": "18"
+            }
+          ]
+        }
+      ],
+      "sha256": "95926ff74a1f85c7c0f993ec5ad9ae82234be1ae7d52ea41aac11bc98332c46e",
+      "bytes": 1442
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "slide": 9,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "Thirty-five pounds is split into five parts of seven pounds; three parts are shaded.",
+          "bars": [
+            {
+              "label": "Money",
+              "parts": [
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7"
+                },
+                {
+                  "value": 7,
+                  "label": "£7"
+                }
+              ],
+              "total": "£35"
+            }
+          ]
+        }
+      ],
+      "sha256": "e4bb11f510b8f67128a191baa5080f9dbdd860f9bbffcbfe7a727108a61b9e1e",
+      "bytes": 2124
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "slide": 5,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "At zero seconds the volume is zero cubic centimetres; at 40 seconds it is 60 cubic centimetres.",
+          "header": ["Time (s)", "Gas (cm³)"],
+          "rows": [["0", "0"], ["40", "60"]]
+        }
+      ],
+      "sha256": "ffc47edbdbb44a8553dfb5d7f279232361ca5a1950193cc51836a631b9e02e1d",
+      "bytes": 1832
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "slide": 7,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "particles",
+          "title": "Concentration and reaction rate",
+          "alt": "Two equal-volume solution panels at the same temperature show twice as many acid particles in the higher-concentration panel beside identical magnesium surfaces, with matching motion arrows.",
+          "show": "compare",
+          "panels": [
+            {
+              "count": 6,
+              "extra": 1,
+              "speed": "slow",
+              "room": "small",
+              "solid": true
+            },
+            {
+              "count": 12,
+              "extra": 1,
+              "speed": "slow",
+              "room": "small",
+              "solid": true
+            }
+          ],
+          "captions": ["Lower concentration", "Higher concentration"],
+          "notes": ["Same temperature", "Magnesium surface", "Equal volume"],
+          "motion": true,
+          "key": ["Acid particles", "Motion arrows"]
+        }
+      ],
+      "sha256": "31af7f0b275fa36fdd9fca4ba391df7ba4679327d6a02d579181989da964d54e",
+      "bytes": 12336
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "particles",
+          "alt": "Equal-sized panels compare dilute and concentrated hydrochloric acid at 20 °C, with twice as many particles but matching motion-arrow lengths and equal magnesium surfaces.",
+          "show": "compare",
+          "panels": [
+            {
+              "count": 6,
+              "speed": "slow"
+            },
+            {
+              "count": 12,
+              "speed": "slow"
+            }
+          ],
+          "captions": ["Dilute: 20 °C", "Concentrated: 20 °C"],
+          "notes": ["Equal magnesium surfaces", "Same average speed"],
+          "motion": true,
+          "key": ["HCl particles", "Motion arrows"]
+        }
+      ],
+      "sha256": "28fc99de16d0279eb78e11cd9a2d6c94c780a1c24b3f3270f485d222958dc771",
+      "bytes": 10665
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "slide": 11,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 295,
+        "y": 182,
+        "w": 371,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Gas volume rises and levels off. A tangent at 20 seconds passes through zero seconds, 12 cubic centimetres, and 40 seconds, 60 cubic centimetres.",
+          "x": {
+            "label": "Time (s)",
+            "min": 0,
+            "max": 80,
+            "step": 10
+          },
+          "y": {
+            "label": "Gas volume (cm³)",
+            "min": 0,
+            "max": 80,
+            "step": 10
+          },
+          "qualitative": false,
+          "series": [
+            {
+              "label": "Gas collected",
+              "points": [
+                [0, 0],
+                [10, 22],
+                [20, 36],
+                [30, 46],
+                [40, 53],
+                [50, 58],
+                [60, 61],
+                [70, 63],
+                [80, 64]
+              ],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "Tangent at 20 s",
+              "points": [[0, 12], [20, 36], [40, 60]],
+              "style": "tangent",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "30a5a257dd892dc130076f705ab6b2ee0fa032e64a8ee8513e5945ae675ef55f",
+      "bytes": 4266
+    },
+    {
+      "lesson": "base4-3/y1-science-animals-young",
+      "slide": 9,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "title": "Chick growth",
+          "alt": "A chick grows in order from a small, fluffy newly hatched chick to an older chick and then a fully grown hen.",
+          "layout": "chain",
+          "steps": [
+            {
+              "label": "Newly hatched chick, fluffy"
+            },
+            {
+              "label": "Older chick, bigger"
+            },
+            {
+              "label": "Hen, fully grown"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "grows bigger"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "grows adult feathers"
+            }
+          ]
+        }
+      ],
+      "sha256": "8d2d4fd5180ff3d785ea933547e1e63f9b82bc1a9125956bf0226391459c0146",
+      "bytes": 2082
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "The sensory register has very brief duration; STM has limited capacity and duration; LTM has potentially unlimited capacity and duration.",
+          "header": ["Store", "Coding", "Capacity", "Duration"],
+          "rows": [
+            ["Sensory register", "Sense-specific", "Very large", "Very brief"],
+            ["STM", "Mainly acoustic", "About 7 ± 2 items", "About 18–30 seconds"],
+            ["LTM", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+          ]
+        }
+      ],
+      "sha256": "0865b0c9e1555e5185019e96b641d5180e05996080ae8d9380b92c729bd7f1f3",
+      "bytes": 4003
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "slide": 4,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "Attention transfers sensory information to STM. Maintenance rehearsal keeps it there and may transfer it to LTM. Retrieval returns information to STM.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "Short-term memory"
+            },
+            {
+              "label": "Long-term memory"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Maintenance rehearsal"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Prolonged rehearsal"
+            },
+            {
+              "from": 2,
+              "to": 1,
+              "label": "Retrieval"
+            }
+          ]
+        }
+      ],
+      "sha256": "4e77b1b60b54fad737eff600b8dbe04028b9ca51cfee90163f2471ce8cff6336",
+      "bytes": 3579
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "slide": 5,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "Attention selects the heard code for STM; repetition maintains it, rehearsal transfers it to LTM, and it is recalled tomorrow.",
+          "title": "Remembering a code",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "STM: acoustic code"
+            },
+            {
+              "label": "LTM: stored code"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Repetition"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Rehearsal"
+            },
+            {
+              "from": 2,
+              "to": 1,
+              "label": "Recall tomorrow"
+            }
+          ]
+        },
+        {
+          "kind": "flow",
+          "title": "Remembering a code",
+          "alt": "A code moves from sensory register to STM, is rehearsed into LTM, then retrieved to STM for recall.",
+          "layout": "chain",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "STM"
+            },
+            {
+              "label": "LTM"
+            },
+            {
+              "label": "STM"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Repetition"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Rehearsal"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "Retrieval"
+            }
+          ]
+        }
+      ],
+      "sha256": "3c051f49538b06ed2889261f6c435e0492e0bdfa47570e58efa335e1dbe7b02b",
+      "bytes": 2471
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "slide": 7,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Schematic serial-position curves: both conditions show an early-word advantage, while the late-word advantage appears only in immediate recall.",
+          "x": {
+            "label": "Position in word list",
+            "min": 1,
+            "max": 10,
+            "step": 1
+          },
+          "y": {
+            "label": "Recall",
+            "min": 0,
+            "max": 1,
+            "step": 0.2
+          },
+          "qualitative": true,
+          "series": [
+            {
+              "label": "Immediate",
+              "points": [
+                [1, 0.88],
+                [2, 0.68],
+                [3, 0.48],
+                [4, 0.34],
+                [5, 0.29],
+                [6, 0.29],
+                [7, 0.34],
+                [8, 0.49],
+                [9, 0.69],
+                [10, 0.88]
+              ],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "Filled delay",
+              "points": [
+                [1, 0.86],
+                [2, 0.66],
+                [3, 0.46],
+                [4, 0.32],
+                [5, 0.28],
+                [6, 0.28],
+                [7, 0.28],
+                [8, 0.28],
+                [9, 0.29],
+                [10, 0.29]
+              ],
+              "style": "line",
+              "axis": "left"
+            }
+          ],
+          "annotations": [
+            {
+              "x": 1,
+              "y": 0.88,
+              "label": "Primacy"
+            },
+            {
+              "x": 10,
+              "y": 0.88,
+              "label": "Recency"
+            }
+          ]
+        },
+        {
+          "kind": "table",
+          "title": "Serial position recall",
+          "alt": "Immediate recall shows early- and late-item advantages; after a filled delay, the early-item advantage remains while the late-item advantage largely disappears.",
+          "header": ["Position", "Immediate recall", "After filled delay"],
+          "rows": [
+            ["Early items", "Early-item advantage", "Advantage remains"],
+            ["Middle items", "Lower recall", "Lower recall"],
+            ["Late items", "Late-item advantage", "Advantage largely disappears"]
+          ]
+        }
+      ],
+      "sha256": "6658af89ad096d8e4fbb56c247aafb8cfe5e46f2b98c5e2f5c117d62c7f2ac34",
+      "bytes": 3460
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "slide": 10,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "KF had severely impaired verbal short-term memory, particularly for heard material, but relatively preserved visual short-term memory.",
+          "header": ["STM task", "KF"],
+          "rows": [["Verbal", "Impaired"], ["Visual", "Spared"]]
+        }
+      ],
+      "sha256": "4f8f8ecdf171ed2b4be2ac9c5f81fa9280ee02e7774ba8919c56f1b23ff86391",
+      "bytes": 1860
+    },
+    {
+      "lesson": "base4-4/y8-french-my-family",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "Mon is used with père and frère; ma with mère and sœur; mes with parents and grands-parents.",
+          "header": ["Masculin : mon", "Féminin : ma", "Pluriel : mes"],
+          "rows": [
+            ["mon père (my father)", "ma mère (my mother)", "mes parents (my parents)"],
+            ["mon frère (my brother)", "ma sœur (my sister)", "mes grands-parents"],
+            ["", "", "my grandparents"]
+          ]
+        }
+      ],
+      "sha256": "fa659ae6cb121948595b68b392d5081d8b5aefbfff7b0e04f9369602f080b297",
+      "bytes": 3128
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "One rectangle has one of two equal parts shaded. Another has one of four equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "rectangle",
+              "parts": 2,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "half"
+            },
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "quarter"
+            }
+          ]
+        }
+      ],
+      "sha256": "a37a628183e5d21a63f3f010fc09623c753bb1c99c3c5325cbf4aec2aa98e9d6",
+      "bytes": 3366
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "labelled-diagram",
+          "alt": "Two identical rectangles: A has a narrow shaded part and a wider part, while B has two equal parts with the left part shaded.",
+          "canvas": "wide",
+          "shapes": [
+            {
+              "type": "rect",
+              "x": 12,
+              "y": 35,
+              "w": 60,
+              "h": 30,
+              "fill": "none",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 12,
+              "y": 35,
+              "w": 15,
+              "h": 30,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "line",
+              "points": [[27, 35], [27, 65]],
+              "dashed": false
+            },
+            {
+              "type": "rect",
+              "x": 88,
+              "y": 35,
+              "w": 60,
+              "h": 30,
+              "fill": "none",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 88,
+              "y": 35,
+              "w": 30,
+              "h": 30,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "line",
+              "points": [[118, 35], [118, 65]],
+              "dashed": false
+            }
+          ],
+          "labels": [
+            {
+              "text": "A",
+              "at": [19, 41],
+              "side": "top"
+            },
+            {
+              "text": "B",
+              "at": [103, 41],
+              "side": "top"
+            }
+          ]
+        }
+      ],
+      "sha256": "5a86127ad8c5d63826dc8247e7fa60bee2b432c0ccab82056860cc381e3354aa",
+      "bytes": 2219
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 4,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "A has one of two equal parts shaded. B has one of four shaded. C has three of four shaded.",
+          "shapes": [
+            {
+              "shape": "circle",
+              "parts": 2,
+              "cut": "auto",
+              "shaded": 1,
+              "name": "A"
+            },
+            {
+              "shape": "square",
+              "parts": 4,
+              "cut": "grid",
+              "shaded": 1,
+              "name": "B"
+            },
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "vertical",
+              "shaded": 3,
+              "name": "C"
+            }
+          ]
+        }
+      ],
+      "sha256": "4e464238f146bcb2558e5fdce64f4d886d9efdc6b684824884bc181f658ced12",
+      "bytes": 5290
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Two equal groups each contain six counters.",
+          "total": 12,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "0e64cc438c2a573ce4ac8009dd349967af632f115b7d9b61c721ca090f07b7f3",
+      "bytes": 2741
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Fourteen counters are ready to be shared equally into two groups.",
+          "total": 14,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "none",
+          "unknown": true
+        }
+      ],
+      "sha256": "26e34f0a8d94e31c95189032e751faf738b85d215e450913f997733a598d88bc",
+      "bytes": 2769
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 7,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Four equal groups each contain three counters.",
+          "total": 12,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "e208023ce9cfd8f06d1dd29dd444e15bb2673e35176dcd5cd540097a61e1e27b",
+      "bytes": 3251
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Sixteen unshared counters are ready to be shared into four equal groups.",
+          "total": 16,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "none",
+          "unknown": true
+        }
+      ],
+      "sha256": "a47eada9ed85de3dd07347aa88ca7e2c47cf54604a177fc75d848bc518f53b9d",
+      "bytes": 3306
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Four rings each contain six counters.",
+          "total": 24,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "89bd6defdd696c77ce72cff223b30b4f248988a46b1503410ce7ac5ec6213138",
+      "bytes": 5237
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 229
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "28 counters are arranged in four equal rings.",
+          "total": 28,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "none",
+          "unknown": true
+        }
+      ],
+      "sha256": "4fafa80e6c168d5f0224794f903446d241d025db8276d7f11c272e1a45eb3a0c",
+      "bytes": 5214
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 4,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar totals 35 and has five parts of seven, with three shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 7,
+                  "label": "7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "7"
+                },
+                {
+                  "value": 7,
+                  "label": "7"
+                }
+              ],
+              "total": "35"
+            }
+          ]
+        }
+      ],
+      "sha256": "05374930076f8e1e5dd3c1a8a9449baac13f7122a9ad86fa00c85924ea1e0911",
+      "bytes": 1901
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 229
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar totals 40 and is split into five equal parts, with three shaded and part values unknown.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 8,
+                  "label": "?",
+                  "shaded": true
+                },
+                {
+                  "value": 8,
+                  "label": "?",
+                  "shaded": true
+                },
+                {
+                  "value": 8,
+                  "label": "?",
+                  "shaded": true
+                },
+                {
+                  "value": 8,
+                  "label": "?"
+                },
+                {
+                  "value": 8,
+                  "label": "?"
+                }
+              ],
+              "total": "40"
+            }
+          ]
+        }
+      ],
+      "sha256": "f7b2bfa807d3e06dae3571de713400c04a5ab4ede02e10f2c74ed038ac7c4106",
+      "bytes": 1957
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar totals 24 and has three parts of eight, with two shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 8,
+                  "label": "8",
+                  "shaded": true
+                },
+                {
+                  "value": 8,
+                  "label": "8",
+                  "shaded": true
+                },
+                {
+                  "value": 8,
+                  "label": "8"
+                }
+              ],
+              "total": "24"
+            }
+          ]
+        }
+      ],
+      "sha256": "5266ff5eabba7881b0dbde30c9ef351c0037d401a0f160f04283150de44862f7",
+      "bytes": 1418
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 86,
+        "y": 358,
+        "w": 788,
+        "h": 124
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A £40 bar has eight parts of £5, with three shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 5,
+                  "label": "£5",
+                  "shaded": true
+                },
+                {
+                  "value": 5,
+                  "label": "£5",
+                  "shaded": true
+                },
+                {
+                  "value": 5,
+                  "label": "£5",
+                  "shaded": true
+                },
+                {
+                  "value": 5,
+                  "label": "£5"
+                },
+                {
+                  "value": 5,
+                  "label": "£5"
+                },
+                {
+                  "value": 5,
+                  "label": "£5"
+                },
+                {
+                  "value": 5,
+                  "label": "£5"
+                },
+                {
+                  "value": 5,
+                  "label": "£5"
+                }
+              ],
+              "total": "£40"
+            }
+          ]
+        }
+      ],
+      "sha256": "0257f0fda4dd3d89c6098d55de70abf707971173e205374900abcaf3733c63f6",
+      "bytes": 2598
+    },
+    {
+      "lesson": "base4-4/y11-chemistry-rates-of-reaction",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "particles",
+          "title": "More particles, not faster",
+          "alt": "Equal-volume acid samples at 20°C beside identical magnesium surfaces; the 1.0 mol/dm³ sample has twice as many acid particles, with matching movement-arrow lengths.",
+          "show": "compare",
+          "panels": [
+            {
+              "count": 6,
+              "speed": "slow",
+              "room": "large",
+              "solid": true
+            },
+            {
+              "count": 12,
+              "speed": "slow",
+              "room": "large",
+              "solid": true
+            }
+          ],
+          "captions": ["0.5 mol/dm³", "1.0 mol/dm³"],
+          "notes": ["Both at 20°C"],
+          "motion": true,
+          "key": ["acid particles", "Mg surface"]
+        }
+      ],
+      "sha256": "226033a02ff496f78160da3be1d6fe1d4718ecce9f472e4c534a3aacf33cba1d",
+      "bytes": 10748
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "Visual input enters iconic memory; auditory input enters echoic memory.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "Visual input"
+            },
+            {
+              "label": "Iconic: under 0.5 s"
+            },
+            {
+              "label": "Auditory input"
+            },
+            {
+              "label": "Echoic: about 2–4 s"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1
+            },
+            {
+              "from": 2,
+              "to": 3
+            }
+          ]
+        }
+      ],
+      "sha256": "cf71f34c009cd2114ed26ed065faf6abdcf685cb7c7261a8f690cfbedc95b8ef",
+      "bytes": 2152
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 3,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "Short-term memory is mainly acoustic, limited and brief; long-term memory is mainly semantic, potentially unlimited and lasting.",
+          "header": ["Property", "Short-term memory", "Long-term memory"],
+          "rows": [
+            ["Coding", "Mainly acoustic", "Mainly semantic"],
+            ["Capacity", "About 7 ± 2 items", "Potentially unlimited"],
+            ["Duration", "About 18–30 seconds", "Potentially a lifetime"]
+          ]
+        }
+      ],
+      "sha256": "a0d007435c21a5ec90e3f618e43c662ccee3606d41bd8fce5280ccc53e776ac4",
+      "bytes": 3148
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 5,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 235
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "Attention moves information from the sensory register to short-term memory; rehearsal supports retention and storage, while retrieval returns long-term memories to short-term memory.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "Short-term memory"
+            },
+            {
+              "label": "Long-term memory"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Maintenance rehearsal"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Prolonged rehearsal"
+            },
+            {
+              "from": 2,
+              "to": 1,
+              "label": "Retrieval"
+            },
+            {
+              "from": 0,
+              "to": "out",
+              "label": "Unattended"
+            },
+            {
+              "from": 1,
+              "to": "out",
+              "label": "Forgetting"
+            }
+          ]
+        },
+        {
+          "kind": "flow",
+          "alt": "Information moves from the sensory register to STM through attention, stays active through maintenance rehearsal, and reaches or returns from LTM through storage and retrieval.",
+          "layout": "graph",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "STM"
+            },
+            {
+              "label": "LTM"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Maintain"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Store"
+            },
+            {
+              "from": 2,
+              "to": 1,
+              "label": "Retrieve"
+            }
+          ]
+        }
+      ],
+      "sha256": "ee103fae610d99f4cd8602c9284f9863d89789a203a014516ee56f8d5daac372",
+      "bytes": 3491
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 6,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "An address stored in long-term memory is retrieved into short-term memory; it remains stored for later recall.",
+          "layout": "chain",
+          "steps": [
+            {
+              "label": "LTM: stored address",
+              "arrow": "Retrieval"
+            },
+            {
+              "label": "STM: address in use"
+            }
+          ]
+        }
+      ],
+      "sha256": "8b18f74931270d811cdc5bf2b3017e58a53d37a1b368a5e5d2d9020a5ac13ef9",
+      "bytes": 1386
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 7,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 295,
+        "y": 182,
+        "w": 371,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Immediate recall is higher for words at the beginning and end of a list than for words in the middle.",
+          "x": {
+            "label": "Position in word list",
+            "min": 1,
+            "max": 15,
+            "step": 1
+          },
+          "y": {
+            "label": "Recall",
+            "min": 0,
+            "max": 100,
+            "step": 20
+          },
+          "qualitative": true,
+          "series": [
+            {
+              "label": "Immediate recall",
+              "points": [[1, 85], [3, 65], [5, 40], [8, 30], [11, 35], [13, 60], [15, 90]],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "8420255b4d0b34597f3e64b06240faaacaf86b970ecbb75599f0f0d02886f0f0",
+      "bytes": 1422
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Both curves show good recall of early words. Immediate recall also shows good recall of final words, but delayed recall does not.",
+          "x": {
+            "label": "Position in word list",
+            "min": 1,
+            "max": 15,
+            "step": 1
+          },
+          "y": {
+            "label": "Recall",
+            "min": 0,
+            "max": 100,
+            "step": 20
+          },
+          "qualitative": true,
+          "series": [
+            {
+              "label": "Immediate",
+              "points": [[1, 85], [3, 65], [5, 40], [8, 30], [11, 35], [13, 60], [15, 90]],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "30 s filled delay",
+              "points": [[1, 80], [3, 60], [5, 35], [8, 25], [11, 25], [13, 25], [15, 25]],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "547c79de1a7e1f28b6a2c38225bc885a8e22c632bd47d9ed9fc8cee3588a259c",
+      "bytes": 2476
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "slide": 10,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "KF had severely impaired verbal short-term memory but relatively preserved visual short-term memory.",
+          "header": ["Task type", "KF’s performance"],
+          "rows": [["Verbal", "Impaired"], ["Visual", "Preserved"]]
+        }
+      ],
+      "sha256": "f9072d1735491ec2fd865657e444de40238ce7248cf693275a5590401cdcf59b",
+      "bytes": 1845
+    },
+    {
+      "lesson": "b3-r2-1/y8-french-my-family",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "labelled-diagram",
+          "alt": "Un arbre familial imaginaire avec les grands-parents au-dessus des parents et les enfants en dessous.",
+          "canvas": "wide",
+          "shapes": [
+            {
+              "type": "rect",
+              "x": 48,
+              "y": 6,
+              "w": 64,
+              "h": 16,
+              "fill": "muted",
+              "rounded": true
+            },
+            {
+              "type": "rect",
+              "x": 23,
+              "y": 34,
+              "w": 48,
+              "h": 16,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "rect",
+              "x": 89,
+              "y": 34,
+              "w": 48,
+              "h": 16,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "rect",
+              "x": 5,
+              "y": 70,
+              "w": 42,
+              "h": 16,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "rect",
+              "x": 59,
+              "y": 70,
+              "w": 42,
+              "h": 16,
+              "fill": "accent",
+              "rounded": true
+            },
+            {
+              "type": "rect",
+              "x": 113,
+              "y": 70,
+              "w": 42,
+              "h": 16,
+              "fill": "surface",
+              "rounded": true
+            },
+            {
+              "type": "line",
+              "points": [[80, 22], [80, 28], [47, 28], [47, 34]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[80, 28], [113, 28], [113, 34]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[47, 50], [47, 58], [80, 58], [80, 70]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[113, 50], [113, 58], [80, 58]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[26, 58], [134, 58]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[26, 58], [26, 70]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[134, 58], [134, 70]],
+              "dashed": false
+            }
+          ],
+          "labels": [
+            {
+              "text": "mes grands-parents",
+              "at": [80, 14],
+              "side": "top"
+            },
+            {
+              "text": "mon père",
+              "at": [47, 42],
+              "side": "top"
+            },
+            {
+              "text": "ma mère",
+              "at": [113, 42],
+              "side": "top"
+            },
+            {
+              "text": "mon frère",
+              "at": [26, 78],
+              "side": "top"
+            },
+            {
+              "text": "moi",
+              "at": [80, 78],
+              "side": "top"
+            },
+            {
+              "text": "ma sœur",
+              "at": [134, 78],
+              "side": "top"
+            }
+          ]
+        }
+      ],
+      "sha256": "97aae76868c519f9e19c2d7036ded4c08ab7200870a5c48e54c3255bbc08295a",
+      "bytes": 5270
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "One square has one of two equal parts shaded. The other has one of four equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "square",
+              "parts": 2,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "1/2"
+            },
+            {
+              "shape": "square",
+              "parts": 4,
+              "cut": "grid",
+              "shaded": 1,
+              "name": "1/4"
+            }
+          ]
+        },
+        {
+          "kind": "labelled-diagram",
+          "alt": "Two equal-sized squares show one of two parts and one of four parts shaded.",
+          "canvas": "wide",
+          "shapes": [
+            {
+              "type": "rect",
+              "x": 12,
+              "y": 22,
+              "w": 54,
+              "h": 54,
+              "fill": "surface",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 12,
+              "y": 22,
+              "w": 27,
+              "h": 54,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "line",
+              "points": [[39, 22], [39, 76]],
+              "dashed": false
+            },
+            {
+              "type": "rect",
+              "x": 94,
+              "y": 22,
+              "w": 54,
+              "h": 54,
+              "fill": "surface",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 94,
+              "y": 22,
+              "w": 27,
+              "h": 27,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "line",
+              "points": [[121, 22], [121, 76]],
+              "dashed": false
+            },
+            {
+              "type": "line",
+              "points": [[94, 49], [148, 49]],
+              "dashed": false
+            }
+          ],
+          "labels": [
+            {
+              "text": "One half",
+              "at": [25, 49],
+              "side": "top"
+            },
+            {
+              "text": "One quarter",
+              "at": [107, 35],
+              "side": "top"
+            }
+          ]
+        }
+      ],
+      "sha256": "f336b0ad1373ececa430a00f8768c157cde67459651db7d66367104c06cff1b9",
+      "bytes": 2286
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Two rings each contain six counters, making twelve altogether.",
+          "total": 12,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "8fcfd946e48b694ac783d3b5ca14a50e3015c171bf06b9456b51266aa9ea21a5",
+      "bytes": 2779
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Sixteen counters are shared equally between two rings. Find the number in one ring.",
+          "total": 16,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": true
+        }
+      ],
+      "sha256": "f62f15ca0865523207c8795f92bdb0cbbc54d29f6b94ff2c316ffa9ebebe4f17",
+      "bytes": 3481
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "slide": 7,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Four rings each contain three counters, making twelve altogether.",
+          "total": 12,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "9928c8edaa8a23232c63dcaff95eb28748fce04aea1ee682a1fa7b823a27b5aa",
+      "bytes": 3289
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Sixteen counters are shared equally between four rings. Find the number in one ring.",
+          "total": 16,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": true
+        }
+      ],
+      "sha256": "14b77f8fdf48c319017f91e21e8ed49bfb30c28ba3b12a6266cea28b51d6aa87",
+      "bytes": 4021
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "A rectangle has four equal strips; one strip is shaded.",
+          "shapes": [
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "¼"
+            }
+          ]
+        }
+      ],
+      "sha256": "6e56ef8c4b903347deb145635d3e171722ae95eb6ae2ba14a019b89ce0a63605",
+      "bytes": 2074
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Five rings each contain four counters.",
+          "total": 20,
+          "groups": 5,
+          "layout": "rings",
+          "show_count": "one",
+          "unknown": false
+        }
+      ],
+      "sha256": "7c6ee2596c632f451f521016358e2f29355a6bc1ecfbf3404a2c0f1f61e34aa1",
+      "bytes": 4132
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "A rectangle has four equal strips; three strips are shaded.",
+          "shapes": [
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "vertical",
+              "shaded": 3,
+              "name": "¾"
+            }
+          ]
+        }
+      ],
+      "sha256": "e8668f5b3eeae582af9d17f30b0c426b53beaff7af22c41be19a144a7d345067",
+      "bytes": 2082
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar of twenty has five parts of four; three parts are shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4",
+                  "shaded": true
+                },
+                {
+                  "value": 4,
+                  "label": "4"
+                },
+                {
+                  "value": 4,
+                  "label": "4"
+                }
+              ],
+              "total": "20"
+            }
+          ]
+        }
+      ],
+      "sha256": "85530a1a5ced0aa4f33136940ab3c18cf94c31c4d78c8694dce1aec98be6ca65",
+      "bytes": 1901
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar of twenty-four has four parts of six, with three shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                }
+              ],
+              "total": "24"
+            }
+          ]
+        }
+      ],
+      "sha256": "456fd3ab1859018e99ba36c5adc5237b9304255f8b69642683be529921f1152a",
+      "bytes": 1660
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "slide": 9,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A thirty-pound bar has five six-pound parts; two parts are shaded.",
+          "bars": [
+            {
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "£6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "£6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "£6"
+                },
+                {
+                  "value": 6,
+                  "label": "£6"
+                },
+                {
+                  "value": 6,
+                  "label": "£6"
+                }
+              ],
+              "total": "£30"
+            }
+          ]
+        }
+      ],
+      "sha256": "d95e193aa3d516f2a6f8c528da26ea9386f0a074c71638ec5e8bbbdbaef1a283",
+      "bytes": 1921
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "slide": 4,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "At zero seconds the gas volume is zero; at 40 seconds it is 32 cubic centimetres.",
+          "header": ["Time (s)", "Gas (cm³)"],
+          "rows": [["0", "0"], ["40", "32"]]
+        }
+      ],
+      "sha256": "6e5f62105bbc7f102ab18bd9309d6cf0b54722559f8632118354d0c0929e6160",
+      "bytes": 1804
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "particles",
+          "title": "More particles, not faster",
+          "alt": "Two equal-volume panels at the same temperature; the 1.0 mol/dm³ panel has twice as many acid particles, with the same mix of motion arrows.",
+          "show": "compare",
+          "panels": [
+            {
+              "count": 6,
+              "speed": "slow",
+              "energy": 1,
+              "room": "small"
+            },
+            {
+              "count": 12,
+              "speed": "slow",
+              "energy": 1,
+              "room": "small"
+            }
+          ],
+          "captions": ["0.5 mol/dm³", "1.0 mol/dm³"],
+          "notes": ["Same temperature", "Equal volume"],
+          "arrows": ["short, medium, long", "same mix in both"],
+          "motion": true
+        }
+      ],
+      "sha256": "f793eb58ee3303387bf5be78be727d6512ba1b66796012b4fe90a5ae62686288",
+      "bytes": 10869
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "slide": 10,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 295,
+        "y": 182,
+        "w": 371,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Curve A reaches 20 cubic centimetres at 20 seconds and plateaus at 40 by 80 seconds. B reaches 32 at 20 seconds and plateaus at 40 by 40 seconds.",
+          "x": {
+            "label": "Time (s)",
+            "min": 0,
+            "max": 100,
+            "step": 20
+          },
+          "y": {
+            "label": "Gas volume (cm³)",
+            "min": 0,
+            "max": 40,
+            "step": 10
+          },
+          "qualitative": false,
+          "series": [
+            {
+              "label": "A",
+              "points": [[0, 0], [20, 20], [40, 32], [60, 38], [80, 40], [100, 40]],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "B",
+              "points": [[0, 0], [20, 32], [40, 40], [60, 40], [80, 40], [100, 40]],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "ed30f1dcbe781d13cce3b95963706a293b41fd75c25353273311993f0ec4b42a",
+      "bytes": 3763
+    },
+    {
+      "lesson": "b3-r2-1/y1-science-animals-young",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "A small, downy chick gets bigger and grows adult feathers to become a hen.",
+          "title": "Chick to hen",
+          "layout": "chain",
+          "steps": [
+            {
+              "label": "Small, downy chick",
+              "arrow": "gets bigger"
+            },
+            {
+              "label": "Bigger body",
+              "arrow": "grows adult feathers"
+            },
+            {
+              "label": "Adult hen"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1
+            },
+            {
+              "from": 1,
+              "to": 2
+            }
+          ]
+        }
+      ],
+      "sha256": "ec2da6835eb38bb6eb40af6b8fa3983b5c9205dac1f7f25336bbe0c2c9f0da60",
+      "bytes": 1585
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "slide": 3,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "The sensory register, STM and LTM differ in their coding, capacity and duration.",
+          "header": ["Store", "Coding", "Capacity", "Duration"],
+          "rows": [
+            ["Sensory register", "Sense-specific", "Very large", "Usually <0.5 seconds"],
+            ["Short-term (STM)", "Mainly acoustic", "7 ± 2 items", "About 18–30 seconds"],
+            ["Long-term (LTM)", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+          ]
+        }
+      ],
+      "sha256": "337a1f87dc9429697f1587310e8bce05ffe958249e3a9aba7755657473d9d87a",
+      "bytes": 3819
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "slide": 5,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "flow",
+          "alt": "Amira's heard phone number enters STM through attention, is maintained and transferred by repetition, then retrieved from LTM into STM next week.",
+          "title": "New phone number",
+          "layout": "chain",
+          "steps": [
+            {
+              "label": "Sensory register"
+            },
+            {
+              "label": "STM"
+            },
+            {
+              "label": "LTM"
+            }
+          ],
+          "links": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "Attention"
+            },
+            {
+              "from": 1,
+              "to": 1,
+              "label": "Repetition"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "Repetition"
+            },
+            {
+              "from": 2,
+              "to": 1,
+              "label": "Retrieval"
+            }
+          ]
+        }
+      ],
+      "sha256": "b120a3948f574bfaae0f5b837f76e34e814a4385acd92308a60a5e218f3c4e60",
+      "bytes": 2046
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "slide": 7,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "Immediate recall is high at the start and end of a list. After a filled delay, recall stays high at the start but not at the end.",
+          "x": {
+            "label": "Position in word list",
+            "min": 1,
+            "max": 10,
+            "step": 1
+          },
+          "y": {
+            "label": "Recall",
+            "min": 0,
+            "max": 10,
+            "step": 2
+          },
+          "qualitative": true,
+          "series": [
+            {
+              "label": "Immediate",
+              "points": [
+                [1, 9],
+                [2, 7],
+                [3, 5],
+                [4, 3],
+                [5, 3],
+                [6, 3],
+                [7, 4],
+                [8, 5],
+                [9, 7],
+                [10, 9]
+              ],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "30-second delay",
+              "points": [
+                [1, 9],
+                [2, 7],
+                [3, 5],
+                [4, 3],
+                [5, 3],
+                [6, 3],
+                [7, 3],
+                [8, 3],
+                [9, 3],
+                [10, 3]
+              ],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "3c13dbc7909b2c00c446f52d49910569f6f27dee917dbc635a28e75940fb0daa",
+      "bytes": 2733
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "slide": 9,
+      "theme": "studio",
+      "stage": "ks5",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "KF's short-term recall of heard verbal material was severely impaired; recall of visually presented verbal material was relatively better.",
+          "header": ["Input", "Verbal STM"],
+          "rows": [["Heard", "Poor"], ["Seen", "Better"]]
+        }
+      ],
+      "sha256": "16f64052ba6ec1b216d43c527e356363886a1a41a276db52679a10bc6a3b42ef",
+      "bytes": 1896
+    },
+    {
+      "lesson": "b3-r2-2/y8-french-my-family",
+      "slide": 2,
+      "theme": "studio",
+      "stage": "ks3",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "table",
+          "alt": "Six family expressions paired with their English meanings.",
+          "header": ["Français", "English"],
+          "rows": [
+            ["mon père", "father"],
+            ["ma mère", "mother"],
+            ["mon frère", "brother"],
+            ["ma sœur", "sister"],
+            ["mes parents", "parents"],
+            ["mes grands-parents", "grandparents"]
+          ]
+        }
+      ],
+      "sha256": "08c202d44defd6cb42d8ac9d7e7a9056965811822aa4e7ac906a7f20294b60d3",
+      "bytes": 3705
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "Two matching rectangles: one has one of two equal parts shaded; the other has one of four equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "rectangle",
+              "parts": 2,
+              "cut": "vertical",
+              "shaded": 1,
+              "name": "half"
+            },
+            {
+              "shape": "rectangle",
+              "parts": 4,
+              "cut": "grid",
+              "shaded": 1,
+              "name": "quarter"
+            }
+          ]
+        }
+      ],
+      "sha256": "2fe1d1d6de8a91c461be07f0049f24497fc2c8d8a721c0c3e81ab174711dbb99",
+      "bytes": 3373
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 3,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "labelled-diagram",
+          "title": "Two unequal pieces",
+          "alt": "A rectangle is split into two unequal parts, with the smaller part shaded.",
+          "canvas": "wide",
+          "shapes": [
+            {
+              "type": "rect",
+              "x": 20,
+              "y": 20,
+              "w": 120,
+              "h": 60,
+              "fill": "none",
+              "rounded": false
+            },
+            {
+              "type": "rect",
+              "x": 20,
+              "y": 20,
+              "w": 40,
+              "h": 60,
+              "fill": "accent",
+              "rounded": false
+            },
+            {
+              "type": "line",
+              "points": [[60, 20], [60, 80]],
+              "dashed": false
+            }
+          ],
+          "labels": [
+            {
+              "text": "whole rectangle",
+              "at": [80, 20],
+              "side": "top"
+            },
+            {
+              "text": "small shaded part",
+              "at": [40, 50],
+              "side": "left"
+            },
+            {
+              "text": "large part",
+              "at": [100, 50],
+              "side": "right"
+            }
+          ]
+        }
+      ],
+      "sha256": "109b8b5cd2e47d35569db5fb19bf2874fc0702089edbb3cc1b8ee351af7058a5",
+      "bytes": 2223
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 4,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 177
+      },
+      "specs": [
+        {
+          "kind": "fraction-shapes",
+          "alt": "Shape A is a square with one of four equal parts shaded. Shape B is a circle with one of two equal parts shaded.",
+          "shapes": [
+            {
+              "shape": "square",
+              "parts": 4,
+              "cut": "grid",
+              "shaded": 1,
+              "name": "A"
+            },
+            {
+              "shape": "circle",
+              "parts": 2,
+              "cut": "auto",
+              "shaded": 1,
+              "name": "B"
+            }
+          ]
+        }
+      ],
+      "sha256": "f249613874fa63f953580718f88a01da5d4680fe60ada48b795677c006281362",
+      "bytes": 3536
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 5,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Twelve counters in two equal groups of six.",
+          "total": 12,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "b9a7e3dfaa8c0206c41a819311e6c10b840984c7c5cda44bd3a17e1cccd1ccc8",
+      "bytes": 2741
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Sixteen counters shared equally between two rings, with no group counts given.",
+          "total": 16,
+          "groups": 2,
+          "layout": "rings",
+          "show_count": "none",
+          "unknown": true
+        }
+      ],
+      "sha256": "d9de7f2ca47654c04bd84cfafdbdb95b691da11eb186ee5de8216943870f3f86",
+      "bytes": 3127
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 7,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Twelve counters in four equal groups of three.",
+          "total": 12,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "each",
+          "unknown": false
+        }
+      ],
+      "sha256": "c01514464c9a8144e193a5ddcc5045d142a730328c395b58454335b4abccf1a7",
+      "bytes": 3251
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks1",
+      "rect": {
+        "x": 86,
+        "y": 182,
+        "w": 788,
+        "h": 223
+      },
+      "specs": [
+        {
+          "kind": "equal-groups",
+          "alt": "Sixteen counters shared equally between four rings, with no group counts given.",
+          "total": 16,
+          "groups": 4,
+          "layout": "rings",
+          "show_count": "none",
+          "unknown": true
+        }
+      ],
+      "sha256": "066babf42d0a509ac0cbb568210d98e964c7ffe5cc340a6e1ca3e78d06231727",
+      "bytes": 3320
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "slide": 2,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar with total 24 has four equal parts of 6. One part is shaded.",
+          "bars": [
+            {
+              "label": "¼ of 24",
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                }
+              ],
+              "total": "24"
+            }
+          ]
+        }
+      ],
+      "sha256": "f6cc568ceb4424549d20fe4552542838c8426dd7cab0de95e9733e1d2b084bc5",
+      "bytes": 1846
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "slide": 4,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar with total 24 has four equal parts of 6. Three parts are shaded.",
+          "bars": [
+            {
+              "label": "¾ of 24",
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                }
+              ],
+              "total": "24"
+            }
+          ]
+        }
+      ],
+      "sha256": "8bfeb6f189666cf4bebd24df7c2c993c66788b9bdfcc7c9b07ac61b204552e1b",
+      "bytes": 1854
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "slide": 6,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar with total 30 has five equal parts of 6. Two parts are shaded.",
+          "bars": [
+            {
+              "label": "⅖ of 30",
+              "parts": [
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6",
+                  "shaded": true
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                },
+                {
+                  "value": 6,
+                  "label": "6"
+                }
+              ],
+              "total": "30"
+            }
+          ]
+        }
+      ],
+      "sha256": "8fa6118ad9d3f226aba50b5d5e95e3dfc89639aac21a74a6c88d6e1101261720",
+      "bytes": 2090
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "slide": 8,
+      "theme": "splash",
+      "stage": "ks2",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "bar-model",
+          "alt": "A bar with total £35 has five equal parts of £7. Three parts are shaded.",
+          "bars": [
+            {
+              "label": "Spent",
+              "parts": [
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7",
+                  "shaded": true
+                },
+                {
+                  "value": 7,
+                  "label": "£7"
+                },
+                {
+                  "value": 7,
+                  "label": "£7"
+                }
+              ],
+              "total": "£35"
+            }
+          ]
+        }
+      ],
+      "sha256": "45da812859b804353696b5c73e6d32cce729009024c8f173b3e19b7a1e4a86ce",
+      "bytes": 2100
+    },
+    {
+      "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",
+      "slide": 5,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 526,
+        "y": 182,
+        "w": 348,
+        "h": 284
+      },
+      "specs": [
+        {
+          "kind": "particles",
+          "alt": "Equal-volume panels show fewer acid particles at lower concentration and more at higher concentration, with equal motion arrows and identical magnesium surfaces.",
+          "show": "compare",
+          "panels": [
+            {
+              "count": 6,
+              "speed": "slow",
+              "energy": 1,
+              "room": "small",
+              "solid": true,
+              "squash": false
+            },
+            {
+              "count": 12,
+              "speed": "slow",
+              "energy": 1,
+              "room": "small",
+              "solid": true,
+              "squash": false
+            }
+          ],
+          "captions": ["Lower concentration", "Higher concentration"],
+          "notes": ["Same temperature", "Equal volume", "Simplified model"],
+          "motion": true,
+          "key": ["acid particle", "magnesium"]
+        }
+      ],
+      "sha256": "c046e8ed1e53df6d3708a128cdcceb0d6dcd5fcdca77385fcb7103f82dbc1284",
+      "bytes": 11098
+    },
+    {
+      "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",
+      "slide": 8,
+      "theme": "studio",
+      "stage": "ks4",
+      "rect": {
+        "x": 295,
+        "y": 182,
+        "w": 371,
+        "h": 200
+      },
+      "specs": [
+        {
+          "kind": "line-graph",
+          "alt": "At 20 seconds, 0.5 mol/dm³ acid produces 20 cm³ and 1.0 mol/dm³ produces 40 cm³. Both eventually reach 60 cm³.",
+          "x": {
+            "label": "Time (s)",
+            "min": 0,
+            "max": 100,
+            "step": 20
+          },
+          "y": {
+            "label": "Hydrogen volume (cm³)",
+            "min": 0,
+            "max": 60,
+            "step": 10
+          },
+          "qualitative": false,
+          "series": [
+            {
+              "label": "0.5 mol/dm³",
+              "points": [
+                [0, 0],
+                [10, 11],
+                [20, 20],
+                [30, 29],
+                [40, 37],
+                [50, 44],
+                [60, 50],
+                [70, 55],
+                [80, 58],
+                [90, 60],
+                [100, 60]
+              ],
+              "style": "line",
+              "axis": "left"
+            },
+            {
+              "label": "1.0 mol/dm³",
+              "points": [
+                [0, 0],
+                [10, 23],
+                [20, 40],
+                [30, 52],
+                [40, 58],
+                [50, 60],
+                [60, 60],
+                [70, 60],
+                [80, 60],
+                [90, 60],
+                [100, 60]
+              ],
+              "style": "line",
+              "axis": "left"
+            }
+          ]
+        }
+      ],
+      "sha256": "e1649c2af117b575529daf66fccd5066ddd5ab98edfa3f94ba18b1482854f016",
+      "bytes": 4125
+    }
+  ],
+  "figures": [
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "key": "2:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "The typical coding, capacity and duration of the three memory stores",
+        "alt": "A table compares sensory register, short-term memory and long-term memory by coding, capacity and duration.",
+        "title": null,
+        "header": ["Store", "Coding", "Capacity", "Duration"],
+        "rows": [
+          ["Sensory register", "Modality-specific", "Very large", "Very brief"],
+          ["Short-term memory", "Mainly acoustic", "About 7 ± 2 items", "About 18–30 seconds"],
+          ["Long-term memory", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The multi-store model, including a rehearsal loop and retrieval from LTM to STM",
+        "alt": "Attention moves information from sensory register to STM. Rehearsal maintains STM and can transfer information to LTM. Retrieval returns it to STM.",
+        "title": null,
+        "nodes": ["Sensory register", "STM", "LTM"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Attention"
+          },
+          {
+            "from": 1,
+            "to": 1,
+            "label": "Maintenance rehearsal"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Prolonged rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "label": "Retrieval"
+          }
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "A schematic serial position curve: immediate recall has primacy and recency; a filled delay reduces recency",
+        "alt": "Both curves show better recall for early words. Immediate recall also rises for final words; recall after a filled delay does not.",
+        "title": null,
+        "x": {
+          "label": "Position in word list",
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "y": {
+          "label": "Recall likelihood",
+          "min": 0,
+          "max": 1,
+          "step": null
+        },
+        "y2": null,
+        "qualitative": true,
+        "series": [
+          {
+            "label": "Immediate recall",
+            "points": [
+              [1, 0.85],
+              [2, 0.7],
+              [3, 0.5],
+              [4, 0.35],
+              [5, 0.3],
+              [6, 0.3],
+              [7, 0.4],
+              [8, 0.55],
+              [9, 0.75],
+              [10, 0.9]
+            ],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "30 s filled delay",
+            "points": [
+              [1, 0.85],
+              [2, 0.7],
+              [3, 0.5],
+              [4, 0.35],
+              [5, 0.3],
+              [6, 0.3],
+              [7, 0.3],
+              [8, 0.3],
+              [9, 0.3],
+              [10, 0.3]
+            ],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y12-psychology-multi-store-model",
+      "key": "9:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The contrast between KF’s verbal and visual short-term memory",
+        "alt": "KF’s short-term memory performance differed: verbal memory was severely impaired, while visual memory was relatively better preserved.",
+        "title": null,
+        "nodes": ["KF: STM performance", "Verbal: impaired", "Visual: better preserved"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": null
+          },
+          {
+            "from": 0,
+            "to": 2,
+            "label": null
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "key": "2:diagram",
+      "template": "big-visual",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "Placeholder replaced by the approved objectives by the lesson renderer",
+        "alt": "The approved learning objectives.",
+        "title": null,
+        "header": null,
+        "rows": [
+          ["Identify family members"],
+          ["Describe name, age and personality"],
+          ["Write a short family description"]
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "key": "3:diagram",
+      "template": "big-visual",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "An illustrated family map around a central teenage speaker labelled moi. Six separate surrounding panels show a father, mother, brother, sister, the father and mother together, and two grandparents together. Each French label has its English meaning beneath it; the paired panels clearly represent plural nouns.",
+        "labels": [
+          "moi / me",
+          "mon père / father",
+          "ma mère / mother",
+          "mon frère / brother",
+          "ma sœur / sister",
+          "mes parents / parents",
+          "mes grands-parents / grandparents"
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "How a positive sibling phrase changes after a negative expression",
+        "alt": "J’ai un frère becomes je n’ai pas de frère; j’ai une sœur becomes je n’ai pas de sœur.",
+        "title": null,
+        "nodes": ["J’ai un frère", "Je n’ai pas de frère", "J’ai une sœur", "Je n’ai pas de sœur"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "negative"
+          },
+          {
+            "from": 2,
+            "to": 3,
+            "label": "negative"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y8-french-my-family",
+      "key": "4:diagram",
+      "template": "visual-text",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "shows": "A teenage girl standing between her father and mother",
+        "must_see": ["teenage girl", "adult father", "adult mother"],
+        "subject": "generic"
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "A half and a quarter of matching rectangles",
+        "alt": "Two matching rectangles: one has one of two equal parts shaded; the other has one of four equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 2,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "½"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "¼"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "key": "3:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Two shapes for pupils to identify by their equal parts",
+        "alt": "Shape A is a circle with one of four equal parts shaded. Shape B is a square with one of two equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "circle",
+            "parts": 4,
+            "cut": "auto",
+            "shaded": 1,
+            "name": "A"
+          },
+          {
+            "shape": "square",
+            "parts": 2,
+            "cut": "diagonal",
+            "shaded": 1,
+            "name": "B"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "key": "4:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "Two identical rectangles side by side. A is split vertically into two equal parts with one shaded. B is split vertically into a narrow part and a wide part, with the narrow part shaded. Make the unequal sizes unmistakable.",
+        "labels": ["A", "B"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "key": "5:figure",
+      "template": "steps",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared into two equal groups of six",
+        "alt": "Twelve counters in two rings, with six counters in each ring.",
+        "title": null,
+        "total": 12,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y2-maths-halves-quarters",
+      "key": "7:figure",
+      "template": "steps",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared into four equal groups of three",
+        "alt": "Twelve counters in four rings, with three counters in each ring.",
+        "title": null,
+        "total": 12,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twenty counters shared into five equal groups to show one fifth.",
+        "alt": "Twenty counters are arranged in five rings, each containing four counters.",
+        "title": null,
+        "total": 20,
+        "groups": 5,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "key": "3:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twenty-four counters shared into six equal groups.",
+        "alt": "Six rings each contain four counters, making twenty-four counters altogether.",
+        "title": null,
+        "total": 24,
+        "groups": 6,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "key": "5:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "Five of six equal parts of twenty-four are selected.",
+        "alt": "A bar of twenty-four has six equal parts of four, with five parts shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "24",
+            "whole": 24,
+            "parts": 6,
+            "values": null,
+            "shaded": 5,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "Two of three equal parts of eighteen correct Sam's calculation.",
+        "alt": "A bar of eighteen is split into three parts of six, with two parts shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "18",
+            "whole": 18,
+            "parts": 3,
+            "values": null,
+            "shaded": 2,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y5-maths-fractions-of-amounts",
+      "key": "9:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "Three of five equal parts of thirty-five pounds give the book's cost.",
+        "alt": "Thirty-five pounds is split into five parts of seven pounds; three parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "Money",
+            "whole": 35,
+            "parts": 5,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": "£"
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung; a delivery tube connects it to a horizontal clamped gas syringe whose plunger can move freely.",
+        "labels": [
+          "Gas syringe",
+          "Clamp stand",
+          "Delivery tube",
+          "Bung",
+          "Conical flask",
+          "Hydrochloric acid",
+          "Magnesium"
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "key": "5:figure",
+      "template": "equation-hero",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "The gas collected at the start and after 40 seconds",
+        "alt": "At zero seconds the volume is zero cubic centimetres; at 40 seconds it is 60 cubic centimetres.",
+        "title": null,
+        "header": ["Time (s)", "Gas (cm³)"],
+        "rows": [["0", "0"], ["40", "60"]]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-sized solution panels at the same temperature, each beside an identical magnesium surface. The higher-concentration panel contains twice as many acid particles. Motion arrows have matching lengths in both panels.",
+        "labels": ["Lower concentration", "Higher concentration", "Magnesium surface"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Equal-sized panels containing hydrochloric acid particles at 20 degrees Celsius. One has twice as many particles as the other. Matching distributions of motion-arrow lengths show the same average speed; magnesium surfaces have equal sizes.",
+        "labels": ["Dilute: 20 °C", "Concentrated: 20 °C", "Equal magnesium surfaces"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y11-chemistry-rates-of-reaction",
+      "key": "11:diagram",
+      "template": "big-visual",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "A gas volume curve with a tangent touching at 20 seconds, for estimating instantaneous rate",
+        "alt": "Gas volume rises and levels off. A tangent at 20 seconds passes through zero seconds, 12 cubic centimetres, and 40 seconds, 60 cubic centimetres.",
+        "title": null,
+        "x": {
+          "label": "Time (s)",
+          "min": 0,
+          "max": 80,
+          "step": 10
+        },
+        "y": {
+          "label": "Gas volume (cm³)",
+          "min": 0,
+          "max": 80,
+          "step": 10
+        },
+        "y2": null,
+        "qualitative": false,
+        "series": [
+          {
+            "label": "Gas collected",
+            "points": [
+              [0, 0],
+              [10, 22],
+              [20, 36],
+              [30, 46],
+              [40, 53],
+              [50, 58],
+              [60, 61],
+              [70, 63],
+              [80, 64]
+            ],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "Tangent at 20 s",
+            "points": [[0, 12], [20, 36], [40, 60]],
+            "style": "tangent",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-3/y1-science-animals-young",
+      "key": "9:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 1",
+      "theme": "splash",
+      "figure": {
+        "shows": "Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows",
+        "must_see": ["fully feathered hen", "small fluffy chick", "partly feathered youngster"],
+        "subject": "generic"
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "key": "2:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "Typical coding, capacity and duration of the stores in the multi-store model",
+        "alt": "The sensory register has very brief duration; STM has limited capacity and duration; LTM has potentially unlimited capacity and duration.",
+        "title": null,
+        "header": ["Store", "Coding", "Capacity", "Duration"],
+        "rows": [
+          ["Sensory register", "Sense-specific", "Very large", "Very brief"],
+          ["STM", "Mainly acoustic", "About 7 ± 2 items", "About 18–30 seconds"],
+          ["LTM", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "key": "4:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The multi-store model with attention, maintenance rehearsal, transfer to LTM and retrieval",
+        "alt": "Attention transfers sensory information to STM. Maintenance rehearsal keeps it there and may transfer it to LTM. Retrieval returns information to STM.",
+        "title": null,
+        "nodes": ["Sensory register", "Short-term memory", "Long-term memory"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Attention"
+          },
+          {
+            "from": 1,
+            "to": 1,
+            "label": "Maintenance rehearsal"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Prolonged rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "label": "Retrieval"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The stores involved in hearing, repeating and later recalling a code",
+        "alt": "Leah attends to a code, rehearses it in STM, stores it in LTM and retrieves it into STM the next day.",
+        "title": null,
+        "nodes": ["Sensory register", "STM: acoustic code", "LTM: stored code"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Attention"
+          },
+          {
+            "from": 1,
+            "to": 1,
+            "label": "Rehearsal"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "label": "Retrieval tomorrow"
+          }
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "key": "7:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "Schematic serial position curves, not original numerical data, comparing immediate recall with recall after a filled delay",
+        "alt": "Immediate recall is higher for early and late words. After a filled delay, recall of early words remains high but the late-word advantage largely disappears.",
+        "title": null,
+        "x": {
+          "label": "Position in word list",
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "y": {
+          "label": "Recall",
+          "min": 0,
+          "max": 1,
+          "step": null
+        },
+        "y2": null,
+        "qualitative": true,
+        "series": [
+          {
+            "label": "Immediate",
+            "points": [
+              [1, 0.9],
+              [2, 0.7],
+              [3, 0.5],
+              [4, 0.35],
+              [5, 0.3],
+              [6, 0.3],
+              [7, 0.35],
+              [8, 0.5],
+              [9, 0.7],
+              [10, 0.9]
+            ],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "Filled delay",
+            "points": [
+              [1, 0.88],
+              [2, 0.68],
+              [3, 0.48],
+              [4, 0.33],
+              [5, 0.28],
+              [6, 0.28],
+              [7, 0.28],
+              [8, 0.28],
+              [9, 0.3],
+              [10, 0.3]
+            ],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": [
+          {
+            "x": 1,
+            "y": 0.98,
+            "label": "Primacy"
+          },
+          {
+            "x": 10,
+            "y": 0.98,
+            "label": "Recency"
+          }
+        ],
+        "intervals": null
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y12-psychology-multi-store-model",
+      "key": "10:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "KF’s contrasting short-term memory performance following brain injury",
+        "alt": "KF had severely impaired verbal short-term memory, particularly for heard material, but relatively preserved visual short-term memory.",
+        "title": null,
+        "header": ["STM task", "KF"],
+        "rows": [["Verbal", "Impaired"], ["Visual", "Spared"]]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y8-french-my-family",
+      "key": "2:diagram",
+      "template": "big-visual",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "Six family terms grouped by masculine singular, feminine singular and plural",
+        "alt": "Mon is used with père and frère; ma with mère and sœur; mes with parents and grands-parents.",
+        "title": null,
+        "header": ["Masculin : mon", "Féminin : ma", "Pluriel : mes"],
+        "rows": [
+          ["mon père — my father", "ma mère — my mother", "mes parents — my parents"],
+          ["mon frère — my brother", "ma sœur — my sister", "mes grands-parents"],
+          ["", "", "my grandparents"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Two identical rectangles show one half and one quarter shaded",
+        "alt": "One rectangle has one of two equal parts shaded. Another has one of four equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 2,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "half"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "quarter"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "Two identical rectangles side by side: A divided vertically into a narrow part and a part three times as wide; B divided vertically into two equal parts. Shade the left part of each.",
+        "labels": ["A", "B"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "4:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Three shapes for pupils to identify by their shaded parts",
+        "alt": "A has one of two equal parts shaded. B has one of four shaded. C has three of four shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "circle",
+            "parts": 2,
+            "cut": "auto",
+            "shaded": 1,
+            "name": "A"
+          },
+          {
+            "shape": "square",
+            "parts": 4,
+            "cut": "grid",
+            "shaded": 1,
+            "name": "B"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 3,
+            "name": "C"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "5:figure",
+      "template": "steps",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared equally between two rings",
+        "alt": "Two equal groups each contain six counters.",
+        "title": null,
+        "total": 12,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "6:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Fourteen unshared counters in a single ring, ready for pupils to draw and share into two equal groups",
+        "alt": "Fourteen counters are together in one ring.",
+        "title": null,
+        "total": 14,
+        "groups": 10,
+        "layout": "rings",
+        "show_count": "none",
+        "unknown": null
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "7:figure",
+      "template": "steps",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared equally between four rings",
+        "alt": "Four equal groups each contain three counters.",
+        "title": null,
+        "total": 12,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y2-maths-halves-quarters",
+      "key": "8:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Sixteen unshared counters in a single ring, ready for pupils to draw and share into four equal groups",
+        "alt": "Sixteen counters are together in one ring.",
+        "title": null,
+        "total": 16,
+        "groups": 10,
+        "layout": "rings",
+        "show_count": "none",
+        "unknown": null
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "24 counters shared equally into four groups",
+        "alt": "Four rings each contain six counters.",
+        "title": null,
+        "total": 24,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "3:diagram",
+      "template": "big-visual",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "28 counters shared into four equal groups for pupils to count",
+        "alt": "28 counters are arranged in four equal rings.",
+        "title": null,
+        "total": 28,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "none",
+        "unknown": true
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "4:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "35 split into five equal parts with three shaded",
+        "alt": "A bar totals 35 and has five parts of seven, with three shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 35,
+            "parts": 5,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "5:diagram",
+      "template": "big-visual",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "40 split into five equal parts with three shaded; each part is unknown",
+        "alt": "A bar totals 40 and is split into five equal parts, with three shaded and part values unknown.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 40,
+            "parts": 5,
+            "values": null,
+            "shaded": 3,
+            "unknown": "each",
+            "unit": null
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "6:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "24 split into thirds with two thirds shaded",
+        "alt": "A bar totals 24 and has three parts of eight, with two shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 24,
+            "parts": 3,
+            "values": null,
+            "shaded": 2,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y5-maths-fractions-of-amounts",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "£40 split into eight equal parts with three selected as spending",
+        "alt": "A £40 bar has eight parts of £5, with three shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 40,
+            "parts": 8,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": "£"
+          }
+        ],
+        "combined": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y11-chemistry-rates-of-reaction",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal, clamped gas syringe. Show a stopwatch alongside it.",
+        "labels": [
+          "hydrochloric acid",
+          "magnesium ribbon",
+          "bung",
+          "delivery tube",
+          "gas syringe",
+          "clamp stand",
+          "stopwatch"
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y11-chemistry-rates-of-reaction",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-sized panels at the same temperature. Each contains an identical magnesium strip along its lower edge. The higher-concentration panel contains twice as many acid particles. Use movement arrows of the same range of lengths in both panels.",
+        "labels": ["Lower concentration", "Higher concentration", "Same temperature"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "base4-4/y11-chemistry-rates-of-reaction",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-volume acid samples at 20°C beside identical magnesium surfaces. One has twice as many acid particles. Both have the same distribution of movement-arrow lengths, showing unchanged average speed.",
+        "labels": ["0.5 mol/dm³", "1.0 mol/dm³", "Both at 20°C"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "Visual and auditory input leave brief traces in different sensory registers.",
+        "alt": "Visual input enters iconic memory; auditory input enters echoic memory.",
+        "title": null,
+        "nodes": ["Visual input", "Iconic: under 0.5 s", "Auditory input", "Echoic: about 2–4 s"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": null
+          },
+          {
+            "from": 2,
+            "to": 3,
+            "label": null
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "3:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "The typical properties of short-term and long-term memory in the multi-store model.",
+        "alt": "Short-term memory is mainly acoustic, limited and brief; long-term memory is mainly semantic, potentially unlimited and lasting.",
+        "title": null,
+        "header": ["Property", "Short-term memory", "Long-term memory"],
+        "rows": [
+          ["Coding", "Mainly acoustic", "Mainly semantic"],
+          ["Capacity", "About 7 ± 2 items", "Potentially unlimited"],
+          ["Duration", "About 18–30 seconds", "Potentially a lifetime"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "5:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The multi-store model with attention, maintenance rehearsal and retrieval.",
+        "alt": "Attention transfers sensory input to short-term memory. Rehearsal keeps it active and supports long-term storage. Retrieval returns information to short-term memory.",
+        "title": null,
+        "nodes": ["Sensory register", "Short-term memory", "Long-term memory"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Attention"
+          },
+          {
+            "from": 1,
+            "to": 1,
+            "label": "Maintenance rehearsal"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Prolonged rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "label": "Retrieval"
+          },
+          {
+            "from": 0,
+            "to": "out",
+            "label": "Unattended"
+          },
+          {
+            "from": 1,
+            "to": "out",
+            "label": "Forgetting"
+          }
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "6:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "An address remains stored in long-term memory while retrieval makes it available in short-term memory.",
+        "alt": "An address stored in long-term memory is retrieved into short-term memory; it remains stored for later recall.",
+        "title": null,
+        "nodes": ["LTM: stored address", "STM: address in use"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Retrieval"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "7:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "A schematic immediate-recall serial position curve, not original numerical data.",
+        "alt": "Immediate recall is higher for words at the beginning and end of a list than for words in the middle.",
+        "title": null,
+        "x": {
+          "label": "Position in word list",
+          "min": 1,
+          "max": 15,
+          "step": 1
+        },
+        "y": {
+          "label": "Recall",
+          "min": 0,
+          "max": 100,
+          "step": 20
+        },
+        "y2": null,
+        "qualitative": true,
+        "series": [
+          {
+            "label": "Immediate recall",
+            "points": [[1, 85], [3, 65], [5, 40], [8, 30], [11, 35], [13, 60], [15, 90]],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "Schematic immediate and 30-second filled-delay recall curves; these are not original numerical data.",
+        "alt": "Both curves show good recall of early words. Immediate recall also shows good recall of final words, but delayed recall does not.",
+        "title": null,
+        "x": {
+          "label": "Position in word list",
+          "min": 1,
+          "max": 15,
+          "step": 1
+        },
+        "y": {
+          "label": "Recall",
+          "min": 0,
+          "max": 100,
+          "step": 20
+        },
+        "y2": null,
+        "qualitative": true,
+        "series": [
+          {
+            "label": "Immediate",
+            "points": [[1, 85], [3, 65], [5, 40], [8, 30], [11, 35], [13, 60], [15, 90]],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "30 s filled delay",
+            "points": [[1, 80], [3, 60], [5, 35], [8, 25], [11, 25], [13, 25], [15, 25]],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y12-psychology-multi-store-model",
+      "key": "10:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "The contrasting short-term memory outcomes reported for KF.",
+        "alt": "KF had severely impaired verbal short-term memory but relatively preserved visual short-term memory.",
+        "title": null,
+        "header": ["Task type", "KF’s performance"],
+        "rows": [["Verbal", "Impaired"], ["Visual", "Preserved"]]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y8-french-my-family",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "shows": "An imaginary family with a central child, a father, mother, brother, sister and two grandparents, with the parents and grandparents visibly grouped",
+        "must_see": [
+          "central child",
+          "father and mother",
+          "brother and sister",
+          "two older grandparents"
+        ],
+        "subject": "generic"
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Two identical squares with one half and one quarter shaded",
+        "alt": "One square has one of two equal parts shaded. The other has one of four equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "square",
+            "parts": 2,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "1/2"
+          },
+          {
+            "shape": "square",
+            "parts": 4,
+            "cut": "grid",
+            "shaded": 1,
+            "name": "1/4"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "4:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Three shapes for pupils to identify without fraction labels",
+        "alt": "A has one of four equal parts shaded. B has one of two equal parts shaded. C has two of four equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "square",
+            "parts": 4,
+            "cut": "grid",
+            "shaded": 1,
+            "name": "A"
+          },
+          {
+            "shape": "circle",
+            "parts": 2,
+            "cut": "auto",
+            "shaded": 1,
+            "name": "B"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 2,
+            "name": "C"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared into two equal groups of six",
+        "alt": "Two rings each contain six counters, making twelve altogether.",
+        "title": null,
+        "total": 12,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "6:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Sixteen counters shared equally into two rings, with the group counts unknown",
+        "alt": "Sixteen counters are shared equally between two rings. Find the number in one ring.",
+        "title": null,
+        "total": 16,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": true
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared into four equal groups of three",
+        "alt": "Four rings each contain three counters, making twelve altogether.",
+        "title": null,
+        "total": 12,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y2-maths-halves-quarters",
+      "key": "8:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Sixteen counters shared equally into four rings, with the group counts unknown",
+        "alt": "Sixteen counters are shared equally between four rings. Find the number in one ring.",
+        "title": null,
+        "total": 16,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": true
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "A whole split into four equal parts, with one part shaded.",
+        "alt": "A rectangle has four equal strips; one strip is shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "¼"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "3:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twenty counters shared equally into five groups.",
+        "alt": "Five rings each contain four counters.",
+        "title": null,
+        "total": 20,
+        "groups": 5,
+        "layout": "rings",
+        "show_count": "one",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Three quarters consist of three equal quarter-parts.",
+        "alt": "A rectangle has four equal strips; three strips are shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 3,
+            "name": "¾"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "6:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "Twenty split into five equal parts, with three parts selected.",
+        "alt": "A bar of twenty has five parts of four; three parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 20,
+            "parts": 5,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "The denominator gives four equal parts; the numerator selects three.",
+        "alt": "A bar of twenty-four has four parts of six, with three shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 24,
+            "parts": 4,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
+      "key": "9:figure",
+      "template": "equation-hero",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "Thirty pounds split into five equal shares, with two shares spent.",
+        "alt": "A thirty-pound bar has five six-pound parts; two parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": null,
+            "whole": 30,
+            "parts": 5,
+            "values": null,
+            "shaded": 2,
+            "unknown": "none",
+            "unit": "£"
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. The syringe scale measures volume in cm³.",
+        "labels": [
+          "Gas syringe",
+          "Volume scale (cm³)",
+          "Clamp",
+          "Delivery tube",
+          "Bung",
+          "Hydrochloric acid",
+          "Magnesium ribbon"
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "key": "4:figure",
+      "template": "equation-hero",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "The gas volumes needed to calculate mean rate over the first 40 seconds",
+        "alt": "At zero seconds the gas volume is zero; at 40 seconds it is 32 cubic centimetres.",
+        "title": null,
+        "header": ["Time (s)", "Gas (cm³)"],
+        "rows": [["0", "0"], ["40", "32"]]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-volume panels at the same temperature, each with an identical magnesium surface along the bottom. The second contains twice as many acid-particle dots, with more dots approaching the surface. Use the same distribution of motion-arrow lengths in both panels.",
+        "labels": ["Lower concentration", "Higher concentration", "Same temperature"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-volume panels at the same temperature. One contains six acid particles and the other twelve. Motion arrows show the same mix of short, medium and long arrows in each panel; the more concentrated panel has no systematically longer arrows.",
+        "labels": ["0.5 mol/dm³", "1.0 mol/dm³", "Same temperature"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
+      "key": "10:diagram",
+      "template": "big-visual",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "Gas volume against time for equal masses of magnesium at the same temperature. Both acids are in excess; curve B represents the higher acid concentration.",
+        "alt": "Curve A reaches 20 cubic centimetres at 20 seconds and plateaus at 40 by 80 seconds. B reaches 32 at 20 seconds and plateaus at 40 by 40 seconds.",
+        "title": null,
+        "x": {
+          "label": "Time (s)",
+          "min": 0,
+          "max": 100,
+          "step": 20
+        },
+        "y": {
+          "label": "Gas volume (cm³)",
+          "min": 0,
+          "max": 40,
+          "step": 10
+        },
+        "y2": null,
+        "qualitative": false,
+        "series": [
+          {
+            "label": "A",
+            "points": [[0, 0], [20, 20], [40, 32], [60, 38], [80, 40], [100, 40]],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "B",
+            "points": [[0, 0], [20, 32], [40, 40], [60, 40], [80, 40], [100, 40]],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-1/y1-science-animals-young",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 1",
+      "theme": "splash",
+      "figure": {
+        "shows": "A newly hatched female chick beside an adult hen of the same breed, photographed at the same scale",
+        "must_see": [
+          "small downy chick",
+          "larger adult hen",
+          "long wing feathers",
+          "adult tail feathers"
+        ],
+        "subject": "generic"
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "key": "3:diagram",
+      "template": "big-visual",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "Typical AQA descriptions of the three memory stores; values are approximate.",
+        "alt": "The sensory register, STM and LTM differ in their coding, capacity and duration.",
+        "title": null,
+        "header": ["Store", "Coding", "Capacity", "Duration"],
+        "rows": [
+          ["Sensory register", "Sense-specific", "Very large", "Usually <0.5 seconds"],
+          ["Short-term (STM)", "Mainly acoustic", "7 ± 2 items", "About 18–30 seconds"],
+          ["Long-term (LTM)", "Mainly semantic", "Potentially unlimited", "Potentially lifelong"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "key": "4:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "Information enters the sensory register, moves to STM through attention and to LTM through prolonged rehearsal; retrieval returns it to STM.",
+        "alt": "Sensory input enters the sensory register. Attention leads to STM, which has a rehearsal loop. Prolonged rehearsal leads to LTM; retrieval leads back to STM.",
+        "title": null,
+        "nodes": ["Sensory input", "Sensory register", "STM", "LTM"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": null
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Attention"
+          },
+          {
+            "from": 2,
+            "to": 2,
+            "label": "Maintenance rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 3,
+            "label": "Prolonged rehearsal"
+          },
+          {
+            "from": 3,
+            "to": 2,
+            "label": "Retrieval"
+          }
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "flow",
+        "shows": "The phone-number example mapped onto the three memory stores.",
+        "alt": "A heard number passes from sensory register to STM through attention, then to LTM through prolonged rehearsal, and back through retrieval.",
+        "title": null,
+        "nodes": ["Sensory register", "STM", "LTM"],
+        "links": [
+          {
+            "from": 0,
+            "to": 1,
+            "label": "Attention"
+          },
+          {
+            "from": 1,
+            "to": 1,
+            "label": "Repetition"
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "label": "Prolonged rehearsal"
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "label": "Retrieval"
+          }
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "Schematic serial position curves, not original numerical data: immediate recall has primacy and recency; filled-delay recall retains primacy but loses recency.",
+        "alt": "Immediate recall is high at the start and end of a list. After a filled delay, recall stays high at the start but not at the end.",
+        "title": null,
+        "x": {
+          "label": "Position in word list",
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "y": {
+          "label": "Recall",
+          "min": 0,
+          "max": 10,
+          "step": 2
+        },
+        "y2": null,
+        "qualitative": true,
+        "series": [
+          {
+            "label": "Immediate",
+            "points": [
+              [1, 9],
+              [2, 7],
+              [3, 5],
+              [4, 3],
+              [5, 3],
+              [6, 3],
+              [7, 4],
+              [8, 5],
+              [9, 7],
+              [10, 9]
+            ],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "30-second delay",
+            "points": [
+              [1, 9],
+              [2, 7],
+              [3, 5],
+              [4, 3],
+              [5, 3],
+              [6, 3],
+              [7, 3],
+              [8, 3],
+              [9, 3],
+              [10, 3]
+            ],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y12-psychology-multi-store-model",
+      "key": "9:diagram",
+      "template": "visual-text",
+      "stage": "ks5",
+      "yearGroup": "Year 12",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "A qualitative comparison of KF's verbal short-term recall by presentation modality.",
+        "alt": "KF's short-term recall of heard verbal material was severely impaired; recall of visually presented verbal material was relatively better.",
+        "title": null,
+        "header": ["Input", "Verbal STM"],
+        "rows": [["Heard", "Poor"], ["Seen", "Better"]]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y8-french-my-family",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks3",
+      "yearGroup": "Year 8",
+      "theme": "studio",
+      "figure": {
+        "kind": "table",
+        "shows": "French family vocabulary and its English meaning",
+        "alt": "Six family expressions paired with their English meanings.",
+        "title": null,
+        "header": ["Français", "English"],
+        "rows": [
+          ["mon père", "father"],
+          ["ma mère", "mother"],
+          ["mon frère", "brother"],
+          ["ma sœur", "sister"],
+          ["mes parents", "parents"],
+          ["mes grands-parents", "grandparents"]
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "A half and a quarter of matching rectangles",
+        "alt": "Two matching rectangles: one has one of two equal parts shaded; the other has one of four equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 2,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "half"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "grid",
+            "shaded": 1,
+            "name": "quarter"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "4:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "fraction-shapes",
+        "shows": "Two shaded shapes for pupils to identify",
+        "alt": "Shape A is a square with one of four equal parts shaded. Shape B is a circle with one of two equal parts shaded.",
+        "title": null,
+        "shapes": [
+          {
+            "shape": "square",
+            "parts": 4,
+            "cut": "grid",
+            "shaded": 1,
+            "name": "A"
+          },
+          {
+            "shape": "circle",
+            "parts": 2,
+            "cut": "auto",
+            "shaded": 1,
+            "name": "B"
+          }
+        ]
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared equally into two groups",
+        "alt": "Twelve counters in two equal groups of six.",
+        "title": null,
+        "total": 12,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "6:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Sixteen counters shared into two equal groups for pupils to count",
+        "alt": "Sixteen counters shared equally between two rings, with no group counts given.",
+        "title": null,
+        "total": 16,
+        "groups": 2,
+        "layout": "rings",
+        "show_count": "none",
+        "unknown": true
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "7:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Twelve counters shared equally into four groups",
+        "alt": "Twelve counters in four equal groups of three.",
+        "title": null,
+        "total": 12,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "each",
+        "unknown": false
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "8:diagram",
+      "template": "big-visual",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "kind": "equal-groups",
+        "shows": "Sixteen counters shared into four equal groups for pupils to count",
+        "alt": "Sixteen counters shared equally between four rings, with no group counts given.",
+        "title": null,
+        "total": 16,
+        "groups": 4,
+        "layout": "rings",
+        "show_count": "none",
+        "unknown": true
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y2-maths-halves-quarters",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks1",
+      "yearGroup": "Year 2",
+      "theme": "splash",
+      "figure": {
+        "shows": "A rectangle divided vertically into a narrow piece and a wide piece, with the narrow piece shaded",
+        "must_see": ["one whole rectangle", "two unequal pieces", "narrow shaded piece"],
+        "subject": "generic"
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "key": "2:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "24 split into four equal parts, with one part selected",
+        "alt": "A bar with total 24 has four equal parts of 6. One part is shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "¼ of 24",
+            "whole": 24,
+            "parts": 4,
+            "values": null,
+            "shaded": 1,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "key": "4:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "three of four equal parts of 24 selected",
+        "alt": "A bar with total 24 has four equal parts of 6. Three parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "¾ of 24",
+            "whole": 24,
+            "parts": 4,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "key": "6:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "30 divided into fifths, with two parts selected",
+        "alt": "A bar with total 30 has five equal parts of 6. Two parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "⅖ of 30",
+            "whole": 30,
+            "parts": 5,
+            "values": null,
+            "shaded": 2,
+            "unknown": "none",
+            "unit": null
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
+      "key": "8:diagram",
+      "template": "visual-text",
+      "stage": "ks2",
+      "yearGroup": "Year 5",
+      "theme": "splash",
+      "figure": {
+        "kind": "bar-model",
+        "shows": "three fifths of £35 selected as money spent",
+        "alt": "A bar with total £35 has five equal parts of £7. Three parts are shaded.",
+        "title": null,
+        "bars": [
+          {
+            "label": "Spent",
+            "whole": 35,
+            "parts": 5,
+            "values": null,
+            "shaded": 3,
+            "unknown": "none",
+            "unit": "£"
+          }
+        ],
+        "combined": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",
+      "key": "3:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "labelled-diagram",
+        "shows": "A conical flask containing hydrochloric acid and magnesium, sealed by a bung with a delivery tube leading to a horizontally clamped graduated gas syringe. Show a stopwatch alongside, with no flame.",
+        "labels": [
+          "Gas syringe",
+          "Clamp",
+          "Delivery tube",
+          "Bung",
+          "Hydrochloric acid",
+          "Magnesium",
+          "Stopwatch"
+        ]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",
+      "key": "5:diagram",
+      "template": "visual-text",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "particles",
+        "shows": "Two equal-volume panels at the same temperature, each beside an identical magnesium surface. Show fewer acid particles in the dilute panel and more in the concentrated panel. Use equal-length motion arrows in both. Acid particles are a simplified model of the reacting particles in solution.",
+        "labels": ["Lower concentration", "Higher concentration", "Same temperature"]
+      },
+      "labCode": false,
+      "labDrawn": true
+    },
+    {
+      "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",
+      "key": "8:diagram",
+      "template": "big-visual",
+      "stage": "ks4",
+      "yearGroup": "Year 11",
+      "theme": "studio",
+      "figure": {
+        "kind": "line-graph",
+        "shows": "Hydrogen volume against time for equal magnesium masses reacting with equal volumes of two hydrochloric acid concentrations at the same temperature",
+        "alt": "At 20 seconds, 0.5 mol/dm³ acid produces 20 cm³ and 1.0 mol/dm³ produces 40 cm³. Both eventually reach 60 cm³.",
+        "title": null,
+        "x": {
+          "label": "Time (s)",
+          "min": 0,
+          "max": 100,
+          "step": 20
+        },
+        "y": {
+          "label": "Hydrogen volume (cm³)",
+          "min": 0,
+          "max": 60,
+          "step": 10
+        },
+        "y2": null,
+        "qualitative": false,
+        "series": [
+          {
+            "label": "0.5 mol/dm³",
+            "points": [
+              [0, 0],
+              [10, 11],
+              [20, 20],
+              [30, 29],
+              [40, 37],
+              [50, 44],
+              [60, 50],
+              [70, 55],
+              [80, 58],
+              [90, 60],
+              [100, 60]
+            ],
+            "style": "line",
+            "axis": "left"
+          },
+          {
+            "label": "1.0 mol/dm³",
+            "points": [
+              [0, 0],
+              [10, 23],
+              [20, 40],
+              [30, 52],
+              [40, 58],
+              [50, 60],
+              [60, 60],
+              [70, 60],
+              [80, 60],
+              [90, 60],
+              [100, 60]
+            ],
+            "style": "line",
+            "axis": "left"
+          }
+        ],
+        "segments": null,
+        "annotations": null,
+        "intervals": null
+      },
+      "labCode": true,
+      "labDrawn": true
+    }
+  ]
+}

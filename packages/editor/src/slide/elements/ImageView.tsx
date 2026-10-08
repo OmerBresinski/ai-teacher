@@ -1,8 +1,10 @@
 import type { ImageElement } from "@tj/domain/documents";
 import { isOpenPhotoSlot } from "@tj/slides";
-import { useEffect, useRef, useState } from "react";
+import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
+import { useReducedMotion } from "../../present/use-fullscreen";
 import type { ElementViewProps } from "./kit";
 import { SlotPlaceholder } from "./SlotPlaceholder";
 
@@ -45,7 +47,36 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
   return <Picture {...props} />;
 }
 
-function Picture({ element, theme, mode }: ElementViewProps<ImageElement>) {
+/**
+ * A drawn diagram in Present at its current build (TEACH-247 part b, ruling 180): the stored SVG
+ * with a style that hides later builds (and, on a question slide, the answer part until it is
+ * revealed). The newest build rises in unless the teacher stepped back or asked for reduced
+ * motion; then each frame is static. Every other surface, and any element without builds, shows
+ * `element.src` as stored: the last build.
+ */
+function useBuiltSrc(element: ImageElement, build: number | undefined, answer: boolean): string {
+  const reduced = useReducedMotion();
+  const last = useRef<number | undefined>(undefined);
+  const back = build !== undefined && last.current !== undefined && build < last.current;
+  useEffect(() => {
+    last.current = build;
+  }, [build]);
+  return useMemo(() => {
+    if (build === undefined || !element.builds) return element.src;
+    const svg = svgOfDataUrl(element.src);
+    if (!svg) return element.src;
+    return builtSvgDataUrl(svgAtBuild(svg, build, { answer, motion: !reduced && !back }));
+  }, [element.src, element.builds, build, answer, reduced, back]);
+}
+
+function Picture({
+  element,
+  theme,
+  mode,
+  diagramBuild,
+  question,
+  revealAnswer,
+}: ElementViewProps<ImageElement>) {
   const radius = element.radius ?? 0;
   const ref = useRef<HTMLImageElement>(null);
   const [measured, setMeasured] = useState<(Size & { src: string }) | null>(null);
@@ -53,7 +84,10 @@ function Picture({ element, theme, mode }: ElementViewProps<ImageElement>) {
   // The stored `/files/<key>` path, resolved against the api origin (TEACH-275); `measured` keys
   // on the stored value so a re-resolve is not a new picture.
   const src = element.src;
-  const resolved = useResolvedImageSrc(src);
+  // A question slide holds a drawing's answer part back until the answer is revealed.
+  const built = useBuiltSrc(element, diagramBuild, !question || revealAnswer);
+  const shown = useResolvedImageSrc(src);
+  const resolved = built === src ? shown : built;
   useEffect(() => {
     const img = ref.current;
     if (!img) return;

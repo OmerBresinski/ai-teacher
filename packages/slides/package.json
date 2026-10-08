@@ -17,7 +17,8 @@
     "./worksheet": "./src/worksheet/index.ts",
     "./diagrams": "./src/diagrams/index.ts",
     "./templates": "./src/templates/index.ts",
-    "./templates/pupil-words": "./src/templates/pupil-words.ts"
+    "./templates/pupil-words": "./src/templates/pupil-words.ts",
+    "./diagram-builds": "./src/diagrams/builds.ts"
   },
   "scripts": {
     "lint": "biome check .",

@@ -1,4 +1,5 @@
 /** Bar models: one to four bars cut into parts, drawn to one scale, with totals as braces. */
+import { answerPart, part } from "./builds";
 import type { BarModel } from "./schema";
 import { look, WEIGHT } from "./style";
 import { type Ctx, hBrace, n, text, textWidth, vBrace } from "./svg";
@@ -69,6 +70,7 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
   let firstTop = 0;
   let lastBottom = 0;
   s.bars.forEach((b, i) => {
+    const at = out.length;
     y += tops[i] ?? 0;
     if (i === 0) firstTop = y;
     if (b.label && above) {
@@ -121,7 +123,10 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
     }
     lastBottom = y + barH;
     y += barH + rowGap;
+    out.splice(at, out.length - at, part(i, out.slice(at).join("")));
   });
+  // The combined total is the last build, and an answer: hidden on a question slide until revealed.
+  const total = out.length;
   if (s.combined && under) {
     const b = s.bars[0];
     const unitW = barW / scale;
@@ -157,5 +162,11 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
       }),
     );
   }
+  if (out.length > total)
+    out.splice(
+      total,
+      out.length - total,
+      answerPart(part(s.bars.length, out.slice(total).join(""))),
+    );
   return out.join("");
 }

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { render } from "@testing-library/react";
+import { type Slide, slideStepCount } from "@tj/domain/documents";
 import { DIAGRAM_NAME, materialiseSlide, PANEL_NAME, withoutDiagramSlot } from "@tj/slides";
+import { buildCount, svgOfDataUrl, withBuilds } from "@tj/slides/diagram-builds";
+import { drawDiagram } from "@tj/slides/diagrams";
 import { getTheme } from "../model/themes";
 import { SlideView } from "./SlideView";
 
@@ -40,4 +43,44 @@ describe("a diagram instruction with no drawing", () => {
       expect(ids).toContain(panel?.id);
     });
   }
+});
+
+/* TEACH-247 part b: a drawing from the diagram drawer (#403) builds one part per step in Present. */
+describe("a drawn diagram with builds", () => {
+  const flow = {
+    kind: "flow",
+    alt: "Water evaporates, condenses and falls as rain.",
+    layout: "chain",
+    steps: [{ label: "Evaporation" }, { label: "Condensation" }, { label: "Rain" }],
+  };
+  const drawn = withBuilds(() =>
+    drawDiagram(flow, theme, { x: 520, y: 160, w: 400, h: 300 }, () => "d1"),
+  );
+  if (!drawn.ok) throw new Error(drawn.reasons.join("; "));
+  const builds = buildCount(svgOfDataUrl(drawn.element.src) ?? "");
+  const slide: Slide = { ...stored, elements: [{ ...drawn.element, builds }] };
+  const svgAt = (mode: "present" | "edit", step?: number) => {
+    const { container } = render(
+      <SlideView
+        slide={slide}
+        theme={theme}
+        mode={mode}
+        {...(step !== undefined ? { step } : {})}
+      />,
+    );
+    const src = container.querySelector("img")?.getAttribute("src") ?? "";
+    return svgOfDataUrl(src) ?? "";
+  };
+
+  test("the slide's steps are the builds; each step shows one more part", () => {
+    expect(builds).toBe(2);
+    expect(slideStepCount(slide)).toBe(2);
+    expect(svgAt("present", 0)).toContain('[data-s="1"],[data-s="2"]{opacity:0}');
+    expect(svgAt("present", 1)).toContain('[data-s="2"]{opacity:0}');
+    expect(svgAt("present", 2)).not.toContain("{opacity:0}");
+  });
+
+  test("the editor shows the stored drawing: the last build", () => {
+    expect(svgAt("edit")).toBe(svgOfDataUrl(drawn.element.src) ?? "-");
+  });
 });

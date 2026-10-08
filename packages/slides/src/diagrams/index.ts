@@ -33,12 +33,32 @@ import {
 } from "./templates";
 
 export {
+  answerPart,
+  buildCount,
+  buildsOn,
+  hasAnswerPart,
+  part,
+  stripBuilds,
+  svgAtBuild,
+  svgOfDataUrl,
+  withBuilds,
+} from "./builds";
+export {
   CHARS_PER_WORD,
   captionRule,
+  type DiagramSlot,
   fitsMeasured,
   LIMITS,
   limitLines,
   measuredLabel,
+  SLOT_LIMITS,
+  type SlotLimit,
+  type StageGroup,
+  slotBox,
+  slotLimit,
+  slotLimitLine,
+  slotOf,
+  stageGroup,
   wordsFor,
 } from "./limits";
 export {
@@ -51,6 +71,7 @@ export {
   timeOf,
   withAskedCounts,
 } from "./meaning";
+export { MEANING_SAMPLES } from "./meaning-samples";
 export {
   areaModelTable,
   energyProfileOf,

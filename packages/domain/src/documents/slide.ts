@@ -217,6 +217,12 @@ export type ImageElement = ElementBase & {
   creditUrl?: string;
   /** Structured provenance of a Pexels photo; `credit`/`creditUrl` stay for older images. */
   source?: PhotoSource;
+  /**
+   * A drawn diagram's builds (TEACH-247 part b, ruling 180): how many Next presses Present spends
+   * showing its parts one by one after the slide opens. The SVG in `src` carries the parts as
+   * `data-s` groups; every other surface shows the last build.
+   */
+  builds?: number;
 };
 
 export type ImageTransform = {
@@ -495,6 +501,7 @@ const ImageElementSchema = z.object({
   // in the first place.
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
   source: PhotoSourceSchema.optional(),
+  builds: z.number().int().min(0).max(32).optional(),
 });
 
 const ShapeElementSchema = z.object({
@@ -795,8 +802,33 @@ export function slideStepCount(slide: Slide): number {
   };
   walk(slide.elements);
   // Question slides get extra steps for "reveal answer" — but only when there is an answer
-  // to reveal (TEACH-185: a choice question dims one wrong option per step first).
-  return max + answerRevealSteps(slide);
+  // to reveal (TEACH-185: a choice question dims one wrong option per step first). A drawn
+  // diagram's builds come after the element reveals and before the answer (TEACH-247 part b).
+  return max + diagramBuildSteps(slide) + answerRevealSteps(slide);
+}
+
+/** The most builds any drawn diagram on the slide has (they play together, one per Next). */
+export function diagramBuildSteps(slide: Slide): number {
+  let max = 0;
+  const walk = (els: SlideElement[]) => {
+    for (const el of els) {
+      if (el.type === "image" && el.builds && el.builds > max) max = Math.floor(el.builds);
+      if (el.type === "group") walk(el.children);
+    }
+  };
+  walk(slide.elements);
+  return max;
+}
+
+/**
+ * Which build a drawn diagram shows at `step`: 0 while the element reveals run, then one more
+ * per step, held at the last build once the answer reveal starts.
+ */
+export function diagramBuildAt(slide: Slide, step: number): number {
+  const total = diagramBuildSteps(slide);
+  if (total === 0) return 0;
+  const start = slideStepCount(slide) - answerRevealSteps(slide) - total;
+  return Math.max(0, Math.min(total, step - start));
 }
 
 /**

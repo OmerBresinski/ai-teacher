@@ -44,6 +44,11 @@ export type ElementViewProps<T extends SlideElement = SlideElement> = {
    * before `revealAnswer` fills the right one. Only `option` reads it.
    */
   answerProgress?: number;
+  /**
+   * Present only: the build a drawn diagram shows (TEACH-247 part b). Unset everywhere else, where
+   * a diagram shows its last build. Only `image` reads it.
+   */
+  diagramBuild?: number;
 };
 
 /** Modes that must never run timers, observers, iframes or animations. */
