@@ -113,3 +113,45 @@ describe("arm locale2", () => {
     expect(l.writer).not.toContain(PLACE);
   });
 });
+
+describe("arm locale3", () => {
+  const SHORT = "Where the topic depends on place, use what is true for pupils in";
+  test("placeShort is empty for England, one short sentence (no list) elsewhere", () => {
+    expect(localise("x.{{locale.placeShort}} y", ENGLAND)).toBe("x. y");
+    expect(localise("x.{{locale.placeShort}} y", NZ)).toBe(`x. ${SHORT} New Zealand. y`);
+  });
+  test("England compiles to base4's text for every prompt (locale given or absent)", () => {
+    const uk = nzUkBrief("uk");
+    for (const b of [uk, { ...uk, locale: undefined } as Brief])
+      expect(compileLocale("locale3", b, ukObjectives())).toEqual(
+        compileLocale("base4", b, ukObjectives()),
+      );
+  });
+  test("England writer systems equal base4's files; schemas are base4's", () => {
+    for (const st of STAGES) {
+      expect(localise(read(abFiles("locale3", st).system), ENGLAND)).toBe(
+        read(abFiles("base4", st).system),
+      );
+      expect(read(abFiles("locale3", st).schema)).toBe(read(abFiles("base4", st).schema));
+    }
+  });
+  test("NZ, US and India: the short line in writer, objectives and repair; no list, no England", () => {
+    for (const [c, b] of Object.entries(locale2Briefs())) {
+      if (c === "uk") continue;
+      const r = compileLocale("locale3", b, ukObjectives());
+      for (const k of ["writer", "objectives", "objective-repair"] as const) {
+        expect(r[k], `${c} ${k}`).toContain(`${SHORT} ${b.locale?.country}.`);
+        expect(r[k], `${c} ${k}`).not.toContain("which months each season");
+        expect(r[k], `${c} ${k}`).not.toContain("England");
+        expect(r[k], `${c} ${k}`).not.toContain("{{");
+      }
+    }
+  });
+  test("locale3 and locale2 differ only in the place sentence", () => {
+    const b = nzUkBrief("nz");
+    const a = compileLocale("locale3", b, ukObjectives());
+    const l = compileLocale("locale2", b, ukObjectives());
+    const strip = (s: string) => s.replace(/ Where the topic depends on place[^.]*\./g, "");
+    for (const k of Object.keys(a) as (keyof typeof a)[]) expect(strip(a[k]), k).toBe(strip(l[k]));
+  });
+});

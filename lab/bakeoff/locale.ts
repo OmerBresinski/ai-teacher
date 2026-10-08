@@ -62,6 +62,12 @@ const COMPUTED: Record<string, (l: Locale) => string> = {
     isEngland(l)
       ? ""
       : ` Where the topic depends on place, use what is true for pupils in ${l.country}: which months each season falls in, the hemisphere, the climate, local plants and animals, festivals, currency and units.`,
+  // Arm "locale3" (8 Oct, Greg): locale2 without the list. The list named kinds of fact (months,
+  // currency, units) that a non-place topic could pull in for their own sake; the model judges.
+  placeShort: (l) =>
+    isEngland(l)
+      ? ""
+      : ` Where the topic depends on place, use what is true for pupils in ${l.country}.`,
 };
 
 /** `text` with every {{locale.<field>}} token filled from `l`. */

@@ -41,6 +41,7 @@ export const AB_ARMS = [
   "polish",
   "polish2",
   "locale2",
+  "locale3",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -310,6 +311,18 @@ export const AB_CONFIG: Record<
     delta:
       "locale + the country's place facts where the topic depends on them (writer, objectives, objective repair); England byte-exact",
   },
+  // locale3 (8 Oct, Greg): locale2 with the list of kinds of fact removed; one short sentence
+  // ({{locale.placeShort}}) leaves the judgement to the model. England byte-exact to base4
+  // (arms3/locale3/NOTE.md).
+  locale3: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "locale + one short sentence: where the topic depends on place, use what is true in the country (no list); England byte-exact",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -359,6 +372,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   lib: { ref: "base4" },
   locale: { ref: "base4" },
   locale2: { ref: "locale" },
+  locale3: { ref: "locale2" },
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
 };
