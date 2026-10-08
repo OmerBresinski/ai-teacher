@@ -313,3 +313,38 @@ export function duplicatePanels(pngs: Uint8Array[], tol = 6): [number, number][]
     }
   return out;
 }
+
+/** A raster turned on its side (rows become columns), so row gutters are found as column gutters. */
+function transpose(r: Raster): Raster {
+  const rgb = new Uint8Array(r.rgb.length);
+  for (let y = 0; y < r.height; y++)
+    for (let x = 0; x < r.width; x++) {
+      const i = (y * r.width + x) * 3;
+      const o = (x * r.height + y) * 3;
+      rgb[o] = r.rgb[i] ?? 0;
+      rgb[o + 1] = r.rgb[i + 1] ?? 0;
+      rgb[o + 2] = r.rgb[i + 2] ?? 0;
+    }
+  return { width: r.height, height: r.width, rgb };
+}
+
+/** BAKEOFF b4-r1t3 photo tiles: the grid shape for n tiles (one row up to 5, else two rows). */
+export function gridShape(n: number): { cols: number; rows: number } {
+  return n <= 5 ? { cols: n, rows: 1 } : { cols: Math.ceil(n / 2), rows: 2 };
+}
+
+/**
+ * BAKEOFF b4-r1t3: a generated grid of `n` panels (gridShape) cut into n pictures, row by row. Rows
+ * are cut at their white gutters with the strip's own rule (no gutter near a row edge refuses the
+ * grid), then each row is cut as a strip. A last row may hold fewer panels.
+ */
+export function splitGrid(png: Uint8Array, n: number, aspect: number): Uint8Array[] {
+  const { cols, rows } = gridShape(n);
+  if (rows === 1) return splitPanels(png, n, aspect);
+  const r = decodePng(png);
+  const bands = panelBounds(transpose(r), rows);
+  return bands.flatMap(([a, b], k) => {
+    const inRow = Math.min(cols, n - k * cols);
+    return splitPanels(encodePng(crop(r, 0, a, r.width, b - a)), inRow, aspect);
+  });
+}

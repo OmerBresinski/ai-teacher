@@ -63,7 +63,7 @@ import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/src/templates/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
-import { AB_CONFIG, type AbArm, abArm, abShared } from "./ab/arms";
+import { AB_CONFIG, type AbArm, abArm, abR1t3, abShared } from "./ab/arms";
 import { locale, localise } from "./locale";
 
 export const ROUNDS =
@@ -518,6 +518,8 @@ export type PhotoAsk = {
   signal?: AbortSignal;
   /** A set member: false when the set's panels are different things compared (still made together). */
   sameSubject?: boolean;
+  /** b4-r1t3 photo tiles: the real-photo route only (stock search and judge), no director or generation. */
+  stockOnly?: boolean;
   /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
   style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
@@ -542,6 +544,8 @@ export type PhotoResult = {
   period?: string;
   /** The same-subject set this picture was made in (one strip, cut apart). */
   set?: string;
+  /** b4-r1t3: the director's other pictures for this slot, each fetched and judged on its own; shown as tiles. */
+  tiles?: PhotoResult[];
 };
 
 /** The picture services for one run; `costs` collects bank and director spend. */
@@ -776,6 +780,30 @@ export function pictureService(opts: {
       }
       return r.photo;
     };
+    // b4-r1t3 photo tiles: the real-photo route for one tile (Pexels/Commons through the stock judge).
+    if (ask.stockOnly) {
+      const got = (await stock({ ...b, specific: true }).catch(() => undefined)) as
+        | {
+            src: string;
+            alt?: string;
+            about?: string;
+            source?: { provider?: string };
+            boxes?: Box4[];
+          }
+        | undefined;
+      return got
+        ? {
+            request,
+            src: got.src,
+            alt: got.alt ?? ask.shows,
+            about: got.about,
+            provider: got.source?.provider,
+            source: got.source,
+            style: "photo",
+            aspect: aspectOf(got.src),
+          }
+        : undefined;
+    }
     // Round 9 (regression audit Q5, y6 "Locate South America"): a map is a real source, never a
     // made picture the director then vetoes as "schematic". It is searched as a named thing first
     // (Commons and Pexels through the stock judge); the director runs only when none is found.
@@ -844,6 +872,8 @@ export function pictureService(opts: {
             deps: deps as never,
             ...(look ? { look } : {}),
             ...(direct ? { direct } : {}),
+            // b4-r1t3 (rootcause/pictures.md fix A): every picture the director splits the slot into.
+            ...(abR1t3() ? { allPictures: true } : {}),
             onOutcome: (o: object) =>
               appendFileSync(
                 `${opts.runDir}/log.jsonl`,
@@ -865,6 +895,14 @@ export function pictureService(opts: {
           boxes?: Box4[];
           look?: PhotoResult["style"];
           period?: string;
+          tiles?: {
+            src: string;
+            alt: string;
+            about?: string;
+            source?: { provider?: string };
+            look?: PhotoResult["style"];
+            mustShow?: string[];
+          }[];
         }
       | undefined;
     if (!photo) return undefined;
@@ -888,6 +926,20 @@ export function pictureService(opts: {
         ? { subjects: subjectsOf(photo.boxes ?? madeBoxes) }
         : {}),
       aspect: aspectOf(photo.src),
+      ...(photo.tiles?.length
+        ? {
+            tiles: photo.tiles.map((t) => ({
+              request: (t.mustShow ?? []).join(". ") || t.alt,
+              src: t.src,
+              alt: t.alt,
+              about: t.about,
+              provider: t.source?.provider,
+              source: t.source,
+              style: t.look ?? "photo",
+              aspect: aspectOf(t.src),
+            })),
+          }
+        : {}),
     };
   }
   const runLog = (e: object) =>
@@ -905,6 +957,13 @@ export function pictureService(opts: {
     asks: PhotoAsk[],
     lesson: Parameters<typeof find>[1],
   ): Promise<(PhotoResult | undefined)[]> {
+    // b4-r1t3 photo tiles (Greg, 8 Oct): real photos per tile first (real animals from Pexels or
+    // Commons); only when a tile has none does the set take the generated route, one strip cut apart.
+    if (abR1t3() && asks.some((a) => /:tile\.\d+$/.test(a.key))) {
+      const real = await Promise.all(asks.map((a) => find({ ...a, stockOnly: true }, lesson)));
+      runLog({ ev: "tiles-real", keys: asks.map((a) => a.key), got: real.map(Boolean) });
+      if (real.every(Boolean)) return real;
+    }
     // Not generated as a set: named real things, history lessons, and change across real time
     // (a street in 1900 and 2000): each picture takes the director's ladder (ruling 163).
     if (
@@ -1000,7 +1059,17 @@ export function pictureService(opts: {
     let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
     // Round 5 retry cap: one strip; panels it could not place get one solo generation each (one
     // regenerate per slot). A second strip doubled the cost on y1 r4 and failed the same way.
-    for (let attempt = 0; attempt < 1; attempt++) {
+    // b4-r1t3: more than 5 tiles need a grid image, whose frame wording is with the prompt-engineer
+    // (arms3/r1t3/REQUEST.md); until it lands, each tile is generated on its own (the fallback below).
+    const strips = asks.length > 5 ? 0 : 1;
+    if (!strips)
+      runLog({
+        ev: "set-error",
+        set: setKey,
+        attempt: 0,
+        err: "grid frame pending (over 5 tiles)",
+      });
+    for (let attempt = 0; attempt < strips; attempt++) {
       let made: Awaited<ReturnType<typeof gen.generate>>;
       try {
         made = await gen.generate({ prompt, size: setSize(asks.length) } as never);

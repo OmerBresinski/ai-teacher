@@ -11,7 +11,7 @@ import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/dia
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type AbArm, abArm, abFiles, abFixes, abR1t, abR1t2, abShared, sha } from "./ab/arms";
 import { continueForFit } from "./ab/continue";
-import { applyStage2, covers, restageLayoutOnly } from "./ab/stage2";
+import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
@@ -1669,16 +1669,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       );
       if (v?.status === "diagram") return true;
       if (v?.status !== "photo" || !pic) return false;
-      const ev = (
-        (v.photo.source as { evidence?: { visible?: string[] } } | undefined)?.evidence?.visible ??
-        []
-      ).map(String);
-      const seen = [
-        ...ev,
-        v.photo.alt,
-        v.photo.about ?? "",
-        ...(v.photo.subjects ?? []).map((x) => x.name),
-      ];
+      // Round 6 metric fix: a judged generated/library pick counts its request; tiles count too.
+      const seen = seenOf(v.photo);
       return covers((pic.must_see as string[]) ?? [], seen);
     };
     const title0 = rawR1t.get(0) ?? (plan.slides[0] as Record<string, unknown>);

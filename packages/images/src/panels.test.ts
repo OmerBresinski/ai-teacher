@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { decodePng, encodePng, panelBounds, splitPanels, subjectBox } from "./panels";
+import {
+  decodePng,
+  encodePng,
+  gridShape,
+  panelBounds,
+  splitGrid,
+  splitPanels,
+  subjectBox,
+} from "./panels";
 
 /** A grey strip of `widths` panels split by 8 px white gutters, each with a dark square of `sizes`. */
 function strip(widths: number[], sizes: number[], h = 120) {
@@ -73,5 +81,20 @@ describe("no seams, no doubled panels (round 5)", () => {
   test("a solo panel is cropped to the slot shape without looking for gutters", () => {
     const one = decodePng(splitPanels(encodePng(strip([120], [30])), 1, 1.25)[0] as Uint8Array);
     expect(Math.abs(one.width / one.height - 1.25)).toBeLessThan(0.02);
+  });
+  test("b4-r1t3: a grid of 6 is cut row by row at its gutters; no row gutter refuses it", () => {
+    const top = strip([60, 60, 60], [20, 24, 28], 60);
+    const bottom = strip([60, 60, 60], [30, 22, 26], 60);
+    const stack = (gap: number) => {
+      const width = top.width;
+      const rgb = new Uint8Array(width * (120 + gap) * 3).fill(255);
+      rgb.set(top.rgb, 0);
+      rgb.set(bottom.rgb, width * (60 + gap) * 3);
+      return encodePng({ width, height: 120 + gap, rgb });
+    };
+    expect(gridShape(6)).toEqual({ cols: 3, rows: 2 });
+    expect(gridShape(4)).toEqual({ cols: 4, rows: 1 });
+    expect(splitGrid(stack(8), 6, 1)).toHaveLength(6);
+    expect(() => splitGrid(stack(0), 6, 1)).toThrow(/no gutter/);
   });
 });

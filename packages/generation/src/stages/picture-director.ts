@@ -397,6 +397,12 @@ export async function findDirected(args: {
   direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
   /** How the slot ended: the director's route, the ladder's step, and why it is empty when it is. */
   onOutcome?: (o: PictureOutcome) => void;
+  /**
+   * BAKEOFF b4-r1t3 (rootcause/pictures.md fix A): when the director splits the slot into several
+   * pictures, fetch every one (each its own request and brief) and return the rest as `tiles`,
+   * instead of showing pictures[0] alone.
+   */
+  allPictures?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -482,6 +488,10 @@ export async function findDirected(args: {
         }),
   });
   if (!out.photo) return undefined;
+  const tiles =
+    args.allPictures && plan.kind === "photo" && direction && plan.pictures.length > 1
+      ? await directedTiles(args, direction, plan.pictures.length)
+      : undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
   // and the period the request belongs to.
   return {
@@ -493,7 +503,59 @@ export async function findDirected(args: {
           : (style ?? "photo")
         : "photo",
     ...(req.period && req.depicts ? { period: req.period } : {}),
+    ...(tiles?.length ? { tiles } : {}),
   };
+}
+
+/** BAKEOFF b4-r1t3: the director's pictures after the first, each fetched as its own one-picture slot. */
+async function directedTiles(
+  args: Parameters<typeof findDirected>[0],
+  direction: PictureDirection,
+  n: number,
+): Promise<DirectedPhoto[]> {
+  const got = await Promise.all(
+    Array.from({ length: n - 1 }, async (_, k) => {
+      const one: PictureDirection = {
+        ...direction,
+        count: null,
+        pictures: [direction.pictures[k + 1] as PictureDirection["pictures"][number]],
+      };
+      const plan = planPicture(one, {
+        text: one.pictures[0]?.shows ?? args.ask.subject,
+        named: args.ask.named ?? null,
+        ...(args.brief.aspect !== undefined ? { aspect: args.brief.aspect } : {}),
+        ...(args.look ? { look: args.look } : {}),
+      });
+      if (plan.kind !== "photo") return undefined;
+      const brief: ImageBrief = {
+        ...args.brief,
+        ...plan.brief,
+        specific: plan.brief.specific || args.brief.specific === true,
+      };
+      const out = await findPicture(
+        plan.request,
+        args.bank,
+        () => args.stock(brief),
+        args.deps.signal,
+        (made, reuse) => args.judgeMade(brief, made, reuse),
+        Date.now,
+        sharedVerdictCache,
+      ).catch(() => undefined);
+      if (!out?.photo) return undefined;
+      const style = (out.photo as MadePicture | undefined)?.style;
+      return {
+        ...out.photo,
+        look:
+          out.photo.source.provider === "generated"
+            ? style === "drawn"
+              ? "drawn"
+              : (style ?? "photo")
+            : "photo",
+        mustShow: brief.mustShow ?? [],
+      } as DirectedPhoto;
+    }),
+  );
+  return got.filter((x): x is DirectedPhoto => !!x);
 }
 
 /** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
@@ -526,6 +588,10 @@ export function artefactQueries(shows: string, period?: string): string[] {
 export type DirectedPhoto = PlacedPhoto & {
   look: "photo" | "illustration" | "drawn" | "house";
   period?: string;
+  /** BAKEOFF b4-r1t3: the director's other pictures for this slot (allPictures), shown as tiles. */
+  tiles?: DirectedPhoto[];
+  /** BAKEOFF b4-r1t3: the brief's must-show items a tile was judged against. */
+  mustShow?: string[];
 };
 
 export interface PictureOutcome {

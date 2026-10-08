@@ -27,7 +27,39 @@ export function forms(w: string): Set<string> {
   if (x.endsWith("ies") && x.length > 4) f.add(`${x.slice(0, -3)}y`);
   if (x.endsWith("es") && x.length > 4) f.add(x.slice(0, -2));
   if (x.endsWith("s") && x.length > 3) f.add(x.slice(0, -1));
+  // Round 6 metric fix (rootcause/pictures.md C): an adjective's noun ("fluffy" = "fluff").
+  if (x.endsWith("y") && x.length > 4) f.add(x.slice(0, -1));
   return f;
+}
+
+/**
+ * Round 6 metric fix (rootcause/pictures.md C), every arm: what a placed picture is known to show.
+ * A stock pick carries the judge's `visible`; a generated or library pick passed the judge against its
+ * brief but carries no `visible`, so its request (the must-see items it was judged on) counts as seen.
+ * A director-split slot (b4-r1t3) shows its tiles too.
+ */
+export type SeenPhoto = {
+  alt?: string;
+  about?: string;
+  request?: string;
+  provider?: string;
+  source?: unknown;
+  subjects?: { name: string }[];
+  tiles?: SeenPhoto[];
+};
+export function seenOf(p: SeenPhoto): string[] {
+  const src = (p.source ?? {}) as { provider?: string; evidence?: { visible?: unknown[] } };
+  const visible = (src.evidence?.visible ?? []).map(String);
+  const provider = p.provider ?? src.provider;
+  const judgedMade = !visible.length && provider !== "pexels" && provider !== "commons";
+  return [
+    ...visible,
+    p.alt ?? "",
+    p.about ?? "",
+    ...(p.subjects ?? []).map((x) => x.name),
+    ...(judgedMade ? [p.request ?? ""] : []),
+    ...(p.tiles ?? []).flatMap(seenOf),
+  ];
 }
 const words = (s: string) =>
   (s.match(/[A-Za-z]+/g) ?? []).filter((w) => w.length > 2 && !STOP.has(w.toLowerCase()));

@@ -9,7 +9,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
-import { abArm, abFiles, abR2 } from "./ab/arms";
+import { abArm, abFiles, abR1t3, abR2 } from "./ab/arms";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
@@ -107,6 +107,17 @@ function figureNow(
       aspect: v.photo.aspect,
       request: v.photo.request,
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
+      // b4-r1t3: the director split the slot; its other pictures show as tiles beside this one.
+      ...(abR1t3() && v.photo.tiles?.length
+        ? {
+            tiles: v.photo.tiles.map((t) => ({
+              photo: t.src,
+              alt: t.alt,
+              aspect: t.aspect,
+              request: t.request,
+            })),
+          }
+        : {}),
     };
   if (v.status === "diagram") {
     const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string } })?.drawn;
@@ -120,6 +131,35 @@ function figureNow(
         alt: f.shows,
         request: mark ? `slot:${key}` : [f.shows, ...(f.must_see ?? [])].join(". "),
       };
+}
+
+/**
+ * b4-r1t3: the writer's tiles (picture = tile 0, `tiles` = tiles 1..) as one grid in the slide's panel.
+ * A tile that failed leaves the grid; when the first failed, the next one leads.
+ */
+export function tiled(
+  s: S,
+  main: Figure | undefined,
+  ctx: MaterialiseCtx,
+  mark = false,
+): Figure | undefined {
+  if (!abR1t3() || !Array.isArray(s.tiles) || !s.tiles.length) return main;
+  const rest = (s.tiles as unknown[])
+    .map((t, n) => (isPic(t) ? figureNow(`tile.${n + 1}`, t, ctx, mark) : undefined))
+    .filter((f): f is Figure => !!f && "photo" in f);
+  const all = [
+    ...(main && "photo" in main ? [main, ...(main.tiles ?? [])] : main ? [] : []),
+    ...rest,
+  ];
+  if (main && !("photo" in main)) return main;
+  const [lead, ...more] = all;
+  if (!lead || !("photo" in lead)) return main;
+  // Pairs (matching tasks): the writer's tile_mode when it gives one (the schema field is with the
+  // prompt-engineer, arms3/r1t3/REQUEST.md); tiles come in the writer's order.
+  const mode = ["together", "shuffled"].includes(String(s.tile_mode))
+    ? (s.tile_mode as "together" | "shuffled")
+    : "grid";
+  return more.length ? { ...lead, tiles: more, tileMode: mode } : lead;
 }
 
 /** Templates whose photo slots crop to their own box (the rest show a photo at its own shape). */
@@ -314,14 +354,14 @@ export function toInput(
         heading,
         questions: strs(s.questions),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
-        figure: fig("picture") ?? fig("figure"),
+        figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
     case "discussion":
       return {
         template,
         heading,
         lead: lead ?? str(s.question),
-        figure: fig("picture") ?? fig("figure"),
+        figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
     default:
       return {
@@ -401,6 +441,15 @@ export const armT: ArmPlugin = {
       // Round 5 (Sonnet judge, y1 r4 s4-s5: seams and doubled panels): a compare card gets one
       // coherent picture of its own, never a crop of a split strip. Sets are for true sequences.
       if (key.startsWith("col.")) return undefined;
+      // b4-r1t3 photo tiles (Greg, 8 Oct): the writer's tiles are one set: real photos per tile when
+      // every tile has one, else one generated strip cut apart (services findSet).
+      if (
+        abR1t3() &&
+        Array.isArray(s.tiles) &&
+        s.tiles.length &&
+        (key === "picture" || key.startsWith("tile."))
+      )
+        return "tiles";
       return undefined;
     };
     return figs.map(
@@ -421,6 +470,7 @@ export const armT: ArmPlugin = {
               named: f.subject === "named",
               ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
               ...(setOf(key) ? { set: setOf(key) } : {}),
+              ...(setOf(key) === "tiles" ? { sameSubject: false } : {}),
             },
     );
   },

@@ -32,6 +32,7 @@ export const AB_ARMS = [
   "b4-ms",
   "b4-r1t2",
   "b4-ex",
+  "b4-r1t3",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -183,6 +184,18 @@ export const AB_CONFIG: Record<
     delta:
       "b4-r1t + R1 stage 2: judge-covered pictures only, drop needs_picture items, remove emptied checks, restage layout only",
   },
+  // Round 6 (8 Oct, rootcause/pictures.md): b4-r1t2 + every director picture fetched + a tile layout.
+  "b4-r1t3": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    r1t: true,
+    r1t2: true,
+    r1t3: true,
+    delta: "b4-r1t2 + findDirected fetches every director picture + tiles laid out as a 2-4 grid",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -225,6 +238,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b4-ms": { ref: "base4" },
   "b4-r1t2": { ref: "b4-r1t" },
   "b4-ex": { ref: "base4" },
+  "b4-r1t3": { ref: "b4-r1t" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -237,6 +251,8 @@ export const abArm = () => current;
 /** R1 stage 1 (b3-r1t): the writer's items and tiles are flattened for the harness (writer-only scoring). */
 /** R1 stage 2 (b4-r1t2): code drops pointing items whose picture is not shown. */
 export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false);
+/** b4-r1t3: every director picture fetched, several pictures laid out as tiles. */
+export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
 export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);

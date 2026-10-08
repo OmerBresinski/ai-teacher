@@ -78,6 +78,12 @@ export type Figure =
       request?: string;
       /** The must-see subjects' boxes in the picture (fractions 0..1), from the vision judge. */
       subjects?: SubjectBox[];
+      /** BAKEOFF b4-r1t3: more one-subject pictures shown with this one as photo tiles in its panel. */
+      tiles?: Figure[];
+      /** BAKEOFF b4-r1t3 photo tiles: how the tiles sit (pairs together, or shuffled for a find-the-pairs task). */
+      tileMode?: "grid" | "together" | "shuffled";
+      /** A short caption under the photo when it is a tile. */
+      caption?: string;
     }
   | { diagram: unknown }
   /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
@@ -432,6 +438,105 @@ function photoBox(
 }
 
 /** The right-hand figure panel: a photo fills it; a diagram sits on the wash with air round it. */
+/**
+ * BAKEOFF b4-r1t3 photo tiles (Greg, 8 Oct): 2 to 10 one-subject photos in one area, like the sequence
+ * layout but a grid, each with an optional short caption. Pairs (matching tasks): "together" keeps each
+ * adult and young side by side in one row, wider gaps between pairs; "shuffled" (find the pairs) sets
+ * the adults and the young so no pair touches. The grid shape is the one that gives the biggest 4:3 tile.
+ */
+export type TileMode = "grid" | "together" | "shuffled";
+export function tileOrder<T>(tiles: T[], mode: TileMode): T[] {
+  if (mode !== "shuffled" || tiles.length < 4 || tiles.length % 2) return tiles;
+  // Pairs come in as [adult 1, young 1, adult 2, young 2, ...]; each adult is followed by the next pair's young.
+  const k = tiles.length / 2;
+  return Array.from({ length: k }, (_, i) => [
+    tiles[2 * i] as T,
+    tiles[2 * ((i + 1) % k) + 1] as T,
+  ]).flat();
+}
+export function tileRects(
+  n: number,
+  rect: { x: number; y: number; w: number; h: number },
+  mode: TileMode = "grid",
+  capH = 0,
+  gap = 12,
+): { x: number; y: number; w: number; h: number }[] {
+  const k = Math.min(10, Math.max(1, n));
+  const pairGap = mode === "together" ? gap * 3 : gap;
+  let best = { cols: 1, w: 0, h: 0, score: -1 };
+  for (let cols = 1; cols <= k; cols++) {
+    // Pairs side by side: a row holds whole pairs.
+    if (mode === "together" && cols % 2) continue;
+    const rows = Math.ceil(k / cols);
+    const gaps =
+      mode === "together" ? (cols / 2) * gap + (cols / 2 - 1) * pairGap : gap * (cols - 1);
+    const cw = (rect.w - gaps) / cols;
+    const ch = (rect.h - gap * (rows - 1)) / rows - capH;
+    if (cw <= 0 || ch <= 0) continue;
+    // The biggest 4:3 picture that fits the cell.
+    const w = Math.min(cw, ch * (4 / 3));
+    const score = w * (w * 0.75);
+    if (score > best.score) best = { cols, w: Math.floor(cw), h: Math.floor(ch), score };
+  }
+  const { cols } = best;
+  const rows = Math.ceil(k / cols);
+  const tw = Math.floor(Math.min(best.w, best.h * (4 / 3)));
+  const th = Math.floor(Math.min(best.h, tw * 0.75));
+  const rowW = (m: number) =>
+    mode === "together"
+      ? m * tw + Math.floor(m / 2) * gap + (Math.ceil(m / 2) - 1) * pairGap
+      : m * tw + (m - 1) * gap;
+  const totalH = rows * (th + capH) + (rows - 1) * gap;
+  const y0 = rect.y + Math.round((rect.h - totalH) / 2);
+  return Array.from({ length: k }, (_, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    const inRow = Math.min(cols, k - r * cols);
+    const x0 = rect.x + Math.round((rect.w - rowW(inRow)) / 2);
+    const dx =
+      mode === "together"
+        ? c * tw + Math.ceil(c / 2) * gap + Math.floor(c / 2) * pairGap
+        : c * (tw + gap);
+    return { x: x0 + dx, y: y0 + r * (th + capH + gap), w: tw, h: th };
+  });
+}
+function tilePanel(
+  c: Ctx,
+  figs: Figure[],
+  rect: { x: number; y: number; w: number; h: number },
+  mode: TileMode = "grid",
+): boolean {
+  const shown = tileOrder(figs.slice(0, 10), mode);
+  if (figs.length > 10) c.over.push("photo tiles over 10");
+  const caps = shown.map((f) => ("photo" in f ? (f.caption ?? "") : ""));
+  const capH = caps.some(Boolean) ? Math.ceil(measure(c, "Ag", "small", 200)) + 8 : 0;
+  const rects = tileRects(shown.length, rect, mode, capH);
+  let any = false;
+  shown.forEach((f, i) => {
+    const r = rects[i];
+    if (!r) return;
+    if ("photo" in f) {
+      const { tiles: _t, tileMode: _m, caption: _c, ...one } = f;
+      photoBox(c, one, r, true);
+      any = true;
+    } else if (figurePanel(c, f, r)) any = true;
+    const cap = caps[i];
+    if (cap)
+      text(
+        c,
+        cap,
+        "small",
+        { x: r.x, y: r.y + r.h + 6, w: r.w },
+        {
+          color: c.t.colors.ink,
+          weight: 600,
+          align: "center",
+          name: "Caption",
+        },
+      );
+  });
+  return any;
+}
 function figurePanel(
   c: Ctx,
   f: Figure | undefined,
@@ -443,6 +548,8 @@ function figurePanel(
   },
 ): boolean {
   if (!f) return false;
+  if ("photo" in f && f.tiles?.length)
+    return tilePanel(c, [{ ...f, tiles: undefined }, ...f.tiles], rect, f.tileMode ?? "grid");
   if ("drawn" in f) {
     if (!svgDrawsSomething(f.drawn.src)) return false;
     box(c, rect, wash(c.t));
