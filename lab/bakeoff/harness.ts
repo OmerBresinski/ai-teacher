@@ -2251,12 +2251,15 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   }
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum.
+  // One factor for the whole lesson, so volumes compared across slides keep their order.
+  const gasHits = abGas8() ? gasFaults(gasTexts()) : [];
+  const gasAll = gasHits.flatMap((x) => x.volumes);
   if (abGas8())
-    for (const h of gasFaults(gasTexts())) {
+    for (const h of gasHits) {
       if (!repairable(plan.slides[h.slide] as Record<string, unknown>, h.slide)) continue;
       await swapSlide(
         h.slide,
-        rescaleGas(plan.slides[h.slide] as Record<string, unknown>, h.volumes, h.vmax),
+        rescaleGas(plan.slides[h.slide] as Record<string, unknown>, gasAll, h.vmax),
       );
       const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
       log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
