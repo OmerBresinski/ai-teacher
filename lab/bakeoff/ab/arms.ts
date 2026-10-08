@@ -51,6 +51,7 @@ export const AB_ARMS = [
   "base6b-notes",
   "exit1",
   "plotzone",
+  "labels3",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -93,6 +94,8 @@ export const AB_CONFIG: Record<
     exitTicket?: boolean;
     /** plotzone (chalkie fix 3b): a big-diagram graph or chart takes the whole visual zone. */
     plotZone?: boolean;
+    /** labels3 (faults-3-6-8 #3): spare diagram-spec labels never sit in literal particle slots. */
+    labels3?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -503,6 +506,18 @@ export const AB_CONFIG: Record<
     delta:
       "base3 + R2: writer spec defs per kind and slot (SLOT_LIMITS caps), code draws, drawer fallback",
   },
+  // faults-3-6-8 (8 Oct): code-only switches on base4, one per fault, each replayed alone with
+  // `run.ts --arm base4 --replay <base4 run> --code-arm <switch> --offline`. No prompt folder.
+  labels3: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    labels3: true,
+    delta:
+      "base4 + particles spec mend: no compare arrows, keys only for drawn kinds, no stray notes",
+  },
 };
 /** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
 export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
@@ -541,6 +556,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   locale4: { ref: "base5" },
   base6: { ref: "base4" },
   exit1: { ref: "base6" },
+  labels3: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -588,6 +604,8 @@ export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].f
 export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].notesAlt) : false);
 /** Chalkie fix 3b: big-visual plots fill the visual zone (plotzone). */
 export const abPlotZone = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].plotZone) : false);
+/** labels3: the particles label mend (packages/slides diagrams/labels3.ts). */
+export const abLabels3 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].labels3) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);

@@ -41,6 +41,7 @@ import {
   drawTimeline,
 } from "./templates";
 
+export { particleLabelMend, setParticleLabelMend } from "./labels3";
 export {
   CHARS_PER_WORD,
   captionRule,

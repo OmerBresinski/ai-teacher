@@ -10,6 +10,7 @@ import {
 } from "../../packages/generation/src/stages/illustrate";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
 import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
+import { setParticleLabelMend } from "../../packages/slides/src/diagrams/labels3";
 import {
   onLabelDrop,
   setDiagramParts,
@@ -17,6 +18,7 @@ import {
 } from "../../packages/slides/src/diagrams/polish";
 import { setPlotZone } from "../../packages/slides/src/templates/index";
 import {
+  abLabels3,
   abPlotZone,
   abPolish,
   abPolish2,
@@ -97,6 +99,8 @@ if (abPolish2()) {
 }
 // plotzone (chalkie fix 3b): independent of the polish parts above; off for every other arm.
 if (abPlotZone()) setPlotZone(true);
+// labels3 (faults-3-6-8 #3): the particles label mend, on its own.
+if (abLabels3()) setParticleLabelMend(true);
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));
