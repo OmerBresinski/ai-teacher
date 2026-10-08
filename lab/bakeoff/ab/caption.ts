@@ -3,7 +3,7 @@
 // and the notes call's picture line. In a New Zealand lesson it reads as wrong. Code, not prompt text:
 // the caption keeps its subject, and a closing place phrase is dropped unless it names the teacher's
 // country or the slide itself names that place. No gazetteer and no country facts; a place named
-// mid-sentence ("a Paris street at night") is not caught (residual, see arms3/locale4/DIFF.md).
+// mid-sentence ("a Paris street at night"), or a bare city with no country after it, is not caught (residual, see arms3/locale4/DIFF.md).
 
 /** Capitalised words that follow "in" but are not places (times of year and day). */
 const NOT_PLACE =
@@ -19,6 +19,24 @@ const PLACE_AT_END = new RegExp(
 );
 
 const words = (s: string) => s.toLowerCase().normalize("NFC");
+/**
+ * Country names a stock caption may end with: every ISO region's English name (Intl, no hand list)
+ * plus the UK's nations. A closing place phrase is "outside" only when it ends with one of these
+ * that is not the teacher's country; a bare city ("in Hamburg") is not known to be outside and stays.
+ */
+const COUNTRIES: Set<string> = (() => {
+  const out = new Set(["england", "scotland", "wales", "northern ireland", "uk", "usa", "us"]);
+  const dn = new Intl.DisplayNames(["en"], { type: "region" });
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (const a of A)
+    for (const b of A) {
+      try {
+        const n = dn.of(a + b);
+        if (n && n !== a + b) out.add(words(n));
+      } catch {}
+    }
+  return out;
+})();
 /** `name` appears in `text` as whole words. */
 const named = (text: string, name: string) =>
   new RegExp(
@@ -38,6 +56,8 @@ export function localAlt(alt: string, o: { country: string; context: string }): 
   const out = alt.replace(PLACE_AT_END, (whole, phrase: string) => {
     const parts = phrase.split(/\s*,\s*/).map((p) => p.trim());
     if (parts.every((p) => p.split(/\s+/).every((w) => NOT_PLACE.test(w)))) return whole;
+    const last = words(parts[parts.length - 1] ?? "").replace(/^the\s+/, "");
+    if (!COUNTRIES.has(last)) return whole;
     if (parts.some((p) => words(p).includes(country))) return whole;
     if (parts.some((p) => named(context, words(p)))) return whole;
     return "";

@@ -84,6 +84,15 @@ describe("localAlt", () => {
     expect(nz("Big Ben at dusk in London, England.", "Visiting London")).toBe(
       "Big Ben at dusk in London, England.",
     );
+    expect(
+      localAlt("A magnificent oak against the cloudy sky in Hamburg.", {
+        country: "England",
+        context: "",
+      }),
+    ).toBe("A magnificent oak against the cloudy sky in Hamburg.");
+    expect(
+      localAlt("A loch at dawn in Glencoe, Scotland.", { country: "England", context: "" }),
+    ).toBe("A loch at dawn.");
     expect(nz("A snowy field in Winter.")).toBe("A snowy field in Winter.");
     expect(
       localAlt("Bluebells in Greater London, England.", { country: "England", context: "" }),
