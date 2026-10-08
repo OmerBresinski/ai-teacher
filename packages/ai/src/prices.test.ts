@@ -29,6 +29,7 @@ describe("PRICES", () => {
       "openai/gpt-5.6-sol",
       "openai/gpt-6-luna",
       "openai/gpt-6-sol",
+      "openai/gpt-6.1-sol",
     ])
       expect(isPriced(id)).toBe(true);
     // Gateway-only (404 direct) and the lab's priority tier are deliberately absent.
@@ -38,6 +39,14 @@ describe("PRICES", () => {
 });
 
 describe("costUsd", () => {
+  test("gpt-6.1-sol: 10k input of which 2k cached, 2.3k output, at $2 / $0.10 / $10 per MTok", () => {
+    // 8 000 uncached × $2 = $0.016; 2 000 cached × $0.10 = $0.0002; 2 300 out × $10 = $0.023.
+    const usage = { inputTokens: 10_000, cachedInputTokens: 2_000, outputTokens: 2_300 };
+    expect(costUsd("openai/gpt-6.1-sol", usage)).toBeCloseTo(0.0392, 12);
+    // The direct provider reports the bare id; it reads the same row.
+    expect(costUsd("gpt-6.1-sol", usage)).toBeCloseTo(0.0392, 12);
+  });
+
   test("a million input tokens use the long-context price", () => {
     const price = PRICES[BEDROCK.standard];
     expect(costUsd(BEDROCK.standard, { inputTokens: 1_000_000, outputTokens: 0 })).toBe(

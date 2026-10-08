@@ -368,6 +368,51 @@ describe("OpenAI direct (`openai/<model>` ids, ADR 0031)", () => {
     expect(text).not.toContain("k-secret-value");
     expect(text).not.toContain("private prompt text");
   });
+
+  test("A8: gpt-6.1-sol (the lab writer's model) is priced at boot and served direct at effort low, defaults unchanged", async () => {
+    // No default moves: every class stays on Luna.
+    expect(Object.values(DEFAULT_MODEL_IDS)).toEqual([
+      "openai/gpt-6-luna",
+      "openai/gpt-6-luna",
+      "openai/gpt-6-luna",
+    ]);
+    const { lines, logger } = createMemoryLogger();
+    const { requests, fetch } = captureFetch();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetch;
+    try {
+      // Configured as a class id: the boot check finds a price row, so it says nothing.
+      createAi({ OPENAI_API_KEY: "k", AI_MODEL_FRONTIER: "openai/gpt-6.1-sol" }, { logger });
+      expect(lines).toEqual([]);
+      // Routed for one call, as the lab does: the defaults stay as they are.
+      const ai = createAi(
+        { OPENAI_API_KEY: "k" },
+        {
+          logger,
+          route: (_cls, context) => (context?.stage === "write" ? "openai/gpt-6.1-sol" : undefined),
+        },
+      );
+      expect(ai.modelId("frontier")).toBe("openai/gpt-6-luna");
+      await generateText({
+        model: ai.model("frontier", { stage: "write", effort: "low" }),
+        prompt: "x",
+        maxRetries: 0,
+        providerOptions: { openai: { reasoningEffort: "low" } },
+      }).catch(() => undefined);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url.startsWith("https://api.openai.com/v1/")).toBe(true);
+    expect(requests[0]?.body).toContain('"model":"gpt-6.1-sol"');
+    expect(requests[0]?.body).toContain('"reasoning_effort":"low"');
+    const records = lines.map((l) => JSON.parse(l) as { ai?: Record<string, unknown> });
+    expect(records.find((r) => r.ai?.modelId !== undefined)?.ai).toMatchObject({
+      modelId: "openai/gpt-6.1-sol",
+      stage: "write",
+      effort: "low",
+    });
+  });
 });
 
 /** A Claude id an env may still set; the defaults are all GPT-5.6 (TEACH-208). */
