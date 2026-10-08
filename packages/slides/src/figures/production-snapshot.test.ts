@@ -41,8 +41,14 @@ const RECTS = [
   { x: 0, y: 0, w: 844, h: 370 },
 ];
 
-/** Element ids are random; everything else is the drawing. */
-const stable = (v: unknown) => JSON.stringify(v, (k, x) => (k === "id" ? undefined : x));
+/**
+ * Element ids are random; everything else is the drawing. Numbers are kept to 1e-6: trigonometry
+ * differs in its last bits between macOS and Linux, a millionth of a point no one can see.
+ */
+const stable = (v: unknown) =>
+  JSON.stringify(v, (k, x) =>
+    k === "id" ? undefined : typeof x === "number" ? Math.round(x * 1e6) / 1e6 : x,
+  );
 
 describe("production figures are unchanged", () => {
   for (const name of Object.keys(FIGURE_TEMPLATES) as FigureTemplateName[]) {
