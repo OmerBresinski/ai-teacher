@@ -15,6 +15,7 @@ import {
   abCaptions,
   abCheckDef,
   abCodeArm,
+  abFigureSync,
   abFiles,
   abFixes,
   abObjRetry,
@@ -29,6 +30,7 @@ import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
+import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
 import { isEngland, type Locale, locale, localise, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
@@ -1139,7 +1141,15 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     heading = "",
   ) => {
     const k = `${i}:${a.key}`;
-    if (reusedDia) {
+    // figureSync: a stored spec whose numbers the slide's words no longer say (a repaired y5 bar) is
+    // not served again; the diagram takes the live path (an R2 writer spec is drawn by code, no call).
+    const stored = reusedDia ? (reusedSpecs?.[String(i)] ?? reusedJsonl.get(k)) : undefined;
+    const staleReuse =
+      abFigureSync() && stored
+        ? figureTextMismatch(stored, plan.slides[i] as Record<string, unknown> | undefined)
+        : undefined;
+    if (staleReuse) log({ ev: "figure-stale-reuse", key: k, why: staleReuse });
+    if (reusedDia && !staleReuse) {
       // Offline re-layout: the drawing the earlier run placed on this slide (no spec call).
       // Round 1: a recorded spec (`<outDir>/diagram-specs.json`, slide index -> spec) is drawn
       // again through drawDiagram instead of reusing the old SVG, so the offline re-layout
@@ -1846,7 +1856,20 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   };
   /** Swap slide i to `next`, carry visuals its figures keep, fetch the new ones, re-lay it. */
   const swapSlide = async (i: number, next0: Record<string, unknown>) => {
-    const next = slideNoEmDash(next0);
+    // chalkie-gap Y5-B: a figure on a rewritten slide is re-checked against the new words; it is
+    // kept when it agrees, redrawn from the words when it can be, and dropped otherwise.
+    // A/B switch figureSync (off by default): every other arm swaps exactly as before.
+    const before0 = plan.slides[i] as Record<string, unknown> | undefined;
+    const sync = abFigureSync()
+      ? syncFigure(before0, slideNoEmDash(next0))
+      : { action: "keep" as const, slide: slideNoEmDash(next0), why: "" };
+    if (sync.action === "redrawn" || sync.action === "drop")
+      log({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why });
+    const next =
+      sync.action === "drop"
+        ? (withKeyStage(brief.keyStage, () => arm.asWords?.(sync.slide)) ??
+          (({ figure: _f, diagram: _d, ...rest }) => rest)(sync.slide))
+        : sync.slide;
     const oldAsks = asks.get(i) ?? [];
     const newAsks = withKeyStage(brief.keyStage, () => arm.visuals(next, i, { ...base, plan }));
     const state = new Map(oldAsks.map((a) => [a.key, visuals.get(`${i}:${a.key}`)]));
@@ -1856,10 +1879,22 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     const heading = String(next.heading ?? "");
     for (const a of newAsks) {
       const k = `${i}:${a.key}`;
-      const was = oldAsks.find((b) =>
-        sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }),
+      const was = oldAsks.find(
+        (b) =>
+          sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
+          // the same request is not the same drawing: a spec that changed is drawn again
+          (!abFigureSync() ||
+            b.type !== "diagram" ||
+            a.type !== "diagram" ||
+            specKey((b as { spec?: unknown }).spec) === specKey(a.spec)),
       );
-      const v = was ? state.get(was.key) : undefined;
+      const v0 = was ? state.get(was.key) : undefined;
+      // a drawing whose numbers the new words no longer say is never carried (y5 s7: a bar of 20
+      // beside "⅗ of 30 = 18"); the figure is fetched again from the repaired slide
+      const stale =
+        abFigureSync() && v0?.status === "diagram" ? figureTextMismatch(v0.spec, next) : undefined;
+      if (stale) log({ ev: "figure-stale", slide: i + 1, key: a.key, why: stale });
+      const v = stale ? undefined : v0;
       if (v && v.status !== "pending") {
         visuals.set(k, v);
         continue;
@@ -2114,6 +2149,18 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       await Promise.all(failing.map((c) => fitLoop(c)));
       mark("repaired");
     }
+  }
+  // chalkie-gap Y5-B: after repair, every drawn figure is checked against its slide's words; one
+  // that disagrees is dropped (failed), so the fallback below restages the slide without it.
+  if (abFigureSync()) await settle();
+  for (const [k, v] of abFigureSync() ? visuals : []) {
+    if (v.status !== "diagram") continue;
+    const i = Number(k.split(":")[0]);
+    const why = figureTextMismatch(v.spec, plan.slides[i] as Record<string, unknown> | undefined);
+    if (!why) continue;
+    log({ ev: "figure-text-mismatch", slide: i + 1, key: k, why, dropped: true });
+    visuals.set(k, { status: "failed" });
+    relay(i, "figure-text-mismatch");
   }
   // A diagram that still cannot draw: a picture of the same thing when it is a real, concrete
   // thing (the picture director, the diagram's `shows` as the request); else words only.

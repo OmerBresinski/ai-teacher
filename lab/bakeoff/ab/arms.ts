@@ -46,6 +46,7 @@ export const AB_ARMS = [
   "checkdef",
   "locale4",
   "base6",
+  "base6sync",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -80,6 +81,8 @@ export const AB_CONFIG: Record<
     titleSub?: boolean;
     /** base6: polish's snug filled flow and cycle nodes only (no label gap gate, no strips). */
     snugNodes?: boolean;
+    /** chalkie fix 1 (figure-sync.ts): repair redraws or drops a figure its new words contradict. */
+    figureSync?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -403,6 +406,20 @@ export const AB_CONFIG: Record<
     delta:
       "base4 + code title subtitle + snug nodes; recall clause removed, locale3's country line, one opener line (slot)",
   },
+  // base6sync (9 Oct, chalkie fix 1, fault ledger #7): code only, base6's switches + figureSync. Run
+  // as `--code-arm base6sync` over base6's (or base4's) writer; base6 itself keeps it off.
+  base6sync: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    titleSub: true,
+    snugNodes: true,
+    figureSync: true,
+    delta:
+      "base6's code + repair redraws or drops a figure its rewritten words contradict (code only)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -498,6 +515,8 @@ export const abTitleSub = () =>
     : false;
 /** Snug filled flow and cycle nodes alone (base6); polish arms get them through setDiagramPolish. */
 export const abSnugNodes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].snugNodes) : false);
+/** chalkie fix 1: figure-sync on repaired slides (base6sync). */
+export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].figureSync) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);

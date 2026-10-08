@@ -14,6 +14,7 @@ import { abArm, abFiles, abLib, abR1t3, abR2, abTitleSub } from "./ab/arms";
 import { polishTitleLead, protectSources } from "./ab/polish";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
+import { barModelParams } from "./figure-sync";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF, ROUNDS } from "./services";
 
@@ -46,6 +47,21 @@ function r2Ask(key: string, f: Record<string, unknown>): VisualAsk | undefined {
       labels: [],
       spec: { model: f.model, intent: f.intent, alt: f.alt },
     };
+  // lib arm (chalkie-gap fix 1b): a fraction-of-an-amount bar goes through library bar_model with
+  // params worked out in code (no fill call), so its numbers come from one truth.
+  if (abLib() && f.kind === "bar-model") {
+    const params = barModelParams(f);
+    if (params)
+      return {
+        key,
+        type: "diagram",
+        kind: "model",
+        shows: String(f.shows ?? ""),
+        labels: [],
+        // the writer's own spec, drawn by base4's bar-model if the library refuses
+        spec: { model: "bar_model", intent: f.shows, alt: f.alt, params, writer: writerSpecOf(f) },
+      };
+  }
   const spec = abR2() ? writerSpecOf(f) : undefined;
   if (!spec) return undefined;
   return {

@@ -1551,7 +1551,9 @@ export async function diagramSpec(
     if (r.libDrawn) return { libDrawn: r.libDrawn };
     if (!r.fallbackKind) return undefined;
     const { spec: _spec, lib: _lib, ...rest } = ask;
-    ask = { ...rest, kind: r.fallbackKind };
+    // a writer's bar routed to the library (chalkie-gap fix 1b) falls back to its own spec
+    const writer = (_spec as { writer?: unknown } | undefined)?.writer;
+    ask = { ...rest, kind: r.fallbackKind, ...(writer ? { spec: writer } : {}) };
   }
   // polish arm: strips is not a DiagramSpecSchema kind (no drawer knows it). The writer's spec is
   // checked and drawn like any R2 spec (parseDiagram reads it with the renderer switch on); a fault

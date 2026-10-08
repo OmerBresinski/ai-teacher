@@ -373,20 +373,32 @@ export async function libDiagram(
   ask: LibAsk,
   deps: LibDeps,
   log: (e: object) => void,
-): Promise<{ libDrawn?: Drawn & { model: string }; fallbackKind?: string; usd: number }> {
-  const spec = (ask.spec ?? {}) as { model?: string; intent?: string; alt?: string };
+): Promise<{
+  libDrawn?: Drawn & { model: string; params?: J };
+  fallbackKind?: string;
+  usd: number;
+}> {
+  const spec = (ask.spec ?? {}) as { model?: string; intent?: string; alt?: string; params?: J };
   const id = String(spec.model ?? "");
-  const r = await fillAndCheck(
-    {
-      model: id,
-      intent: String(spec.intent ?? ask.shows),
-      words: ask.words,
-      yearGroup: ask.yearGroup,
-      lesson: ask.lib?.lesson ?? "",
-    },
-    deps.filler,
-    log,
-  );
+  // chalkie-gap fix 1b: params worked out in code (a writer's fraction-of-an-amount bar) are
+  // checked like a fill, with no fill call; a refusal falls back like a failed fill.
+  const given = spec.params ? await checkParams(id, spec.params) : undefined;
+  if (given) log({ ev: "lib-given", key: ask.key, model: id, ok: !!given.params });
+  const r: FillResult = given
+    ? given.params
+      ? { ok: true, params: given.params, attempts: 0, usd: 0, warnings: given.warnings }
+      : { ok: false, refusals: given.refusals, attempts: 0, usd: 0 }
+    : await fillAndCheck(
+        {
+          model: id,
+          intent: String(spec.intent ?? ask.shows),
+          words: ask.words,
+          yearGroup: ask.yearGroup,
+          lesson: ask.lib?.lesson ?? "",
+        },
+        deps.filler,
+        log,
+      );
   const fallback = () => {
     const fallbackKind = BASE_KIND[id];
     log({ ev: "lib-fallback", key: ask.key, model: id, to: fallbackKind ?? "no figure" });
@@ -444,6 +456,8 @@ export async function libDiagram(
         minFs: d.minFs,
         alt: spec.alt ?? ask.shows,
         model: id,
+        // the figure-text check (figure-sync.ts) reads a bar model's amounts from its params
+        ...(id === "bar_model" ? { params: r.params } : {}),
       },
       usd: r.usd,
     };

@@ -67,10 +67,17 @@ describe("arm switches", () => {
     expect(rest).toEqual(b4);
     expect(AB_REF.base6?.ref).toBe("base4");
   });
+  test("base6sync = base6's code + figureSync; no other arm has figureSync", () => {
+    const { delta: _a, figureSync, ...s } = AB_CONFIG.base6sync;
+    const { delta: _b, ...b6 } = AB_CONFIG.base6;
+    expect(s).toEqual(b6);
+    expect(figureSync).toBe(true);
+    for (const a of AB_ARMS) expect(Boolean(AB_CONFIG[a].figureSync)).toBe(a === "base6sync");
+  });
   test("every other arm: titleSub = polish, snugNodes off, polish and polish2 unchanged", () => {
     for (const a of AB_ARMS) {
       setAbCodeArm(a);
-      if (a === "base6") {
+      if (a === "base6" || a === "base6sync") {
         expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2()]).toEqual([
           true,
           true,
