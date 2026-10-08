@@ -6,8 +6,7 @@
 // 3. Code checks: the library's schemaCheck, then the model's validate(). On a refusal, one repair
 //    call with the reasons; still refused -> base4's own drawer for the nearest base4 kind, or no figure.
 // 4. The lab renders the final build (light theme) into the figure zone, plus a builds strip.
-// Every word the models read is the prompt-engineer's (arms3/lib/REQUEST.md). Until those files exist
-// the code uses the PLACEHOLDER texts below, which are marked so a dry run shows them.
+// Every word the models read is the prompt-engineer's (arms3/lib/REQUEST.md), in lib-words/ beside this file.
 // bun lab/bakeoff/ab/lib.ts  -> writes ab/prompts/lib/{T,shared} from base4's files (base4 untouched).
 import {
   copyFileSync,
@@ -117,17 +116,10 @@ export type WriterWords = {
   /** Schema field descriptions: model, intent, alt. */
   fields?: Record<string, string>;
 };
-export const PLACEHOLDER_WRITER: WriterWords = {
-  menuLine:
-    "- model: [PLACEHOLDER lib arm, wording pending arms3/lib/REQUEST.md] a ready-made model from the list below, by id, with what this slide must show.",
-  header: "Models [PLACEHOLDER lib arm]:",
-  line: "- {id}: {teaches} ({years})",
-};
+/** The prompt-engineer's words: lib-words/ beside this file (writer.json, lib-fill*.txt, lib-repair-user.txt). */
+export const LIB_WORDS = `${import.meta.dir}/lib-words`;
 export function writerWords(): WriterWords {
-  const f = `${LIB_ARMS3}/WRITER.json`;
-  return existsSync(f)
-    ? { ...PLACEHOLDER_WRITER, ...(JSON.parse(readFileSync(f, "utf8")) as Partial<WriterWords>) }
-    : PLACEHOLDER_WRITER;
+  return JSON.parse(readFileSync(`${LIB_WORDS}/writer.json`, "utf8")) as WriterWords;
 }
 const yearsText = (ys: string[]) =>
   ys.length > 2 ? `${ys[0]}-${ys[ys.length - 1]}` : ys.join(", ");
@@ -196,32 +188,21 @@ export async function writeLibPrompts() {
     writeFileSync(`${LIB_PROMPTS}/T/schema.${st}.json`, `${JSON.stringify(schema, null, 1)}\n`);
     console.log(st, entries.length, "models;", "system", sys.length, "chars");
   }
-  for (const [f, text] of Object.entries(PLACEHOLDER_FILES))
-    if (!existsSync(`${LIB_PROMPTS}/shared/${f}`))
-      writeFileSync(`${LIB_PROMPTS}/shared/${f}`, text);
+  for (const f of LIB_FILES) copyFileSync(`${LIB_WORDS}/${f}`, `${LIB_PROMPTS}/shared/${f}`);
 }
 
 /* ------------------------------------------------------------------ the fill call */
 
-/** Fill and repair prompt files (prompts/lib/shared/), the prompt-engineer's; these are stand-ins. */
-export const PLACEHOLDER_FILES: Record<string, string> = {
-  "lib-fill.txt":
-    "[PLACEHOLDER lib arm fill system prompt, wording pending arms3/lib/REQUEST.md] Return the params JSON for the named model.\n",
-  "lib-fill-user.txt":
-    "[PLACEHOLDER lib arm fill user turn]\nModel: {{model}}\nLesson: {{lesson}}\nYear: {{year}}\nIntent: {{intent}}\nSlide:\n{{words}}\n",
-  "lib-repair-user.txt":
-    "[PLACEHOLDER lib arm repair turn]\nYour params:\n{{params}}\nRefused:\n{{refusals}}\n",
-};
+/** Fill and repair prompt files: written from lib-words/ into prompts/lib/shared/ by writeLibPrompts. */
+export const LIB_FILES = ["lib-fill.txt", "lib-fill-user.txt", "lib-repair-user.txt"] as const;
 const isPlaceholder = (s: string) => s.includes("[PLACEHOLDER lib arm");
-export function libPrompt(name: keyof typeof PLACEHOLDER_FILES): string {
+export function libPrompt(name: (typeof LIB_FILES)[number]): string {
   const f = `${LIB_PROMPTS}/shared/${name}`;
-  return existsSync(f) ? readFileSync(f, "utf8") : (PLACEHOLDER_FILES[name] as string);
+  return readFileSync(existsSync(f) ? f : `${LIB_WORDS}/${name}`, "utf8");
 }
 /** True while any lib prompt is still a stand-in (a paid run refuses: see libPaidFaults). */
 export function libPlaceholders(): string[] {
-  const out = Object.keys(PLACEHOLDER_FILES).filter((n) =>
-    isPlaceholder(libPrompt(n as keyof typeof PLACEHOLDER_FILES)),
-  );
+  const out: string[] = LIB_FILES.filter((n) => isPlaceholder(libPrompt(n)));
   if (writerWords().menuLine.includes("[PLACEHOLDER")) out.push("writer menu line and catalogue");
   return out;
 }

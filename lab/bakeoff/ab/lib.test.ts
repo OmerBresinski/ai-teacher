@@ -19,16 +19,19 @@ import {
 import {
   BASE_KIND,
   catalogue,
+  catalogueLines,
   checkParams,
   type Filler,
   fillAndCheck,
   libDiagram,
+  libPlaceholders,
   libPrompt,
   library,
   libSchema,
   libSystem,
   STAGE_YEARS,
   UNAVAILABLE,
+  writerWords,
 } from "./lib";
 
 type J = Record<string, unknown>;
@@ -89,13 +92,14 @@ describe("writer files", () => {
       const b = read(base.system);
       expect(sys.length).toBeGreaterThan(b.length);
       expect(menuKinds(sys)).toEqual([...menuKinds(b), "model"]);
-      for (const e of c) expect(sys).toContain(`- ${e.id}: `);
+      for (const l of catalogueLines(c)) expect(sys).toContain(`\n${l}\n`);
       const schema = JSON.parse(read(lib.schema));
       expect(schemaKinds(schema)).toContain("model");
       expect(openaiSchemaFaults(schema, true)).toEqual([]);
       expect((schema.$defs["dg-model-side"] as J & { properties: J }).properties.model).toEqual({
         type: "string",
         enum: c.map((e) => e.id),
+        description: writerWords().fields?.model,
       });
     }
   });
@@ -110,8 +114,9 @@ describe("writer files", () => {
     }
     expect(pinFaults("base4")).toEqual([]);
   });
-  test("a paid lib run refuses while any prompt is a placeholder", () => {
-    expect(pinFaults("lib").some((f) => f.includes("placeholder"))).toBe(true);
+  test("no lib prompt is a placeholder", () => {
+    expect(libPlaceholders()).toEqual([]);
+    expect(pinFaults("lib").some((f) => f.includes("placeholder"))).toBe(false);
   });
 });
 
@@ -199,8 +204,10 @@ describe("fill, check, repair", () => {
       model: "equal_groups",
     });
   });
-  test("fill prompts are stand-ins until the prompt-engineer's arrive", () => {
-    expect(libPrompt("lib-fill.txt")).toContain("[PLACEHOLDER lib arm");
+  test("fill prompts are the prompt-engineer's", () => {
+    expect(libPrompt("lib-fill.txt")).not.toContain("[PLACEHOLDER");
+    expect(libPrompt("lib-fill-user.txt")).toContain("{{words}}");
+    expect(libPrompt("lib-repair-user.txt")).toContain("{{refusals}}");
   });
 });
 
