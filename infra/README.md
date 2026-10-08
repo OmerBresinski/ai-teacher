@@ -31,7 +31,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | --- | ----- | ------ | -------------------- |
 | **Founder's domain, not a product domain** | `app.bresinski.org` / `api.bresinski.org` (TEACH-36) run on Omer's personal domain. | Buy the product domain; swap: two CNAMEs + `mail.<d>` records in Resend, then `WEB_ORIGIN`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `MAIL_FROM` on Railway and `VITE_API_URL` on Vercel. | ADR 0010 amendment (TEACH-36); "Domain" below |
 | **Vercel production is public** | `app.bresinski.org` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
-| **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
+| **No Speed Insights** | Speed Insights feature toggle off (billing). The CI remote cache is on since 2026-10-08 ("Turbo remote cache"). | Toggle Speed Insights in the dashboard. | TEACH-39; "Dashboard-only (Vercel)" |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
@@ -194,6 +194,12 @@ reuses the Vercel CLI login; `.turbo/config.json` holds only the team id and is 
 `gh secret set TURBO_TOKEN --repo OmerBresinski/ai-teacher` and
 `gh variable set TURBO_TEAM --body omerbresinskis-projects --repo OmerBresinski/ai-teacher`.
 `.github/workflows/ci.yml` already forwards both. No token is stored in this repository.
+
+Done on 2026-10-08: the team-scoped token `github-actions-turbo-remote-cache` is the `TURBO_TOKEN`
+secret and `TURBO_TEAM` is set (TEACH-190 part c). A token scoped to one project (also `vcp_…`)
+gets 403 from the cache; `GET https://api.vercel.com/v8/artifacts/status?slug=omerbresinskis-projects`
+answers `{"status":"enabled"}` for a token that works. A Vercel CLI login cannot create tokens
+(403 "Cannot create tokens for this app"), so tokens come from the dashboard.
 
 ### Manual deploys
 
@@ -850,7 +856,7 @@ Open:
 - [ ] **Product domain** (today `bresinski.org`, TEACH-36 — see "Domain"): repeat the three DNS rows
       and the variables on the new name; narrow CSP `connect-src` to the api origin at the same time.
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
-- [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
+- [x] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache"; done 2026-10-08).
 - [ ] Google sign-in: the Google Cloud consent screen and clients (TEACH-312, see "Google sign-in
       (Google Cloud)").
 - [ ] Microsoft sign-in: the Entra app registration and `MICROSOFT_*` (TEACH-206, ADR 0008

@@ -288,10 +288,26 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
       # `--bun` everywhere Playwright is invoked: the whole toolchain runs on Bun, no Node (ADR 0014).
-      # Headless runs use Chromium's headless shell, so the full browser is never downloaded.
+      # Headless runs use Chromium's headless shell, so the full browser is never downloaded. No
+      # `--with-deps` (TEACH-190 part c): the runner image already has the shell's libraries, and the
+      # extra font packages it would add come from an Ubuntu mirror that stalled single shards for 5
+      # to 19 minutes. The app ships its own web fonts and no spec compares pixels. If an image ever
+      # drops a library, `ldd` names it here instead of the browser failing to start mid-suite.
       - name: Install Chromium
         working-directory: apps/web
-        run: bunx --bun playwright install --with-deps --only-shell chromium
+        run: |
+          bunx --bun playwright install --only-shell chromium
+          shell="$(find ~/.cache/ms-playwright -type f \( -name chrome-headless-shell -o -name headless_shell \) | head -n 1)"
+          if [ -z "$shell" ]; then
+            echo "::error title=Chromium::no headless shell under ~/.cache/ms-playwright"
+            exit 1
+          fi
+          missing="$(ldd "$shell" | awk '/not found/ { print $1 }' | tr '\n' ' ')"
+          if [ -n "$missing" ]; then
+            echo "::error title=Chromium::$shell needs libraries the runner lacks: $missing; install them or restore --with-deps"
+            exit 1
+          fi
+          echo "every library of $shell resolves"
 
       # Straight to Playwright, not `bun run test:e2e` at the root: turbo would first build every
       # package, and the suite runs api and worker from source and builds web itself (`webServer`).
