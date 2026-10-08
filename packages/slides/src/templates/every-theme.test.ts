@@ -8,9 +8,10 @@ import { templateSamples } from "./samples";
  * nothing over, every diagram drawn, and no text under master's reading floor (MIN_FONT_SIZE.body,
  * ruling 140). Then a never-throw corpus: odd writer output still gives a slide.
  *
- * Known difference from master, recorded in the PR: a list marker (the one numeral or letter in its
- * disc) is stored at 0.55 of the disc (17 at KS3). Master's renderer clamps it to the body floor (20)
- * and the lab's to the stage's bodySmall step; neither draws it at 17. It is checked separately.
+ * Known difference from master, recorded in the PR: the numeral inside a list-marker badge
+ * (`isMarkerBadge`: a bold one- or two-character glyph in a filled circle) is stored at 0.55 of the
+ * disc (17 at KS3). It is the only text exempt from the floor, matched by role, not by size. Master's
+ * renderer clamps it to the body floor (20) and the lab's to the stage's bodySmall step.
  */
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
 const ALL: TemplateId[] = [
@@ -35,16 +36,41 @@ const ALL: TemplateId[] = [
 type Sized = {
   type: string;
   name?: string;
+  shape?: string;
+  fill?: string;
+  doc?: unknown;
   style?: { fontSize?: number };
-  textStyle?: { fontSize?: number };
+  textStyle?: { fontSize?: number; fontWeight?: number };
   fontSize?: number;
   children?: Sized[];
 };
-const sizes = (els: readonly unknown[]): { name: string; size: number }[] =>
+
+/** The words in an element's doc. */
+const docText = (d: unknown): string => {
+  const n = d as { text?: string; content?: unknown[] } | undefined;
+  return n?.text ?? (n?.content ?? []).map(docText).join("");
+};
+
+/**
+ * The one text role exempt from master's body floor: the numeral or letter inside a list-marker
+ * badge (`disc` in `index.ts`), a bold glyph of one or two characters in a filled circle. It is
+ * matched by role (the shape, its fill, its weight, its length), never by size; all other text keeps
+ * the floor.
+ */
+const isMarkerBadge = (e: Sized): boolean =>
+  e.name === "Marker" &&
+  e.type === "shape" &&
+  e.shape === "ellipse" &&
+  !!e.fill &&
+  e.textStyle?.fontWeight === 700 &&
+  docText(e.doc).trim().length >= 1 &&
+  docText(e.doc).trim().length <= 2;
+
+const sizes = (els: readonly unknown[]): { name: string; size: number; badge: boolean }[] =>
   (els as Sized[]).flatMap((e) => [
     ...[e.style?.fontSize, e.textStyle?.fontSize, e.type === "table" ? e.fontSize : undefined]
       .filter((s): s is number => s !== undefined)
-      .map((size) => ({ name: e.name ?? e.type, size })),
+      .map((size) => ({ name: e.name ?? e.type, size, badge: isMarkerBadge(e) })),
     ...sizes(e.children ?? []),
   ]);
 
@@ -63,22 +89,27 @@ describe("every writer template on every theme", () => {
           for (const o of r.over) faults.push(`${input.template} over: ${o}`);
           for (const d of r.diagram ?? []) faults.push(`${input.template} diagram: ${d}`);
           if (!r.slide.elements.length) faults.push(`${input.template}: empty slide`);
-          for (const { name, size } of sizes(r.slide.elements))
-            if (size < MIN_FONT_SIZE.body && name !== "Marker")
+          for (const { name, size, badge } of sizes(r.slide.elements))
+            if (size < MIN_FONT_SIZE.body && !badge)
               faults.push(`${input.template} ${name} ${size}`);
         }
         expect(faults).toEqual([]);
       });
 
-  test("a list marker is one or two characters in its disc", () => {
-    for (const input of templateSamples())
-      for (const e of layoutTemplate(input, THEMES[0] as never, "ks3").slide.elements)
-        if (e.name === "Marker" && e.type === "shape") {
-          const text = JSON.stringify(e.doc).match(/"text":"([^"]*)"/)?.[1] ?? "";
-          expect(text.length).toBeGreaterThan(0);
-          expect(text.length).toBeLessThanOrEqual(2);
-          expect(e.textStyle?.fontSize ?? 0).toBeLessThanOrEqual(e.h);
-        }
+  test("every element named Marker is a list-marker badge, so no other text escapes the floor", () => {
+    let badges = 0;
+    for (const theme of THEMES)
+      for (const stage of STAGES)
+        for (const input of templateSamples())
+          for (const e of layoutTemplate(input, theme, stage).slide.elements as Sized[])
+            if (e.name === "Marker") {
+              expect(isMarkerBadge(e)).toBe(true);
+              expect((e as { h?: number }).h ?? 0).toBeGreaterThanOrEqual(
+                e.textStyle?.fontSize ?? 0,
+              );
+              badges++;
+            }
+    expect(badges).toBeGreaterThan(0);
   });
 });
 
