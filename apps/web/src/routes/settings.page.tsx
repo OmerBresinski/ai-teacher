@@ -40,9 +40,11 @@ export function SettingsPage() {
         <Section title="Account">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-body sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-y-3">
             <dt className="text-ink-2">Name</dt>
-            <dd className="mb-2 truncate text-foreground sm:mb-0">{me?.user.name || "Not set"}</dd>
+            <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">
+              {me?.user.name || "Not set"}
+            </dd>
             <dt className="text-ink-2">Email</dt>
-            <dd className="mb-2 truncate text-foreground sm:mb-0">{me?.user.email}</dd>
+            <dd className="mb-2 min-w-0 break-words text-foreground sm:mb-0">{me?.user.email}</dd>
           </dl>
         </Section>
         <Section title="Appearance">

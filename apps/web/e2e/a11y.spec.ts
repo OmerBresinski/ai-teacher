@@ -80,6 +80,7 @@ test.describe("accessibility (axe)", () => {
     { path: "/worksheets", ready: "Worksheets" },
     { path: "/worksheets/new", ready: "From a lesson" },
     { path: "/series", ready: "Series" },
+    { path: "/settings", ready: "Account" },
     { path: paths.series("series-romans"), ready: "The Romans" },
     { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
     { path: paths.lesson("demo-water-cycle", "/view"), ready: /\d+ slides/ },
