@@ -46,6 +46,15 @@ export function buildCount(svg: string): number {
 /** Whether a tagged SVG has an answer part. */
 export const hasAnswerPart = (svg: string): boolean => / data-ans="1"/.test(svg);
 
+/**
+ * A still whose answer is held back (a library model on a question slide, TEACH-247 part i): its
+ * `data-reveal` marks are hidden by the drawing's own style, so every surface shows the question,
+ * and shown by `svgAtBuild` once the answer is revealed; its `data-qn` marks (what the answer
+ * replaces) leave then.
+ */
+export const REVEAL_HIDDEN = '[data-reveal="1"]{opacity:0}';
+export const hasRevealPart = (svg: string): boolean => / data-(?:reveal|qn)="1"/.test(svg);
+
 /** The untagged SVG back: every build wrapper removed, byte for byte the plain render. */
 export function stripBuilds(svg: string): string {
   // Wrappers never nest a different wrapper's close inside their own, so removing each opening
@@ -88,13 +97,17 @@ export function svgAtBuild(
 ): string {
   const total = buildCount(svg);
   const answers = hasAnswerPart(svg);
-  if (!total && !answers) return svg;
+  const reveal = hasRevealPart(svg);
+  if (!total && !answers && !reveal) return svg;
   const at = Math.max(0, Math.min(total, Math.floor(k)));
   const rules: string[] = [];
   const later = [];
   for (let s = at + 1; s <= total; s++) later.push(`[data-s="${s}"]`);
   if (later.length) rules.push(`${later.join(",")}{opacity:0}`);
   if (answers && !opts.answer) rules.push(`[data-ans="1"]{opacity:0}`);
+  // the doubled attribute outranks the drawing's own REVEAL_HIDDEN rule
+  if (reveal && opts.answer)
+    rules.push(`[data-reveal="1"][data-reveal]{opacity:1}`, `[data-qn="1"]{opacity:0}`);
   if (opts.motion && at > 0)
     rules.push(
       `@keyframes tj-build{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`,

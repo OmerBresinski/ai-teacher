@@ -1,6 +1,12 @@
 import type { ImageElement } from "@tj/domain/documents";
 import { isOpenPhotoSlot } from "@tj/slides";
-import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
+import {
+  builtSvgDataUrl,
+  hasAnswerPart,
+  hasRevealPart,
+  svgAtBuild,
+  svgOfDataUrl,
+} from "@tj/slides/diagram-builds";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
@@ -65,9 +71,11 @@ function useBuiltSrc(element: ImageElement, build: number | undefined, answer: b
     setMoved({ build, back });
   }
   return useMemo(() => {
-    if (build === undefined || !element.builds) return element.src;
+    if (build === undefined) return element.src;
     const svg = svgOfDataUrl(element.src);
     if (!svg) return element.src;
+    // A still with an answer held back (a library model on a question slide) still needs the reveal.
+    if (!element.builds && !hasRevealPart(svg) && !hasAnswerPart(svg)) return element.src;
     return builtSvgDataUrl(svgAtBuild(svg, build, { answer, motion: !reduced && !back }));
   }, [element.src, element.builds, build, answer, reduced, back]);
 }

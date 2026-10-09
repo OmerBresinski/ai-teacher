@@ -344,11 +344,25 @@ export function acceptWriterSpec(
 
 /**
  * A question slide keeps its answer back (D16 rule 4): a bar model shows no combined total and no
- * filled bar total (a "?" total is the question, and stays). Other kinds are returned as they are.
+ * filled bar total (a "?" total is the question, and stays); equal groups show "?" for the count
+ * in each group (TEACH-247 part i: the drawer fallback of a library model on a question slide);
+ * fraction shapes keep letter names but drop fraction names. Other kinds are returned as they are.
  */
 export function questionSafe<T>(spec: T): T {
   const s = spec as J;
-  if (!s || typeof s !== "object" || s.kind !== "bar-model") return spec;
+  if (!s || typeof s !== "object") return spec;
+  if (s.kind === "equal-groups") return { ...s, unknown: true } as T;
+  if (s.kind === "fraction-shapes" && Array.isArray(s.shapes))
+    return {
+      ...s,
+      shapes: (s.shapes as J[]).map((sh) => {
+        if (!sh || typeof sh !== "object" || typeof sh.name !== "string") return sh;
+        if (/^\s*[A-Za-z]\s*$/.test(sh.name)) return sh;
+        const { name: _n, ...rest } = sh;
+        return rest;
+      }),
+    } as T;
+  if (s.kind !== "bar-model") return spec;
   const { combined: _c, ...rest } = s;
   const bars = Array.isArray(rest.bars)
     ? (rest.bars as J[]).map((b) => {
