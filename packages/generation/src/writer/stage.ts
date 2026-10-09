@@ -14,6 +14,7 @@ import {
   withActivityMenu,
 } from "./activities";
 import { type WriterBundleId, writerBundle } from "./bundle";
+import type { CheckerFlags } from "./checker-flags";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { contractSystem } from "./contract";
 import { countMiss } from "./count";
@@ -212,6 +213,8 @@ export type WriterRun = {
    * laid out again afterwards, so no slot is left an open placeholder.
    */
   beforeEditable?: () => Promise<void>;
+  /** The checker's flags (`checker-flags.ts`), each default off: absent is master's checker. */
+  checker?: CheckerFlags;
 };
 export type WriterSlide = Pick<Slide, "kind" | "elements" | "background" | "question"> & {
   id: string;
@@ -680,6 +683,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
   await Promise.all(diagramJobs.values());
   const n = plan.slides.length;
+  const flags = run.checker ?? {};
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {

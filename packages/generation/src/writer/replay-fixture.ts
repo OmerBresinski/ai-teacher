@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pileSpec } from "@tj/slides/diagrams";
+import type { CheckerFlags } from "./checker-flags";
 import type { Brief } from "./fixes";
 import type { PhotoResult, VisualAsk, VisualState } from "./materialise";
 import type { ChatReq, WriterServices } from "./services";
@@ -156,6 +157,8 @@ export async function replayRun(
     onStreamEnd?: () => void;
     /** The saved brief changed before the run (a different slide count). */
     brief?: (b: Brief) => Brief;
+    /** The checker's flags for this run (`checker-flags.ts`); absent: master's checker. */
+    checker?: CheckerFlags;
   } = {},
 ) {
   const saved = JSON.parse(read(b, "brief.json")) as Brief;
@@ -187,6 +190,7 @@ export async function replayRun(
     visual,
     ...(o.visual ? {} : { placeMore: recorded.placeMore }),
     held: recordedHeld(b),
+    ...(o.checker ? { checker: o.checker } : {}),
     ...(o.hooks ?? {}),
     ...(split
       ? {}
