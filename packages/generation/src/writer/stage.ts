@@ -89,6 +89,7 @@ import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from ".
 import { stripPointTasks } from "./point-guard";
 import { writerSchema } from "./schema";
 import {
+  isFatal,
   nonFatal,
   SMALL_MODEL,
   WRITER_EFFORT,
@@ -194,6 +195,9 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
   return k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5;
 }
 
+/** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
+export const PUPIL_WORDING_DEADLINE_MS = 8_000;
+
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const { brief } = run;
   const P = writerBundle(run.bundle);
@@ -257,6 +261,33 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const title = codeTitle(brief, base);
   laid.set(0, title);
   laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+
+  // ── pupil wording: one small call, started with the writer (the objectives are confirmed), so
+  // slide 2 is laid once, before editable, and never changes after. A failed or late call keeps
+  // the teacher's wording; a budget or abort error still stops the lesson, when it is awaited. ──
+  const pupilJob: Promise<{ lines: unknown[] } | { fatal: unknown }> =
+    run.pupilWording === false
+      ? Promise.resolve({ lines: [] })
+      : chat({
+          model: SMALL_MODEL,
+          effort: "low",
+          system: P.pupilObjectives,
+          user: fillTemplate(P.pupilObjectivesUser, brief, {
+            objectives: plan.objectives ?? [],
+            maxWords: pupilWordLimit(brief.keyStage, (plan.objectives ?? []).length),
+          }),
+          schema: JSON.parse(P.pupilObjectivesSchema),
+          name: "pupil_objectives",
+          maxTokens: 1500,
+          timeoutMs: PUPIL_WORDING_DEADLINE_MS,
+        }).then(
+          (r) => ({ lines: (r.out as { pupil?: unknown[] } | undefined)?.pupil ?? [] }),
+          (e: unknown) => {
+            if (isFatal(e)) return { fatal: e };
+            log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
+            return { lines: [] };
+          },
+        );
 
   // ── the writer call ──
   const user = contextBlock(
@@ -501,36 +532,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
   }
-  await run.onEditable?.(deck());
-
-  // ── pupil wording: one small call after editable fills slide 2; any line missing keeps the
-  // teacher's wording, so slide 2 is never short ──
-  if (run.pupilWording !== false) {
-    const objectives = plan.objectives ?? [];
-    const r = await chat({
-      model: SMALL_MODEL,
-      effort: "low",
-      system: P.pupilObjectives,
-      user: fillTemplate(P.pupilObjectivesUser, brief, {
-        objectives,
-        maxWords: pupilWordLimit(brief.keyStage, objectives.length),
-      }),
-      schema: JSON.parse(P.pupilObjectivesSchema),
-      name: "pupil_objectives",
-      maxTokens: 1500,
-    }).catch(
-      whenNonFatal((e) => {
-        log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
-        return undefined;
-      }),
-    );
-    const lines = (r?.out as { pupil?: unknown[] } | undefined)?.pupil ?? [];
-    objectives.forEach((o, k) => {
-      const line = lines[k];
+  // Slide 2 with the pupil wording, before editable; any line missing keeps the teacher's.
+  const pupil = await pupilJob;
+  if ("fatal" in pupil) throw pupil.fatal;
+  if (pupil.lines.length) {
+    (plan.objectives ?? []).forEach((o, k) => {
+      const line = pupil.lines[k];
       if (typeof line === "string" && line.trim()) o.pupil = line.trim();
     });
     laid.set(1, codeObjectives({ ...base, index: 1, plan }));
   }
+  await run.onEditable?.(deck());
 
   // ── code checks ──
   const baseCheck = () =>
