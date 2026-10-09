@@ -24,6 +24,7 @@ import {
 import {
   FillingFollower,
   type FillingFollowerHandle,
+  StopFillingButton,
 } from "@/components/generating-lesson/FillingFollower";
 import { stageOf } from "@/components/generating-lesson/stage";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
@@ -455,7 +456,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         writingSlideIds={writing}
         proposalsBusy={proposals.busy}
         images={images}
-        exportSlot={exportControl}
+        exportSlot={
+          filling && unlocked ? (
+            <>
+              <StopFillingButton jobId={unlocked.jobId} />
+              {exportControl}
+            </>
+          ) : (
+            exportControl
+          )
+        }
         worksheetsSlot={worksheetsMenuEntry}
       />
       {filling && unlocked ? (

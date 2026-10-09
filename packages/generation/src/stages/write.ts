@@ -162,7 +162,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         const slide = own?.slide ?? planned;
         if (!slide) continue;
         slides.push(slide);
-        states[slide.id] = own?.state ?? "done";
+        // A slide still from the plan (no words yet) is the job's: never editable before its words.
+        states[slide.id] = own?.state ?? "writing";
       }
       const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned", states));
       const written = [...patches.keys()].filter((i) => i >= 2).length;

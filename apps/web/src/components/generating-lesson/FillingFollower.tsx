@@ -1,10 +1,13 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
 import type { LessonEditorHandle } from "@tj/editor/lesson";
+import { Button } from "@tj/ui";
 import { type RefObject, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
+import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
-import { sessionIsCurrent } from "@/lib/session-boundary";
+import { apiErrorFromResponse } from "@/lib/query";
+import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./GeneratingLesson";
 
 /** What the page may ask of the follower: fold the job's newest row in now (a save went stale). */
@@ -72,4 +75,39 @@ export function FillingFollower({
     return () => window.clearInterval(timer);
   }, [pull]);
   return null;
+}
+
+/**
+ * Stop, while the editor is open on a lesson that still fills (ADR 0037): the generating view's
+ * Stop moves into the editor's top bar, so the teacher can end the job from either view. What was
+ * written is kept; the follower's last pull releases the page into the plain editor.
+ */
+export function StopFillingButton({ jobId }: { jobId: string }) {
+  const queryClient = useQueryClient();
+  const cancel = useMutation(
+    sessionMutation(queryClient, {
+      mutationFn: async () => {
+        const res = await api.jobs[":id"].cancel.$post(
+          { param: { id: jobId } },
+          sessionRequest(queryClient),
+        );
+        if (res.status !== 202) throw await apiErrorFromResponse(res);
+        return res.json();
+      },
+    }),
+  );
+  const sent = cancel.isPending || cancel.isSuccess;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      data-filling-stop
+      disabled={sent}
+      onClick={() => {
+        if (!sent) cancel.mutate();
+      }}
+    >
+      {sent ? "Stopping" : "Stop"}
+    </Button>
+  );
 }

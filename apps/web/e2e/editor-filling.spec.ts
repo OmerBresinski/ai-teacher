@@ -88,6 +88,7 @@ test.describe("editing while the lesson fills @smoke", () => {
       .first()
       .click();
     await expect(page.locator("[data-slide-writing-overlay]")).toBeVisible();
+    await expect(page.locator("[data-filling-stop]")).toBeVisible();
     // No toolbar, slide actions or tabs over a slide the job is still writing.
     await expect(page.getByRole("button", { name: "Delete slide" })).toHaveCount(0);
     if (process.env.TEACH_SCREENSHOTS) {

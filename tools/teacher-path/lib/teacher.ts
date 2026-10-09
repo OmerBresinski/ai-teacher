@@ -109,6 +109,36 @@ async function readDoc(page: Page, api: string, id: string): Promise<Doc | null>
   }
 }
 
+/**
+ * True while a job still holds the lesson's lock (ADR 0037): the editor can be open and editable
+ * before then, so "editable" and "done" are read from the row, not from which view is on screen.
+ */
+async function jobRunning(page: Page, api: string, id: string): Promise<boolean | null> {
+  try {
+    const res = await page.request.get(`${api}/documents/${id}`);
+    if (!res.ok()) return null;
+    const j = await res.json();
+    return (j.document?.generatingJobId ?? null) !== null;
+  } catch {
+    return null;
+  }
+}
+
+/** The first slide in the rail not marked as still being written, or -1. */
+async function firstWritten(page: Page): Promise<number> {
+  const options = rail(page);
+  const n = await options.count().catch(() => 0);
+  for (let i = 0; i < n; i++) {
+    const writing = await options
+      .nth(i)
+      .locator("[data-slide-writing]")
+      .count()
+      .catch(() => 0);
+    if (writing === 0) return i;
+  }
+  return -1;
+}
+
 const imageSrcs = (doc: Doc | null): string =>
   JSON.stringify(
     (doc?.slides ?? []).map((s: Doc) =>
@@ -266,10 +296,14 @@ async function waitForLesson(
       lastRailCount = n;
       railSettledAt = s();
     }
-    if (run.times.firstEditableS === null && n > 0) {
-      if (await typeInto(page, 0, "TPFIRST")) {
+    // Editable means a slide takes typing while the job still runs (ruling 189); once the job has
+    // ended, the first edit is the after-done check, not this one.
+    const running = run.lessonId ? await jobRunning(page, stack.api, run.lessonId) : null;
+    const first = run.times.firstEditableS === null && n > 0 ? await firstWritten(page) : -1;
+    if (run.times.firstEditableS === null && running !== false && first >= 0) {
+      if (await typeInto(page, first, "TPFIRST")) {
         run.times.firstEditableS = s();
-        run.edits.push({ marker: "TPFIRST", slide: 1, typedAtS: s(), kept: null });
+        run.edits.push({ marker: "TPFIRST", slide: first + 1, typedAtS: s(), kept: null });
       }
     } else if (run.times.allEditableS === null && run.times.firstEditableS !== null && n > 1) {
       if (await typeInto(page, -1, "TPLAST")) {
@@ -300,6 +334,7 @@ async function waitForLesson(
       run.lessonId &&
       shell === 0 &&
       editor &&
+      running === false &&
       (sawShell || (landedAt && Date.now() - landedAt > 8_000))
     ) {
       run.times.doneS = s();
@@ -516,9 +551,27 @@ export async function replayPath(opts: {
     }
     const body = JSON.parse(text);
     body.updatedAt = new Date().toISOString();
+    // Replayed as a lesson still filling (ADR 0037): the first half of the slides done, the rest
+    // still being written, under a job lock. Editable then means typing into a done slide while
+    // the lock is held, and a writing slide must refuse it.
+    const jobId = crypto.randomUUID();
+    const ids: string[] = (body.slides ?? []).map((x: { id: string }) => x.id);
+    const half = Math.max(1, Math.ceil(ids.length / 2));
+    const stateOf = (done: boolean) =>
+      Object.fromEntries(ids.map((id, i) => [id, done || i < half ? "done" : "writing"]));
+    const generation = body.generation ?? {
+      stage: "planned",
+      startedAt: new Date().toISOString(),
+      promptVersions: {},
+      usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+      findings: [],
+    };
+    const filling = { ...body, generation: { ...generation, jobId, slideStates: stateOf(false) } };
     const res = await page.request.post(`${stack.api}/__test/seed-library`, {
       headers: { origin: stack.web },
-      data: { documents: [{ key: "recorded", kind: "lesson", body }] },
+      data: {
+        documents: [{ key: "recorded", kind: "lesson", body: filling, generatingJobId: jobId }],
+      },
     });
     if (!res.ok()) throw new Error(`seed ${res.status()}: ${await res.text()}`);
     run.lessonId = (await res.json()).ids.recorded;
@@ -528,15 +581,45 @@ export async function replayPath(opts: {
     await page.locator("[data-slide-root]").first().waitFor({ timeout: 30_000 });
     run.times.firstVisibleSlideS = (Date.now() - go) / 1000;
     await page.getByRole("button", { name: "Rename lesson" }).waitFor({ timeout: 30_000 });
-    if (await typeInto(page, 0, "TPFIRST")) {
+    const first = await firstWritten(page);
+    if (
+      first >= 0 &&
+      (await jobRunning(page, stack.api, run.lessonId)) === true &&
+      (await typeInto(page, first, "TPFIRST"))
+    ) {
       run.times.firstEditableS = (Date.now() - go) / 1000;
       run.edits.push({
         marker: "TPFIRST",
-        slide: 1,
+        slide: first + 1,
         typedAtS: run.times.firstEditableS,
         kept: null,
       });
     }
+    // A slide still being written takes no typing.
+    if (ids.length > half && (await typeInto(page, -1, "TPWRITING"))) {
+      throw new Error("a slide still being written accepted typing");
+    }
+    // The job ends: the recorded slides, all done, written as the worker would, lock released.
+    const base = (await readDoc(page, stack.api, run.lessonId)) as unknown;
+    const finish = await page.request.post(`${stack.api}/__test/job-write`, {
+      headers: { origin: stack.web },
+      data: {
+        id: run.lessonId,
+        jobId,
+        base: filling,
+        body: {
+          ...filling,
+          id: (base as { id?: string } | null)?.id ?? filling.id,
+          generation: { ...filling.generation, slideStates: stateOf(true) },
+        },
+        release: true,
+      },
+    });
+    if (!finish.ok()) throw new Error(`job-write ${finish.status()}: ${await finish.text()}`);
+    await page
+      .locator("[data-slide-writing]")
+      .first()
+      .waitFor({ state: "detached", timeout: 30_000 });
     run.times.doneS = (Date.now() - go) / 1000;
     await afterDone(page, context, stack, run, outDir);
   } catch (e) {
