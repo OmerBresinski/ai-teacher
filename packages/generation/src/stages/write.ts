@@ -106,8 +106,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
       // call on the small model (TEACH-247).
       drawDiagrams: { callDrawer: (req) => services.chat({ ...req, model: SMALL_MODEL }) },
-      // The diagram library's models are in the writer's menu (TEACH-247 part h, ADR 0035).
-      library: true,
+      // The diagram library is off for the writer (TEACH-247 part j): in production it drew
+      // amounts that contradict the slide ("one half of 16" drawn as 4 ÷ 2 = 2). No menu line, no
+      // schema entry, no fill call; saved library figures still render. Part h's wiring stays.
+      library: false,
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       onAsks: (i, asks, slide) => {
