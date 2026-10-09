@@ -623,6 +623,7 @@ export function LessonEditor({
                                 onReopen={editChat.openAndFocus}
                                 focusTick={chatFocusTick}
                                 bubbleHost={bubbleHost}
+                                bubbleHidden={factsOpen}
                                 paneMode={paneMode}
                                 paneWidth={paneW}
                               />

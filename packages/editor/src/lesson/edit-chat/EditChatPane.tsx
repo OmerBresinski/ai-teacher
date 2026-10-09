@@ -529,6 +529,7 @@ export function EditChatPane({
   onReopen,
   focusTick,
   bubbleHost,
+  bubbleHidden = false,
   paneMode = "docked",
   paneWidth = 320,
 }: {
@@ -537,6 +538,8 @@ export function EditChatPane({
   paneWidth?: number;
   /** Layout A: the canvas row the bubble sits in (bottom right, on the zoom row). */
   bubbleHost?: HTMLElement | null;
+  /** Another pane (Facts) holds the right slot: no bubble over it until it closes. */
+  bubbleHidden?: boolean;
   /** Closed, the pane shows as the bubble; the request carries on in `EditChatProvider`. */
   open?: boolean;
   /** The bubble's click: open the pane again. */
@@ -575,7 +578,7 @@ export function EditChatPane({
       >
         <ChatThread view={view} />
       </aside>
-      {open ? null : (
+      {open || bubbleHidden ? null : (
         <EditChatBubble
           state={bubble}
           announcement={unread?.text ?? ""}
