@@ -1,0 +1,2703 @@
+{
+  "version": 1,
+  "id": "bakeoff-T-y5-maths-fractions-of-amounts",
+  "title": "Fractions of amounts",
+  "themeId": "splash",
+  "fitVersion": 3,
+  "subject": "Maths",
+  "ageBand": "ks2",
+  "yearGroup": "Year 5",
+  "language": "en-GB",
+  "createdAt": "2026-10-08T23:13:05.817Z",
+  "updatedAt": "2026-10-08T23:13:05.817Z",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "Z3cfPrQqg2",
+          "type": "text",
+          "x": 64,
+          "y": 142,
+          "w": 640,
+          "h": 157,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Fractions of amounts"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "style": {
+            "preset": "title",
+            "autoHeight": false,
+            "fontSize": 74,
+            "lineHeight": 1.06,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#FFFFFF",
+            "valign": "bottom"
+          }
+        },
+        {
+          "id": "o5mXOBmmq1",
+          "type": "text",
+          "x": 64,
+          "y": 319,
+          "w": 640,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Share 12 apples equally between 3 baskets. How many in each?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Subtitle",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#FFFFFF"
+          }
+        }
+      ],
+      "background": {
+        "color": "#0A5CA2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "MeB4OIksgk",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Today we are learning to"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "X0xS58gaf4",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 167,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "k236GxYurx",
+          "type": "text",
+          "x": 113,
+          "y": 165,
+          "w": 671,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Calculate unit fractions of whole-number amounts by dividing by the denominator, where the answer is a whole number."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "_3W-3UBknX",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 282,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Ib2l1ZEJEi",
+          "type": "text",
+          "x": 113,
+          "y": 280,
+          "w": 671,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Calculate non-unit fractions of whole-number amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "DyxzJLQVaz",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 397,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "X2PB4h3D6g",
+          "type": "text",
+          "x": 113,
+          "y": 395,
+          "w": 671,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Solve one-step word problems involving fractions of quantities, money and measures, where the answer is a whole number."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s3",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "tOLK0YhGOA",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find one sixth of 24"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "gxU4l_kwam",
+          "type": "text",
+          "x": 64,
+          "y": 160,
+          "w": 392,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One sixth means one of six equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "aG35-220Cz",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 276,
+          "w": 10,
+          "h": 10,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "KxM24UtE5j",
+          "type": "text",
+          "x": 93,
+          "y": 261,
+          "w": 363,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Share 24 into 6 equal groups."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "8Nf83wjl8Q",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 374,
+          "w": 10,
+          "h": 10,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "VMj01wyJqK",
+          "type": "text",
+          "x": 93,
+          "y": 359,
+          "w": 363,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "24 ÷ 6 = 4"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "k6jyZJHD97",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 431,
+          "w": 10,
+          "h": 10,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "eenTLwV-cQ",
+          "type": "text",
+          "x": 93,
+          "y": 416,
+          "w": 363,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One sixth of 24 is 4."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "X0FOiKeODI",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "bU8ldE9Nkn",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20249%20203%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Six%20rings%20each%20contain%20four%20counters%2C%20making%20twenty-four%20altogether.%22%3E%3Ctitle%3ESix%20rings%20each%20contain%20four%20counters%2C%20making%20twenty-four%20altogether.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%2231.44%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%2218.78%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2237.53%22%20cy%3D%2216.15%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2252.83%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2250.19%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%2244.1%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2237.53%22%20cy%3D%2241.46%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2227.51%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224.87%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2240.17%22%20y%3D%2287.13%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%2231.44%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%2218.78%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22117.86%22%20cy%3D%2216.15%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22133.16%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22130.52%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%2244.1%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22117.86%22%20cy%3D%2241.46%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22107.84%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22105.21%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22120.5%22%20y%3D%2287.13%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%2231.44%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%2218.78%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22198.2%22%20cy%3D%2216.15%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22213.49%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22210.86%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%2244.1%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22198.2%22%20cy%3D%2241.46%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22188.17%22%20cy%3D%2231.44%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22185.54%22%20cy%3D%2228.8%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22200.83%22%20y%3D%2287.13%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%22132.94%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%22120.28%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2237.53%22%20cy%3D%22117.65%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2252.83%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2250.19%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2240.17%22%20cy%3D%22145.6%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2237.53%22%20cy%3D%22142.96%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2227.51%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224.87%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2240.17%22%20y%3D%22188.63%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%22132.94%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%22120.28%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22117.86%22%20cy%3D%22117.65%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22133.16%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22130.52%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22120.5%22%20cy%3D%22145.6%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22117.86%22%20cy%3D%22142.96%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22107.84%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22105.21%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22120.5%22%20y%3D%22188.63%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%22132.94%22%20r%3D%2229.44%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%22120.28%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22198.2%22%20cy%3D%22117.65%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22213.49%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22210.86%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22200.83%22%20cy%3D%22145.6%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22198.2%22%20cy%3D%22142.96%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22188.17%22%20cy%3D%22132.94%22%20r%3D%228.24%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22185.54%22%20cy%3D%22130.3%22%20r%3D%222.47%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22200.83%22%20y%3D%22188.63%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Six rings each contain four counters, making twenty-four altogether.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 3 minutes modelling the equal sharing. Ask pupils to explain why dividing by 6 finds one sixth.\n\nAnswers\n4\n\nBackground\nA unit fraction has a numerator of 1. Dividing the whole amount by the denominator finds the size of one equal part."
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "AQRikLsojd",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find one sixth of 30"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "aLFaUjTojS",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 273,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "Fw0Y4moj0K",
+          "type": "image",
+          "name": "Diagram",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 229,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20438%20127%22%20width%3D%22788%22%20height%3D%22229%22%20role%3D%22img%22%20aria-label%3D%22Thirty%20counters%20are%20shared%20equally%20between%20six%20rings%3B%20each%20group's%20count%20is%20unknown.%22%3E%3Ctitle%3EThirty%20counters%20are%20shared%20equally%20between%20six%20rings%3B%20each%20group's%20count%20is%20unknown.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2235.83%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2235.83%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2233.59%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2248.14%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2245.9%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2243.44%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2241.2%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2228.23%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2225.99%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2223.52%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2221.28%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2235.83%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22107.5%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22107.5%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22105.26%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22119.81%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22117.57%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22115.11%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22112.87%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2299.89%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2297.65%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2295.19%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2292.95%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22107.5%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22179.17%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22179.17%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22176.93%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22191.48%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22189.24%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22186.77%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22184.53%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22171.56%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22169.32%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22166.86%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22164.62%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22179.17%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22250.83%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22250.83%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22248.59%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22263.14%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22260.9%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22258.44%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22256.2%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22243.23%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22240.99%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22238.52%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22236.28%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22250.83%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22322.5%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22322.5%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22320.26%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22334.81%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22332.57%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22330.11%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22327.87%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22314.89%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22312.65%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22310.19%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22307.95%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22322.5%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22394.17%22%20cy%3D%2242.88%22%20r%3D%2230.1%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22394.17%22%20cy%3D%2229.94%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22391.93%22%20cy%3D%2227.7%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22406.48%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22404.24%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22401.77%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22399.53%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22386.56%22%20cy%3D%2253.35%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22384.32%22%20cy%3D%2251.11%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22381.86%22%20cy%3D%2238.88%22%20r%3D%227%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22379.62%22%20cy%3D%2236.64%22%20r%3D%222.1%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22394.17%22%20y%3D%2299.23%22%3E%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Thirty counters are shared equally between six rings; each group's count is unknown.",
+          "fit": "contain"
+        },
+        {
+          "id": "C1AyxELFUM",
+          "type": "text",
+          "x": 64,
+          "y": 447,
+          "w": 832,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write a division calculation and your answer."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 3 minutes for pupils to write the division and answer independently, then check together.\n\nAnswers\n30 ÷ 6 = 5; one sixth of 30 is 5.\n\nMisconceptions\nPupils may multiply 30 by 6, treating the denominator as the number of groups to take. Remind them that one sixth is one of six equal parts, so divide by 6.\n\nBackground\nThis applies the unit-fraction method to a new amount: the denominator tells how many equal groups to make."
+    },
+    {
+      "id": "s5",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "c4s4n1v6sZ",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find three fifths of 20"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "ZiQ5G-nAs1",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 392,
+          "h": 98,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Formula panel"
+        },
+        {
+          "id": "VHHZgl9U3s",
+          "type": "text",
+          "x": 86,
+          "y": 182,
+          "w": 348,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "20 ÷ 5 × 3 = 12"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Formula",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "fCNA66_lXy",
+          "type": "text",
+          "x": 86,
+          "y": 276,
+          "w": 348,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find one fifth: 20 ÷ 5 = 4."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Step",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0
+          }
+        },
+        {
+          "id": "eWY8GbnsvW",
+          "type": "text",
+          "x": 86,
+          "y": 327,
+          "w": 348,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Take three fifths: 4 × 3 = 12."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Step",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0
+          }
+        },
+        {
+          "id": "dMERf_ugbX",
+          "type": "text",
+          "x": 86,
+          "y": 419,
+          "w": 348,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Three fifths of 20 is 12."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Step",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0
+          }
+        },
+        {
+          "id": "zBwBaPogGA",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "wmDRS1pCm1",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22A%20bar%20of%20twenty%20has%20five%20equal%20parts%20of%20four%3B%20three%20parts%20are%20shaded.%22%3E%3Ctitle%3EA%20bar%20of%20twenty%20has%20five%20equal%20parts%20of%20four%3B%20three%20parts%20are%20shaded.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%224.75%22%20y%3D%2270%22%20width%3D%2230.7%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2220.1%22%20y%3D%22122.75%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2240.95%22%20y%3D%2270%22%20width%3D%2230.7%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2256.3%22%20y%3D%22122.75%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2277.15%22%20y%3D%2270%22%20width%3D%2230.7%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.5%22%20y%3D%22122.75%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22113.35%22%20y%3D%2270%22%20width%3D%2230.7%22%20height%3D%2288%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22128.7%22%20y%3D%22122.75%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22149.55%22%20y%3D%2270%22%20width%3D%2230.7%22%20height%3D%2288%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22164.9%22%20y%3D%22122.75%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M2%2C61.25%20Q2%2C51.25%2012%2C51.25%20L82.5%2C51.25%20Q92.5%2C51.25%2092.5%2C41.25%20Q92.5%2C51.25%20102.5%2C51.25%20L173%2C51.25%20Q183%2C51.25%20183%2C61.25%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.5%22%20y%3D%2226.25%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A bar of twenty has five equal parts of four; three parts are shaded.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 4 minutes working through the calculation. Ask pupils to say what each step finds.\n\nAnswers\n12\n\nMisconceptions\nPupils may stop after finding one fifth, giving 4, or divide by 3 instead of 5. First divide by the denominator to find one fifth, then multiply by the numerator to find three fifths.\n\nBackground\nFor a non-unit fraction, divide by the denominator to find one part, then multiply by the numerator to find the required number of parts."
+    },
+    {
+      "id": "s6",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "z1mfo1HhLh",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find three fifths of 30"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "L9Pn-peVjE",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 190,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Zzl5eH7Wxc",
+          "type": "text",
+          "x": 120,
+          "y": 188,
+          "w": 704,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What is one fifth of 30?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "5JYJq8tUgJ",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 246,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "cl6-o4PumJ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 265,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Y6-vIpviaO",
+          "type": "text",
+          "x": 120,
+          "y": 263,
+          "w": 704,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What is three fifths of 30?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "BAKbylbHk_",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 321,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "mGET2HxU13",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 340,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Fl8gFHnFIs",
+          "type": "text",
+          "x": 120,
+          "y": 338,
+          "w": 704,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write one calculation showing both steps."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "Fd8sz_wB5C",
+          "type": "text",
+          "x": 120,
+          "y": 404,
+          "w": 704,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Work on your own. Show your working."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nGive pupils about 5 minutes to work independently and show both steps. Take feedback and ask a pupil to explain the calculation.\n\nAnswers\n1. 6\n2. 18\n3. 30 ÷ 5 × 3 = 18\n\nMisconceptions\nPupils may answer 6 for three fifths, stopping at one fifth, or divide by 3 because it is the numerator. Clarify that 30 ÷ 5 finds one fifth; multiplying that answer by 3 finds three fifths.\n\nBackground\nThis is a guided move from a worked example to independent practice, using the divide-then-multiply method."
+    },
+    {
+      "id": "s7",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "78J8ym8uDR",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which number tells us to divide?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "ohbnEjS1Ox",
+          "type": "text",
+          "x": 64,
+          "y": 160,
+          "w": 392,
+          "h": 68,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "For three quarters of 20, divide by 4, not 3."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "sCwxzRl1zW",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 253,
+          "w": 9,
+          "h": 9,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "lUVG9x9Vz0",
+          "type": "text",
+          "x": 89,
+          "y": 240,
+          "w": 367,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Denominator: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "The bottom number gives the number of equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "SeNzGei7cI",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 366,
+          "w": 9,
+          "h": 9,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "75IoC4DX5m",
+          "type": "text",
+          "x": 89,
+          "y": 353,
+          "w": 367,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Numerator: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "The top number gives the number of parts to take."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "uIeRFqJpD8",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "kz-zIA5Wb3",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22A%20bar%20of%20twenty%20is%20split%20into%20four%20parts%20of%20five%2C%20with%20three%20parts%20shaded.%22%3E%3Ctitle%3EA%20bar%20of%20twenty%20is%20split%20into%20four%20parts%20of%20five%2C%20with%20three%20parts%20shaded.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%224.75%22%20y%3D%2270%22%20width%3D%2239.75%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2224.63%22%20y%3D%22122.75%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2250%22%20y%3D%2270%22%20width%3D%2239.75%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22122.75%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2295.25%22%20y%3D%2270%22%20width%3D%2239.75%22%20height%3D%2288%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22115.13%22%20y%3D%22122.75%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22140.5%22%20y%3D%2270%22%20width%3D%2239.75%22%20height%3D%2288%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22160.38%22%20y%3D%22122.75%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M2%2C61.25%20Q2%2C51.25%2012%2C51.25%20L82.5%2C51.25%20Q92.5%2C51.25%2092.5%2C41.25%20Q92.5%2C51.25%20102.5%2C51.25%20L173%2C51.25%20Q183%2C51.25%20183%2C61.25%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.5%22%20y%3D%2226.25%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A bar of twenty is split into four parts of five, with three parts shaded.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 3 minutes checking pupils can identify the denominator and explain why it determines the division.\n\nAnswers\n4\n\nMisconceptions\nPupils may choose 3 because they think the numerator tells them what to divide by. The numerator tells how many parts to take; the denominator tells how many equal parts make the whole. For three quarters of 20, divide by 4, then take 3 parts.\n\nBackground\nThe numerator is the top number in a fraction and the denominator is the bottom number. Naming these helps pupils remember which number has each role."
+    },
+    {
+      "id": "s8",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "N5cr1axfye",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose the calculation"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "yMFBWk5sBY",
+          "type": "text",
+          "x": 64,
+          "y": 199,
+          "w": 832,
+          "h": 40,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which calculation finds two thirds of 18?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Stem",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "UxcQG2fJpy",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 261,
+          "w": 407,
+          "h": 81,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "j1q1MY5wrv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 84,
+          "y": 284,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "DJsDOAyOLe",
+          "type": "text",
+          "x": 134,
+          "y": 281,
+          "w": 317,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "18 × 2"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "HuAF_-jPnV",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 489,
+          "y": 261,
+          "w": 407,
+          "h": 81,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "EiripUPIdo",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 509,
+          "y": 284,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "yZeFcpsf44",
+          "type": "text",
+          "x": 559,
+          "y": 281,
+          "w": 317,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "18 ÷ 2 × 3"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "piabBBOMfb",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 360,
+          "w": 407,
+          "h": 81,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "4uR6MHQcIw",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 84,
+          "y": 383,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "dGYS2McjHu",
+          "type": "text",
+          "x": 134,
+          "y": 380,
+          "w": 317,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "18 ÷ 3"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "t8WWbT9W08",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 489,
+          "y": 360,
+          "w": 407,
+          "h": 81,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "N_rSPCWCgl",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 509,
+          "y": 383,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "D"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "-N7yUei5et",
+          "type": "text",
+          "x": 559,
+          "y": 380,
+          "w": 317,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "18 ÷ 3 × 2"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 3 minutes for pupils to choose independently, then ask them to justify their choice.\n\nAnswers\nD: 18 ÷ 3 × 2\n\nMisconceptions\n18 × 2 takes twice the whole amount. 18 ÷ 2 × 3 divides by the numerator rather than the denominator. 18 ÷ 3 finds one third but stops before taking two parts. The correct method is to divide by 3, then multiply by 2.\n\nBackground\nA multiple-choice check can reveal whether pupils know both steps and the role of each fraction number."
+    },
+    {
+      "id": "s9",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "5qoqiQ7hRn",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How much does Aisha spend?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "Nuxp0EEBC1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 186,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "2rkrxxjg5p",
+          "type": "text",
+          "x": 113,
+          "y": 184,
+          "w": 343,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Aisha has £40. She spends three fifths of it. 40 ÷ 5 × 3 = 24"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "PSpw0Ykd_y",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 301,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "stkMivb26A",
+          "type": "text",
+          "x": 113,
+          "y": 299,
+          "w": 343,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One fifth: £40 ÷ 5 = £8."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "v6unWFBTlk",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 346,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "O0wSgKYsAD",
+          "type": "text",
+          "x": 113,
+          "y": 344,
+          "w": 343,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Three fifths: £8 × 3 = £24."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "Vz5YTtqje0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 391,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "4"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "mCahx5kuNl",
+          "type": "text",
+          "x": 113,
+          "y": 389,
+          "w": 343,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Aisha spends £24."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "4JY8Xi_Yzg",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "RGWqy7gK9O",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20268%20218%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22A%20forty-pound%20bar%20has%20five%20equal%20parts%20of%20eight%20pounds%3B%20three%20parts%20are%20shaded.%22%3E%3Ctitle%3EA%20forty-pound%20bar%20has%20five%20equal%20parts%20of%20eight%20pounds%3B%20three%20parts%20are%20shaded.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%222%22%20y%3D%2223.75%22%3EMoney%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%224.75%22%20y%3D%22115%22%20width%3D%2245.7%22%20height%3D%22103%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2227.6%22%20y%3D%22175.25%22%3E%C2%A38%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2255.95%22%20y%3D%22115%22%20width%3D%2245.7%22%20height%3D%22103%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2278.8%22%20y%3D%22175.25%22%3E%C2%A38%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22107.15%22%20y%3D%22115%22%20width%3D%2245.7%22%20height%3D%22103%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22130%22%20y%3D%22175.25%22%3E%C2%A38%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22158.35%22%20y%3D%22115%22%20width%3D%2245.7%22%20height%3D%22103%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22181.2%22%20y%3D%22175.25%22%3E%C2%A38%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22209.55%22%20y%3D%22115%22%20width%3D%2245.7%22%20height%3D%22103%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22232.4%22%20y%3D%22175.25%22%3E%C2%A38%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M2%2C106.25%20Q2%2C96.25%2012%2C96.25%20L120%2C96.25%20Q130%2C96.25%20130%2C86.25%20Q130%2C96.25%20140%2C96.25%20L248%2C96.25%20Q258%2C96.25%20258%2C106.25%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2225%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22130%22%20y%3D%2271.25%22%3E%C2%A340%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A forty-pound bar has five equal parts of eight pounds; three parts are shaded.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 4 minutes discussing the worked method. Ask pupils what £8 represents before moving to the final answer.\n\nAnswers\n£24\n\nMisconceptions\nPupils may give £8, which is one fifth rather than three fifths, or multiply £40 by 3 before dividing. Find one fifth by dividing £40 by 5, then multiply £8 by 3. Keep the pound unit in the answer.\n\nBackground\nFractions of money are calculated in the same way as fractions of other whole-number amounts. The unit remains pounds throughout."
+    },
+    {
+      "id": "s10",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "KIkhRS25hk",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How much does Ben spend?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "VVHY5QMSYb",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 244,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "7Usmz1lK_K",
+          "type": "text",
+          "x": 120,
+          "y": 242,
+          "w": 704,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Ben has £50. He spends three fifths of it. How much does he spend?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "lYIAykZLEW",
+          "type": "text",
+          "x": 120,
+          "y": 349,
+          "w": 704,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write your calculation and answer in pounds."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 4 minutes for independent working. Check that pupils show the calculation and include pounds.\n\nAnswers\n£30; £50 ÷ 5 × 3 = £30.\n\nMisconceptions\nPupils may give £10, which is one fifth, or divide by 3 instead of 5. Divide £50 by the denominator, 5, to find £10, then multiply by 3. Include the pound sign.\n\nBackground\nThis applies the same non-unit fraction method in a money context, with a whole-number result."
+    },
+    {
+      "id": "s11",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "lGUDpakSHn",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Use fractions to solve problems"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "Jj1ni8QU_n",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 171,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "l243-9jTS9",
+          "type": "text",
+          "x": 113,
+          "y": 169,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A box holds 36 pencils. One quarter are red. How many pencils are red?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "ooLq6EXyQe",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 248,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "--lqdDdX1U",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 259,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "bLL99eX6qf",
+          "type": "text",
+          "x": 113,
+          "y": 257,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A ribbon is 35 cm long. Mia cuts off three fifths. How many centimetres does she cut off?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "7THYhWq7xv",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 336,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "MdQL9cT996",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 347,
+          "w": 31,
+          "h": 31,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "LBu4CC7uaB",
+          "type": "text",
+          "x": 113,
+          "y": 345,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Stretch: Sam uses two thirds of a 24 m rope. Jo uses three quarters of a 20 m rope. Who uses more metres? Explain."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "EsdOsLET7F",
+          "type": "text",
+          "x": 113,
+          "y": 429,
+          "w": 711,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Show your working. Include the unit."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nGive pupils about 8 minutes to solve the first two problems independently and include units. Invite pupils who are ready to attempt the stretch, then review methods and answers.\n\nAnswers\n1. 9 pencils; 36 ÷ 4 = 9.\n2. 21 cm; 35 ÷ 5 × 3 = 21 cm.\n3. Sam uses 16 m and Jo uses 15 m, so Sam uses more. 24 ÷ 3 × 2 = 16 m; 20 ÷ 4 × 3 = 15 m.\n\nMisconceptions\nFor the first question, pupils may multiply 36 by 4 instead of dividing by 4. For the second, they may stop at one fifth, 7 cm, rather than take three parts. In the stretch, pupils may compare the fractions alone; the amounts also depend on the different rope lengths. Calculate each amount before comparing.\n\nBackground\nThe first two problems use unit and non-unit fractions in familiar contexts. The stretch requires pupils to calculate two fractions of different wholes and compare the resulting quantities."
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "z7m2QMUfWF",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Will the juice be enough?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "wstQSKM5iV",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 186,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "W5nU2oaqLQ",
+          "type": "text",
+          "x": 120,
+          "y": 184,
+          "w": 704,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A jug holds 900 ml of juice. Four fifths of the juice is poured into a bottle. How much goes into the bottle?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "UiNquRWLqp",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 283,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "sACkQXieQF",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 302,
+          "w": 36,
+          "h": 36,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "9g-2CTaw0h",
+          "type": "text",
+          "x": 120,
+          "y": 300,
+          "w": 704,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The bottle must hold at least 700 ml for a picnic. Is there enough juice in it? Explain."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "2jkpI1NpPX",
+          "type": "text",
+          "x": 120,
+          "y": 407,
+          "w": 704,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Calculate, then justify your decision."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 6 minutes for pupils to calculate and write a justification. Ask them to state both the amount poured and how it compares with the minimum.\n\nAnswers\n1. 720 ml; 900 ÷ 5 × 4 = 720 ml.\n2. Yes. 720 ml is more than the 700 ml needed, by 20 ml.\n\nMisconceptions\nPupils may stop at one fifth, 180 ml, or calculate only three fifths instead of four. Find one fifth by dividing by 5, then multiply by 4. They may also decide there is not enough because 720 is close to 700; compare the amounts directly: 720 ml exceeds 700 ml by 20 ml.\n\nBackground\nThis combines calculating a non-unit fraction with interpreting the result against a threshold. The comparison must use the same unit, millilitres."
+    }
+  ],
+  "bakeoff": {
+    "arm": "T",
+    "brief": "y5-maths-fractions-of-amounts",
+    "objectives": [
+      {
+        "teacher": "Calculate unit fractions of whole-number amounts by dividing by the denominator, where the answer is a whole number.",
+        "pupil": "Calculate unit fractions of whole-number amounts by dividing by the denominator, where the answer is a whole number."
+      },
+      {
+        "teacher": "Calculate non-unit fractions of whole-number amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number.",
+        "pupil": "Calculate non-unit fractions of whole-number amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number."
+      },
+      {
+        "teacher": "Solve one-step word problems involving fractions of quantities, money and measures, where the answer is a whole number.",
+        "pupil": "Solve one-step word problems involving fractions of quantities, money and measures, where the answer is a whole number."
+      }
+    ]
+  }
+}

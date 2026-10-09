@@ -68,12 +68,12 @@ for (const b of [
             .map((e) => JSON.stringify(e).slice(0, 200)),
         );
       expect(missing.length).toBe(0);
-      const code = events.filter((e) => e.ev === "r2-spec-drawn").length;
-      const structuredFaults = events.filter((e) => e.ev === "r2-spec-fault").length;
-      // Every drawer call is a freeform kind or a writer spec that did not draw.
-      expect(calls.length).toBeLessThanOrEqual(
-        events.filter((e) => e.ev === "diagram-done").length - code + structuredFaults,
-      );
+      // Every drawer call (a retry included) is a freeform kind or a writer spec that did not draw;
+      // a slide whose spec drew by code never calls the drawer.
+      const called = events.filter((e) => e.ev === "diagram-call");
+      expect(calls.length).toBe(called.length);
+      const drawn = new Set(events.filter((e) => e.ev === "r2-spec-drawn").map((e) => e.slide));
+      expect(called.filter((e) => drawn.has(e.slide))).toEqual([]);
       if (lab.length) expect(ours.length).toBeGreaterThan(0);
     });
   });

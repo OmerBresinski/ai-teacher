@@ -607,7 +607,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             spec: ask.question ? questionSafe(r.spec) : r.spec,
           });
         log({
-          ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
+          ev: r.spec ? "r2-spec-redrawn" : "r2-spec-refault",
           slide: i + 1,
           key: a.key,
           late: true,
@@ -950,7 +950,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       const n0 = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
       swapSlide(i, pic);
+      // The picture is placed now, after editable (as the evidence ran; base4 never placed it).
+      const now = plan.slides[i] as S;
+      await run.placeMore?.(
+        i,
+        (asks.get(i) ?? []).filter((a) => a.type === "photo"),
+        { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+      );
       if ((asks.get(i) ?? []).some((a) => visualState(i)(a.key).status === "photo")) {
+        relay(i);
         path.set(i, "picture");
         return;
       }

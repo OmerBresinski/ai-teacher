@@ -1,0 +1,37 @@
+{
+  "objectives": [
+    {
+      "teacher": "Calculate the mean rate of reaction from the volume of gas produced over a measured time, using cm³/s.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Describe how to investigate the effect of hydrochloric acid concentration on its reaction with magnesium, measuring gas volume over time and controlling the mass of magnesium and temperature.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Explain why increasing hydrochloric acid concentration increases the rate of reaction with magnesium, using collision theory and the frequency of successful collisions.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 271,
+    "completion_tokens": 91,
+    "total_tokens": 362,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.001452,
+  "ms": 3625,
+  "firstTokenMs": 1542
+}

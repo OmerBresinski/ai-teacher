@@ -1,0 +1,81 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": ["4"],
+      "misconceptions": null,
+      "background": "A unit fraction has a numerator of 1. Dividing the whole amount by the denominator finds the size of one equal part.",
+      "run": "Spend about 3 minutes modelling the equal sharing. Ask pupils to explain why dividing by 6 finds one sixth."
+    },
+    {
+      "n": 4,
+      "answers": ["30 ÷ 6 = 5; one sixth of 30 is 5."],
+      "misconceptions": "Pupils may multiply 30 by 6, treating the denominator as the number of groups to take. Remind them that one sixth is one of six equal parts, so divide by 6.",
+      "background": "This applies the unit-fraction method to a new amount: the denominator tells how many equal groups to make.",
+      "run": "Allow about 3 minutes for pupils to write the division and answer independently, then check together."
+    },
+    {
+      "n": 5,
+      "answers": ["12"],
+      "misconceptions": "Pupils may stop after finding one fifth, giving 4, or divide by 3 instead of 5. First divide by the denominator to find one fifth, then multiply by the numerator to find three fifths.",
+      "background": "For a non-unit fraction, divide by the denominator to find one part, then multiply by the numerator to find the required number of parts.",
+      "run": "Spend about 4 minutes working through the calculation. Ask pupils to say what each step finds."
+    },
+    {
+      "n": 6,
+      "answers": ["6", "18", "30 ÷ 5 × 3 = 18"],
+      "misconceptions": "Pupils may answer 6 for three fifths, stopping at one fifth, or divide by 3 because it is the numerator. Clarify that 30 ÷ 5 finds one fifth; multiplying that answer by 3 finds three fifths.",
+      "background": "This is a guided move from a worked example to independent practice, using the divide-then-multiply method.",
+      "run": "Give pupils about 5 minutes to work independently and show both steps. Take feedback and ask a pupil to explain the calculation."
+    },
+    {
+      "n": 7,
+      "answers": ["4"],
+      "misconceptions": "Pupils may choose 3 because they think the numerator tells them what to divide by. The numerator tells how many parts to take; the denominator tells how many equal parts make the whole. For three quarters of 20, divide by 4, then take 3 parts.",
+      "background": "The numerator is the top number in a fraction and the denominator is the bottom number. Naming these helps pupils remember which number has each role.",
+      "run": "Spend about 3 minutes checking pupils can identify the denominator and explain why it determines the division."
+    },
+    {
+      "n": 8,
+      "answers": ["18 ÷ 3 × 2"],
+      "misconceptions": "18 × 2 takes twice the whole amount. 18 ÷ 2 × 3 divides by the numerator rather than the denominator. 18 ÷ 3 finds one third but stops before taking two parts. The correct method is to divide by 3, then multiply by 2.",
+      "background": "A multiple-choice check can reveal whether pupils know both steps and the role of each fraction number.",
+      "run": "Allow about 3 minutes for pupils to choose independently, then ask them to justify their choice."
+    },
+    {
+      "n": 9,
+      "answers": ["£24"],
+      "misconceptions": "Pupils may give £8, which is one fifth rather than three fifths, or multiply £40 by 3 before dividing. Find one fifth by dividing £40 by 5, then multiply £8 by 3. Keep the pound unit in the answer.",
+      "background": "Fractions of money are calculated in the same way as fractions of other whole-number amounts. The unit remains pounds throughout.",
+      "run": "Spend about 4 minutes discussing the worked method. Ask pupils what £8 represents before moving to the final answer."
+    },
+    {
+      "n": 10,
+      "answers": ["£30; £50 ÷ 5 × 3 = £30."],
+      "misconceptions": "Pupils may give £10, which is one fifth, or divide by 3 instead of 5. Divide £50 by the denominator, 5, to find £10, then multiply by 3. Include the pound sign.",
+      "background": "This applies the same non-unit fraction method in a money context, with a whole-number result.",
+      "run": "Allow about 4 minutes for independent working. Check that pupils show the calculation and include pounds."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "9 pencils; 36 ÷ 4 = 9.",
+        "21 cm; 35 ÷ 5 × 3 = 21 cm.",
+        "Sam uses 16 m and Jo uses 15 m, so Sam uses more. 24 ÷ 3 × 2 = 16 m; 20 ÷ 4 × 3 = 15 m."
+      ],
+      "misconceptions": "For the first question, pupils may multiply 36 by 4 instead of dividing by 4. For the second, they may stop at one fifth, 7 cm, rather than take three parts. In the stretch, pupils may compare the fractions alone; the amounts also depend on the different rope lengths. Calculate each amount before comparing.",
+      "background": "The first two problems use unit and non-unit fractions in familiar contexts. The stretch requires pupils to calculate two fractions of different wholes and compare the resulting quantities.",
+      "run": "Give pupils about 8 minutes to solve the first two problems independently and include units. Invite pupils who are ready to attempt the stretch, then review methods and answers."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "720 ml; 900 ÷ 5 × 4 = 720 ml.",
+        "Yes. 720 ml is more than the 700 ml needed, by 20 ml."
+      ],
+      "misconceptions": "Pupils may stop at one fifth, 180 ml, or calculate only three fifths instead of four. Find one fifth by dividing by 5, then multiply by 4. They may also decide there is not enough because 720 is close to 700; compare the amounts directly: 720 ml exceeds 700 ml by 20 ml.",
+      "background": "This combines calculating a non-unit fraction with interpreting the result against a threshold. The comparison must use the same unit, millilitres.",
+      "run": "Allow about 6 minutes for pupils to calculate and write a justification. Ask them to state both the amount poured and how it compares with the minimum."
+    }
+  ]
+}

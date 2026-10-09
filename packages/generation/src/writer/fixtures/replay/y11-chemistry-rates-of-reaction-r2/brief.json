@@ -1,0 +1,19 @@
+{
+  "id": "y11-chemistry-rates-of-reaction",
+  "topic": "Rates of reaction",
+  "subject": "Chemistry",
+  "yearGroup": "Year 11",
+  "year": 11,
+  "keyStage": "ks4",
+  "theme": "studio",
+  "readingLevel": "Year 11",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "ABLATE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

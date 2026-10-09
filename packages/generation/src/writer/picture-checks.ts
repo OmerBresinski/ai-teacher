@@ -17,7 +17,7 @@ const SEEN_STOP = new Set(
   ),
 );
 /** Size, texture and state words: they describe a thing, they do not name one. */
-const DESCRIBE = new Set(
+const _DESCRIBE = new Set(
   "small large big little tiny huge fluffy soft short long new newly full fully grown growing young older old same different clear visible bright dark light round thin thick".split(
     " ",
   ),

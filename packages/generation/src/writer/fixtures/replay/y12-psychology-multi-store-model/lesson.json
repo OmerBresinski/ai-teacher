@@ -8,18 +8,18 @@
   "ageBand": "ks5",
   "yearGroup": "Year 12",
   "language": "en-GB",
-  "createdAt": "2026-10-08T12:16:05.594Z",
-  "updatedAt": "2026-10-08T12:16:05.594Z",
+  "createdAt": "2026-10-08T23:13:06.250Z",
+  "updatedAt": "2026-10-08T23:13:06.250Z",
   "slides": [
     {
       "id": "s1",
       "kind": "title",
       "elements": [
         {
-          "id": "y8fhzkyxlP",
+          "id": "3cysbqgV6e",
           "type": "text",
           "x": 64,
-          "y": 171,
+          "y": 154,
           "w": 640,
           "h": 145,
           "doc": {
@@ -49,12 +49,12 @@
           }
         },
         {
-          "id": "Jp45tp-iyf",
+          "id": "JTHQ9G2n76",
           "type": "text",
           "x": 64,
-          "y": 336,
+          "y": 319,
           "w": 640,
-          "h": 34,
+          "h": 68,
           "doc": {
             "type": "doc",
             "content": [
@@ -63,7 +63,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Recall: what do encoding, storage and retrieval mean?"
+                    "text": "Recall: why might you forget a new number but remember your home address?"
                   }
                 ]
               }
@@ -91,7 +91,7 @@
       "kind": "objectives",
       "elements": [
         {
-          "id": "SgtfTp5MCq",
+          "id": "kCRD6PadAH",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -122,7 +122,7 @@
           }
         },
         {
-          "id": "HAg-rRVu2t",
+          "id": "LxxW2v4cDN",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -156,7 +156,7 @@
           }
         },
         {
-          "id": "Glzr4SqGGo",
+          "id": "8h-t6xGaYd",
           "type": "text",
           "x": 105,
           "y": 178,
@@ -188,7 +188,7 @@
           }
         },
         {
-          "id": "Hml9khMCPA",
+          "id": "OPDKYQwE5H",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -222,7 +222,7 @@
           }
         },
         {
-          "id": "NUo27MQ0F8",
+          "id": "vIhYgHFyEL",
           "type": "text",
           "x": 105,
           "y": 275,
@@ -254,7 +254,7 @@
           }
         },
         {
-          "id": "n_rwlzHvmn",
+          "id": "4CKoCoxb8P",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -288,7 +288,7 @@
           }
         },
         {
-          "id": "M2q0hsq1oc",
+          "id": "aRBaNWOqU3",
           "type": "text",
           "x": 105,
           "y": 342,
@@ -327,7 +327,7 @@
       "kind": "diagram",
       "elements": [
         {
-          "id": "pPi3YgwaAd",
+          "id": "h3u6iGuwtM",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -341,7 +341,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Three stores, different characteristics"
+                    "text": "Three stores, different properties"
                   }
                 ]
               }
@@ -358,36 +358,36 @@
           }
         },
         {
-          "id": "EHCdcQlEKI",
+          "id": "nQApP6bEwQ",
           "type": "shape",
           "shape": "rounded",
           "x": 64,
           "y": 160,
           "w": 832,
-          "h": 279,
+          "h": 244,
           "fill": "#dfebef",
           "radius": 14,
           "name": "Panel"
         },
         {
-          "id": "NVgJxfJS6B",
+          "id": "5ZskLkOP0g",
           "type": "image",
           "name": "Diagram",
           "x": 86,
           "y": 182,
           "w": 788,
-          "h": 235,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20716%20214%22%20width%3D%22788%22%20height%3D%22235%22%20role%3D%22img%22%20aria-label%3D%22A%20table%20compares%20sensory%20register%2C%20short-term%20memory%20and%20long-term%20memory%20by%20coding%2C%20capacity%20and%20duration.%22%3E%3Ctitle%3EA%20table%20compares%20sensory%20register%2C%20short-term%20memory%20and%20long-term%20memory%20by%20coding%2C%20capacity%20and%20duration.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22708%22%20height%3D%22214%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%2226.78%22%3EStore%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22188.08%22%20y%3D%2226.78%22%3ECoding%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%2226.78%22%3ECapacity%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%2226.78%22%3EDuration%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2238.85%22%20x2%3D%22708%22%20y2%3D%2238.85%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%2265.62%22%3ESensory%20register%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22188.08%22%20y%3D%2265.62%22%3EModality-specific%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%2265.62%22%3EVery%20large%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%2265.62%22%3EVery%20brief%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2277.7%22%20x2%3D%22708%22%20y2%3D%2277.7%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22103.95%22%3EShort-term%3C%2Ftspan%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22129.15%22%3Ememory%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22188.08%22%20y%3D%22116.55%22%3EMainly%20acoustic%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%22103.95%22%3EAbout%207%20%C2%B1%202%3C%2Ftspan%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%22129.15%22%3Eitems%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%22103.95%22%3EAbout%2018%E2%80%9330%3C%2Ftspan%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%22129.15%22%3Eseconds%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%22140.7%22%20x2%3D%22708%22%20y2%3D%22140.7%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22166.95%22%3ELong-term%3C%2Ftspan%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22192.15%22%3Ememory%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22188.08%22%20y%3D%22179.55%22%3EMainly%20semantic%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%22166.95%22%3EPotentially%3C%2Ftspan%3E%3Ctspan%20x%3D%22371.37%22%20y%3D%22192.15%22%3Eunlimited%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%22166.95%22%3EPotentially%3C%2Ftspan%3E%3Ctspan%20x%3D%22542.64%22%20y%3D%22192.15%22%3Elifelong%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "A table compares sensory register, short-term memory and long-term memory by coding, capacity and duration.",
+          "h": 200,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20788%20200%22%20width%3D%22788%22%20height%3D%22200%22%20role%3D%22img%22%20aria-label%3D%22The%20sensory%20register%20is%20brief%20and%20high%20capacity%2C%20STM%20is%20limited%20and%20mainly%20acoustic%2C%20and%20LTM%20is%20lasting%20and%20mainly%20semantic.%22%3E%3Ctitle%3EThe%20sensory%20register%20is%20brief%20and%20high%20capacity%2C%20STM%20is%20limited%20and%20mainly%20acoustic%2C%20and%20LTM%20is%20lasting%20and%20mainly%20semantic.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22780%22%20height%3D%22200%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%2226.78%22%3EStore%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22191.19%22%20y%3D%2226.78%22%3ECoding%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22377.82%22%20y%3D%2226.78%22%3ECapacity%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22592.49%22%20y%3D%2226.78%22%3EDuration%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2238.85%22%20x2%3D%22780%22%20y2%3D%2238.85%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%2265.62%22%3ESensory%20register%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22191.19%22%20y%3D%2265.62%22%3EModality-specific%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22377.82%22%20y%3D%2265.62%22%3EVery%20large%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22592.49%22%20y%3D%2265.62%22%3EUsually%20under%202%20s%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2277.7%22%20x2%3D%22780%22%20y2%3D%2277.7%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22104.47%22%3ESTM%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22191.19%22%20y%3D%22104.47%22%3EMainly%20acoustic%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22377.82%22%20y%3D%22104.47%22%3E7%20%C2%B1%202%20items%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22592.49%22%20y%3D%22104.47%22%3EAbout%2018%E2%80%9330%20s%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%22116.55%22%20x2%3D%22780%22%20y2%3D%22116.55%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.5%22%20y%3D%22143.32%22%3ELTM%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22191.19%22%20y%3D%22143.32%22%3EMainly%20semantic%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22377.82%22%20y%3D%22143.32%22%3EPotentially%20unlimited%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22592.49%22%20y%3D%22143.32%22%3EPotentially%20lifelong%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "The sensory register is brief and high capacity, STM is limited and mainly acoustic, and LTM is lasting and mainly semantic.",
           "fit": "contain"
         },
         {
-          "id": "9JTDTv_iWf",
+          "id": "Cm67QT--UG",
           "type": "text",
           "x": 64,
-          "y": 453,
+          "y": 418,
           "w": 832,
-          "h": 35,
+          "h": 70,
           "doc": {
             "type": "doc",
             "content": [
@@ -396,7 +396,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Atkinson and Shiffrin (1968): compare the stores."
+                    "text": "Coding is the form of information; capacity is how much fits; duration is how long it lasts."
                   }
                 ]
               }
@@ -414,842 +414,14 @@
           }
         }
       ],
-      "notes": "Running\nSpend about 4 minutes comparing the stores as a class. Ask pupils to identify how each store differs in coding, capacity and duration, then link each characteristic to a store.\n\nMisconceptions\nPupils may treat the figures as exact limits. The model gives approximate characteristics; for example, STM capacity is often expressed as about 7 ± 2 chunks, and chunking can change how much information counts as one item.\n\nBackground\nThese are the model’s proposed typical properties, not universal measurements. Coding means the form in which information is represented, such as sound or meaning."
+      "notes": "Running\nSpend about 5 minutes checking what coding, capacity and duration mean. Ask pupils to compare the three stores and explain one difference to a partner.\n\nMisconceptions\nPupils may treat the figures as fixed limits rather than typical estimates. Clarify that STM is often given as about 7 ± 2 items and 18–30 seconds without rehearsal; capacity and duration can vary with the task. “Modality-specific” means sensory memory briefly preserves the form of incoming information, such as sounds or visual features.\n\nBackground\nThese properties are associated with the stores in Atkinson and Shiffrin’s model. Coding describes the form in which information is represented, not how accurate or meaningful it is."
     },
     {
       "id": "s4",
-      "kind": "worked-example",
-      "elements": [
-        {
-          "id": "aDHJy6MX73",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "How does information move?"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "ctLBYXj7kj",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 236,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "CKeTgBgtJe",
-          "type": "text",
-          "x": 113,
-          "y": 234,
-          "w": 671,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Sensory register"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "nEDNTAby4Y",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 289,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "--q6b1Nvc5",
-          "type": "text",
-          "x": 113,
-          "y": 287,
-          "w": 671,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "STM"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "oz9cEvjcVw",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 342,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "3"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "G_24QZoLUh",
-          "type": "text",
-          "x": 113,
-          "y": 340,
-          "w": 671,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "LTM"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        }
-      ],
-      "notes": "Running\nSpend about 3 minutes tracing the route together. Ask pupils what process moves information into STM and what the model proposes can help it reach LTM.\n\nMisconceptions\nPupils may assume information moves automatically from the sensory register to STM, or that everything in STM enters LTM. Attention selects some sensory information for STM; transfer to LTM is associated with rehearsal in this model.\n\nBackground\nThe arrows represent proposed information flow, not a guarantee that every item travels through every store. Retrieval is the route by which information in LTM becomes available in STM."
-    },
-    {
-      "id": "s5",
-      "kind": "worked-example",
-      "elements": [
-        {
-          "id": "5rojs0m1xW",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Worked example: a door code"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "Ms8VOj29fL",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 174,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "tnvtmGtkDw",
-          "type": "text",
-          "x": 113,
-          "y": 172,
-          "w": 671,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Maya hears 4826 and attends to it: sensory register → STM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "ODzDqEi66i",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 227,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "v50Q34iXqz",
-          "type": "text",
-          "x": 113,
-          "y": 225,
-          "w": 671,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "She repeats 4826: maintenance rehearsal keeps it in STM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "N-9toO7YxD",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 280,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "3"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "vG0xXyzOzM",
-          "type": "text",
-          "x": 113,
-          "y": 278,
-          "w": 671,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "The model predicts that prolonged rehearsal can transfer it to LTM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "gD2BIS5vqO",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 368,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "4"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "PXrjxOZgsd",
-          "type": "text",
-          "x": 113,
-          "y": 366,
-          "w": 671,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Next day, she recalls 4826: retrieval brings it from LTM to STM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        }
-      ],
-      "notes": "Running\nSpend about 4 minutes talking through the example. Ask pupils to name the store and process at each transition, then have them explain why remembering it the next day involves retrieval.\n\nMisconceptions\nPupils may think repeating the code proves it has entered LTM. Rehearsal can maintain information in STM, while the model proposes that prolonged rehearsal can transfer it to LTM; transfer is not guaranteed.\n\nBackground\nMaintenance rehearsal means repeating information without necessarily adding meaning or linking it to existing knowledge."
-    },
-    {
-      "id": "s6",
-      "kind": "open-response",
-      "elements": [
-        {
-          "id": "lUTcLKEg56",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Your turn: a locker code"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "MGxNHSoaL6",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 177,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "NnsOJdWhuq",
-          "type": "text",
-          "x": 113,
-          "y": 175,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Noah hears 7315 and focuses on it. Name the process and the two stores involved."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "-WGbnTVeSe",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 260,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "--lbL2_TCI",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 277,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "XFeuD7Eh73",
-          "type": "text",
-          "x": 113,
-          "y": 275,
-          "w": 711,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "He repeats 7315 for 20 seconds. Explain how this affects STM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "__UvKSbbrx",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 325,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "EHY1t4oUEy",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 342,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "3"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "iO7rGIcwqV",
-          "type": "text",
-          "x": 113,
-          "y": 340,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Next day, he recalls 7315. Explain this transfer and name LTM’s main coding."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "waf4tKshpm",
-          "type": "text",
-          "x": 113,
-          "y": 433,
-          "w": 711,
-          "h": 29,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Write a short explanation for each stage."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Instruction",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
-        }
-      ],
-      "notes": "Running\nGive pupils about 5 minutes to write one short explanation for each stage independently. Then take answers in order and clarify the difference between attention and rehearsal.\n\nAnswers\n1. Attention; the information moves from the sensory register to STM.\n2. Repeating it maintains it in STM during rehearsal. Twenty seconds is within the typical duration of STM, but repetition alone does not guarantee transfer to LTM.\n3. Retrieval brings the information from LTM into STM. LTM is mainly coded semantically.\n\nMisconceptions\nPupils may call repetition attention: attention selects information for STM, while maintenance rehearsal keeps it active there. They may also assume 20 seconds automatically transfers the code to LTM; rehearsal can maintain STM without guaranteeing long-term storage.\n\nBackground\nA code made of digits can be rehearsed acoustically in STM even though LTM is described as mainly semantic. The model describes typical coding, not the only possible coding in each store."
-    },
-    {
-      "id": "s7",
       "kind": "content",
       "elements": [
         {
-          "id": "FaH3WHbHdV",
+          "id": "2y3lG9ao6v",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -1263,7 +435,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Does repetition guarantee lasting memory?"
+                    "text": "How information moves"
                   }
                 ]
               }
@@ -1280,11 +452,210 @@
           }
         },
         {
-          "id": "H4D-WLFZ2T",
+          "id": "CmsTSzalRj",
           "type": "text",
           "x": 64,
           "y": 160,
           "w": 680,
+          "h": 68,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Atkinson and Shiffrin proposed three separate memory stores linked by control processes."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "eo7O1yF7oj",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 261,
+          "w": 9,
+          "h": 9,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "4XMESYiE7i",
+          "type": "text",
+          "x": 89,
+          "y": 248,
+          "w": 655,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Attention selects information from the sensory register and transfers it to short-term memory (STM)."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "UEqUS7UdPZ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 345,
+          "w": 9,
+          "h": 9,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "b2lScif9vH",
+          "type": "text",
+          "x": 89,
+          "y": 332,
+          "w": 655,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Maintenance rehearsal repeats information in STM. Rehearsal may support transfer from STM to long-term memory (LTM)."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "gI0Z8ETAYH",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 464,
+          "w": 9,
+          "h": 9,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "r7E1t9Ej-8",
+          "type": "text",
+          "x": 89,
+          "y": 451,
+          "w": 655,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Retrieval brings information from LTM back into STM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 6 minutes tracing the route through the stores together. Ask pupils to name the process at each transition, then have them explain the route to a partner.\n\nMisconceptions\nPupils may think attention moves information straight into LTM, or that rehearsal guarantees LTM storage. In the model, attention transfers selected sensory information to STM; rehearsal keeps it active and may support transfer to LTM. Retrieval brings stored information from LTM into STM.\n\nBackground\nControl processes are mental operations that regulate how information is handled. The model distinguishes these processes from the three stores themselves."
+    },
+    {
+      "id": "s5",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "8uwtX-W-xT",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Worked example: an access code"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "Wr4jbuKGs7",
+          "type": "text",
+          "x": 64,
+          "y": 175,
+          "w": 392,
           "h": 57,
           "doc": {
             "type": "doc",
@@ -1294,7 +665,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Repeating information can keep it available now without guaranteeing that it will be remembered later."
+                    "text": "Amir hears a code, repeats it aloud and later recalls it without hearing it again."
                   }
                 ]
               }
@@ -1312,36 +683,23 @@
           }
         },
         {
-          "id": "YnJVixyJSE",
+          "id": "WQVzniyKuk",
           "type": "shape",
-          "shape": "rounded",
-          "x": 64,
-          "y": 231,
-          "w": 680,
-          "h": 93,
-          "fill": "#dfebef",
-          "radius": 12,
-          "name": "Key card"
-        },
-        {
-          "id": "zXhIVwWD4r",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 231,
-          "w": 5,
-          "h": 93,
+          "shape": "ellipse",
+          "x": 66,
+          "y": 254,
+          "w": 8,
+          "h": 8,
           "fill": "#0B6E86",
-          "radius": 0,
-          "name": "Key edge"
+          "name": "Bullet"
         },
         {
-          "id": "K5ova5bh7S",
+          "id": "z_l7V1tLkT",
           "type": "text",
-          "x": 84,
-          "y": 246,
-          "w": 645,
-          "h": 29,
+          "x": 85,
+          "y": 243,
+          "w": 371,
+          "h": 59,
           "doc": {
             "type": "doc",
             "content": [
@@ -1350,39 +708,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Example"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Key label",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 700,
-            "padding": 0,
-            "color": "#0B6E86"
-          }
-        },
-        {
-          "id": "IqoawTqhgv",
-          "type": "text",
-          "x": 84,
-          "y": 279,
-          "w": 645,
-          "h": 30,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "You repeat a code until you enter it, then soon forget it."
+                    "text": "Attention selects the sounds for mainly acoustic STM."
                   }
                 ]
               }
@@ -1400,67 +726,22 @@
           }
         },
         {
-          "id": "JhegVEY33j",
+          "id": "2enTS50UA9",
           "type": "shape",
-          "shape": "rounded",
-          "x": 64,
-          "y": 334,
-          "w": 680,
-          "h": 122,
-          "fill": "#dfebef",
-          "radius": 12,
-          "name": "Key card"
-        },
-        {
-          "id": "_CMEmNDQ1V",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 334,
-          "w": 5,
-          "h": 122,
+          "shape": "ellipse",
+          "x": 66,
+          "y": 320,
+          "w": 8,
+          "h": 8,
           "fill": "#0B6E86",
-          "radius": 0,
-          "name": "Key edge"
+          "name": "Bullet"
         },
         {
-          "id": "OuUFatG7Yw",
+          "id": "79hOdIllkv",
           "type": "text",
-          "x": 84,
-          "y": 349,
-          "w": 645,
-          "h": 29,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Model claim"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Key label",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 700,
-            "padding": 0,
-            "color": "#0B6E86"
-          }
-        },
-        {
-          "id": "j_3QC0SBN_",
-          "type": "text",
-          "x": 84,
-          "y": 382,
-          "w": 645,
+          "x": 85,
+          "y": 309,
+          "w": 371,
           "h": 59,
           "doc": {
             "type": "doc",
@@ -1470,7 +751,590 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Prolonged rehearsal can transfer information to LTM; brief repetition need not do so."
+                    "text": "Rehearsal keeps the code active and supports LTM storage."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "DrbnoKbUTn",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 386,
+          "w": 8,
+          "h": 8,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "6yAHhkv_pr",
+          "type": "text",
+          "x": 85,
+          "y": 375,
+          "w": 371,
+          "h": 59,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Later recall retrieves the code from LTM into STM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "YuBu_kwXgR",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#dfebef",
+          "radius": 14,
+          "name": "Panel"
+        },
+        {
+          "id": "YZKFB14_xM",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20268%20218%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Amir%E2%80%99s%20heard%20code%20is%20selected%20for%20acoustic%20STM%2C%20kept%20active%20by%20rehearsal%2C%20stored%20in%20LTM%2C%20then%20retrieved%20into%20STM.%22%3E%3Ctitle%3EAmir%E2%80%99s%20heard%20code%20is%20selected%20for%20acoustic%20STM%2C%20kept%20active%20by%20rehearsal%2C%20stored%20in%20LTM%2C%20then%20retrieved%20into%20STM.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22134%22%20y%3D%2218.4%22%3EAccess-code%20example%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22115.1%22%20y1%3D%2241.15%22%20x2%3D%22139.86%22%20y2%3D%2241.15%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22144.9%2C41.15%20138.6%2C44.93%20139.54%2C41.15%20138.6%2C37.37%22%20fill%3D%22%230F172A%22%2F%3E%3Cline%20x1%3D%22203.45%22%20y1%3D%2277.7%22%20x2%3D%22203.45%22%20y2%3D%2296.16%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22203.45%2C101.2%20199.67%2C94.9%20203.45%2C95.85%20207.23%2C94.9%22%20fill%3D%22%230F172A%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%228.6%22%20width%3D%22109.1%22%20height%3D%2265.1%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2256.55%22%20y%3D%2235.9%22%3EHeard%3C%2Ftspan%3E%3Ctspan%20x%3D%2256.55%22%20y%3D%2261.1%22%3Ecode%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22148.9%22%20y%3D%228.6%22%20width%3D%22109.1%22%20height%3D%2265.1%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22203.45%22%20y%3D%2235.9%22%3EAcoustic%3C%2Ftspan%3E%3Ctspan%20x%3D%22203.45%22%20y%3D%2261.1%22%3ESTM%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22148.9%22%20y%3D%22105.2%22%20width%3D%22109.1%22%20height%3D%2265.1%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22203.45%22%20y%3D%22132.5%22%3ELTM%3C%2Ftspan%3E%3Ctspan%20x%3D%22203.45%22%20y%3D%22157.7%22%3Estorage%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Amir’s heard code is selected for acoustic STM, kept active by rehearsal, stored in LTM, then retrieved into STM.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 5 minutes following Amir’s example through the diagram. Ask pupils to identify the store and process at each stage, then recap the route as a class.\n\nMisconceptions\nPupils may say the code is stored in LTM simply because Amir repeats it, or that recall means the code returns directly to awareness from LTM. Explain that rehearsal supports transfer to LTM, and retrieval brings information from LTM into STM for conscious use.\n\nBackground\nRepeating the code aloud is an example of maintenance rehearsal. The model proposes that prolonged rehearsal supports transfer, but this does not mean every rehearsed item is stored permanently."
+    },
+    {
+      "id": "s6",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "sJgGKeG_ph",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain a new code"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "2e0UQfxI89",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 171,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "qjSTWetGKp",
+          "type": "text",
+          "x": 113,
+          "y": 169,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Leah hears a locker code and focuses on it. Explain how it reaches STM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "O1ENHdxgCo",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 248,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "9uf7Knsn7S",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 259,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "bDxe8Em-_N",
+          "type": "text",
+          "x": 113,
+          "y": 257,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "She repeats the code aloud for a while. Explain its coding and the role of repetition."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "eR2CNnTKB_",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 336,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "PLkVE5gkCc",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 347,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "4TXZ6-JaH_",
+          "type": "text",
+          "x": 113,
+          "y": 345,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Next week, she recalls it without hearing it again. Explain which stores and process are involved."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "axdRfVSKDv",
+          "type": "text",
+          "x": 113,
+          "y": 429,
+          "w": 711,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write one or two sentences for each stage."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#4F5D6E"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 8 minutes. Pupils write one or two sentences for each stage independently, then compare with a partner. Take answers for each stage and correct store/process terminology.\n\nAnswers\n1. Attention selects the locker code from the sensory register and transfers it to STM.\n2. STM is mainly acoustic. Repeating the code is maintenance rehearsal, which keeps it active and may support transfer to LTM.\n3. Retrieval brings the code from LTM into STM so Leah can recall it.\n\nMisconceptions\nPupils may confuse the process with the store: attention and rehearsal are processes, while the sensory register, STM and LTM are stores. Repeating the code does not guarantee that it reaches LTM. Model the route: sensory register → attention → STM → rehearsal may support LTM; retrieval returns it to STM.\n\nBackground\nThe example applies the model’s processes to a familiar task. The code is heard, so it can be maintained in STM using acoustic rehearsal."
+    },
+    {
+      "id": "s7",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "4xlyA7yRfg",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Repetition is not a guarantee"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "K0iNe-5F4N",
+          "type": "text",
+          "x": 64,
+          "y": 189,
+          "w": 680,
+          "h": 57,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Keeping information active now is not the same as remembering it next week."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "5GDQBRmJHB",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 268,
+          "w": 8,
+          "h": 8,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "Emq8YqpGyi",
+          "type": "text",
+          "x": 85,
+          "y": 257,
+          "w": 659,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Model prediction: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "Prolonged rehearsal supports transfer to LTM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "0qie1-QmXT",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 305,
+          "w": 8,
+          "h": 8,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "cVIsYm2btp",
+          "type": "text",
+          "x": 85,
+          "y": 294,
+          "w": 659,
+          "h": 89,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Brief repetition: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "A number in STM can be repeated briefly, keeping it active. When rehearsal stops, it may be forgotten rather than transferred to LTM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "jf3mxSIbhx",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 401,
+          "w": 8,
+          "h": 8,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "uS4cqrxHJw",
+          "type": "text",
+          "x": 85,
+          "y": 390,
+          "w": 659,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Avoid the shortcut: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "One repetition does not guarantee lasting storage."
                   }
                 ]
               }
@@ -1488,14 +1352,404 @@
           }
         }
       ],
-      "notes": "Running\nSpend about 4 minutes discussing the example and model claim. Ask pupils to explain how the code can remain available while being used yet be forgotten later.\n\nMisconceptions\nPupils may read the model’s claim as saying that any repetition creates a lasting memory. Distinguish maintaining information briefly through repetition from the proposed transfer after prolonged rehearsal; the example illustrates that repetition need not guarantee later recall.\n\nBackground\nThis distinction is useful when evaluating the model: rehearsal is central to its proposed transfer route, but simply repeating something does not always produce durable learning."
+      "notes": "Running\nSpend about 5 minutes discussing the difference between keeping information active now and retaining it later. Ask pupils for an example of a number they could repeat briefly but might soon forget.\n\nMisconceptions\nPupils may assume that any repetition creates a permanent memory, or that information cannot be forgotten while it is in STM. Explain that brief repetition can keep information active in STM; the model proposes that prolonged rehearsal supports transfer to LTM, but does not guarantee it.\n\nBackground\nThis qualification helps avoid an oversimplified account of the model. Later research has questioned whether rehearsal alone explains how information enters LTM."
     },
     {
       "id": "s8",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "6qJS01D3y0",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose the best explanation"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "SSu1Ys-7lb",
+          "type": "text",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 68,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A number is repeated aloud for 10 seconds. What does the model predict?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Stem",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "CG3FJQw5eY",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 250,
+          "w": 407,
+          "h": 110,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Option",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "y4j45SNCqw",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 84,
+          "y": 290,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "tkIy-UqxxC",
+          "type": "text",
+          "x": 129,
+          "y": 270,
+          "w": 322,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It is guaranteed to remain in LTM for life."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "WlRu7pkBbp",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 489,
+          "y": 250,
+          "w": 407,
+          "h": 110,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Option",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "amHKN1CPOJ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 509,
+          "y": 290,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "KZGhyxTBzM",
+          "type": "text",
+          "x": 554,
+          "y": 270,
+          "w": 322,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Repetition retrieves it from LTM every time."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "OKB1fOJLIf",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 378,
+          "w": 407,
+          "h": 110,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Option",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "FAaOvzGSie",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 84,
+          "y": 418,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "N-feFqJeZs",
+          "type": "text",
+          "x": 129,
+          "y": 398,
+          "w": 322,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It remains in the sensory register throughout."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "7nh8CJIwIb",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 489,
+          "y": 378,
+          "w": 407,
+          "h": 110,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Option",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "FmBBHyx3Wr",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 509,
+          "y": 418,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "D"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "ZLG2ySR5fV",
+          "type": "text",
+          "x": 554,
+          "y": 398,
+          "w": 322,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It is maintained in mainly acoustic STM."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        }
+      ],
+      "notes": "Running\nAllow about 3 minutes for pupils to choose an answer individually, then ask them to justify it to a partner. Check the answer and briefly address why each distractor is wrong.\n\nAnswers\nD: It is maintained in mainly acoustic STM.\n\nMisconceptions\n“It is guaranteed to remain in LTM for life” confuses rehearsal with guaranteed transfer and retention. “Repetition retrieves it from LTM every time” confuses rehearsal with retrieval, which brings information from LTM into STM. “It remains in the sensory register throughout” ignores that attention transfers selected information to STM. The best answer is that it is maintained in mainly acoustic STM.\n\nBackground\nAcoustic coding is the typical coding associated with STM in the model. Repeating spoken information is maintenance rehearsal."
+    },
+    {
+      "id": "s9",
       "kind": "diagram",
       "elements": [
         {
-          "id": "zZYcCa6fDH",
+          "id": "prhzOHsROS",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -1526,12 +1780,12 @@
           }
         },
         {
-          "id": "ZljIGeJFAo",
+          "id": "ut_aydZmyT",
           "type": "text",
           "x": 64,
-          "y": 175,
+          "y": 168,
           "w": 392,
-          "h": 57,
+          "h": 102,
           "doc": {
             "type": "doc",
             "content": [
@@ -1540,7 +1794,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Word-list recall supports separate STM and LTM stores."
+                    "text": "Word-list recall was compared immediately and after a filled delay that prevented rehearsal."
                   }
                 ]
               }
@@ -1550,7 +1804,7 @@
           "style": {
             "preset": "body",
             "autoHeight": true,
-            "fontSize": 21,
+            "fontSize": 25,
             "lineHeight": 1.35,
             "fontWeight": 700,
             "padding": 0,
@@ -1558,23 +1812,36 @@
           }
         },
         {
-          "id": "RYbw2P0XpN",
+          "id": "yhEbzUKlpz",
           "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 254,
-          "w": 8,
-          "h": 8,
-          "fill": "#0B6E86",
-          "name": "Bullet"
+          "shape": "rounded",
+          "x": 64,
+          "y": 296,
+          "w": 392,
+          "h": 144,
+          "fill": "#dfebef",
+          "radius": 12,
+          "name": "Key card"
         },
         {
-          "id": "Y5RnilhLz6",
+          "id": "d52rBVTEA2",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 296,
+          "w": 5,
+          "h": 144,
+          "fill": "#0B6E86",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "-XBzAVNmk6",
           "type": "text",
-          "x": 85,
-          "y": 243,
-          "w": 371,
-          "h": 59,
+          "x": 87,
+          "y": 314,
+          "w": 351,
+          "h": 34,
           "doc": {
             "type": "doc",
             "content": [
@@ -1583,16 +1850,39 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Primacy: ",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      }
-                    ]
-                  },
+                    "text": "Recency"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "ZrZ9MyP-ox",
+          "type": "text",
+          "x": 87,
+          "y": 352,
+          "w": 351,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
                   {
                     "type": "text",
-                    "text": "early words receive more rehearsal and enter LTM."
+                    "text": "Final words: available in STM at immediate recall."
                   }
                 ]
               }
@@ -1602,7 +1892,7 @@
           "style": {
             "preset": "body",
             "autoHeight": true,
-            "fontSize": 21,
+            "fontSize": 25,
             "lineHeight": 1.4,
             "fontWeight": 400,
             "padding": 0,
@@ -1610,102 +1900,7 @@
           }
         },
         {
-          "id": "W3-ewRRc5o",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 320,
-          "w": 8,
-          "h": 8,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "pe-lRKBI74",
-          "type": "text",
-          "x": 85,
-          "y": 309,
-          "w": 371,
-          "h": 59,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Recency: ",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "text",
-                    "text": "final words remain available in STM."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "zW5QDdyLu5",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 386,
-          "w": 8,
-          "h": 8,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "pN086mRrep",
-          "type": "text",
-          "x": 85,
-          "y": 375,
-          "w": 371,
-          "h": 59,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "A 30-second counting delay reduced recency, but preserved primacy."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "lGbnE6HXxs",
+          "id": "sf7d0jPuIr",
           "type": "shape",
           "shape": "rounded",
           "x": 504,
@@ -1717,316 +1912,26 @@
           "name": "Panel"
         },
         {
-          "id": "94Jd5Vuzui",
+          "id": "Ig4IkpW9Ko",
           "type": "image",
           "name": "Diagram",
           "x": 526,
           "y": 182,
           "w": 348,
           "h": 284,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20348%20284%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Both%20curves%20show%20better%20recall%20for%20early%20words.%20Immediate%20recall%20also%20rises%20for%20final%20words%3B%20recall%20after%20a%20filled%20delay%20does%20not.%22%3E%3Ctitle%3EBoth%20curves%20show%20better%20recall%20for%20early%20words.%20Immediate%20recall%20also%20rises%20for%20final%20words%3B%20recall%20after%20a%20filled%20delay%20does%20not.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%2239.4%22%20y1%3D%2254.6%22%20x2%3D%2239.4%22%20y2%3D%22223.1%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%2239.4%22%20y1%3D%22223.1%22%20x2%3D%22328%22%20y2%3D%22223.1%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22183.7%22%20y%3D%22276.75%22%3EPosition%20in%20word%20list%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(14.7%2C138.85)%20rotate(-90)%22%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%220%22%20y%3D%227.35%22%3ERecall%20likelihood%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cpath%20d%3D%22M39.4%2C79.88%20C50.09%2C88.3%2060.78%2C95.52%2071.47%2C105.15%20C82.16%2C114.78%2092.84%2C129.22%20103.53%2C138.85%20C114.22%2C148.48%20124.91%2C159.91%20135.6%2C164.12%20C146.29%2C168.34%20156.98%2C172.55%20167.67%2C172.55%20C178.36%2C172.55%20189.04%2C172.55%20199.73%2C172.55%20C210.42%2C172.55%20221.11%2C162.44%20231.8%2C155.7%20C242.49%2C148.96%20253.18%2C140.05%20263.87%2C130.42%20C274.56%2C120.8%20285.24%2C106.35%20295.93%2C96.73%20C306.62%2C87.1%20317.31%2C79.87%20328%2C71.45%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39.4%2C79.88%20C50.09%2C88.3%2060.78%2C95.52%2071.47%2C105.15%20C82.16%2C114.78%2092.84%2C129.22%20103.53%2C138.85%20C114.22%2C148.48%20124.91%2C159.91%20135.6%2C164.12%20C146.29%2C168.34%20156.98%2C172.55%20167.67%2C172.55%20C178.36%2C172.55%20189.04%2C172.55%20199.73%2C172.55%20C210.42%2C172.55%20221.11%2C172.55%20231.8%2C172.55%20C242.49%2C172.55%20253.18%2C172.55%20263.87%2C172.55%20C274.56%2C172.55%20285.24%2C172.55%20295.93%2C172.55%20C306.62%2C172.55%20317.31%2C172.55%20328%2C172.55%22%20fill%3D%22none%22%20stroke%3D%22%236D35D6%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2214.7%22%20x2%3D%2221%22%20y2%3D%2214.7%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2229.4%22%20y%3D%2221%22%3EImmediate%20recall%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22184.93%22%20y1%3D%2214.7%22%20x2%3D%22205.93%22%20y2%3D%2214.7%22%20stroke%3D%22%236D35D6%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22214.33%22%20y%3D%2221%22%3E30%20s%20filled%20delay%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "Both curves show better recall for early words. Immediate recall also rises for final words; recall after a filled delay does not.",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20348%20284%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Both%20curves%20show%20good%20early-word%20recall.%20Immediate%20recall%20also%20shows%20good%20final-word%20recall%2C%20while%20delayed%20recall%20loses%20much%20of%20that%20final-word%20advantage.%22%3E%3Ctitle%3EBoth%20curves%20show%20good%20early-word%20recall.%20Immediate%20recall%20also%20shows%20good%20final-word%20recall%2C%20while%20delayed%20recall%20loses%20much%20of%20that%20final-word%20advantage.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%2239.4%22%20y1%3D%2254.6%22%20x2%3D%2239.4%22%20y2%3D%22223.1%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%2239.4%22%20y1%3D%22223.1%22%20x2%3D%22328%22%20y2%3D%22223.1%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22183.7%22%20y%3D%22276.75%22%3EPosition%20in%20word%20list%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(14.7%2C138.85)%20rotate(-90)%22%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%220%22%20y%3D%227.35%22%3ERecall%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cpath%20d%3D%22M39.4%2C88.3%20C50.09%2C93.92%2060.78%2C97.66%2071.47%2C105.15%20C82.16%2C112.64%2092.84%2C131.36%20103.53%2C138.85%20C114.22%2C146.34%20124.91%2C150.08%20135.6%2C155.7%20C146.29%2C161.32%20156.98%2C172.55%20167.67%2C172.55%20C178.36%2C172.55%20189.04%2C172.55%20199.73%2C172.55%20C210.42%2C172.55%20221.11%2C161.32%20231.8%2C155.7%20C242.49%2C150.08%20253.18%2C146.34%20263.87%2C138.85%20C274.56%2C131.36%20285.24%2C116.38%20295.93%2C105.15%20C306.62%2C93.92%20317.31%2C82.68%20328%2C71.45%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39.4%2C88.3%20C50.09%2C93.92%2060.78%2C97.66%2071.47%2C105.15%20C82.16%2C112.64%2092.84%2C131.36%20103.53%2C138.85%20C114.22%2C146.34%20124.91%2C150.08%20135.6%2C155.7%20C146.29%2C161.32%20156.98%2C172.55%20167.67%2C172.55%20C178.36%2C172.55%20189.04%2C172.55%20199.73%2C172.55%20C210.42%2C172.55%20221.11%2C172.55%20231.8%2C172.55%20C242.49%2C172.55%20253.18%2C172.55%20263.87%2C172.55%20C274.56%2C172.55%20285.24%2C172.55%20295.93%2C172.55%20C306.62%2C172.55%20317.31%2C172.55%20328%2C172.55%22%20fill%3D%22none%22%20stroke%3D%22%236D35D6%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2214.7%22%20x2%3D%2221%22%20y2%3D%2214.7%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2229.4%22%20y%3D%2221%22%3EImmediate%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22136.73%22%20y1%3D%2214.7%22%20x2%3D%22157.73%22%20y2%3D%2214.7%22%20stroke%3D%22%236D35D6%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22166.13%22%20y%3D%2221%22%3EFilled%20delay%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Both curves show good early-word recall. Immediate recall also shows good final-word recall, while delayed recall loses much of that final-word advantage.",
           "fit": "contain"
         }
       ],
-      "notes": "Running\nSpend about 5 minutes interpreting the graph together. Have pupils identify the early- and final-word advantages and compare immediate recall with recall after the filled delay.\n\nMisconceptions\nPupils may attribute both the early- and final-word advantages to one store. In the model’s account, early words benefit from rehearsal and LTM transfer, while final words are still available in STM. The counting delay reduces the latter advantage by occupying STM.\n\nBackground\nSerial position curves typically show better recall for words at the beginning and end of a list than for those in the middle. A filled delay is used to prevent participants from simply rehearsing the final items."
-    },
-    {
-      "id": "s9",
-      "kind": "starter",
-      "elements": [
-        {
-          "id": "tRLFN8-LeZ",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Explain the evidence"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "UJEcwEPENS",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 171,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "TBnlNJJH6f",
-          "type": "text",
-          "x": 113,
-          "y": 169,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Immediate recall favours early and final words. Explain the model’s account of each advantage."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "5GTAshWe8-",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 248,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "Cidu1GKXcA",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 259,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "TLXRxKbLLR",
-          "type": "text",
-          "x": 113,
-          "y": 257,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "After 30 seconds of counting, the final-word advantage falls but the early-word advantage remains. Explain why."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "o5QP8SuEmr",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 336,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "LsKoQszMxS",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 347,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "3"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "fn5JzDZuiy",
-          "type": "text",
-          "x": 113,
-          "y": 345,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Why does this pattern support separate STM and LTM stores rather than prove the whole model?"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "WLqrYWEYtg",
-          "type": "text",
-          "x": 113,
-          "y": 429,
-          "w": 711,
-          "h": 29,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Link each finding to a store or process."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Instruction",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
-        }
-      ],
-      "notes": "Running\nAllow about 6 minutes for individual written responses. Then compare explanations in pairs, checking that each links the delay or position effect to a store or process.\n\nAnswers\n1. Early words receive more rehearsal and are more likely to enter LTM, producing the primacy effect. Final words remain available in STM at immediate recall, producing the recency effect.\n2. Counting occupies STM and prevents continued rehearsal of the final words, so their recency advantage falls. Early words already transferred to LTM, so the primacy advantage remains.\n3. The different effects of the delay are consistent with separate STM and LTM stores: the delay disrupts the STM-based recency effect but not the LTM-based primacy effect. They support this account but do not prove the whole model, because the findings can have other explanations and do not establish every feature of the stores.\n\nMisconceptions\nPupils may say the delay erases all memory, despite primacy remaining; it mainly disrupts the final-word advantage in this account. They may also claim the findings prove the model. Say they support a separate-store explanation, but evidence consistent with a theory is not proof of every part of it.\n\nBackground\nGlanzer and Cunitz’s serial-position findings are used as evidence for distinct short- and long-term contributions to recall. The counting task is a filled delay because it occupies attention and limits rehearsal."
+      "notes": "Running\nSpend about 6 minutes explaining the immediate and delayed recall comparison. Ask pupils to identify what the filled delay is intended to prevent and what change in final-word recall the model predicts.\n\nMisconceptions\nPupils may think a filled delay should reduce recall of all list positions equally, or that recency is evidence for LTM. Explain that the filled delay prevents rehearsal and reduces the recency effect, consistent with final items being held in STM; relatively intact primacy is consistent with early items having had more opportunity for rehearsal and LTM storage.\n\nBackground\nIn the serial position effect, primacy refers to better recall of early list items and recency to better recall of final items. A filled delay, such as counting backwards, occupies attention and limits rehearsal before recall."
     },
     {
       "id": "s10",
       "kind": "diagram",
       "elements": [
         {
-          "id": "O4Sfg_SskR",
+          "id": "2Tvd1qUIcp",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -2057,12 +1962,12 @@
           }
         },
         {
-          "id": "jI7LTrIlop",
+          "id": "90-OJ43Q00",
           "type": "text",
           "x": 64,
-          "y": 160,
+          "y": 175,
           "w": 392,
-          "h": 57,
+          "h": 86,
           "doc": {
             "type": "doc",
             "content": [
@@ -2071,7 +1976,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Shallice and Warrington (1970) studied KF after brain injury."
+                    "text": "Shallice and Warrington studied KF, who had brain damage after a motorcycle accident."
                   }
                 ]
               }
@@ -2089,21 +1994,21 @@
           }
         },
         {
-          "id": "HRbGRITLlN",
+          "id": "XyjVa16NNi",
           "type": "shape",
           "shape": "ellipse",
           "x": 66,
-          "y": 239,
+          "y": 283,
           "w": 8,
           "h": 8,
           "fill": "#0B6E86",
           "name": "Bullet"
         },
         {
-          "id": "DDQkfaJ4r4",
+          "id": "t1JfukalLk",
           "type": "text",
           "x": 85,
-          "y": 228,
+          "y": 272,
           "w": 371,
           "h": 59,
           "doc": {
@@ -2114,7 +2019,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "KF’s verbal STM was severely impaired, especially for heard material."
+                    "text": "His verbal STM was severely impaired, especially for heard material."
                   }
                 ]
               }
@@ -2132,21 +2037,64 @@
           }
         },
         {
-          "id": "whSCwGqpX0",
+          "id": "pHjkyvoCHv",
           "type": "shape",
           "shape": "ellipse",
           "x": 66,
-          "y": 305,
+          "y": 349,
           "w": 8,
           "h": 8,
           "fill": "#0B6E86",
           "name": "Bullet"
         },
         {
-          "id": "vdwV1lcMIt",
+          "id": "gJuuoVoyiC",
           "type": "text",
           "x": 85,
-          "y": 294,
+          "y": 338,
+          "w": 371,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "His visual STM was relatively preserved."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "GX2owQK_3F",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 386,
+          "w": 8,
+          "h": 8,
+          "fill": "#0B6E86",
+          "name": "Bullet"
+        },
+        {
+          "id": "jyhfHYglrF",
+          "type": "text",
+          "x": 85,
+          "y": 375,
           "w": 371,
           "h": 59,
           "doc": {
@@ -2157,7 +2105,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "His visual STM was relatively better preserved."
+                    "text": "Different impairments challenge one uniform STM store."
                   }
                 ]
               }
@@ -2175,50 +2123,7 @@
           }
         },
         {
-          "id": "HV9xVVbVQf",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 371,
-          "w": 8,
-          "h": 8,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "HHnBgOm23i",
-          "type": "text",
-          "x": 85,
-          "y": 360,
-          "w": 371,
-          "h": 89,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "This challenges one unitary STM store: its components can be affected differently."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "tRO8HxXlDD",
+          "id": "Mw8s9yi2Ay",
           "type": "shape",
           "shape": "rounded",
           "x": 504,
@@ -2230,26 +2135,26 @@
           "name": "Panel"
         },
         {
-          "id": "WH_cOzu2EM",
+          "id": "o7hMCdhGCk",
           "type": "image",
           "name": "Diagram",
           "x": 526,
           "y": 182,
           "w": 348,
           "h": 284,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20348%20284%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22KF%E2%80%99s%20short-term%20memory%20performance%20differed%3A%20verbal%20memory%20was%20severely%20impaired%2C%20while%20visual%20memory%20was%20relatively%20better%20preserved.%22%3E%3Ctitle%3EKF%E2%80%99s%20short-term%20memory%20performance%20differed%3A%20verbal%20memory%20was%20severely%20impaired%2C%20while%20visual%20memory%20was%20relatively%20better%20preserved.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22152.83%22%20y1%3D%22118.8%22%20x2%3D%22182.34%22%20y2%3D%22109.95%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22187.17%2C108.5%20182.22%2C113.93%20182.04%2C110.04%20180.05%2C106.69%22%20fill%3D%22%230F172A%22%2F%3E%3Cline%20x1%3D%22152.83%22%20y1%3D%22165.2%22%20x2%3D%22182.34%22%20y2%3D%22174.05%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22187.17%2C175.5%20180.05%2C177.31%20182.04%2C173.96%20182.22%2C170.07%22%20fill%3D%22%230F172A%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2296.85%22%20width%3D%22147%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2275.5%22%20y%3D%22136.75%22%3EKF%3A%20STM%3C%2Ftspan%3E%3Ctspan%20x%3D%2275.5%22%20y%3D%22161.95%22%3Eperformance%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22191%22%20y%3D%2240.15%22%20width%3D%22147%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22264.5%22%20y%3D%2280.05%22%3EVerbal%3A%3C%2Ftspan%3E%3Ctspan%20x%3D%22264.5%22%20y%3D%22105.25%22%3Eimpaired%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22191%22%20y%3D%22153.55%22%20width%3D%22147%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22264.5%22%20y%3D%22180.85%22%3EVisual%3A%3C%2Ftspan%3E%3Ctspan%20x%3D%22264.5%22%20y%3D%22206.05%22%3Ebetter%3C%2Ftspan%3E%3Ctspan%20x%3D%22264.5%22%20y%3D%22231.25%22%3Epreserved%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "KF’s short-term memory performance differed: verbal memory was severely impaired, while visual memory was relatively better preserved.",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20218%20178%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22KF%20had%20severely%20impaired%20verbal%20STM%2C%20especially%20for%20auditory%20material%2C%20but%20relatively%20preserved%20visual%20STM.%22%3E%3Ctitle%3EKF%20had%20severely%20impaired%20verbal%20STM%2C%20especially%20for%20auditory%20material%2C%20but%20relatively%20preserved%20visual%20STM.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22210%22%20height%3D%22178%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2225%22%3ESTM%3C%2Ftspan%3E%3Ctspan%20x%3D%2210%22%20y%3D%2249%22%3Etask%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%2225%22%3EKF's%3C%2Ftspan%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%2249%22%3Eperformance%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2260%22%20x2%3D%22224.6%22%20y2%3D%2260%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2297%22%3EVerbal%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%2285%22%3ESeverely%3C%2Ftspan%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%22109%22%3Eimpaired%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%22120%22%20x2%3D%22224.6%22%20y2%3D%22120%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%22157%22%3EVisual%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%22145%22%3EBetter%3C%2Ftspan%3E%3Ctspan%20x%3D%2292.06%22%20y%3D%22169%22%3Epreserved%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "KF had severely impaired verbal STM, especially for auditory material, but relatively preserved visual STM.",
           "fit": "contain"
         }
       ],
-      "notes": "Running\nSpend about 4 minutes discussing what the contrast between verbal and visual performance implies. Ask pupils to state precisely which part of the model the case challenges.\n\nMisconceptions\nPupils may conclude that KF had no STM, or that his case disproves separate STM and LTM stores. His differing verbal and visual performance challenges the idea of one unitary STM store; it does not by itself disprove the distinction between STM and LTM.\n\nBackground\nKF’s case study is associated with Shallice and Warrington’s investigation of memory after brain injury. Case studies can give detailed evidence about an individual but cannot establish that everyone’s memory is organised in the same way."
+      "notes": "Running\nSpend about 5 minutes reviewing what KF’s contrasting performance suggests. Ask pupils to state the evidence and then explain how it challenges the idea of one uniform STM store.\n\nMisconceptions\nPupils may assume that all STM abilities must be impaired together because STM is one store. KF’s verbal STM was severely impaired while visual STM was relatively preserved, which challenges a uniform STM store. This challenges the model’s single STM store but does not by itself show that all of its claims are wrong.\n\nBackground\nKF’s case study is commonly used to support the idea that STM may contain separate components for verbal and visual information. A case study provides detailed evidence about one person, so conclusions should be cautious."
     },
     {
       "id": "s11",
-      "kind": "open-response",
+      "kind": "worked-example",
       "elements": [
         {
-          "id": "liEippDxp5",
+          "id": "kK1NGV8iE3",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -2263,7 +2168,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Evaluate the model"
+                    "text": "Worked evaluation: supporting evidence"
                   }
                 ]
               }
@@ -2280,7 +2185,7 @@
           }
         },
         {
-          "id": "XV1w47Vo2G",
+          "id": "bSt77hd8di",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2314,11 +2219,11 @@
           }
         },
         {
-          "id": "MYcpW5fzBc",
+          "id": "WNk4Kf8X9_",
           "type": "text",
           "x": 113,
           "y": 169,
-          "w": 711,
+          "w": 671,
           "h": 70,
           "doc": {
             "type": "doc",
@@ -2328,7 +2233,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "A counting delay reduced recall of final words but spared early words. Write a supporting argument using this finding."
+                    "text": "Claim: serial position findings support separate STM and LTM stores."
                   }
                 ]
               }
@@ -2346,18 +2251,7 @@
           }
         },
         {
-          "id": "qSjuLkJCJ0",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 248,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "DHxE4904Yl",
+          "id": "DJTCSdsYN1",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2391,11 +2285,11 @@
           }
         },
         {
-          "id": "erTNGEodW_",
+          "id": "3v5o0deyUf",
           "type": "text",
           "x": 113,
           "y": 257,
-          "w": 711,
+          "w": 671,
           "h": 70,
           "doc": {
             "type": "doc",
@@ -2405,7 +2299,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "KF had poor verbal STM but relatively preserved visual STM. Write a challenge to the model using this finding."
+                    "text": "Evidence: a filled delay reduced recency but left primacy relatively intact."
                   }
                 ]
               }
@@ -2423,18 +2317,7 @@
           }
         },
         {
-          "id": "ZzMHjqCtQf",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 336,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "ZXBS9HW2bR",
+          "id": "UUOofecl3G",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2468,12 +2351,12 @@
           }
         },
         {
-          "id": "xtGfGboShb",
+          "id": "z3IZUBNjwi",
           "type": "text",
           "x": 113,
           "y": 345,
-          "w": 711,
-          "h": 70,
+          "w": 671,
+          "h": 105,
           "doc": {
             "type": "doc",
             "content": [
@@ -2482,7 +2365,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Stretch: explain why KF challenges a single STM store without showing that separate STM and LTM stores do not exist."
+                    "text": "Link: delay affects recent STM items more than rehearsed LTM items; this supports, but does not prove, separate stores."
                   }
                 ]
               }
@@ -2498,48 +2381,16 @@
             "padding": 0,
             "color": "#0F172A"
           }
-        },
-        {
-          "id": "oEl1L2MBP1",
-          "type": "text",
-          "x": 113,
-          "y": 429,
-          "w": 711,
-          "h": 29,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Use: claim → evidence → explanation."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Instruction",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
         }
       ],
-      "notes": "Running\nGive pupils about 7 minutes to write the two evaluation paragraphs and the stretch response. Ask them to use claim, evidence and explanation in each, then review one response for each side as a class.\n\nAnswers\n1. The counting delay reduced recall of final words but spared early words. This supports separate STM and LTM stores because the delay disrupts information still available in STM, while rehearsed early words in LTM remain recallable.\n2. KF’s verbal STM was severely impaired, while his visual STM was relatively better preserved. This challenges the model’s description of STM as one unitary store because different components appear to be affected differently.\n3. KF challenges the claim that STM is a single store, not the distinction between STM and LTM. His differing verbal and visual performance suggests STM has components, but does not show that separate STM and LTM stores do not exist.\n\nMisconceptions\nPupils may use KF to claim that the entire multi-store model is disproved. Keep the target clear: the case challenges a unitary STM store. Conversely, the serial-position result supports separate stores but does not prove the model; describe it as supporting evidence rather than conclusive proof.\n\nBackground\nAQA evaluation answers are stronger when they connect a claim to evidence and explain what the evidence supports or challenges. KF’s case is a challenge to the structure of STM, whereas the serial-position findings support separate STM and LTM contributions."
+      "notes": "Running\nSpend about 5 minutes unpacking the claim, evidence and link. Ask pupils to identify which phrase gives the evidence and which explains why it supports separate stores.\n\nMisconceptions\nPupils may claim that the serial position findings prove the model, or that the filled delay affects LTM items most. The evidence supports separate stores because recency fell while primacy remained relatively intact, but it does not prove the model. Explain that the delay particularly disrupts rehearsal or maintenance of recent STM items.\n\nBackground\nA claim–evidence–link structure helps pupils connect research findings to a theoretical explanation. Evidence can support a model without ruling out alternative explanations."
     },
     {
       "id": "s12",
       "kind": "open-response",
       "elements": [
         {
-          "id": "ABKau4iuGi",
+          "id": "2Co4jIjPhr",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -2553,7 +2404,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Apply the model: a station announcement"
+                    "text": "Evaluate and apply"
                   }
                 ]
               }
@@ -2570,7 +2421,7 @@
           }
         },
         {
-          "id": "cJlfJUYiVj",
+          "id": "i0qMCxEtHR",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2604,7 +2455,7 @@
           }
         },
         {
-          "id": "WzmFLjQGsq",
+          "id": "FsAdsWwoqy",
           "type": "text",
           "x": 105,
           "y": 183,
@@ -2618,7 +2469,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Leila hears a platform number but attends to a message instead. Explain why she may not remember the announcement."
+                    "text": "KF had impaired verbal STM but better-preserved visual STM. Write a claim–evidence–link paragraph challenging one STM store."
                   }
                 ]
               }
@@ -2636,7 +2487,7 @@
           }
         },
         {
-          "id": "VkAM6nKbAP",
+          "id": "HcbToVgfZc",
           "type": "shape",
           "shape": "rect",
           "x": 64,
@@ -2647,7 +2498,7 @@
           "name": "Rule"
         },
         {
-          "id": "ZMriJzTND6",
+          "id": "KF9jZTMwxp",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2681,7 +2532,7 @@
           }
         },
         {
-          "id": "i03OhjM58d",
+          "id": "xLWYHdRm8Y",
           "type": "text",
           "x": 105,
           "y": 258,
@@ -2695,7 +2546,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "She hears it again and repeats it until boarding. Explain the process and the store’s likely coding and duration without rehearsal."
+                    "text": "A class recalls a word list immediately or after counting backwards for 30 seconds. Predict how recall of early and final words will differ. Explain why."
                   }
                 ]
               }
@@ -2713,7 +2564,7 @@
           }
         },
         {
-          "id": "5jkVM48tko",
+          "id": "LKov__sBNB",
           "type": "shape",
           "shape": "rect",
           "x": 64,
@@ -2724,7 +2575,7 @@
           "name": "Rule"
         },
         {
-          "id": "GxGfvBs52X",
+          "id": "yjuwtxYu76",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -2758,7 +2609,7 @@
           }
         },
         {
-          "id": "rg7nNW4SS5",
+          "id": "ATw86DGFAY",
           "type": "text",
           "x": 105,
           "y": 333,
@@ -2772,7 +2623,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Months later, she recalls the station’s name from a previous trip. Explain the transfer and describe that store’s coding, capacity and duration."
+                    "text": "Stretch: could the class result prove every part of the model? Explain one reason for caution."
                   }
                 ]
               }
@@ -2790,7 +2641,7 @@
           }
         },
         {
-          "id": "TJl4DLiwni",
+          "id": "wrpuy_NjDr",
           "type": "text",
           "x": 105,
           "y": 405,
@@ -2804,7 +2655,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Explain each situation using the model."
+                    "text": "Use precise store and process names."
                   }
                 ]
               }
@@ -2822,7 +2673,7 @@
           }
         }
       ],
-      "notes": "Running\nAllow about 6 minutes for pupils to write an explanation of each situation. Take responses in order and check that each identifies the relevant store and process.\n\nAnswers\n1. Her attention is directed to the message, so the platform number may not transfer from the sensory register into STM. It may therefore be lost from the brief sensory trace.\n2. Repeating the number is maintenance rehearsal that keeps it available in STM while she boards. Without rehearsal, STM is mainly acoustic and lasts about 18–30 seconds.\n3. Retrieval brings information from LTM into STM. LTM is mainly coded semantically, has potentially unlimited capacity and can last a lifetime.\n\nMisconceptions\nPupils may say Leila remembers the announcement because she heard it, even though attention was elsewhere; hearing alone does not ensure transfer to STM. They may also confuse rehearsal with retrieval: repetition maintains information in STM, while retrieval brings stored information from LTM into STM.\n\nBackground\nThe examples apply the proposed stages of information flow to everyday situations. The coding, capacity and duration figures describe typical properties in the model, rather than fixed limits for every memory."
+      "notes": "Running\nAllow about 12 minutes. Pupils write the KF claim–evidence–link paragraph and then predict the class result independently. Invite pairs to compare predictions. Finish with the stretch question and take a reason for caution from the class.\n\nAnswers\n1. KF’s case study challenges the idea of one uniform STM store. His verbal STM was severely impaired, especially for heard material, while his visual STM was relatively preserved. This suggests that verbal and visual short-term memory may rely on different components, although one case study cannot establish this for everyone.\n2. With immediate recall, final words should be recalled relatively well because they are still available in STM, and early words should also be recalled relatively well because they may have been rehearsed and transferred to LTM. After counting backwards for 30 seconds, recall of final words should fall because the delay disrupts rehearsal and maintenance in STM. Recall of early words should be less affected because they are more likely to have been transferred to LTM.\n3. The result could support some predictions of the model, but it cannot prove every part. A classroom word-list task tests only a limited situation, and other factors, such as attention or word familiarity, may affect recall.\n\nMisconceptions\nPupils may say KF proves there are exactly two STM stores; it challenges a single uniform store but one case cannot establish the full structure. They may predict that counting backwards improves recency or affects early and final words equally. Explain that the task prevents rehearsal, so the model predicts reduced recall of final STM items, while early items may be less affected because of LTM transfer. A supporting result does not prove every part of the model.\n\nBackground\nThe counting-backwards task is a filled delay: it reduces rehearsal before recall. The predicted pattern connects the recency effect with STM and the primacy effect with rehearsal and LTM."
     }
   ],
   "bakeoff": {

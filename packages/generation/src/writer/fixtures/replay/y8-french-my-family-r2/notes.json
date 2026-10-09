@@ -1,0 +1,72 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": "Pupils may choose mon or ma to match the speaker’s gender, or use mon/ma for plural nouns. The possessive agrees with the French noun: mon père, ma mère, mes parents. Note that mon is also used before some feminine nouns beginning with a vowel, but none of the nouns here do.",
+      "background": "French nouns have grammatical gender, which is not always the same as a person’s gender. Mes is used with plural nouns regardless of gender.",
+      "run": "About 4 minutes. Read the examples together. Pupils sort the six family words into singular masculine, singular feminine and plural, then check their choices with a partner."
+    },
+    {
+      "n": 4,
+      "answers": ["mon frère"],
+      "misconceptions": "“mes frère” shows that the pupil has mistaken a singular noun for a plural one; mes parents is plural, but frère is singular. “ma frère” shows that the pupil may be matching the speaker’s or family member’s gender rather than the noun’s grammatical gender. Brother is masculine: mon frère.",
+      "background": "The possessive adjective agrees with the noun that follows it, not with the person who owns or says it.",
+      "run": "About 2 minutes. Pupils choose independently, then show or say their answer. Ask one pupil to explain why the other two options do not fit."
+    },
+    {
+      "n": 5,
+      "answers": null,
+      "misconceptions": "Pupils may translate “is thirteen years old” word for word and use être. In French, age uses avoir: elle a treize ans. They may also use gentil for Léa; with elle, the adjective is gentille.",
+      "background": "French uses avoir, literally “to have”, when stating someone’s age. Adjectives such as gentil add an e in the feminine form: gentille.",
+      "run": "About 3 minutes. Read the model aloud, then have pupils repeat it and identify the phrase for name, age and personality. Ask them to notice the feminine form gentille."
+    },
+    {
+      "n": 6,
+      "answers": ["Ma sœur s’appelle Emma.", "Elle a quatorze ans.", "Elle est gentille."],
+      "misconceptions": "Pupils may write elle est quatorze ans, using être for age; correct this to elle a quatorze ans. They may write gentil for a sister; use gentille. Keep the apostrophe in s’appelle.",
+      "background": "S’appeler is a reflexive verb; in this sentence the fixed form is s’appelle. Quatorze means fourteen.",
+      "run": "About 5 minutes. Pupils write the three sentences independently, using the word bank. They check spelling and the feminine adjective ending with a partner before you review the answers."
+    },
+    {
+      "n": 7,
+      "answers": null,
+      "misconceptions": "Pupils may use the same adjective ending for il and elle. Gentil and amusant describe a masculine person; gentille and amusante describe a feminine person. The final e in the feminine form is pronounced as part of the ending, not as a separate word.",
+      "background": "Many French adjectives add -e in the feminine, and some also change their spelling. Here, amusant becomes amusante and gentil becomes gentille.",
+      "run": "About 4 minutes. Read each pair aloud. Pupils match the il and elle forms, then practise saying one sentence about a brother or father and one about a sister or mother."
+    },
+    {
+      "n": 8,
+      "answers": null,
+      "misconceptions": "Pupils may write je n’ai pas une sœur by carrying the affirmative article into the negative. In this expression, use de after pas: je n’ai pas de sœur. They may also confuse un frère and une sœur; the article matches the noun’s gender.",
+      "background": "In a negative sentence, un and une commonly change to de after pas. This pattern is introduced here through family vocabulary.",
+      "run": "About 4 minutes. Pupils say the two affirmative examples, then contrast them with the negative example. Have them complete a spoken sentence about a sibling, real or imaginary."
+    },
+    {
+      "n": 9,
+      "answers": null,
+      "misconceptions": "Pupils may say il est douze ans rather than il a douze ans; age uses avoir. They may use amusante for Hugo; the masculine form is amusant. Make clear that the example says he has a brother and does not have a sister.",
+      "background": "The paragraph combines sibling statements with the name, age and personality structures practised earlier. Its details describe the example family, not a required personal answer.",
+      "run": "About 4 minutes. Pupils read the paragraph aloud in pairs and identify the sibling information and Hugo’s three details. Ask them to point out the verb used for his age and the adjective ending."
+    },
+    {
+      "n": 10,
+      "answers": [
+        "J’ai une sœur. Je n’ai pas de frère. Ma sœur s’appelle Zoé. Elle a treize ans. Elle est amusante."
+      ],
+      "misconceptions": "Pupils may write je n’ai pas un frère; use de after pas. They may use mon sœur instead of ma sœur, or amusant instead of amusante. The feminine noun sœur takes ma, and the feminine adjective describing Zoé is amusante.",
+      "background": "Zoé is feminine, so both the possessive ma and the adjective ending in amusante agree with the relevant feminine noun or person.",
+      "run": "About 6 minutes. Pupils write five sentences independently using the supplied words. They check that the negative uses de and that the adjective agrees, then compare with a partner."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "Example: J’ai un frère et une sœur. Je n’ai pas de frère. Ma sœur s’appelle Emma. Elle a treize ans. Elle est gentille.",
+        "Stretch example: Mon frère s’appelle Lucas. Il a douze ans. Il est amusant."
+      ],
+      "misconceptions": "Pupils may give only a list of family members and miss the required name, age or trait. They may use être for age, omit de after pas, or leave a feminine adjective in its masculine form. Check for a complete set of details and matching agreement. The task allows real or imaginary families, so there is no single required set of family details.",
+      "background": "This paragraph draws together possessives, sibling statements, the name and age structures, and adjective agreement. A pupil can choose an imaginary family if they prefer not to write about their own.",
+      "run": "About 8 minutes. Pupils write a short paragraph independently, using the support phrases. Invite them to add the stretch sentence with a second family member and a different trait. Ask them to check verbs, possessives and adjective agreement before the worksheet exit ticket."
+    }
+  ]
+}

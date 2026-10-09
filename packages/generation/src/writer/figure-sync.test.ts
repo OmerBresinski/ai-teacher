@@ -2,7 +2,6 @@
 // bar kept its whole of 20. The input and output below are that run's repair.jsonl line, verbatim.
 import { describe, expect, test } from "bun:test";
 import {
-  barModelParams,
   figureNumbers,
   figureTextMismatch,
   fractionsOf,

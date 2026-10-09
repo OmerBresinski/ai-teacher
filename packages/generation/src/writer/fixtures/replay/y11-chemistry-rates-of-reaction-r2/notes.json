@@ -1,0 +1,90 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": [
+        "The gas-syringe reading increases as hydrogen is produced, then stays constant when the reaction stops."
+      ],
+      "misconceptions": "Pupils may expect the reading to keep rising after the reaction has stopped. Explain that the reading only rises while gas is being produced; it then levels off.",
+      "background": "The reaction produces hydrogen gas. In a sealed setup, the gas travels through the delivery tube and pushes the syringe plunger out. Leaks can make the measured volume lower than the actual volume produced.",
+      "run": "Allow about 3 minutes. Pupils predict individually, then compare with a partner. Take a few predictions and ask what would make the reading stop changing."
+    },
+    {
+      "n": 4,
+      "answers": null,
+      "misconceptions": "Pupils may use the final gas volume without subtracting the starting volume, or divide time by volume. Use change in volume ÷ change in time: (36 − 0) ÷ (30 − 0) = 1.2 cm³/s.",
+      "background": "Mean rate is the average rate over the selected interval. It does not show how the rate may change during that interval.",
+      "run": "Allow about 4 minutes. Talk through the worked calculation, then ask pupils to explain why both the volume change and the time interval are used."
+    },
+    {
+      "n": 5,
+      "answers": [
+        "48 ÷ 40 = 1.2 cm³/s.",
+        "48 ÷ 60 = 0.8 cm³/s.",
+        "The first reaction is faster on average because 1.2 cm³/s is greater than 0.8 cm³/s."
+      ],
+      "misconceptions": "Pupils may compare only the final volumes, which are equal, and conclude the reactions are equally fast. Compare the volume produced per second: the first produces more each second.",
+      "background": "The unit cm³/s means cubic centimetres of gas produced per second. Keep the volume and time units consistent when calculating a rate.",
+      "run": "Allow about 6 minutes. Pupils calculate independently and show each calculation with its unit. Then they compare answers in pairs before checking as a class."
+    },
+    {
+      "n": 6,
+      "answers": null,
+      "misconceptions": "Pupils may think more acid particles make each particle move faster. At the same temperature, particle speeds have the same distribution; the higher concentration means more particles in the same volume and more collisions with the magnesium surface.",
+      "background": "Collision theory links reaction rate to successful collisions per second. A collision is successful when particles collide with enough energy to react.",
+      "run": "Allow about 5 minutes. Ask pupils to explain the particle diagram to a partner using the terms concentration, collisions and rate. Take a concise class explanation."
+    },
+    {
+      "n": 7,
+      "answers": null,
+      "misconceptions": "Pupils may think doubling concentration doubles particle speed or the energy of each collision. At the same temperature, particle speeds have the same distribution; the greater number of particles leads to more collisions, including more successful collisions, each second.",
+      "background": "Temperature affects the distribution of particle energies. Concentration changes the number of particles in a given volume, not their average kinetic energy when temperature is unchanged.",
+      "run": "Allow about 5 minutes. Pupils explain the comparison in pairs, then write one sentence distinguishing particle number from particle speed or energy."
+    },
+    {
+      "n": 8,
+      "answers": ["Successful collisions happen more often."],
+      "misconceptions": "“Acid particles move faster” and “Each collision has more energy” confuse concentration with temperature. “The magnesium gains a larger surface” confuses concentration with the amount or surface area of magnesium. At the same temperature and with the same magnesium, more acid particles in the same volume cause more collisions and more successful collisions each second.",
+      "background": "The reaction rate increases when the frequency of successful collisions increases. Increasing concentration does not itself increase the energy of each collision.",
+      "run": "Allow about 4 minutes. Pupils choose an explanation individually and justify it to a partner. Check the answer and address why each other statement is not correct."
+    },
+    {
+      "n": 9,
+      "answers": null,
+      "misconceptions": "Pupils may change the magnesium mass, surface area or temperature as well as concentration, making it unclear what caused a rate difference. Keep those variables the same and change only concentration. Starting the timer late can also miss early gas production, so time promptly when the magnesium is added.",
+      "background": "A gas syringe measures the volume of gas produced. Repeating each concentration helps identify anomalous results and makes a mean more reliable. The acid should be in excess if the investigation is intended to compare rates while keeping magnesium as the limiting reactant.",
+      "run": "Allow about 6 minutes. Pupils identify the changed variable, measurements and controls with a partner. Ask how gas volume readings over time could be used to compare rates."
+    },
+    {
+      "n": 10,
+      "answers": [
+        "Change the hydrochloric acid concentration (0.5, 1.0 and 1.5 mol/dm³) and measure the volume of hydrogen produced over time. Use 25 cm³ of acid each time. Keep the magnesium mass and surface area, and the temperature, the same. Add the magnesium to the acid in a flask, seal it promptly with a bung connected to a gas syringe, and start the timer. Record the gas volume at regular intervals, such as every 10 seconds, for each concentration. Repeat each test three times and compare the mean rates calculated over the same time interval."
+      ],
+      "misconceptions": "Pupils may change more than one variable, use different magnesium pieces without controlling their mass or surface area, or compare rates over different time intervals. Change only concentration, control the other variables and compare rates over the same interval.",
+      "background": "A fair test changes one independent variable while keeping other relevant variables constant. Magnesium ribbon can have different surface areas if pieces differ in length, width or thickness; use comparable pieces and clean them in the same way.",
+      "run": "Allow about 8 minutes. Pupils write a method individually, then swap plans with a partner to check whether it is repeatable and controls the stated variables. Invite one pupil to read out a clear method."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "Use each acid's gas volume at 20 s minus its volume at 0 s, then divide by 20 s. The graph appears to show 32 cm³ for A and 28 cm³ for B at 20 s, giving A: 32 ÷ 20 = 1.6 cm³/s; B: 28 ÷ 20 = 1.4 cm³/s.",
+        "A used the stronger acid, because it produced more gas by 20 s and has the greater mean rate over 0–20 s.",
+        "Both finish at 40 cm³ because they contain the same mass of magnesium and the acid is in excess. The magnesium is used up, so both produce the same total amount of hydrogen."
+      ],
+      "misconceptions": "Pupils may call the acid with the larger final volume stronger, or assume a faster reaction must produce more gas in total. The graph compares rate and final yield separately: the faster reaction reaches the same final volume sooner. Check the graph readings carefully when calculating the 0–20 s rates.",
+      "background": "When the acid is in excess, magnesium limits the total amount of hydrogen produced. A higher acid concentration can make hydrogen form faster without changing the final amount, provided the same amount of magnesium reacts completely.",
+      "run": "Allow about 7 minutes. Pupils read the graph and calculate both mean rates independently, then compare which acid is stronger and explain the equal final volumes. Check that pupils use the 0–20 s interval and include cm³/s."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "No. Concentration alone cannot explain why Y reacts faster. Y also has twice the magnesium mass and a higher temperature, both of which can increase the rate.",
+        "Use the same magnesium mass and surface area, the same temperature and the same volume of acid in each test. Change only the acid concentration. Use the same flask, gas syringe and timing procedure, record gas volume at regular intervals, and repeat each concentration. Compare mean rates over the same interval.",
+        "At the same temperature, higher concentration means more acid particles in a given volume. They collide with the magnesium surface more often, so more collisions each second have enough energy to react. Therefore, there are more successful collisions per second and the rate increases."
+      ],
+      "misconceptions": "Pupils may attribute Y's faster rate to concentration even though magnesium mass and temperature also differ. The test is confounded: more magnesium can provide more reacting material, and higher temperature increases particle kinetic energy and the frequency of successful collisions. Change concentration alone and control the other variables.",
+      "background": "A conclusion about one variable is strongest when other factors that affect the outcome are controlled. Magnesium mass and surface area can affect the amount of reacting material and available surface; temperature affects particle energy and reaction rate.",
+      "run": "Allow about 8 minutes. Pupils evaluate the claim and redesign the comparison in pairs, then write an explanation for the stretch. Take responses that distinguish the confounded test from a fair test."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "changes": [
+    {
+      "n": 1,
+      "teaches": [1],
+      "slide": {
+        "template": "visual-text",
+        "heading": "Halves and quarters",
+        "lead": "A fraction names equal parts of a whole.",
+        "points": [
+          { "label": "One half", "text": "One of 2 equal parts." },
+          { "label": "One quarter", "text": "One of 4 equal parts." },
+          { "label": "Remember", "text": "The parts must be the same size." }
+        ],
+        "figure": {
+          "kind": "labelled-diagram",
+          "shows": "Two same-sized rectangles. The first is split into 2 equal parts with 1 part shaded. The second is split into 4 equal parts with 1 part shaded.",
+          "labels": ["½", "¼"]
+        }
+      }
+    },
+    {
+      "n": 4,
+      "teaches": [1],
+      "slide": {
+        "template": "hinge",
+        "heading": "Check: halves and quarters",
+        "stem": "Which shaded part shows one quarter?",
+        "options": [
+          "One of 2 equal parts is shaded.",
+          "One of 4 equal parts is shaded.",
+          "One of 4 unequal parts is shaded."
+        ],
+        "correct": 2
+      }
+    }
+  ]
+}

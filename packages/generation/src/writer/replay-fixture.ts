@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pileSpec } from "@tj/slides/diagrams";
 import type { Brief } from "./fixes";
 import type { PhotoResult, VisualAsk, VisualState } from "./materialise";
 import type { ChatReq, WriterServices } from "./services";
@@ -29,11 +30,15 @@ export function replayServices(b: string): WriterServices {
   // A run whose notes call the budget refused has no notes file: the call fails here too.
   const notesText = read(b, "notes.json");
   const notes = notesText.trim() ? JSON.parse(notesText) : null;
+  // The objective repair's recorded answer, when the run made that call.
+  const objFile = join(DIR, b, "objective-repair.json");
+  const objective = existsSync(objFile) ? JSON.parse(readFileSync(objFile, "utf8")) : null;
   return {
     log: () => {},
     writer: () => Promise.reject(new Error("the replay never calls the writer")),
     chat: async (r: ChatReq) => {
       if (r.name === "notes" && notes) return { out: notes, usd: 0, ms: 0 };
+      if (r.name === "objective_repair" && objective) return { out: objective, usd: 0, ms: 0 };
       if (r.name === "slide") {
         const hit = repairs.find((x) => r.user.includes(JSON.stringify(x.input)));
         if (hit?.out) return { out: hit.out, usd: 0, ms: 0 };
@@ -56,11 +61,25 @@ export function recordedVisuals(b: string) {
   for (const s of lesson.slides)
     for (const e of s.elements) if (e.type === "image") bySrc.set(String(e.src), e);
   const out = new Map<string, VisualState>();
-  for (const e of jsonl(b, "log.jsonl"))
+  // lostPic: a slide that asked again one subject each records its key twice; the second round's
+  // states are read once the stage places it (`placeMore`).
+  const log = jsonl(b, "log.jsonl");
+  const lostSlides = new Set(
+    log.filter((e) => e.ev === "lost-picture").map((e) => Number(e.slide) - 1),
+  );
+  const late = new Map<string, VisualState>();
+  const placedLate = new Set<number>();
+  for (const e of log)
     if (e.ev === "picture-done") {
-      const el = e.ok ? bySrc.get(String(e.src)) : undefined;
+      const key = String(e.key);
+      // The image on this key's own slide (one photo can show on two slides, cropped apart).
+      const own = lesson.slides[Number(key.split(":")[0])]?.elements.find(
+        (x) => x.type === "image" && String(x.src) === String(e.src),
+      );
+      const el = e.ok ? (own ?? bySrc.get(String(e.src))) : undefined;
+      const into = lostSlides.has(Number(key.split(":")[0])) && out.has(key) ? late : out;
       if (!el) {
-        out.set(String(e.key), { status: "failed" });
+        into.set(key, { status: "failed" });
         continue;
       }
       const photo: PhotoResult = {
@@ -71,28 +90,78 @@ export function recordedVisuals(b: string) {
         request: String(el.request ?? ""),
         ...(el.subjects ? { subjects: el.subjects as PhotoResult["subjects"] } : {}),
       };
-      out.set(String(e.key), { status: "photo", photo });
+      into.set(key, { status: "photo", photo });
     }
-  for (const d of jsonl(b, "diagrams.jsonl"))
+  for (const d0 of jsonl(b, "diagrams.jsonl")) {
+    // The lab's replay drew a reused unshared pile again from its words (pileSpec), as the live
+    // stage does in drawWriterDiagram; the recorded spec predates the row rule (5ad4ed59).
+    const s0 = d0.spec as { pile?: unknown; alt?: unknown };
+    const d = s0?.pile === true ? { ...d0, spec: pileSpec(s0, String(s0.alt ?? "")) ?? s0 } : d0;
+    // A diagram that could not be shown and was asked again as a picture of the same thing: the
+    // picture is the second round's state.
+    const was = out.get(String(d.key));
+    if (was && !late.has(String(d.key))) late.set(String(d.key), was);
     out.set(String(d.key), { status: "diagram", spec: d.spec });
-  return (i: number, key: string, _a: VisualAsk): VisualState =>
+  }
+  const visual = (i: number, key: string, _a: VisualAsk): VisualState =>
+    (placedLate.has(i) ? late.get(`${i}:${key}`) : undefined) ??
     out.get(`${i}:${key}`) ?? { status: "failed" };
+  return Object.assign(visual, {
+    placeMore: async (i: number) => {
+      placedLate.add(i);
+    },
+  });
+}
+
+/**
+ * keepPic: the photo the run held back and then shipped (its `keep-pic` log line), read off the
+ * slide that shows it.
+ */
+export function recordedHeld(b: string) {
+  const lesson = JSON.parse(read(b, "lesson.json")) as { slides: { id: string; elements: El[] }[] };
+  const out = new Map<string, VisualState>();
+  for (const e of jsonl(b, "log.jsonl")) {
+    if (e.ev !== "keep-pic" || typeof e.key !== "string") continue;
+    const i = Number(e.key.split(":")[0]);
+    const el = lesson.slides
+      .find((s) => s.id === `s${i + 1}`)
+      ?.elements.find((x) => x.type === "image");
+    if (el)
+      out.set(e.key, {
+        status: "photo",
+        photo: {
+          src: String(el.src),
+          alt: String(el.alt ?? ""),
+          aspect: aspectOf(el),
+          request: String(el.request ?? ""),
+          ...(el.subjects ? { subjects: el.subjects as PhotoResult["subjects"] } : {}),
+        },
+      });
+  }
+  return (i: number, key: string) => out.get(`${i}:${key}`);
 }
 
 export async function replayRun(
   b: string,
-  o: { services?: WriterServices; visual?: ReturnType<typeof recordedVisuals> } = {},
+  o: {
+    services?: WriterServices;
+    visual?: (i: number, key: string, a: VisualAsk) => VisualState;
+  } = {},
 ) {
   const brief = JSON.parse(read(b, "brief.json")) as Brief;
   const objectives = (
     JSON.parse(read(b, "objectives.json")) as { objectives: { teacher: string }[] }
   ).objectives.map((o) => o.teacher);
   const main = JSON.parse(read(b, "main.json")) as { text: string; finishReason?: string | null };
+  const recorded = recordedVisuals(b);
+  const visual = o.visual ?? recorded;
   return runWriter({
     brief,
     objectives,
     services: o.services ?? replayServices(b),
-    visual: o.visual ?? recordedVisuals(b),
+    visual,
+    ...(o.visual ? {} : { placeMore: recorded.placeMore }),
+    held: recordedHeld(b),
     recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
   });
 }

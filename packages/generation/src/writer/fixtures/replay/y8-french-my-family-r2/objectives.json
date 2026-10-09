@@ -1,0 +1,37 @@
+{
+  "objectives": [
+    {
+      "teacher": "Identify family members using mon père, ma mère, mon frère, ma sœur, mes parents and mes grands-parents, choosing mon, ma or mes to match the French noun.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Describe a family member’s name, age and one personality trait using il/elle s’appelle…, il/elle a… ans and il/elle est…, with correct agreement of gentil/gentille and amusant/amusante.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Write a short description of your own or an imaginary family using j’ai… and je n’ai pas de… to describe siblings, followed by details about one family member’s name, age and personality.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 283,
+    "completion_tokens": 136,
+    "total_tokens": 419,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.001926,
+  "ms": 4042,
+  "firstTokenMs": 1552
+}

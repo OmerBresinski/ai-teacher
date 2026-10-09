@@ -1,0 +1,19 @@
+{
+  "id": "y2-maths-halves-quarters",
+  "topic": "Halves and quarters of shapes and amounts",
+  "subject": "Maths",
+  "yearGroup": "Year 2",
+  "year": 2,
+  "keyStage": "ks1",
+  "theme": "splash",
+  "readingLevel": "Year 2",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "WIDE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}
