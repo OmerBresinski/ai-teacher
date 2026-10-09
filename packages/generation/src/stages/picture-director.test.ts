@@ -539,5 +539,9 @@ describe("split at ask (TEACH-167 part b)", () => {
     expect(
       splitSubjects(photoAsk("Three monarchs: Henry VIII, Edward VI and Mary I")),
     ).toBeUndefined();
+    // A historical name before the colon, flagged named or not.
+    const wives = "Three wives of Henry VIII: a first wife, a second wife and a third wife";
+    expect(splitSubjects(photoAsk(wives))).toBeUndefined();
+    expect(splitSubjects(photoAsk(wives, { named: true }))).toBeUndefined();
   });
 });

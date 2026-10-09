@@ -314,8 +314,10 @@ export async function findPicture(
           if (!p) return;
           // One synchronous check-and-set: two answers can never both win.
           if (won) {
-            // A later answer of either side: removed, awaited by nobody (it never throws).
-            void discard(p);
+            // A later answer of either side: removed, awaited by nobody. Its own failure, even an
+            // abort or a budget stop, is caught here: the race is already decided, and a rejection
+            // nobody awaits would crash the worker. The bank logs its own delete failures.
+            void discard(p).then(undefined, () => undefined);
             return;
           }
           won = { via, p };

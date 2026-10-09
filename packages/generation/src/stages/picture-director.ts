@@ -877,8 +877,11 @@ export function splitSubjects(ask: WriterPhotoAsk): string[] | undefined {
   const colon = ask.shows.indexOf(":");
   if (colon <= 0 || !ask.shows.slice(0, colon).trim()) return undefined;
   if (libraryKind(ask.shows) || isMapRequest(ask.shows)) return undefined;
-  // A capitalised name in the list is a named real thing (Henry VIII, the Golden Hind): never made.
+  // A capitalised name in the list, or in the head after its first word, is a named real thing
+  // (Henry VIII, the Golden Hind): never made.
   if (/\b[A-Z][a-z]*\b/.test(ask.shows.slice(colon + 1))) return undefined;
+  if (/\b[A-Z][a-z]*\b/.test(ask.shows.slice(0, colon).trim().replace(/^\S+/, "")))
+    return undefined;
   const subjects = compoundSubjects(ask.shows);
   return subjects.length >= 3 && subjects.length <= 4 ? subjects : undefined;
 }

@@ -3,6 +3,7 @@
  * Real `findPicture`, a fake library and generator, real timers and real abort signals.
  */
 import { describe, expect, test } from "bun:test";
+import { BudgetExceeded } from "../types";
 import type { PlacedPhoto } from "./illustrate";
 import { type BankRequest, findPicture, type MadePicture, type PictureBank } from "./photo-bank";
 
@@ -220,5 +221,32 @@ describe("C7: stock races generation after the threshold", () => {
     await sleep(80);
     expect(log.remembered).toEqual(["/p.jpg"]);
     expect(log.rejected).toEqual(["/g.png"]);
+  });
+
+  test("a loser's reject that throws (a budget stop) never becomes an unhandled rejection", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: unknown) => unhandled.push(e);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const { bank } = fakeBank(() => after(5, madePhoto("/g.png")));
+      bank.reject = async () => {
+        throw new BudgetExceeded("usd");
+      };
+      const out = await findPicture(
+        req,
+        bank,
+        () => after(50, stockPhoto("/p.jpg")),
+        new AbortController().signal,
+        async () => true,
+        Date.now,
+        undefined,
+        20,
+      );
+      expect(out.photo?.src).toBe("/g.png");
+      await sleep(80);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 });
