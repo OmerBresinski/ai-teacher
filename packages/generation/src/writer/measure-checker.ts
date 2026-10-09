@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { CHECKER_FLAGS, type CheckerFlags } from "./checker-flags";
 import { wordsOf } from "./materialise";
 import { replayRun, replayServices } from "./replay-fixture";
+import { whenNonFatal } from "./services";
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 const runs = readdirSync(DIR).sort();
@@ -33,10 +34,12 @@ for (const b of runs)
       log: (e: object) => events.push(e as Record<string, unknown>),
       chat: async (r: Parameters<typeof base.chat>[0]) => {
         calls[r.name] = (calls[r.name] ?? 0) + 1;
-        return base.chat(r).catch((e: unknown) => {
-          misses.push(r.name);
-          throw e;
-        });
+        return base.chat(r).catch(
+          whenNonFatal((e: unknown) => {
+            misses.push(r.name);
+            throw e;
+          }),
+        );
       },
     };
     const res = await replayRun(b, { services, checker });
