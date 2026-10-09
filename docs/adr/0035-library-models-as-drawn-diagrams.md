@@ -74,3 +74,20 @@ image element `name: "Diagram"` whose `src` is an SVG data URL, with `builds` co
   audit's targeted cases, and alt text. Its Chromium clipping ratchet stays in the lab.
 - A model added later ships by passing its counter-judge, rendering in `library.test.ts`, and being
   added to `models.ts`; new or changed writer wording goes through the prompt-engineer.
+
+## Amendment (2026-10-09, TEACH-247 part i): a library drawing must agree with its slide
+
+prod-lib-1 (four teaching errors in nine library slides) showed that a model's numbers are true to
+its params but not always to the slide. Three rules now hold in `packages/generation/src/library`:
+
+- **No silent clamp.** Params outside the bounds a drawing is held to are refused
+  (`boundsRefusals`, in `checkParams` and again in `renderLibraryModel`); the repair call or the
+  drawer takes over. `clampToSchema` stays as the bound definition, never as a silent fix.
+- **The drawing's text must match the words** (`consistency.ts`). Every number the slide's words use
+  (digits, fractions, number words from "two", "half", "quarter", "fifths" …) must be printed on the
+  full drawing; numbers left of "=" in a drawn sum must be the words'; letters the words name as
+  labels ("A, B and C") must be drawn. A mismatch falls back to the drawer.
+- **A library model is a still.** The kit's builds start from an empty frame, so Present opened on a
+  blank box. The drawn SVG carries no `data-s` tags: every surface, Present included, shows the
+  drawing as it ends. Decision 2's "Present plays the model's builds" is withdrawn for library
+  models until their first build is a full drawing.

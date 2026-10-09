@@ -7,14 +7,16 @@
  *    the refusals;
  * 3. what the intent asks that the model cannot draw (lib-meta `cannot`), and on a question slide
  *    the last build before the answer (lib-meta `answerKeys`), or no model;
- * 4. the model is drawn as an SVG (render.ts).
+ * 4. the model is drawn as an SVG (render.ts), and its printed numbers must be the slide's
+ *    (consistency.ts, TEACH-247 part i): a drawing that disagrees is the drawer's.
  * Any failure returns the drawer kind to fall back to, never an empty slot. Never throws, except a
  * budget or abort error from the call, which stops the job as every other call's does.
  */
 import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
+import { drawingWordsMismatch } from "./consistency";
 import { drawLibraryModel } from "./guard";
-import { clampToSchema, kit, type LibraryDrawing, loadModel } from "./render";
+import { boundsRefusals, kit, type LibraryDrawing, loadModel } from "./render";
 import type { J, LibRefusal } from "./types";
 
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
@@ -50,8 +52,11 @@ export async function checkParams(
   for (const key of NOT_FILLED) delete own[key];
   const shape = k.schemaCheck(fillSchema(m.params), own);
   if (shape.length) return { refusals: shape, warnings: [] };
-  // No __proto__ / constructor keys reach the kit's withDefaults; bounds hold before it runs.
-  const params = k.withDefaults(m.params, clampToSchema(fillSchema(m.params), own));
+  // A value outside the bounds the drawing holds to (or a __proto__ / constructor key) is refused,
+  // never clamped: a clamp would draw a different number from the one the slide asked for.
+  const bounds = boundsRefusals(fillSchema(m.params), own);
+  if (bounds.length) return { refusals: bounds, warnings: [] };
+  const params = k.withDefaults(m.params, own);
   return nonFatalSync(
     () => {
       const v = m.validate(params);
@@ -180,10 +185,21 @@ export async function libraryDiagram(
     if (step === undefined) return fallback("a question slide and no build before the answer");
   }
   const p = params;
-  const drawn = await nonFatal(
-    () => drawLibraryModel(ask.model, p, step === undefined ? {} : { step }),
+  // The full drawing (with a question slide's answer) is checked against the slide's words.
+  const full = await nonFatal(
+    () => drawLibraryModel(ask.model, p),
     (e) => String(e).slice(0, 160),
   );
+  if (typeof full === "string") return fallback(`it did not draw: ${full}`);
+  const mismatch = drawingWordsMismatch(full.svg, ask.words);
+  if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
+  const drawn =
+    step === undefined
+      ? full
+      : await nonFatal(
+          () => drawLibraryModel(ask.model, p, { step }),
+          (e) => String(e).slice(0, 160),
+        );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);
   log({
     ev: "lib-drawn",

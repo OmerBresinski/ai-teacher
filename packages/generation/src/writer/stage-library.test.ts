@@ -79,7 +79,7 @@ const FLOOR_PX = 24 * (1440 / 1280) * 0.75;
 const report: unknown[] = [];
 
 describe("writer stage: library models", () => {
-  test("filled params draw the model in the diagram slot, with its builds", async () => {
+  test("filled params draw the model in the diagram slot, as a still (TEACH-247 part i)", async () => {
     const m = await loadModel("fractions");
     const { fills, diagram, events } = await run(() => m?.presets[0]?.params);
     expect(fills.length).toBe(1);
@@ -87,7 +87,8 @@ describe("writer stage: library models", () => {
     const svg = svgOfDataUrl(String(diagram?.src)) ?? "";
     expect(svg).toContain('class="slide tk theme-primary"');
     expect(diagram?.alt).toBe("A circle cut into two equal parts with one part shaded.");
-    expect(Number(diagram?.builds)).toBeGreaterThan(0);
+    // A library model opens complete in Present: no builds from an empty frame.
+    expect(Number(diagram?.builds ?? 0)).toBe(0);
     expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
   }, 60_000);
 

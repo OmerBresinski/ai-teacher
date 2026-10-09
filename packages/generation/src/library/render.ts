@@ -538,6 +538,51 @@ export function clampToSchema(schema: unknown, value: unknown): unknown {
   return value;
 }
 
+/**
+ * Where `value` falls outside the bounds `clampToSchema` holds a drawing to (TEACH-247 part i): each
+ * path a clamp would change, as a refusal the fill's repair call can act on. Empty when the value
+ * draws exactly as it was sent. A clamp is never applied silently: 16 cut to 12 is another number.
+ */
+export function boundsRefusals(
+  schema: unknown,
+  value: unknown,
+  path = "",
+): { path: string; reason: string }[] {
+  const s = (schema ?? {}) as J;
+  const at = path || "(all)";
+  if (Array.isArray(value)) {
+    const max = typeof s.maxItems === "number" ? s.maxItems : DEFAULT_MAX_ITEMS;
+    const out =
+      value.length > max ? [{ path: at, reason: `has ${value.length} items, at most ${max}` }] : [];
+    return [
+      ...out,
+      ...value.flatMap((v, i) => boundsRefusals(s.items, v, path ? `${path}.${i}` : String(i))),
+    ];
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return [{ path: at, reason: "is not a number" }];
+    const c = clampToSchema(s, value);
+    return c === value
+      ? []
+      : [{ path: at, reason: `${value} is out of range (it would draw ${c})` }];
+  }
+  if (typeof value === "string") {
+    const max = typeof s.maxLength === "number" ? s.maxLength : DEFAULT_MAX_LENGTH;
+    return value.length > max
+      ? [{ path: at, reason: `is ${value.length} letters, at most ${max}` }]
+      : [];
+  }
+  if (value && typeof value === "object") {
+    const props = (s.properties ?? {}) as Record<string, unknown>;
+    return Object.entries(value as J).flatMap(([k, v]) =>
+      UNSAFE_KEYS.has(k)
+        ? [{ path: path ? `${path}.${k}` : k, reason: "is not a parameter" }]
+        : boundsRefusals(props[k] ?? s.additionalProperties, v, path ? `${path}.${k}` : k),
+    );
+  }
+  return [];
+}
+
 /** Each visible text drawn off the slide or below the foot rule, as "words @x,y". */
 function wordsOffSlide(svg: Element, foot: Element | null): string[] {
   const out: string[] = [];
@@ -591,8 +636,17 @@ export async function renderLibraryModel(
   if (!model) throw new Error(`no library model ${id}`);
   const k = await kit();
   return withDom(({ host }) => {
-    // The slide's heading is the title: the drawing carries none.
-    const P = { ...(clampToSchema(model.params, params) as J), title: "" };
+    // The slide's heading is the title: the drawing carries none. Params out of bounds are refused
+    // (the caller falls back to the drawer), never clamped into a different number.
+    const bad = boundsRefusals(model.params, params);
+    if (bad.length)
+      throw new Error(
+        `${id}: ${bad
+          .map((r) => `${r.path} ${r.reason}`)
+          .join("; ")
+          .slice(0, 200)}`,
+      );
+    const P = { ...params, title: "" };
     const stage = k.mountSlide(host, model, P, { theme: "primary" });
     try {
       if (opts.step !== undefined) stage.show(opts.step, true);
@@ -612,6 +666,9 @@ export async function renderLibraryModel(
       const oroot = out.firstElementChild;
       oroot?.children[2]?.remove();
       for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
+      // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
+      // Present would open on a blank box. Every surface shows the drawing as it ends.
+      for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
       // Builds left on hidden marks only make Present wait on nothing.
       out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       out.setAttribute("class", "slide tk theme-primary");
