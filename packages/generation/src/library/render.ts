@@ -10,6 +10,8 @@
  * what every surface shows. The render is synchronous, and the two globals the kit reads at draw
  * time (`document`, `getComputedStyle`) are set only for its duration.
  */
+
+import { REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
 import { textWidth } from "@tj/slides/diagrams";
 import { FONT_STACKS } from "@tj/slides/fonts";
 import { type Element, Window } from "happy-dom";
@@ -538,6 +540,51 @@ export function clampToSchema(schema: unknown, value: unknown): unknown {
   return value;
 }
 
+/**
+ * Where `value` falls outside the bounds `clampToSchema` holds a drawing to (TEACH-247 part i): each
+ * path a clamp would change, as a refusal the fill's repair call can act on. Empty when the value
+ * draws exactly as it was sent. A clamp is never applied silently: 16 cut to 12 is another number.
+ */
+export function boundsRefusals(
+  schema: unknown,
+  value: unknown,
+  path = "",
+): { path: string; reason: string }[] {
+  const s = (schema ?? {}) as J;
+  const at = path || "(all)";
+  if (Array.isArray(value)) {
+    const max = typeof s.maxItems === "number" ? s.maxItems : DEFAULT_MAX_ITEMS;
+    const out =
+      value.length > max ? [{ path: at, reason: `has ${value.length} items, at most ${max}` }] : [];
+    return [
+      ...out,
+      ...value.flatMap((v, i) => boundsRefusals(s.items, v, path ? `${path}.${i}` : String(i))),
+    ];
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return [{ path: at, reason: "is not a number" }];
+    const c = clampToSchema(s, value);
+    return c === value
+      ? []
+      : [{ path: at, reason: `${value} is out of range (it would draw ${c})` }];
+  }
+  if (typeof value === "string") {
+    const max = typeof s.maxLength === "number" ? s.maxLength : DEFAULT_MAX_LENGTH;
+    return value.length > max
+      ? [{ path: at, reason: `is ${value.length} letters, at most ${max}` }]
+      : [];
+  }
+  if (value && typeof value === "object") {
+    const props = (s.properties ?? {}) as Record<string, unknown>;
+    return Object.entries(value as J).flatMap(([k, v]) =>
+      UNSAFE_KEYS.has(k)
+        ? [{ path: path ? `${path}.${k}` : k, reason: "is not a parameter" }]
+        : boundsRefusals(props[k] ?? s.additionalProperties, v, path ? `${path}.${k}` : k),
+    );
+  }
+  return [];
+}
+
 /** Each visible text drawn off the slide or below the foot rule, as "words @x,y". */
 function wordsOffSlide(svg: Element, foot: Element | null): string[] {
   const out: string[] = [];
@@ -578,8 +625,8 @@ const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const PAD = 18;
 
 /**
- * Draws model `id` with checked params at its last build (or at `step`, a question slide's last
- * build before the answer). Throws when the model is unknown, the kit throws, nothing is drawn or
+ * Draws model `id` with checked params at its last build. With `step` (a question slide's last
+ * build before the answer) the marks after it are the answer, hidden until the slide's reveal. Throws when the model is unknown, the kit throws, nothing is drawn or
  * the drawing is too heavy for a slide: the caller falls back to the drawer.
  */
 export async function renderLibraryModel(
@@ -591,12 +638,32 @@ export async function renderLibraryModel(
   if (!model) throw new Error(`no library model ${id}`);
   const k = await kit();
   return withDom(({ host }) => {
-    // The slide's heading is the title: the drawing carries none.
-    const P = { ...(clampToSchema(model.params, params) as J), title: "" };
+    // The slide's heading is the title: the drawing carries none. Params out of bounds are refused
+    // (the caller falls back to the drawer), never clamped into a different number.
+    const bad = boundsRefusals(model.params, params);
+    if (bad.length)
+      throw new Error(
+        `${id}: ${bad
+          .map((r) => `${r.path} ${r.reason}`)
+          .join("; ")
+          .slice(0, 200)}`,
+      );
+    const P = { ...params, title: "" };
     const stage = k.mountSlide(host, model, P, { theme: "primary" });
     try {
-      if (opts.step !== undefined) stage.show(opts.step, true);
       const svg = stage.svg;
+      // A question slide (TEACH-247 part i): the drawing as it ends, with the answer held back
+      // until the slide's answer is revealed. Marks the question shows and the answer replaces
+      // (a pile before it is shared) are restored and leave on the reveal (`data-qn`).
+      const q = opts.step;
+      if (q !== undefined)
+        for (const el of [...svg.querySelectorAll("[data-h]")]) {
+          const hide = Number(el.getAttribute("data-h"));
+          if (hide > q && !(Number(el.getAttribute("data-s") ?? 0) > q)) {
+            el.classList.remove("off");
+            el.setAttribute("data-qn", "1");
+          }
+        }
       const root = svg.firstElementChild;
       const foot = (root?.children[2] as Element | undefined) ?? null;
       const box = drawnBox(svg, foot);
@@ -612,6 +679,15 @@ export async function renderLibraryModel(
       const oroot = out.firstElementChild;
       oroot?.children[2]?.remove();
       for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
+      // The answer: every mark first shown after the question's build.
+      if (q !== undefined)
+        for (const el of [...out.querySelectorAll("[data-s]")])
+          if (Number(el.getAttribute("data-s")) > q) el.setAttribute("data-reveal", "1");
+      // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
+      // Present would open on a blank box. Every surface shows the drawing as it ends (on a
+      // question slide, without its answer until the reveal).
+      for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
+      for (const el of [...out.querySelectorAll("[data-h]")]) el.removeAttribute("data-h");
       // Builds left on hidden marks only make Present wait on nothing.
       out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       out.setAttribute("class", "slide tk theme-primary");
@@ -619,7 +695,10 @@ export async function renderLibraryModel(
       out.setAttribute("width", String(w));
       out.setAttribute("height", String(h));
       out.removeAttribute("aria-label");
-      const style = `<style><![CDATA[${SVG_CSS}]]></style>`;
+      // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
+      // editor, thumbnails and exports show the question, as the drawer's question slides do.
+      const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
+      const style = `<style><![CDATA[${SVG_CSS}]]></style>${hold}`;
       const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
       const open = /<svg\b[^>]*>/.exec(html);
       if (!open) throw new Error(`${id} did not serialise`);

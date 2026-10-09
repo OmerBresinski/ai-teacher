@@ -43,13 +43,19 @@
         {
           "what": "marking some of the groups as taken (it draws N ÷ G only)",
           "when": [
-            "highlight(?:s|ing)? (?:two|three|four|five|[2-9]) (?:rings|groups)",
-            "leaving (?:one|two|[1-9]) (?:ring|group)s? un"
+            "highlight(?:s|ed|ing)?\\s+(?:the\\s+|exactly\\s+)?(?:two|three|four|five|six|seven|eight|nine|[2-9])\\s+(?:\\w+\\s+)?(?:rings|groups)",
+            "leaving (?:one|two|[1-9]) (?:ring|group)s? un",
+            "leave (?:one|two|three|four|[1-9]) (?:\\w+\\s+)?(?:rings?|groups?) un",
+            "\\b[2-9]\\s*/\\s*(?:[3-9]|1[0-2])\\b",
+            "\\b(?:two|three|four|five|six|seven|eight|nine) (?:thirds|quarters|fifths|sixths|sevenths|eighths|ninths|tenths)\\b"
           ]
         }
       ]
     },
-    "bar_model": { "answerKeys": ["answer", "calc", "unknown"], "cannot": [] },
+    "bar_model": {
+      "answerKeys": ["answer", "calc", "unknown"],
+      "cannot": []
+    },
     "hist_map": {
       "answerKeys": [],
       "cannot": [
@@ -69,8 +75,14 @@
         }
       ]
     },
-    "timeline": { "answerKeys": [], "cannot": [] },
-    "seasons_weather": { "answerKeys": [], "cannot": [] },
+    "timeline": {
+      "answerKeys": [],
+      "cannot": []
+    },
+    "seasons_weather": {
+      "answerKeys": [],
+      "cannot": []
+    },
     "collision_theory": {
       "answerKeys": ["answer"],
       "cannot": [

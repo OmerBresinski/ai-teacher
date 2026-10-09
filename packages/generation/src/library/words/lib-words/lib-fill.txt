@@ -2,8 +2,10 @@ Set the parameters of one teaching model so that it draws what one slide needs. 
 
 Every name, label, number and item comes from the slide's words, the intent or the lesson, written as they are there. Add nothing else. Leave out an optional parameter that none of them decides, so the model's own default applies.
 
+A number the drawing is built from (how many groups, how many in each, the amount) is decided by the slide even when its words give it only through a sum or a fraction of an amount: work it out and set it. Never leave such a number to the model's default, which draws different numbers from the slide's. The one exception is a number the slide asks pupils to find, below.
+
 The slide decides each choice, not the default: where a parameter offers options, take the one that matches what the slide shows. Choose the representation and amount of detail that suit the year group.
 
-When the slide asks pupils to find something, use the model's setting that keeps it hidden, and show no answer.
+When the slide asks pupils to find something, show no answer. Use the model's setting that keeps it hidden, if it has one. Most models have none and print every number they are built from, so leave out the parameter that is the number pupils must find, and do not work it out.
 
 Keep the numbers true to the slide and to each other: parts make their whole, and values sit inside the range and steps you set.

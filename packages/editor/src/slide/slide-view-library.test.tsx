@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { render } from "@testing-library/react";
 import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
-import { slideStepCount } from "@tj/domain/documents";
+import { answerRevealSteps, slideStepCount } from "@tj/domain/documents";
 import { buildCount, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import JSZip from "jszip";
 import { exportLessonPptx } from "../export/pptx";
@@ -79,4 +79,58 @@ describe("a library model on a slide", () => {
     expect(media.some((f) => f.endsWith(".png"))).toBe(true);
     expect(media.some((f) => f.endsWith(".svg"))).toBe(false);
   }, 30_000);
+});
+
+/*
+ * TEACH-247 part i: a library model on a question slide (fixtures/library-question-equal-groups.svg.txt,
+ * the worker's render of "one half of 16" at its question build, font stripped) is a still whose
+ * answer is held back. Present opens on the counters and empty rings; the answer reveal shows the
+ * groups of 8; the editor and the PPTX keep the stored drawing, whose own style hides the answer.
+ */
+const qsvg = readFileSync(
+  join(import.meta.dir, "fixtures/library-question-equal-groups.svg.txt"),
+  "utf8",
+);
+const qSlide = demo.slides.find((s) => s.question && answerRevealSteps(s) > 0);
+describe("a library model on a question slide", () => {
+  if (!qSlide) throw new Error("no demo question slide with an answer reveal");
+  const qElement = {
+    ...element,
+    id: "libq",
+    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qsvg)}`,
+    builds: 0,
+  } as SlideElement & { src: string };
+  const s: Slide = { ...qSlide, elements: [...qSlide.elements, qElement] };
+  const img = (mode: "edit" | "present", step?: number, revealAnswer = false) => {
+    const { container } = render(
+      <SlideView
+        slide={s}
+        theme={theme}
+        mode={mode}
+        revealAnswer={revealAnswer}
+        {...(step !== undefined ? { step } : {})}
+      />,
+    );
+    const src = [...container.querySelectorAll("img")]
+      .map((i) => i.getAttribute("src") ?? "")
+      .find((x) => x.includes(encodeURIComponent("data-reveal")));
+    return svgOfDataUrl(src ?? "") ?? "";
+  };
+  const REVEALED = '[data-reveal="1"][data-reveal]{opacity:1}';
+
+  test("it is a still with its answer held back by its own style", () => {
+    expect(buildCount(qsvg) === 0).toBe(true);
+    expect(qsvg).toContain('[data-reveal="1"]{opacity:0}');
+  });
+
+  test("Present opens with the answer hidden; the answer reveal shows it", () => {
+    const last = slideStepCount(s);
+    expect(img("present", 0)).not.toContain(REVEALED);
+    expect(img("present", 0)).toContain("data-qn");
+    expect(img("present", last, true)).toContain(REVEALED);
+  });
+
+  test("the editor shows the stored drawing: the question", () => {
+    expect(img("edit")).toBe(qsvg);
+  });
 });
