@@ -1,6 +1,15 @@
 import type { QueryKey } from "@tanstack/react-query";
 import type { Proposal } from "@tj/domain";
-import type { Id, Lesson, RichDoc, SlideElement, Theme, Worksheet } from "@tj/domain/documents";
+import {
+  type Id,
+  type Lesson,
+  mergeJobLesson,
+  type RichDoc,
+  type SlideElement,
+  sameJson,
+  type Theme,
+  type Worksheet,
+} from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import {
   type ReactNode,
@@ -124,6 +133,11 @@ export type LessonEditorProps = {
   onPromptEdit?: ProposalsApi["onPromptEdit"];
   busySlideIds?: ReadonlySet<Id>;
   proposalsBusy?: boolean;
+  /**
+   * Slides a generating job is still writing (ADR 0037, UX ruling 189): selectable but read-only,
+   * marked "Writing". Every other slide is the teacher's to edit while the lesson fills.
+   */
+  writingSlideIds?: ReadonlySet<Id>;
   editorRef?: Ref<LessonEditorHandle>;
   /**
    * The slide to open on (TEACH-252: the one the teacher was looking at while the lesson
@@ -159,6 +173,12 @@ export type LessonEditorHandle = {
    * being made, applied at Ready (ruling 123). Picking the theme it already has does nothing.
    */
   retheme: (themeId: string) => void;
+  /**
+   * Fold the generating job's newer copy of the lesson into the open one (ADR 0037): a three-way
+   * merge on `base` (the copy last received), applied to the document and to every undo step,
+   * recording nothing. Returns the merged lesson.
+   */
+  receiveGenerated: (base: Lesson, theirs: Lesson) => Lesson | undefined;
 };
 
 export function LessonEditor({
@@ -180,6 +200,7 @@ export function LessonEditor({
   onPromptEdit,
   busySlideIds,
   proposalsBusy = false,
+  writingSlideIds,
   editorRef,
   initialSlideId,
   worksheetsSlot,
@@ -264,9 +285,13 @@ export function LessonEditor({
             busySlideIds: busySlideIds ?? NO_PROPOSALS.busySlideIds,
             busy: proposalsBusy,
             reservedFactIds,
+            writingSlideIds,
           }
-        : NO_PROPOSALS,
+        : writingSlideIds
+          ? { ...NO_PROPOSALS, writingSlideIds }
+          : NO_PROPOSALS,
     [
+      writingSlideIds,
       proposalsEnabled,
       onFactsChanged,
       onRegenerate,
@@ -408,6 +433,19 @@ export function LessonEditor({
         }
         return reducers.proposalSlideIds(current, incoming);
       },
+      receiveGenerated: (base, theirs) => {
+        const merged = historyRef.current.rebase?.((mine) => mergeJobLesson(base, mine, theirs));
+        // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
+        // an untouched document and the autosave stays quiet.
+        if (merged && sameJson(merged, theirs)) {
+          historyRef.current.rebase?.((doc) => (doc === merged ? theirs : doc));
+          return theirs;
+        }
+        // The teacher's changes the row does not have yet: the next autosave sends the merged copy,
+        // never the one it held from before the merge.
+        if (merged) autosave.onChange(merged);
+        return merged;
+      },
       undo: () => historyRef.current.undo(),
       goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
       retheme: (themeId) => {
@@ -423,7 +461,7 @@ export function LessonEditor({
         );
       },
     }),
-    [session],
+    [session, autosave],
   );
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
@@ -567,18 +605,27 @@ export function LessonEditor({
                                 />
                                 <div className="flex min-w-0 flex-1 flex-col">
                                   <div ref={setBubbleHost} className="relative flex min-h-0 flex-1">
-                                    <Canvas
-                                      slide={slide}
-                                      theme={theme}
-                                      onFocusChange={setCanvasFocused}
-                                      onScaleChange={onScaleChange}
-                                      onInsert={insert}
-                                      images={images}
-                                      lessonId={lessonId}
-                                      bubble={!(chatAvailable && editChat.open)}
-                                      fitInset={hasPane && paneMode === "docked" ? paneW : 0}
-                                      clearRight={paneOpen ? paneW : 0}
-                                    />
+                                    {slide && writingSlideIds?.has(slide.id) ? (
+                                      <WritingOverlay />
+                                    ) : null}
+                                    {/* Always wrapped, so the canvas never remounts when a slide's state turns. */}
+                                    <div
+                                      className="contents"
+                                      inert={!!slide && !!writingSlideIds?.has(slide.id)}
+                                    >
+                                      <Canvas
+                                        slide={slide}
+                                        theme={theme}
+                                        onFocusChange={setCanvasFocused}
+                                        onScaleChange={onScaleChange}
+                                        onInsert={insert}
+                                        images={images}
+                                        lessonId={lessonId}
+                                        bubble={!(chatAvailable && editChat.open)}
+                                        fitInset={hasPane && paneMode === "docked" ? paneW : 0}
+                                        clearRight={paneOpen ? paneW : 0}
+                                      />
+                                    </div>
                                   </div>
                                   {/* Docked, the filmstrip makes room for the open pane; overlay, the pane lies over it. */}
                                   <div
@@ -645,5 +692,27 @@ export function LessonEditor({
         </EditorSessionProvider>
       </HistoryProvider>
     </LessonProvider>
+  );
+}
+
+/**
+ * Over a slide the generating job is still writing (UX ruling 189): the slide shows, nothing on it
+ * can be picked, and a pill says why.
+ */
+function WritingOverlay() {
+  return (
+    <div
+      data-slide-writing-overlay
+      className="absolute inset-0 z-20 flex items-start justify-center pt-4"
+      onPointerDownCapture={(e) => e.stopPropagation()}
+    >
+      <span
+        role="status"
+        className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm"
+      >
+        <span aria-hidden className="block size-2 animate-pulse rounded-full bg-primary" />
+        Writing this slide… you can edit it as soon as it is done
+      </span>
+    </div>
   );
 }

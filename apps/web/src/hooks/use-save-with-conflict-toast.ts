@@ -17,6 +17,12 @@ export const RELOAD_LABEL = "Reload";
  */
 export function useSaveWithConflictToast(
   documentId: string,
+  /**
+   * A lesson that is still filling (ADR 0037): a `stale` save is expected (the job wrote since).
+   * This folds the job's row into the editor and returns the merged copy, which is saved once more
+   * instead of the toast.
+   */
+  onStale?: () => Promise<LibraryDocument | undefined>,
 ): (document: LibraryDocument) => Promise<void> {
   const queryClient = useQueryClient();
   const { mutateAsync: save } = useMutation(libraryMutations.autosaveDocument(queryClient));
@@ -25,6 +31,15 @@ export function useSaveWithConflictToast(
       try {
         await save(document);
       } catch (error) {
+        if (
+          error instanceof ApiError &&
+          error.status === 409 &&
+          error.reason === "stale" &&
+          onStale
+        ) {
+          const merged = await onStale();
+          if (merged) return save(merged);
+        }
         if (error instanceof ApiError && error.status === 409) {
           const stale = error.reason === "stale";
           toast(error.message, {
@@ -44,6 +59,6 @@ export function useSaveWithConflictToast(
         throw error;
       }
     },
-    [save, queryClient, documentId],
+    [save, queryClient, documentId, onStale],
   );
 }

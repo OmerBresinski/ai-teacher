@@ -41,6 +41,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0033 | Objectives-first planner behind `AI_LESSON_PLANNER`; the stamp decides the path | Accepted |
 | 0034 | Geometry and trigonometry figures: solver templates, figures on facts, on worksheets and in other slides | Accepted |
 | 0036 | The writer's slide count is exact, title and objectives included | Accepted |
+| 0037 | Per-slide ownership while a lesson is generating: done slides are the teacher's, job writes merge | Accepted |
 
 Template: `0000-template.md`.
 

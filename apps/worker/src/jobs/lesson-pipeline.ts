@@ -237,9 +237,13 @@ async function loadOwnedLesson(
  * worksheet). A `lost_lock` / `missing` answer stops the job for good.
  */
 function makePersist(ws: WorkspaceDb, lessonId: LessonId, jobId: JobId): PipelineDeps["persist"] {
+  // ADR 0037: the job's previous copy is the base of a three-way merge onto the row, so a slide
+  // the teacher edited while the lesson fills is never overwritten (UX ruling 189).
+  let base: unknown;
   return async (lesson: Lesson) => {
-    const result = await putDocumentAsJob(ws, lessonId, lesson, jobId);
+    const result = await putDocumentAsJob(ws, lessonId, lesson, jobId, { base });
     if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
+    base = result.jobBody;
     return { updatedAt: result.row.updatedAt.toISOString() };
   };
 }

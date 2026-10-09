@@ -1,7 +1,10 @@
 import { type JobId, newId } from "@tj/domain";
 import {
   type DocumentKind,
+  hasEditableSlides,
+  keepWritingSlides,
   type Lesson,
+  mergeJobLesson,
   migrate,
   parseLesson,
   parseSeries,
@@ -102,7 +105,11 @@ export type WorksheetForGeneration =
   | { kind: "none" };
 
 export type PutDocumentAsJobResult =
-  | { status: "ok"; row: DocumentRow }
+  /**
+   * `jobBody` is the job's own copy as parsed and before any merge: the `base` for its next
+   * merged write (ADR 0037).
+   */
+  | { status: "ok"; row: DocumentRow; jobBody: unknown }
   /** The row is unlocked or locked by another job: a newer job owns it. Write nothing further. */
   | { status: "lost_lock" }
   | { status: "missing" };
@@ -453,17 +460,34 @@ export async function putDocument(
 ): Promise<PutDocumentResult> {
   const current = await getDocument(ws, id);
   if (current === null) return { status: "missing" };
+  // ADR 0037: a lesson a job is filling takes the teacher's write once it has a `done` slide. The
+  // slides the job still writes, and its `generation`, are kept as stored; the job holds the lock.
+  const held = current.generatingJobId as JobId | null;
+  const sharing =
+    held !== null && current.kind === "lesson" && hasEditableSlides(current.body as Lesson);
+  const written = sharing
+    ? keepWritingSlides(
+        parseDocumentBody("lesson", current.body) as Lesson,
+        parseDocumentBody("lesson", body) as Lesson,
+      )
+    : body;
   const row = await replaceBody(
     ws,
     current,
-    body,
-    and(eq(documents.updatedAt, expectedUpdatedAt), isNull(documents.generatingJobId)) as SQL,
+    written,
+    and(
+      eq(documents.updatedAt, expectedUpdatedAt),
+      sharing ? eq(documents.generatingJobId, held) : isNull(documents.generatingJobId),
+    ) as SQL,
     "putDocument",
   );
   if (row) return { status: "ok", row };
   const after = await getDocument(ws, id);
   if (after === null) return { status: "missing" };
-  if (after.generatingJobId !== null) {
+  if (
+    after.generatingJobId !== null &&
+    !(after.kind === "lesson" && hasEditableSlides(after.body as Lesson))
+  ) {
     return { status: "generating", jobId: after.generatingJobId as JobId };
   }
   return { status: "conflict", row: after };
@@ -483,19 +507,38 @@ export async function putDocumentAsJob(
   id: string,
   body: unknown,
   jobId: JobId,
+  opts: { base?: unknown } = {},
 ): Promise<PutDocumentAsJobResult> {
-  const current = await getDocument(ws, id);
-  if (current === null) return { status: "missing" };
-  const row = await replaceBody(
-    ws,
-    current,
-    body,
-    eq(documents.generatingJobId, jobId),
-    "putDocumentAsJob",
-  );
-  if (row) return { status: "ok", row };
-  const after = await getDocument(ws, id);
-  return after === null ? { status: "missing" } : { status: "lost_lock" };
+  // ADR 0037: with a `base` (the job's previous copy) a lesson write is a three-way merge onto the
+  // row, so a slide the teacher edited keeps the teacher's words; `updated_at` guards the merge,
+  // and a teacher write in between is merged again on the next attempt.
+  for (let attempt = 0; ; attempt++) {
+    const current = await getDocument(ws, id);
+    if (current === null) return { status: "missing" };
+    const jobBody = parseDocumentBody(current.kind, body);
+    const merging = opts.base !== undefined && current.kind === "lesson";
+    const written = merging
+      ? mergeJobLesson(
+          parseDocumentBody("lesson", opts.base) as Lesson,
+          current.body as Lesson,
+          jobBody as Lesson,
+        )
+      : jobBody;
+    const row = await replaceBody(
+      ws,
+      current,
+      written,
+      (merging
+        ? and(eq(documents.generatingJobId, jobId), eq(documents.updatedAt, current.updatedAt))
+        : eq(documents.generatingJobId, jobId)) as SQL,
+      "putDocumentAsJob",
+    );
+    if (row) return { status: "ok", row, jobBody };
+    const after = await getDocument(ws, id);
+    if (after === null) return { status: "missing" };
+    if (after.generatingJobId !== jobId) return { status: "lost_lock" };
+    if (attempt >= 4) throw new Error(`putDocumentAsJob: ${id} kept moving under the merge`);
+  }
 }
 
 /**

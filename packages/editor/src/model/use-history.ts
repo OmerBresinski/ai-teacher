@@ -74,6 +74,12 @@ export type History<D, R> = {
   flushTransactions: () => void;
   /** True while a transaction is open (the fit migration waits for the teacher's edit to land). */
   isTransactionInFlight: () => boolean;
+  /**
+   * Fold a change that did not come from the teacher (a generating job's newer copy, ADR 0037)
+   * into the document *and* every undo and redo step, recording nothing: undo after it never
+   * takes the job's work back out. Returns the new document.
+   */
+  rebase?: (fn: (doc: D) => D) => D | undefined;
 };
 
 export function useHistory<D, R, TData = unknown>({
@@ -233,6 +239,20 @@ export function useHistory<D, R, TData = unknown>({
 
   const isTransactionInFlight = useCallback(() => txStack.current.length > 0, []);
 
+  const rebase = useCallback(
+    (fn: (doc: D) => D) => {
+      const current = read();
+      if (!current) return undefined;
+      past.current = past.current.map(fn);
+      future.current = future.current.map(fn);
+      if (txPre.current) txPre.current = fn(txPre.current);
+      const next = fn(current);
+      if (next !== current) write(next);
+      return next;
+    },
+    [read, write],
+  );
+
   return useMemo(
     () => ({
       document,
@@ -246,6 +266,7 @@ export function useHistory<D, R, TData = unknown>({
       rollbackTransaction,
       flushTransactions,
       isTransactionInFlight,
+      rebase,
     }),
     [
       document,
@@ -258,6 +279,7 @@ export function useHistory<D, R, TData = unknown>({
       rollbackTransaction,
       flushTransactions,
       isTransactionInFlight,
+      rebase,
     ],
   );
 }

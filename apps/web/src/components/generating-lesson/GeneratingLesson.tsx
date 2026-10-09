@@ -163,7 +163,7 @@ export function GeneratingLesson({
   );
 }
 
-function lastDocumentUpdatedAt(events: ReturnType<typeof useJobEvents>["events"]) {
+export function lastDocumentUpdatedAt(events: ReturnType<typeof useJobEvents>["events"]) {
   for (let i = events.length - 1; i >= 0; i--) {
     const event = events[i]?.event;
     if (event?.type === "progress" && event.progress.documentUpdatedAt !== undefined) {

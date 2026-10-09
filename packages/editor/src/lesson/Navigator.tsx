@@ -104,7 +104,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   const { clipboardSlide } = useSessionUi();
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const { bySlide: residuals } = useResidualFindings();
-  const { busySlideIds, onRegenerate } = useProposals();
+  const { busySlideIds, onRegenerate, writingSlideIds } = useProposals();
 
   const compactChrome = useCompactChrome();
   const [preferredMode, setMode] = useState<Mode>(readMode);
@@ -566,6 +566,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
               dragging={!!draggingIds?.has(slide.id)}
               residuals={residuals.get(slide.id)}
               busy={busySlideIds.has(slide.id)}
+              writing={writingSlideIds?.has(slide.id) ?? false}
               onPointerDown={onRowPointerDown}
               onPointerMove={onRowPointerMove}
               onPointerUp={onRowPointerUp}
@@ -747,6 +748,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
                   dragging={!!draggingIds?.has(slide.id)}
                   residuals={residuals.get(slide.id)}
                   busy={busySlideIds.has(slide.id)}
+                  writing={writingSlideIds?.has(slide.id) ?? false}
                   onPointerDown={onRowPointerDown}
                   onPointerMove={onRowPointerMove}
                   onPointerUp={onRowPointerUp}
@@ -824,6 +826,7 @@ const NavigatorRow = memo(function NavigatorRow({
   dragging,
   residuals,
   busy,
+  writing = false,
   ...handlers
 }: {
   slide: Slide;
@@ -838,6 +841,8 @@ const NavigatorRow = memo(function NavigatorRow({
   residuals?: Finding[];
   /** A cascade or regenerate in flight will replace content on this slide (TEACH-134 FR 5). */
   busy: boolean;
+  /** The generating job is still writing this slide (ADR 0037): selectable, read-only. */
+  writing?: boolean;
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -932,6 +937,16 @@ const NavigatorRow = memo(function NavigatorRow({
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
           <SlideView slide={slide} theme={theme} mode="thumb" />
         </SlideScaler>
+        {writing && !busy ? (
+          <span
+            data-slide-writing
+            role="status"
+            className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/70 font-medium text-foreground text-meta"
+          >
+            <span aria-hidden className="block size-1.5 animate-pulse rounded-full bg-primary" />
+            Writing…
+          </span>
+        ) : null}
         {busy ? (
           <span
             data-slide-busy
