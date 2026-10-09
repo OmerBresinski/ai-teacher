@@ -7,6 +7,7 @@ import {
   duplicatePanels,
   encodePng,
   gridShape,
+  joinPanels,
   panelBounds,
   splitGrid,
   splitPanels,
@@ -167,5 +168,25 @@ describe("real strips: never a stretched edge, never a head cut off", () => {
       expect(Math.abs(t.width / t.height - 1.5)).toBeLessThan(0.08);
       expect(streakShare(t)).toBeLessThan(0.02);
     }
+  });
+});
+
+describe("joinPanels", () => {
+  const solid = (width: number, height: number, v: number) =>
+    encodePng({ width, height, rgb: new Uint8Array(width * height * 3).fill(v) });
+  test("widths add up with the gaps; every panel is cut to the shortest height", () => {
+    const { png, boxes } = joinPanels(
+      [solid(30, 40, 10), solid(20, 50, 100), solid(10, 40, 200)],
+      4,
+    );
+    const r = decodePng(png);
+    expect([r.width, r.height]).toEqual([30 + 20 + 10 + 8, 40]);
+    expect(boxes.map((b) => Math.round(b.left * r.width))).toEqual([0, 34, 58]);
+    expect(boxes.map((b) => Math.round(b.right * r.width))).toEqual([30, 54, 68]);
+    // each panel's own pixels, and white in the gap
+    expect(r.rgb[(5 * r.width + 1) * 3]).toBe(10);
+    expect(r.rgb[(5 * r.width + 40) * 3]).toBe(100);
+    expect(r.rgb[(5 * r.width + 31) * 3]).toBe(255);
+    expect(r.rgb[(5 * r.width + 60) * 3]).toBe(200);
   });
 });

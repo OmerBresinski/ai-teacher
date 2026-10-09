@@ -16,6 +16,8 @@ import {
   createDirectorBatcher,
   directPicture,
   planPicture,
+  splitSubjects,
+  stockFirstRoute,
 } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
@@ -104,9 +106,9 @@ describe("planPicture", () => {
     }
   });
 
-  test("pexels searches stock first; library-or-generate goes straight to generation", () => {
+  test("pexels and a real library-or-generate subject search stock first (TEACH-167 part b)", () => {
     expect(photoPlan(dir({ route: "pexels" })).request.stockFirst).toBe(true);
-    expect(photoPlan(dir({ route: "library-or-generate" })).request.stockFirst).toBe(false);
+    expect(photoPlan(dir({ route: "library-or-generate" })).request.stockFirst).toBe(true);
   });
 
   test("a split keeps every picture; the zone takes the first", () => {
@@ -457,5 +459,81 @@ describe("ruling 163 ships in code", () => {
       if (prev === undefined) delete process.env.HISTORY_POLICY;
       else process.env.HISTORY_POLICY = prev;
     }
+  });
+});
+
+/**
+ * TEACH-167 part b, the $0 replay of production lesson 01a12146 (natural selection): the four
+ * picture asks the batched director routed to library-or-generate, as the judge described each
+ * generated picture (`made` log lines). Before: route generic, no stockFirst, so the ladder went
+ * library then generate and never searched stock. After: every one searches stock first.
+ */
+describe("real-world subjects search stock first (TEACH-167 part b)", () => {
+  const prod01a12146 = [
+    "A large-beaked finch cracking a hard seed beside a smaller-beaked finch",
+    "Several snails with light and dark shells on the same ground",
+    "Finches of one species with small narrow beaks and large deep beaks",
+    "Two beetles with clearly different jaw sizes beside broad leaves",
+  ];
+  const lg = (shows: string): PictureDirection =>
+    dir({
+      route: "library-or-generate",
+      pictures: [{ shows, mustShow: [], queries: [], imagePrompt: `${shows}.` }],
+    });
+  test("the four 01a12146 asks are stock-first now", () => {
+    for (const shows of prod01a12146) {
+      const plan = planPicture(lg(shows), { text: shows, named: null });
+      expect(plan.kind).toBe("photo");
+      if (plan.kind === "photo") {
+        expect(plan.request.route).toBe("generic");
+        expect(plan.request.stockFirst, shows).toBe(true);
+      }
+    }
+  });
+  test("an imagined scene, a count and a locked look still generate first", () => {
+    const fiction = "Prospero raising the storm in a staging of The Tempest, a fictional character";
+    expect(stockFirstRoute("library-or-generate", fiction)).toBe(false);
+    expect(stockFirstRoute("library-or-generate", "A cartoon dragon guarding gold")).toBe(false);
+    expect(stockFirstRoute("commons", "A peppered moth")).toBe(false);
+    const counted = planPicture(
+      dir({
+        route: "library-or-generate",
+        count: {
+          things: "eggs",
+          total: 6,
+          groups: 1,
+          perGroup: 6,
+          arrangement: "groups",
+          empty: 0,
+        },
+        pictures: [{ shows: "Six eggs", mustShow: [], queries: [], imagePrompt: "Six eggs." }],
+      }),
+      { text: "Six eggs", named: null },
+    );
+    expect(counted.kind === "photo" && counted.request.stockFirst).toBe(false);
+    const looked = planPicture(lg(prod01a12146[0] as string), {
+      text: "finches",
+      named: null,
+      look: { style: "illustration" },
+    });
+    expect(looked.kind === "photo" && looked.request.stockFirst).toBe(false);
+  });
+});
+
+describe("split at ask (TEACH-167 part b)", () => {
+  const photoAsk = (shows: string, over: Record<string, unknown> = {}) =>
+    ({ key: "picture", type: "photo", shows, mustSee: [], named: false, ...over }) as never;
+  test("three or four subjects after a colon split; anything else does not", () => {
+    expect(
+      splitSubjects(
+        photoAsk("Three golden retrievers: a small puppy, an older puppy and an adult dog"),
+      ),
+    ).toEqual(["small puppy", "older puppy", "adult dog"]);
+    expect(splitSubjects(photoAsk("A hen beside a chick"))).toBeUndefined();
+    expect(splitSubjects(photoAsk("Two moths: a light moth and a dark moth"))).toBeUndefined();
+    const dogs = "Three golden retrievers: a small puppy, an older puppy and an adult dog";
+    expect(splitSubjects(photoAsk(dogs, { named: true }))).toBeUndefined();
+    expect(splitSubjects(photoAsk(dogs, { set: "s" }))).toBeUndefined();
+    expect(splitSubjects(photoAsk(dogs, { fixedShape: true }))).toBeUndefined();
   });
 });

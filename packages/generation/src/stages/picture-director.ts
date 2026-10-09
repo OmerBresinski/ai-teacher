@@ -6,7 +6,7 @@
  */
 
 import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
-import { anchorQueries, type CountArray } from "@tj/images";
+import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
 import {
@@ -17,6 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PictureMaker, PipelineDeps } from "../types";
+import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { asksToSee, namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
 import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
@@ -39,6 +40,7 @@ import {
 import {
   directedSetJudges,
   isHistoricalSet,
+  isSameSubjectSet,
   makePictureSet,
   type SetAsk,
   type SetPicture,
@@ -290,6 +292,14 @@ export function setLookOf(design?: { picture_style?: "photo" | "illustration" })
     : { style: "photo", generic: "generate" };
 }
 
+/**
+ * C7 (TEACH-167 part b): a stock-first search still running after this long starts its generation
+ * beside it. On the two recorded lessons every stock picture that landed did so within 13.0 s of
+ * the director's answer, and the misses ran 18.7-20.0 s before generating: 13.5 s adds no
+ * generation to either and starts each miss's generation 5-6 s sooner.
+ */
+export const WRITER_STOCK_RACE_MS = 13_500;
+
 /** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
@@ -329,6 +339,22 @@ interface Ask {
   named: string | null;
   aspect?: number;
   look?: LessonLook;
+}
+
+/** An imagined scene: a story, play or novel, or a character in one. No photograph shows it. */
+const IMAGINED =
+  /\b(fictional|fictitious|imagined|imaginary|make-believe|fairy[- ]?tales?|fables?|myths?|mythical|legends?|legendary|stories|story|novels?|poems?|plays?|characters?|cartoons?|dragons?|unicorns?|monsters?|wizards?|witch(es)?|fair(y|ies))\b/i;
+
+/**
+ * TEACH-167 part b: whether a director route searches stock before it generates. pexels always
+ * does. library-or-generate does too, unless the request is an imagined scene: a real subject the
+ * director read as "an unusual combination" or "a staged comparison" (finches with big and small
+ * beaks, light and dark moths, lesson 01a12146) may well have a real photograph, and the photo
+ * judge gates every stock candidate, so generation stays the fallback, never the first step.
+ */
+export function stockFirstRoute(route: PictureDirection["route"], text: string): boolean {
+  if (route === "pexels") return true;
+  return route === "library-or-generate" && !IMAGINED.test(text);
 }
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
@@ -403,7 +429,11 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       route: real ? "real" : "generic",
       imagePrompt,
       draw: null,
-      stockFirst: d.route === "pexels" && !countedPhoto && !looked && !housed,
+      stockFirst:
+        stockFirstRoute(d.route, `${ask.text} ${first.shows}`) &&
+        !countedPhoto &&
+        !looked &&
+        !housed,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
       ...(depicts ? { depicts: true } : {}),
@@ -441,9 +471,12 @@ export async function findDirected(args: {
   lesson: { title: string; yearGroup?: string; subject?: string };
   country: string;
   index: number;
-  stock: (brief: ImageBrief) => Promise<PlacedPhoto | undefined>;
+  /** `signal` cancels this one search (a race it lost) without stopping the slot. */
+  stock: (brief: ImageBrief, signal?: AbortSignal) => Promise<PlacedPhoto | undefined>;
   judgeMade: (brief: ImageBrief, picture: MadePicture, reuse?: boolean) => Promise<boolean>;
   deps: DirectorDeps;
+  /** C7: race stock against generation after this long (`findPicture`); absent, one then the other. */
+  raceMs?: number;
   /** The lesson's picture look, the same on every call of the lesson. */
   look?: LessonLook;
   /** How the director is asked (a batcher); absent, one call for this slot. */
@@ -498,11 +531,12 @@ export async function findDirected(args: {
   let out = await findPicture(
     req,
     args.bank,
-    () => args.stock(brief),
+    (signal) => args.stock(brief, signal),
     deps.signal,
     (made, reuse) => args.judgeMade(brief, made, reuse),
     Date.now,
     sharedVerdictCache,
+    args.raceMs,
   );
   // a lesson trial, ruling 163: a past event or person that the scene search missed is shown by a
   // real artefact, coin, map, site or museum object (a Claudius bust), before nothing.
@@ -667,13 +701,18 @@ export async function placeWriterPicture(args: {
   look?: LessonLook;
   /** Pages already placed in this lesson. */
   taken?: Set<string>;
+  /** C7 race threshold; absent, `WRITER_STOCK_RACE_MS`. */
+  raceMs?: number;
   onOutcome?: (o: PictureOutcome) => void;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
   const taken = args.taken ?? new Set<string>();
   const illustrated = ask.style === "illustration";
-  const stock = async (brief: ImageBrief): Promise<PlacedPhoto | undefined> => {
+  const stock = async (
+    brief: ImageBrief,
+    signal?: AbortSignal,
+  ): Promise<PlacedPhoto | undefined> => {
     // Illustration lessons: generic pictures are generated in the lesson's style (no stock);
     // named real things still come from Commons and Pexels (ruling 163).
     if (illustrated && !brief.specific) return undefined;
@@ -682,7 +721,8 @@ export async function placeWriterPicture(args: {
       index: ask.index,
       brief,
       images: args.images,
-      deps,
+      // A race this search lost aborts its searches and its judge calls.
+      deps: signal ? { ...deps, signal: AbortSignal.any([deps.signal, signal]) } : deps,
       taken,
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
     }).catch(
@@ -729,6 +769,7 @@ export async function placeWriterPicture(args: {
               })
             : Promise.resolve(false),
         deps,
+        raceMs: args.raceMs ?? WRITER_STOCK_RACE_MS,
         ...(args.look ? { look: args.look } : {}),
         ...(args.direct ? { direct: args.direct } : {}),
         ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
@@ -823,6 +864,22 @@ export interface WriterPictures {
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
 export const WRITER_PICTURE_DEADLINE_MS = 45_000;
+
+/**
+ * Split at ask (TEACH-167 part b): the subjects of a lone generic picture that names three or four
+ * things after a colon ("Three golden retrievers: a small puppy, an older puppy and an adult dog"),
+ * or undefined. One image of several subjects is the picture the generator and the judge fail
+ * most; asked as one panel per subject from the start, it is never generated whole first.
+ * A set panel, a named thing, a fixed-shape slot, a map or a library shape is never split.
+ */
+export function splitSubjects(ask: WriterPhotoAsk): string[] | undefined {
+  if (ask.set || ask.named || ask.fixedShape) return undefined;
+  const colon = ask.shows.indexOf(":");
+  if (colon <= 0 || !ask.shows.slice(0, colon).trim()) return undefined;
+  if (libraryKind(ask.shows) || isMapRequest(ask.shows)) return undefined;
+  const subjects = compoundSubjects(ask.shows);
+  return subjects.length >= 3 && subjects.length <= 4 ? subjects : undefined;
+}
 
 const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "director-none": "The picture director chose no picture for this slide.",
@@ -1118,6 +1175,93 @@ export function createWriterPictures(opts: {
     );
   };
 
+  /**
+   * A compound ask split at ask time: one panel per subject, made and judged as one generated set
+   * in the lesson's look, then joined side by side into the slot's one picture. Every panel must
+   * land: a picture missing one of the things it names is no picture of them.
+   */
+  const placeSplit = async (
+    slot: Slot,
+    index: number,
+    ask: WriterPhotoAsk,
+    maker: PictureMaker,
+    subjects: string[],
+  ): Promise<void> => {
+    const head = ask.shows.slice(0, ask.shows.indexOf(":")).trim();
+    const panelAspect = (ask.aspect ?? 1.6) / subjects.length;
+    const same = isSameSubjectSet(subjects);
+    const asks: SetAsk[] = subjects.map((x, i) => ({
+      key: `${ask.key}#${i + 1}`,
+      index,
+      shows: `${x} (${head})`,
+      mustSee: [x],
+      named: false,
+      aspect: panelAspect,
+      sameSubject: same,
+    }));
+    const k = id(index, ask.key);
+    const bytes = new Map<string, Uint8Array>();
+    const run = async (): Promise<void> => {
+      deps.logger.info(
+        { stage: "generate", picture: k, panels: asks.length },
+        "picture split at ask",
+      );
+      const made = await makePictureSet(
+        asks,
+        {
+          generator: maker.generator,
+          save: async (png) => {
+            const saved = await maker.save(png);
+            bytes.set(saved.src, png);
+            return saved;
+          },
+          ...directedSetJudges(opts.lesson, deps),
+          ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
+          ...(maker.allow ? { allow: maker.allow } : {}),
+          ...(maker.spent ? { spent: maker.spent } : {}),
+          signal: AbortSignal.any([deps.signal, slot.stop.signal]),
+          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+        },
+        setLook,
+      );
+      const pngs = made.map((m) => (m ? bytes.get(m.src) : undefined));
+      const first = made[0];
+      const whole = first && pngs.every((p): p is Uint8Array => p !== undefined);
+      opts.onOutcome?.(ask.key, {
+        director: "set",
+        via: whole ? "generated" : "none",
+        ...(whole ? {} : { reason: "generation-refused-or-failed" as const }),
+      });
+      if (slot.state.status !== "pending") return;
+      if (!whole) {
+        slot.state = { status: "failed" };
+        slot.miss = "generation-refused-or-failed";
+        return;
+      }
+      const joined = joinPanels(pngs as Uint8Array[]);
+      const saved = await maker.save(joined.png);
+      if (slot.state.status !== "pending") return;
+      const dims = pngSize(joined.png);
+      sources.set(saved.src, { ...first.source, id: saved.id });
+      slot.state = photoState(
+        {
+          src: saved.src,
+          alt: ask.shows,
+          boxes: subjects.map((item, i) => ({
+            item,
+            left: joined.boxes[i]?.left ?? 0,
+            right: joined.boxes[i]?.right ?? 1,
+            top: 0,
+            bottom: 1,
+          })),
+        },
+        dims ? dims.width / dims.height : (ask.aspect ?? 1),
+        requestOf(ask),
+      );
+    };
+    return run().then(undefined, onError(slot));
+  };
+
   return {
     start(index, ask, slide) {
       const k = id(index, ask.key);
@@ -1154,6 +1298,12 @@ export function createWriterPictures(opts: {
           sets.set(setId, { index, slide, asks: [ask] });
           slot.done = new Promise<void>((finish) => queueMicrotask(() => placeSet(setId, finish)));
         }
+        slots.set(k, slot);
+        return;
+      }
+      const subjects = opts.maker ? splitSubjects(ask) : undefined;
+      if (opts.maker && subjects && !/^hist/i.test(opts.lesson.subject ?? "")) {
+        slot.done = placeSplit(slot, index, ask, opts.maker, subjects);
         slots.set(k, slot);
         return;
       }
