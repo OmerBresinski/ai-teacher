@@ -1681,3 +1681,4 @@ export function listAnswers(
 /** Whether a template is one of the activity layouts (cards, groups, pointers). */
 export const isActivity = (id: string): id is ActivityId =>
   (ACTIVITY_IDS as readonly string[]).includes(id);
+export { templateSamples } from "./samples";

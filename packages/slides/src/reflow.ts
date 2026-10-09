@@ -540,7 +540,10 @@ export function reflowSlide(
   const laneOverflow =
     fitBottom < SAFE_BOTTOM - EPS ? counted.filter((s) => safeBottomOf(s) > fitBottom + EPS) : [];
 
-  const elements = slots.map((slot) => applySlot(slot, sizes.get(slot.el.id)));
+  const elements = alignMarkers(
+    slide.elements,
+    slots.map((slot) => applySlot(slot, sizes.get(slot.el.id))),
+  );
 
   return {
     elements,
@@ -550,6 +553,60 @@ export function reflowSlide(
     moved: slots.filter((s) => Math.abs(s.y - s.y0) > EPS).map((s) => s.el.id),
     stepped: [...sizes.keys()],
   };
+}
+
+/** Widest gap between a list marker's right edge and the text it numbers. */
+const MARKER_REACH = 48;
+
+/** A numbered or lettered list marker: the disc a template draws beside an item or option. */
+export const isMarker = (el: SlideElement): boolean =>
+  el.type === "shape" && (el.name === "Marker" || !!el.name?.startsWith("Marker: "));
+
+/**
+ * The text each marker numbers, in `before`: the nearest text box starting just right of the
+ * marker whose vertical span meets the marker's.
+ */
+export function markerPairs(elements: readonly SlideElement[]): Map<Id, Id> {
+  const pairs = new Map<Id, Id>();
+  for (const m of elements) {
+    if (!isMarker(m)) continue;
+    let best: { id: Id; d: number } | undefined;
+    for (const t of elements) {
+      if (t.type !== "text" && t.type !== "gap-text") continue;
+      const gap = t.x - (m.x + m.w);
+      if (gap < -EPS || gap > MARKER_REACH) continue;
+      if (t.y > m.y + m.h || t.y + t.h < m.y) continue;
+      const d = Math.abs(t.y - m.y) + gap;
+      if (!best || d < best.d) best = { id: t.id, d };
+    }
+    if (best) pairs.set(m.id, best.id);
+  }
+  return pairs;
+}
+
+/**
+ * A marker travels with the text it numbers (TEACH-101 part d). The reflow moves text boxes as
+ * their measured heights change; a marker is a shape and was left where it stood, so an item pushed
+ * down a line drew its numeral a line above its words. Each marker keeps its authored offset from
+ * its text, which puts it level with the first line again.
+ */
+export function alignMarkers(
+  before: readonly SlideElement[],
+  after: SlideElement[],
+): SlideElement[] {
+  const pairs = markerPairs(before);
+  if (pairs.size === 0) return after;
+  const was = new Map(before.map((e) => [e.id, e]));
+  const now = new Map(after.map((e) => [e.id, e]));
+  return after.map((el) => {
+    const textId = pairs.get(el.id);
+    const m0 = was.get(el.id);
+    const t0 = textId ? was.get(textId) : undefined;
+    const t1 = textId ? now.get(textId) : undefined;
+    if (!m0 || !t0 || !t1) return el;
+    const y = Math.round(t1.y + (m0.y - t0.y));
+    return Math.abs(y - el.y) > EPS ? { ...el, y } : el;
+  });
 }
 
 /** A slot back into an element, without mutating the input. */
