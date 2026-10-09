@@ -70,7 +70,7 @@ describe("Sheet", () => {
       sentence("Prompt"),
     ]);
     const { container } = render(
-      <>
+      <div>
         {sheet.blocks.map((block) => (
           <FlowItemContent
             key={block.id}
@@ -79,7 +79,7 @@ describe("Sheet", () => {
             mode="print"
           />
         ))}
-      </>,
+      </div>,
     );
     const widths = [...container.querySelectorAll<HTMLElement>(".ws-gap")].map(
       (g) => g.style.width,
