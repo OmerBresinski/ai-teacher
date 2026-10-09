@@ -262,17 +262,19 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   );
   // The read-only body has nothing to edit: a double-click on the slide asks to sign in instead.
   const readOnlyBody = anonymous && !!data && isFullDocument(data) && !meta?.generatingJobId;
-  useEffect(() => {
-    if (!readOnlyBody) return;
-    const onDoubleClick = (event: MouseEvent) => {
+  // A React handler on the page's own element, not a document listener added in an effect: it is
+  // live in the same commit that renders the read-only body, so a double-click can never land in
+  // the gap before an effect runs (and `data-guest-read-only` marks exactly that state).
+  const onReadOnlyDoubleClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!readOnlyBody) return;
       const target = event.target instanceof Element ? event.target : null;
       if (!target?.closest("[data-lesson-viewer] main") || target.closest("button")) return;
       window.getSelection()?.removeAllRanges();
       openSignIn();
-    };
-    document.addEventListener("dblclick", onDoubleClick);
-    return () => document.removeEventListener("dblclick", onDoubleClick);
-  }, [readOnlyBody, openSignIn]);
+    },
+    [readOnlyBody, openSignIn],
+  );
 
   if (!data || !isFullDocument(data) || !meta) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
@@ -432,7 +434,14 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const paused = stage.terminal === "failed" || stage.terminal === "cancelled";
   const ready = !generatingJobId && data.slides.length > 0;
   return (
-    <div className="creation-editor-preview" data-story-finished={storyFinished}>
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: a pointer shortcut only; the sign-in button is the keyboard path
+    // biome-ignore lint/a11y/noStaticElementInteractions: a pointer shortcut only; the sign-in button is the keyboard path
+    <div
+      className="creation-editor-preview"
+      data-story-finished={storyFinished}
+      data-guest-read-only={readOnlyBody ? "" : undefined}
+      onDoubleClick={onReadOnlyDoubleClick}
+    >
       {content}
       {anonymous && signInOpen ? (
         <Suspense fallback={null}>

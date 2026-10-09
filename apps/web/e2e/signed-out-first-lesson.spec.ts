@@ -159,6 +159,8 @@ test.describe("signed-out first lesson", () => {
     await expect(page.getByRole("button", { name: "Present" })).toBeVisible({ timeout: 60_000 });
 
     // Trying to edit opens the sign-in sheet; nothing is written and nothing fails silently.
+    // Wait for the read-only body itself (not just Present) before trying to edit it.
+    await expect(page.locator("[data-guest-read-only] [data-lesson-viewer] main")).toBeVisible();
     await page.locator("[data-lesson-viewer] main").first().dblclick();
     const editSheet = page.getByRole("dialog", { name: "Sign in to edit, export and save" });
     await expect(editSheet).toBeVisible();
