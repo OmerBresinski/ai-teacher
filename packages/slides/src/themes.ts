@@ -395,9 +395,15 @@ const DISPLAY_HEADING = 1.15;
 
 /** The key stages, as a set: `in` on `KEY_STAGE_TYPE` would also accept "constructor" or "toString". */
 const STAGES = new Set<string>(Object.keys(KEY_STAGE_TYPE));
+/**
+ * The lesson's age bands that are not key stage names (`AgeBandSchema` in `@tj/domain`): sixth form
+ * is KS5 and Reception reads at KS1, as the writer lays them out (`stageOf` in `@tj/generation`).
+ */
+const BAND_STAGE: Readonly<Record<string, KeyStage>> = { post16: "ks5", eyfs: "ks1" };
 const asStage = (band: string | undefined | null): KeyStage | undefined => {
   const k = typeof band === "string" ? band.toLowerCase() : "";
-  return STAGES.has(k) ? (k as KeyStage) : undefined;
+  if (STAGES.has(k)) return k as KeyStage;
+  return Object.hasOwn(BAND_STAGE, k) ? BAND_STAGE[k] : undefined;
 };
 /**
  * A theme read at a key stage carries the stage as a real field, so a spread copy downstream

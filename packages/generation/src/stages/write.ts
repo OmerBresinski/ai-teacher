@@ -1,4 +1,4 @@
-import type { Lesson, Slide } from "@tj/domain/documents";
+import { type AgeBand, deriveAgeBand, type Lesson, type Slide } from "@tj/domain/documents";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
@@ -28,8 +28,33 @@ export function slideRange(slideCount: number | undefined): { min: number; max: 
   return { min: 9, max: 12 };
 }
 
-const stageOf = (ageBand: string | undefined): Stage =>
-  (["ks1", "ks2", "ks3", "ks4", "ks5"].includes(ageBand ?? "") ? ageBand : "ks3") as Stage;
+/**
+ * The writer's key stage for each of the lesson's age bands (`AgeBandSchema` in `@tj/domain`).
+ * Sixth form (`post16`, Years 12–13) is KS5; Reception (`eyfs`) writes at KS1, the youngest stage
+ * the writer has.
+ */
+const STAGE_OF_BAND: Record<AgeBand, Stage> = {
+  eyfs: "ks1",
+  ks1: "ks1",
+  ks2: "ks2",
+  ks3: "ks3",
+  ks4: "ks4",
+  post16: "ks5",
+};
+
+/**
+ * The lesson's key stage: its `ageBand`, else the band its year group gives, else KS3 (a lesson
+ * with no year group, as `writerBrief`'s Year 7 default). A band the writer does not know throws:
+ * it must never be written at KS3 by accident.
+ */
+export function stageOf(ageBand: string | undefined, yearGroup?: string): Stage {
+  const band = ageBand ?? deriveAgeBand(yearGroup);
+  if (band === undefined) return "ks3";
+  if (!Object.hasOwn(STAGE_OF_BAND, band)) {
+    throw new Error(`writer: no key stage for age band ${JSON.stringify(band)}`);
+  }
+  return STAGE_OF_BAND[band as AgeBand];
+}
 
 /** The writer's brief, read off the lesson. */
 export function writerBrief(lesson: Lesson): Brief {
@@ -41,7 +66,7 @@ export function writerBrief(lesson: Lesson): Brief {
     subject: lesson.subject ?? "",
     yearGroup: lesson.yearGroup ?? `Year ${year}`,
     year,
-    keyStage: stageOf(lesson.ageBand),
+    keyStage: stageOf(lesson.ageBand, lesson.yearGroup),
     challenge: b?.level === "easier" ? "support" : b?.level === "harder" ? "stretch" : "core",
     theme: lesson.themeId,
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
