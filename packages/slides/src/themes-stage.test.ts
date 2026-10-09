@@ -99,6 +99,16 @@ describe("only real key stages bind", () => {
   });
 });
 
+describe("the lesson's age bands that are not key stage names", () => {
+  test("a sixth-form (post16) lesson reads at KS5 and a Reception (eyfs) one at KS1", () => {
+    expect(keyStageOf(getTheme("studio", "post16"))).toBe("ks5");
+    expect(getTheme("studio", "post16")).toBe(getTheme("studio", "ks5"));
+    expect(keyStageOf(lessonTheme({ themeId: "studio", ageBand: "post16" }))).toBe("ks5");
+    expect(keyStageOf(atKeyStage(getTheme("chalk"), "post16"))).toBe("ks5");
+    expect(keyStageOf(getTheme("splash", "eyfs"))).toBe("ks1");
+  });
+});
+
 describe("staged copies (master: no process-wide stage)", () => {
   test("a spread copy of a staged theme keeps its stage", () => {
     const ks1 = atKeyStage(getTheme("splash"), "ks1");
