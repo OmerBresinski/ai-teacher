@@ -41,11 +41,12 @@ Evidence for what the count counts:
    a worked example and its "your turn" pair, the plenary, or a slide another slide refers to.
    A mid-deck trim also moves every later slide's index, so pictures are fetched again, and a
    trimmed tail slide's pictures are orphaned but still billed. So:
-   - **Over or under by any number:** the deck ships as written, and the stage logs `count-miss`
-     (`level: "warn"`, `requested`, `delivered`; `writer/count.ts`, called in `writer/stage.ts`).
-     The job does not fail. A brief with no count (a range) logs nothing.
-   - **No written slide at all,** a `length` finish, or JSON that does not parse still fails the
-     job (K3). That is the headings-only deck K3 exists to stop.
+   - **Any number over, or up to 2 under:** the deck ships as written, and the stage logs
+     `count-miss` (`level: "warn"`, `requested`, `delivered`; `writer/count.ts`, called in
+     `writer/stage.ts`). The job does not fail. A brief with no count (a range) logs nothing.
+   - **More than 2 under** (for 10: 7 slides or fewer, title and objectives included), a
+     `length` finish, or JSON that does not parse fails the job (K3, `writerIncomplete`): the job
+     rolls back to the plan and retries. A closed JSON with 3 of 10 slides never ships.
    - The miss rate is measured from `count-miss` and the teacher's-path check (`fitReport`
      requested against delivered). A model-side repair (add one slide, or merge two) is added only
      if misses turn out to be common.
