@@ -108,7 +108,7 @@ export function activityFixtures(photo: (name: string) => FixturePhoto): Activit
           card("dog", "dog", 1),
           card("cow", "cow", 1),
           card("sheep", "sheep", 1),
-          card("chick hatching", "hatching", 0),
+          card("lamb", "lamb", 1),
         ],
       },
     },
