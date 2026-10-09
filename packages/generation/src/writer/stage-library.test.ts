@@ -19,7 +19,10 @@ const DIR = join(import.meta.dir, "fixtures/replay", B);
 const read = (f: string) => readFileSync(join(DIR, f), "utf8");
 type El = Record<string, unknown>;
 
-async function run(fill: (attempt: number) => unknown) {
+async function run(
+  fill: (attempt: number) => unknown,
+  shape: { side?: boolean; points?: boolean } = {},
+) {
   const brief = JSON.parse(read("brief.json")) as Brief;
   const objectives = (
     JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
@@ -27,6 +30,9 @@ async function run(fill: (attempt: number) => unknown) {
   const main = JSON.parse(read("main.json")) as { text: string; finishReason?: string };
   const out = JSON.parse(main.text) as { slides: Record<string, unknown>[] };
   const first = out.slides[0] as Record<string, unknown>;
+  // Library models are full slides: big-visual with its lead, no points (unless a test asks).
+  if (!shape.side) first.template = "big-visual";
+  if (!shape.side && !shape.points) delete first.points;
   first.figure = {
     kind: "model",
     model: "fractions",
@@ -65,7 +71,7 @@ async function run(fill: (attempt: number) => unknown) {
   });
   const slide = res.slides[2]; // title and objectives come first
   const diagram = ((slide?.elements ?? []) as El[]).find((e) => e.name === "Diagram");
-  return { fills, drawerKinds, events, diagram, slide };
+  return { fills, drawerKinds, events, diagram, slide, first };
 }
 
 /** The kit's type floor (24 units on its 1280-wide slide) at a 1440 px wide projection, less 25%. */
@@ -104,6 +110,39 @@ describe("writer stage: library models", () => {
       expect(w.y0, w.words).toBeGreaterThanOrEqual(vy - 1);
       expect(w.y1, w.words).toBeLessThanOrEqual(vy + vh + 1);
     }
+  }, 60_000);
+
+  test("the slide keeps its lead as a caption under the model", async () => {
+    const m = await loadModel("fractions");
+    const { slide, first } = await run(() => m?.presets[0]?.params);
+    const els = (slide?.elements ?? []) as El[];
+    expect(els.some((e) => e.name === "Caption")).toBe(true);
+    expect(JSON.stringify(els)).toContain(String(first.lead).slice(0, 20));
+    expect(els.some((e) => e.name === "Panel")).toBe(false);
+  }, 60_000);
+
+  test("points on a full library slide go to the notes, logged", async () => {
+    const m = await loadModel("fractions");
+    const { slide, first, events } = await run(() => m?.presets[0]?.params, { points: true });
+    const p = (first.points as unknown[]).map((x) =>
+      typeof x === "string" ? x : (x as { text: string }).text,
+    );
+    expect(p.length).toBeGreaterThan(0);
+    expect(String(slide?.notes)).toContain(String(p[0]));
+    expect(events).toContainEqual(expect.objectContaining({ ev: "lib-points-to-notes" }));
+  }, 60_000);
+
+  test("a side-slot model ask (an old output) goes to the drawer, no fill", async () => {
+    const m = await loadModel("fractions");
+    const { fills, drawerKinds, events, diagram } = await run(() => m?.presets[0]?.params, {
+      side: true,
+    });
+    expect(fills.length).toBe(0);
+    expect(drawerKinds).toContain("fraction-shapes");
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "lib-side-slot", model: "fractions" }),
+    );
+    expect(svgOfDataUrl(String(diagram?.src))).not.toContain("theme-primary");
   }, 60_000);
 
   test("refused params fall back to the drawer for the model's kind", async () => {

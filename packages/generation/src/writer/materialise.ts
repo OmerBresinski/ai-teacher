@@ -106,14 +106,12 @@ export const isModel = (f: unknown): boolean =>
   isDia(f) && (f as { kind?: unknown }).kind === "model";
 
 /**
- * The lead and points of a slide whose figure is a library model: its big-diagram slide shows the
- * heading and the drawing only, so they are read in the notes instead of dropped.
+ * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
+ * output that still carries them, read in the notes rather than dropped. The stage logs it.
  */
 export function modelPoints(s: S | undefined): string[] {
-  if (!s || (s.template !== "visual-text" && s.template !== "big-visual") || !isModel(s.figure))
-    return [];
-  const lead = typeof s.lead === "string" && s.lead.trim() ? [s.lead.trim()] : [];
-  return [...lead, ...pts(s.points)].map((p) =>
+  if (!s || s.template !== "big-visual" || !isModel(s.figure)) return [];
+  return pts(s.points).map((p) =>
     typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
   );
 }
@@ -128,10 +126,8 @@ export function normalise(s: S): S {
   if (t !== "visual-text" && t !== "big-visual") return s;
   const { figure, ...rest } = s;
   const dia = isDia(figure);
-  // A library model is drawn for the whole slide (16:9, a 24-unit type floor): it always takes
-  // big-diagram, never the side panel (ADR 0035). Its points go to the notes (`modelPoints`).
   const template =
-    t === "visual-text" && !isModel(figure)
+    t === "visual-text"
       ? dia
         ? "diagram-text"
         : "picture-text"
@@ -300,12 +296,9 @@ export function toInput(
     case "big-picture":
     case "big-diagram": {
       const f = fig(template === "big-picture" ? "picture" : "diagram");
-      // A library model gets the whole band: a caption would cost it a fifth of its height, and its
-      // words already sit at the kit's floor, so the lead is read in the notes (`modelPoints`).
-      const own =
-        template === "big-diagram" && isModel(raw.figure ?? s.diagram) && f && "drawn" in f;
+      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it.
       return f
-        ? { template, heading, ...(own ? {} : { lead }), figure: f }
+        ? { template, heading, lead, figure: f }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {

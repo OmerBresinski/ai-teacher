@@ -1,5 +1,5 @@
 {
-  "menuLine": "- model: a ready-made teaching model from the Models list, drawn from this slide's words and numbers. Choose one over a kind above when it shows this slide's idea, and a picture when the slide is about one particular living thing, place, object or person, which a model may not draw. Its intent says what it must show here: the case, its numbers or names, and what stays hidden on a question slide.",
+  "menuLine": "- model: a ready-made teaching model from the Models list, drawn from this slide's words and numbers. Choose one over a kind above when it shows this slide's idea, and a picture when the slide is about one particular living thing, place, object or person, which a model may not draw. Its intent says what it must show here: the case, its numbers or names, and what stays hidden on a question slide. Unlike the kinds above, a model always fills a big-visual slide of its own: its heading, the drawing, and a caption of one short line saying what pupils should take from it. Put the explanation, worked example or pictures it needs on their own slide just before or after it, whichever suits the lesson.",
   "header": "Models (id, years: what it shows):",
   "line": "- {id}, {years}: {teaches}",
   "teaches": {

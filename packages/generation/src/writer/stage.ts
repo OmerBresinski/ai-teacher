@@ -1,7 +1,7 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
-import { catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
+import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf } from "../stages/picture-director";
 import { type WriterBundleId, writerBundle } from "./bundle";
@@ -333,6 +333,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
               if (a.kind !== "model") return a;
               const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
+              // Library models are full slides only (ADR 0035): a side-slot ask from an old or
+              // replayed output is today's drawer's, for the model's base kind.
+              if (slot !== "full") {
+                const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
+                log({ ev: "lib-side-slot", slide: i + 1, model: want.model, kind });
+                return { ...a, kind, labels: [], spec: undefined };
+              }
+              if (modelPoints(s).length)
+                log({ ev: "lib-points-to-notes", slide: i + 1, model: want.model });
               const r = await libraryDiagram(
                 {
                   key: a.key,

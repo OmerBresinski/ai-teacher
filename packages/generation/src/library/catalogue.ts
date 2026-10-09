@@ -4,7 +4,7 @@
  * lab/lib-next 8fbfb912). Every word the writer and the fill call read is the prompt-engineer's,
  * byte for byte from `words/lib-words/` (writer.json, lib-fill*.txt, lib-repair-user.txt); code
  * only places them: the menu line and the catalogue after base4's "Diagram kinds:" list, and a
- * `dg-model-{side,full}` def beside each slot's kinds.
+ * `dg-model-full` def beside the full slot's kinds. Library models are full slides only.
  */
 import type { WriterStage } from "../writer/schema";
 import { MODEL_LOADERS } from "./models";
@@ -103,7 +103,7 @@ export function libSystem(base: string, entries: CatalogueEntry[], w = WRITER_WO
   return base.slice(0, end) + block + base.slice(end);
 }
 
-/** The writer schema with dg-model-side and dg-model-full beside the other kinds. */
+/** The writer schema with dg-model-full beside the full slot's kinds (the side slot keeps base4's). */
 export function libSchema(base: J, ids: string[], w = WRITER_WORDS): J {
   if (!ids.length) return base;
   const s = JSON.parse(JSON.stringify(base)) as J;
@@ -120,7 +120,7 @@ export function libSchema(base: J, ids: string[], w = WRITER_WORDS): J {
       alt: { type: "string", ...d("alt") },
     },
   };
-  for (const slot of ["side", "full"]) {
+  for (const slot of ["full"]) {
     const holder = defs[`diagram-${slot}`];
     if (!holder?.anyOf) throw new Error(`writer schema has no diagram-${slot} anyOf`);
     defs[`dg-model-${slot}`] = def;

@@ -76,12 +76,23 @@ describe("writer catalogue", () => {
     expect(sys.endsWith("\nRest")).toBe(true);
   });
 
-  test("the schema offers dg-model in both diagram slots", () => {
+  test("the writer reads that a model fills a big-visual slide of its own", async () => {
+    const base = "Intro.\nDiagram kinds:\n- flow: a flow.\n- cycle: a cycle.\n\nNext section.";
+    const entries = await catalogue("KS2");
+    const sys = libSystem(base, entries);
+    expect(sys.split("a model always fills a big-visual slide").length - 1).toBe(1);
+    const kinds = sys.slice(sys.indexOf("Diagram kinds:"), sys.indexOf("Next section."));
+    expect(kinds).toContain("a model always fills a big-visual slide of its own");
+    expect(libSystem(base, [])).toBe(base);
+  });
+
+  test("the schema offers dg-model in the full slot only", () => {
     const base = {
       $defs: { "diagram-side": { anyOf: [{ $ref: "#/$defs/a" }] }, "diagram-full": { anyOf: [] } },
     };
     const s = libSchema(base, ["fractions"]) as { $defs: Record<string, { anyOf?: unknown[] }> };
-    expect(s.$defs["diagram-side"]?.anyOf).toContainEqual({ $ref: "#/$defs/dg-model-side" });
+    expect(s.$defs["diagram-side"]?.anyOf).not.toContainEqual({ $ref: "#/$defs/dg-model-side" });
+    expect(s.$defs["dg-model-side"]).toBeUndefined();
     expect(s.$defs["diagram-full"]?.anyOf).toContainEqual({ $ref: "#/$defs/dg-model-full" });
     expect(libSchema(base, [])).toBe(base);
   });
