@@ -71,7 +71,13 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { localise } from "./locale";
-import { lostPictureFallback } from "./lost-picture";
+import {
+  lostPictureFallback,
+  otherVisual,
+  routeLostPicture,
+  splitAtAsk,
+  splitSlide,
+} from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
@@ -171,6 +177,12 @@ export type WriterRun = {
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
    */
   placeMore?: (index: number, asks: VisualAsk[], slide: SlideForPicture) => Promise<void>;
+  /**
+   * lostPic starts at slot failure (TEACH-110 part h): a lost picture's split panels, started as
+   * soon as the deck is editable, beside the checks and repairs; `placeMore` later finds them
+   * running (or done) and only waits. Not awaited.
+   */
+  placeEarly?: (index: number, asks: VisualAsk[], slide: SlideForPicture) => void;
   /** keepPic: a photo match6 dropped from an ask slide, for a slide that ends with no visual. */
   held?: (index: number, key: string) => VisualState | undefined;
   /**
@@ -544,6 +556,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
+    // A lone picture of three or more subjects is a generated set from the start (no lostPic).
+    const split = splitAtAsk(s);
+    if (split !== s) {
+      log({ ev: "split-at-ask", slide: idx + 1, panels: 1 + (split.tiles as unknown[]).length });
+      s = split;
+    }
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
     const look = lookOf(plan.flow?.find((x) => x.slide === idx + 1));
@@ -696,6 +714,29 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   editable = true;
   await run.onEditable?.(deck());
+  // lostPic, started at slot failure: each lone generic picture that failed and would be split
+  // has its panels started now, so they place while the checks and repairs run.
+  for (let i = 2; i < n; i++) {
+    const s = plan.slides[i] as S | undefined;
+    const lost = (asks.get(i) ?? []).find(
+      (a): a is Extract<VisualAsk, { type: "photo" }> =>
+        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+    );
+    if (!s || !lost || !run.placeEarly || otherVisual(s, lost.key)) continue;
+    const route = routeLostPicture(lost.shows);
+    const others = (asks.get(i) ?? [])
+      .filter((a) => a.key !== lost.key)
+      .map((a) => visualState(i)(a.key).status);
+    if (route.how !== "split" || !heldPhotoFills(s, others)) continue;
+    const next = splitSlide(s, lost.key, route.subjects);
+    const early = visualsOf(next, i, { ...base, plan }).filter((a) => a.type === "photo");
+    log({ ev: "lost-picture-early", slide: i + 1, asks: early.length });
+    run.placeEarly(i, early, {
+      heading: String(next.heading ?? ""),
+      text: wordsOf(next),
+      point: pointOf(next),
+    });
+  }
 
   // ── code checks ──
   const baseCheck = () =>
@@ -1247,6 +1288,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const asksBeforeLost = new Map(
     Array.from({ length: n }, (_, i) => [i, asks.get(i) ?? []] as const),
   );
+  // Notes beside the lostPic round (TEACH-110 part h): written on the deck as it stands now, and
+  // written again only when a slide's words change below (a reroute, keepPic or pointGuard).
+  const wordsNow = () =>
+    Array.from({ length: n }, (_, i) => (plan.slides[i] ? wordsOf(plan.slides[i] as S) : ""));
+  const wordsBefore = wordsNow();
+  const earlyNotes = writeNotes();
+  // Awaited below, or superseded; never left unhandled.
+  void Promise.allSettled([earlyNotes]);
   for (let i = 0; i < n; i++) await pictureLost(i);
   // keepPic (BAKEOFF base4f, fill-only): a photo match6 dropped from an ask slide fills the slide
   // only when it ended with no visual at all (no landed picture or diagram, no table); it never
@@ -1296,33 +1345,40 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
 
-  // ── notes: one call on the final slides as shown, only placed visuals listed ──
-  const placedLines = (i: number) =>
-    (asks.get(i) ?? []).flatMap((a) => {
-      const v = visualState(i)(a.key);
-      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      if (v?.status === "diagram" && a.type === "diagram")
-        return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
-      return [];
+  // ── notes: one call on the slides as shown, only placed visuals listed ──
+  function writeNotes() {
+    const placedLines = (i: number) =>
+      (asks.get(i) ?? []).flatMap((a) => {
+        const v = visualState(i)(a.key);
+        if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
+        if (v?.status === "diagram" && a.type === "diagram")
+          return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
+        return [];
+      });
+    const lines = Array.from({ length: n }, (_, i) => i)
+      .filter((i) => i >= 2)
+      .map((i) =>
+        renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i)),
+      )
+      .join("\n\n");
+    return lessonNotes({
+      slides: n,
+      first: 3,
+      system: P.notes,
+      user: fillTemplate(P.notesUser, brief, {
+        objectives: plan.objectives,
+        context: user,
+        slidesAsShown: lines,
+      }),
+      schema: JSON.parse(P.notesSchema),
+      chat,
+      log,
+      onUsd: () => {},
     });
-  const lines = Array.from({ length: n }, (_, i) => i)
-    .filter((i) => i >= 2)
-    .map((i) => renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i)))
-    .join("\n\n");
-  const got = await lessonNotes({
-    slides: n,
-    first: 3,
-    system: P.notes,
-    user: fillTemplate(P.notesUser, brief, {
-      objectives: plan.objectives,
-      context: user,
-      slidesAsShown: lines,
-    }),
-    schema: JSON.parse(P.notesSchema),
-    chat,
-    log,
-    onUsd: () => {},
-  });
+  }
+  const redo = wordsNow().some((w, i) => w !== wordsBefore[i]);
+  if (redo) log({ ev: "notes-redone" });
+  const got = redo ? await writeNotes() : await earlyNotes;
   for (const [k, s0] of got) {
     if (k < 3 || k > n) continue;
     // A multiple-choice answer starts with the correct letter as shown.

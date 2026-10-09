@@ -195,3 +195,45 @@ describe("lostPic never replaces another visual (#423 review)", () => {
     expect(otherVisual({ figure: { shows: "x" } }, "figure")).toBe(false);
   });
 });
+
+describe("a several-subject picture is a set from the start (TEACH-110 part h)", () => {
+  // The paid run's s8 (e2e-speed-1): generated whole, refused twice, split after editable into
+  // three unrelated stock dogs.
+  const dogs = {
+    template: "question-set",
+    heading: "Describe what changes",
+    questions: ["What young animal can you see?", "How does its size change?"],
+    picture: {
+      shows:
+        "Three golden retrievers shown left to right at the same scale: a small puppy, an older puppy and an adult dog",
+      must_see: ["small puppy", "older puppy", "adult dog"],
+      subject: "generic",
+    },
+  };
+  test("split into one panel per subject, each keeping the shared subject, as one set", async () => {
+    const { splitAtAsk } = await import("./lost-picture");
+    const { visualsOf } = await import("./materialise");
+    const { getTheme } = await import("@tj/slides/themes");
+    const split = splitAtAsk(dogs);
+    const asks = visualsOf(split, 7, {
+      brief: { keyStage: "ks1" } as never,
+      theme: getTheme("studio", "ks1"),
+      stage: "ks1",
+      plan: { slides: [], objectives: [] },
+    } as never);
+    const photos = asks.filter((a) => a.type === "photo");
+    expect(photos.map((a) => a.key)).toEqual(["picture", "tile.1", "tile.2"]);
+    expect(new Set(photos.map((a) => (a as { set?: string }).set))).toEqual(new Set(["split"]));
+    expect(photos.every((a) => a.shows.includes("Three golden retrievers"))).toBe(true);
+    expect(photos.map((a) => a.mustSee[0])).toEqual(["small puppy", "older puppy", "adult dog"]);
+  });
+  test("two subjects, a named subject, or another visual: unchanged", async () => {
+    const { splitAtAsk } = await import("./lost-picture");
+    const two = { ...dogs, picture: { ...dogs.picture, shows: "An adult cow beside a calf" } };
+    expect(splitAtAsk(two)).toBe(two);
+    const named = { ...dogs, picture: { ...dogs.picture, subject: "named" } };
+    expect(splitAtAsk(named)).toBe(named);
+    const withFigure = { ...dogs, figure: { kind: "table", shows: "x" } };
+    expect(splitAtAsk(withFigure)).toBe(withFigure);
+  });
+});

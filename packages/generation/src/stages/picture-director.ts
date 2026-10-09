@@ -290,6 +290,14 @@ export function setLookOf(design?: { picture_style?: "photo" | "illustration" })
     : { style: "photo", generic: "generate" };
 }
 
+/**
+ * C7 (TEACH-110 part h): a generic stock search still running after this long starts its
+ * generation beside it. On the two recorded lessons every stock picture that landed did so within
+ * 13.0 s of the director's answer, and the misses ran 18.7-20.0 s before generating; 13.5 s adds
+ * no generation to either and starts each miss's generation 5-6 s sooner.
+ */
+export const WRITER_STOCK_RACE_MS = 13_500;
+
 /** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
@@ -503,6 +511,7 @@ export async function findDirected(args: {
     (made, reuse) => args.judgeMade(brief, made, reuse),
     Date.now,
     sharedVerdictCache,
+    WRITER_STOCK_RACE_MS,
   );
   // a lesson trial, ruling 163: a past event or person that the scene search missed is shown by a
   // real artefact, coin, map, site or museum object (a Claudius bust), before nothing.
@@ -861,6 +870,8 @@ export function createWriterPictures(opts: {
     done: Promise<void>;
     /** Cancels this slot's own placement (`forget`: its slide was opened again). */
     stop: AbortController;
+    /** What it was asked to show (a later round re-asking other words replaces it). */
+    request?: string;
   };
   /** The round's deps with the slot's own stop on the signal. */
   const slotDeps = (slot: Slot): PipelineDeps => ({
@@ -1121,6 +1132,19 @@ export function createWriterPictures(opts: {
   return {
     start(index, ask, slide) {
       const k = id(index, ask.key);
+      // A later round asking other words of a key still running (lostPic's early start, then a
+      // slide that changed before its split ran): the old placement stops and is replaced.
+      const running = slots.get(k);
+      if (
+        settled &&
+        running?.state.status === "pending" &&
+        running.request !== undefined &&
+        running.request !== requestOf(ask)
+      ) {
+        running.state = { status: "failed" };
+        running.stop.abort();
+        slots.delete(k);
+      }
       const prev = slots.get(k);
       // A later round (lostPic's split after settle) may ask a failed key again, once per round.
       if (prev && !(settled && prev.state.status === "failed" && !reasked.has(k))) return;
@@ -1132,6 +1156,7 @@ export function createWriterPictures(opts: {
         state: { status: "pending" },
         done: Promise.resolve(),
         stop: new AbortController(),
+        request: requestOf(ask),
       };
       if (ask.set) {
         if (!opts.maker) {

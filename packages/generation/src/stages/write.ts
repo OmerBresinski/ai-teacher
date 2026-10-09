@@ -203,6 +203,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
               await pictures.settle();
             },
             held: (i, key) => pictures.held(i, key),
+            // lostPic at slot failure: the split's panels start at once; `placeMore` waits.
+            placeEarly: (i, more, slide) => {
+              for (const a of more) if (a.type === "photo") pictures.start(i, a, slide);
+            },
           }
         : {}),
       onEditable: async (slides) => {

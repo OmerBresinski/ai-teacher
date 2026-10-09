@@ -193,6 +193,13 @@ export async function findPicture(
   judgeMade?: (picture: MadePicture, reuse?: boolean) => Promise<boolean>,
   now: () => number = Date.now,
   verdicts?: VerdictCache,
+  /**
+   * C7 (TEACH-110 part h, writer planner only): a generic stock-first request whose stock search
+   * runs past `raceMs` starts its generation beside it; the first good picture wins and the other
+   * is cancelled (a generation in flight is aborted; a stock answer that comes later is ignored).
+   * Absent: stock, then generation, one after the other.
+   */
+  raceMs?: number,
 ): Promise<BankOutcome> {
   const t0 = now();
   const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => ({
@@ -201,11 +208,11 @@ export async function findPicture(
     route: req.route,
     ms: now() - t0,
   });
-  const make = async (faithful: boolean) => {
+  const make = async (faithful: boolean, sig: AbortSignal = signal) => {
     // Ruling 163 (narrowed later): nothing is generated for a past event or person.
     if (req.period && req.depicts && !req.draw) return undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
+      const made = await bank.generate(req, faithful, sig).catch(rethrowAbort);
       if (made && !styleAllowed(req, made)) {
         // A photo-style picture for a historical request: the wrong kind, so no retry either.
         await bank.reject?.(made).catch(rethrowAbort);
@@ -243,6 +250,7 @@ export async function findPicture(
   // With the library unreachable nothing could be stored, so nothing is generated.
   if (libraryDown) return done(await fetchStock().catch(rethrowAbort), "fetched");
   if (req.draw) return done(await make(false), "generated");
+  if (req.route !== "real" && req.stockFirst && raceMs !== undefined) return race(raceMs);
   if (req.route === "real" || req.stockFirst) {
     const fetched = await fetchStock().catch(rethrowAbort);
     if (fetched) {
@@ -259,6 +267,40 @@ export async function findPicture(
     );
   }
   return done(await make(false), "generated");
+
+  async function race(ms: number): Promise<BankOutcome> {
+    const stockP = fetchStock().then(undefined, rethrowAbort);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<"late">((resolve) => {
+      timer = setTimeout(() => resolve("late"), ms);
+    });
+    const early = await Promise.race([stockP, late]);
+    if (timer) clearTimeout(timer);
+    if (early !== "late") {
+      if (early) {
+        await bank.remember(req, early).then(undefined, rethrowAbort);
+        return done(early, "fetched");
+      }
+      return done(await make(false), "generated");
+    }
+    // Stock is slow: generation starts beside it.
+    const stop = new AbortController();
+    const genP = make(false, AbortSignal.any([signal, stop.signal]));
+    // Never left unhandled when stock wins and the generation is aborted.
+    void Promise.allSettled([genP]);
+    const tagged = [
+      stockP.then((p) => ({ via: "fetched" as const, p })),
+      genP.then((p) => ({ via: "generated" as const, p })),
+    ] as const;
+    const first = await Promise.race(tagged);
+    const win = first.p ? first : await (first.via === "fetched" ? tagged[1] : tagged[0]);
+    if (win.via === "fetched" && win.p) {
+      stop.abort();
+      await bank.remember(req, win.p).then(undefined, rethrowAbort);
+      return done(win.p, "fetched");
+    }
+    return done(win.p, "generated");
+  }
 }
 
 function rethrowAbort(error: unknown): undefined {

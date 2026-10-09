@@ -554,3 +554,79 @@ describe("library keys: one look per lesson", () => {
     expect(lookMatches(req, hit("generated", "illustration", "a"))).toBe(false);
   });
 });
+
+describe("C7: generation races a slow stock search (TEACH-110 part h)", () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const req: BankRequest = { text: "a puppy", named: null, route: "generic", stockFirst: true };
+  const pic = (src: string) => ({ src, alt: src }) as unknown as PlacedPhoto;
+  const run = (o: { stockMs: number; stock?: string; genMs: number }) => {
+    const t0 = performance.now();
+    const marks: Record<string, number> = {};
+    let genSignal: AbortSignal | undefined;
+    const bank: PictureBank = {
+      lookup: async () => undefined,
+      remember: async () => undefined,
+      generate: async (_r, _f, signal) => {
+        marks.genStart = performance.now() - t0;
+        genSignal = signal;
+        await sleep(o.genMs);
+        if (signal.aborted) throw Object.assign(new Error("aborted"), { name: "AbortError" });
+        return { ...pic("made"), dataUrl: "data:x" } as never;
+      },
+    };
+    const out = findPicture(
+      req,
+      bank,
+      async () => {
+        await sleep(o.stockMs);
+        return o.stock ? pic(o.stock) : undefined;
+      },
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    return { out, marks, signal: () => genSignal };
+  };
+
+  test("a stock miss past the timeout: generation started beside it, not after it", async () => {
+    const r = run({ stockMs: 80, genMs: 10 });
+    const got = await r.out;
+    expect(got.via).toBe("generated");
+    expect(r.marks.genStart ?? 999).toBeLessThan(60);
+  });
+  test("stock that answers in time: no generation at all", async () => {
+    const r = run({ stockMs: 5, stock: "stock", genMs: 10 });
+    expect((await r.out).via).toBe("fetched");
+    expect(r.marks.genStart).toBeUndefined();
+  });
+  test("stock that wins after the generation started: stock is kept, the generation aborted", async () => {
+    const r = run({ stockMs: 40, stock: "stock", genMs: 200 });
+    const got = await r.out;
+    expect(got.via).toBe("fetched");
+    expect(got.photo?.src).toBe("stock");
+    expect(r.signal()?.aborted).toBe(true);
+  });
+  test("without the race option: stock, then generation (objectives-first unchanged)", async () => {
+    let genStart = -1;
+    const t0 = performance.now();
+    await findPicture(
+      req,
+      {
+        lookup: async () => undefined,
+        remember: async () => undefined,
+        generate: async () => {
+          genStart = performance.now() - t0;
+          return undefined;
+        },
+      },
+      async () => {
+        await sleep(40);
+        return undefined;
+      },
+      new AbortController().signal,
+    );
+    expect(genStart).toBeGreaterThanOrEqual(35);
+  });
+});
