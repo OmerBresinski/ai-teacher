@@ -40,6 +40,7 @@ export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   fallbackOnlyOnFailure: true,
   coverageCountsPictureTasks: true,
   duplicateLogOnly: true,
+  pointGuardLogOnly: true,
 };
 
 /** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
