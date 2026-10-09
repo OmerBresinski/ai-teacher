@@ -1,7 +1,7 @@
 import { isAiError } from "@tj/ai";
 import type { Finding, Lesson, Worksheet } from "@tj/domain/documents";
 import { checkLesson } from "@tj/domain/documents";
-import { estimateMinutes, numberQuestions } from "@tj/slides";
+import { estimateMinutes, mixWordBanks, numberQuestions } from "@tj/slides";
 import { repairBlock, repairTargets } from "../stages/repair";
 import { audienceOf, BUDGET_FINDING, shapeOf } from "../stages/shared";
 import { BudgetExceeded, type PipelineDeps, StageFailure, throwIfAborted } from "../types";
@@ -111,7 +111,8 @@ export async function checkWorksheet(input: CheckInput, deps: CheckDeps): Promis
       throw error;
     }
   }
-  const worksheet = { ...input.worksheet, blocks: numberQuestions(blocks) };
+  // A repaired bank or sentence can put a bank back in gap order.
+  const worksheet = { ...input.worksheet, blocks: numberQuestions(mixWordBanks(blocks)) };
   const timing = practiceTimeFinding(worksheet, practiceMinutes);
   const findings = [
     ...checkLesson(lesson, worksheet).filter(onSheet(worksheet)),

@@ -176,6 +176,27 @@ describe("WorksheetEditor", () => {
     expect(read().blocks.length).toBe(0);
   });
 
+  test("the editor draws a run of fill-gap blanks at one width, as the sheet prints them", () => {
+    const sentence = (id: string, answer: string): WorksheetBlock => ({
+      id,
+      type: "fill-gap",
+      doc: docFromText(`[[gap:${id}-g]] is a word from the bank.`),
+      gaps: [{ id: `${id}-g`, answer }],
+    });
+    const { container } = renderWorksheetEditor(
+      withBlocks([
+        { id: "bank", type: "word-bank", words: ["Context window", "Token"] },
+        sentence("s1", "Token"),
+        sentence("s2", "Context window"),
+      ]),
+    );
+    const width = (id: string) =>
+      row(container, id).querySelector<HTMLElement>(".ws-gap")?.style.width;
+    // "Context window" is 14 characters at 6.4pt: 90pt, on the short answer's blank too.
+    expect(width("s1")).toBe("90pt");
+    expect(width("s2")).toBe("90pt");
+  });
+
   test("row 4: setting marks on a question follows the AQA line rule and renumbers", () => {
     const { container, read } = renderWorksheetEditor();
     const q = read().blocks[1];

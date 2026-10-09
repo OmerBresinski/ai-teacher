@@ -7,6 +7,7 @@ import {
 } from "@tj/domain/documents";
 import { docFromText, now, uid } from "../factories";
 import { answerLinesForMarks, WORD_SEARCH_DEFAULT_SIZE } from "./factories";
+import { mixWordBanks } from "./word-bank";
 import { clampSize, normaliseWords } from "./word-search";
 
 /*
@@ -17,8 +18,8 @@ import { clampSize, normaliseWords } from "./word-search";
  * the frame is honest about what is written and what is still to come.
  *
  * Moved here from `@tj/editor` (ADR 0030 item 4) so the worker can build the frame; the editor
- * re-exports every name from its old paths. Pure: `@tj/domain`, the doc builders and the word
- * search only.
+ * re-exports every name from its old paths. Pure: `@tj/domain`, the doc builders, the word bank's
+ * order and the word search only.
  *
  * With facts, every block cites the fact ids it drew on in `generatedFrom.factRefs` (ADR 0025
  * §2): the derived blocks cite their own facts, the framing blocks (a heading, an instruction
@@ -286,7 +287,8 @@ const cloze: WorksheetRecipe = {
             { id: gap, answer: term },
           ]);
         });
-    return [
+    // The bank comes from the same list as the sentences, so it is mixed before it prints.
+    return mixWordBanks([
       instructions(FILL_GAP_BANK_INSTRUCTION, vocabRefs),
       wordBank(terms, vocabRefs),
       ...sentences,
@@ -294,7 +296,7 @@ const cloze: WorksheetRecipe = {
         "two more sentences per term that use the word rather than define it.",
         vocabRefs,
       ),
-    ];
+    ]);
   },
 };
 

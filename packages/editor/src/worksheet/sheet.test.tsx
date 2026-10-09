@@ -52,6 +52,42 @@ const paginateFlat = (sheet: Worksheet) => {
 afterEach(cleanup);
 
 describe("Sheet", () => {
+  test("every blank in a run of fill-gap sentences is as wide as the run's longest answer", () => {
+    const sentence = (answer: string): WorksheetBlock => {
+      const gap = uid();
+      return {
+        id: uid(),
+        type: "fill-gap",
+        doc: docFromText(`[[gap:${gap}]] is a word from the bank.`),
+        gaps: [{ id: gap, answer }],
+      };
+    };
+    const sheet = starterWorksheet("Cloze");
+    sheet.blocks = numberQuestions([
+      { id: uid(), type: "word-bank", words: ["Large language model (LLM)", "Token", "Prompt"] },
+      sentence("Large language model (LLM)"),
+      sentence("Token"),
+      sentence("Prompt"),
+    ]);
+    const { container } = render(
+      <>
+        {sheet.blocks.map((block) => (
+          <FlowItemContent
+            key={block.id}
+            item={{ kind: "block", block }}
+            worksheet={sheet}
+            mode="print"
+          />
+        ))}
+      </>,
+    );
+    const widths = [...container.querySelectorAll<HTMLElement>(".ws-gap")].map(
+      (g) => g.style.width,
+    );
+    // 26 characters at 6.4pt each: the long term's blank, on every sentence.
+    expect(widths).toEqual(["166pt", "166pt", "166pt"]);
+  });
+
   test("renders every WorksheetBlock['type'], the header, the RAG strip and the answer key without throwing", () => {
     const sheet = everyBlockSheet();
     const pages = paginateFlat(sheet);
@@ -88,10 +124,11 @@ describe("Sheet", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Answer key" })).toBeInTheDocument();
     expect(screen.getByText(/A\. Option A/)).toBeInTheDocument();
     expect(screen.getByText("1. evaporates")).toBeInTheDocument();
-    // Fill-the-gap blanks are sized to the answer.
+    // Fill-the-gap blanks are drawn, one width for the block.
     const gaps = container.querySelectorAll(".ws-gap");
     expect(gaps.length).toBe(2);
     expect((gaps[0] as HTMLElement).style.width).toMatch(/pt$/);
+    expect((gaps[1] as HTMLElement).style.width).toBe((gaps[0] as HTMLElement).style.width);
     // Theme and paper travel as custom properties on the root.
     const root = container.querySelector(".ws-sheet") as HTMLElement;
     expect(root.style.getPropertyValue("--ws-page-w")).toBe("595pt");

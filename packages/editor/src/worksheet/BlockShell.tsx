@@ -85,6 +85,8 @@ export type BlockShellProps = {
   problems?: string[];
   /** `Worksheet.showMarks`, handed down so the printed markup matches `FlowItemContent`. */
   showMarks?: boolean;
+  /** A fill-gap block's blank width (`gapCharsIn`), for the same reason. */
+  gapChars?: number;
   actions: BlockRowActions;
 };
 
@@ -103,6 +105,7 @@ export const BlockShell = memo(function BlockShell({
   showAnswers,
   problems,
   showMarks,
+  gapChars,
   actions,
 }: BlockShellProps) {
   const keyHandlers = useMemo<BlockKeyHandlers>(
@@ -198,6 +201,7 @@ export const BlockShell = memo(function BlockShell({
           showAnswers={showAnswers}
           renderAnswer={renderAnswer}
           showMarks={showMarks}
+          gapChars={gapChars}
         />
       )}
     </div>

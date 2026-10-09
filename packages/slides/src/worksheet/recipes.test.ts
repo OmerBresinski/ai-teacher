@@ -258,7 +258,30 @@ describe("worksheet recipes", () => {
       expect(JSON.stringify(g.doc)).toContain(`[[gap:${g.gaps[0]?.id}]]`);
     }
     const bank = built.find((b) => b.type === "word-bank");
-    expect(bank?.type === "word-bank" && bank.words.length).toBe(6);
+    if (bank?.type !== "word-bank") throw new Error("bank");
+    // Every term is in the bank, and none sits at the position of its own sentence.
+    const terms = facts.vocabulary.map((v) => v.term);
+    expect([...bank.words].sort()).toEqual([...terms].sort());
+    for (const [i, term] of terms.entries()) expect(bank.words[i]).not.toBe(term);
+    expect(
+      recipeById("cloze")
+        ?.build(facts)
+        .find((b) => b.type === "word-bank"),
+    ).toMatchObject({
+      words: bank.words,
+    });
+  });
+
+  test("cloze without facts: the placeholder bank is mixed too", () => {
+    const built = recipeById("cloze")?.build(undefined) ?? [];
+    const bank = built.find((b) => b.type === "word-bank");
+    const answers = built.flatMap((b) =>
+      b.type === "fill-gap" ? b.gaps.map((g) => g.answer) : [],
+    );
+    if (bank?.type !== "word-bank") throw new Error("bank");
+    expect(answers).toEqual(["Term one", "Term two"]);
+    expect(bank.words[0]).not.toBe("Term one");
+    expect(bank.words[1]).not.toBe("Term two");
   });
 
   test("word search: the terms in a seeded grid sized to the longest, the bank shown, no placeholder", () => {
