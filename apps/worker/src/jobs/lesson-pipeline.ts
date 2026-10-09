@@ -7,7 +7,7 @@ import {
   type WorkspaceDb,
 } from "@tj/db";
 import type { JobId, LessonId, WorkspaceId } from "@tj/domain";
-import { type Lesson, parseLesson } from "@tj/domain/documents";
+import { type Lesson, parseLesson, resumeBase } from "@tj/domain/documents";
 import {
   BudgetExceeded,
   InputRejected,
@@ -149,7 +149,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       now: () => new Date(),
       ids: uid,
       sources: storageSourceLoader(deps.storage, workspaceId, logger),
-      persist: makePersist(ws, lessonId, jobId),
+      persist: makePersist(ws, lessonId, jobId, stored),
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
@@ -236,10 +236,17 @@ async function loadOwnedLesson(
  * `PipelineDeps.persist`: the lesson row only (ADR 0030 item 2 — the lesson pipeline writes no
  * worksheet). A `lost_lock` / `missing` answer stops the job for good.
  */
-function makePersist(ws: WorkspaceDb, lessonId: LessonId, jobId: JobId): PipelineDeps["persist"] {
+function makePersist(
+  ws: WorkspaceDb,
+  lessonId: LessonId,
+  jobId: JobId,
+  stored: Lesson,
+): PipelineDeps["persist"] {
   // ADR 0037: the job's previous copy is the base of a three-way merge onto the row, so a slide
   // the teacher edited while the lesson fills is never overwritten (UX ruling 189).
-  let base: unknown;
+  // Seeded from the stored lesson, so a retry's first write merges too: slides already done are
+  // the teacher's and the new run never writes over them.
+  let base: unknown = resumeBase(stored);
   return async (lesson: Lesson) => {
     const result = await putDocumentAsJob(ws, lessonId, lesson, jobId, { base });
     if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);

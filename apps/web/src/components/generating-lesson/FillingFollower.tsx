@@ -10,6 +10,21 @@ import { apiErrorFromResponse } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./GeneratingLesson";
 
+/**
+ * Whether the editor opens while the lesson still fills (ADR 0037). Never for a guest: a guest's
+ * lesson is read-only anyway, and the generating view keeps its progress and its Stop. Never once
+ * the job was stopped (the page keeps the stopped view), for a proposed plan, or before a slide's
+ * words are done.
+ */
+export function opensFillingEditor(state: {
+  anonymous: boolean;
+  stopped: boolean;
+  proposed: boolean;
+  editableSlides: boolean;
+}): boolean {
+  return !state.anonymous && !state.stopped && !state.proposed && state.editableSlides;
+}
+
 /** What the page may ask of the follower: fold the job's newest row in now (a save went stale). */
 export type FillingFollowerHandle = { pull: () => Promise<Lesson | undefined> };
 
@@ -27,6 +42,7 @@ export function FillingFollower({
   base,
   editorRef,
   followerRef,
+  onStopped,
 }: {
   lessonId: string;
   jobId: string;
@@ -34,6 +50,11 @@ export function FillingFollower({
   base: Lesson;
   editorRef: RefObject<LessonEditorHandle | null>;
   followerRef: RefObject<FillingFollowerHandle | null>;
+  /**
+   * The job failed or was cancelled: the page shows the stopped view for it (its message, what
+   * was written, the way back), as it does when the job stops before any slide is done.
+   */
+  onStopped?: (jobId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId, queryClient);
@@ -68,8 +89,13 @@ export function FillingFollower({
   // released lock into the row state, which hands the page to the plain editor.
   const terminal = stream.terminal?.type;
   useEffect(() => {
-    if (terminal) void pull().catch(() => undefined);
-  }, [terminal, pull]);
+    if (!terminal) return;
+    void pull()
+      .catch(() => undefined)
+      .then(() => {
+        if (terminal !== "completed") onStopped?.(jobId);
+      });
+  }, [terminal, pull, onStopped, jobId]);
   useEffect(() => {
     const timer = window.setInterval(() => void pull().catch(() => undefined), JOB_POLL_MS);
     return () => window.clearInterval(timer);

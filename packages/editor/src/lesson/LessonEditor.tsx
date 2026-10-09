@@ -339,11 +339,20 @@ export function LessonEditor({
 
   // What the element renderers may do to the document (ADR 0022 §4): the two contexts the slide
   // package reads in edit mode. The functions are stable; the two ids change on entry/exit.
+  const fillingRef = useRef(false);
+  fillingRef.current = writingSlideIds !== undefined;
+  const readSessionRef = useRef(session.read);
+  readSessionRef.current = session.read;
   const { setEditingText, setEditingExplanation } = session.actions;
   const editorHooks = useMemo<EditorHooks>(
     () => ({
-      writeElementHeight: (slideId, id, h) =>
-        history.dispatch(reducers.updateElementLayout, slideId, id, { h }),
+      // While the lesson fills (ADR 0037) a box's measured height is written back only for the
+      // text the teacher is typing into: a re-measure on view is not a teacher's edit, so it must
+      // neither dirty the lesson nor claim a slide the job may still reword.
+      writeElementHeight: (slideId, id, h) => {
+        if (fillingRef.current && readSessionRef.current().editingTextId !== id) return;
+        history.dispatch(reducers.updateElementLayout, slideId, id, { h });
+      },
       writeElementDoc: (slideId, id, doc: RichDoc) =>
         history.dispatch(reducers.updateElement, slideId, id, { doc } as Partial<SlideElement>),
       writeExplanation: (slideId, text) => history.dispatch(reducers.setExplanation, slideId, text),

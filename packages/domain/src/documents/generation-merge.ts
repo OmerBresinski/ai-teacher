@@ -198,3 +198,14 @@ export function keepWritingSlides(stored: Lesson, incoming: Lesson): Lesson {
   if (stored.generation) next.generation = stored.generation;
   return next;
 }
+
+/**
+ * The merge base for a job that starts on a stored lesson (a retry or a resume, ADR 0037): the
+ * stored copy without its `done` slides. The job never saw those as its own, so they read as the
+ * teacher's in `mergeJobLesson` and the new run cannot write over them, edited or not.
+ */
+export function resumeBase(stored: Lesson): Lesson {
+  const states = stored.generation?.slideStates;
+  if (!states) return stored;
+  return { ...stored, slides: stored.slides.filter((s) => states[s.id] !== "done") };
+}

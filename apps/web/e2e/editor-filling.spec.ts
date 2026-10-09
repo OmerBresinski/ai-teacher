@@ -102,14 +102,16 @@ test.describe("editing while the lesson fills @smoke", () => {
       .first()
       .click();
     await expect(page.locator("[data-slide-writing-overlay]")).toHaveCount(0);
-    await dblclickAt(page, elements(page).first());
+    await expect(page.locator("[data-save-state]")).toHaveText("Saved");
+    await dblclickAt(page, elements(page).filter({ hasText: "The water cycle" }).first());
     await expect(proseMirror(page)).toBeFocused();
     await page.keyboard.press("End");
-    await page.keyboard.type(" EDITED-BY-TEACHER");
+    await page.keyboard.type(" and where rain goes");
+    // A realistic title edit for the screenshot: the whole title replaced.
     await page.keyboard.press("Escape");
     await expect
       .poll(async () => textOf((await read()).document.body, first), { timeout: 15_000 })
-      .toContain("EDITED-BY-TEACHER");
+      .toContain("where rain goes");
     if (process.env.TEACH_SCREENSHOTS) {
       const shots = path.resolve(import.meta.dirname, "../../../../pr-shots/TEACH-202-b");
       await page.screenshot({ path: path.join(shots, "editing-while-writing.png") });
@@ -136,12 +138,12 @@ test.describe("editing while the lesson fills @smoke", () => {
     // The stored row keeps the teacher's slide 1 and takes the job's slides 2 and 3.
     const after = (await read()).document;
     expect(after.generatingJobId).toBeNull();
-    expect(textOf(after.body, first)).toContain("EDITED-BY-TEACHER");
+    expect(textOf(after.body, first)).toContain("where rain goes");
     expect(textOf(after.body, first)).not.toContain("JOB REWORDED");
     expect(textOf(after.body, second)).toContain("JOB DONE");
     // The open editor folds the end in: no writing slides, slide 1 still the teacher's.
     await expect(page.locator("[data-slide-writing]")).toHaveCount(0, { timeout: 15_000 });
-    await expect(page.locator("[data-slide-frame]")).toContainText("EDITED-BY-TEACHER");
+    await expect(page.locator("[data-slide-frame]")).toContainText("where rain goes");
     await page
       .getByRole("option", { name: /^Slide 2,/ })
       .first()
@@ -149,6 +151,6 @@ test.describe("editing while the lesson fills @smoke", () => {
     await expect(page.locator("[data-slide-frame]")).toContainText("JOB DONE");
     // And a reload shows the same.
     await page.reload();
-    await expect(page.locator("[data-slide-frame]")).toContainText("EDITED-BY-TEACHER");
+    await expect(page.locator("[data-slide-frame]")).toContainText("where rain goes");
   });
 });

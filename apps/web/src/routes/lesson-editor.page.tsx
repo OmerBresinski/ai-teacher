@@ -24,6 +24,7 @@ import {
 import {
   FillingFollower,
   type FillingFollowerHandle,
+  opensFillingEditor,
   StopFillingButton,
 } from "@/components/generating-lesson/FillingFollower";
 import { stageOf } from "@/components/generating-lesson/stage";
@@ -379,9 +380,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   if (
     fillingJobId &&
     unlocked?.jobId !== fillingJobId &&
-    !stoppedJobId &&
-    data.plan?.state !== "proposed" &&
-    hasEditableSlides(data)
+    opensFillingEditor({
+      anonymous,
+      stopped: !!stoppedJobId,
+      proposed: data.plan?.state === "proposed",
+      editableSlides: hasEditableSlides(data),
+    })
   ) {
     setUnlocked({ jobId: fillingJobId, base: data });
   }
@@ -475,6 +479,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           base={unlocked.base}
           editorRef={editorRef}
           followerRef={followerRef}
+          onStopped={setStoppedJobId}
         />
       ) : null}
     </>

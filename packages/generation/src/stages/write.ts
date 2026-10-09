@@ -250,10 +250,26 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     // ships them. Its cost is saved, so a retry's budget counts it.
     const streamed = !editableSaved && progressive.patches().size > 0;
     if (error instanceof WriterIncompleteError || streamed) {
+      // Slides whose words were done stay (ADR 0037: they are the teacher's); the rest go back
+      // to the plan, and no slide stays `writing` once the job has stopped. A writer that ran
+      // out of length (K3) shipped no valid deck, so its streamed slides go back to the plan too
+      // (a slide the teacher edited is still kept by the merge).
+      if (error instanceof WriterIncompleteError) closed.clear();
+      const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
+      const kept = Array.from({ length: count }, (_, i) =>
+        closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : lesson.slides[i],
+      ).filter((slide): slide is Slide => slide !== undefined);
+      const { slideStates: _states, ...generation } = lesson.generation ?? {};
       await deps.persist({
         ...lesson,
+        slides: kept,
         ...(lesson.generation
-          ? { generation: { ...lesson.generation, usage: deps.budget.totals() } }
+          ? {
+              generation: {
+                ...(generation as typeof lesson.generation),
+                usage: deps.budget.totals(),
+              },
+            }
           : {}),
       });
     }

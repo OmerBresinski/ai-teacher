@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { type JobEvent, type JobId, newId, type WorkspaceId } from "@tj/domain";
 import {
   type Lesson,
+  resumeBase,
   type Series,
   summarise,
   type Worksheet,
@@ -294,6 +295,31 @@ describeDb("documents repository", () => {
       expect(slideOf(stored, a)).toEqual(slideOf(put.row.body as Lesson, a));
       expect(slideOf(stored, b)).toEqual(slideOf(second, b));
       expect(stored.generation?.slideStates).toEqual({ [a]: "done", [b]: "done" });
+    });
+
+    test("a retried job seeded with resumeBase keeps a teacher's edit to a done slide", async () => {
+      const jobId = newId<JobId>();
+      const fixture = lessonFixture();
+      const [a, b] = fixture.slides.map((s) => s.id) as [string, string];
+      const row = await createDocument(
+        wsA,
+        "lesson",
+        { ...fixture, generation: states({ [a]: "done", [b]: "writing" }, jobId) },
+        { generatingJobId: jobId },
+      );
+      const edited = retitle(row.body as Lesson, a, "Mine");
+      const put = await putDocument(wsA, row.id, edited, row.updatedAt);
+      if (put.status !== "ok") throw new Error(put.status);
+      // The retry starts from the stored row and rewrites every slide from scratch.
+      const stored = put.row.body as Lesson;
+      const rerun: Lesson = {
+        ...retitle(retitle(stored, a, "Retry rewrite"), b, "Retry b"),
+        generation: states({ [a]: "writing", [b]: "writing" }, jobId),
+      };
+      const w = await putDocumentAsJob(wsA, row.id, rerun, jobId, { base: resumeBase(stored) });
+      if (w.status !== "ok") throw new Error(w.status);
+      expect(slideOf(w.row.body as Lesson, a)).toEqual(slideOf(stored, a));
+      expect(slideOf(w.row.body as Lesson, b)).toEqual(slideOf(rerun, b));
     });
 
     test("a lesson with no done slide is still locked to the teacher", async () => {
