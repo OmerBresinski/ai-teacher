@@ -1,0 +1,68 @@
+{
+  "ports": { "api": 5780, "worker": 5781, "web": 5782 },
+  "forbiddenPorts": [5174, 3001, 3002, 5433],
+  "databaseUrl": "postgres://postgres:postgres@localhost:5432/tj_teacherpath",
+  "workerEnv": { "AI_LESSON_PLANNER": "writer" },
+  "checkModel": "gpt-6-luna",
+  "checkModelPriceId": "openai/gpt-6-luna",
+  "lessonTimeoutS": 600,
+  "ceilingPerLessonUsd": { "ai": 0.5, "images": 0.3, "check": 0.02 },
+  "teachingKindsExcluded": [
+    "title",
+    "objectives",
+    "starter",
+    "discussion",
+    "exit-ticket",
+    "summary",
+    "plenary",
+    "recap"
+  ],
+  "ignoreNetwork": ["GET /me 401", "GET /auth/get-session 401"],
+  "thresholds": {
+    "firstVisibleSlideS": 30,
+    "firstEditableS": 60,
+    "allEditableS": 120,
+    "picturesInS": 150,
+    "doneS": 150,
+    "editSaves": true,
+    "noFailedWrites": true,
+    "exportPdf": true,
+    "slidesDeliveredMatchRequested": true,
+    "stockPicturesMin": 1,
+    "figuresDroppedMax": 0,
+    "textOnlyTeachingMax": 1,
+    "objectivesCoveredShare": 1,
+    "consoleErrorsMax": 0,
+    "networkErrorsMax": 0
+  },
+  "briefs": [
+    {
+      "id": "ks3-y7-science-adaptations",
+      "keyStage": "KS3",
+      "yearGroup": "Year 7",
+      "topic": "Adaptations: how animals and plants survive in the Arctic and the desert",
+      "slideCount": 10
+    },
+    {
+      "id": "ks4-y10-history-ww1-causes",
+      "keyStage": "KS4",
+      "yearGroup": "Year 10",
+      "topic": "The long-term causes of the First World War: alliances, militarism and imperial rivalry",
+      "slideCount": 12
+    },
+    {
+      "id": "ks2-y4-geography-rivers",
+      "keyStage": "KS2",
+      "yearGroup": "Year 4",
+      "topic": "Rivers: the journey from source to mouth",
+      "slideCount": 8
+    },
+    {
+      "id": "ks1-y2-maths-time",
+      "keyStage": "KS1",
+      "yearGroup": "Year 2",
+      "topic": "Telling the time to the quarter hour",
+      "slideCount": 6
+    }
+  ]
+}
