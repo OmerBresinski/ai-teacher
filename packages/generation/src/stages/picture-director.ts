@@ -877,6 +877,8 @@ export function splitSubjects(ask: WriterPhotoAsk): string[] | undefined {
   const colon = ask.shows.indexOf(":");
   if (colon <= 0 || !ask.shows.slice(0, colon).trim()) return undefined;
   if (libraryKind(ask.shows) || isMapRequest(ask.shows)) return undefined;
+  // A capitalised name in the list is a named real thing (Henry VIII, the Golden Hind): never made.
+  if (/\b[A-Z][a-z]*\b/.test(ask.shows.slice(colon + 1))) return undefined;
   const subjects = compoundSubjects(ask.shows);
   return subjects.length >= 3 && subjects.length <= 4 ? subjects : undefined;
 }
@@ -1180,17 +1182,11 @@ export function createWriterPictures(opts: {
    * in the lesson's look, then joined side by side into the slot's one picture. Every panel must
    * land: a picture missing one of the things it names is no picture of them.
    */
-  const placeSplit = async (
-    slot: Slot,
-    index: number,
-    ask: WriterPhotoAsk,
-    maker: PictureMaker,
-    subjects: string[],
-  ): Promise<void> => {
+  const splitAsks = (index: number, ask: WriterPhotoAsk, subjects: string[]): SetAsk[] => {
     const head = ask.shows.slice(0, ask.shows.indexOf(":")).trim();
     const panelAspect = (ask.aspect ?? 1.6) / subjects.length;
     const same = isSameSubjectSet(subjects);
-    const asks: SetAsk[] = subjects.map((x, i) => ({
+    return subjects.map((x, i) => ({
       key: `${ask.key}#${i + 1}`,
       index,
       shows: `${x} (${head})`,
@@ -1199,8 +1195,30 @@ export function createWriterPictures(opts: {
       aspect: panelAspect,
       sameSubject: same,
     }));
+  };
+  const placeSplit = async (
+    slot: Slot,
+    index: number,
+    ask: WriterPhotoAsk,
+    maker: PictureMaker,
+    subjects: string[],
+    asks: SetAsk[],
+  ): Promise<void> => {
     const k = id(index, ask.key);
     const bytes = new Map<string, Uint8Array>();
+    /**
+     * The panels are only parts of the joined picture: none is shown on its own, so every stored
+     * panel is deleted, whether the join goes ahead, a panel failed or the set stopped.
+     */
+    const cleanup = async () => {
+      const saved = [...bytes.keys()];
+      bytes.clear();
+      await Promise.all(
+        saved.map((src) =>
+          (maker.remove?.(src) ?? Promise.resolve()).catch(whenNonFatal(() => undefined)),
+        ),
+      );
+    };
     const run = async (): Promise<void> => {
       deps.logger.info(
         { stage: "generate", picture: k, panels: asks.length },
@@ -1225,6 +1243,7 @@ export function createWriterPictures(opts: {
         setLook,
       );
       const pngs = made.map((m) => (m ? bytes.get(m.src) : undefined));
+      await cleanup();
       const first = made[0];
       const whole = first && pngs.every((p): p is Uint8Array => p !== undefined);
       opts.onOutcome?.(ask.key, {
@@ -1259,7 +1278,10 @@ export function createWriterPictures(opts: {
         requestOf(ask),
       );
     };
-    return run().then(undefined, onError(slot));
+    return run().then(undefined, async (error: unknown) => {
+      await cleanup().then(undefined, () => undefined);
+      onError(slot)(error);
+    });
   };
 
   return {
@@ -1302,8 +1324,17 @@ export function createWriterPictures(opts: {
         return;
       }
       const subjects = opts.maker ? splitSubjects(ask) : undefined;
-      if (opts.maker && subjects && !/^hist/i.test(opts.lesson.subject ?? "")) {
-        slot.done = placeSplit(slot, index, ask, opts.maker, subjects);
+      const parts = subjects && splitAsks(index, ask, subjects);
+      // Ruling 163, as for a set: never generated in a history lesson or for a historical subject
+      // (the whole request and each panel are checked); those keep the director's ladder.
+      if (
+        opts.maker &&
+        subjects &&
+        parts &&
+        !isHistoricalSet([ask.shows]) &&
+        setIsGenerated(parts, opts.lesson.subject ?? "")
+      ) {
+        slot.done = placeSplit(slot, index, ask, opts.maker, subjects, parts);
         slots.set(k, slot);
         return;
       }

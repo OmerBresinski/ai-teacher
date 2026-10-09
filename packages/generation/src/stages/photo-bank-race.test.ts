@@ -98,7 +98,8 @@ describe("C7: stock races generation after the threshold", () => {
     expect(stockSignal?.aborted).toBe(true);
     await sleep(150);
     expect(log.remembered).toEqual([]);
-    expect(log.rejected).toEqual([]);
+    // Its late answer is taken back out, never left stored.
+    expect(log.rejected).toEqual(["/p.jpg"]);
   });
 
   test("stock wins while the generation is in flight: the generation is aborted", async () => {
@@ -182,5 +183,42 @@ describe("C7: stock races generation after the threshold", () => {
     );
     setTimeout(() => job.abort(abortError()), 50);
     await expect(p).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  test("generation lands a moment before stock: exactly one is placed, the other removed", async () => {
+    // Neither side listens to its signal, so both answers arrive.
+    const { bank, log } = fakeBank(() => after(40, madePhoto("/g.png")));
+    const out = await findPicture(
+      req,
+      bank,
+      () => after(62, stockPhoto("/p.jpg")),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    expect(out.photo?.src).toBe("/g.png");
+    await sleep(80);
+    expect(log.remembered).toEqual([]);
+    expect(log.rejected).toEqual(["/p.jpg"]);
+  });
+
+  test("stock lands a moment before generation: exactly one is placed, the other removed", async () => {
+    const { bank, log } = fakeBank(() => after(64, madePhoto("/g.png")));
+    const out = await findPicture(
+      req,
+      bank,
+      () => after(62, stockPhoto("/p.jpg")),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    expect(out.photo?.src).toBe("/p.jpg");
+    await sleep(80);
+    expect(log.remembered).toEqual(["/p.jpg"]);
+    expect(log.rejected).toEqual(["/g.png"]);
   });
 });

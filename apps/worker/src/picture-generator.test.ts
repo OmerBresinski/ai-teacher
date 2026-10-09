@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import type { StorageAdapter, WorkspaceId } from "@tj/domain";
 import type { BankRequest } from "@tj/generation";
 import { decodePng, encodePng, type ImageGenerator } from "@tj/images";
-import { createDailyImageCap, createGeneratingBank } from "./picture-generator";
+import {
+  createDailyImageCap,
+  createGeneratingBank,
+  removePicture,
+  savePicture,
+} from "./picture-generator";
 
 const logs: { obj: Record<string, unknown>; msg?: string }[] = [];
 const logger = { info: (obj: Record<string, unknown>, msg?: string) => logs.push({ obj, msg }) };
@@ -106,5 +112,49 @@ describe("the generating bank", () => {
     );
     expect(drawn?.style).toBe("drawn");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("a rejected generation is deleted from storage (TEACH-167 part b)", () => {
+  const ws = "01a12146-0bf6-7000-9dad-27a0a34bb22f" as WorkspaceId;
+  const memoryStorage = () => {
+    const objects = new Map<string, Uint8Array>();
+    const storage: StorageAdapter = {
+      async put(key, body) {
+        objects.set(key, body as Uint8Array);
+        return { key };
+      },
+      async getSignedUrl(key) {
+        return `https://example.test/${key}`;
+      },
+      async delete(key) {
+        objects.delete(key);
+      },
+      async *list() {},
+    };
+    return { storage, objects };
+  };
+
+  test("reject deletes the stored object; another workspace's src is left alone", async () => {
+    const { storage, objects } = memoryStorage();
+    const { generator } = fakeGenerator();
+    const bank = createGeneratingBank({
+      generator,
+      cap: createDailyImageCap({ capUsd: 5 }),
+      save: savePicture(storage, ws),
+      remove: removePicture(storage, ws),
+      logger: logger as never,
+    });
+    const made = await bank.generate(
+      { ...req, imagePrompt: "A hen." },
+      false,
+      new AbortController().signal,
+    );
+    expect(made).toBeDefined();
+    expect(objects.size).toBe(1);
+    await bank.reject?.({ ...(made as object), src: "/files/other/images/x.png" } as never);
+    expect(objects.size).toBe(1);
+    await bank.reject?.(made as never);
+    expect(objects.size).toBe(0);
   });
 });

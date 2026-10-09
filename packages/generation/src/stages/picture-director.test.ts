@@ -535,5 +535,9 @@ describe("split at ask (TEACH-167 part b)", () => {
     expect(splitSubjects(photoAsk(dogs, { named: true }))).toBeUndefined();
     expect(splitSubjects(photoAsk(dogs, { set: "s" }))).toBeUndefined();
     expect(splitSubjects(photoAsk(dogs, { fixedShape: true }))).toBeUndefined();
+    // A named real thing in the list is never made (ruling 163).
+    expect(
+      splitSubjects(photoAsk("Three monarchs: Henry VIII, Edward VI and Mary I")),
+    ).toBeUndefined();
   });
 });

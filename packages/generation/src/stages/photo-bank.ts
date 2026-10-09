@@ -269,10 +269,10 @@ export async function findPicture(
   return done(await make(false), "generated");
 
   /**
-   * Stock first, and generation beside it once stock has run `ms`. The first good picture wins.
-   * The loser is cancelled: a stock search that loses is aborted through its own signal and its
-   * late answer is neither remembered nor placed; a generation that loses is aborted, and one
-   * already made is taken back out of the library (`reject`) and never placed.
+   * Stock first, and generation beside it once stock has run `ms`. The race settles exactly once:
+   * the first good picture wins and is the only one placed (and, from stock, remembered). The
+   * other side is cancelled (its stock search or generation aborted through its own signal), and
+   * any picture it still delivers, made or fetched, is taken back out (`reject`), never placed.
    */
   async function race(ms: number): Promise<BankOutcome> {
     const stockStop = new AbortController();
@@ -282,8 +282,10 @@ export async function findPicture(
       if (stop.signal.aborted && !signal.aborted) return undefined;
       return rethrowAbort(error);
     };
+    const discard = (p: PlacedPhoto) =>
+      (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
     const stockP = fetchStock(AbortSignal.any([signal, stockStop.signal])).then(
-      (p) => (stockStop.signal.aborted ? undefined : p),
+      undefined,
       lost(stockStop),
     );
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -300,29 +302,37 @@ export async function findPicture(
       return done(await make(false), "generated");
     }
     // Stock is slow: generation starts beside it.
-    const genP = make(false, AbortSignal.any([signal, genStop.signal])).then(async (made) => {
-      // Stock won while this was being made or judged: out of the library, never placed.
-      if (made && genStop.signal.aborted) {
-        await bank.reject?.(made).catch(whenNonFatal(() => undefined));
-        return undefined;
-      }
-      return made;
-    }, lost(genStop));
-    // Neither side is ever left unhandled once the other has won.
-    void Promise.allSettled([stockP, genP]);
-    const sides = [
-      stockP.then((p) => ({ via: "fetched" as const, p })),
-      genP.then((p) => ({ via: "generated" as const, p })),
-    ];
-    const first = await Promise.race(sides);
-    const win = first.p ? first : await (first.via === "fetched" ? sides[1] : sides[0]);
-    if (!win?.p) return done(undefined, "none");
+    const genP = make(false, AbortSignal.any([signal, genStop.signal])).then(
+      undefined,
+      lost(genStop),
+    );
+    type Win = { via: "fetched" | "generated"; p: PlacedPhoto };
+    let won: Win | undefined;
+    const win = await new Promise<Win | undefined>((resolve, reject) => {
+      const side = (via: Win["via"], answer: Promise<PlacedPhoto | undefined>) =>
+        answer.then((p) => {
+          if (!p) return;
+          // One synchronous check-and-set: two answers can never both win.
+          if (won) {
+            // A later answer of either side: removed, awaited by nobody (it never throws).
+            void discard(p);
+            return;
+          }
+          won = { via, p };
+          (via === "fetched" ? genStop : stockStop).abort();
+          resolve(won);
+        });
+      // Both sides done with no winner is no picture; a job abort before a winner rejects.
+      Promise.all([side("fetched", stockP), side("generated", genP)]).then(
+        () => resolve(undefined),
+        reject,
+      );
+    });
+    if (!win) return done(undefined, "none");
     if (win.via === "fetched") {
-      genStop.abort();
       await bank.remember(req, win.p).catch(whenNonFatal(() => undefined));
       return done(win.p, "fetched");
     }
-    stockStop.abort();
     return done(win.p, "generated");
   }
 }

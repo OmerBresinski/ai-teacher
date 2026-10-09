@@ -732,6 +732,7 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
   const splitMaker = () => {
     const prompts: string[] = [];
     const saved: number[] = [];
+    const removed: string[] = [];
     let n = 0;
     const generator: Pick<ImageGenerator, "model" | "generate"> = {
       model: "fake-image",
@@ -744,12 +745,16 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     return {
       prompts,
       saved,
+      removed,
       maker: {
         bank: STOCK_ONLY_BANK,
         generator,
         save: async (bytes: Uint8Array) => {
           saved.push(bytes.length);
           return { id: `g${saved.length}`, src: `/files/g${saved.length}.png` };
+        },
+        remove: async (src: string) => {
+          removed.push(src);
         },
       },
     };
@@ -799,6 +804,8 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(s.photo.aspect).toBeCloseTo((3 * 64 + 16) / 96, 3);
     expect(s.photo.subjects?.[1]?.x).toBeCloseTo(72 / 208, 3);
     expect(pictures.sources().get("/files/g4.png")?.provider).toBe("generated");
+    // The three panels are only parts of it: deleted; the joined picture stays.
+    expect(m.removed.sort()).toEqual(["/files/g1.png", "/files/g2.png", "/files/g3.png"]);
   });
 
   test("a single-subject ask is not split: it goes to the director", async () => {
@@ -832,12 +839,47 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
       lesson: { ...sampleBriefLesson(), subject: "Science" },
       country: "UK",
       images: images({}),
-      deps: recordingDeps(createFakeAi({ script: [ok, ok, no, set, no, no, no] })),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("small puppy"), saw("older puppy"), no, set, no, no, no],
+        }),
+      ),
       maker: m.maker,
     });
     pictures.start(3, dogs, slide);
     await pictures.settle(5_000);
     expect(pictures.state(3, "picture").status).toBe("failed");
     expect(pictures.vetoed(3, "picture")).toBe("No suitable picture was found.");
+    // Every panel that was stored is deleted again: nothing is left behind.
+    expect(m.saved.length).toBeGreaterThan(0);
+    expect(m.removed).toHaveLength(m.saved.length);
+  });
+
+  test("ruling 163: a historical compound ask is never split and generated, whatever the subject", async () => {
+    const m = splitMaker();
+    let directed = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      maker: m.maker,
+      direct: async () => {
+        directed += 1;
+        return direction({ route: "none", pictures: [] });
+      },
+    });
+    pictures.start(
+      3,
+      ask({
+        key: "picture",
+        shows: "Three Victorian inventions: a steam engine, a telegraph and a sewing machine",
+        named: false,
+      }),
+      slide,
+    );
+    await pictures.settle(5_000);
+    expect(m.prompts).toHaveLength(0);
+    expect(directed).toBe(1);
   });
 });
