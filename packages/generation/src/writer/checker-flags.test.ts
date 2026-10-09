@@ -117,3 +117,16 @@ describe("duplicateLogOnly", () => {
     expect(saved).toBeGreaterThan(0);
   });
 });
+
+describe("pointGuardLogOnly", () => {
+  test("y8 s3: the pointing line is logged, the slide keeps its words", async () => {
+    const off = await run("y8-french-my-family", {});
+    const on = await run("y8-french-my-family", { pointGuardLogOnly: true });
+    const words = (r: Awaited<ReturnType<typeof run>>) => JSON.stringify(r.res.plan.slides[2]);
+    expect(words(off)).not.toContain("Point and say");
+    expect(words(on)).toContain("Point and say");
+    expect(on.events).toContainEqual(
+      expect.objectContaining({ ev: "point-guard", slide: 3, how: "log-only" }),
+    );
+  });
+});

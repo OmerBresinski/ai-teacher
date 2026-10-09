@@ -1417,6 +1417,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!check()[i]?.faults.some((f) => DANGLING.test(f))) return;
     const { slide: stripped, removed } = stripPointTasks(s);
     if (!removed.length) return;
+    if (flags.pointGuardLogOnly)
+      return void log({ ev: "point-guard", slide: i + 1, removed, how: "log-only" });
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, stripped);
