@@ -264,7 +264,12 @@ export function charsOver(slide: unknown, stage: string): string[] {
 /** Whether a writer slide asks for any picture or diagram (its figure, a card's or a panel's). */
 export function asksVisual(s: S): boolean {
   if (["figure", "picture", "diagram"].some((k) => s[k] && typeof s[k] === "object")) return true;
-  const cards = [...((s.columns as unknown[]) ?? []), ...((s.sequence as unknown[]) ?? [])];
+  // Activity cards (TEACH-101) are the look's `cards` kind: a picture on any card meets it.
+  const cards = [
+    ...((s.columns as unknown[]) ?? []),
+    ...((s.sequence as unknown[]) ?? []),
+    ...((s.cards as unknown[]) ?? []),
+  ];
   return cards.some((c) => !!c && typeof c === "object" && !!(c as S).picture);
 }
 /** Layouts that take one picture in their own field: `figure` or `picture`. */
