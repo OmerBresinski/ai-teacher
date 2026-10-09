@@ -31,7 +31,7 @@ import type {
 import { uid } from "../factories";
 import { seededOrder } from "../layouts";
 import { MIN_FONT_SIZE } from "../themes";
-import { type Ctx, type Figure, G, kit, type Role, rangeBox, type TemplateInput } from "./index";
+import { type Ctx, type Figure, G, kit, type Role, type TemplateInput } from "./index";
 
 export const ACTIVITY_IDS = [
   "pair",
@@ -136,6 +136,21 @@ export function cardGrid(n: number, r: Rect, cols: number, gap = 12): Rect[] {
  * to a thin strip. An open slot takes the card's shape clamped to the range.
  */
 export const CARD_RANGE = [0.75, 1.5] as const;
+/**
+ * The card picture slot's own shape: landscape, 4:3 to 3:2 (a short card narrows to its 3:2 slot,
+ * never past the longest word; #420's tile maximum is the ceiling).
+ * The slot spans the card's inner width; a photo of another shape is
+ * trimmed round its subject boxes or sits whole on a wash panel the slot's size (`photoBox`), so
+ * the slot never shrinks to the photo.
+ */
+export const CARD_SLOT = { aspect: 4 / 3, max: 1.5, ceiling: 1.78 } as const;
+
+/** The card picture slot in `area`: full width, as tall as 4:3 allows, never past the tile max. */
+export function cardSlot(area: Rect): Rect {
+  const h = Math.min(area.h, Math.round(area.w / CARD_SLOT.aspect));
+  const w = Math.min(area.w, Math.round(h * CARD_SLOT.ceiling));
+  return { x: area.x + Math.round((area.w - w) / 2), y: area.y, w, h };
+}
 
 /**
  * The picture slot: a photo (shaped by `CARD_RANGE`), a drawn diagram (contained), or an open slot
@@ -157,7 +172,7 @@ function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined 
   } else if (f && "diagram" in f) kit.figurePanel(c, f, r);
   else {
     const p = f && "photo" in f ? f : undefined;
-    const box = rangeBox(r, p?.aspect ?? r.w / r.h, CARD_RANGE);
+    const box = r;
     kit.photoBox(
       c,
       {
@@ -223,9 +238,9 @@ export function wordCard(c: Ctx, value: string, r: Rect, what: string, label?: s
 }
 
 /** The width `text` takes on one line in the lead face (step 4pt): the narrowest box it fits. */
-function textWidth(c: Ctx, text: string): number {
+function textWidth(c: Ctx, text: string, role: Role = "lead", weight = 700): number {
   for (let w = 40; w < 800; w += 4)
-    if (kit.measure(c, text, "lead", w, 700) <= lineH(c, "lead")) return w;
+    if (kit.measure(c, text, role, w, weight) <= lineH(c, role)) return w;
   return 800;
 }
 
@@ -267,19 +282,32 @@ export function drawCard(
   r: Rect,
   o: { marker?: string; role: Role; capLines: number; what: string },
 ): CardParts {
-  if (!item.figure) return wordCard(c, item.text, r, o.what, o.marker);
   const pad = 8;
   const inset = 6;
   const hasWords = !!item.text.trim();
   const d = o.marker ? stripDisc(c, o.role) : 0;
   const capH = stripH(c, o.role, hasWords ? o.capLines : 0, !!o.marker);
+  // The picture slot spans the card's inner width; the card is as tall as slot + strip, centred
+  // in its cell, so no white is left under the word.
+  const slot = cardSlot({
+    x: r.x + inset,
+    y: r.y + inset,
+    w: r.w - 2 * inset,
+    h: r.h - capH - inset,
+  });
+  const fullH = r.h;
+  // A short cell: the card narrows to its 3:2 slot, centred, so the picture still spans its width.
+  r = { x: slot.x - inset, y: r.y, w: slot.w + 2 * inset, h: inset + slot.h + capH };
+  r = { ...r, y: r.y + Math.round((fullH - r.h) / 2) };
+  // A failed picture: a word-only card of the same size in the same place.
+  if (!item.figure) return wordCard(c, item.text, r, o.what, o.marker);
   const frame = kit.box(c, r, c.t.colors.surface, {
     stroke: c.t.colors.line,
     strokeWidth: 1,
     radius: Math.min(c.t.radius, 16),
     name: "Card",
   });
-  const pic = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - capH - inset };
+  const pic = { ...slot, y: r.y + inset };
   if (pic.h < 60) c.over.push(`${o.what} picture ${Math.round(pic.h)}pt`);
   const drawn = picture(c, item, pic);
   const y0 = r.y + r.h - capH;
@@ -315,7 +343,7 @@ export function drawCard(
 /** One row of `n` cards across `r`: a 4:3-ish picture over its strip, centred in the band. */
 function cardRow(c: Ctx, n: number, r: Rect, capH: number): Rect[] {
   const w = Math.floor((r.w - GAP * (n - 1)) / n);
-  const h = Math.min(r.h, Math.round((w - 12) / 1.25) + capH + 6);
+  const h = Math.min(r.h, Math.round((w - 12) / CARD_SLOT.aspect) + capH + 6);
   const y = r.y + Math.round((r.h - h) / 2);
   return Array.from({ length: n }, (_, i) => ({ x: r.x + i * (w + GAP), y, w, h }));
 }
@@ -459,7 +487,7 @@ function pair(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefine
   // answer is a matching question (word to word), so no slot is ever left asking for a picture.
   const wordsOnly = cards.some((x) => !x.figure);
   const picH = Math.min(
-    Math.round((w - 12) / 1.25) + stripH(c, "body", 0, true) + 6,
+    Math.round((w - 12) / CARD_SLOT.aspect) + stripH(c, "body", 0, true) + 6,
     area.h - wordH - GAP,
   );
   const y0 = area.y + Math.round((area.h - (picH + GAP + wordH)) / 2);
@@ -548,18 +576,59 @@ function groupSort(c: Ctx, input: TemplateInput, area: Rect): QuestionData | und
   const cols = cards.length <= 6 ? 3 : 4;
   const role = denseRole(c);
   const rects = cardGrid(cards.length, grid, cols, 10);
-  const cw = rects[0]?.w ?? grid.w;
-  const lines = captionLines(
+  const cell = rects[0] ?? grid;
+  // A short cell narrows the card to its 3:2 picture slot, so the words are measured at the width
+  // the card will really have (settling in a few rounds, as more lines take height from the slot).
+  // Never so narrow that a single word no longer fits on the strip.
+  const longest = Math.max(
+    ...cards.flatMap((x) => x.text.split(/\s+/)).map((t) => textWidth(c, t, role, 600)),
+  );
+  const minW = Math.min(cell.w, stripTextW(c, 0, role, true) * -1 + longest + 8);
+  const base = captionLines(
     c,
     cards.map((x) => x.text),
     role,
-    stripTextW(c, cw, role, true),
+    stripTextW(c, cell.w, role, true),
   );
+  let cw = cell.w;
+  let lines = 1;
+  for (let k = 0; k < 4; k++) {
+    const need = captionLines(
+      c,
+      cards.map((x) => x.text),
+      role,
+      stripTextW(c, cw, role, true),
+    );
+    lines = Math.max(lines, need);
+    const slotH = cell.h - stripH(c, role, lines, true) - 6;
+    cw = Math.max(minW, Math.min(cell.w, Math.round(slotH * CARD_SLOT.max) + 12));
+  }
+  lines = Math.max(
+    lines,
+    captionLines(
+      c,
+      cards.map((x) => x.text),
+      role,
+      stripTextW(c, cw, role, true),
+    ),
+  );
+  // Narrowing that would wrap the words is not worth it: keep the full cell (wider slot).
+  if (lines > base) {
+    cw = cell.w;
+    lines = base;
+  }
   order.forEach((k, j) => {
     const r = rects[j];
     const card = cards[k];
-    if (r && card)
-      drawCard(c, card, r, { marker: String(j + 1), role, capLines: lines, what: "card" });
+    if (r && card) {
+      const x = r.x + Math.round((r.w - cw) / 2);
+      drawCard(
+        c,
+        card,
+        { ...r, x, w: cw },
+        { marker: String(j + 1), role, capLines: lines, what: "card" },
+      );
+    }
   });
   const gapIds = drawGroups(c, names, { x: area.x + area.w - colW, y: area.y, w: colW, h: area.h });
   return {

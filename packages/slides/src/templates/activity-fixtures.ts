@@ -5,10 +5,15 @@
  * The label diagrams are drawn SVGs (a label activity never points at a photo).
  */
 import type { PhotoSource } from "@tj/domain/documents";
-import type { Stage, TemplateInput } from "./index";
+import type { Stage, SubjectBox, TemplateInput } from "./index";
 
-/** A fixture photo as served: its url, its own shape and its real credit. */
-export type FixturePhoto = { src: string; aspect?: number; source?: PhotoSource };
+/** A fixture photo as served: its url, its own shape, its must-see subjects and its real credit. */
+export type FixturePhoto = {
+  src: string;
+  aspect?: number;
+  subjects?: SubjectBox[];
+  source?: PhotoSource;
+};
 
 export type ActivityFixture = { name: string; stage: Stage; input: TemplateInput };
 
@@ -57,6 +62,7 @@ export function activityFixtures(photo: (name: string) => FixturePhoto): Activit
       alt: text,
       request: text,
       ...(p.aspect ? { aspect: p.aspect } : {}),
+      ...(p.subjects ? { subjects: p.subjects } : {}),
       ...(p.source ? { source: p.source } : {}),
     };
   };

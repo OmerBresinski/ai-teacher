@@ -20,7 +20,16 @@
       "pageUrl": "https://www.pexels.com/photo/cute-baby-chicks-in-natural-setting-37884976/",
       "photographer": "Umar S",
       "photographerUrl": "https://www.pexels.com/@umar-s-812619232"
-    }
+    },
+    "subjects": [
+      {
+        "name": "chick",
+        "x": 0.1,
+        "y": 0.25,
+        "w": 0.8,
+        "h": 0.47
+      }
+    ]
   },
   "cow": {
     "aspect": 0.665,
@@ -30,7 +39,16 @@
       "pageUrl": "https://www.pexels.com/photo/cow-on-grass-22780165/",
       "photographer": "Stephen Kim",
       "photographerUrl": "https://www.pexels.com/@stephen-kim-2333610"
-    }
+    },
+    "subjects": [
+      {
+        "name": "cow",
+        "x": 0.1,
+        "y": 0.28,
+        "w": 0.8,
+        "h": 0.47
+      }
+    ]
   },
   "dog": {
     "aspect": 0.752,
@@ -40,7 +58,16 @@
       "pageUrl": "https://www.pexels.com/photo/golden-retriever-relaxing-indoors-portrait-36608294/",
       "photographer": "Garuda",
       "photographerUrl": "https://www.pexels.com/@garuda-929115"
-    }
+    },
+    "subjects": [
+      {
+        "name": "dog",
+        "x": 0.1,
+        "y": 0.1,
+        "w": 0.8,
+        "h": 0.5
+      }
+    ]
   },
   "duck": {
     "aspect": 0.665,
@@ -50,7 +77,16 @@
       "pageUrl": "https://www.pexels.com/photo/muscovy-duck-sitting-on-ground-5123206/",
       "photographer": "Rachael Holzman",
       "photographerUrl": "https://www.pexels.com/@rachael-holzman-3433910"
-    }
+    },
+    "subjects": [
+      {
+        "name": "duck",
+        "x": 0.1,
+        "y": 0.3,
+        "w": 0.8,
+        "h": 0.33
+      }
+    ]
   },
   "frog": {
     "aspect": 0.8,
@@ -60,7 +96,16 @@
       "pageUrl": "https://www.pexels.com/photo/close-up-of-frog-in-fresh-green-grass-37775188/",
       "photographer": "Florence Mathiot",
       "photographerUrl": "https://www.pexels.com/@florence-mathiot-417781"
-    }
+    },
+    "subjects": [
+      {
+        "name": "toad",
+        "x": 0.1,
+        "y": 0.18,
+        "w": 0.8,
+        "h": 0.54
+      }
+    ]
   },
   "great-bath": {
     "aspect": 1.473,
@@ -98,7 +143,16 @@
       "pageUrl": "https://www.pexels.com/photo/close-up-of-eggs-and-a-freshly-hatched-chick-in-the-nest-26845761/",
       "photographer": "Amritpal singh  Datla",
       "photographerUrl": "https://www.pexels.com/@amritpal-singh-datla-49911496"
-    }
+    },
+    "subjects": [
+      {
+        "name": "chick and eggs",
+        "x": 0.1,
+        "y": 0.33,
+        "w": 0.8,
+        "h": 0.47
+      }
+    ]
   },
   "icicle": {
     "aspect": 0.671,
@@ -118,7 +172,16 @@
       "pageUrl": "https://www.pexels.com/photo/adorable-lamb-and-sheep-grazing-in-ankara-37769835/",
       "photographer": "Nora",
       "photographerUrl": "https://www.pexels.com/@nora-2161831206"
-    }
+    },
+    "subjects": [
+      {
+        "name": "lamb",
+        "x": 0.1,
+        "y": 0.5,
+        "w": 0.8,
+        "h": 0.45
+      }
+    ]
   },
   "mosaic": {
     "aspect": 0.665,
@@ -128,7 +191,16 @@
       "pageUrl": "https://www.pexels.com/photo/ancient-roman-mosaic-in-archaeological-site-35363746/",
       "photographer": "Rino Adamo",
       "photographerUrl": "https://www.pexels.com/@rinoadamo"
-    }
+    },
+    "subjects": [
+      {
+        "name": "mosaic floor",
+        "x": 0.1,
+        "y": 0.5,
+        "w": 0.8,
+        "h": 0.45
+      }
+    ]
   },
   "rentenmark": {
     "aspect": 0.91,
@@ -141,7 +213,16 @@
       "author": "Deutsche Rentenbank",
       "licence": "Public domain",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:1000_Rentenmark_1923-11-1_xx.jpg"
-    }
+    },
+    "subjects": [
+      {
+        "name": "banknote",
+        "x": 0.1,
+        "y": 0.33,
+        "w": 0.8,
+        "h": 0.64
+      }
+    ]
   },
   "river-city": {
     "aspect": 0.75,
@@ -151,7 +232,16 @@
       "pageUrl": "https://www.pexels.com/photo/urban-river-flooding-amidst-heavy-rainfall-39457990/",
       "photographer": "Engin Akyurt",
       "photographerUrl": "https://www.pexels.com/@enginakyurt"
-    }
+    },
+    "subjects": [
+      {
+        "name": "flooded street",
+        "x": 0.1,
+        "y": 0.2,
+        "w": 0.8,
+        "h": 0.55
+      }
+    ]
   },
   "river-trees": {
     "aspect": 0.75,
@@ -161,7 +251,16 @@
       "pageUrl": "https://www.pexels.com/photo/flooded-river-landscape-with-dense-trees-34162194/",
       "photographer": "Matthew Parker",
       "photographerUrl": "https://www.pexels.com/@matthew-parker-1595606107"
-    }
+    },
+    "subjects": [
+      {
+        "name": "flooded river",
+        "x": 0.1,
+        "y": 0.15,
+        "w": 0.8,
+        "h": 0.55
+      }
+    ]
   },
   "sheep": {
     "aspect": 0.665,
@@ -171,7 +270,16 @@
       "pageUrl": "https://www.pexels.com/photo/beautiful-sheeps-19416334/",
       "photographer": "Pon Esakki Sundar",
       "photographerUrl": "https://www.pexels.com/@pon-esakki-sundar-834937569"
-    }
+    },
+    "subjects": [
+      {
+        "name": "sheep",
+        "x": 0.1,
+        "y": 0.4,
+        "w": 0.8,
+        "h": 0.42
+      }
+    ]
   },
   "silchester": {
     "aspect": 1.333,
@@ -209,7 +317,16 @@
       "pageUrl": "https://www.pexels.com/photo/plants-leaves-on-water-15388189/",
       "photographer": "Serg Alesenko",
       "photographerUrl": "https://www.pexels.com/@sergk1"
-    }
+    },
+    "subjects": [
+      {
+        "name": "tadpoles",
+        "x": 0.1,
+        "y": 0.3,
+        "w": 0.8,
+        "h": 0.4
+      }
+    ]
   },
   "tadpoles-small": {
     "aspect": 1.398,
@@ -233,7 +350,16 @@
       "pageUrl": "https://www.pexels.com/photo/structure-of-the-thames-river-barrier-and-modern-architecture-skyline-19623433/",
       "photographer": "Anna Rynkowska",
       "photographerUrl": "https://www.pexels.com/@anna-rynkowska-118639719"
-    }
+    },
+    "subjects": [
+      {
+        "name": "barrier gates",
+        "x": 0.1,
+        "y": 0.32,
+        "w": 0.8,
+        "h": 0.4
+      }
+    ]
   },
   "upton-flood": {
     "aspect": 1.333,

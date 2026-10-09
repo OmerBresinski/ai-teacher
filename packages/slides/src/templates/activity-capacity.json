@@ -18,22 +18,22 @@
   },
   "group-sort": {
     "KS1": {
-      "6 cards, 2 groups": 16,
+      "6 cards, 2 groups": 8,
       "6 cards, 3 groups": 0,
       "8 cards, 2 groups": 4,
       "8 cards, 3 groups": 0
     },
     "KS2": {
-      "6 cards, 2 groups": 18,
-      "6 cards, 3 groups": 18,
+      "6 cards, 2 groups": 10,
+      "6 cards, 3 groups": 10,
       "8 cards, 2 groups": 4,
       "8 cards, 3 groups": 4
     },
     "KS3-5": {
-      "6 cards, 2 groups": 26,
-      "6 cards, 3 groups": 26,
-      "8 cards, 2 groups": 16,
-      "8 cards, 3 groups": 16
+      "6 cards, 2 groups": 12,
+      "6 cards, 3 groups": 12,
+      "8 cards, 2 groups": 12,
+      "8 cards, 3 groups": 12
     }
   },
   "sequence": {
