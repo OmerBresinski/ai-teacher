@@ -13,6 +13,7 @@ const runs = readdirSync(DIR).sort();
 const arms: [string, CheckerFlags][] = [
   ["off", {}],
   ...CHECKER_FLAGS.map((f): [string, CheckerFlags] => [f, { [f]: true }]),
+  ["chosen-defaults", CHECKER_DEFAULTS],
   [
     "coverage-all",
     {
