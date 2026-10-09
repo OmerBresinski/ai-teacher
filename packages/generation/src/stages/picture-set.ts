@@ -310,7 +310,18 @@ export async function makePictureSet(
   const same = asks.every((a) => a.sameSubject !== false);
   const mode = setMode(asks.length, deps.grid);
   let capped = false;
+  /**
+   * Stops the set's own work when it fails: a fatal error (budget or abort) in any judge cancels
+   * the panels already being made alone, and the set waits for them before it rejects.
+   */
+  const halt = new AbortController();
+  const signal = deps.signal ? AbortSignal.any([deps.signal, halt.signal]) : halt.signal;
+  const halted = () => {
+    if (halt.signal.aborted)
+      throw Object.assign(new Error("The picture set was stopped."), { name: "AbortError" });
+  };
   const generate = async (p: string, size: ImageSize) => {
+    halted();
     if (capped || (deps.allow && !(await deps.allow(size)))) {
       if (!capped) deps.log({ ev: "set-capped", set: setKey, size });
       capped = true;
@@ -319,9 +330,10 @@ export async function makePictureSet(
     const made = await deps.generator.generate({
       prompt: p,
       size,
-      ...(deps.signal ? { signal: deps.signal } : {}),
+      signal,
     });
     deps.spent?.(made.costUsd);
+    halted();
     return made;
   };
   const place = async (
@@ -492,12 +504,21 @@ export async function makePictureSet(
     }
     return undefined;
   };
+  /** A fatal error: cancel the early solos and wait for them, then reject with it. */
+  const stop = async (error: unknown): Promise<never> => {
+    halt.abort();
+    await Promise.allSettled([...early.values()]);
+    throw error;
+  };
   const tried = await nonFatal(attempt, (e) => {
     deps.log({ ev: "set-error", set: setKey, mode, err: String(e).slice(0, 200) });
     return undefined;
-  });
+  }).then(undefined, stop);
   if (tried === "none") return asks.map(() => undefined);
-  const out = await Promise.all(asks.map((a, k) => first[k] ?? early.get(k) ?? solo(a, k)));
+  const out = await Promise.all(asks.map((a, k) => first[k] ?? early.get(k) ?? solo(a, k))).then(
+    undefined,
+    stop,
+  );
   deps.log({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
   return out;
 }

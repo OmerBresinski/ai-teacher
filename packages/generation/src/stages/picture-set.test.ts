@@ -463,6 +463,46 @@ describe("C4: the set judge beside the panel judges (TEACH-110 part h)", () => {
   });
 });
 
+describe("C4: a fatal set judge stops the early solos (TEACH-110 part h)", () => {
+  test("the set rejects and no solo is judged or placed after it", async () => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const f = fakes({ strips: [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])] });
+    let gens = 0;
+    let rejected = false;
+    const late: string[] = [];
+    const generate = f.deps.generator.generate;
+    f.deps.generator = {
+      model: f.deps.generator.model,
+      generate: async (req) => {
+        gens += 1;
+        // the solo (5th) generation takes a while; the first four are quick
+        if (gens > 4) await sleep(40);
+        if (rejected) late.push("generate-finished");
+        return generate(req);
+      },
+    };
+    f.deps.judgePanel = async (ask) => {
+      if (rejected) late.push(`judge:${ask.key}`);
+      return { ok: ask.key !== "p1" };
+    };
+    f.deps.judgeSet = async () => {
+      await sleep(10);
+      throw new BudgetExceeded("usd");
+    };
+    const saves = () => f.made();
+    await expect(
+      makePictureSet(asks(4), f.deps).finally(() => {
+        rejected = true;
+      }),
+    ).rejects.toBeInstanceOf(BudgetExceeded);
+    await sleep(80);
+    // the early solo for p1 had started; it was waited for, and nothing ran after the rejection
+    expect(gens).toBe(5);
+    expect(late).toEqual([]);
+    expect(saves()).toBe(5);
+  });
+});
+
 describe("card pictures are made at their slot's shape (TEACH-110 part h)", () => {
   const sizesFor = async (n: number, aspect: number, panelOk?: (a: SetAsk) => boolean) => {
     const f = fakes({
