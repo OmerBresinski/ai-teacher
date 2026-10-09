@@ -72,10 +72,17 @@ export const lessonPrintSearchSchema = z.object({
 const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
   pageTitle(loaderData?.title ?? "Document");
 
+/**
+ * `/l/$lessonId?export=1` opens with the export dialog open: where a guest who pressed Export lands
+ * after signing in (TEACH-245), since which export they wanted is not known.
+ */
+export const lessonEditorSearchSchema = z.object({ export: flag("1") });
+
 /** The lesson editor (TEACH-103). */
 export const lessonEditorRoute = createRoute({
   getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId",
+  validateSearch: (search) => lessonEditorSearchSchema.parse(search),
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),

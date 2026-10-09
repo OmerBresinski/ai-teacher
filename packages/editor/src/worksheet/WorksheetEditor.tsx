@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
+import { SaveFailedBar } from "../kit/SaveFailedBar";
 import { HelpDialog } from "../lesson/HelpDialog";
 import { isInTextField, matchesBinding } from "../lesson/keys";
 import { getTheme } from "../model/themes";
@@ -483,6 +484,7 @@ export function WorksheetEditor({
                   printBlocked={oversize.length > 0}
                   autosave={autosave}
                 />
+                <SaveFailedBar autosave={autosave} />
                 <div
                   ref={columnRef}
                   className="ws-column relative flex-1 overflow-auto"

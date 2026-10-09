@@ -5,9 +5,6 @@ import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
-  SAVE_FAILED_MESSAGE,
-  SAVE_FAILED_TOAST_ID,
-  SAVE_RETRY_LABEL,
   SaveRefusedError,
   useAutosave,
   useSaveState,
@@ -111,7 +108,7 @@ describe("useAutosave", () => {
     expect(result.current.settled).toBe(third);
   });
 
-  test("row 12: a rejected write says Not saved loudly, every time, with Retry, and keeps the unload guard", async () => {
+  test("row 12: a rejected write says Not saved, raises the bar, keeps the unload guard; Retry saves", async () => {
     let fail = true;
     const onSave = mock((_l: Lesson) =>
       fail ? Promise.reject(new Error("quota")) : Promise.resolve(),
@@ -122,64 +119,30 @@ describe("useAutosave", () => {
     });
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
-    expect(toastErrorSpy).toHaveBeenCalledTimes(1);
-    const [message, options] = toastErrorSpy.mock.calls[0] as [
-      string,
-      {
-        id: string;
-        duration: number;
-        action: { label: string; onClick: () => void };
-      },
-    ];
-    expect(message).toBe(SAVE_FAILED_MESSAGE);
-    // Persistent until a save succeeds, never a few seconds of small print.
-    expect(options).toMatchObject({
-      id: SAVE_FAILED_TOAST_ID,
-      duration: Number.POSITIVE_INFINITY,
-      action: { label: SAVE_RETRY_LABEL },
-    });
+    expect(result.current.autosave.getUnreportedFailure()).toBe(true);
+    expect(result.current.autosave.getLastSavedAt()).toBeNull();
+    // Nothing transient: the bar (SaveFailedBar) is the message, not a toast.
+    expect(toastSpy).not.toHaveBeenCalled();
+    expect(toastErrorSpy).not.toHaveBeenCalled();
 
-    // A later edit that fails too is said again, in the same toast (same id, so no stack).
-    act(() => result.current.autosave.onChange(newLesson("B")));
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledTimes(2));
-    expect(toastErrorSpy.mock.calls[1]?.[1]).toMatchObject({ id: SAVE_FAILED_TOAST_ID });
+    // Three failures in a row are still one failing state, one bar.
+    for (const title of ["B", "C"]) {
+      act(() => result.current.autosave.onChange(newLesson(title)));
+      await waitFor(() => expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe(title));
+      await waitFor(() => expect(result.current.state).toBe("failed"));
+    }
+    expect(result.current.autosave.getUnreportedFailure()).toBe(true);
 
-    // Unsaved work: `beforeunload` is answered (preventDefault) so the browser asks.
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
 
-    // Retry writes what is pending; a good save clears the toast and says Saved.
-    fail = false;
-    await act(async () => options.action.onClick());
-    await waitFor(() => expect(result.current.state).toBe("saved"));
-    // (The unload above also tried a write; Retry is the last one, and it wrote "B".)
-    expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe("B");
-    expect(toastDismissSpy).toHaveBeenCalledWith(SAVE_FAILED_TOAST_ID);
-  });
-
-  test("three failures in a row are one toast, updated in place, never a second one", async () => {
-    let fail = true;
-    const onSave = mock((_l: Lesson) =>
-      fail ? Promise.reject(new Error("offline")) : Promise.resolve(),
-    );
-    const { result } = renderHook(() => {
-      const autosave = useAutosave(onSave, { delay: 10 });
-      return { autosave, state: useSaveState(autosave) };
-    });
-    for (const [i, title] of ["A", "B", "C"].entries()) {
-      act(() => result.current.autosave.onChange(newLesson(title)));
-      await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledTimes(i + 1));
-    }
-    // Sonner replaces a toast that shares an id, so one id across every call is one toast on screen.
-    const ids = new Set(toastErrorSpy.mock.calls.map((c) => (c[1] as { id: string }).id));
-    expect([...ids]).toEqual([SAVE_FAILED_TOAST_ID]);
-    expect(toastSpy).not.toHaveBeenCalled();
-    expect(toastDismissSpy).not.toHaveBeenCalled();
-    // Back online, so the unmount's flush cannot raise a toast into the next test.
     fail = false;
     await act(() => result.current.autosave.flush());
+    await waitFor(() => expect(result.current.state).toBe("saved"));
+    expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe("C");
+    expect(result.current.autosave.getUnreportedFailure()).toBe(false);
+    expect(result.current.autosave.getLastSavedAt()).toEqual(expect.any(Number));
   });
 
   test("a SaveRefusedError says Not saved without the generic toast", async () => {
@@ -191,7 +154,7 @@ describe("useAutosave", () => {
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
     expect(toastSpy).not.toHaveBeenCalled();
-    expect(toastErrorSpy).not.toHaveBeenCalled();
+    expect(result.current.autosave.getUnreportedFailure()).toBe(false);
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);

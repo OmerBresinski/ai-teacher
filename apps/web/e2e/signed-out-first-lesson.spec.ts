@@ -5,7 +5,8 @@
  * Signed-out lessons are always on (no flag in the api or the web); the e2e stack runs the
  * fake AI (`playwright.config.ts`). TEACH-245 appends rows 3–4 (read-only lesson, sign-in sheet)
  * and the existing-account journey (ruling 127): edit and Export open the sheet, the lesson moves
- * into an account that already has lessons, and Export lands on its print view.
+ * into an account that already has lessons, Export comes back with the export dialog open, and the
+ * moved lesson prints.
  */
 import {
   E2E_API_URL,
@@ -166,7 +167,8 @@ test.describe("signed-out first lesson", () => {
     expect(writes).toEqual([]);
     await expect(page.locator('[data-save-state="failed"]')).toHaveCount(0);
 
-    // Export goes through the same sheet and comes back on the print view of the moved lesson.
+    // Export goes through the same sheet and comes back on the lesson with the export dialog open
+    // (which export they wanted is not known); the flag leaves the URL.
     await page.locator("[data-sign-in-to-export]").click();
     const sheet = page.getByRole("dialog", { name: "Sign in to export" });
     await expect(sheet).toBeVisible();
@@ -174,7 +176,12 @@ test.describe("signed-out first lesson", () => {
     await sheet.getByRole("button", { name: "Email me a link" }).click();
     await expect(sheet.getByText("Check your inbox")).toBeVisible({ timeout: 15_000 });
     await openMagicLink(page, await lastMagicLink(request, email));
-    await expect(page).toHaveURL(new RegExp(`${lessonPath}/print`), { timeout: 15_000 });
+    await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(new RegExp(`${lessonPath}$`));
+    await page.keyboard.press("Escape");
+
+    // Print works for the moved lesson.
+    await page.goto(`${lessonPath}/print`);
     await expect(page.locator(".td-print .td-print-page").first()).toBeVisible({
       timeout: 15_000,
     });

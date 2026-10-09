@@ -12,16 +12,19 @@ const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let lessonId = "demo-water-cycle";
 const navigate = mock();
+/** The route's search, `?export=1` when a guest comes back from signing in on Export. */
+let search: Record<string, unknown> = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
   Link: ({ children, ...props }: { children: ReactNode }) => <a {...props}>{children}</a>,
   useNavigate: () => navigate,
   useParams: () => ({ lessonId }),
+  useSearch: () => search,
 }));
 
 const actualUi = await import("@tj/ui");
-// `toast.error` and `toast.dismiss` too: autosave raises and clears its failure toast with them.
+// `toast.error` and `toast.dismiss` too, so code that calls them never meets a bare spy.
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
@@ -837,6 +840,21 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
       "data-sign-in-to-export",
     );
     expect(screen.queryByRole("button", { name: /Worksheet/ })).toBeNull();
+  });
+
+  it("back from signing in on Export: the export dialog is open and the flag leaves the URL", async () => {
+    search = { export: "1" };
+    try {
+      renderAs(TEACHER_ME);
+      expect(await screen.findByRole("dialog", { name: "Export" })).toBeVisible();
+      await waitFor(() =>
+        expect(navigate).toHaveBeenCalledWith(
+          expect.objectContaining({ to: "/l/$lessonId", search: {}, replace: true }),
+        ),
+      );
+    } finally {
+      search = {};
+    }
   });
 
   it("Export opens the sign-in sheet for export, and nothing is written (ruling 127)", async () => {

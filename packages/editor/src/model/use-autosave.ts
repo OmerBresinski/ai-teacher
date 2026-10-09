@@ -1,15 +1,14 @@
 import type { Lesson, Worksheet } from "@tj/domain/documents";
-import { toast } from "@tj/ui";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 /**
  * Autosave for both editors (TeachDeck `components/editor/use-autosave.ts` and
  * `lib/worksheet/autosave.ts`), with the one thing the write itself cannot give the chrome: an
  * outcome. Edits are "Unsaved changes" for the 800 ms before a write is even attempted, "Saving…"
- * while it runs, "Saved" after, and "Not saved" when it rejects. A failed save is loud: a toast
- * that stays until the next save succeeds, with Retry, raised again by every later failure (one
- * toast id, so it never stacks), and the indicator itself becomes a Retry button. The unload
- * warning is the last net.
+ * while it runs, "Saved" after, and "Not saved" when it rejects. A failed save is loud: the
+ * editors show `SaveFailedBar` under the top bar until a save succeeds (what is wrong, when the
+ * last save landed, Retry), and the indicator itself becomes a Retry button. The unload warning is
+ * the last net.
  *
  * Generic in the document (`Lesson` or `Worksheet`): the write is the `onSave(document)` prop
  * (ADR 0022 §5) — `PUT /documents/:id` in the app; nothing here knows that. Exposed as
@@ -24,16 +23,14 @@ export type SavableDocument = Lesson | Worksheet;
 /** TeachDeck's `AUTOSAVE_MS`. */
 export const AUTOSAVE_MS = 800;
 
-export const SAVE_FAILED_MESSAGE =
-  "Your changes are not saved. Keep this tab open and retry; if it keeps failing, export a copy.";
+export const SAVE_FAILED_MESSAGE = "Your changes are not saved.";
+export const SAVE_FAILED_HINT = "Keep this tab open and retry. If it keeps failing, export a copy.";
 export const SAVE_RETRY_LABEL = "Retry";
-/** The one toast a failing autosave owns: re-raised in place, dismissed by the next good save. */
-export const SAVE_FAILED_TOAST_ID = "autosave-failed";
 
 /**
  * Reject `onSave` with this when the app has already told the teacher why the write was refused
  * (a `409` the app turned into its own toast with a Reload action, ADR 0024 §4). The indicator
- * still shows "Not saved" and the unload warning still stands; only the generic toast is skipped,
+ * still shows "Not saved" and the unload warning still stands; only the save-failed bar is skipped,
  * so the teacher is not told to export a copy over the message that explains what to do.
  */
 export class SaveRefusedError extends Error {
@@ -53,6 +50,13 @@ export type Autosave<D extends SavableDocument = SavableDocument> = {
    * keystroke (the residual checks, ADR 0025 §12) derives from this instead of the live document.
    */
   getSettled: () => D | null;
+  /**
+   * Whether the current failure is one nothing else has explained: not a `SaveRefusedError`, whose
+   * app toast says why and what to do. `SaveFailedBar` shows only for these.
+   */
+  getUnreportedFailure: () => boolean;
+  /** When a write last succeeded (ms since epoch), or `null` before the first one. */
+  getLastSavedAt: () => number | null;
 };
 
 export type AutosaveOptions = {
@@ -75,6 +79,8 @@ export function useAutosave<D extends SavableDocument>(
     let settled: D | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight: Promise<void> | null = null;
+    let unreported = false;
+    let lastSavedAt: number | null = null;
 
     const notify = () => {
       for (const l of listeners) l();
@@ -93,15 +99,9 @@ export function useAutosave<D extends SavableDocument>(
 
     const fail = (reported: boolean) => {
       // `pending` stays set on purpose: Retry writes it, and the beforeunload warning is the net.
+      unreported = !reported;
+      if (state === "failed") notify();
       setState("failed");
-      if (reported) return;
-      // Every failure raises it again (a teacher who dismissed it and kept typing hears about the
-      // next one too); the shared id updates the one toast in place instead of stacking more.
-      toast.error(SAVE_FAILED_MESSAGE, {
-        id: SAVE_FAILED_TOAST_ID,
-        duration: Number.POSITIVE_INFINITY,
-        action: { label: SAVE_RETRY_LABEL, onClick: () => void flush() },
-      });
     };
 
     const write = async (): Promise<void> => {
@@ -114,7 +114,8 @@ export function useAutosave<D extends SavableDocument>(
       setState("saving");
       try {
         await onSaveRef.current(document);
-        toast.dismiss(SAVE_FAILED_TOAST_ID);
+        unreported = false;
+        lastSavedAt = Date.now();
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
@@ -152,6 +153,8 @@ export function useAutosave<D extends SavableDocument>(
       },
       getState: () => state,
       getSettled: () => settled,
+      getUnreportedFailure: () => state === "failed" && unreported,
+      getLastSavedAt: () => lastSavedAt,
       hasPending: () => pending !== null,
     };
   }, []);
@@ -185,7 +188,7 @@ const SAVED = (): SaveState => "saved";
  * a failed state is a Retry button.
  */
 export type SaveStateSource = Pick<Autosave, "subscribe" | "getState"> &
-  Partial<Pick<Autosave, "flush">>;
+  Partial<Pick<Autosave, "flush" | "getUnreportedFailure" | "getLastSavedAt">>;
 
 /** What the saved indicator should say right now. */
 export function useSaveState(autosave: SaveStateSource): SaveState {

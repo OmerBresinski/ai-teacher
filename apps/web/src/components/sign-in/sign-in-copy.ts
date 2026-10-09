@@ -8,7 +8,7 @@ export const SIGN_IN_SHEET_SENT_NOTE =
 /** The sheet's line when a limit on the brief opens it (anonymous_limit, the re-plan cap). */
 export const SIGN_IN_SHEET_BACK_HERE = "Once you are signed in, you come back to this page.";
 
-/** The sheet's title when Export opened it; after sign-in the print view opens (ruling 127). */
+/** The sheet's title when Export opened it; after sign-in the export dialog opens (ruling 127). */
 export const SIGN_IN_TO_EXPORT = "Sign in to export";
 
 /** The toast when a signed-out lesson opens in the account it moved into (ruling 127). */

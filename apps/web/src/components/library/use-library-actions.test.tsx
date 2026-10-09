@@ -9,7 +9,7 @@ import { installFakeApi } from "@/test/fake-api";
 const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 const navigate = mock();
-// `toast.error` and `toast.dismiss` too: autosave raises and clears its failure toast with them.
+// `toast.error` and `toast.dismiss` too, so code that calls them never meets a bare spy.
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({ ...actualRouter, useNavigate: () => navigate }));

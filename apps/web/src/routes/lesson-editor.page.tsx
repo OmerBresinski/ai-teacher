@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import {
   displayInTheme,
@@ -112,6 +112,15 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // The route guard has just fetched `me`; read that entry rather than asking again.
   const { data: me } = useQuery({ ...meQueryOptions, staleTime: Number.POSITIVE_INFINITY });
   const anonymous = me?.user.isAnonymous === true;
+  // Back from signing in on Export (`?export=1`): the export dialog mounts open, then the flag leaves
+  // the URL, so a reload or Back does not open it again. Read from the router: it re-serialises the
+  // value, so the raw query string is not a reliable place to look.
+  const exportOnArrival = useSearch({ strict: false }).export === "1";
+  const signedInWithData = !anonymous && data != null;
+  useEffect(() => {
+    if (!exportOnArrival || !signedInWithData) return;
+    void navigate({ to: "/l/$lessonId", params: { lessonId }, search: {}, replace: true });
+  }, [exportOnArrival, signedInWithData, lessonId, navigate]);
   const [signInOpen, setSignInOpen] = useState(false);
   // What the sheet resumes after sign-in (ruling 127): the editor, or Export's print view.
   const [signInFor, setSignInFor] = useState<"edit" | "export">("edit");
@@ -311,13 +320,18 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       </Suspense>
     ) : null;
   const exportControl = (
-    <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+    <ExportControl
+      document={data}
+      imageOrigin={env.VITE_API_URL}
+      onOpenPrint={openPrintTab}
+      defaultOpen={!anonymous && exportOnArrival}
+    />
   );
   // While the lesson is being made, the generating shell shows both side by side; the editor's
   // top bar keeps Export visible and lists the Worksheets control in its ⋯ (ruling 186).
   const exportSlot = anonymous ? (
     <>
-      {/* Export is behind sign-in too (ruling 109); after it the print view opens (ruling 127). */}
+      {/* Export is behind sign-in too (ruling 109); after it the export dialog opens (ruling 127). */}
       <Button variant="ghost" size="sm" onClick={openExportSignIn} data-sign-in-to-export="">
         <Download aria-hidden size={16} strokeWidth={1.5} />
         Export
@@ -425,11 +439,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           <SignInSheet
             open
             onOpenChange={setSignInOpen}
-            redirect={signInFor === "export" ? `/l/${lessonId}/print` : `/l/${lessonId}`}
+            redirect={signInFor === "export" ? `/l/${lessonId}?export=1` : `/l/${lessonId}`}
             title={signInFor === "export" ? SIGN_IN_TO_EXPORT : SIGN_IN_TO_EDIT}
             description={
               signInFor === "export"
-                ? "Your lesson stays here. Once you are signed in, it opens ready to print or save as a PDF."
+                ? "Your lesson stays here. Once you are signed in, it opens with the export options."
                 : undefined
             }
           />
