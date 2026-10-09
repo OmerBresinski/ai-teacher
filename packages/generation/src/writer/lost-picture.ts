@@ -118,30 +118,3 @@ export async function lostPictureFallback(
   if (r.how === "split" && (await attempt(splitSlide(s, key, r.subjects), "split"))) return "split";
   return undefined;
 }
-
-/**
- * TEACH-110 part h: a lone generic picture that asks for three or more subjects in one image
- * ("Three golden retrievers shown left to right…: a small puppy, an older puppy and an adult
- * dog") is split at ask time into one panel per subject, made together as one generated set
- * (`split_set`), so it is never generated whole, refused and split again after editable (lostPic).
- * Each panel keeps the request's head ("Three golden retrievers…") so the panels share a subject.
- * Anything else is returned as it is.
- */
-export function splitAtAsk(s: Slide): Slide {
-  const p = s.picture as { shows?: unknown; subject?: unknown } | null | undefined;
-  if (!p || typeof p.shows !== "string" || p.subject === "named") return s;
-  if (otherVisual(s, "picture") || libraryKind(p.shows)) return s;
-  // Only a named group of three or four ("Three golden retrievers …: a, b and c"): a grid of six
-  // or eight separate photographs is an activity's own layout and stays one picture.
-  const colon = p.shows.indexOf(":");
-  const head = colon > 0 ? p.shows.slice(0, colon).trim() : "";
-  const subjects = compoundSubjects(p.shows);
-  if (!head || subjects.length < 3 || subjects.length > 4) return s;
-  const panel = (x: string) => ({
-    shows: head ? `${x} (${head})` : x,
-    must_see: [x],
-    subject: "generic",
-  });
-  const [first, ...rest] = subjects;
-  return { ...s, picture: panel(first as string), tiles: rest.map(panel), split_set: true };
-}

@@ -506,16 +506,12 @@ export function visualsOf(
   // A sequence's panels are made together as one set; a compare card gets its own picture.
   // Activity cards are made as one set too: the director makes a generic set in one style and
   // sends a named or historical set down its ladder card by card (ruling 163).
-  // A several-subject picture split at ask time (`splitAtAsk`): its panels are one set.
-  const split = s.split_set === true;
   const setOf = (key: string) =>
-    split && (key === "picture" || key.startsWith("tile."))
-      ? "split"
-      : key.startsWith("seq.") && shows("seq.").length >= 2
-        ? "seq"
-        : key.startsWith("card.") && shows("card.").length >= 2
-          ? "cards"
-          : undefined;
+    key.startsWith("seq.") && shows("seq.").length >= 2
+      ? "seq"
+      : key.startsWith("card.") && shows("card.").length >= 2
+        ? "cards"
+        : undefined;
   return figs.map(
     ({ key, f }): VisualAsk =>
       isDia(f)

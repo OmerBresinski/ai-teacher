@@ -151,10 +151,7 @@ export async function replayRun(
      * instead of handing it over whole; `hooks` sees the slides as they open.
      */
     stream?: (text: string) => string[];
-    hooks?: Pick<
-      WriterRun,
-      "onAsks" | "onSlide" | "onEditable" | "onReopen" | "placeEarly" | "placeMore"
-    >;
+    hooks?: Pick<WriterRun, "onAsks" | "onSlide" | "onEditable" | "onReopen">;
     /** Called when the streamed text has all been handed over, before the writer call returns. */
     onStreamEnd?: () => void;
   } = {},
