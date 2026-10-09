@@ -131,9 +131,10 @@ export function cardGrid(n: number, r: Rect, cols: number, gap = 12): Rect[] {
 }
 
 /**
- * A card picture's shape range (#420 slot ranges, option A): the slot takes the photo's own shape
- * inside it, so the whole picture shows or it is trimmed round the judge's subject boxes, never cut
- * to a thin strip. An open slot takes the card's shape clamped to the range.
+ * A card picture's shape range (#420 slot ranges, option A), declared but not applied: `picture`
+ * calls `photoBox` with no range, so the slot stays `CARD_SLOT`'s 4:3 and a photo of another shape
+ * is trimmed round its subject boxes or sits whole on a wash panel. Generated card pictures are
+ * made at the slot's shape for that reason (TEACH-110 part h).
  */
 export const CARD_RANGE = [0.75, 1.5] as const;
 /**
@@ -153,7 +154,7 @@ export function cardSlot(area: Rect): Rect {
 }
 
 /**
- * The picture slot: a photo (shaped by `CARD_RANGE`), a drawn diagram (contained), or an open slot
+ * The picture slot: a photo (in `CARD_SLOT`'s shape), a drawn diagram (contained), or an open slot
  * the picture director fills later. Returns the element the slot drew.
  */
 function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined {

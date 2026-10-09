@@ -462,3 +462,30 @@ describe("C4: the set judge beside the panel judges (TEACH-110 part h)", () => {
     ]);
   });
 });
+
+describe("card pictures are made at their slot's shape (TEACH-110 part h)", () => {
+  const sizesFor = async (n: number, aspect: number, panelOk?: (a: SetAsk) => boolean) => {
+    const f = fakes({
+      strips: [stripPng([30, 50]), stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])],
+      ...(panelOk ? { panelOk: (a: SetAsk, call: number) => call >= n || panelOk(a) } : {}),
+      set: { same: true, odd: [] },
+    });
+    await makePictureSet(
+      asks(n).map((a) => ({ ...a, aspect })),
+      f.deps,
+    );
+    return f.prompts.map((p) => p.split(" ")[0]);
+  };
+  test("sets of 4: 4:3 cards ask for 1536x1024, square for 1024x1024, portrait for 1024x1536", async () => {
+    expect(new Set(await sizesFor(4, 184 / 138))).toEqual(new Set(["1536x1024"]));
+    expect(new Set(await sizesFor(4, 1))).toEqual(new Set(["1024x1024"]));
+    expect(new Set(await sizesFor(4, 0.7))).toEqual(new Set(["1024x1536"]));
+  });
+  test("a panel's fallback asks for the same shape; strips keep their wide size", async () => {
+    const sizes = await sizesFor(4, 184 / 138, (a) => a.key !== "p1");
+    expect(sizes).toHaveLength(5);
+    expect(new Set(sizes)).toEqual(new Set(["1536x1024"]));
+    const strip = await sizesFor(2, 184 / 138, (a) => a.key !== "p1");
+    expect(strip).toEqual(["2048x1152", "1536x1024"]);
+  });
+});

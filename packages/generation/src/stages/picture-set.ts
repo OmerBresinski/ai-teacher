@@ -16,6 +16,7 @@ import {
   type ImageGenerator,
   type ImageSize,
   pngSize,
+  sizeForAspect,
   splitGrid,
   splitPanels,
 } from "@tj/images";
@@ -100,6 +101,9 @@ export function soloImagePrompt(shows: string, look?: LessonLook): string {
  * One strip for the set: wide enough that each panel holds a whole subject. Two panels take the
  * wide size (about 1000x1152 each, 0.87: inside the picture slots' ranges; base4's 1536x1024 gave
  * 0.72 panels). Sets of 3 or 4 are a 2x2 grid (`GRID_SIZE`) or single pictures, never a strip.
+ * A picture made alone (a solo set panel, or a panel's fallback) is never `setSize(1)`: it is made
+ * at its slot's shape, `sizeForAspect(slotAspect)` (TEACH-110 part h: square cards in 4:3 slots
+ * sat small on a wash panel).
  */
 export function setSize(n: number): ImageSize {
   return n === 1 ? "1024x1024" : "2048x1152";
@@ -299,6 +303,8 @@ export async function makePictureSet(
 ): Promise<(SetPicture | undefined)[]> {
   const setKey = asks.map((a) => a.key).join("+");
   const slotAspect = asks[0]?.aspect ?? 4 / 3;
+  /** A picture made alone takes its slot's shape (a 4:3 card is made 3:2, not square). */
+  const soloSize = sizeForAspect(slotAspect).size;
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
   const same = asks.every((a) => a.sameSubject !== false);
@@ -356,7 +362,7 @@ export async function makePictureSet(
   const solo = (a: SetAsk, k: number): Promise<SetPicture | undefined> =>
     nonFatal(
       async () => {
-        const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
+        const made = await generate(soloImagePrompt(a.shows, look), soloSize);
         if (!made) return undefined;
         const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
         deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
@@ -470,7 +476,7 @@ export async function makePictureSet(
       // the lesson's look, judged alone, then all of them by the set judge.
       const made = await Promise.all(
         asks.map(async (a) => {
-          const m = await generate(soloImagePrompt(a.shows, look), setSize(1));
+          const m = await generate(soloImagePrompt(a.shows, look), soloSize);
           return m ? m : undefined;
         }),
       );
