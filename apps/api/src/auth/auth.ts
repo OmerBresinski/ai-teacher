@@ -27,7 +27,7 @@ import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
 import { captchaPlugins } from "./captcha";
-import { claimOnLink, claimPending, recordPendingClaim } from "./claim";
+import { type ClaimStorage, claimOnLink, claimPending, recordPendingClaim } from "./claim";
 import { authIpAddress } from "./client-ip";
 import { admitMagicLinkSend, magicLinkBounds } from "./magic-link-bounds";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
@@ -70,6 +70,11 @@ export interface CreateAuthOptions {
   db: Pick<DbHandle, "unsafeDb" | "sql">;
   mail: MailSender;
   logger: Logger;
+  /**
+   * Where a signed-out lesson's pictures are copied from and to when an existing account claims it
+   * (ruling 127). Without it such a claim still moves the rows but cannot move a picture.
+   */
+  storage?: ClaimStorage;
 }
 
 function socialProviders(env: AuthEnv, logger: Logger) {
@@ -229,7 +234,7 @@ export const DROPPED_OAUTH_TOKENS = {
   idToken: null,
 } as const;
 
-export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
+export function createAuth({ env, db, mail, logger, storage }: CreateAuthOptions) {
   const cookieDomain = effectiveCookieDomain(env, logger);
   if (env.COOKIE_SAMESITE === "none") {
     logger.warn(
@@ -285,10 +290,12 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       anonymous({
         disableDeleteAnonymousUser: true,
         onLinkAccount: ({ anonymousUser, newUser }) =>
-          claimOnLink(db, logger, {
-            anonymousUserId: anonymousUser.user.id,
-            userId: newUser.user.id,
-          }),
+          claimOnLink(
+            db,
+            logger,
+            { anonymousUserId: anonymousUser.user.id, userId: newUser.user.id },
+            storage,
+          ),
       }),
       ...captchaPlugins(env),
     ],
@@ -330,6 +337,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
               secret: env.BETTER_AUTH_SECRET,
               userId: session.userId,
               ctx,
+              storage,
             });
           },
         },

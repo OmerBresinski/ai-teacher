@@ -1,7 +1,7 @@
 /**
  * TEACH-224 at function level against the real test database: `claimAnonymousWorkspace` hands the
- * anonymous Workspace over (signing the anonymous user out) or declines (ruling 112), sees a lesson
- * that lands while it waits for its lock, rolls back whole on a fault, and serialises two claims
+ * anonymous Workspace over or moves its lessons into an existing account (ruling 127, TEACH-245),
+ * signing the anonymous user out, sees a lesson that lands while it waits for its lock, rolls back whole on a fault, and serialises two claims
  * for one visitor; the pending claim is replaced, consumed once, kept when its claim fails and
  * ignored when expired. The sign-in flows that reach these are in `auth.db.test.ts`.
  */
@@ -119,31 +119,108 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     expect(await workspacesOf(n.userId)).toEqual([a.workspaceId]);
   });
 
-  describe("row 4: an existing account declines (ruling 112)", () => {
-    async function expectDeclined(e: { userId: string; workspaceId: string }) {
+  /** An in-memory object store with `<workspaceId>/…` keys, as `@tj/storage` lists them. */
+  function memoryStorage(failOn?: string) {
+    const objects = new Map<string, { bytes: Uint8Array; contentType: string }>();
+    return {
+      objects,
+      async put(
+        key: string,
+        body: ReadableStream<Uint8Array> | Uint8Array,
+        opts: { contentType: string },
+      ) {
+        const bytes =
+          body instanceof Uint8Array
+            ? body
+            : new Uint8Array(await new Response(body).arrayBuffer());
+        objects.set(key, { bytes, contentType: opts.contentType });
+        return { key };
+      },
+      async get(key: string) {
+        if (key === failOn) throw new Error("injected storage fault");
+        const o = objects.get(key);
+        if (!o) throw new Error("not_found");
+        return {
+          key,
+          body: new Response(o.bytes).body as ReadableStream<Uint8Array>,
+          contentType: o.contentType,
+          size: o.bytes.length,
+          updatedAt: new Date(),
+        };
+      },
+      async *list(prefix: string) {
+        for (const [key, o] of objects) {
+          if (key.startsWith(prefix)) yield { key, size: o.bytes.length, updatedAt: new Date() };
+        }
+      },
+    };
+  }
+
+  /** Points the visitor's lesson at a picture under its Workspace, as a generated lesson does. */
+  async function withPicture(a: { workspaceId: string; lessonId: string }) {
+    const src = `/files/${a.workspaceId}/images/pic.jpg`;
+    // Any string in the body will do: the move rewrites the whole body's text.
+    await db.sql`update documents set body = jsonb_set(body, '{title}', to_jsonb(${src}::text)),
+      cover = jsonb_build_object('src', ${src}::text) where id = ${a.lessonId}`;
+    return src;
+  }
+
+  describe("row 4: an existing account takes the lesson (ruling 127)", () => {
+    async function expectMoved(e: { userId: string; workspaceId: string }) {
       const a = await visitor();
       await sessionFor(a.userId);
+      const src = await withPicture(a);
+      const storage = memoryStorage();
+      await storage.put(`${a.workspaceId}/images/pic.jpg`, new Uint8Array([1, 2, 3]), {
+        contentType: "image/jpeg",
+      });
       const ids = { anonymousUserId: a.userId, userId: e.userId };
-      expect(await claimAnonymousWorkspace(db, ids)).toBe("declined-existing");
+      expect(await claimAnonymousWorkspace(db, ids, storage)).toBe("moved");
+      // The account keeps its own Workspace; the lesson moved into it under the same id.
       expect(await workspacesOf(e.userId)).toEqual([e.workspaceId]);
+      const [moved] = await db.sql<{ workspace: string; title: string; cover: { src: string } }[]>`
+        select workspace_id as workspace, body->>'title' as title, cover from documents
+        where id = ${a.lessonId}`;
+      const to = src.replace(a.workspaceId, e.workspaceId);
+      expect(moved).toEqual({ workspace: e.workspaceId, title: to, cover: { src: to } });
+      // The picture is copied under the account's prefix, bytes and type intact.
+      const copy = storage.objects.get(`${e.workspaceId}/images/pic.jpg`);
+      expect(copy?.contentType).toBe("image/jpeg");
+      expect([...(copy?.bytes ?? [])]).toEqual([1, 2, 3]);
+      // The anonymous user is signed out and its emptied Workspace is left for the cleanup job.
+      expect(await sessionCount(a.userId)).toBe(0);
       expect(await workspacesOf(a.userId)).toEqual([a.workspaceId]);
-      expect(await sessionCount(a.userId)).toBe(1);
+      // Moved once: nothing is left to claim.
+      expect(await claimAnonymousWorkspace(db, ids, storage)).toBe("nothing-to-claim");
+      return a;
     }
 
-    test("created more than 10 minutes ago, even with an empty Workspace", async () => {
+    test("an older account with an empty Workspace takes the Workspace whole", async () => {
       const e = await newAccount();
       await db.sql`update users set created_at = now() - interval '11 minutes'
         where id = ${e.userId}`;
-      await expectDeclined(e);
+      const a = await visitor();
+      expect(
+        await claimAnonymousWorkspace(db, { anonymousUserId: a.userId, userId: e.userId }),
+      ).toBe("claimed");
+      expect(await workspacesOf(e.userId)).toEqual([a.workspaceId]);
     });
 
-    test("a fresh account that already holds a lesson", async () => {
+    test("an account that already holds a lesson: both lessons are in it, its own untouched", async () => {
       const e = await newAccount();
-      await createDocument(forWorkspace(db.unsafeDb, e.workspaceId), "lesson", generatedLesson());
-      await expectDeclined(e);
+      await db.sql`update users set created_at = now() - interval '1 day' where id = ${e.userId}`;
+      const own = await createDocument(
+        forWorkspace(db.unsafeDb, e.workspaceId),
+        "lesson",
+        generatedLesson(),
+      );
+      await expectMoved(e);
+      const [kept] = await db.sql<{ workspace: string }[]>`
+        select workspace_id as workspace from documents where id = ${own.id}`;
+      expect(kept?.workspace).toBe(e.workspaceId);
     });
 
-    test("a fresh account whose lesson is soft-deleted still counts as used", async () => {
+    test("an account whose only lesson is soft-deleted", async () => {
       const e = await newAccount();
       const doc = await createDocument(
         forWorkspace(db.unsafeDb, e.workspaceId),
@@ -151,10 +228,10 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
         generatedLesson(),
       );
       await db.sql`update documents set deleted_at = now() where id = ${doc.id}`;
-      await expectDeclined(e);
+      await expectMoved(e);
     });
 
-    test("a fresh account that holds only an uploaded source", async () => {
+    test("an account that holds only an uploaded source", async () => {
       const e = await newAccount();
       const id = newId();
       await createSource(forWorkspace(db.unsafeDb, e.workspaceId), {
@@ -167,7 +244,25 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
         pages: 2,
         lowText: false,
       });
-      await expectDeclined(e);
+      await expectMoved(e);
+    });
+
+    test("a picture that cannot be copied rolls the move back: the lesson stays put", async () => {
+      const e = await newAccount();
+      await createDocument(forWorkspace(db.unsafeDb, e.workspaceId), "lesson", generatedLesson());
+      const a = await visitor();
+      await sessionFor(a.userId);
+      await withPicture(a);
+      const key = `${a.workspaceId}/images/pic.jpg`;
+      const storage = memoryStorage(key);
+      await storage.put(key, new Uint8Array([1]), { contentType: "image/jpeg" });
+      await expect(
+        claimAnonymousWorkspace(db, { anonymousUserId: a.userId, userId: e.userId }, storage),
+      ).rejects.toThrow("injected storage fault");
+      const [row] = await db.sql<{ workspace: string }[]>`
+        select workspace_id as workspace from documents where id = ${a.lessonId}`;
+      expect(row?.workspace).toBe(a.workspaceId);
+      expect(await sessionCount(a.userId)).toBe(1);
     });
   });
 
@@ -196,7 +291,7 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     expect(await workspacesOf(anonTarget.userId)).toEqual([anonTarget.workspaceId]);
   });
 
-  test("a lesson that lands while the claim waits for its lock is seen: declined, not deleted", async () => {
+  test("a lesson that lands while the claim waits for its lock is seen: moved beside it, not deleted", async () => {
     const a = await visitor();
     const n = await newAccount();
     const sourceId = newId();
@@ -237,8 +332,11 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     await insert;
     expect(waited).toBe(true);
 
-    expect(await claim).toBe("declined-existing");
+    expect(await claim).toBe("moved");
     expect(await workspacesOf(n.userId)).toEqual([n.workspaceId]);
+    const [lesson] = await db.sql<{ workspace: string }[]>`
+      select workspace_id as workspace from documents where id = ${a.lessonId}`;
+    expect(lesson?.workspace).toBe(n.workspaceId);
     const kept = await db.sql`select id from sources where id = ${sourceId}`;
     expect(kept).toHaveLength(1);
   });

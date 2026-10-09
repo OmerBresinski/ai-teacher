@@ -29,15 +29,6 @@ const db = createDb(env.DATABASE_URL);
 // TEACH-22: under NODE_ENV=test + ENABLE_TEST_ROUTES=1 the console sender is wrapped so the last
 // magic link can be read back through GET /__test/last-magic-link (Playwright sign-in fixture).
 const testMail = testRoutesEnabled(env) ? new CaptureMailSender(loadMailSender(env, logger)) : null;
-const auth = createAuth({ env, db, mail: testMail ?? loadMailSender(env, logger), logger });
-// ADR 0006: the api only enqueues/cancels; `role: "enqueue-only"` disables pg-boss maintenance
-// (`supervise`) and cron (`schedule`) so only the worker runs them.
-const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api", role: "enqueue-only" });
-boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
-await boss.start();
-await ensureQueues(boss);
-const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
-const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
 // ADR 0026: the Railway Bucket (S3) when S3_BUCKET is set, else local disk at STORAGE_ROOT
 // (default .data/storage). These variables are `runtimeOnly` in infra/env.contract.ts and read by
 // @tj/storage directly; a set S3_BUCKET with a missing S3_* sibling throws here (boot fails).
@@ -50,6 +41,22 @@ const storage = createStorage({
   STORAGE_ROOT: process.env.STORAGE_ROOT,
   STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
 });
+// The claim copies a signed-out lesson's pictures into an existing account (ruling 127).
+const auth = createAuth({
+  env,
+  db,
+  mail: testMail ?? loadMailSender(env, logger),
+  logger,
+  storage,
+});
+// ADR 0006: the api only enqueues/cancels; `role: "enqueue-only"` disables pg-boss maintenance
+// (`supervise`) and cron (`schedule`) so only the worker runs them.
+const boss = createBoss(env.DATABASE_URL, { applicationName: "tj-api", role: "enqueue-only" });
+boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
+await boss.start();
+await ensureQueues(boss);
+const jobs: JobsContext = { boss, db: db.unsafeDb, sql: db.sql };
+const events = createEventsRuntime({ jobs, databaseUrl: env.DATABASE_URL, logger });
 const ai = createAi(env, { logger });
 // Images project: no key degrades to `503` on the route, never a boot failure.
 const images = env.PEXELS_API_KEY ? createPexelsClient({ apiKey: env.PEXELS_API_KEY }) : undefined;
