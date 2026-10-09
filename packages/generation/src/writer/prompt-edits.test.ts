@@ -4,6 +4,7 @@ import { withActivities, withActivityMenu } from "./activities";
 import { type Brief, promptStage } from "./fixes";
 import {
   CLARITY_EDITS,
+  fullFitsLine,
   HIGHER_TIER,
   HINGE_EDITS,
   lines,
@@ -72,6 +73,17 @@ for (const full of [false, true])
         const diff = changed(off.system, on.system);
         let fits = 0;
         for (const [was, now] of diff) {
+          if (was.startsWith("- hinge: ")) {
+            // Re-measured: every count row generated, the line before Fits unchanged.
+            fits++;
+            expect(now.split(" Fits: ")[0]).toBe(was.split(" Fits: ")[0] as string);
+            expect(rows(now).map((r) => r.split(",")[0])).toEqual([
+              "2 options",
+              "3 options",
+              "4 options",
+            ]);
+            continue;
+          }
           if (COUNTED.test(was)) {
             // Only rows added: every pinned row stays, word for word and in order.
             fits++;
@@ -146,6 +158,13 @@ describe("clarity: a Fits row for every count the schema allows", () => {
 });
 
 describe("tags and line wording", () => {
+  test("the hinge's rows are today's template's (KS3-5: 2 and 3 options in a row)", () => {
+    const line = "- hinge: x. Fits: 3 options, half a line each; 4 options, 1 line each.";
+    const schema = { $defs: { hinge: { properties: { options: { minItems: 2, maxItems: 4 } } } } };
+    expect(fullFitsLine(line, "KS3-5", schema)).toBe(
+      "- hinge: x. Fits: 2 options, 3 lines each; 3 options, 1 line each; 4 options, 1 line each.",
+    );
+  });
   test("the run record names each option", () => {
     expect(promptOptionsTag({ clarity: true })).toBe("clarity");
     expect(promptOptionsTag({ recallAfterObjectives: true })).toBe("recall");

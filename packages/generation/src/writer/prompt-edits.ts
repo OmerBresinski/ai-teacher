@@ -82,6 +82,14 @@ const COUNTED: Record<string, { field: string; row: (n: number) => string }> = {
   compare: { field: "columns", row: (n) => `${n} columns` },
 };
 
+/**
+ * Layouts whose pinned Fits rows describe a layout the renderer no longer draws, so every row is
+ * generated: the hinge's were measured on the lab's 2x2 grid (catalogue/T.json, 6 Oct: 3 options
+ * in half-width cells, 42 characters at KS3-5, "half a line"); the shipped template lays 2 or 3
+ * options in one row and 4 as 2x2 (3 options: 112 characters at KS3-5).
+ */
+export const REMEASURED = new Set(["hinge"]);
+
 /** make_menu.py's lines(): characters as lines of the column, under 0.75 reading "half a line". */
 export function lines(chars: number, cpl: number): string {
   const x = chars / cpl;
@@ -125,7 +133,11 @@ export function fullFitsLine(line: string, stage: WriterStage, schema: J): strin
   const c = COUNTED[layout];
   const range = c && rangeOf(schema, layout, c.field);
   if (!m || !c || !range) return line;
-  const rows = (m[3] as string).split("; ").map(readRow);
+  // A re-measured layout keeps none of its pinned count rows (see REMEASURED).
+  const rows = (m[3] as string)
+    .split("; ")
+    .map(readRow)
+    .filter((r) => !REMEASURED.has(layout) || r.group === "fixed" || r.group === "card");
   const groups: ("plain" | "figure")[] = [
     "plain",
     ...(rows.some((r) => r.group === "figure") ? (["figure"] as const) : []),

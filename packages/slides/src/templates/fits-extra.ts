@@ -17,7 +17,12 @@ const q = (n: number) => `${n} question${n > 1 ? "s" : ""}`;
 
 /** The extra fills, by writer layout: the renderer template measured and its variants. */
 export const EXTRA_FITS: Record<string, { template: string; variants: Variant[] }> = {
-  hinge: { template: "hinge", variants: [{ label: "2 options", counts: { options: 2 } }] },
+  // All three counts: the pinned hinge rows were measured on the lab's older 2x2 grid (3 options
+  // in half-width cells); today's template lays 2 or 3 options in one row, so every row is re-measured.
+  hinge: {
+    template: "hinge",
+    variants: [2, 3, 4].map((n) => ({ label: `${n} options`, counts: { options: n } })),
+  },
   ...Object.fromEntries(
     (["question-set", "practice"] as const).map((id) => [
       id,

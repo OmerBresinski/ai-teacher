@@ -12,6 +12,22 @@
             },
             "figure": false,
             "maxCharsPerItem": 100
+          },
+          {
+            "label": "3 options",
+            "counts": {
+              "options": 3
+            },
+            "figure": false,
+            "maxCharsPerItem": 72
+          },
+          {
+            "label": "4 options",
+            "counts": {
+              "options": 4
+            },
+            "figure": false,
+            "maxCharsPerItem": 48
           }
         ]
       },
@@ -222,6 +238,22 @@
             },
             "figure": false,
             "maxCharsPerItem": 126
+          },
+          {
+            "label": "3 options",
+            "counts": {
+              "options": 3
+            },
+            "figure": false,
+            "maxCharsPerItem": 84
+          },
+          {
+            "label": "4 options",
+            "counts": {
+              "options": 4
+            },
+            "figure": false,
+            "maxCharsPerItem": 56
           }
         ]
       },
@@ -432,6 +464,22 @@
             },
             "figure": false,
             "maxCharsPerItem": 202
+          },
+          {
+            "label": "3 options",
+            "counts": {
+              "options": 3
+            },
+            "figure": false,
+            "maxCharsPerItem": 112
+          },
+          {
+            "label": "4 options",
+            "counts": {
+              "options": 4
+            },
+            "figure": false,
+            "maxCharsPerItem": 98
           }
         ]
       },
