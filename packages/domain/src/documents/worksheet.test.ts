@@ -4,6 +4,7 @@ import {
   fillGapRun,
   isWorksheet,
   MAX_CRITERIA,
+  orderedGaps,
   parseStoredWorksheet,
   parseWorksheet,
   WORD_SEARCH_MAX_SIZE,
@@ -227,5 +228,26 @@ describe("fillGapRun", () => {
   test("nothing when the start block is not a fill-gap or is past the end", () => {
     expect(fillGapRun(blocks, 0)).toEqual([]);
     expect(fillGapRun(blocks, 5)).toEqual([]);
+  });
+});
+
+describe("orderedGaps", () => {
+  test("gaps in token order; a gap whose token is gone is left out", () => {
+    const block: WorksheetBlock = {
+      id: "s",
+      type: "fill-gap",
+      doc: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "[[gap:b]] then [[gap:a]]." }] },
+        ],
+      },
+      gaps: [
+        { id: "a", answer: "second" },
+        { id: "gone", answer: "orphan" },
+        { id: "b", answer: "first" },
+      ],
+    };
+    expect(orderedGaps(block).map((g) => g.answer)).toEqual(["first", "second"]);
   });
 });

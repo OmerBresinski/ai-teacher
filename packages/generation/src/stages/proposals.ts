@@ -18,7 +18,6 @@ import {
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
-  mixWordBanks,
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
@@ -336,10 +335,9 @@ export async function proposeFor(
   };
 
   const doBlock = async (blockId: string): Promise<Proposal[]> => {
-    const at = worksheet?.blocks.findIndex((b) => b.id === blockId) ?? -1;
-    const block = worksheet?.blocks[at];
+    const block = worksheet?.blocks.find((b) => b.id === blockId);
     const schema = block ? blockSpecSchemaFor(block.type) : undefined;
-    if (!worksheet || !block || !schema) return [];
+    if (!block || !schema) return [];
     const call = await callStructured({
       deps,
       stage,
@@ -353,10 +351,7 @@ export async function proposeFor(
       schema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
-    const written: WorksheetBlock = materialiseBlock(call.output, meta(call.modelId), deps.ids);
-    // A bank cites every term, so any vocabulary edit rewrites it: mix it against the sentences
-    // it will sit above, as the recipe does.
-    const [fresh = written] = mixWordBanks([written, ...worksheet.blocks.slice(at + 1)]);
+    const fresh: WorksheetBlock = materialiseBlock(call.output, meta(call.modelId), deps.ids);
     return [
       {
         target: { blockId },

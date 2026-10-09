@@ -1,5 +1,4 @@
-import { fillGapRun, type Id, type WorksheetBlock } from "@tj/domain/documents";
-import { orderedGaps } from "./answers";
+import { fillGapRun, type Id, orderedGaps, type WorksheetBlock } from "@tj/domain/documents";
 
 /*
  * How wide a fill-gap blank is drawn. A blank sized to its own answer tells the pupil which bank

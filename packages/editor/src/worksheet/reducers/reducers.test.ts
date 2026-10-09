@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Proposal } from "@tj/domain";
 import { MAX_CRITERIA, parseWorksheet, type WorksheetBlock } from "@tj/domain/documents";
 import { generatedFrom } from "@tj/domain/documents/fixtures";
 import { docFromText } from "../../model/factories";
@@ -362,5 +363,74 @@ describe("first teacher edit (TEACH-74)", () => {
       originalText: `A cloud\n${image.caption}`,
     });
     expect(image.caption).toBeTruthy();
+  });
+});
+
+describe("applyBlockProposals: word banks", () => {
+  const sentence = (id: string, answer: string): WorksheetBlock => ({
+    id,
+    type: "fill-gap",
+    doc: docFromText(`[[gap:${id}-g]] is a stage.`),
+    gaps: [{ id: `${id}-g`, answer }],
+    authoredBy: "ai",
+  });
+  const bank = (id: string, words: string[]): WorksheetBlock => ({
+    id,
+    type: "word-bank",
+    words,
+    authoredBy: "ai",
+  });
+  const cloze = (words: string[]) => {
+    const w = sheet();
+    w.blocks = [
+      bank("bank", words),
+      sentence("s1", "evaporation"),
+      sentence("s2", "condensation"),
+      sentence("s3", "precipitation"),
+    ];
+    return w;
+  };
+  const propose = (blockId: string, block: WorksheetBlock): Proposal => ({
+    target: { blockId },
+    block,
+    generatedFrom: generatedFrom(["v1"], "cascade.v5"),
+  });
+  const wordsOf = (w: ReturnType<typeof sheet>) => {
+    const found = w.blocks.find((b) => b.type === "word-bank");
+    if (found?.type !== "word-bank") throw new Error("bank");
+    return found.words;
+  };
+  const answersOf = (w: ReturnType<typeof sheet>) =>
+    w.blocks.flatMap((b) => (b.type === "fill-gap" ? b.gaps.map((g) => g.answer) : []));
+  const leaks = (w: ReturnType<typeof sheet>) =>
+    answersOf(w).some((answer, i) => wordsOf(w)[i] === answer);
+
+  test("a bank and a sentence rewritten together are mixed against the new answers", () => {
+    // "evaporation" renamed to "boiling": the bank and sentence 1 both come back, the bank in
+    // gap order.
+    const before = cloze(["precipitation", "evaporation", "condensation"]);
+    const after = r.applyBlockProposals(before, [
+      propose("bank", bank("bank-2", ["boiling", "condensation", "precipitation"])),
+      propose("s1", sentence("s1-2", "boiling")),
+    ]);
+    expect(answersOf(after)).toEqual(["boiling", "condensation", "precipitation"]);
+    expect([...wordsOf(after)].sort()).toEqual(["boiling", "condensation", "precipitation"]);
+    expect(leaks(after)).toBe(false);
+    expect(() => parseWorksheet(after)).not.toThrow();
+  });
+
+  test("a lone sentence rewrite that lines up with the bank mixes the bank too", () => {
+    // The bank is mixed for the old answers; a new answer at gap 2 now sits under word 2.
+    const before = cloze(["condensation", "precipitation", "evaporation"]);
+    const after = r.applyBlockProposals(before, [propose("s2", sentence("s2-2", "precipitation"))]);
+    expect(leaks(after)).toBe(false);
+  });
+
+  test("a bank no proposal touched is left as the teacher wrote it", () => {
+    const before = cloze(["evaporation", "condensation", "precipitation"]);
+    const question = newBlock("question");
+    before.blocks.push(question);
+    const after = r.applyBlockProposals(before, [propose(question.id, newBlock("question"))]);
+    expect(after.blocks[0]).toBe(before.blocks[0]);
   });
 });

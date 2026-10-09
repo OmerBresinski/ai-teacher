@@ -1,4 +1,4 @@
-import { fillGapRun, type WorksheetBlock } from "@tj/domain/documents";
+import { fillGapRun, type Id, orderedGaps, type WorksheetBlock } from "@tj/domain/documents";
 import { shuffled } from "../templates/activities";
 
 /*
@@ -31,14 +31,21 @@ export function mixedBank(words: string[], answers: readonly string[]): string[]
 }
 
 /**
- * Every word bank checked against the run of fill-gap sentences right after it, and reordered by
- * `mixedBank` when it gives their answers away. Returns `blocks` itself when no bank moved.
+ * Every word bank checked against the blanks of the fill-gap sentences right after it, and
+ * reordered by `mixedBank` when it gives their answers away. With `changed`, only a bank that is in
+ * it, or whose sentences are, is checked: a proposal mixes the banks it touched and leaves the
+ * teacher's own alone. Returns `blocks` itself when no bank moved.
  */
-export function mixWordBanks(blocks: WorksheetBlock[]): WorksheetBlock[] {
+export function mixWordBanks(
+  blocks: WorksheetBlock[],
+  changed?: ReadonlySet<Id>,
+): WorksheetBlock[] {
   let moved = false;
   const out = blocks.map((block, index) => {
     if (block.type !== "word-bank") return block;
-    const answers = fillGapRun(blocks, index + 1).flatMap((s) => s.gaps.map((gap) => gap.answer));
+    const run = fillGapRun(blocks, index + 1);
+    if (changed && !changed.has(block.id) && !run.some((s) => changed.has(s.id))) return block;
+    const answers = run.flatMap((s) => orderedGaps(s).map((gap) => gap.answer));
     const words = mixedBank(block.words, answers);
     if (words === block.words) return block;
     moved = true;

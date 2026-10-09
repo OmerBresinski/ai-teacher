@@ -90,6 +90,40 @@ describe("mixWordBanks", () => {
     expect(mixWordBanks(blocks)).toBe(blocks);
   });
 
+  test("with `changed`, only a bank that is in it, or whose sentences are, is mixed", () => {
+    const blocks: WorksheetBlock[] = [
+      { id: "b1", type: "word-bank", words: ["rain", "snow"] },
+      sentence("s1", ["rain"]),
+      sentence("s2", ["snow"]),
+      { id: "q", type: "question", doc: docFromText("Why?"), answerLines: 2 },
+      { id: "b2", type: "word-bank", words: ["sun", "sea"] },
+      sentence("s3", ["sun"]),
+      sentence("s4", ["sea"]),
+    ];
+    const out = mixWordBanks(blocks, new Set(["s4"]));
+    expect(out[0]).toBe(blocks[0]);
+    expect(out[4]).toMatchObject({ words: ["sea", "sun"] });
+    expect(mixWordBanks(blocks, new Set(["q"]))).toBe(blocks);
+  });
+
+  test("a gap whose token was deleted from the sentence is not a blank the bank is checked against", () => {
+    const orphaned: WorksheetBlock = {
+      id: "s1",
+      type: "fill-gap",
+      doc: docFromText("[[gap:kept]] falls."),
+      gaps: [
+        { id: "gone", answer: "snow" },
+        { id: "kept", answer: "rain" },
+      ],
+    };
+    // The pupil sees one blank, "rain"; the bank's first word is "snow", so nothing lines up.
+    const blocks: WorksheetBlock[] = [
+      { id: "bank", type: "word-bank", words: ["snow", "rain"] },
+      orphaned,
+    ];
+    expect(mixWordBanks(blocks)).toBe(blocks);
+  });
+
   test("a sheet with nothing to mix is returned as it is", () => {
     const blocks: WorksheetBlock[] = [
       { id: "bank", type: "word-bank", words: ["condensation", "evaporation"] },

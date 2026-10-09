@@ -6,17 +6,10 @@ import {
   richDocToPlainText,
   type SlideElement,
   SlideSchema,
-  type WorksheetBlock,
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import {
-  docFromText,
-  type FigureGroup,
-  figureGroupOf,
-  materialiseSlide,
-  ROW_CARD_NAME,
-} from "@tj/slides";
+import { type FigureGroup, figureGroupOf, materialiseSlide, ROW_CARD_NAME } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
 import { callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { impactSet, MAX_REDO_TARGETS, PROPOSE_CONCURRENCY, proposeFor } from "./proposals";
@@ -204,36 +197,6 @@ describe("proposeFor", () => {
     expect(lesson.slides.filter((s) => s.id !== "s-vocab")).toEqual(
       generatedLesson().slides.filter((s) => s.id !== "s-vocab"),
     );
-  });
-
-  test("cascade: a word bank the model rewrites in gap order is mixed against the sentences below it", async () => {
-    const { lesson, worksheet } = fixturePair();
-    const terms = ["evaporation", "condensation", "precipitation"];
-    worksheet.blocks = [
-      { id: "bank", type: "word-bank", words: [...terms].reverse() },
-      ...terms.map(
-        (term, i): WorksheetBlock => ({
-          id: `s${i}`,
-          type: "fill-gap",
-          doc: docFromText(`[[gap:g${i}]] is a stage.`),
-          gaps: [{ id: `g${i}`, answer: term }],
-        }),
-      ),
-    ];
-    const ai = createFakeAi({
-      script: [json({ type: "word-bank", words: terms, factRefs: ["v1", "v2"] })],
-      usage,
-    });
-    const { proposals } = await proposeFor(
-      [{ blockId: "bank" }],
-      { lesson, worksheet, changedFactIds: ["v1"] },
-      recordingDeps(ai),
-    );
-    const bank = proposals[0]?.block;
-    if (bank?.type !== "word-bank") throw new Error("bank");
-    expect([...bank.words].sort()).toEqual([...terms].sort());
-    for (const [i, term] of terms.entries()) expect(bank.words[i]).not.toBe(term);
-    expect(WorksheetBlockSchema.safeParse(bank).success).toBe(true);
   });
 
   test("regenerate: a slide-only target yields every element of the new slide, with the regenerate prompt version and the instruction in the prompt", async () => {

@@ -5,7 +5,7 @@ import { GenerationUsageSchema } from "./generation";
 import type { AgeBand } from "./lesson";
 import { AgeBandSchema } from "./lesson";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
-import { type RichDoc, RichDocSchema } from "./rich-text";
+import { type RichDoc, RichDocSchema, richDocToPlainText } from "./rich-text";
 import { type Id, type PhotoSource, PhotoSourceSchema } from "./slide";
 
 /*
@@ -327,20 +327,35 @@ export const StoredWorksheetSchema = WorksheetSchema.extend({
   }),
 });
 
+type FillGapBlock = Extract<WorksheetBlock, { type: "fill-gap" }>;
+
 /**
  * The fill-gap sentences from `blocks[start]` on, up to the first block that is not one: the
  * sentences a word bank above them serves, and the run whose blanks share one width.
  */
-export function fillGapRun(
-  blocks: readonly WorksheetBlock[],
-  start: number,
-): Extract<WorksheetBlock, { type: "fill-gap" }>[] {
-  const run: Extract<WorksheetBlock, { type: "fill-gap" }>[] = [];
+export function fillGapRun(blocks: readonly WorksheetBlock[], start: number): FillGapBlock[] {
+  const run: FillGapBlock[] = [];
   for (const block of blocks.slice(start)) {
     if (block.type !== "fill-gap") break;
     run.push(block);
   }
   return run;
+}
+
+/**
+ * Gaps in the order their tokens appear in the text. A gap whose token has been deleted from the
+ * text is an orphan — it is excluded here rather than appended, so the answer key never prints an
+ * answer to a blank that is not on the sheet, and a word bank is checked against the blanks a
+ * pupil sees.
+ */
+export function orderedGaps(block: FillGapBlock): FillGapBlock["gaps"] {
+  const text = richDocToPlainText(block.doc);
+  const seen: FillGapBlock["gaps"] = [];
+  for (const match of text.matchAll(/\[\[gap:([^\]]+)\]\]/g)) {
+    const gap = block.gaps.find((g) => g.id === match[1]);
+    if (gap && !seen.includes(gap)) seen.push(gap);
+  }
+  return seen;
 }
 
 export function parseWorksheet(input: unknown): Worksheet {

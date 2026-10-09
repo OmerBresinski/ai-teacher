@@ -1,5 +1,4 @@
-import type { WorksheetBlock } from "@tj/domain/documents";
-import { docToPlainText } from "../text/static";
+import { orderedGaps, type WorksheetBlock } from "@tj/domain/documents";
 
 /**
  * The answer key (TeachDeck `lib/worksheet/answers.ts`; research/02 decision 17): a separate final
@@ -23,20 +22,8 @@ export type AnswerEntry = {
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const optionLetter = (index: number) => LETTERS[index] ?? "?";
 
-/**
- * Gaps in the order their tokens appear in the text. A gap whose token has been deleted from the
- * text is an orphan — it is excluded here rather than appended, so the answer key never prints an
- * answer to a blank that is not on the sheet.
- */
-export function orderedGaps(block: FillGapBlock): FillGapBlock["gaps"] {
-  const text = docToPlainText(block.doc);
-  const seen: FillGapBlock["gaps"] = [];
-  for (const match of text.matchAll(/\[\[gap:([^\]]+)\]\]/g)) {
-    const gap = block.gaps.find((g) => g.id === match[1]);
-    if (gap && !seen.includes(gap)) seen.push(gap);
-  }
-  return seen;
-}
+/** Gaps in token order, orphans left out; in `@tj/domain` so the word bank reads it too. */
+export { orderedGaps };
 
 /**
  * The right-hand column of a matching block is shuffled — a matching exercise where the answer is
