@@ -470,13 +470,14 @@ export function LessonEditor({
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */
   const insert = useCallback(
     (el: SlideElement, options?: { edit?: boolean }) => {
-      if (!slide) return;
+      // A slide the generating job is still writing takes no new elements (ADR 0037).
+      if (!slide || writingSlideIds?.has(slide.id)) return;
       history.dispatch(reducers.addElement, el, slide.id);
       session.actions.select([el.id]);
       // A new text box goes straight into edit: the placeholder is there to be typed over.
       if (options?.edit) session.actions.setEditingText(el.id);
     },
-    [history.dispatch, session.actions, slide],
+    [history.dispatch, session.actions, slide, writingSlideIds],
   );
 
   // The shell's own keys, on one listener. Insert only while the canvas has focus and nothing is
@@ -614,6 +615,7 @@ export function LessonEditor({
                                       inert={!!slide && !!writingSlideIds?.has(slide.id)}
                                     >
                                       <Canvas
+                                        readOnly={writingSlideIds?.has(slide.id) ?? false}
                                         slide={slide}
                                         theme={theme}
                                         onFocusChange={setCanvasFocused}
