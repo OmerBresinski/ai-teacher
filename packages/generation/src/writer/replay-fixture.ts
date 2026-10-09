@@ -4,7 +4,7 @@ import { pileSpec } from "@tj/slides/diagrams";
 import type { Brief } from "./fixes";
 import type { PhotoResult, VisualAsk, VisualState } from "./materialise";
 import type { ChatReq, WriterServices } from "./services";
-import { runWriter } from "./stage";
+import { runWriter, type WriterRun } from "./stage";
 
 /*
  * Replay (TEACH-110 part b): a saved writer output from the pinned evidence runs through the
@@ -146,6 +146,14 @@ export async function replayRun(
   o: {
     services?: WriterServices;
     visual?: (i: number, key: string, a: VisualAsk) => VisualState;
+    /**
+     * Stream the saved writer text through the stage in these pieces (TEACH-110 part h, C1)
+     * instead of handing it over whole; `hooks` sees the slides as they open.
+     */
+    stream?: (text: string) => string[];
+    hooks?: Pick<WriterRun, "onAsks" | "onSlide" | "onEditable">;
+    /** Called when the streamed text has all been handed over, before the writer call returns. */
+    onStreamEnd?: () => void;
   } = {},
 ) {
   const brief = JSON.parse(read(b, "brief.json")) as Brief;
@@ -155,14 +163,31 @@ export async function replayRun(
   const main = JSON.parse(read(b, "main.json")) as { text: string; finishReason?: string | null };
   const recorded = recordedVisuals(b);
   const visual = o.visual ?? recorded;
+  const services = o.services ?? replayServices(b);
+  const split = o.stream;
   return runWriter({
     brief,
     objectives,
-    services: o.services ?? replayServices(b),
+    services: split
+      ? {
+          ...services,
+          writer: async (_req, onDelta) => {
+            for (const piece of split(main.text)) {
+              await Promise.resolve();
+              onDelta(piece);
+            }
+            o.onStreamEnd?.();
+            return { text: main.text, finishReason: main.finishReason ?? null, usd: 0, ms: 0 };
+          },
+        }
+      : services,
     visual,
     ...(o.visual ? {} : { placeMore: recorded.placeMore }),
     held: recordedHeld(b),
-    recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
+    ...(o.hooks ?? {}),
+    ...(split
+      ? {}
+      : { recordedWriter: { text: main.text, finishReason: main.finishReason ?? null } }),
   });
 }
 export const savedSlides = (b: string) =>

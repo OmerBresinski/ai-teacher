@@ -47,6 +47,11 @@ export interface FakeReply {
   usage?: FakeAiUsage | undefined;
   /** How the call ended (default `stop`): `length` stands in for a call that hit its token cap. */
   finishReason?: "stop" | "length" | "content-filter" | "error" | undefined;
+  /**
+   * A streamed call only: hand the text over in pieces of this many characters, `paceMs` apart
+   * (a model writing over time). Absent: one piece at once.
+   */
+  stream?: { pieceChars: number; paceMs: number } | undefined;
 }
 
 /** A function entry may be async, so a test can hold a call open (concurrency, cancellation). */
@@ -163,7 +168,12 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     const resolved = typeof entry === "function" ? await entry(call) : entry;
     const reply: FakeReply = typeof resolved === "string" ? { text: resolved } : resolved;
     call.usage = reply.usage ?? options.usage ?? {};
-    return { text: reply.text, usage: usageForFake(call.usage), finishReason: reply.finishReason };
+    return {
+      text: reply.text,
+      usage: usageForFake(call.usage),
+      finishReason: reply.finishReason,
+      stream: reply.stream,
+    };
   };
 
   const ai = createConfiguredAi({
@@ -200,7 +210,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 controller.error(options.error);
                 return;
               }
-              const { text, usage, finishReason } = await nextReply(
+              const { text, usage, finishReason, stream } = await nextReply(
                 modelClass,
                 modelId,
                 context,
@@ -209,7 +219,13 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 call.abortSignal,
               );
               controller.enqueue({ type: "text-start", id: "fake-text" });
-              controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
+              if (stream && stream.pieceChars > 0) {
+                for (let at = 0; at < text.length; at += stream.pieceChars) {
+                  if (at > 0) await new Promise((r) => setTimeout(r, stream.paceMs));
+                  const delta = text.slice(at, at + stream.pieceChars);
+                  controller.enqueue({ type: "text-delta", id: "fake-text", delta });
+                }
+              } else controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
               controller.enqueue({ type: "text-end", id: "fake-text" });
               controller.enqueue({
                 type: "finish",

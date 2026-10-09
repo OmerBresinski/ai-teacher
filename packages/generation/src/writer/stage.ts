@@ -93,12 +93,14 @@ import {
   renderedLines,
   repairObjectives,
 } from "./notes";
+import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
 import { writerSchema } from "./schema";
 import {
   isFatal,
   nonFatal,
+  nonFatalSync,
   SMALL_MODEL,
   WRITER_EFFORT,
   WRITER_MODEL,
@@ -171,6 +173,12 @@ export type WriterRun = {
   placeMore?: (index: number, asks: VisualAsk[], slide: SlideForPicture) => Promise<void>;
   /** keepPic: a photo match6 dropped from an ask slide, for a slide that ends with no visual. */
   held?: (index: number, key: string) => VisualState | undefined;
+  /**
+   * A slide as soon as it is laid out while the deck is still being made (TEACH-110 part h, C2):
+   * each slide the writer's stream closes, and again when its diagram is drawn. Read-only: the
+   * editable deck (`onEditable`) supersedes every one of them.
+   */
+  onSlide?: (index: number, slide: WriterSlide) => void;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
   /**
@@ -328,43 +336,173 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   );
   const schema = activities ? withActivities(libbed, stageKey) : libbed;
   const system = libSystem(writerSystem(brief, P), models);
-  const main = run.recordedWriter
-    ? { usd: 0, ms: 0, ...run.recordedWriter }
-    : await run.services.writer(
-        {
-          model: WRITER_MODEL,
-          effort: WRITER_EFFORT,
-          system: activities ? withActivityMenu(system, stageKey) : system,
-          user: localise(user),
-          schema,
-          name: "lesson",
-          maxTokens: writerMaxTokens(brief.slides.max),
-        },
-        () => {},
-      );
-  // K3: an incomplete writer output fails the job; it never ships a headings-only deck.
-  const incomplete = writerIncomplete({
-    finishReason: main.finishReason ?? null,
-    text: main.text,
-    minSlides: brief.slides.min,
-  });
-  if (incomplete) {
-    log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
-    throw new WriterIncompleteError(incomplete);
-  }
-  const out = JSON.parse(main.text) as {
-    design?: Plan["design"];
-    flow?: Plan["flow"];
-    title?: S;
-    slides?: S[];
+  /** A diagram ask as the drawer reads it, sized to the slide's slot. */
+  const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
+    const slot = slotOf(String(s.template ?? ""));
+    const box = slotBox(base.stage, slot);
+    return {
+      key: a.key,
+      kind: a.kind,
+      shows: a.shows,
+      labels: a.labels,
+      ...(a.spec !== undefined ? { spec: a.spec } : {}),
+      words: wordsOf(s),
+      yearGroup: brief.yearGroup,
+      stage: base.stage,
+      slot: {
+        placement: slot === "full" ? ("across the slide" as const) : ("beside text" as const),
+        w: box.w,
+        h: box.h,
+        name: slot,
+      },
+      question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
+    };
   };
-  plan.design = out.design;
-  plan.flow = out.flow;
-  const written: [number, S][] = [
-    ...(out.title ? ([[0, out.title]] as [number, S][]) : []),
-    ...(out.slides ?? []).map((s, k): [number, S] => [k + 2, s]),
-  ];
-  for (const [idx, raw] of written) {
+  /** One slide as the deck shows it (no continuation slides), or undefined before it is laid. */
+  const slideAt = (i: number): WriterSlide | undefined => {
+    const m = laid.get(i) ?? (i === 0 ? title : undefined);
+    if (!m) return undefined;
+    const own = notes.get(i)?.notes ?? "";
+    const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
+    const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
+    const q = m.slide.question ?? listQuestion(plan.slides[i] as S | undefined, notes.get(i));
+    return {
+      id: `s${i + 1}`,
+      ...m.slide,
+      ...(q ? { question: q } : {}),
+      notes: [own, said].filter(Boolean).join("\n\n"),
+    };
+  };
+  /** True once the editable deck is out: no more read-only slides are handed over. */
+  let editable = false;
+  const shown = (i: number) => {
+    if (editable || !run.onSlide) return;
+    const slide = slideAt(i);
+    if (slide) run.onSlide(i, slide);
+  };
+  /** Diagram jobs (TEACH-247, R2), started as each slide opens (C10) and awaited before editable. */
+  const diagramJobs: Promise<void>[] = [];
+  const drawDiagramsOf = (i: number) => {
+    if (!run.drawDiagrams) return;
+    const { callDrawer } = run.drawDiagrams;
+    for (const a of asks.get(i) ?? []) {
+      const s = plan.slides[i];
+      if (a.type !== "diagram" || !s) continue;
+      const slot = slotOf(String(s.template ?? ""));
+      const box = slotBox(base.stage, slot);
+      const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
+      const job = nonFatal(
+        async () => {
+          // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
+          if (a.kind !== "model") return a;
+          const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
+          // Library models are full slides only (ADR 0035): a side-slot ask from an old or
+          // replayed output is today's drawer's, for the model's base kind.
+          if (slot !== "full") {
+            const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
+            log({ ev: "lib-side-slot", slide: i + 1, model: want.model, kind });
+            return { ...a, kind, labels: [], spec: undefined };
+          }
+          if (modelPoints(s).length)
+            log({ ev: "lib-points-to-notes", slide: i + 1, model: want.model });
+          const r = await libraryDiagram(
+            {
+              key: a.key,
+              model: String(want.model ?? ""),
+              intent: String(want.intent ?? a.shows),
+              alt: typeof want.alt === "string" ? want.alt : undefined,
+              words: wordsOf(s),
+              heading: typeof s.heading === "string" ? s.heading : "",
+              caption: typeof s.lead === "string" ? s.lead : "",
+              yearGroup: brief.yearGroup,
+              lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
+              question,
+            },
+            async (req) =>
+              (
+                await callDrawer({
+                  model: "gpt-6-luna",
+                  effort: "low",
+                  ...req,
+                  name: "diagram",
+                  strict: false,
+                  timeoutMs: DRAWER_TIMEOUT_MS,
+                })
+              ).out,
+            (e) => log({ ...e, slide: i + 1 }),
+          );
+          if (r.ok) {
+            const { src, aspect, alt } = r.drawing;
+            drawnDiagrams.set(`${i}:${a.key}`, {
+              status: "diagram",
+              spec: { drawn: { src, aspect, alt, bare: true } },
+            });
+            log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
+            relay(i);
+            shown(i);
+            return undefined;
+          }
+          return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
+        },
+        // A throw anywhere in the library path is the drawer's job, never a rejected batch.
+        (e) => {
+          log({ ev: "lib-failed", slide: i + 1, key: a.key, err: String(e).slice(0, 200) });
+          return a.kind === "model"
+            ? { ...a, kind: FALLBACK_KIND, labels: [], spec: undefined }
+            : a;
+        },
+      ).then((a2) => {
+        if (!a2) return;
+        return drawWriterDiagram(
+          {
+            key: a2.key,
+            kind: a2.kind,
+            shows: a2.shows,
+            labels: a2.labels,
+            ...(a2.spec !== undefined ? { spec: a2.spec } : {}),
+            words: wordsOf(s),
+            yearGroup: brief.yearGroup,
+            stage: base.stage,
+            slot: {
+              placement: slot === "full" ? "across the slide" : "beside text",
+              w: box.w,
+              h: box.h,
+              name: slot,
+            },
+            question,
+          },
+          {
+            callDrawer,
+            drawerSystem: writerDrawerSystem,
+            theme: base.theme,
+            probe: layoutSlotProbe,
+            log: (e) => log({ ...e, slide: i + 1 }),
+          },
+        ).then((r) => {
+          drawnDiagrams.set(
+            `${i}:${a.key}`,
+            r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
+          );
+          log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
+          relay(i);
+          shown(i);
+        });
+      });
+      // Awaited below (a fatal error still stops the lesson there); a stream that fails K3 first
+      // must not leave the job's rejection unhandled.
+      void Promise.allSettled([job]);
+      diagramJobs.push(job);
+    }
+  };
+  /** Each slide's raw JSON as it was opened, by index. */
+  const opened = new Map<number, string>();
+  /**
+   * One written slide's work: no em dash, the activity's fields, the seeded hinge, the flow's
+   * look, its asks (`onAsks` starts its pictures), its layout and its diagrams. Run as each slide
+   * closes in the writer's stream (C1), in slide order, and at the end for any slide the stream
+   * did not open: the final parse stays the source of truth.
+   */
+  const openSlide = (idx: number, raw: S) => {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
     // An activity: the writer's fields to the template's, repaired to the stage's capacity.
@@ -393,160 +531,110 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       point: pointOf(s as S),
     });
     relay(idx);
-  }
-  /** A diagram ask as the drawer reads it, sized to the slide's slot. */
-  const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
-    const slot = slotOf(String(s.template ?? ""));
-    const box = slotBox(base.stage, slot);
-    return {
-      key: a.key,
-      kind: a.kind,
-      shows: a.shows,
-      labels: a.labels,
-      ...(a.spec !== undefined ? { spec: a.spec } : {}),
-      words: wordsOf(s),
-      yearGroup: brief.yearGroup,
-      stage: base.stage,
-      slot: {
-        placement: slot === "full" ? ("across the slide" as const) : ("beside text" as const),
-        w: box.w,
-        h: box.h,
-        name: slot,
-      },
-      question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
-    };
+    opened.set(idx, JSON.stringify(raw));
+    drawDiagramsOf(idx);
+    shown(idx);
   };
-  // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
-  if (run.drawDiagrams) {
-    const { callDrawer } = run.drawDiagrams;
-    const jobs: Promise<void>[] = [];
-    for (const [i, list] of asks)
-      for (const a of list) {
-        const s = plan.slides[i];
-        if (a.type !== "diagram" || !s) continue;
-        const slot = slotOf(String(s.template ?? ""));
-        const box = slotBox(base.stage, slot);
-        const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
-        jobs.push(
-          nonFatal(
-            async () => {
-              // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
-              if (a.kind !== "model") return a;
-              const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
-              // Library models are full slides only (ADR 0035): a side-slot ask from an old or
-              // replayed output is today's drawer's, for the model's base kind.
-              if (slot !== "full") {
-                const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
-                log({ ev: "lib-side-slot", slide: i + 1, model: want.model, kind });
-                return { ...a, kind, labels: [], spec: undefined };
-              }
-              if (modelPoints(s).length)
-                log({ ev: "lib-points-to-notes", slide: i + 1, model: want.model });
-              const r = await libraryDiagram(
-                {
-                  key: a.key,
-                  model: String(want.model ?? ""),
-                  intent: String(want.intent ?? a.shows),
-                  alt: typeof want.alt === "string" ? want.alt : undefined,
-                  words: wordsOf(s),
-                  heading: typeof s.heading === "string" ? s.heading : "",
-                  caption: typeof s.lead === "string" ? s.lead : "",
-                  yearGroup: brief.yearGroup,
-                  lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
-                  question,
-                },
-                async (req) =>
-                  (
-                    await callDrawer({
-                      model: "gpt-6-luna",
-                      effort: "low",
-                      ...req,
-                      name: "diagram",
-                      strict: false,
-                      timeoutMs: DRAWER_TIMEOUT_MS,
-                    })
-                  ).out,
-                (e) => log({ ...e, slide: i + 1 }),
-              );
-              if (r.ok) {
-                const { src, aspect, alt } = r.drawing;
-                drawnDiagrams.set(`${i}:${a.key}`, {
-                  status: "diagram",
-                  spec: { drawn: { src, aspect, alt, bare: true } },
-                });
-                log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
-                relay(i);
-                return undefined;
-              }
-              return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
-            },
-            // A throw anywhere in the library path is the drawer's job, never a rejected batch.
-            (e) => {
-              log({ ev: "lib-failed", slide: i + 1, key: a.key, err: String(e).slice(0, 200) });
-              return a.kind === "model"
-                ? { ...a, kind: FALLBACK_KIND, labels: [], spec: undefined }
-                : a;
-            },
-          ).then((a2) => {
-            if (!a2) return;
-            return drawWriterDiagram(
-              {
-                key: a2.key,
-                kind: a2.kind,
-                shows: a2.shows,
-                labels: a2.labels,
-                ...(a2.spec !== undefined ? { spec: a2.spec } : {}),
-                words: wordsOf(s),
-                yearGroup: brief.yearGroup,
-                stage: base.stage,
-                slot: {
-                  placement: slot === "full" ? "across the slide" : "beside text",
-                  w: box.w,
-                  h: box.h,
-                  name: slot,
-                },
-                question,
-              },
-              {
-                callDrawer,
-                drawerSystem: writerDrawerSystem,
-                theme: base.theme,
-                probe: layoutSlotProbe,
-                log: (e) => log({ ...e, slide: i + 1 }),
-              },
-            ).then((r) => {
-              drawnDiagrams.set(
-                `${i}:${a.key}`,
-                r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
-              );
-              log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
-              relay(i);
-            });
-          }),
-        );
-      }
-    await Promise.all(jobs);
+
+  // ── the stream (C1): `design` and `flow` close first (the schema's order), then the title and
+  // each slide in order; a slide opens as it closes. Anything out of that order stops the stream
+  // opening slides, and the final parse opens the rest. ──
+  let streaming = !run.recordedWriter;
+  /** The next index the stream may open: the title (0), then 2, 3, … */
+  let nextOpen = 0;
+  const stopStream = (why: string, e?: unknown) => {
+    if (!streaming) return;
+    streaming = false;
+    log({ ev: "stream-stopped", why, ...(e ? { err: String(e).slice(0, 200) } : {}) });
+  };
+  const parser = new PartialJson((path, value) => {
+    if (!streaming || path.length !== (path[0] === "slides" ? 2 : 1)) return;
+    const [key, k] = path;
+    if (key === "design") {
+      plan.design = value as Plan["design"];
+      return;
+    }
+    if (key === "flow") {
+      plan.flow = value as Plan["flow"];
+      return;
+    }
+    const idx = key === "title" ? 0 : key === "slides" && typeof k === "number" ? k + 2 : -1;
+    if (idx < 0) return;
+    if (!plan.flow || idx !== nextOpen || !value || typeof value !== "object")
+      return stopStream(`slide ${idx + 1} out of order`);
+    const ok = nonFatalSync(
+      () => {
+        openSlide(idx, value as S);
+        return true;
+      },
+      (e) => {
+        opened.delete(idx);
+        stopStream(`slide ${idx + 1} failed to open`, e);
+        return false;
+      },
+    );
+    if (ok) nextOpen = idx === 0 ? 2 : idx + 1;
+  });
+  const main = run.recordedWriter
+    ? { usd: 0, ms: 0, ...run.recordedWriter }
+    : await run.services.writer(
+        {
+          model: WRITER_MODEL,
+          effort: WRITER_EFFORT,
+          system: activities ? withActivityMenu(system, stageKey) : system,
+          user: localise(user),
+          schema,
+          name: "lesson",
+          maxTokens: writerMaxTokens(brief.slides.max),
+        },
+        (delta) => {
+          if (!streaming) return;
+          nonFatalSync(
+            () => parser.push(delta),
+            (e) => stopStream("parser failed", e),
+          );
+        },
+      );
+  // K3: an incomplete writer output fails the job; it never ships a headings-only deck.
+  const incomplete = writerIncomplete({
+    finishReason: main.finishReason ?? null,
+    text: main.text,
+    minSlides: brief.slides.min,
+  });
+  if (incomplete) {
+    log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
+    throw new WriterIncompleteError(incomplete);
   }
+  const out = JSON.parse(main.text) as {
+    design?: Plan["design"];
+    flow?: Plan["flow"];
+    title?: S;
+    slides?: S[];
+  };
+  plan.design = out.design;
+  plan.flow = out.flow;
+  const written: [number, S][] = [
+    ...(out.title ? ([[0, out.title]] as [number, S][]) : []),
+    ...(out.slides ?? []).map((s, k): [number, S] => [k + 2, s]),
+  ];
+  if (opened.size) log({ ev: "stream-opened", slides: opened.size, of: written.length });
+  for (const [idx, raw] of written) {
+    const was = opened.get(idx);
+    if (was === JSON.stringify(raw)) continue;
+    if (was !== undefined) log({ ev: "stream-reopened", slide: idx + 1 });
+    openSlide(idx, raw);
+  }
+  // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
+  await Promise.all(diagramJobs);
   const n = plan.slides.length;
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {
     const slides: WriterSlide[] = [];
     for (let i = 0; i < Math.max(n, 2); i++) {
-      const m = laid.get(i) ?? (i === 0 ? title : undefined);
-      if (!m) continue;
-      const own = notes.get(i)?.notes ?? "";
-      const moved = modelPoints(plan.slides[i] as S | undefined).filter(
-        (p) => p && !own.includes(p),
-      );
-      const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
-      const q = m.slide.question ?? listQuestion(plan.slides[i] as S | undefined, notes.get(i));
-      slides.push({
-        id: `s${i + 1}`,
-        ...m.slide,
-        ...(q ? { question: q } : {}),
-        notes: [own, said].filter(Boolean).join("\n\n"),
-      });
+      const own = slideAt(i);
+      if (!own) continue;
+      slides.push(own);
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
     }
@@ -567,6 +655,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     });
     laid.set(1, codeObjectives({ ...base, index: 1, plan }));
   }
+  editable = true;
   await run.onEditable?.(deck());
 
   // ── code checks ──

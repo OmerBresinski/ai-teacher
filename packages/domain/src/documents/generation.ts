@@ -34,7 +34,16 @@ export type Generation = {
   promptVersions: Partial<Record<GenerationStage, string>>;
   usage: GenerationUsage;
   findings: Finding[];
+  /**
+   * Each slide's state while Generate runs, by slide id (TEACH-110 part h; ruling 188): `writing`
+   * while it is still being made (read-only), `done` once its words, picture or diagram have
+   * settled and its checks have run. Absent on lessons generated before it.
+   */
+  slideStates?: Record<string, SlideGenerationState>;
 };
+
+export const SLIDE_GENERATION_STATES = ["writing", "done"] as const;
+export type SlideGenerationState = (typeof SLIDE_GENERATION_STATES)[number];
 
 export const GenerationStageSchema = z.enum(GENERATION_STAGES);
 
@@ -58,4 +67,5 @@ export const GenerationSchema = z.strictObject({
   promptVersions: z.partialRecord(GenerationStageSchema, z.string()),
   usage: GenerationUsageSchema,
   findings: z.array(FindingSchema),
+  slideStates: z.record(z.string(), z.enum(SLIDE_GENERATION_STATES)).optional(),
 });
