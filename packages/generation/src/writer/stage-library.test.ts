@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { endDrawThread } from "../library/guard";
-import { loadModel } from "../library/render";
+import { inspectDrawnSvg, loadModel } from "../library/render";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
 import { recordedVisuals, replayServices } from "./replay-fixture";
@@ -65,8 +65,12 @@ async function run(fill: (attempt: number) => unknown) {
   });
   const slide = res.slides[2]; // title and objectives come first
   const diagram = ((slide?.elements ?? []) as El[]).find((e) => e.name === "Diagram");
-  return { fills, drawerKinds, events, diagram };
+  return { fills, drawerKinds, events, diagram, slide };
 }
+
+/** The kit's type floor (24 units on its 1280-wide slide) at a 1440 px wide projection, less 25%. */
+const FLOOR_PX = 24 * (1440 / 1280) * 0.75;
+const report: unknown[] = [];
 
 describe("writer stage: library models", () => {
   test("filled params draw the model in the diagram slot, with its builds", async () => {
@@ -81,6 +85,27 @@ describe("writer stage: library models", () => {
     expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
   }, 60_000);
 
+  test("a library model takes the whole slide: no words outside the slot, none under the floor", async () => {
+    const m = await loadModel("fractions");
+    const { diagram, slide } = await run(() => m?.presets[0]?.params);
+    const box = diagram as { w: number; h: number; fit?: string; src: string };
+    const kit = inspectDrawnSvg(svgOfDataUrl(box.src) ?? "");
+    const [vx, vy, vw, vh] = kit.viewBox;
+    // The image is contained in its frame (960 x 540 slide units), shown 1440 px wide.
+    const k = Math.min(box.w / vw, box.h / vh) * (1440 / 960);
+    const smallest = Math.min(...kit.words.map((w) => w.fs * k));
+    report.push({ model: "fractions", frame: [box.w, box.h, box.fit], smallestPx: smallest });
+    // The big-diagram band (788 x 223 units on y2), not the 348-wide side panel.
+    expect(box.w >= 600 || box.h >= 200).toBe(true);
+    expect(smallest).toBeGreaterThanOrEqual(FLOOR_PX);
+    for (const w of kit.words) {
+      expect(w.x0, w.words).toBeGreaterThanOrEqual(vx - 1);
+      expect(w.x1, w.words).toBeLessThanOrEqual(vx + vw + 1);
+      expect(w.y0, w.words).toBeGreaterThanOrEqual(vy - 1);
+      expect(w.y1, w.words).toBeLessThanOrEqual(vy + vh + 1);
+    }
+  }, 60_000);
+
   test("refused params fall back to the drawer for the model's kind", async () => {
     const { fills, drawerKinds, diagram } = await run(() => ({ representation: 42 }));
     expect(fills.length).toBe(2);
@@ -90,4 +115,7 @@ describe("writer stage: library models", () => {
   }, 60_000);
 });
 
-afterAll(() => endDrawThread());
+afterAll(() => {
+  endDrawThread();
+  if (process.env.TLIB_REPORT) console.log(JSON.stringify(report));
+});

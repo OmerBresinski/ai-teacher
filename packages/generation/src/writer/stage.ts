@@ -62,6 +62,7 @@ import {
   codeTitle,
   type Materialised,
   materialise,
+  modelPoints,
   type Plan,
   questionsOf,
   type VisualAsk,
@@ -423,7 +424,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     for (let i = 0; i < Math.max(n, 2); i++) {
       const m = laid.get(i) ?? (i === 0 ? title : undefined);
       if (!m) continue;
-      slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" });
+      const own = notes.get(i)?.notes ?? "";
+      const moved = modelPoints(plan.slides[i] as S | undefined).filter(
+        (p) => p && !own.includes(p),
+      );
+      const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
+      slides.push({ id: `s${i + 1}`, ...m.slide, notes: [own, said].filter(Boolean).join("\n\n") });
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
     }

@@ -645,3 +645,53 @@ export async function renderLibraryModel(
     }
   });
 }
+
+/** One run of words in a drawn SVG: its type size and box in view-box units, after transforms. */
+export type DrawnWords = {
+  words: string;
+  fs: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+};
+
+/**
+ * Reads a drawn library SVG back (the string a slide's image element carries): its view box and
+ * every text's size and box, measured as the draw measured them. For checks on real slides.
+ */
+export function inspectDrawnSvg(svgText: string): {
+  viewBox: [number, number, number, number];
+  words: DrawnWords[];
+} {
+  return withDom(({ win, host }) => {
+    // The first <style> is the embedded font and theme (CDATA, which happy-dom's parsers reject);
+    // the kit's tokens are already in this document, and a model's own <style> is kept.
+    host.innerHTML = svgText.replace(/<style>\s*<!\[CDATA\[[\s\S]*?\]\]>\s*<\/style>/, "");
+    const svg = host.querySelector("svg");
+    const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
+    const words: DrawnWords[] = [];
+    for (const el of svg ? [...svg.querySelectorAll("text")] : []) {
+      let mm: M = ID;
+      for (let e: Element | null = el as unknown as Element; e && e !== svg; e = e.parentElement)
+        mm = mul(parseTransform(e.getAttribute("transform")), mm);
+      const w = (el.textContent ?? "").trim();
+      const pts = w ? ownPoints(el as unknown as Element) : undefined;
+      if (!pts?.length) continue;
+      const t = pts.map(([x, y]) => [mm[0] * x + mm[2] * y + mm[4], mm[1] * x + mm[3] * y + mm[5]]);
+      const xs = t.map((p) => p[0] as number);
+      const ys = t.map((p) => p[1] as number);
+      const scale = Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1;
+      words.push({
+        words: w,
+        fs: typeOf(el as unknown as Element).fs * scale,
+        x0: Math.min(...xs),
+        y0: Math.min(...ys),
+        x1: Math.max(...xs),
+        y1: Math.max(...ys),
+      });
+    }
+    host.innerHTML = "";
+    return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words };
+  });
+}

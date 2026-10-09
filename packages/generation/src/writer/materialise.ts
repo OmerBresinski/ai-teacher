@@ -101,6 +101,21 @@ const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" i
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
 
+/** A figure the diagram library draws (`kind: "model"`). */
+export const isModel = (f: unknown): boolean =>
+  isDia(f) && (f as { kind?: unknown }).kind === "model";
+
+/**
+ * The points of a visual-text slide whose figure is a library model: big-diagram has no points, so
+ * they are read in the notes instead of dropped.
+ */
+export function modelPoints(s: S | undefined): string[] {
+  if (!s || s.template !== "visual-text" || !isModel(s.figure)) return [];
+  return pts(s.points).map((p) =>
+    typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
+  );
+}
+
 /**
  * The menu's merged entries back to catalogue templates: `visual-text` is picture-text or
  * diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape (a `kind` is a
@@ -111,8 +126,10 @@ export function normalise(s: S): S {
   if (t !== "visual-text" && t !== "big-visual") return s;
   const { figure, ...rest } = s;
   const dia = isDia(figure);
+  // A library model is drawn for the whole slide (16:9, a 24-unit type floor): it always takes
+  // big-diagram, never the side panel (ADR 0035). Its points go to the notes (`modelPoints`).
   const template =
-    t === "visual-text"
+    t === "visual-text" && !isModel(figure)
       ? dia
         ? "diagram-text"
         : "picture-text"
