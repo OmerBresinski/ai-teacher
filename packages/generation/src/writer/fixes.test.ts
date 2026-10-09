@@ -59,7 +59,7 @@ describe("K3: an incomplete writer output (row 5)", () => {
   });
   test("too few slides", () => {
     expect(writerIncomplete({ text: JSON.stringify({ slides: [1, 2, 3] }), minSlides: 9 })).toBe(
-      "3 slides after title and objectives, under 7",
+      "3 slides after title and objectives, under 6",
     );
   });
 });

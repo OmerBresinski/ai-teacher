@@ -1,11 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { diagramJsonSchema, mendSpec, parseDiagram } from "@tj/slides/diagrams";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  diagramJsonSchema,
+  LIMIT_TEXT,
+  limitLines,
+  mendSpec,
+  parseDiagram,
+} from "@tj/slides/diagrams";
 import { isGeneratedSlide } from "@tj/slides/reflow";
 import { getTheme } from "@tj/slides/themes";
 import { WRITER_BUNDLES, writerBundle } from "./bundle";
 import { COUNT_LINE, contractSystem, drawerLimits, PINNED_LINES } from "./contract";
-import { clampSpec, diagramFaultOf, drawWriterDiagram } from "./diagrams";
-import { type Brief, fillTemplate, fixedFallback } from "./fixes";
+import { fitCount, type WriterOut } from "./count";
+import { diagramFaultOf, drawWriterDiagram } from "./diagrams";
+import { type Brief, fillTemplate, fixedFallback, writerIncomplete } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import prod from "./fixtures/prod-01a12146/drawer-faults.json" with { type: "json" };
 import { codeObjectives, codeTitle, materialise } from "./materialise";
@@ -35,7 +44,6 @@ describe("the writer's diagram limits come from the drawer's schema", () => {
     const sys = writerSystem({ ...brief, keyStage: "ks3" });
     expect(sys).toContain(`with up to ${L.labelled.labels} parts labelled`);
     expect(sys).toContain(`a key up to ${L.particles.keyChars} characters`);
-    expect(sys).toContain(`at most ${L.particles.notes} notes`);
   });
 
   test("no stage's system text keeps the contradicting lines (particles were offered for 'comparing conditions')", () => {
@@ -65,42 +73,66 @@ describe("the writer's diagram limits come from the drawer's schema", () => {
   });
 });
 
-describe("drawer output goes through mendSpec (production faults, lessons 01a12146 and 01a1214c)", () => {
+describe("drawer output goes through mendSpec, and nothing is cut to fit (lessons 01a12146 and 01a1214c)", () => {
   for (const c of prod.cases)
-    test(`${c.job} slide ${c.slide} attempt ${c.attempt}: the logged fault, then a drawing`, () => {
+    test(`${c.job} slide ${c.slide} attempt ${c.attempt}: the logged fault; mended only where meaning is kept`, () => {
       // The rebuilt spec gives production's own fault line.
       expect(diagramFaultOf(c.spec, parseDiagram)).toBe(c.fault);
-      const mended = clampSpec(mendSpec(c.spec));
-      expect(diagramFaultOf(mended, parseDiagram)).toBe("");
-      expect(parseDiagram(mended)).toBeDefined();
+      const after = diagramFaultOf(mendSpec(c.spec), parseDiagram);
+      // Arrows on a compare are left out (no data lost); a count, a label set or a key past its
+      // limit is never cut or raised: it stays a fault for the drawer's repair.
+      if (/^spec: a compare draws no arrow/.test(c.fault)) expect(after).toBe("");
+      else expect(after).not.toBe("");
     });
 
-  test("the drawer path returns the mended spec, not a fault (slide 8's first attempt)", async () => {
-    const c = prod.cases[0] as (typeof prod.cases)[number];
+  const ask = {
+    key: "diagram",
+    kind: "particles",
+    shows: "moth populations",
+    labels: [],
+    words: "Natural selection",
+    yearGroup: "Year 9",
+  } as never;
+  const drawer = (answers: unknown[], calls: string[]) => ({
+    callDrawer: async (req: { user: string }) => {
+      calls.push(req.user);
+      return { out: answers[Math.min(calls.length - 1, answers.length - 1)] };
+    },
+    drawerSystem: "x",
+    theme: getTheme("chalk", "ks3"),
+  });
+
+  test("a spec past a limit goes back to the drawer with that limit, and its repaired answer draws", async () => {
+    const over = prod.cases[3] as (typeof prod.cases)[number]; // 8 labels
+    const fixed = { ...over.spec, labels: over.spec.labels?.slice(0, 6) };
     const calls: string[] = [];
     const r = await drawWriterDiagram(
-      {
-        key: "diagram",
-        kind: "particles",
-        shows: "moth populations",
-        labels: [],
-        words: "Natural selection",
-        yearGroup: "Year 9",
-      } as never,
-      {
-        callDrawer: async (req) => {
-          calls.push(req.user);
-          return { out: c.spec };
-        },
-        drawerSystem: "x",
-        theme: getTheme("chalk", "ks3"),
-      },
+      { ...(ask as object), kind: "labelled-diagram" } as never,
+      drawer([over.spec, fixed], calls) as never,
     );
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain("labels: Too big: expected array to have <=6 items");
     expect(r.via).toBe("drawer");
-    const spec = r.spec as J;
-    expect(spec.arrows).toBeUndefined();
-    expect(spec.key).toBeUndefined();
+    expect((r.spec as { labels: unknown[] }).labels).toHaveLength(6);
+  });
+
+  test("a population of one is never drawn as two: a second miss falls to the restage ladder", async () => {
+    const one = prod.cases[2] as (typeof prod.cases)[number]; // panels with count 1
+    const calls: string[] = [];
+    const r = await drawWriterDiagram(ask, drawer([one.spec], calls) as never);
+    expect(calls).toHaveLength(2);
+    expect(r.via).toBe("none");
+    expect(r.spec).toBeUndefined();
+    expect(r.fault).toContain("panels.1.count");
+  });
+
+  test("the drawer and the writer state a label's limit from one source", () => {
+    expect(limitLines()).toContain(`each ${LIMIT_TEXT.label}.`);
+    expect(writerSystem({ ...brief, keyStage: "ks3" })).toContain(
+      `each label ${LIMIT_TEXT.label}.`,
+    );
+    expect(limitLines()).toContain(LIMIT_TEXT.particles);
+    expect(writerSystem({ ...brief, keyStage: "ks3" })).toContain(LIMIT_TEXT.particles);
   });
 
   test("a lost diagram's named parts stay on the slide as points, never a bare drop", () => {
@@ -218,5 +250,44 @@ describe("writer slides are the AI's (the false 'clashing' fault)", () => {
       expect(m.slide.elements.every((e) => (e as J).authoredBy === "ai")).toBe(true);
       expect(isGeneratedSlide(m.slide as never)).toBe(true);
     }
+  });
+});
+
+describe("the exact count is held in code (ADR 0036)", () => {
+  const dir = join(import.meta.dir, "fixtures/replay/y11-chemistry-rates-of-reaction");
+  const main = JSON.parse(
+    JSON.parse(readFileSync(join(dir, "main.json"), "utf8")).text,
+  ) as WriterOut;
+  const objectives = (
+    JSON.parse(readFileSync(join(dir, "objectives.json"), "utf8")) as { objectives: unknown[] }
+  ).objectives.length;
+  const total = (main.slides?.length ?? 0) + 2;
+  const tpl = (o: WriterOut) => (k: number) => o.slides?.[k - 3]?.template as string | undefined;
+
+  test("one over is trimmed to the count, the trimmed slide losing no objective", () => {
+    const fit = fitCount(main, total - 1, objectives);
+    expect((fit.out.slides?.length ?? 0) + 2).toBe(total - 1);
+    expect(fit.out.flow).toHaveLength(total - 1);
+    expect(fit.out.flow?.map((f) => f.slide)).toEqual(
+      Array.from({ length: total - 1 }, (_, k) => k + 1),
+    );
+    expect(fit.trimmed).toHaveLength(1);
+    expect(coverage(fit.out.flow ?? [], objectives, tpl(fit.out)).missing).toEqual(
+      coverage(main.flow ?? [], objectives, tpl(main)).missing,
+    );
+  });
+
+  test("one short ships with the shortfall reported, and K3 does not fail it; two short is a cut stream", () => {
+    const text = JSON.stringify(main);
+    expect(writerIncomplete({ text, minSlides: total + 1 })).toBeUndefined();
+    expect(fitCount(main, total + 1, objectives).short).toBe(1);
+    expect(writerIncomplete({ text, minSlides: total + 2 })).toMatch(/under/);
+  });
+
+  test("the exact count already met changes nothing", () => {
+    const fit = fitCount(main, total, objectives);
+    expect(fit.trimmed).toEqual([]);
+    expect(fit.short).toBe(0);
+    expect(fit.out.slides).toEqual(main.slides);
   });
 });

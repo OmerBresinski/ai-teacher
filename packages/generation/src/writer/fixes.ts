@@ -59,8 +59,10 @@ export function writerIncomplete(o: {
   if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
   const n = Array.isArray(out?.slides) ? out.slides.length : 0;
-  if (n < o.minSlides - 2)
-    return `${n} slides after title and objectives, under ${o.minSlides - 2}`;
+  // One short of the count is a slip the stage ships with a warning (count.ts, ADR 0036); more is
+  // a cut stream.
+  if (n < o.minSlides - 3)
+    return `${n} slides after title and objectives, under ${o.minSlides - 3}`;
   return undefined;
 }
 

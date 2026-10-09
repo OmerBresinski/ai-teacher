@@ -89,6 +89,8 @@ export const LIMITS = {
     captionChars: charsOf(captionRule(3)),
     noteChars: 28,
     nameChars: 18,
+    /** The two colours' key under diffusion and dissolving panels. */
+    keyChars: 18,
   },
   /** A timeline's events. */
   timeline: { min: 2, max: 7, dateChars: 14, textChars: 40, periodChars: 24 },
@@ -115,6 +117,18 @@ export function measuredLabel(m: Measured) {
 export const wordsFor = (chars: number) => Math.max(1, Math.round(chars / CHARS_PER_WORD));
 
 /**
+ * The limits as the prompts state them: one phrase per rule, read by the drawer's limits block
+ * (`limitLines`) and the writer's menu (`@tj/generation` `writer/contract.ts`), so the two can never
+ * disagree (a label was "1 to 3 words" to the drawer and "24 characters" to the writer).
+ */
+export const LIMIT_TEXT = {
+  /** One label on a labelled diagram. */
+  label: `1 to ${LIMITS.labels.words} words, at most ${LIMITS.labels.chars} characters`,
+  /** A particles panel set's words. */
+  particles: `a caption up to ${LIMITS.particles.captionChars} characters, at most ${LIMITS.particles.panels} notes of up to ${LIMITS.particles.noteChars} characters, a key up to ${LIMITS.particles.keyChars} characters`,
+} as const;
+
+/**
  * The drawer contract's limits block, built from `LIMITS`: one line per kind the writer can ask
  * for, in words and counts. Appended to the drawer's system text (`services.ts diagramSystem`).
  */
@@ -122,13 +136,13 @@ export function limitLines(): string {
   const L = LIMITS;
   return [
     "Limits (the drawer refuses a spec past them):",
-    `- labelled-diagram: at most ${L.labels.max} labels, each 1 to ${L.labels.words} words.`,
+    `- labelled-diagram: at most ${L.labels.max} labels, each ${LIMIT_TEXT.label}.`,
     `- table: at most ${L.table.rows} rows and ${L.table.cols} columns; a cell is up to ${L.table.cellWords} words, a header up to ${wordsFor(L.table.headerChars)} words.`,
     `- flow: ${2} to ${L.flow.nodes} boxes, each once, of up to ${L.flow.nodeWords} words or one equation; up to ${L.flow.links} links, each named in up to ${L.flow.linkWords} words.`,
     `- cycle: ${L.cycle.min} to ${L.cycle.max} steps of up to ${L.cycle.stepWords} words.`,
     `- equal-groups: up to ${L.groups.totalMax} counters in ${L.groups.groupsMin} to ${L.groups.groupsMax} groups.`,
     `- fraction-shapes: up to ${L.fractions.shapes} shapes, each cut into up to ${L.fractions.partsMax} equal parts, named in a word or a letter.`,
-    `- particles: up to ${L.particles.panels} panels; a caption up to ${wordsFor(L.particles.captionChars)} words, a note up to ${wordsFor(L.particles.noteChars)} words.`,
+    `- particles: up to ${L.particles.panels} panels; ${LIMIT_TEXT.particles}.`,
     `- timeline: ${L.timeline.min} to ${L.timeline.max} events; an event's text up to ${wordsFor(L.timeline.textChars)} words.`,
     `- bar-model: up to ${L.bars.bars} bars of up to ${L.bars.parts} parts.`,
   ].join("\n");

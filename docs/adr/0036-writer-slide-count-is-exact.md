@@ -35,8 +35,20 @@ Evidence for what the count counts:
    exactly n and `slides` to exactly n − 2; the user turn reads `Slides: 10`, and the system
    sentence says the count includes the title and the objectives (`writer/contract.ts`
    `COUNT_LINE`; the pinned bundle files are unchanged, the line is replaced in code).
-3. K3 is unchanged: an output with fewer slides than the minimum fails the job. With an exact
-   count the strict schema makes a short output a parse failure rather than a smaller deck.
+3. **What is guaranteed.** The strict schema asks for exactly n, and code holds it after the
+   writer answers (`writer/count.ts` `fitCount`, called in `writer/stage.ts`):
+   - **Over by any number:** each extra slide is trimmed in code, with no model call. The trimmed
+     slide is the one whose loss leaves the objectives most covered: a teaching slide before a
+     check slide, then the one with fewest words. The flow is renumbered, and slides opened while
+     streaming past the new end are cancelled. A `count-fit` warning names the trimmed slides. A
+     deck is never longer than n.
+   - **One short:** the deck ships as written (n − 1 slides) with a `count-fit` warning,
+     `short: 1`. The job does not fail. No slide is invented to fill the gap.
+   - **Two or more short:** K3 (`writerIncomplete`) still fails the job, as before. A gap that
+     size is a cut or broken stream, not a count slip, and the job's retry is the right answer.
+   - A `length` finish or JSON that does not parse still fails the job (K3).
+   So a writer lesson has exactly n slides, or n − 1 with a logged warning, or the job fails and
+   retries. Continuation pages added by the fit repair are not counted (`fitReport` `delivered`).
 
 ## Consequences
 

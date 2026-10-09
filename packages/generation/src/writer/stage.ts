@@ -16,6 +16,7 @@ import {
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { contractSystem } from "./contract";
+import { fitCount } from "./count";
 import { writerDrawerSystem } from "./diagram-contract.gen";
 import {
   acceptWriterSpec,
@@ -645,7 +646,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
     throw new WriterIncompleteError(incomplete);
   }
-  const out = JSON.parse(main.text) as {
+  // The teacher's exact count (ADR 0036): an overshoot is trimmed, one short ships, both logged.
+  const counted = fitCount(JSON.parse(main.text), brief.slides.max, run.objectives.length);
+  if (counted.trimmed.length || counted.short)
+    log({ ev: "count-fit", level: "warn", want: brief.slides.max, ...counted, out: undefined });
+  const out = counted.out as {
     design?: Plan["design"];
     flow?: Plan["flow"];
     title?: S;
@@ -670,6 +675,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  // A slide opened while streaming and then trimmed by the count is cancelled.
+  const deckLength = (out.slides?.length ?? 0) + 2;
+  for (const idx of [...opened.keys()])
+    if (idx >= deckLength) {
+      cancelDiagrams(idx);
+      asks.delete(idx);
+      laid.delete(idx);
+      opened.delete(idx);
+    }
+  plan.slides.length = Math.min(plan.slides.length, deckLength);
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
   await Promise.all(diagramJobs.values());
   const n = plan.slides.length;

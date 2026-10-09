@@ -1,4 +1,4 @@
-import { diagramJsonSchema } from "@tj/slides/diagrams";
+import { diagramJsonSchema, LIMIT_TEXT } from "@tj/slides/diagrams";
 
 /*
  * The writer's contract with the drawer and the brief, in code (TEACH-110 part k, rootcause
@@ -57,8 +57,8 @@ export function freeformMenuLines(): { labelled: string; particles: string } {
   const L = drawerLimits();
   const p = L.particles;
   return {
-    labelled: `- labelled-diagram: a simple drawing of one thing with up to ${L.labelled.labels} parts labelled, each label up to ${L.labelled.chars} characters.`,
-    particles: `- particles: up to ${p.panels} panels of atoms or molecules, at least ${p.perPanel} particles in each, for states of matter, diffusion, dissolving, or how temperature, concentration or pressure changes how particles move and collide; a caption up to ${p.captionChars} characters, at most ${p.notes} notes of up to ${p.noteChars} characters, a key up to ${p.keyChars} characters, and no arrows between panels that compare. Organisms, populations and variants are never particles: compare them with bar-chart, table or the compare layout.`,
+    labelled: `- labelled-diagram: a simple drawing of one thing with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}.`,
+    particles: `- particles: up to ${p.panels} panels of atoms or molecules, at least ${p.perPanel} particles in each, for states of matter, diffusion, dissolving, or how temperature, concentration or pressure changes how particles move and collide; ${LIMIT_TEXT.particles}, and no arrows between panels that compare. Organisms, populations and variants are never particles: compare them with bar-chart, table or the compare layout.`,
   };
 }
 
