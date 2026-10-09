@@ -18,6 +18,8 @@
     "./diagrams": "./src/diagrams/index.ts",
     "./templates": "./src/templates/index.ts",
     "./templates/pupil-words": "./src/templates/pupil-words.ts",
+    "./templates/activities": "./src/templates/activities.ts",
+    "./templates/activity-capacity.json": "./src/templates/activity-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts"
   },
   "scripts": {

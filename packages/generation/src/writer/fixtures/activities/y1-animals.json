@@ -1,0 +1,320 @@
+{
+  "brief": {
+    "id": "y1-animals-activities",
+    "topic": "Animals and their young",
+    "subject": "Science",
+    "yearGroup": "Year 1",
+    "year": 1,
+    "keyStage": "ks1",
+    "theme": "splash",
+    "readingLevel": "Year 1",
+    "language": "en-GB",
+    "durationMin": 60,
+    "exitTicketOnSlides": false,
+    "source": "ABLATE",
+    "tier": "standard",
+    "slides": {
+      "min": 8,
+      "max": 10
+    }
+  },
+  "objectives": [
+    "Match cows and calves, sheep and lambs, hens and chicks, and dogs and puppies, naming each adult animal and its young.",
+    "Describe how a chick changes as it grows into a hen, including getting bigger and growing adult feathers."
+  ],
+  "main": {
+    "design": {
+      "theme": "playground",
+      "picture_style": "photo"
+    },
+    "flow": [
+      {
+        "slide": 1,
+        "does": "Recall familiar animal names",
+        "look_at": {
+          "kind": "picture",
+          "shows": "Four familiar adult animals"
+        },
+        "teaches": []
+      },
+      {
+        "slide": 2,
+        "does": "Share the learning objectives",
+        "look_at": {
+          "kind": "none",
+          "shows": null
+        },
+        "teaches": []
+      },
+      {
+        "slide": 3,
+        "does": "Name cows, calves, sheep and lambs",
+        "look_at": {
+          "kind": "picture",
+          "shows": "Two adult animals beside their young"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 4,
+        "does": "Name hens, chicks, dogs and puppies",
+        "look_at": {
+          "kind": "picture",
+          "shows": "Two more adult animals beside their young"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 5,
+        "does": "Model matching and naming an animal pair",
+        "look_at": {
+          "kind": "picture",
+          "shows": "A hen beside a chick"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 6,
+        "does": "Practise with a pair activity",
+        "look_at": {
+          "kind": "cards",
+          "shows": "the cards"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 7,
+        "does": "Practise with a group-sort activity",
+        "look_at": {
+          "kind": "cards",
+          "shows": "the cards"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 8,
+        "does": "Practise with a sequence activity",
+        "look_at": {
+          "kind": "cards",
+          "shows": "the cards"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 9,
+        "does": "Practise with a choose activity",
+        "look_at": {
+          "kind": "cards",
+          "shows": "the cards"
+        },
+        "teaches": [1]
+      },
+      {
+        "slide": 10,
+        "does": "Practise with a odd-one-out activity",
+        "look_at": {
+          "kind": "cards",
+          "shows": "the cards"
+        },
+        "teaches": [1]
+      }
+    ],
+    "title": {
+      "template": "title",
+      "heading": "Animals and their young",
+      "lead": "Name the animals you know.",
+      "picture": {
+        "shows": "Separate photographs of an adult cow, sheep, hen and dog",
+        "must_see": ["adult dairy cow", "adult woolly sheep", "adult brown hen", "adult pet dog"],
+        "subject": "generic"
+      }
+    },
+    "slides": [
+      {
+        "template": "compare",
+        "heading": "Adults and their young",
+        "columns": [
+          {
+            "label": "Cow and calf",
+            "text": "A young cow is a calf.",
+            "picture": {
+              "shows": "An adult cow standing beside a small calf",
+              "must_see": ["adult cow", "small calf"],
+              "subject": "generic"
+            }
+          },
+          {
+            "label": "Sheep and lamb",
+            "text": "A young sheep is a lamb.",
+            "picture": {
+              "shows": "An adult sheep standing beside a small lamb",
+              "must_see": ["adult sheep", "small lamb"],
+              "subject": "generic"
+            }
+          }
+        ]
+      },
+      {
+        "template": "compare",
+        "heading": "More adults and young",
+        "columns": [
+          {
+            "label": "Hen and chick",
+            "text": "A hen is an adult female chicken.",
+            "picture": {
+              "shows": "An adult hen beside a newly hatched chick",
+              "must_see": ["adult hen", "small fluffy chick"],
+              "subject": "generic"
+            }
+          },
+          {
+            "label": "Dog and puppy",
+            "text": "A young dog is a puppy.",
+            "picture": {
+              "shows": "An adult dog beside a puppy of the same breed",
+              "must_see": ["adult dog", "small puppy"],
+              "subject": "generic"
+            }
+          }
+        ]
+      },
+      {
+        "template": "visual-text",
+        "heading": "Watch a match",
+        "lead": "I match the hen to the chick.",
+        "points": ["The hen is the adult.", "The chick is the young chicken."],
+        "figure": {
+          "shows": "A hen and a chick shown clearly side by side",
+          "must_see": ["adult hen", "fluffy young chick"],
+          "subject": "generic"
+        }
+      },
+      {
+        "template": "pair",
+        "heading": "Match each baby to its name",
+        "instruction": null,
+        "cards": [
+          {
+            "label": "chick",
+            "picture": "a fluffy yellow chick"
+          },
+          {
+            "label": "lamb",
+            "picture": "a young lamb in a field"
+          },
+          {
+            "label": "tadpole",
+            "picture": "a tadpole swimming"
+          }
+        ]
+      },
+      {
+        "template": "group-sort",
+        "heading": "Baby or grown-up?",
+        "instruction": "Sort the cards.",
+        "groups": ["Baby", "Grown-up"],
+        "cards": [
+          {
+            "label": "lamb",
+            "picture": "a young lamb",
+            "group": 1
+          },
+          {
+            "label": "sheep",
+            "picture": "an adult sheep",
+            "group": 2
+          },
+          {
+            "label": "chick",
+            "picture": "a fluffy chick",
+            "group": 1
+          },
+          {
+            "label": "hen",
+            "picture": "an adult hen",
+            "group": 2
+          },
+          {
+            "label": "calf",
+            "picture": "a young calf",
+            "group": 1
+          },
+          {
+            "label": "cow",
+            "picture": "an adult cow",
+            "group": 2
+          }
+        ]
+      },
+      {
+        "template": "sequence",
+        "heading": "Put the frog's life in order",
+        "instruction": null,
+        "cards": [
+          {
+            "label": "frogspawn",
+            "picture": "frogspawn in a pond"
+          },
+          {
+            "label": "tadpole",
+            "picture": "a tadpole"
+          },
+          {
+            "label": "froglet",
+            "picture": "a froglet with a tail"
+          },
+          {
+            "label": "frog",
+            "picture": "an adult frog"
+          }
+        ]
+      },
+      {
+        "template": "choose",
+        "heading": "Which baby grows into a hen?",
+        "instruction": null,
+        "cards": [
+          {
+            "label": "calf",
+            "picture": "a young calf"
+          },
+          {
+            "label": "chick",
+            "picture": "a chick"
+          },
+          {
+            "label": "lamb",
+            "picture": "a lamb"
+          }
+        ],
+        "correct": 2,
+        "explanation": "A chick grows into a hen."
+      },
+      {
+        "template": "odd-one-out",
+        "heading": "Which is the odd one out?",
+        "instruction": null,
+        "cards": [
+          {
+            "label": "lamb",
+            "picture": "a lamb"
+          },
+          {
+            "label": "calf",
+            "picture": "a calf"
+          },
+          {
+            "label": "cow",
+            "picture": "a cow"
+          },
+          {
+            "label": "chick",
+            "picture": "a chick"
+          }
+        ],
+        "correct": 3,
+        "explanation": "The others are all babies."
+      }
+    ]
+  }
+}

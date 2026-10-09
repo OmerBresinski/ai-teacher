@@ -538,3 +538,107 @@ describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", 
     expect(calls).toBe(2);
   });
 });
+
+describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
+  const generatedOnly = (subject: string) =>
+    createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [
+            verdict({
+              pick: "made",
+              onSubject: true,
+              clear: true,
+              fits: true,
+              visible: ["a ship"],
+            }),
+          ],
+        }),
+      ),
+      bank: {
+        lookup: async () => undefined,
+        remember: async () => undefined,
+        generate: async () =>
+          ({
+            src: "/files/m1.png",
+            alt: "A ship",
+            source: { provider: "generated", id: "m1" },
+            style: "photo",
+            aspect: 1.5,
+            dataUrl: "data:image/png;base64,AAAA",
+          }) as never,
+      },
+      direct: async () =>
+        direction({
+          route: "library-or-generate",
+          pictures: [
+            { shows: "A ship", mustShow: ["a ship"], queries: ["ship"], imagePrompt: "A ship." },
+          ],
+        }),
+    });
+  const card = ask({ key: "card.0", shows: "A ship", mustSee: ["a ship"], named: false });
+
+  test("a history card never shows a generated picture: it fails and the card shows its word", async () => {
+    const pictures = generatedOnly("History");
+    pictures.start(4, card, slide);
+    await pictures.settle(5_000);
+    expect(pictures.state(4, "card.0").status).toBe("failed");
+    expect([...pictures.sources().values()]).toEqual([]);
+  });
+
+  test("a card naming a person is never generated, whatever the subject", async () => {
+    const pictures = generatedOnly("Science");
+    pictures.start(4, { ...card, named: true }, slide);
+    await pictures.settle(5_000);
+    expect(pictures.state(4, "card.0").status).toBe("failed");
+  });
+
+  test("a science card may be generated; a history slide picture keeps the director's ladder", async () => {
+    const science = generatedOnly("Science");
+    science.start(4, card, slide);
+    await science.settle(5_000);
+    expect(science.state(4, "card.0").status).toBe("photo");
+    const history = generatedOnly("History");
+    history.start(
+      4,
+      ask({ key: "picture", shows: "A ship", mustSee: ["a ship"], named: false }),
+      slide,
+    );
+    await history.settle(5_000);
+    expect(history.state(4, "picture").status).toBe("photo");
+  });
+
+  test("a history card set is never made by the generator", async () => {
+    let made = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "History" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      maker: {
+        bank: STOCK_ONLY_BANK,
+        generator: {
+          model: "fake-image",
+          generate: async () => {
+            made += 1;
+            throw new Error("never");
+          },
+        },
+        save: async () => ({ id: "g", src: "/files/g.png" }),
+      },
+      direct: async () => direction({ route: "none", pictures: [] }),
+    });
+    for (const k of [0, 1])
+      pictures.start(
+        4,
+        ask({ key: `card.${k}`, shows: `A Roman coin ${k}`, named: false, set: "cards" }),
+        slide,
+      );
+    await pictures.settle(5_000);
+    expect(made).toBe(0);
+    expect(pictures.state(4, "card.0").status).toBe("failed");
+  });
+});

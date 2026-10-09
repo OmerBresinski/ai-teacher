@@ -38,6 +38,7 @@ import {
 } from "./photo-bank";
 import {
   directedSetJudges,
+  isHistoricalSet,
   makePictureSet,
   type SetAsk,
   type SetPicture,
@@ -775,7 +776,9 @@ export type WriterPictureMiss =
   | "set-not-searched"
   | "deadline"
   | "error"
-  | "match6";
+  | "match6"
+  /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
+  | "history-card-generated";
 
 export interface WriterPictures {
   /** Start placing one ask (idempotent per slide and key). */
@@ -807,6 +810,8 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   deadline: "The picture search ran out of time.",
   error: "The picture search failed.",
   match6: "",
+  // Ruling 163: the same line as a real thing missed (a history card is never generated).
+  "history-card-generated": "No real photograph of this was found, and none is generated for it.",
 };
 
 export function createWriterPictures(opts: {
@@ -906,7 +911,20 @@ export function createWriterPictures(opts: {
     };
 
   /** One ask through the director and the ladder, into `slot`. */
-  const place = (slot: Slot, index: number, ask: WriterPhotoAsk, slide: SlideForPicture) => {
+  /**
+   * Ruling 163 for activity cards (TEACH-101 part c): a history card is a searched picture or its
+   * word, never a generated picture (no painted fallback either).
+   */
+  const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
+    ask.key.startsWith("card.") &&
+    (ask.named || /^hist/i.test(opts.lesson.subject ?? "") || isHistoricalSet(shows));
+  const place = (
+    slot: Slot,
+    index: number,
+    ask: WriterPhotoAsk,
+    slide: SlideForPicture,
+    real = realOnly(ask, [ask.shows]),
+  ) => {
     let reason: PictureOutcome["reason"];
     return placeWriterPicture({
       ask: {
@@ -936,6 +954,15 @@ export function createWriterPictures(opts: {
       if (!photo) {
         slot.state = { status: "failed" };
         slot.miss = reason ?? "generation-refused-or-failed";
+        return;
+      }
+      if (real && photo.source?.provider === "generated") {
+        slot.state = { status: "failed" };
+        slot.miss = "history-card-generated";
+        opts.deps.logger.info(
+          { stage: "generate", picture: id(index, ask.key) },
+          "history card picture was generated: word card",
+        );
         return;
       }
       sources.set(photo.src, photo.source);
@@ -995,7 +1022,18 @@ export function createWriterPictures(opts: {
     if (!setIsGenerated(asks, opts.lesson.subject ?? "")) {
       void Promise.all(
         panels.map(({ ask, slot }) =>
-          slot ? place(slot, group.index, ask, group.slide) : undefined,
+          slot
+            ? place(
+                slot,
+                group.index,
+                ask,
+                group.slide,
+                realOnly(
+                  ask,
+                  group.asks.map((a) => a.shows),
+                ),
+              )
+            : undefined,
         ),
       ).then(finish, finish);
       return;

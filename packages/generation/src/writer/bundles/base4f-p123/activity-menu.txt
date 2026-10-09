@@ -1,0 +1,7 @@
+Activity layouts. An activity is where pupils practise or check what the slides just before it taught; use one only where matching, sorting or ordering things is how pupils would show that learning, and a lesson may have none. Each card is a label and a picture phrase naming one thing a camera or simple drawing can show, or no picture (a word card) when the thing cannot be seen. In history, only a famous, much-photographed person, place or object is pictured. Every answer was taught on an earlier slide. The heading and instruction refer only to the cards. Code reveals the answer on a click, so no heading, instruction, label or picture gives it.
+- pair: match each picture to its label, for names or terms just taught; every card has a picture. Fits: {fits.pair}.
+- group-sort: sort cards into named groups, each card in exactly one. Fits: {fits.group-sort}.
+- sequence: order stages, steps or events; give the cards in the right order and code shuffles them. Fits: {fits.sequence}.
+- choose: one question answered by picking one card; word options make it a hinge. Fits: {fits.choose}.
+- odd-one-out: all cards but one share a property just taught, and only that property separates the odd one; the explanation names it. Fits: {fits.odd-one-out}.
+- label: label a drawn diagram's parts from a word bank, never a photo: a diagram kind with a labels list, its labels the answers, plus one or two extra words naming no part. Fits: {fits.label}.

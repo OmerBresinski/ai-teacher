@@ -6,6 +6,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "@tj/slides/templates";
+import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
 
@@ -587,5 +588,6 @@ export function wordsOf(raw: S): string {
   for (const c of (Array.isArray(s.columns) ? s.columns : []) as S[])
     parts.push(str(c.label), str(c.text));
   for (const c of (Array.isArray(s.sequence) ? s.sequence : []) as S[]) parts.push(str(c.caption));
+  parts.push(...activityWords(s));
   return parts.filter(Boolean).join("\n");
 }
