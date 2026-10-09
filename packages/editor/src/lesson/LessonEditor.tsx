@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
+import { SaveFailedBar } from "../kit/SaveFailedBar";
 import { isFitStale } from "../layout/fit-plan";
 import { createMeasurer } from "../layout/measure";
 import { rethemeFromReducer } from "../layout/retheme";
@@ -533,6 +534,7 @@ export function LessonEditor({
                             autosave={autosave}
                             worksheetsSlot={worksheetsSlot}
                           />
+                          <SaveFailedBar autosave={autosave} />
                           {mobile && companion ? (
                             <aside data-editor-companion="mobile">{companion}</aside>
                           ) : null}

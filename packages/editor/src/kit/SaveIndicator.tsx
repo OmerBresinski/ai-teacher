@@ -1,5 +1,10 @@
 import { cn } from "@tj/ui";
-import { type SaveState, type SaveStateSource, useSaveState } from "../model/use-autosave";
+import {
+  SAVE_RETRY_LABEL,
+  type SaveState,
+  type SaveStateSource,
+  useSaveState,
+} from "../model/use-autosave";
 
 /*
  * The save indicator both editors' top bars show (TeachDeck `WorksheetTopBar` "Saving / Saved"
@@ -23,6 +28,7 @@ const SAVE_LABELS: Record<SaveState, string> = {
 export function SaveIndicator({ autosave }: { autosave: SaveStateSource }) {
   const state = useSaveState(autosave);
   const failed = state === "failed";
+  const retry = autosave.flush;
   return (
     <span
       aria-live="polite"
@@ -41,6 +47,16 @@ export function SaveIndicator({ autosave }: { autosave: SaveStateSource }) {
         )}
       />
       {SAVE_LABELS[state]}
+      {failed && retry ? (
+        <button
+          type="button"
+          data-save-retry=""
+          onClick={() => void retry()}
+          className="ml-1 rounded-sm font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {SAVE_RETRY_LABEL}
+        </button>
+      ) : null}
     </span>
   );
 }

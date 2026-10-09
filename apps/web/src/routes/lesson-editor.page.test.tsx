@@ -12,16 +12,20 @@ const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let lessonId = "demo-water-cycle";
 const navigate = mock();
+/** The route's search, `?export=1` when a guest comes back from signing in on Export. */
+let search: Record<string, unknown> = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
   Link: ({ children, ...props }: { children: ReactNode }) => <a {...props}>{children}</a>,
   useNavigate: () => navigate,
   useParams: () => ({ lessonId }),
+  useSearch: () => search,
 }));
 
 const actualUi = await import("@tj/ui");
-const toastSpy = mock();
+// `toast.error` and `toast.dismiss` too, so code that calls them never meets a bare spy.
+const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 const { LessonEditorPage } = await import("./lesson-editor.page");
@@ -29,6 +33,7 @@ const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNC
   await import("@/components/generating-lesson");
 const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
+const { SIGN_IN_TO_EDIT, SIGN_IN_TO_EXPORT } = await import("@/components/sign-in/sign-in-copy");
 
 const JOB_ID = "01a06a15-1849-7000-ac6a-c07e27fe308b";
 const WORKSPACE_ID = "01a06a15-1849-7000-ac6a-c07e27fe3000";
@@ -84,6 +89,13 @@ const documentReads = () =>
   fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/documents/demo-water-cycle")
     .length;
 
+// Both describes share the module mocks and the fake transport: restore them once, after the file.
+afterAll(() => {
+  mock.restore();
+  restoreFetch();
+  globalThis.EventSource = originalEventSource;
+});
+
 describe("LessonEditorPage", () => {
   beforeEach(async () => {
     lessonId = "demo-water-cycle";
@@ -91,11 +103,6 @@ describe("LessonEditorPage", () => {
     toastSpy.mockReset();
     cleanup();
     fakeApi.reset();
-    globalThis.EventSource = originalEventSource;
-  });
-  afterAll(() => {
-    mock.restore();
-    restoreFetch();
     globalThis.EventSource = originalEventSource;
   });
 
@@ -792,5 +799,136 @@ describe("LessonEditorPage", () => {
       await waitFor(() => expect(toastSpy).toHaveBeenCalled());
       expect(toastSpy.mock.calls.at(-1)?.[0]).toBe("Regenerated slide 3");
     });
+  });
+});
+
+// TEACH-245: a signed-out visitor's anonymous session (`/me` with `isAnonymous: true`).
+describe("LessonEditorPage, signed out (anonymous session)", () => {
+  const ANONYMOUS_ME = {
+    user: { id: "anon-1", email: "temp@anon-1.com", name: "Anonymous", isAnonymous: true },
+    workspaceId: WORKSPACE_ID,
+  };
+  const TEACHER_ME = {
+    user: { id: "teacher-1", email: "ada@example.com", name: "Ada", isAnonymous: false },
+    workspaceId: WORKSPACE_ID,
+  };
+  const writes = () =>
+    fakeApi.requests.filter((r) => r.method !== "GET" && r.path !== "/me").map((r) => r.path);
+  function renderAs(me: typeof ANONYMOUS_ME) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["me"], me);
+    return renderPage(queryClient);
+  }
+
+  beforeEach(() => {
+    lessonId = "demo-water-cycle";
+    navigate.mockReset();
+    cleanup();
+    fakeApi.reset();
+    localStorage.clear();
+    globalThis.EventSource = originalEventSource;
+  });
+
+  it("row 1: generating shows the generating view with the sign-in action and no Export", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderAs(ANONYMOUS_ME);
+    const banner = await screen.findByTestId("generating-shell");
+    expect(within(banner).getByRole("button", { name: SIGN_IN_TO_EDIT })).toBeVisible();
+    // Export is the sign-in sheet's door, never the export menu (ruling 109).
+    expect(within(banner).getByRole("button", { name: "Export" })).toHaveAttribute(
+      "data-sign-in-to-export",
+    );
+    expect(screen.queryByRole("button", { name: /Worksheet/ })).toBeNull();
+  });
+
+  it("back from signing in on Export: the export dialog is open and the flag leaves the URL", async () => {
+    search = { export: "1" };
+    try {
+      renderAs(TEACHER_ME);
+      expect(await screen.findByRole("dialog", { name: "Export" })).toBeVisible();
+      await waitFor(() =>
+        expect(navigate).toHaveBeenCalledWith(
+          expect.objectContaining({ to: "/l/$lessonId", search: {}, replace: true }),
+        ),
+      );
+    } finally {
+      search = {};
+    }
+  });
+
+  it("Export opens the sign-in sheet for export, and nothing is written (ruling 127)", async () => {
+    renderAs(ANONYMOUS_ME);
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    expect(await screen.findByRole("dialog", { name: SIGN_IN_TO_EXPORT })).toBeVisible();
+    expect(writes()).toEqual([]);
+  });
+
+  it("row 2: ready is read-only; paging and Present work and nothing is written", async () => {
+    renderAs(ANONYMOUS_ME);
+    const viewer = await waitFor(() => {
+      const el = document.querySelector("[data-lesson-viewer]");
+      if (!el) throw new Error("no viewer yet");
+      return el as HTMLElement;
+    });
+    expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+    expect(screen.queryByRole("listbox", { name: "Slides" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute(
+      "data-sign-in-to-export",
+    );
+    expect(screen.queryByRole("button", { name: "Make a copy" })).toBeNull();
+    expect(within(viewer).getByText(/^1 \/ \d+$/)).toBeVisible();
+    fireEvent.click(within(viewer).getByRole("button", { name: "Next" }));
+    fireEvent.click(within(viewer).getByRole("button", { name: "Present" }));
+    const call = navigate.mock.calls.at(-1)?.[0] as { to: string; search: { from: string } };
+    expect(call.to).toBe("/l/$lessonId/present");
+    // Exit from present comes back to this page, never to `/view` with its Export.
+    expect(call.search.from).toBe("edit");
+    await wait(50);
+    expect(writes()).toEqual([]);
+  });
+
+  it("row 3: the action and a double-click on the slide open the sign-in sheet over the lesson", async () => {
+    renderAs(ANONYMOUS_ME);
+    fireEvent.click(await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }));
+    const sheet = await screen.findByRole("dialog", { name: SIGN_IN_TO_EDIT });
+    expect(within(sheet).getByRole("button", { name: "Continue with Google" })).toBeVisible();
+    expect(within(sheet).getByLabelText("Email address")).toBeVisible();
+    // The lesson stays mounted behind it, and its topic is kept for a declined claim.
+    expect(document.querySelector("[data-lesson-viewer]")).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem("tj:preview-lesson") ?? "{}")).toMatchObject({
+      lessonId: "demo-water-cycle",
+      topic: "The water cycle",
+    });
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const stage = document.querySelector("[data-lesson-viewer] main [data-slide-id]");
+    if (!stage) throw new Error("no slide on the stage");
+    fireEvent.doubleClick(stage);
+    expect(await screen.findByRole("dialog", { name: SIGN_IN_TO_EDIT })).toBeVisible();
+  });
+
+  it("row 7: no worksheet, facts or regenerate entry points and no api calls for them", async () => {
+    renderAs(ANONYMOUS_ME);
+    await screen.findByRole("button", { name: SIGN_IN_TO_EDIT });
+    for (const name of [/Worksheet/, /Facts/i, /Regenerate/i, "Theme"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    await wait(50);
+    expect(writes()).toEqual([]);
+  });
+
+  it("row 8: a signed-in teacher gets the editor, Export and no sign-in action", async () => {
+    localStorage.setItem(
+      "tj:preview-lesson",
+      JSON.stringify({ lessonId: "demo-water-cycle", topic: "The water cycle", at: Date.now() }),
+    );
+    renderAs(TEACHER_ME);
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: SIGN_IN_TO_EDIT })).toBeNull();
+    // The lesson opened for its owner: the claim went through, nothing is left to offer again.
+    await waitFor(() => expect(localStorage.getItem("tj:preview-lesson")).toBeNull());
   });
 });

@@ -1,8 +1,17 @@
 /**
- * Claiming a signed-out lesson on sign-in (TEACH-224, rulings 109 and 112). The anonymous user's
- * Workspace is handed to the new account by changing `workspaces.owner_user_id`; no row moves, so
- * lesson ids, `/l/<id>` URLs and storage keys (`<workspaceId>/…`, checked by `GET /files/*`) stay
- * valid. `requireSession` resolves the Workspace by owner, so the next request sees the lesson.
+ * Claiming a signed-out lesson on sign-in (TEACH-224, TEACH-245; rulings 109 and 127). The lesson
+ * always goes into the account that signs in, new or existing, and keeps its link (ruling 127
+ * superseded 112, which left it behind for an existing account):
+ * - **Hand over** when the account's own Workspace is empty: the anonymous Workspace is given to
+ *   it by changing `workspaces.owner_user_id`; no row moves, so lesson ids, `/l/<id>` URLs and
+ *   storage keys (`<workspaceId>/…`, checked by `GET /files/*`) stay valid.
+ * - **Move** when the account already has lessons or sources (its own lessons are untouched): the
+ *   anonymous Workspace's `documents`, `sources` and `job_events` rows are re-pointed at the
+ *   account's Workspace, its `<workspaceId>/…` objects (the lesson's `images/`) are copied under
+ *   the account's prefix, and every `/files/<anonymous id>/` URL in a body or cover is rewritten.
+ *   Document ids, and so `/l/<id>` links, are kept. The originals stay under the emptied anonymous
+ *   Workspace until `auth.anonymous-cleanup` deletes them with it.
+ * `requireSession` resolves the Workspace by owner, so the next request sees the lesson.
  *
  * Two entry points, both of which log and never throw into the sign-in:
  * - `claimOnLink` — the anonymous plugin's `onLinkAccount`, when the anonymous cookie is on the
@@ -22,6 +31,7 @@
  */
 import { createHmac } from "node:crypto";
 import type { DbHandle } from "@tj/db";
+import type { ReadableStorageAdapter } from "@tj/domain";
 import { newId, safeError } from "@tj/domain";
 import { getSessionFromCtx } from "better-auth/api";
 import type { Logger } from "../logger";
@@ -34,14 +44,27 @@ type EndpointContext = Parameters<typeof getSessionFromCtx>[0];
 type ClaimLogger = Pick<Logger, "info" | "error">;
 type ClaimIds = { anonymousUserId: string; userId: string };
 
-export type ClaimResult = "claimed" | "declined-existing" | "nothing-to-claim";
+/**
+ * `claimed`: the Workspace was handed over; `moved`: its lessons were moved into the account's
+ * own Workspace; `declined-existing`: only from the email-keyed pending claim, which never reaches
+ * an existing account (see `claimPending`); `nothing-to-claim`: see `claimAnonymousWorkspace`.
+ */
+export type ClaimResult = "claimed" | "moved" | "declined-existing" | "nothing-to-claim";
+/** The object storage a move copies pictures through (`GET /files/*`'s adapter). */
+export type ClaimStorage = Pick<ReadableStorageAdapter, "get" | "put" | "list" | "delete">;
 /** Which entry point reached the claim; logged beside the result. */
 export type ClaimVia = "link" | "pending";
 
-/** An account older than this is "existing" and never claims (ruling 112). */
-export const NEW_ACCOUNT_MINUTES = 10;
 /** How long a pending claim written at magic-link send time stays usable. */
 export const PENDING_CLAIM_TTL_MINUTES = 60;
+/**
+ * The pending claim (keyed by email alone, so anyone can point one at any address) only hands a
+ * Workspace to an account created this recently with nothing in it; it never moves lessons into an
+ * existing account's library. Only the same browser's guest session can do that (`claimOnLink`).
+ */
+export const NEW_ACCOUNT_MINUTES = 10;
+/** How a claim was proven: the guest's own session cookie, or only an email-keyed pending row. */
+type ClaimProof = { via: "link"; storage?: ClaimStorage; copied: string[] } | { via: "pending" };
 export const PENDING_CLAIM_PREFIX = "claim:";
 
 /**
@@ -58,22 +81,40 @@ export function pendingClaimIdentifier(secret: string, email: string): string {
 }
 
 /**
- * Hand `anonymousUserId`'s Workspace to `userId` in one transaction (see `handOver`):
+ * Give `anonymousUserId`'s lessons to `userId` in one transaction (see `handOver`):
  * - `nothing-to-claim` when the anonymous user owns no Workspace (already claimed, or deleted by
- *   the cleanup job), is not anonymous, or the target is missing, anonymous or the same user;
- * - `declined-existing` when the target was created more than `NEW_ACCOUNT_MINUTES` ago or its
- *   own Workspace holds any `documents` or `sources` row, soft-deleted ones included (ruling 112);
- * - otherwise `claimed`.
+ *   the cleanup job), is not anonymous, or the target is missing, anonymous or the same user, or
+ *   (for a move) the anonymous Workspace holds nothing;
+ * - `claimed` when the target's own Workspace held no `documents` or `sources` row (soft-deleted
+ *   ones included) and the anonymous Workspace was handed over whole;
+ * - `moved` when the target's Workspace already held content, so the rows moved into it.
+ *
+ * A move that cannot copy a picture throws, and the transaction rolls back: the lesson stays where
+ * it was and the web app says "We couldn't move this lesson" (ruling 127).
  */
-export function claimAnonymousWorkspace(db: Sql, ids: ClaimIds): Promise<ClaimResult> {
+export function claimAnonymousWorkspace(
+  db: Sql,
+  ids: ClaimIds,
+  storage?: ClaimStorage,
+): Promise<ClaimResult> {
   if (ids.anonymousUserId === ids.userId) return Promise.resolve("nothing-to-claim");
-  return db.sql.begin((tx) => handOver(tx, ids));
+  const proof: ClaimProof = { via: "link", storage, copied: [] };
+  return db.sql
+    .begin((tx) => handOver(tx, ids, proof))
+    .catch(async (error: unknown) => {
+      // The rows rolled back: remove the pictures already copied under the account's prefix, so a
+      // failed move leaves no orphans there. Best effort; the original error is what matters.
+      if (storage) {
+        for (const key of proof.copied) await storage.delete(key).catch(() => {});
+      }
+      throw error;
+    });
 }
 
 /**
  * The claim inside a caller's transaction. On `claimed` the target's empty Workspace is deleted
- * (the owner index is unique), the anonymous one takes its place, and the anonymous user's
- * sessions are deleted.
+ * (the owner index is unique) and the anonymous one takes its place; on `moved` the rows move into
+ * the target's Workspace (`moveInto`). Either way the anonymous user's sessions are deleted.
  *
  * Lock order is the anonymous Workspace, then the target's. Locking the anonymous Workspace first
  * makes a racing claim for the same visitor, or the cleanup job's cascade, wait and then see it
@@ -81,7 +122,11 @@ export function claimAnonymousWorkspace(db: Sql, ids: ClaimIds): Promise<ClaimRe
  * key-share lock on that row for its foreign key, so once the lock is held no insert can land, and
  * the check (a new statement, so a new snapshot) sees any insert that committed while it waited.
  */
-async function handOver(tx: Tx, { anonymousUserId, userId }: ClaimIds): Promise<ClaimResult> {
+async function handOver(
+  tx: Tx,
+  { anonymousUserId, userId }: ClaimIds,
+  proof: ClaimProof,
+): Promise<ClaimResult> {
   const [source] = await tx<{ id: string }[]>`
     select w.id from workspaces w
     join users u on u.id = w.owner_user_id
@@ -94,25 +139,74 @@ async function handOver(tx: Tx, { anonymousUserId, userId }: ClaimIds): Promise<
            created_at > now() - make_interval(mins => ${NEW_ACCOUNT_MINUTES}) as "isNew"
     from users where id = ${userId}`;
   if (!target || target.anonymous) return "nothing-to-claim";
-  if (!target.isNew) return "declined-existing";
+  if (proof.via === "pending" && !target.isNew) return "declined-existing";
 
   const [own] = await tx<{ id: string }[]>`
     select id from workspaces where owner_user_id = ${userId} for update`;
-  if (own) {
-    const [content] = await tx<{ used: boolean }[]>`
-      select exists (select 1 from documents where workspace_id = ${own.id})
-          or exists (select 1 from sources where workspace_id = ${own.id}) as used`;
-    if (content?.used) return "declined-existing";
-    await tx`delete from workspaces where id = ${own.id}`;
+  let result: ClaimResult = "claimed";
+  const [content] = own
+    ? await tx<{ used: boolean }[]>`
+        select exists (select 1 from documents where workspace_id = ${own.id})
+            or exists (select 1 from sources where workspace_id = ${own.id}) as used`
+    : [];
+  if (own && content?.used) {
+    if (proof.via === "pending") return "declined-existing";
+    if (!(await moveInto(tx, source.id, own.id, proof))) return "nothing-to-claim";
+    result = "moved";
+  } else {
+    if (own) await tx`delete from workspaces where id = ${own.id}`;
+    await tx`
+      update workspaces set owner_user_id = ${userId}, updated_at = now()
+      where id = ${source.id}`;
   }
-  await tx`
-    update workspaces set owner_user_id = ${userId}, updated_at = now()
-    where id = ${source.id}`;
   // Sign the anonymous user out everywhere. An open `/events` stream is bound to the Workspace id
   // it connected with and re-checks only its session, and a live anonymous session would heal
   // itself a fresh Workspace (with a fresh lesson allowance) on its next request.
   await tx`delete from sessions where user_id = ${anonymousUserId}`;
-  return "claimed";
+  return result;
+}
+
+/**
+ * Move every row of Workspace `from` into Workspace `to` (ruling 127, an account that already has
+ * lessons). Pictures first: each `<from>/…` object is copied to `<to>/…` (a re-run overwrites the
+ * same keys, so a retried claim is safe), then the rows are re-pointed and the `/files/<from>/`
+ * URLs in bodies, covers and source keys rewritten, inside the caller's transaction. Returns false
+ * when `from` holds no document, so an emptied Workspace is never "moved" twice.
+ */
+async function moveInto(
+  tx: Tx,
+  from: string,
+  to: string,
+  { storage, copied }: { storage?: ClaimStorage; copied: string[] },
+): Promise<boolean> {
+  const [held] = await tx<{ any: boolean }[]>`
+    select exists (select 1 from documents where workspace_id = ${from}) as any`;
+  if (!held?.any) return false;
+  if (storage) {
+    const keys: string[] = [];
+    for await (const object of storage.list(`${from}/`)) keys.push(object.key);
+    for (const key of keys) {
+      const object = await storage.get(key);
+      const copy = `${to}/${key.slice(from.length + 1)}`;
+      copied.push(copy);
+      await storage.put(copy, object.body, { contentType: object.contentType });
+    }
+  }
+  const fromUrl = `/files/${from}/`;
+  const toUrl = `/files/${to}/`;
+  await tx`
+    update documents set
+      workspace_id = ${to},
+      body = replace(body::text, ${fromUrl}, ${toUrl})::jsonb,
+      cover = replace(cover::text, ${fromUrl}, ${toUrl})::jsonb
+    where workspace_id = ${from}`;
+  await tx`
+    update sources set
+      workspace_id = ${to},
+      storage_key = ${`${to}/`} || substr(storage_key, ${from.length + 2})
+    where workspace_id = ${from}`;
+  await tx`update job_events set workspace_id = ${to} where workspace_id = ${from}`;
+  return true;
 }
 
 /**
@@ -120,9 +214,14 @@ async function handOver(tx: Tx, { anonymousUserId, userId }: ClaimIds): Promise<
  * the result and both ids (never an email, ADR 0015) and swallows any failure, after the
  * transaction has rolled back: a claim that cannot run must not cost the teacher the sign-in.
  */
-export async function claimOnLink(db: Sql, logger: ClaimLogger, ids: ClaimIds): Promise<void> {
+export async function claimOnLink(
+  db: Sql,
+  logger: ClaimLogger,
+  ids: ClaimIds,
+  storage?: ClaimStorage,
+): Promise<void> {
   try {
-    const claim = await claimAnonymousWorkspace(db, ids);
+    const claim = await claimAnonymousWorkspace(db, ids, storage);
     logger.info({ claim, via: "link", ...ids }, "anonymous workspace claim");
   } catch (error) {
     logger.error(
@@ -209,8 +308,10 @@ async function browserHasAnonymousLesson(
  * Taking the row and claiming are one transaction, so a claim that fails leaves the row for the
  * next sign-in within its hour; deleting it consumes it, so two sessions cannot both claim, and
  * the newest live row wins should two sends have raced. When the browser has its own anonymous
- * lesson the row is dropped as `superseded` and `onLinkAccount` claims instead. Logs ids only and
- * never throws.
+ * lesson the row is dropped as `superseded` and `onLinkAccount` claims instead. The row proves only
+ * an email, so it hands over to a brand-new, empty account and never moves lessons into an existing
+ * one (`declined-existing`): otherwise any visitor could push a lesson into anyone's library. Logs
+ * ids only and never throws.
  */
 export async function claimPending(
   db: Sql,
@@ -237,7 +338,7 @@ export async function claimPending(
       if (!taken) return undefined;
       anonymousUserId = taken.value;
       if (sameBrowser) return "superseded" as const;
-      return handOver(tx, { anonymousUserId: taken.value, userId });
+      return handOver(tx, { anonymousUserId: taken.value, userId }, { via: "pending" });
     });
     if (claim) {
       logger.info({ claim, via: "pending", anonymousUserId, userId }, "anonymous workspace claim");

@@ -72,13 +72,25 @@ export const lessonPrintSearchSchema = z.object({
 const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
   pageTitle(loaderData?.title ?? "Document");
 
+/**
+ * `/l/$lessonId?export=1` opens with the export dialog open: where a guest who pressed Export lands
+ * after signing in (TEACH-245), since which export they wanted is not known.
+ */
+export const lessonEditorSearchSchema = z.object({ export: flag("1") });
+
 /** The lesson editor (TEACH-103). */
 export const lessonEditorRoute = createRoute({
   getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId",
+  validateSearch: (search) => lessonEditorSearchSchema.parse(search),
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),
+  // A signed-out lesson whose move into the account failed 404s here (TEACH-245, ruling 127).
+  notFoundComponent: lazyRouteComponent(
+    () => import("@/components/sign-in/claim-declined"),
+    "LessonNotFoundPage",
+  ),
 });
 
 /** The read-only viewer (TEACH-100), moved here when the editor took `/l/$lessonId`. */

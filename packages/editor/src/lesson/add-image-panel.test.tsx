@@ -19,7 +19,10 @@ import { catcher, pointer, renderEditor, seededLesson } from "./test-harness";
  * provenance. Esc closes; without a client the Photos tab says so.
  */
 
-const toastSpy = mock((..._args: unknown[]) => {});
+const toastSpy = Object.assign(
+  mock((..._args: unknown[]) => {}),
+  { error: mock(), dismiss: mock() },
+);
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 

@@ -69,6 +69,8 @@ export type ExportControlProps = {
   imageOrigin?: string;
   /** Open the print route (a same-origin path) in a new tab; the app owns `window.open`. */
   onOpenPrint: (href: string) => void;
+  /** Mount with the dialog open: a guest who pressed Export comes back from sign-in to it. */
+  defaultOpen?: boolean;
 };
 
 const ACTION_LABEL: Record<ExportFormat, string> = {
@@ -130,6 +132,7 @@ export function ExportControl({
   currentSlideId,
   imageOrigin,
   onOpenPrint,
+  defaultOpen = false,
 }: ExportControlProps) {
   const worksheet = isWorksheet(document);
   const lesson = worksheet ? null : document;
@@ -143,7 +146,7 @@ export function ExportControl({
     lesson && currentSlideId ? lesson.slides.findIndex((s) => s.id === currentSlideId) : -1;
   const currentNumber = currentIndex >= 0 ? currentIndex + 1 : null;
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [format, setFormat] = useState<ExportFormat>("pdf");
   // ALL_SLIDES as a real value, not a placeholder: "All" IS the current setting.
   const [slides, setSlides] = useState(ALL_SLIDES);

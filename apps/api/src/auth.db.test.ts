@@ -848,15 +848,16 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
         [
           { claim: "claimed", via: "pending" },
-          { claim: "declined-existing", via: "link" },
+          { claim: "nothing-to-claim", via: "link" },
         ],
       );
       // The phone's empty anonymous Workspace stays with it for the cleanup job.
       expect(await workspacesFor(phoneUser)).toHaveLength(1);
     });
 
-    test("row 4: an existing account signing in from the visitor's browser declines", async () => {
+    test("row 4 (ruling 127): an existing account signing in from the visitor's browser takes the lesson", async () => {
       const e = await createTestUserWithWorkspace(db.unsafeDb, { email: "existing@example.test" });
+      await db.sql`update users set created_at = now() - interval '1 day' where id = ${e.userId}`;
       const own = await createDocument(
         forWorkspace(db.unsafeDb, e.workspaceId),
         "lesson",
@@ -871,20 +872,18 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       const cookie = await verify(link, a.cookie);
       expect((await meBody(claimApp, cookie)).workspaceId).toBe(e.workspaceId);
       expect([...(await workspacesFor(e.userId))].map((w) => w.id)).toEqual([e.workspaceId]);
-      expect([...(await workspacesFor(a.userId))].map((w) => w.id)).toEqual([a.workspaceId]);
       expect((await get(cookie, `/documents/${own.id}`)).status).toBe(200);
-      expect((await get(cookie, `/documents/${a.lessonId}`)).status).toBe(404);
-      // Nothing was handed over, so the anonymous session still works.
-      expect((await get(a.cookie, "/me")).status).toBe(200);
+      // The signed-out lesson is in the account under the same id, so `/l/<id>` keeps working.
+      expect((await get(cookie, `/documents/${a.lessonId}`)).status).toBe(200);
       expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
         [
           { claim: "superseded", via: "pending" },
-          { claim: "declined-existing", via: "link" },
+          { claim: "moved", via: "link" },
         ],
       );
     });
 
-    test("row 4, another device: the pending row declines for an existing account", async () => {
+    test("row 4, another device: the email-keyed pending row never reaches an existing account", async () => {
       const e = await createTestUserWithWorkspace(db.unsafeDb, { email: "old@example.test" });
       await db.sql`update users set created_at = now() - interval '1 day' where id = ${e.userId}`;
       const a = await visitorWithLesson();

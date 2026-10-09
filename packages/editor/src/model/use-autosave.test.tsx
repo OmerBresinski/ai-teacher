@@ -5,7 +5,6 @@ import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
-  SAVE_FAILED_MESSAGE,
   SaveRefusedError,
   useAutosave,
   useSaveState,
@@ -17,13 +16,20 @@ import {
  * option: the tests run it at 20 ms and wait on the state machine instead of advancing a clock.
  */
 
-const toastSpy = mock((..._args: unknown[]) => {});
+const toastErrorSpy = mock((..._args: unknown[]) => {});
+const toastDismissSpy = mock((..._args: unknown[]) => {});
+const toastSpy = Object.assign(
+  mock((..._args: unknown[]) => {}),
+  { error: toastErrorSpy, dismiss: toastDismissSpy },
+);
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 afterEach(() => {
   cleanup();
   toastSpy.mockReset();
+  toastErrorSpy.mockReset();
+  toastDismissSpy.mockReset();
 });
 afterAll(() => mock.restore());
 
@@ -102,27 +108,41 @@ describe("useAutosave", () => {
     expect(result.current.settled).toBe(third);
   });
 
-  test("row 12: a rejected write says Not saved, toasts once, and keeps the unload guard", async () => {
-    const onSave = mock((_l: Lesson) => Promise.reject(new Error("quota")));
+  test("row 12: a rejected write says Not saved, raises the bar, keeps the unload guard; Retry saves", async () => {
+    let fail = true;
+    const onSave = mock((_l: Lesson) =>
+      fail ? Promise.reject(new Error("quota")) : Promise.resolve(),
+    );
     const { result } = renderHook(() => {
       const autosave = useAutosave(onSave, { delay: 10 });
       return { autosave, state: useSaveState(autosave) };
     });
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
-    expect(toastSpy).toHaveBeenCalledTimes(1);
-    expect(toastSpy.mock.calls[0]?.[0]).toBe(SAVE_FAILED_MESSAGE);
+    expect(result.current.autosave.getUnreportedFailure()).toBe(true);
+    expect(result.current.autosave.getLastSavedAt()).toBeNull();
+    // Nothing transient: the bar (SaveFailedBar) is the message, not a toast.
+    expect(toastSpy).not.toHaveBeenCalled();
+    expect(toastErrorSpy).not.toHaveBeenCalled();
 
-    // A second failure is not a second toast.
-    act(() => result.current.autosave.onChange(newLesson("B")));
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(result.current.state).toBe("failed"));
-    expect(toastSpy).toHaveBeenCalledTimes(1);
+    // Three failures in a row are still one failing state, one bar.
+    for (const title of ["B", "C"]) {
+      act(() => result.current.autosave.onChange(newLesson(title)));
+      await waitFor(() => expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe(title));
+      await waitFor(() => expect(result.current.state).toBe("failed"));
+    }
+    expect(result.current.autosave.getUnreportedFailure()).toBe(true);
 
-    // Unsaved work: `beforeunload` is answered (preventDefault) so the browser asks.
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
+
+    fail = false;
+    await act(() => result.current.autosave.flush());
+    await waitFor(() => expect(result.current.state).toBe("saved"));
+    expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe("C");
+    expect(result.current.autosave.getUnreportedFailure()).toBe(false);
+    expect(result.current.autosave.getLastSavedAt()).toEqual(expect.any(Number));
   });
 
   test("a SaveRefusedError says Not saved without the generic toast", async () => {
@@ -134,6 +154,7 @@ describe("useAutosave", () => {
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
     expect(toastSpy).not.toHaveBeenCalled();
+    expect(result.current.autosave.getUnreportedFailure()).toBe(false);
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
