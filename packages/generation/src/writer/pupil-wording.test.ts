@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BudgetExceeded } from "../types";
-import type { Brief } from "./fixes";
+import { writerBundle } from "./bundle";
+import { type Brief, fillTemplate, pupilWordLimit } from "./fixes";
 import { recordedHeld, recordedVisuals, replayServices } from "./replay-fixture";
 import type { ChatReq, WriterServices } from "./services";
 import { PUPIL_WORDING_DEADLINE_MS, runWriter } from "./stage";
@@ -92,5 +93,36 @@ describe("pupil wording", () => {
     });
     await expect(r.out).rejects.toBeInstanceOf(BudgetExceeded);
     expect(r.events).not.toContain("editable");
+  });
+});
+
+describe("pupilWordLimit (WRITER-FIX-PLAN fault 1)", () => {
+  // A reading target per stage, capped by the slide's room: 2 / 3 / 4 objectives.
+  const table: [Brief["keyStage"], number[]][] = [
+    ["ks1", [8, 8, 7]],
+    ["ks2", [12, 12, 9]],
+    ["ks3", [15, 15, 10]],
+    ["ks4", [15, 15, 10]],
+    ["ks5", [15, 15, 10]],
+  ];
+  for (const [stage, limits] of table)
+    test(`${stage}: ${limits.join(" / ")}`, () => {
+      expect([2, 3, 4].map((n) => pupilWordLimit(stage, n))).toEqual(limits);
+    });
+  test("an objective count with no measured room takes the reading target", () => {
+    expect(pupilWordLimit("ks1", 1)).toBe(8);
+    expect(pupilWordLimit("ks2", 5)).toBe(12);
+    expect(pupilWordLimit("ks4", 1)).toBe(15);
+  });
+  test("the user turn prints the capped limit", () => {
+    const brief = { yearGroup: "Year 1", keyStage: "ks1", subject: "Science" } as Brief;
+    const u = fillTemplate(writerBundle().pupilObjectivesUser, brief, {
+      objectives: [
+        { teacher: "a", pupil: "" },
+        { teacher: "b", pupil: "" },
+      ],
+      maxWords: pupilWordLimit("ks1", 2),
+    });
+    expect(u).toContain("Word limit per line: 8\n");
   });
 });

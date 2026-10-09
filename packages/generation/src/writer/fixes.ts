@@ -463,12 +463,25 @@ export function applyRepair(
   }
 }
 
-/** The pupil line's word limit: the objectives slide's measured room for this many objectives. */
+/**
+ * A pupil line's reading target by stage (WRITER-FIX-PLAN fault 1): the slide's room is a fit
+ * ceiling, and passed as the limit it was filled (20 words at KS1 for two objectives).
+ */
+export const PUPIL_READ_WORDS: Record<Stage, number> = {
+  ks1: 8,
+  ks2: 12,
+  ks3: 15,
+  ks4: 15,
+  ks5: 15,
+};
+
+/** The pupil line's word limit: the age's reading target, never more than the slide's room. */
 export function pupilWordLimit(stage: Stage, n: number): number {
+  const read = PUPIL_READ_WORDS[stage];
   const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
   const chars = room?.[`${n} objectives`];
-  if (chars) return Math.max(6, Math.floor(chars / 6));
-  return stage === "ks1" ? 8 : stage === "ks2" ? 10 : 12;
+  const fit = chars ? Math.max(6, Math.floor(chars / 6)) : read;
+  return Math.min(read, fit);
 }
 
 export type FillExtras = {
