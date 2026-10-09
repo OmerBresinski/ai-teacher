@@ -180,6 +180,13 @@ export type WriterRun = {
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
   /**
+   * The final parse opened a slide again from other bytes than the stream did: its earlier asks
+   * are void (the caller cancels their pictures); its asks follow through `onAsks`.
+   */
+  onReopen?: (index: number) => void;
+  /** Aborted when the lesson fails: no diagram job starts another call after it. */
+  signal?: AbortSignal;
+  /**
    * The writer's `design` as soon as it is known: when it closes in the stream (before any slide),
    * else at the final parse, before the first slide opens.
    */
@@ -386,16 +393,32 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (slide) run.onSlide(i, slide);
   };
   /** Diagram jobs (TEACH-247, R2), started as each slide opens (C10) and awaited before editable. */
-  const diagramJobs: Promise<void>[] = [];
+  const diagramJobs = new Map<string, Promise<void>>();
+  /** Each slide's diagram jobs' stops, so a reopened slide cancels its old jobs. */
+  const diagramStops = new Map<number, AbortController[]>();
+  let jobSeq = 0;
+  /** Cancels a slide's diagram jobs and forgets what they drew. */
+  const cancelDiagrams = (i: number) => {
+    for (const c of diagramStops.get(i) ?? []) c.abort();
+    diagramStops.delete(i);
+    for (const k of [...diagramJobs.keys()]) if (k.startsWith(`${i}:`)) diagramJobs.delete(k);
+    for (const k of [...drawnDiagrams.keys()]) if (k.startsWith(`${i}:`)) drawnDiagrams.delete(k);
+  };
   const drawDiagramsOf = (i: number) => {
     if (!run.drawDiagrams) return;
-    const { callDrawer } = run.drawDiagrams;
+    const drawer = run.drawDiagrams.callDrawer;
     for (const a of asks.get(i) ?? []) {
       const s = plan.slides[i];
       if (a.type !== "diagram" || !s) continue;
       const slot = slotOf(String(s.template ?? ""));
       const box = slotBox(base.stage, slot);
       const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
+      const stop = new AbortController();
+      diagramStops.set(i, [...(diagramStops.get(i) ?? []), stop]);
+      /** Cancelled (its slide reopened) or the lesson failed: nothing more is drawn or kept. */
+      const cancelled = () => stop.signal.aborted || run.signal?.aborted === true;
+      const callDrawer: DrawerCall = (req) =>
+        cancelled() ? Promise.reject(new Error("diagram job cancelled")) : drawer(req);
       const job = nonFatal(
         async () => {
           // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
@@ -436,6 +459,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               ).out,
             (e) => log({ ...e, slide: i + 1 }),
           );
+          if (cancelled()) return undefined;
           if (r.ok) {
             const { src, aspect, alt } = r.drawing;
             drawnDiagrams.set(`${i}:${a.key}`, {
@@ -457,7 +481,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             : a;
         },
       ).then((a2) => {
-        if (!a2) return;
+        if (!a2 || cancelled()) return;
         return drawWriterDiagram(
           {
             key: a2.key,
@@ -484,6 +508,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             log: (e) => log({ ...e, slide: i + 1 }),
           },
         ).then((r) => {
+          if (cancelled()) return;
           drawnDiagrams.set(
             `${i}:${a.key}`,
             r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
@@ -496,7 +521,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // Awaited below (a fatal error still stops the lesson there); a stream that fails K3 first
       // must not leave the job's rejection unhandled.
       void Promise.allSettled([job]);
-      diagramJobs.push(job);
+      diagramJobs.set(`${i}:${a.key}:${++jobSeq}`, job);
     }
   };
   /** Each slide's raw JSON as it was opened, by index. */
@@ -630,11 +655,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   for (const [idx, raw] of written) {
     const was = opened.get(idx);
     if (was === JSON.stringify(raw)) continue;
-    if (was !== undefined) log({ ev: "stream-reopened", slide: idx + 1 });
+    if (was !== undefined) {
+      // Its asks and diagrams were started from other words: cancelled, then started afresh.
+      log({ ev: "stream-reopened", slide: idx + 1 });
+      cancelDiagrams(idx);
+      run.onReopen?.(idx);
+    }
     openSlide(idx, raw);
   }
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
-  await Promise.all(diagramJobs);
+  await Promise.all(diagramJobs.values());
   const n = plan.slides.length;
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();

@@ -198,6 +198,41 @@ describe("writer pictures: a teacher never sees a placeholder", () => {
     expect(els[0]?.source?.provider).toBe("pexels");
     expect(els[1]?.children?.[0]?.source?.id).toBe("p7");
     expect(els[2]?.source).toBeUndefined();
+    // Its slide opened again with other words: the photo is uncredited and its slot gone.
+    pictures.forget(2);
+    expect(pictures.sources().has("/files/ws/p7.jpg")).toBe(false);
+    expect(pictures.state(2, "picture").status).toBe("failed");
+  });
+
+  test("a reopened slide: a same-key ask with new words gets a new slot; a dropped ask is cancelled", async () => {
+    const seen: string[] = [];
+    let running: AbortSignal | undefined;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async (input) => {
+        const text = JSON.stringify(input);
+        seen.push(text);
+        if (text.includes("A pear")) {
+          // the dropped ask is still being directed when its slide reopens
+          running = (input as { signal?: AbortSignal }).signal;
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        return undefined;
+      },
+    });
+    pictures.start(2, ask({ key: "picture", shows: "A red apple", named: false }), slide);
+    pictures.start(2, ask({ key: "col.1", shows: "A pear", named: false }), slide);
+    await new Promise((r) => setTimeout(r, 5));
+    pictures.forget(2);
+    pictures.start(2, ask({ key: "picture", shows: "A green apple", named: false }), slide);
+    await pictures.settle(5_000);
+    expect(seen.filter((t) => t.includes("A green apple"))).toHaveLength(1);
+    expect(pictures.state(2, "col.1").status).toBe("failed");
+    expect(pictures.vetoed(2, "col.1")).toBeUndefined();
+    expect(running === undefined || running.aborted).toBe(true);
   });
 });
 

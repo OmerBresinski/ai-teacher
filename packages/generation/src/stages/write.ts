@@ -163,6 +163,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     },
   });
   let out: Awaited<ReturnType<typeof runWriter>>;
+  /** Aborted when the stage fails: the writer's diagram jobs start no further call. */
+  const failed = new AbortController();
+  /** The editable deck is saved: from here a failure keeps it (today's behaviour). */
+  let editableSaved = false;
   try {
     const services = aiWriterServices(deps);
     out = await runWriter({
@@ -180,6 +184,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       onSlide: (i, slide) => progressive.patch(i, slide),
+      // A slide the final parse opened from other words: its pictures start afresh.
+      onReopen: (i) => pictures?.forget(i),
+      signal: failed.signal,
       // C5: a lesson's picture sets share one look, from the writer's picture style.
       onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
       onAsks: (i, asks, slide) => {
@@ -202,6 +209,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         // Editable: every slide is laid out and done (rule (a): editable waits for the pictures);
         // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
         await progressive.close();
+        editableSaved = true;
         const { updatedAt } = await deps.persist(
           toLesson(credited(slides), "planned", allIn(slides, "done")),
         );
@@ -209,18 +217,23 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
     });
   } catch (error) {
-    // No streamed save lands after the failure, and pictures started off the stream stop spending.
+    // No streamed save lands after the failure; pictures and diagram jobs started off the stream
+    // stop spending, whatever the failure (K3, a budget stop, a cancel or any other throw).
+    failed.abort();
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
-    if (error instanceof WriterIncompleteError) {
-      // Nothing of the writer's output is saved: the slides the stream showed are rolled back to
-      // the plan. Its cost is saved, so the retry's budget counts it.
+    // Slides still `writing` are rolled back to the plan: the stream showed them, the lesson never
+    // ships them. Its cost is saved, so a retry's budget counts it.
+    const streamed = !editableSaved && progressive.patches().size > 0;
+    if (error instanceof WriterIncompleteError || streamed) {
       await deps.persist({
         ...lesson,
         ...(lesson.generation
           ? { generation: { ...lesson.generation, usage: deps.budget.totals() } }
           : {}),
       });
+    }
+    if (error instanceof WriterIncompleteError) {
       throw new StageFailure("generate", error.message, {
         cause: error,
         ...(error.deterministic ? { reason: "writer-length" as const } : {}),

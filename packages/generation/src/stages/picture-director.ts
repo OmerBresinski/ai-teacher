@@ -813,6 +813,12 @@ export interface WriterPictures {
    * `opts.look`.
    */
   lookForSets(look: LessonLook): void;
+  /**
+   * Cancels every slot of a slide (TEACH-110 part h): the final parse opened the slide again with
+   * other words, so its asks start afresh. A placement still running stops; a placed photo is
+   * uncredited; a key not asked again ends failed after `settle`, never a placeholder.
+   */
+  forget(index: number): void;
 }
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
@@ -849,7 +855,18 @@ export function createWriterPictures(opts: {
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
 }): WriterPictures {
-  type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  type Slot = {
+    state: WriterPictureState;
+    miss?: WriterPictureMiss;
+    done: Promise<void>;
+    /** Cancels this slot's own placement (`forget`: its slide was opened again). */
+    stop: AbortController;
+  };
+  /** The round's deps with the slot's own stop on the signal. */
+  const slotDeps = (slot: Slot): PipelineDeps => ({
+    ...deps,
+    signal: AbortSignal.any([deps.signal, slot.stop.signal]),
+  });
   type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
   // A second round (lostPic's single pictures after editable) gets a fresh stopper and batcher.
@@ -959,7 +976,7 @@ export function createWriterPictures(opts: {
       lesson: opts.lesson,
       country: opts.country,
       images: opts.images,
-      deps,
+      deps: slotDeps(slot),
       taken,
       ...(direct ? { direct } : {}),
       ...(bank ? { bank } : {}),
@@ -1082,7 +1099,10 @@ export function createWriterPictures(opts: {
         ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
         ...(maker.allow ? { allow: maker.allow } : {}),
         ...(maker.spent ? { spent: maker.spent } : {}),
-        signal: deps.signal,
+        signal: AbortSignal.any([
+          deps.signal,
+          ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
+        ]),
         log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
       },
       setLook,
@@ -1108,13 +1128,18 @@ export function createWriterPictures(opts: {
         reasked.add(k);
         heldPhotos.delete(k);
       }
-      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
+      const slot: Slot = {
+        state: { status: "pending" },
+        done: Promise.resolve(),
+        stop: new AbortController(),
+      };
       if (ask.set) {
         if (!opts.maker) {
           slots.set(k, {
             state: { status: "failed" },
             miss: "set-not-searched",
             done: Promise.resolve(),
+            stop: new AbortController(),
           });
           return;
         }
@@ -1180,6 +1205,21 @@ export function createWriterPictures(opts: {
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
+    forget(index) {
+      const prefix = `${index}:`;
+      for (const [k, slot] of slots) {
+        if (!k.startsWith(prefix)) continue;
+        // Its photo is no longer on any slide: uncredited, and a late answer is ignored.
+        if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
+        slot.state = { status: "failed" };
+        slot.miss = undefined;
+        slot.stop.abort();
+        slots.delete(k);
+        heldPhotos.delete(k);
+        reasked.delete(k);
+      }
+      for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
+    },
     lookForSets(look) {
       setLook = look;
     },

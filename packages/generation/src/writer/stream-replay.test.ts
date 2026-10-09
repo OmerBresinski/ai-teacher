@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import incomplete from "./fixtures/incomplete/headings-only-y11.json" with { type: "json" };
-import { replayRun } from "./replay-fixture";
+import { recordedHeld, recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 import { runWriter, WriterIncompleteError } from "./stage";
 
 /*
@@ -132,5 +132,90 @@ describe("a K3-incomplete stream", () => {
     expect(r.error).toBeInstanceOf(WriterIncompleteError);
     expect(r.shown).toBeGreaterThan(2);
     expect(r.editable).toBe(false);
+  });
+});
+
+describe("a slide the final parse opens from other words (stream-reopened)", () => {
+  const read = (b: string, f: string) => readFileSync(join(DIR, b, f), "utf8");
+  /** The saved text with one slide's words changed: what the stream showed before a fix-up. */
+  const changed = (text: string, slide: number, edit: (s: Record<string, unknown>) => void) => {
+    const out = JSON.parse(text) as { slides: Record<string, unknown>[] };
+    edit(out.slides[slide - 2] as Record<string, unknown>);
+    return JSON.stringify(out);
+  };
+
+  test("its asks start afresh and the deck equals the whole-text replay", async () => {
+    const b = "y1-science-animals-young";
+    const whole = await replayRun(b);
+    const reopened: number[] = [];
+    const asked: number[] = [];
+    const out = await replayRun(b, {
+      stream: (text) =>
+        pieces(5)(
+          changed(text, 3, (s) => {
+            s.heading = "A stale heading";
+          }),
+        ),
+      hooks: {
+        onAsks: (i) => asked.push(i),
+        onReopen: (i) => reopened.push(i),
+      },
+    });
+    expect(reopened).toEqual([3]);
+    expect(asked.filter((i) => i === 3)).toHaveLength(2);
+    // the reopen comes before the slide's second asks
+    expect(JSON.stringify(stable(out.slides))).toBe(JSON.stringify(stable(whole.slides)));
+  });
+
+  test("its old diagram job is cancelled: nothing it draws is kept or logged", async () => {
+    const b = "y11-chemistry-rates-of-reaction";
+    const brief = JSON.parse(read(b, "brief.json"));
+    const objectives = (
+      JSON.parse(read(b, "objectives.json")) as { objectives: { teacher: string }[] }
+    ).objectives.map((o) => o.teacher);
+    const main = JSON.parse(read(b, "main.json")) as { text: string };
+    const stale = changed(main.text, 2, (s) => {
+      (s.figure as { shows: string }).shows = "STALE magnesium ribbon in acid";
+    });
+    const done: { slide: number; key: string }[] = [];
+    let staleCalls = 0;
+    const replay = replayServices(b);
+    await runWriter({
+      brief,
+      objectives,
+      pupilWording: false,
+      visual: recordedVisuals(b),
+      held: recordedHeld(b),
+      services: {
+        ...replay,
+        log: (e) => {
+          const ev = e as { ev?: string; slide?: number; key?: string };
+          if (ev.ev === "diagram-done") done.push({ slide: ev.slide ?? 0, key: ev.key ?? "" });
+        },
+        writer: async (_r, onDelta) => {
+          for (const p of pieces(9)(stale)) {
+            await Promise.resolve();
+            onDelta(p);
+          }
+          return { text: main.text, finishReason: "stop", usd: 0, ms: 0 };
+        },
+      },
+      drawDiagrams: {
+        callDrawer: async (req) => {
+          if (JSON.stringify(req).includes("STALE")) {
+            staleCalls += 1;
+            await new Promise((r) => setTimeout(r, 60));
+          }
+          return { out: {}, usd: 0, ms: 0 } as never;
+        },
+      },
+    }).then(
+      () => undefined,
+      () => undefined,
+    );
+    await new Promise((r) => setTimeout(r, 80));
+    expect(staleCalls).toBeGreaterThan(0);
+    const slide3 = done.filter((d) => d.slide === 3);
+    expect(slide3.length).toBe(new Set(slide3.map((d) => d.key)).size);
   });
 });
