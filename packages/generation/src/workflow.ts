@@ -9,7 +9,7 @@ import { evaluate } from "./stages/evaluate";
 import { facts } from "./stages/facts";
 import { generate } from "./stages/generate";
 import { illustrate } from "./stages/illustrate";
-import { objectives, writerObjectives } from "./stages/objectives";
+import { checkedWriterObjectives, objectives } from "./stages/objectives";
 import {
   OBJECTIVES_FIRST_CHECKPOINT,
   OBJECTIVES_FIRST_ORDER,
@@ -228,7 +228,8 @@ export const objectivesFirstWorkflow = createWorkflow({
 
 /**
  * The writer planner (TEACH-110 part b, behind `AI_LESSON_PLANNER=writer`): the input check,
- * master's objectives step (the plan screen's checkpoint, stamped for the writer), then the
+ * master's objectives step (the plan screen's checkpoint, stamped for the writer; the check runs
+ * beside its call, C14), then the
  * lesson writer, which checks, repairs and writes notes itself.
  */
 export const writerWorkflow = createWorkflow({
@@ -237,8 +238,10 @@ export const writerWorkflow = createWorkflow({
   inputSchema: StateSchema,
   outputSchema: StateSchema,
 })
-  .then(stageStep("check-input", checkInput, WRITER))
-  .then(stageStep("objectives", writerObjectives, WRITER))
+  // C14 (TEACH-110 part h): the input check runs inside the objectives step, beside its call, and
+  // gates its persist; the check-input step keeps its place in the order and does nothing itself.
+  .then(stageStep("check-input", async (state) => state, WRITER))
+  .then(stageStep("objectives", checkedWriterObjectives, WRITER))
   .then(stageStep("write", write, WRITER))
   .commit();
 

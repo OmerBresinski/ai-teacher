@@ -17,6 +17,7 @@ import { aiWriterServices } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { fillTemplate } from "../writer/fixes";
 import { isFatal } from "../writer/services";
+import { checkInput } from "./check-input";
 import {
   OBJECTIVES_FIRST_VERSION,
   WRITER_OBJECTIVES_VERSION,
@@ -96,6 +97,11 @@ export interface ObjectivesStepOptions {
    * bundle's pinned objectives prompt, user turn and schema on Sol, as base4f-p123 ran them.
    */
   writer?: boolean;
+  /**
+   * Awaited before the plan is persisted (TEACH-110 part h, C14): the input check that runs
+   * beside the objectives call. A rejection stops the step with nothing persisted.
+   */
+  gate?: Promise<unknown>;
 }
 
 /** The writer's objectives call: the model, effort and output cap base4f-p123's harness used. */
@@ -285,6 +291,7 @@ export async function runObjectivesStep(
       findings: [],
     },
   };
+  if (options.gate) await options.gate;
   const { updatedAt } = await deps.persist(planned);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
   return {
@@ -306,6 +313,33 @@ export async function writerObjectives(
   return (
     await runObjectivesStep(state, deps, { plannedStamp: WRITER_PLANNED_VERSION, writer: true })
   ).state;
+}
+
+/**
+ * The writer planner's objectives step with the input check beside it (TEACH-110 part h, C14):
+ * both calls start at once, and the plan is persisted only once the check has passed. A refusal
+ * (`InputRejected`) wins over anything the objectives call did: its objectives are dropped and
+ * nothing is persisted, as when the check ran first. About 4 s off every writer lesson.
+ */
+export async function checkedWriterObjectives(
+  state: PipelineState,
+  deps: PipelineDeps,
+): Promise<PipelineState> {
+  const checked = checkInput(state, deps);
+  // Handled below: awaited by the gate, or after an objectives failure.
+  checked.catch(() => {});
+  try {
+    return (
+      await runObjectivesStep(state, deps, {
+        plannedStamp: WRITER_PLANNED_VERSION,
+        writer: true,
+        gate: checked,
+      })
+    ).state;
+  } catch (error) {
+    await checked;
+    throw error;
+  }
 }
 
 /** A rebuilt objectives slide under the id of the one it replaces, so the editor keeps it. */
