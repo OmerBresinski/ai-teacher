@@ -24,9 +24,8 @@ export type SavableDocument = Lesson | Worksheet;
 /** TeachDeck's `AUTOSAVE_MS`. */
 export const AUTOSAVE_MS = 800;
 
-export const SAVE_FAILED_MESSAGE = "Your changes are not saved";
-export const SAVE_FAILED_DESCRIPTION =
-  "Keep this tab open and retry. If it keeps failing, export a copy before you close the tab.";
+export const SAVE_FAILED_MESSAGE =
+  "Your changes are not saved. Keep this tab open and retry; if it keeps failing, export a copy.";
 export const SAVE_RETRY_LABEL = "Retry";
 /** The one toast a failing autosave owns: re-raised in place, dismissed by the next good save. */
 export const SAVE_FAILED_TOAST_ID = "autosave-failed";
@@ -100,7 +99,6 @@ export function useAutosave<D extends SavableDocument>(
       // next one too); the shared id updates the one toast in place instead of stacking more.
       toast.error(SAVE_FAILED_MESSAGE, {
         id: SAVE_FAILED_TOAST_ID,
-        description: SAVE_FAILED_DESCRIPTION,
         duration: Number.POSITIVE_INFINITY,
         action: { label: SAVE_RETRY_LABEL, onClick: () => void flush() },
       });

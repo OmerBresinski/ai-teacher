@@ -5,7 +5,6 @@ import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
-  SAVE_FAILED_DESCRIPTION,
   SAVE_FAILED_MESSAGE,
   SAVE_FAILED_TOAST_ID,
   SAVE_RETRY_LABEL,
@@ -129,7 +128,6 @@ describe("useAutosave", () => {
       {
         id: string;
         duration: number;
-        description: string;
         action: { label: string; onClick: () => void };
       },
     ];
@@ -138,7 +136,6 @@ describe("useAutosave", () => {
     expect(options).toMatchObject({
       id: SAVE_FAILED_TOAST_ID,
       duration: Number.POSITIVE_INFINITY,
-      description: SAVE_FAILED_DESCRIPTION,
       action: { label: SAVE_RETRY_LABEL },
     });
 
