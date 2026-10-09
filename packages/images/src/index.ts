@@ -48,6 +48,13 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
+export {
+  limitPexels,
+  PEXELS_BACKOFF_MS,
+  PEXELS_BURST,
+  PEXELS_PER_SECOND,
+  type PexelsLimitOptions,
+} from "./pexels-limit";
 export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
