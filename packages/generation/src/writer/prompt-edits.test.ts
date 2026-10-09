@@ -7,14 +7,19 @@ import {
   fullFitsLine,
   HIGHER_TIER,
   HINGE_EDITS,
+  KIND_EDITS,
+  LABELLED_TAIL,
+  LAYOUT_EDITS,
   lines,
   MODEL_EDITS,
   RECALL_EDITS,
+  THEME_STEP,
 } from "./prompt-edits";
 import {
   promptOptionsTag,
   shapeSchema,
   shapeSystem,
+  trimKindsBlock,
   type WriterPromptOptions,
 } from "./prompt-options";
 import { writerSchema } from "./schema";
@@ -128,6 +133,73 @@ for (const full of [false, true])
     }
   });
 
+/** The system text with its Themes block taken out (the one block T8 removes). */
+const withoutThemes = (t: string) => {
+  const at = t.indexOf("\n\nThemes:\n");
+  return t.slice(0, at) + t.slice(t.indexOf("\n\n", at + 2));
+};
+const T8_EDITS = [THEME_STEP, ...KIND_EDITS, ...LAYOUT_EDITS];
+
+for (const full of [false, true])
+  describe(`menuDescriptions (T8) alone changes only its lines${full ? " (library and activities on)" : ""}`, () => {
+    for (const [k, b] of Object.entries(LESSONS))
+      test(k, async () => {
+        const off = await build(b, {}, full);
+        const on = await build(b, { menuDescriptions: true }, full);
+        // Schema: only design.theme goes.
+        const want = JSON.parse(JSON.stringify(off.schema)) as J;
+        const design = (want.properties as Record<string, J>).design as J;
+        delete (design.properties as J).theme;
+        design.required = ["picture_style"];
+        expect(on.schema).toEqual(want);
+        // System: the Themes block goes; every other line is the same or a listed replacement.
+        expect(off.system).toContain("\n\nThemes:\n");
+        expect(on.system).not.toContain("Themes:");
+        expect(on.system).not.toContain("dyslexic");
+        expect(on.system).not.toMatch(/\btheme\b/);
+        const diff = changed(withoutThemes(off.system), on.system);
+        expect(diff.length).toBe(1 + KIND_EDITS.length + LAYOUT_EDITS.length);
+        for (const [was, now] of diff) {
+          const tail = was.startsWith("- labelled-diagram: ") ? LABELLED_TAIL : "";
+          expect(now).toBe(replaced(was, T8_EDITS) + tail);
+        }
+        // The audit's misuse cases are routed: moths (particles, #438's line kept), the
+        // labelled-diagram misuses (animals, divided shapes, a family tree).
+        expect(on.system).toContain("Organisms, populations and variants are never particles");
+        expect(on.system).toContain("a shape cut into equal parts is fraction-shapes");
+        expect(on.system).toContain("a family tree or other hierarchy is a table");
+      });
+  });
+
+describe("menuDescriptions combines with every other option", () => {
+  for (const [k, b] of Object.entries(LESSONS))
+    test(k, async () => {
+      const all: WriterPromptOptions = {
+        trimMenus: true,
+        cacheOrder: true,
+        examples: "matched",
+        clarity: true,
+        recallAfterObjectives: true,
+        answerVisibility: true,
+      };
+      const without = await build(b, all, true);
+      const withT8 = await build(b, { ...all, menuDescriptions: true }, true);
+      expect(withT8.system).not.toContain("Themes:");
+      const design = (withT8.schema.properties as Record<string, J>).design as J;
+      expect(Object.keys(design.properties as J)).toEqual(["picture_style"]);
+      expect(withT8.system).toContain("for a process that repeats");
+      expect(without.system).toContain("Themes:");
+    });
+  test("the repair's kinds block reads the same lines", () => {
+    const block =
+      "Diagram kinds:\n- cycle: stages that loop back to the start.\n- labelled-diagram: a simple drawing of one thing with up to 6 parts labelled.";
+    const out = trimKindsBlock(block, LESSONS.y1, { menuDescriptions: true });
+    expect(out).toContain("for a process that repeats");
+    expect(out.endsWith(LABELLED_TAIL)).toBe(true);
+    expect(trimKindsBlock(block, LESSONS.y1, {})).toBe(block);
+  });
+});
+
 describe("clarity: a Fits row for every count the schema allows", () => {
   for (const [k, b] of Object.entries(LESSONS))
     test(k, async () => {
@@ -170,6 +242,7 @@ describe("tags and line wording", () => {
     expect(promptOptionsTag({ clarity: true })).toBe("clarity");
     expect(promptOptionsTag({ recallAfterObjectives: true })).toBe("recall");
     expect(promptOptionsTag({ answerVisibility: true })).toBe("answers");
+    expect(promptOptionsTag({ menuDescriptions: true })).toBe("menus");
   });
   test("lines() reads characters as make_menu.py does", () => {
     expect(lines(20, 54)).toBe("half a line");

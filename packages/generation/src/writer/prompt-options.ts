@@ -1,6 +1,6 @@
 import type { CatalogueEntry } from "../library/catalogue";
 import type { Brief } from "./fixes";
-import { answerText, clarityText, recallText } from "./prompt-edits";
+import { answerText, clarityText, menuKindsBlock, menuText, recallText } from "./prompt-edits";
 import type { WriterStage } from "./schema";
 import { nonFatalSync } from "./services";
 
@@ -18,6 +18,9 @@ import { nonFatalSync } from "./services";
  *  - clarity: wording-only fixes and Fits rows for every count the schema allows;
  *  - recallAfterObjectives: the recall slide straight after the objectives;
  *  - answerVisibility: hinge stems answerable alone, model slides that teach and never ask.
+ * T8 (SELECTION-AUDIT §3) replaces listed menu lines and drops a dead menu:
+ *  - menuDescriptions: the flagged diagram-kind and layout lines say when to use the entry and
+ *    where the near miss goes; the theme menu and the schema's `design.theme` go (no code reads it).
  */
 
 type J = Record<string, unknown>;
@@ -29,6 +32,7 @@ export type WriterPromptOptions = {
   clarity?: boolean;
   recallAfterObjectives?: boolean;
   answerVisibility?: boolean;
+  menuDescriptions?: boolean;
 };
 export const PROMPT_OPTIONS_OFF: Required<WriterPromptOptions> = {
   trimMenus: false,
@@ -37,6 +41,7 @@ export const PROMPT_OPTIONS_OFF: Required<WriterPromptOptions> = {
   clarity: false,
   recallAfterObjectives: false,
   answerVisibility: false,
+  menuDescriptions: false,
 };
 
 /** True when every option is at its default (the pinned text goes out byte for byte). */
@@ -46,7 +51,8 @@ export const optionsOff = (o?: WriterPromptOptions) =>
   (o?.examples ?? "all") === "all" &&
   !o?.clarity &&
   !o?.recallAfterObjectives &&
-  !o?.answerVisibility;
+  !o?.answerVisibility &&
+  !o?.menuDescriptions;
 
 /** A short tag for the run record: "off", or e.g. "trim+cache+ex-matched". */
 export function promptOptionsTag(o?: WriterPromptOptions): string {
@@ -58,6 +64,7 @@ export function promptOptionsTag(o?: WriterPromptOptions): string {
     o?.clarity ? "clarity" : "",
     o?.recallAfterObjectives ? "recall" : "",
     o?.answerVisibility ? "answers" : "",
+    o?.menuDescriptions ? "menus" : "",
   ]
     .filter(Boolean)
     .join("+");
@@ -291,15 +298,16 @@ const keepRows = (block: string, keep: (id: string) => boolean) =>
     })
     .join("\n");
 
-/** The "Diagram kinds:" block as the repair reads it, trimmed to the lesson. */
+/** The "Diagram kinds:" block as the repair reads it, worded (menuDescriptions) and trimmed to the lesson. */
 export function trimKindsBlock(
   block: string,
   b: Pick<Brief, "yearGroup" | "subject">,
   o?: WriterPromptOptions,
 ): string {
-  if (!o?.trimMenus) return block;
+  const worded = o?.menuDescriptions ? menuKindsBlock(block) : block;
+  if (!o?.trimMenus) return worded;
   const l = lensOf(b);
-  return keepRows(block, (id) => keepKind(id, l));
+  return keepRows(worded, (id) => keepKind(id, l));
 }
 
 /* Examples ----------------------------------------------------------- */
@@ -449,6 +457,7 @@ export function shapeSystem(
   }
   if (o?.recallAfterObjectives) system = recallText(system);
   if (o?.answerVisibility) system = answerText(system);
+  if (o?.menuDescriptions) system = menuText(system);
   const trailing = /\n*$/.exec(system)?.[0] ?? "";
   let blocks = system.slice(0, system.length - trailing.length).split("\n\n");
   const l = lensOf(b);
@@ -505,9 +514,11 @@ export function shapeSchema(
   b: Pick<Brief, "yearGroup" | "subject">,
   o?: WriterPromptOptions,
 ): J {
-  if (!o?.trimMenus) return schema;
-  const l = lensOf(b);
+  if (!o?.trimMenus && !o?.menuDescriptions) return schema;
   const s = JSON.parse(JSON.stringify(schema)) as J;
+  if (o?.menuDescriptions) dropTheme(s);
+  if (!o?.trimMenus) return s;
+  const l = lensOf(b);
   const defs = (s.$defs ?? {}) as Record<string, J>;
   const kindOfDef = (name: string) => /^dg-(.+)-(side|full)$/.exec(name)?.[1];
   const dropped = new Set(
@@ -540,4 +551,14 @@ export function shapeSchema(
     if (k && dropped.has(k)) delete defs[name];
   }
   return s;
+}
+
+/** menuDescriptions: `design` keeps only the picture style (no code reads the writer's theme). */
+function dropTheme(s: J): void {
+  const design = (s.properties as Record<string, J> | undefined)?.design;
+  const props = design?.properties as Record<string, unknown> | undefined;
+  if (!design || !props || !("theme" in props))
+    throw new Error("prompt option menuDescriptions: no design.theme in the schema");
+  delete props.theme;
+  design.required = ((design.required as string[]) ?? []).filter((k) => k !== "theme");
 }

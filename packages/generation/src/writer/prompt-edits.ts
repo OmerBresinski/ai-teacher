@@ -227,3 +227,99 @@ export function answerText(system: string): string {
   const rows = out.includes("\n- bar_model, ") ? MODEL_EDITS : MODEL_EDITS.slice(0, 1);
   return apply(out, rows, "answerVisibility");
 }
+
+/* T8 menuDescriptions -------------------------------------------------- */
+
+/*
+ * SELECTION-AUDIT §3: each flagged menu line says when to use the entry (its teaching purpose) and
+ * where the near miss goes instead, in one line; the constraint text after each description (counts,
+ * characters, Fits) is untouched. The theme menu goes: the writer's `design.theme` is read by no
+ * code (layout draws the lesson's own theme, `stage.ts` `brief.teacherTheme ?? brief.theme`), so it
+ * was a dead choice; the chalk line's dyslexia claim (Greg's ruling) leaves with it.
+ */
+export const THEME_STEP: Edit = {
+  from: "1. Design. Choose the lesson's theme and picture style from the lists below,",
+  to: "1. Design. Choose the lesson's picture style from the list below,",
+};
+
+/** The diagram-kind lines (also in the repair's copy of the kinds block). */
+export const KIND_EDITS: Edit[] = [
+  {
+    from: "- cycle: stages that loop back to the start.",
+    to: "- cycle: stages that loop back to the start, for a process that repeats; when pupils must see what each stage looks like, use picture-sequence, and a chain that ends is a flow.",
+  },
+  {
+    from: "- timeline: dated events in order, with a highlighted span if one matters.",
+    to: "- timeline: dated events in order, with a highlighted span if one matters, for when things happened and how far apart; steps with no dates are a flow or the steps layout.",
+  },
+  {
+    from: "- layers: named layers stacked top to bottom.",
+    to: "- layers: named layers stacked top to bottom, for something built in real layers, such as soil, rock or the atmosphere; a ranking or a hierarchy is not layers.",
+  },
+  {
+    from: "- labelled-diagram: a simple drawing of one thing",
+    to: "- labelled-diagram: for naming the parts of one object, organism or piece of apparatus: a simple drawing of one thing",
+  },
+  {
+    from: "- cubes: one cube beside the same volume cut into smaller cubes, for how surface area grows as a solid is cut up.",
+    to: "- cubes: one cube beside the same volume cut into smaller cubes, for how surface area grows as a solid is cut up; never for counting, place value or volume alone.",
+  },
+  {
+    from: "- hydrograph: a river's discharge after rainfall.",
+    to: "- hydrograph: a river's discharge after rainfall, for flood risk and lag time in geography; any other change over time is a line-graph.",
+  },
+  {
+    from: "- river: a river's course",
+    to: "- river: for the features along a river from source to mouth, never a map of any other place: a river's course",
+  },
+];
+
+/** Appended to the end of the labelled-diagram line: where its three measured misuses go. */
+export const LABELLED_TAIL =
+  " Living things or people shown for what they look like are pictures (the compare layout puts them side by side), a shape cut into equal parts is fraction-shapes, and a family tree or other hierarchy is a table.";
+
+export const LAYOUT_EDITS: Edit[] = [
+  {
+    from: "- visual-text: teaching with a picture or a diagram beside a lead and points.",
+    to: "- visual-text: teaching with a picture or a diagram beside a lead and points, for an idea the figure shows and the words explain; a figure pupils study closely is big-visual, and an idea no figure shows is explain.",
+  },
+  {
+    from: "- compare: 2 or 3 things side by side, each a label and a short text, each with a picture if it helps.",
+    to: "- compare: 2 or 3 things side by side, each a label and a short text, each with a picture if it helps, for how things of one kind differ, such as living things, variants, materials or sources; numbers pupils read across go in a table.",
+  },
+  {
+    from: "- question-set: questions pupils answer in turn, an instruction line if one helps, and a picture if pupils work from one.",
+    to: "- question-set: questions the class answers one at a time with the teacher, to check an idea while it is taught, an instruction line if one helps, and a picture if pupils work from one; work pupils do alone is practice.",
+  },
+  {
+    from: "- practice: questions or tasks pupils work on alone, an instruction line if one helps, and a picture if pupils work from one.",
+    to: "- practice: questions or tasks pupils work on alone, to practise what has been taught, an instruction line if one helps, and a picture if pupils work from one; questions taken one at a time with the class are a question-set.",
+  },
+];
+
+/** The labelled-diagram line with its routing sentence at the end (its numbers come from #438). */
+function labelledTail(text: string): string {
+  const at = text.indexOf("\n- labelled-diagram: ");
+  if (at < 0) return text;
+  const end = text.indexOf("\n", at + 1);
+  const stop = end < 0 ? text.length : end;
+  return text.slice(0, stop) + LABELLED_TAIL + text.slice(stop);
+}
+
+/** The repair's "Diagram kinds:" block under menuDescriptions (only the kinds it holds). */
+export function menuKindsBlock(block: string): string {
+  const present = KIND_EDITS.filter((e) => block.includes(e.from));
+  return labelledTail(apply(block, present, "menuDescriptions"));
+}
+
+/** T8: the system text under `menuDescriptions`. */
+export function menuText(system: string): string {
+  let out = apply(system, [THEME_STEP, ...KIND_EDITS, ...LAYOUT_EDITS], "menuDescriptions");
+  if (!out.includes("\n- labelled-diagram: "))
+    throw new Error("prompt option menuDescriptions: no labelled-diagram line");
+  out = labelledTail(out);
+  const at = out.indexOf("\n\nThemes:\n");
+  const end = at < 0 ? -1 : out.indexOf("\n\n", at + 2);
+  if (at < 0 || end < 0) throw new Error("prompt option menuDescriptions: no Themes block");
+  return out.slice(0, at) + out.slice(end);
+}
