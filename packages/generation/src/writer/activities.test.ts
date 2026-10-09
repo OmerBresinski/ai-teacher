@@ -601,6 +601,19 @@ describe("the pair instruction (WRITER-FIX-PLAN fault 4)", () => {
     });
     expect(activityInstruction("pair", "")).toEqual({ text: PAIR_INSTRUCTION, replaced: false });
   });
+  test("an abbreviation's full stop is not a sentence end", () => {
+    for (const t of [
+      "Match each animal to Mr. Fox's word.",
+      "Match Dr. Seuss's characters to their names.",
+      "Match each saint to St. Paul's window.",
+      "Match each young animal, e.g. a calf, to its name.",
+      "Match each picture, i.e. each baby, to its name.",
+    ])
+      expect(activityInstruction("pair", t)).toEqual({ text: t, replaced: false });
+    expect(activityInstruction("pair", "Match Mr. Fox's cubs. Name their mother.").replaced).toBe(
+      true,
+    );
+  });
   test("other families keep the writer's instruction as written", () => {
     expect(activityInstruction("choose", "Look. Pick one.").text).toBe("Look. Pick one.");
     expect(activityInstruction("choose", "").text).toBe("");

@@ -216,6 +216,10 @@ export function withActivities(schema: J, stage: WriterStage): J {
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
+/** Abbreviations whose full stop ends no sentence ("Mr. Fox", "St. Paul's", "e.g. a cat"). */
+const ABBREVIATION = /\b(?:Mrs|Mr|Ms|Dr|St|Prof|Mt|No|vs|etc|approx|e\.g|i\.e|cf)\./gi;
+const withoutAbbreviations = (t: string) => t.replace(ABBREVIATION, (m) => m.replace(/\./g, ""));
+
 /** A pair's instruction when the writer's cannot stand (WRITER-FIX-PLAN fault 4). */
 export const PAIR_INSTRUCTION = "Match each picture to its name.";
 /** The fix line (logged in `activity-fixed`) for an instruction code replaced. */
@@ -233,7 +237,8 @@ export function activityInstruction(
 ): { text: string; replaced: boolean } {
   if (id !== "pair") return { text: written, replaced: false };
   if (!written) return { text: PAIR_INSTRUCTION, replaced: false };
-  if (/[.!?]\s+\S/.test(written)) return { text: PAIR_INSTRUCTION, replaced: true };
+  if (/[.!?]\s+\S/.test(withoutAbbreviations(written)))
+    return { text: PAIR_INSTRUCTION, replaced: true };
   return { text: written, replaced: false };
 }
 
