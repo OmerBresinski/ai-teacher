@@ -12,7 +12,17 @@ import {
 import { choiceMarks } from "./elements/choice";
 import { explanationText, fontFloor, resolveFontSize } from "./elements/kit";
 import evidence from "./fixtures/reveal-evidence.json";
-import { answerLane, type Box, hasText, intersects, TICK_D, tickSpot } from "./reveal-geometry";
+import {
+  type AnswerLane,
+  answerHeight,
+  answerLane,
+  answerTextWidth,
+  type Box,
+  hasText,
+  intersects,
+  TICK_D,
+  tickSpot,
+} from "./reveal-geometry";
 
 /*
  * TEACH-101 part d. Geometry, in slide space, of the reveal chrome against the words on the slide:
@@ -30,8 +40,9 @@ function laneFor(slide: Slide, theme: Theme) {
   const text = explanationText(slide.question);
   if (!text) return null;
   const base = resolveFontSize(theme, "small");
-  const stepped = Math.max(fontFloor("small"), Math.round(base * 0.86));
-  return answerLane(slide, text, { base, stepped }, theme.lineHeights.small);
+  const floor = fontFloor("small");
+  const stepped = Math.max(floor, Math.round(base * 0.86));
+  return answerLane(slide, text, { base, stepped, floor }, theme.lineHeights.small);
 }
 
 function laidOut(): { label: string; slide: Slide; theme: Theme }[] {
@@ -61,15 +72,73 @@ const corpus = laidOut();
 const textBoxes = (slide: Slide, except?: string): SlideElement[] =>
   slide.elements.filter((e) => e.id !== except && !isBackdrop(e) && hasText(e));
 
+/**
+ * What is wrong with a lane: off the slide, clipping the answer (its estimated height taller than
+ * the lane), or, for a free lane, over a box; a stage-mode reveal must still clear the heading.
+ */
+function laneFaults(label: string, slide: Slide, theme: Theme, lane: AnswerLane): string[] {
+  const out: string[] = [];
+  const text = explanationText(slide.question) ?? "";
+  if (lane.x < 0 || lane.y < 0 || lane.x + lane.w > SLIDE_W || lane.y + lane.h > SLIDE_H)
+    out.push(`${label}: off the slide`);
+  const need = answerHeight(text, answerTextWidth(lane), lane.size, theme.lineHeights.small);
+  if (need > lane.h) out.push(`${label}: answer clipped (${need} > ${lane.h})`);
+  if (lane.size < fontFloor("small")) out.push(`${label}: under the floor`);
+  const clear =
+    lane.mode === "lane"
+      ? slide.elements.filter((x) => x.id !== lane.replaces && !isBackdrop(x))
+      : slide.elements.filter((x) => x.name === "Heading");
+  for (const e of clear) if (intersects(lane, e)) out.push(`${label}: over ${e.name ?? e.type}`);
+  return out;
+}
+
+const LONG_ANSWER = [
+  "1. A puppy, which is a young dog.",
+  "2. It gets bigger as it grows: its legs get longer, its body gets heavier and it can run much further than it could when it was born.",
+  "3. It comes to look more like an adult dog, with a larger body, a longer face, thicker fur and more grown-up proportions, until it looks like its parents.",
+].join("\n");
+
+describe("the revealed answer is always shown whole", () => {
+  test("evidence slides and a long answer, at KS1 to KS5: never clipped, never over a word", () => {
+    const hits: string[] = [];
+    const modes = new Set<string>();
+    for (const stage of STAGES) {
+      const theme = atKeyStage(splash, stage);
+      const cases: [string, Slide][] = [
+        ["s6", slideOf("s6")],
+        ["s8", slideOf("s8")],
+        [
+          "s8 long",
+          {
+            ...slideOf("s8"),
+            question: { type: "open-response", modelAnswer: LONG_ANSWER },
+          } as Slide,
+        ],
+      ];
+      for (const [name, slide] of cases) {
+        const lane = laneFor(slide, theme);
+        if (!lane) {
+          hits.push(`${name} ${stage}: no lane`);
+          continue;
+        }
+        modes.add(lane.mode);
+        hits.push(...laneFaults(`${name} ${stage}`, slide, theme, lane));
+      }
+    }
+    expect(hits).toEqual([]);
+    // The long answer cannot sit beside the pictures: it takes the reveal's own state.
+    expect(modes.has("stage")).toBe(true);
+  });
+});
+
 describe("the revealed answer never meets a text box", () => {
-  test("s6 'Name their parents': the answer clears 'Point and say.' and every item", () => {
+  test("s6 'Name their parents': the whole answer, clear of 'Point and say.' and every item", () => {
     const slide = slideOf("s6");
-    const lane = laneFor(slide, splash);
+    const theme = atKeyStage(splash, "ks1");
+    const lane = laneFor(slide, theme);
     expect(lane).not.toBeNull();
     if (!lane) return;
-    for (const e of slide.elements.filter((x) => x.id !== lane.replaces && !isBackdrop(x)))
-      expect({ id: e.name, hit: intersects(lane, e) }).toEqual({ id: e.name, hit: false });
-    expect(lane.h).toBeGreaterThan(0);
+    expect(laneFaults("s6", slide, theme, lane)).toEqual([]);
   });
 
   test("every template with a reveal answer, at every key stage and theme", () => {
@@ -79,10 +148,7 @@ describe("the revealed answer never meets a text box", () => {
       const lane = laneFor(slide, theme);
       if (!lane) continue;
       checked++;
-      if (lane.x < 0 || lane.y < 0 || lane.x + lane.w > SLIDE_W || lane.y + lane.h > SLIDE_H)
-        hits.push(`${label}: off the slide`);
-      for (const e of slide.elements.filter((x) => x.id !== lane.replaces && !isBackdrop(x)))
-        if (intersects(lane, e)) hits.push(`${label}: over ${e.name ?? e.type}`);
+      hits.push(...laneFaults(label, slide, theme, lane));
     }
     expect(checked).toBeGreaterThan(0);
     expect(hits).toEqual([]);

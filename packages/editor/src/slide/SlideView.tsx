@@ -32,8 +32,15 @@ import {
   sortPositions,
   withAlpha,
 } from "./elements/kit";
-import { OverflowGlyph } from "./elements/TextView";
-import { type AnswerLane, answerLane, RULE_GAP, RULE_W, TICK_D, tickSpot } from "./reveal-geometry";
+import {
+  type AnswerLane,
+  answerLane,
+  LANE_GAP,
+  RULE_GAP,
+  RULE_W,
+  TICK_D,
+  tickSpot,
+} from "./reveal-geometry";
 import { applySlideClip } from "./slide-clip";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
@@ -155,8 +162,9 @@ export function SlideView({
   const lane = useMemo(() => {
     if (!explanation || panel) return null;
     const base = resolveFontSize(theme, "small");
-    const stepped = Math.max(fontFloor("small"), Math.round(base * 0.86));
-    return answerLane(slide, explanation, { base, stepped }, theme.lineHeights.small);
+    const floor = fontFloor("small");
+    const stepped = Math.max(floor, Math.round(base * 0.86));
+    return answerLane(slide, explanation, { base, stepped, floor }, theme.lineHeights.small);
   }, [slide, theme, explanation, panel]);
 
   const bg = slide.background;
@@ -277,7 +285,7 @@ export function SlideView({
             <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
           ) : null
         ) : explanation && lane ? (
-          <Explanation theme={theme} text={explanation} mode={mode} lane={lane} />
+          <Explanation theme={theme} text={explanation} lane={lane} />
         ) : null}
       </div>
     </ImageOriginProvider>
@@ -325,72 +333,73 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Reveal copy: in the lowest free lane on the slide, beside pictures if it must, or in the
- * instruction line's place (`answerLane`). It never overlaps another box and never moves one —
- * and when no lane is tall enough it steps the type down one stop and, failing that, warns the
- * author in edit mode rather than printing over the words (TEACH-101 part d; research/04 §4).
+ * Reveal copy, always whole (TEACH-101 part d): in the lowest free lane on the slide, beside
+ * pictures if it must, or in the instruction line's place, stepping down to the floor before it
+ * gives up a lane (`answerLane`). It never overlaps another box and never moves one. When no lane
+ * holds it, the reveal is its own state: the body is washed back and the answer set large under the
+ * heading. Never clipped (research/04 §4).
  */
-function Explanation({
-  theme,
-  text,
-  mode,
-  lane,
-}: {
-  theme: Theme;
-  text: string;
-  mode: SlideMode;
-  lane: AnswerLane;
-}) {
+function Explanation({ theme, text, lane }: { theme: Theme; text: string; lane: AnswerLane }) {
   const lineHeight = theme.lineHeights.small;
-  const { size, overflowing } = lane;
-  // Clipped on a line boundary: an answer longer than its lane loses whole lines, never shows half a
-  // line of glyphs.
-  const line = size * lineHeight;
-  const height = Math.max(line, Math.floor(lane.h / line) * line);
+  const stage = lane.mode === "stage";
   return (
-    <div
-      data-answer-anim=""
-      data-answer-lane={lane.replaces ? "replaces-instruction" : "free"}
-      style={{
-        position: "absolute",
-        left: lane.x,
-        top: lane.y,
-        width: lane.w,
-        height: Math.min(height, lane.h),
-        overflow: "hidden",
-        display: "flex",
-        gap: RULE_GAP,
-        zIndex: 900,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          flex: `0 0 ${RULE_W}px`,
-          width: RULE_W,
-          background: theme.colors.accent,
-          borderRadius: 2,
-        }}
-      />
-      <p
-        style={{
-          margin: 0,
-          fontFamily: theme.fonts.body,
-          fontSize: size,
-          lineHeight,
-          fontWeight: theme.weights.body,
-          color: theme.colors.ink,
-        }}
-      >
-        {text}
-      </p>
-      {overflowing && mode === "edit" ? (
-        <OverflowGlyph
-          theme={theme}
-          title="This explanation is longer than the room under the options."
+    <>
+      {stage ? (
+        <div
+          aria-hidden
+          data-answer-anim=""
+          data-answer-wash=""
+          style={{
+            position: "absolute",
+            left: 0,
+            top: lane.y - LANE_GAP,
+            width: SLIDE_W,
+            height: SLIDE_H - lane.y + LANE_GAP,
+            background: withAlpha(theme.colors.background, 0.97),
+            zIndex: 899,
+          }}
         />
       ) : null}
-    </div>
+      <div
+        data-answer-anim=""
+        data-answer-lane={stage ? "stage" : lane.replaces ? "replaces-instruction" : "free"}
+        style={{
+          position: "absolute",
+          left: lane.x,
+          top: lane.y,
+          width: lane.w,
+          minHeight: stage ? lane.h : undefined,
+          display: "flex",
+          alignItems: stage ? "center" : undefined,
+          gap: RULE_GAP,
+          zIndex: 900,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            flex: `0 0 ${RULE_W}px`,
+            width: RULE_W,
+            alignSelf: "stretch",
+            background: theme.colors.accent,
+            borderRadius: 2,
+          }}
+        />
+        <p
+          style={{
+            margin: 0,
+            whiteSpace: "pre-line",
+            fontFamily: theme.fonts.body,
+            fontSize: lane.size,
+            lineHeight,
+            fontWeight: theme.weights.body,
+            color: theme.colors.ink,
+          }}
+        >
+          {text}
+        </p>
+      </div>
+    </>
   );
 }
 

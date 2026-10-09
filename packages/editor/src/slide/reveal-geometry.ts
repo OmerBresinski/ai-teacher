@@ -5,7 +5,7 @@
  */
 import type { Slide, SlideElement } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
-import { isBackdrop } from "@tj/slides";
+import { HEADING_NAME, isBackdrop } from "@tj/slides";
 import { SAFE } from "../model/grid";
 
 export type Box = { x: number; y: number; w: number; h: number };
@@ -35,21 +35,43 @@ const MIN_LANE_W = 200;
 const MIN_LANE_H = 30;
 
 export type AnswerLane = Box & {
-  /** Font size to draw the answer at. */
+  /** Font size to draw the answer at; the whole answer fits the lane at this size. */
   size: number;
+  /**
+   * `lane`: a free stretch of the slide, clear of every box. `stage`: no free stretch holds the
+   * whole answer even at the floor, so the reveal washes the body back and shows the answer large
+   * over it, under the heading.
+   */
+  mode: "lane" | "stage";
   /** An element the answer replaces while it is shown (the instruction line), if any. */
   replaces?: string;
-  /** The answer, estimated, is taller than its lane: clipped, and flagged in the editor. */
-  overflowing: boolean;
 };
 
+/** Average advance as a share of the size: a little wide of the body faces, so the estimate errs tall. */
+const ADVANCE = 0.56;
+
 /**
- * Estimated height of `text` at `size` in a column `width` wide. Deterministic in every mode (no
- * measurement, so capture and SSR agree with the editor); ~0.5em average advance.
+ * Estimated height of `text` at `size` in a column `width` wide: words packed greedily into lines
+ * of `width / (size * ADVANCE)` characters, explicit line breaks kept. Deterministic in every mode
+ * (no measurement, so capture and SSR agree with the editor).
  */
 export function answerHeight(text: string, width: number, size: number, lineHeight: number) {
-  const perLine = Math.max(1, Math.floor(width / (size * 0.5)));
-  return Math.ceil(Math.max(1, Math.ceil(text.length / perLine)) * size * lineHeight);
+  const perLine = Math.max(1, Math.floor(width / (size * ADVANCE)));
+  let lines = 0;
+  for (const para of text.split(/\n/)) {
+    let used = 0;
+    lines++;
+    for (const word of para.split(/\s+/).filter(Boolean)) {
+      const need = used === 0 ? word.length : used + 1 + word.length;
+      if (need <= perLine) used = need;
+      else {
+        lines +=
+          used === 0 ? Math.ceil(word.length / perLine) - 1 : Math.ceil(word.length / perLine);
+        used = word.length % perLine || perLine;
+      }
+    }
+  }
+  return Math.ceil(lines * size * lineHeight);
 }
 
 /** Every box the answer must stay clear of: everything drawn but the full-slide backdrop. */
@@ -78,16 +100,20 @@ function widestFree(obstacles: Box[], top: number, bottom: number): { x: number;
   return best;
 }
 
+/** Width the answer's words get in a lane: the lane less the accent rule and its gap. */
+export const answerTextWidth = (lane: Box) => lane.w - RULE_W - RULE_GAP;
+
 /**
- * The lane for an answer revealed on the slide. Under everything when there is room; else beside
- * the pictures, in the widest free column under the words; else in the instruction line's place,
- * which the answer then replaces. The lane never meets another element's box: the answer is
- * clipped to it, and the editor flags the overflow rather than letting it print over text.
+ * The lane for an answer revealed on the slide, always holding the whole answer (TEACH-101 part d):
+ * the lowest free lane under or beside the words, at the theme's size, then one stop down, then the
+ * floor; a lane that keeps the instruction line before one that takes its place. When no free lane
+ * holds it even at the floor, the reveal becomes its own state (`stage`): the body is washed back
+ * and the answer is set as large as fits under the heading. Never clipped, never over a word.
  */
 export function answerLane(
   slide: Slide,
   text: string,
-  sizes: { base: number; stepped: number },
+  sizes: { base: number; stepped: number; floor: number },
   lineHeight: number,
 ): AnswerLane {
   const bottom = SLIDE_H - SAFE.y;
@@ -105,21 +131,24 @@ export function answerLane(
       if (w >= MIN_LANE_W) tried.push({ x, y: top, w, h: bottom - top, replaces });
     }
   }
-  const textW = (lane: Box) => lane.w - RULE_W - RULE_GAP;
   const fits = (lane: Box, size: number) =>
-    answerHeight(text, textW(lane), size, lineHeight) <= lane.h;
-  // The lowest lane that fits wins (it sits under the most of the slide), a lane that keeps the
-  // instruction before one that replaces it, the full size before the stepped one.
-  for (const size of [sizes.base, sizes.stepped]) {
+    answerHeight(text, answerTextWidth(lane), size, lineHeight) <= lane.h;
+  const ladder = [...new Set([sizes.base, sizes.stepped, sizes.floor])].filter(
+    (n) => n >= sizes.floor,
+  );
+  for (const size of ladder) {
     for (const keep of [true, false]) {
       const lane = tried.find((l) => (l.replaces === undefined) === keep && fits(l, size));
-      if (lane) return { ...lane, size, overflowing: false };
+      if (lane) return { ...lane, size, mode: "lane" };
     }
   }
-  const roomiest = [...tried].sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  if (roomiest) return { ...roomiest, size: sizes.stepped, overflowing: true };
-  // No free lane anywhere: a sliver at the foot, clipped to nothing rather than over the words.
-  return { x: SAFE.x, y: bottom, w: SAFE.w, h: 0, size: sizes.stepped, overflowing: true };
+  // Its own state: under the heading, the whole body width, as large as fits (down to the floor).
+  const heading = slide.elements.find((e) => e.name === HEADING_NAME);
+  const top = heading ? Math.min(heading.y + heading.h + LANE_GAP * 2, bottom - 120) : SAFE.y;
+  const stage = { x: SAFE.x, y: top, w: SAFE.w, h: bottom - top };
+  let size = Math.round(sizes.base * 1.5);
+  while (size > sizes.floor && !fits(stage, size)) size -= 1;
+  return { ...stage, size: Math.max(size, sizes.floor), mode: "stage" };
 }
 
 /** The tick's diameter and its inset inside a card. */
