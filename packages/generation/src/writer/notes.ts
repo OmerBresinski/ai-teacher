@@ -56,7 +56,10 @@ export function coverage(
         taught.add(k);
         firstTaught.set(k, Math.min(firstTaught.get(k) ?? Infinity, f.slide));
       }
-  for (const f of body) if (isCheck(f)) for (const k of f.teaches ?? []) checked.add(k);
+  for (const f of body)
+    if (isCheck(f))
+      for (const k of f.teaches ?? [])
+        if (!rules.afterTeaching || f.slide > (firstTaught.get(k) ?? Infinity)) checked.add(k);
   const all = Array.from({ length: objectives }, (_, i) => i + 1);
   const untaught = all.filter((k) => !taught.has(k));
   const unchecked = all.filter((k) => !checked.has(k));

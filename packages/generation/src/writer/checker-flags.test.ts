@@ -144,4 +144,23 @@ describe("objective coverage", () => {
     expect(coverage(flow, 1, tpl).missing).toEqual([]);
     expect(coverage(flow, 1, tpl, { noDiscussion: true }).unchecked).toEqual([1]);
   });
+  test("coverageExcludesPrediction: a question before the teaching does not check it", () => {
+    const flow = [
+      { slide: 3, teaches: [1] },
+      { slide: 4, teaches: [1] },
+      { slide: 5, teaches: [2] },
+      { slide: 6, teaches: [2] },
+    ];
+    const tpl = (k: number) => (k === 3 || k === 6 ? "question-set" : "explain");
+    expect(coverage(flow, 2, tpl).missing).toEqual([]);
+    expect(coverage(flow, 2, tpl, { afterTeaching: true }).unchecked).toEqual([1]);
+    // An objective nobody teaches has no valid check.
+    expect(
+      coverage([{ slide: 3, teaches: [1] }], 1, () => "hinge", { afterTeaching: true }),
+    ).toEqual({
+      untaught: [1],
+      unchecked: [1],
+      missing: [1],
+    });
+  });
 });
