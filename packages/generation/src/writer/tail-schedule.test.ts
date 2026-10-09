@@ -44,7 +44,7 @@ describe("eachBounded", () => {
 const FIXTURE = "y1-science-animals-young";
 type Call = { name: string; user: string; start: number; end: number };
 
-function timedServices(redo: (n: number) => unknown) {
+function timedServices(redo: (n: number) => unknown, deck?: () => unknown) {
   const base = replayServices(FIXTURE);
   const calls: Call[] = [];
   let clock = 0;
@@ -62,6 +62,7 @@ function timedServices(redo: (n: number) => unknown) {
       if (r.name === "slide") live--;
       call.end = clock++;
       if (only) return { out: redo(Number(only[1])), usd: 0, ms: 0 };
+      if (r.name === "notes" && deck) return { out: deck(), usd: 0, ms: 0 };
       return base.chat(r);
     },
   };
@@ -112,6 +113,36 @@ describe("the writer's tail: parallel repairs, notes beside them", () => {
     for (const s of out.slides) {
       if (!redone.has(s.id)) expect(s.notes).not.toContain("REDONE");
       expect(s.notes).not.toContain("STRAY");
+    }
+  });
+
+  test("a redo that fails keeps the deck-wide note, never an empty one", async () => {
+    // Every one-slide redo answers with no rows (and its retries too): lessonNotes returns blanks.
+    // The deck-wide call writes "DECK n" for every slide (this saved run has no recorded notes).
+    const deckRows = () => ({
+      slides: Array.from({ length: 20 }, (_, k) => ({
+        n: k + 1,
+        answers: null,
+        misconceptions: null,
+        background: `DECK ${k + 1}`,
+        run: null,
+      })),
+    });
+    const t = timedServices(() => ({ slides: [] }), deckRows);
+    const events: Record<string, unknown>[] = [];
+    const services = {
+      ...t.services,
+      log: (e: object) => events.push(e as Record<string, unknown>),
+    };
+    const out = await replayRun(FIXTURE, { services });
+    const redone = t.calls
+      .filter((c) => c.name === "notes" && /slides only/.test(c.user))
+      .map((c) => Number(c.user.match(/slides only: (\d+)\.$/)?.[1]));
+    expect(redone.length).toBeGreaterThan(0);
+    for (const n of new Set(redone)) {
+      const kept = out.slides.find((s) => s.id === `s${n}`)?.notes ?? "";
+      expect(kept).toContain(`DECK ${n}`);
+      expect(events.some((e) => e.ev === "notes-redo-miss" && e.slide === n)).toBe(true);
     }
   });
 });

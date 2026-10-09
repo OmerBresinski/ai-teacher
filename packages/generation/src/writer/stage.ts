@@ -762,14 +762,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         words: plan.slides[i] ? wordsOf(plan.slides[i] as S) : "",
       }),
     );
+  /**
+   * The deck the parallel tail judges a slide against: every other slide as it was when the phase
+   * started, so one repair's verdict never depends on another repair still in flight.
+   */
+  let frozen: { slides: readonly unknown[]; own: number } | undefined;
+  const deckSlide = (i: number) =>
+    (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
   const check = () => {
     const res = baseCheck();
     // A slide that repeats another goes to repair to be made different or merged.
     const dup = duplicateFaults(
       Array.from({ length: n }, (_, i) => i)
-        .filter((i) => repairable(plan.slides[i] as S, i))
+        .filter((i) => repairable(deckSlide(i), i))
         .map((i) => {
-          const sl = plan.slides[i] as S;
+          const sl = deckSlide(i);
           return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
         }),
     );
@@ -782,7 +789,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return res;
   };
   const gasTexts = () =>
-    Array.from({ length: n }, (_, i) => (plan.slides[i] ? wordsOf(plan.slides[i] as S) : ""));
+    Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
 
@@ -890,6 +897,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     baseVisuals(stageKey)
       .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
       .trim() ?? "";
+  /** Slide i's faults, judged against the phase's frozen deck while repairs run in parallel. */
+  const judged = (i: number): string[] => {
+    const was = frozen;
+    if (phaseSlides) frozen = { slides: phaseSlides, own: i };
+    const out = check()[i]?.faults ?? [];
+    frozen = was;
+    return out;
+  };
+  /** The deck as the current parallel phase started (undefined outside one). */
+  let phaseSlides: readonly unknown[] | undefined;
   const repairOne = async (
     c: CheckResult,
     mode: "fit" | "stand-alone" | "reroute" = "fit",
@@ -1005,7 +1022,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     swapSlide(i, o2.slide);
     if (orphanDrop) override.set(`${i}:picture`, { status: "failed" });
     applyRepair(plan.slides, notes, i, r?.out);
-    const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
+    const now = judged(i).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
     const fresh = [...kinds(now)].filter((k) => !was.has(k));
     const worse =
@@ -1033,9 +1050,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
+  phaseSlides = [...plan.slides];
   await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
     await fitLoop(c);
   });
+  phaseSlides = undefined;
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
@@ -1355,18 +1374,27 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       notesRedone.set(i, notesCall(i + 1));
     }
   };
+  phaseSlides = [...plan.slides];
   await eachBounded(
     Array.from({ length: n }, (_, i) => i),
     TAIL_CONCURRENCY,
     settleSlide,
   );
+  phaseSlides = undefined;
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
 
   // ── notes: the deck-wide call, with each changed slide's own note in its place ──
   const got = await deckNotes;
   for (const [i, redo] of notesRedone) {
     const one = (await redo).get(i + 1);
-    if (one) got.set(i + 1, one);
+    // A redo that failed comes back blank: the deck-wide note is kept, never replaced by nothing.
+    const real =
+      one &&
+      [one.answers, one.misconceptions, one.background, one.run].some((v) =>
+        Array.isArray(v) ? v.length > 0 : typeof v === "string" && v.trim() !== "",
+      );
+    if (one && real) got.set(i + 1, one);
+    else log({ ev: "notes-redo-miss", slide: i + 1, kept: "deck" });
   }
   for (const [k, s0] of got) {
     if (k < 3 || k > n) continue;
