@@ -38,7 +38,11 @@ import {
   tableRows,
 } from "./fallbacks";
 import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
-import { FIGURE_SPEC_REPAIR_DEFAULT, FIGURE_TEXT_DEFAULT, figureTextFix } from "./figure-text";
+import {
+  FIGURE_SPEC_REPAIR_DEFAULT,
+  FIGURE_TEXT_FROM_SPEC_DEFAULT,
+  figureTextFix,
+} from "./figure-text";
 import {
   applyRepair,
   asksVisual,
@@ -175,7 +179,7 @@ export type WriterRun = {
    */
   activities?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
-  figureText?: boolean;
+  figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
   figureSpecRepair?: boolean;
   /**
@@ -566,7 +570,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
     const figOpts = {
-      fromSpec: run.figureText ?? FIGURE_TEXT_DEFAULT,
+      fromSpec: run.figureTextFromSpec ?? FIGURE_TEXT_FROM_SPEC_DEFAULT,
       specRepair: run.figureSpecRepair ?? FIGURE_SPEC_REPAIR_DEFAULT,
     };
     if (figOpts.fromSpec || figOpts.specRepair) {

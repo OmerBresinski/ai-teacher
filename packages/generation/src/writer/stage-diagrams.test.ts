@@ -53,7 +53,7 @@ for (const b of [
         recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
         drawDiagrams: { callDrawer },
         // The lab run predates figure-text.ts, which redraws its 16-in-10-groups figure.
-        figureText: false,
+        figureTextFromSpec: false,
         figureSpecRepair: false,
       });
       const svgs = (els: El[]) =>

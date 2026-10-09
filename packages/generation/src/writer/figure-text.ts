@@ -14,8 +14,8 @@
 
 type J = Record<string, unknown>;
 
-/** On unless a run turns it off (`WriterRun.figureText`): words rewritten from the spec. */
-export const FIGURE_TEXT_DEFAULT = true;
+/** On unless a run turns it off (`WriterRun.figureTextFromSpec`): words rewritten from the spec. */
+export const FIGURE_TEXT_FROM_SPEC_DEFAULT = true;
 /** On unless a run turns it off (`WriterRun.figureSpecRepair`): an undrawable spec corrected. */
 export const FIGURE_SPEC_REPAIR_DEFAULT = true;
 
