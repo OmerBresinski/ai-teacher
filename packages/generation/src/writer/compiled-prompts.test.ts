@@ -2,14 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { withActivities, withActivityMenu } from "./activities";
 import { writerBundle } from "./bundle";
-import {
-  type Brief,
-  CHALLENGE_LINES,
-  contextBlock,
-  fillTemplate,
-  promptStage,
-  pupilWordLimit,
-} from "./fixes";
+import { type Brief, contextBlock, fillTemplate, promptStage, pupilWordLimit } from "./fixes";
 import { writerSchema } from "./schema";
 import { writerSystem } from "./stage";
 
@@ -18,10 +11,10 @@ import { writerSystem } from "./stage";
  * hex), for y1, y5, y11 and y12. Equal except the intended changes, each undone here to reach
  * master's hash:
  *  - systemActivities: the activity menu's pair line (prompt-engineer, fault 4);
- *  - user and objectivesUser: the challenge line (removed at core);
  *  - pupilSystem: the pupil-objectives prompt (prompt-engineer, fault 1);
  *  - pupilUser: the word limit (min of the reading target and the room, fault 1).
- * system and schema, with and without activities, are master's byte for byte.
+ * system and schema, with and without activities, and the user turns (writer and objectives,
+ * "Challenge: core" kept) are master's byte for byte.
  */
 const sha = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 const MASTER: Record<string, Record<string, string>> = {
@@ -105,7 +98,6 @@ const OBJ = [
   "Describe how young animals are like their parents",
 ];
 const P = writerBundle();
-const withCore = (t: string) => t.replace(/^(Reading level: .*\n)/m, "$1Challenge: core\n");
 
 describe("compiled prompts against master (options off)", () => {
   for (const [k, b] of Object.entries(LESSONS)) {
@@ -126,11 +118,10 @@ describe("compiled prompts against master (options off)", () => {
         OBJ.map((t) => ({ teacher: t, pupil: "" })),
         P.user,
       );
-      expect(user).not.toContain("Challenge");
-      expect(sha(withCore(user))).toBe(m.user as string);
+      expect(user).toContain("\nChallenge: core\n");
+      expect(sha(user)).toBe(m.user as string);
       const objUser = fillTemplate(P.objectivesUser, b);
-      expect(objUser).not.toContain("Challenge");
-      expect(sha(withCore(objUser))).toBe(m.objectivesUser as string);
+      expect(sha(objUser)).toBe(m.objectivesUser as string);
       expect(sha(P.pupilObjectives)).not.toBe(m.pupilSystem as string);
       const pupil = (n: number) =>
         fillTemplate(P.pupilObjectivesUser, b, {
@@ -143,27 +134,17 @@ describe("compiled prompts against master (options off)", () => {
   }
 });
 
-describe("support and stretch user turns", () => {
+describe("support and stretch user turns (as master: the level word only)", () => {
   for (const level of ["support", "stretch"] as const)
-    test(`${level}: its defined line where core had "Challenge: core", nothing else changed`, () => {
+    test(`${level}: "Challenge: ${level}" where core has "Challenge: core", nothing else changed`, () => {
       for (const b of Object.values(LESSONS)) {
-        const core = contextBlock(
-          b,
-          OBJ.map((t) => ({ teacher: t, pupil: "" })),
-          P.user,
-        );
-        const u = contextBlock(
-          { ...b, challenge: level },
-          OBJ.map((t) => ({ teacher: t, pupil: "" })),
-          P.user,
-        );
-        expect(u).toContain(
-          `\nReading level: Year ${b.year}\n${CHALLENGE_LINES[level]}\nLanguage:`,
-        );
-        expect(u.replace(`${CHALLENGE_LINES[level]}\n`, "")).toBe(core);
+        const objs = OBJ.map((t) => ({ teacher: t, pupil: "" }));
+        const core = contextBlock(b, objs, P.user);
+        const u = contextBlock({ ...b, challenge: level }, objs, P.user);
+        expect(u).toContain(`\nReading level: Year ${b.year}\nChallenge: ${level}\nLanguage:`);
+        expect(u.replace(`Challenge: ${level}\n`, "Challenge: core\n")).toBe(core);
         const o = fillTemplate(P.objectivesUser, { ...b, challenge: level });
-        expect(o).toContain(`${CHALLENGE_LINES[level]}\n`);
-        expect(o.replace(`${CHALLENGE_LINES[level]}\n`, "")).toBe(
+        expect(o.replace(`Challenge: ${level}\n`, "Challenge: core\n")).toBe(
           fillTemplate(P.objectivesUser, b),
         );
       }
