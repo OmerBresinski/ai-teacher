@@ -104,7 +104,9 @@ export function analyse(opts: {
     for (const line of text.split("\n")) {
       if (!line.includes('"visual-path"')) continue;
       try {
-        const j = JSON.parse(line);
+        const raw = JSON.parse(line);
+        // The worker nests the writer's events under `writer`.
+        const j = raw.writer ?? raw;
         if (/dropped|^words/.test(String(j.path))) {
           figuresDropped.push({ slide: j.slide, path: j.path });
         }
