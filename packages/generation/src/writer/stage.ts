@@ -273,6 +273,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const asks = new Map<number, VisualAsk[]>();
   const laid = new Map<number, Materialised>();
+  /** fallbackOnlyOnFailure: slides laid out full width to fit their drawn diagram (points to notes). */
+  const relaid = new Set<number>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
@@ -387,7 +389,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!m) return undefined;
     const own = notes.get(i)?.notes ?? "";
     const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
-    const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
+    const fitted = relaid.has(i)
+      ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
+      : [];
+    const said = [
+      moved.length ? `On the slide: ${moved.join(" ")}` : "",
+      fitted.length ? `Moved off the slide to fit the diagram: ${fitted.join(" ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const q = m.slide.question ?? listQuestion(plan.slides[i] as S | undefined, notes.get(i));
     return {
       id: `s${i + 1}`,
@@ -889,9 +899,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Dangling and unanswerable are reported, never a repair trigger: the ask / ask_without pair is
   // the fix by construction.
   const VISUAL_DANGLING = /^(dangling|unanswerable):/;
-  const failing = checks
-    .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
-    .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
+  const failingNow = () =>
+    checks
+      .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
+      .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
+  let failing = failingNow();
   const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
   /** How each slide's figure ended (diagram, picture, words-…), logged for the run. */
   const path = new Map<number, string>();
@@ -908,6 +920,38 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(i, oldAsks);
     relay(i);
   };
+  // fallbackOnlyOnFailure: a diagram that drew but did not fit beside the slide's words is a fit
+  // problem, not a drawing failure. Before any reword or fallback the slide is laid out full width
+  // (big-visual; its points are read in the notes), and kept when the diagram then fits.
+  if (flags.fallbackOnlyOnFailure) {
+    for (const c of failing) {
+      const i = c.slide - 1;
+      const s0 = plan.slides[i] as S;
+      if (s0.template !== "visual-text" || !c.faults.some((f) => f.startsWith("diagram:")))
+        continue;
+      const d = (asks.get(i) ?? []).find((a) => a.type === "diagram");
+      if (!d || visualState(i)(d.key).status !== "diagram") continue;
+      const n0 = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, { ...s0, template: "big-visual" });
+      const left = (check()[i]?.faults ?? []).filter(
+        (f) => f.startsWith("diagram:") || OVERFLOW.test(f),
+      );
+      if (left.length) restore(i, s0, n0, oldAsks);
+      else {
+        relaid.add(i);
+        path.set(i, "diagram-big");
+      }
+      log({
+        ev: "diagram-relaid",
+        slide: i + 1,
+        ok: !left.length,
+        ...(left.length ? { why: left.slice(0, 2) } : {}),
+      });
+    }
+    checks = check();
+    failing = failingNow();
+  }
   const diagramKinds = () =>
     baseVisuals(stageKey)
       .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
@@ -1458,6 +1502,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
  * A question list's answers (question set, practice, exit ticket) as slide question data, from the
  * notes stage's one answer per question, so present hides them until the reveal (TEACH-101 part b).
  */
+/** A relaid slide's points as lines for the notes. */
+function relaidPoints(s: S | undefined): string[] {
+  const p = Array.isArray(s?.points) ? (s.points as unknown[]) : [];
+  return p.map((x) =>
+    typeof x === "string"
+      ? x
+      : [String((x as S)?.label ?? ""), String((x as S)?.text ?? "")].filter(Boolean).join(": "),
+  );
+}
+
 function listQuestion(
   s: S | undefined,
   n: { answers: string[] } | undefined,
