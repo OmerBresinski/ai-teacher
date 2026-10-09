@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { loadTextEditor, renderEditor } from "./test-harness";
+import { loadTextEditor, openMoreToAdd, renderEditor } from "./test-harness";
 
 /* TEACH-105 row 7: every rail item inserts its element at the centre and selects it. */
 
@@ -38,19 +38,19 @@ describe("InsertRail", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Ellipse" }));
     expect(read().slides[0]?.elements[n]).toMatchObject({ type: "shape", shape: "ellipse" });
 
-    openMenu(within(rail()).getByRole("button", { name: "Line" }));
+    openMenu(within(openMoreToAdd()).getByRole("button", { name: "Line" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Arrow" }));
     expect(read().slides[0]?.elements[n + 1]).toMatchObject({ type: "line", arrowEnd: true });
 
-    fireEvent.click(within(rail()).getByRole("button", { name: "Table" }));
-    fireEvent.click(within(rail()).getByRole("button", { name: "Timer" }));
-    fireEvent.click(within(rail()).getByRole("button", { name: "Embed" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Table" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Timer" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Embed" }));
     expect(types().slice(n)).toEqual(["shape", "line", "table", "timer", "embed"]);
   });
 
   test("Icon picker filters by name and inserts an icon", async () => {
     const { read } = renderEditor();
-    fireEvent.click(within(rail()).getByRole("button", { name: "Icon" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Icon" }));
     const search = await screen.findByRole("textbox", { name: "Search icons" });
     fireEvent.change(search, { target: { value: "star" } });
     fireEvent.click(screen.getByRole("button", { name: "star" }));
@@ -61,7 +61,7 @@ describe("InsertRail", () => {
   test("Activities opens the picker grouped Check, Apply, Structure and inserts after the active slide", async () => {
     const { read } = renderEditor();
     const before = read().slides.length;
-    fireEvent.click(within(rail()).getByRole("button", { name: "Activities" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Activities" }));
     expect(
       await screen.findByRole("tab", { name: "Activities", selected: true }),
     ).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("InsertRail", () => {
 
   test("Which are true inserts a multi multiple choice; the Challenge chip adds an Explain why line", async () => {
     const { read } = renderEditor();
-    fireEvent.click(within(rail()).getByRole("button", { name: "Activities" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Activities" }));
     const menu = await screen.findByRole("menu", { name: "Activities" });
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Which are true" }));
     const which = read().slides[1];
@@ -100,7 +100,7 @@ describe("InsertRail", () => {
     expect(which.question.multi).toBe(true);
     expect(which.question.options.filter((o) => o.correct)).toHaveLength(2);
 
-    fireEvent.click(within(rail()).getByRole("button", { name: "Activities" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Activities" }));
     const again = await screen.findByRole("menu", { name: "Activities" });
     fireEvent.click(screen.getByRole("radio", { name: "Challenge" }));
     fireEvent.click(within(again).getByRole("menuitem", { name: "Multiple choice" }));
@@ -113,7 +113,7 @@ describe("InsertRail", () => {
 
   test("Activities keyboard: arrows walk every card across groups, Escape closes", async () => {
     renderEditor();
-    fireEvent.click(within(rail()).getByRole("button", { name: "Activities" }));
+    fireEvent.click(within(openMoreToAdd()).getByRole("button", { name: "Activities" }));
     const menu = await screen.findByRole("menu", { name: "Activities" });
     const cards = within(menu).getAllByRole("menuitem");
     expect(cards).toHaveLength(12);

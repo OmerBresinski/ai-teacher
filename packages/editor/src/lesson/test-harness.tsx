@@ -1,6 +1,6 @@
 import { mock } from "bun:test";
 import { notifyManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Lesson, ShapeElement } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { newLesson, uid } from "../model/factories";
@@ -107,4 +107,20 @@ export async function loadTextEditor(): Promise<void> {
     import("../slide/elements/EditableText"),
     import("../slide/elements/TextEditor"),
   ]);
+}
+
+/** Opens the top bar's ⋯ (Share, Facts, Worksheet, ruling 186); a no-op when it is already open. */
+export function openLessonActions(): void {
+  if (screen.queryByLabelText("Lesson actions")) return;
+  fireEvent.click(screen.getByRole("button", { name: "More lesson actions" }));
+}
+
+/** Opens the insert rail's More (Line, Icon, Table, Timer, Activities, Embed) and returns it. */
+export function openMoreToAdd(): HTMLElement {
+  // By label, not role: jsdom never positions the popper, so its content is not in the a11y tree.
+  const open = screen.queryByLabelText("More to add");
+  if (open) return open;
+  const rail = screen.getByRole("toolbar", { name: "Insert" });
+  fireEvent.click(within(rail).getByRole("button", { name: "More" }));
+  return screen.getByLabelText("More to add");
 }

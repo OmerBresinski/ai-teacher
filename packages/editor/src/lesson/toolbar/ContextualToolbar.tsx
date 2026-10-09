@@ -53,6 +53,9 @@ import { TextToolbar } from "./TextToolbar";
  * not a DOM element, and the bar must stay put while the caret moves inside the box (ADR 0022 §2
  * names the floating engine as the one thing not ported; this is the 60 lines that replace it).
  */
+/** The slide actions pill's gap from the bar. */
+const PILL_GAP = 10;
+
 export function ContextualToolbar({
   slide,
   theme,
@@ -90,7 +93,10 @@ export function ContextualToolbar({
         ? { left: r.left, top: r.top }
         : prev,
     );
-    const c = stageRef.current?.closest("[data-canvas]")?.getBoundingClientRect();
+    const canvas = stageRef.current?.closest<HTMLElement>("[data-canvas]");
+    const box = canvas?.getBoundingClientRect();
+    // A pane lying over the canvas's right side (the Dayback pane) is not canvas for the bar.
+    const c = box && { left: box.left, right: box.right - Number(canvas?.dataset.clearRight ?? 0) };
     setArea((prev) =>
       c && (!prev || prev.left !== c.left || prev.right !== c.right)
         ? { left: c.left, right: c.right }
@@ -142,11 +148,18 @@ export function ContextualToolbar({
       if (t instanceof Node && stage && !t.contains(stage)) return;
       schedule();
     };
+    // The slide slides left (a padding transition) when a pane opens over the canvas at 1280 px or
+    // less; measure again once it lands, or the bar stays where the slide was.
+    const onSettled = (e: Event) => {
+      if (e.target instanceof Element && e.target.matches("[data-canvas-content]")) schedule();
+    };
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("transitionend", onSettled, true);
     return () => {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("transitionend", onSettled, true);
     };
   }, [schedule, stageRef]);
 
@@ -176,7 +189,14 @@ export function ContextualToolbar({
   const top = Math.min(window.innerHeight - EDGE - size.h, Math.max(MIN_TOP, preferred));
   const half = size.w / 2;
   const minX = (area?.left ?? 0) + EDGE + half;
-  const maxX = (area?.right ?? window.innerWidth) - EDGE - half;
+  // In the band above the slide, leave the slide's right end to the slide actions pill when both
+  // fit, so a narrow slide (a reserved pane, a small screen) never pushes the pill onto the slide.
+  const slideRight = stageRect.left + SLIDE_W * scale;
+  const pillW = document.querySelector("[data-slide-actions]")?.getBoundingClientRect().width ?? 0;
+  const besidePill = slideRight - (pillW > 0 ? pillW + PILL_GAP : 0) - half;
+  const areaMaxX = (area?.right ?? window.innerWidth) - EDGE - half;
+  const maxX =
+    preferred === outsideSlide && besidePill >= minX ? Math.min(areaMaxX, besidePill) : areaMaxX;
   // A bar wider than the canvas column centres on it rather than spilling one way.
   const left =
     minX > maxX

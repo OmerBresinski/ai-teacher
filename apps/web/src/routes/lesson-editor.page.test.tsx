@@ -41,13 +41,21 @@ const jobEvent = (type: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-// happy-dom has no layout: give the navigator's scroll region a height so react-virtual renders rows.
-Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-  configurable: true,
-  get(this: HTMLElement) {
-    return this.getAttribute("role") === "listbox" ? 800 : 0;
-  },
-});
+// happy-dom has no layout: give the filmstrip's scroll region a size so react-virtual renders
+// its thumbs (the strip runs sideways, ruling 186, so the width is the one it reads).
+for (const side of ["offsetHeight", "offsetWidth"] as const) {
+  Object.defineProperty(HTMLElement.prototype, side, {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.getAttribute("role") === "listbox" ? 800 : 0;
+    },
+  });
+}
+
+/** Opens the top bar's ⋯ (Share, Facts, Worksheet, ruling 186). */
+async function openLessonActions() {
+  fireEvent.click(await screen.findByRole("button", { name: "More lesson actions" }));
+}
 
 function renderPage(
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -175,6 +183,7 @@ describe("LessonEditorPage", () => {
 
   it("keeps manual worksheet creation available for a lesson without a confirmed plan", async () => {
     renderPage();
+    await openLessonActions();
     const action = await screen.findByRole("button", { name: /^Worksheet$/ });
     fireEvent.click(action);
     expect(navigate).toHaveBeenCalledWith({
@@ -425,6 +434,7 @@ describe("LessonEditorPage", () => {
     if (row) row.body = { ...lesson, artefacts: { worksheetId: "fraction-practice" } };
     renderPage();
     await screen.findByRole("heading", { level: 1, name: "The water cycle" });
+    await openLessonActions();
     fireEvent.click(await screen.findByRole("button", { name: "Worksheet" }));
     expect(navigate).toHaveBeenCalledWith({
       to: "/w/$worksheetId",
@@ -472,6 +482,7 @@ describe("LessonEditorPage", () => {
       ];
     };
     const editObjective = async () => {
+      await openLessonActions();
       fireEvent.click(await screen.findByRole("button", { name: "Facts" }));
       const field = screen.getByRole("textbox", { name: "Objective 1" });
       fireEvent.focus(field);

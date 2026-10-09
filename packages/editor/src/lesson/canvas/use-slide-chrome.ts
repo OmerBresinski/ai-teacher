@@ -85,10 +85,13 @@ export function useSlideChrome({
         prev.w === b.width && prev.h === b.height ? prev : { w: b.width, h: b.height },
       );
     }
+    // A pane over the canvas's right side (the Dayback pane) takes that strip out of the viewport.
+    const clear = Number(
+      stageRef.current?.closest<HTMLElement>("[data-canvas]")?.dataset.clearRight ?? 0,
+    );
+    const vw = window.innerWidth - clear;
     setViewport((prev) =>
-      prev.w === window.innerWidth && prev.h === window.innerHeight
-        ? prev
-        : { w: window.innerWidth, h: window.innerHeight },
+      prev.w === vw && prev.h === window.innerHeight ? prev : { w: vw, h: window.innerHeight },
     );
   }, [stageRef, avoidRefs]);
 
@@ -161,11 +164,18 @@ export function useSlideChrome({
       if (t instanceof Node && stage && !t.contains(stage)) return;
       schedule();
     };
+    // A pane opening over the canvas (1280 px or less) slides the slide left with a padding
+    // transition; measure again once it lands.
+    const onSettled = (e: Event) => {
+      if (e.target instanceof Element && e.target.matches("[data-canvas-content]")) schedule();
+    };
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("transitionend", onSettled, true);
     return () => {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("transitionend", onSettled, true);
     };
   }, [schedule, stageRef]);
 

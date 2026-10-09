@@ -8,6 +8,8 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
+import { Button } from "@tj/ui";
+import { FileText } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -117,6 +119,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const checkingSeen = useRef(false);
   if (stage.stage === "checking") checkingSeen.current = true;
   const [worksheetsOpen, setWorksheetsOpen] = useState(false);
+  const [worksheetsLabel, setWorksheetsLabel] = useState("Worksheet");
   const [handoff] = useState(() => generationHandoff(queryClient, lessonId));
   const [includedWorksheet] = useState(() => !!handoff.intent);
   useEffect(() => {
@@ -205,21 +208,56 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
   // amendment 2026-09-12), so it exports what is on screen — including a locked lesson's partial
   // body while `lesson.plan` runs; the app opens the print tab.
+  const worksheetsSlot =
+    data.plan?.state === "confirmed" ? (
+      <Suspense fallback={null}>
+        <LessonWorksheets
+          lesson={data}
+          open={worksheetsOpen}
+          onOpenChange={setWorksheetsOpen}
+          onOpenWorksheet={onOpenWorksheet}
+        />
+      </Suspense>
+    ) : null;
+  // In the editor the entry sits in the top bar's ⋯ menu, which unmounts when it closes; the dialog
+  // is mounted beside the editor instead, so opening it from the menu keeps it open.
+  const worksheetsMenuEntry =
+    data.plan?.state === "confirmed" ? (
+      <Button
+        variant="ghost"
+        size="sm"
+        data-lesson-worksheets
+        onClick={() => setWorksheetsOpen(true)}
+      >
+        <FileText aria-hidden size={16} strokeWidth={1.5} />
+        {worksheetsLabel}
+      </Button>
+    ) : null;
+  const worksheetsDialog =
+    data.plan?.state === "confirmed" ? (
+      <Suspense fallback={null}>
+        <LessonWorksheets
+          lesson={data}
+          trigger={false}
+          onLabel={setWorksheetsLabel}
+          open={worksheetsOpen}
+          onOpenChange={setWorksheetsOpen}
+          onOpenWorksheet={onOpenWorksheet}
+        />
+      </Suspense>
+    ) : null;
+  const exportControl = (
+    <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+  );
+  // While the lesson is being made, the generating shell shows both side by side; the editor's
+  // top bar keeps Export visible and lists the Worksheets control in its ⋯ (ruling 186).
   const exportSlot = (
     <>
-      {data.plan?.state === "confirmed" ? (
-        <Suspense fallback={null}>
-          <LessonWorksheets
-            lesson={data}
-            open={worksheetsOpen}
-            onOpenChange={setWorksheetsOpen}
-            onOpenWorksheet={onOpenWorksheet}
-          />
-        </Suspense>
-      ) : null}
-      <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+      {worksheetsSlot}
+      {exportControl}
     </>
   );
+
   const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
   const companionSlot = showStory ? (
@@ -252,28 +290,32 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   ) : data.slides.length === 0 ? (
     <EmptyLesson lesson={data} onBack={onBack} />
   ) : (
-    <LessonEditor
-      companion={companionSlot}
-      lessonId={lessonId}
-      userId={sessionBoundary.getSnapshot().identity ?? undefined}
-      queryKey={options.queryKey}
-      queryFn={() => queryClient.fetchQuery(options)}
-      onSave={save}
-      onBack={onBack}
-      onPresent={onPresent}
-      worksheet={worksheet}
-      onOpenWorksheet={onOpenWorksheet}
-      onNewWorksheet={onNewWorksheet}
-      editorRef={editorRef}
-      initialSlideId={viewedSlideId ?? undefined}
-      onFactsChanged={proposals.onFactsChanged}
-      onRegenerate={proposals.onRegenerate}
-      onPromptEdit={onPromptEdit}
-      busySlideIds={proposals.busySlideIds}
-      proposalsBusy={proposals.busy}
-      images={images}
-      exportSlot={exportSlot}
-    />
+    <>
+      {worksheetsDialog}
+      <LessonEditor
+        companion={companionSlot}
+        lessonId={lessonId}
+        userId={sessionBoundary.getSnapshot().identity ?? undefined}
+        queryKey={options.queryKey}
+        queryFn={() => queryClient.fetchQuery(options)}
+        onSave={save}
+        onBack={onBack}
+        onPresent={onPresent}
+        worksheet={worksheet}
+        onOpenWorksheet={onOpenWorksheet}
+        onNewWorksheet={onNewWorksheet}
+        editorRef={editorRef}
+        initialSlideId={viewedSlideId ?? undefined}
+        onFactsChanged={proposals.onFactsChanged}
+        onRegenerate={proposals.onRegenerate}
+        onPromptEdit={onPromptEdit}
+        busySlideIds={proposals.busySlideIds}
+        proposalsBusy={proposals.busy}
+        images={images}
+        exportSlot={exportControl}
+        worksheetsSlot={worksheetsMenuEntry}
+      />
+    </>
   );
   const paused = stage.terminal === "failed" || stage.terminal === "cancelled";
   const ready = !generatingJobId && data.slides.length > 0;

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import { pointer, renderEditor } from "./test-harness";
+import { openLessonActions, pointer, renderEditor } from "./test-harness";
 
 /*
  * TEACH-133 rows 5–8: the residual badge on the real shell — navigator dots, the footer entry and
@@ -106,6 +106,7 @@ describe("residual badge", () => {
   test("row 8: the top bar shows Worksheet when the lesson has one and the app can open it", () => {
     const onOpenWorksheet = mock((_id: string) => {});
     renderEditor(generatedLesson(), { onOpenWorksheet });
+    openLessonActions();
     fireEvent.click(screen.getByRole("button", { name: "Worksheet" }));
     expect(onOpenWorksheet).toHaveBeenCalledWith("gen-water-cycle-ws");
   });
@@ -114,6 +115,7 @@ describe("residual badge", () => {
     const lesson = generatedLesson();
     delete lesson.artefacts;
     renderEditor(lesson, { onOpenWorksheet: () => {} });
+    openLessonActions();
     expect(screen.queryByRole("button", { name: "Worksheet" })).toBeNull();
     // A pointer on a row still works with the dots in the thumb corner.
     const second = rows()[1];

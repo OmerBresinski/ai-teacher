@@ -5,7 +5,7 @@ import type { Lesson, TextElement } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { createRef } from "react";
 import type { LessonEditorHandle } from "./LessonEditor";
-import { catcher, loadTextEditor, pointer, renderEditor } from "./test-harness";
+import { catcher, loadTextEditor, openLessonActions, pointer, renderEditor } from "./test-harness";
 
 /*
  * TEACH-134 on the real shell: the facts panel (typing is one undo step, commits coalesce into
@@ -26,7 +26,10 @@ const GENERATED_FROM = {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const panel = () => screen.getByRole("complementary", { name: "Facts" });
-const openPanel = () => fireEvent.click(screen.getByRole("button", { name: "Facts" }));
+const openPanel = () => {
+  openLessonActions();
+  fireEvent.click(screen.getByRole("button", { name: "Facts" }));
+};
 
 /** Element proposals for the objectives slide (2) and the multiple-choice slide (4). */
 function twoProposals(lesson: Lesson): Proposal[] {
@@ -51,6 +54,7 @@ function twoProposals(lesson: Lesson): Proposal[] {
 describe("facts panel", () => {
   test("no Facts button without the app's wiring; with it, the panel toggles", () => {
     const { unmount } = renderEditor(generatedLesson());
+    openLessonActions();
     expect(screen.queryByRole("button", { name: "Facts" })).toBeNull();
     unmount();
     renderEditor(generatedLesson(), { onFactsChanged: () => {} });

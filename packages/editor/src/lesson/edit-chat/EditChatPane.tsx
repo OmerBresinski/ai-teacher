@@ -14,6 +14,8 @@ import {
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
+import { sidePaneClass } from "../SidePaneDock";
+import type { PaneMode } from "../shell-layout";
 import {
   useActiveSlide,
   useSelection,
@@ -526,7 +528,18 @@ export function EditChatPane({
   open = true,
   onReopen,
   focusTick,
+  bubbleHost,
+  bubbleHidden = false,
+  paneMode = "docked",
+  paneWidth = 320,
 }: {
+  /** Layout A's shell rules (`shell-layout.ts`): reserved or over the filmstrip, and the fluid width. */
+  paneMode?: PaneMode;
+  paneWidth?: number;
+  /** Layout A: the canvas row the bubble sits in (bottom right, on the zoom row). */
+  bubbleHost?: HTMLElement | null;
+  /** Another pane (Facts) holds the right slot: no bubble over it until it closes. */
+  bubbleHidden?: boolean;
   /** Closed, the pane shows as the bubble; the request carries on in `EditChatProvider`. */
   open?: boolean;
   /** The bubble's click: open the pane again. */
@@ -542,16 +555,36 @@ export function EditChatPane({
   useEffect(() => {
     if (focusTick > 0) view.field.current?.focus();
   }, [focusTick]);
+  // Escape from the top bar (where focus lands when ⋯ closes) or from nowhere closes the open pane
+  // too, as it does from inside it. The canvas keeps its own Escape (deselect).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const target = e.target as Element | null;
+      if (target !== document.body && !target?.closest?.("[data-topbar]")) return;
+      // A menu or dialog still open owns this Escape. A top-bar tooltip (shown because focus came
+      // back to its button) does not: it closes along with the pane.
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="menu"]')) return;
+      e.preventDefault();
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
   return (
     <>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc closes the pane from anywhere inside it */}
       <aside
         aria-label={EDIT_CHAT_LABEL}
         data-edit-chat
+        data-side-pane={paneMode}
         hidden={!open}
+        style={{ width: paneWidth }}
         className={cn(
-          "relative w-(--edit-chat-width,320px) shrink-0 flex-col bg-card text-foreground shadow-(--edit-chat-shadow) max-[1281px]:w-[296px]",
+          "shrink-0 flex-col bg-card text-foreground shadow-(--edit-chat-shadow)",
           open ? "flex" : "hidden",
+          sidePaneClass(paneMode),
         )}
         onKeyDown={(e) => {
           if (e.key === "Escape" && !e.defaultPrevented) {
@@ -562,12 +595,13 @@ export function EditChatPane({
       >
         <ChatThread view={view} />
       </aside>
-      {open ? null : (
+      {open || bubbleHidden ? null : (
         <EditChatBubble
           state={bubble}
           announcement={unread?.text ?? ""}
           takeFocus={closedHere.current}
           onOpen={() => onReopen?.()}
+          host={bubbleHost}
         />
       )}
     </>

@@ -44,7 +44,7 @@ test.describe("generating lesson", () => {
       headers: { origin: E2E_WEB_URL },
       data: { documents: [{ ...water, body, generatingJobId: jobId }] },
     });
-    expect(res.ok()).toBe(true);
+    expect(res.ok(), await res.text()).toBe(true);
     const { ids } = (await res.json()) as { ids: Record<string, string> };
 
     await page.goto(`/l/${ids["demo-water-cycle"]}`);
@@ -92,22 +92,23 @@ test.describe("generating lesson", () => {
       body.slides[0]?.id ?? "",
     );
     await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
-    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowRight");
     await expect(thumbs.nth(1)).toHaveAttribute("aria-current", "true");
     await expect(thumbs.nth(1)).toBeFocused();
     await page.getByRole("button", { name: "Newest slide" }).click();
     await expect(thumbs.nth(2)).toHaveAttribute("aria-current", "true");
     await expect(page.getByRole("button", { name: "Newest slide" })).toHaveCount(0);
-    // The editor's columns: the rail's width with nothing in it, the navigator at the persisted
-    // preference (full by default, compact when the teacher keeps it so), so nothing reflows.
-    await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "56px");
-    await expect(rail).toHaveCSS("width", "218px");
-    await page.evaluate(() => localStorage.setItem("tj:navigator", "compact"));
+    // The editor's layout (ruling 186): the rail's width with nothing in it and the filmstrip under
+    // the canvas at the editor's height, folded to dots when the teacher keeps it so, so nothing
+    // reflows at Ready.
+    await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "48px");
+    await expect(rail).toHaveCSS("height", "88px");
+    await page.evaluate(() => localStorage.setItem("tj:filmstrip-dots", "1"));
     await page.reload();
-    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("width", "90px");
-    await page.evaluate(() => localStorage.removeItem("tj:navigator"));
+    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("height", "36px");
+    await page.evaluate(() => localStorage.removeItem("tj:filmstrip-dots"));
     await page.reload();
-    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("width", "218px");
+    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("height", "88px");
 
     // The live dot is still under reduced motion.
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -131,6 +132,73 @@ test.describe("generating lesson", () => {
       await expectNoSeriousA11yViolations(page, `generating lesson (${theme})`);
     }
   });
+
+  for (const [width, height] of [
+    [1440, 900],
+    [1280, 800],
+  ] as const) {
+    test(`at ${width}: the slide keeps its size at Ready and as the story companion comes and goes`, async ({
+      signedInPage: { page },
+    }) => {
+      await page.setViewportSize({ width, height });
+      const water = demoWorkspace(new Date()).find((d) => d.key === "demo-water-cycle");
+      if (!water || !("slides" in water.body)) throw new Error("fixture missing");
+      const body = {
+        ...water.body,
+        slides: water.body.slides.slice(0, 3),
+        facts: FACTS,
+        updatedAt: new Date().toISOString(),
+      };
+      const open = async (generatingJobId: string | null) => {
+        const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+          headers: { origin: E2E_WEB_URL },
+          data: {
+            documents: [{ ...water, body, ...(generatingJobId ? { generatingJobId } : {}) }],
+          },
+        });
+        expect(res.ok(), await res.text()).toBe(true);
+        const { ids } = (await res.json()) as { ids: Record<string, string> };
+        await page.goto(`/l/${ids["demo-water-cycle"]}`);
+      };
+      const box = async (selector: string) => {
+        const b = await page.locator(selector).first().boundingBox();
+        if (!b) throw new Error(`no box for ${selector}`);
+        return b;
+      };
+      const same = (
+        a: { [k: string]: number },
+        b: { [k: string]: number },
+        keys: string[],
+        what: string,
+      ) => {
+        for (const key of keys) {
+          expect(Math.abs((a[key] ?? 0) - (b[key] ?? 0)), `${what} ${key}`).toBeLessThanOrEqual(
+            0.5,
+          );
+        }
+      };
+
+      // Generating, with the story companion showing (a locked lesson starts the story) in the
+      // right pane slot (ruling 186).
+      await open("01a06a15-1849-7000-ac6a-c07e27fe3090");
+      await expect(page.getByTestId("generating-shell")).toBeVisible();
+      await expect(page.locator("[data-canvas-companion]")).toBeVisible();
+      await page.getByRole("button", { name: "Slide 1", exact: true }).click();
+      const slideWith = await box("[data-canvas-slide]");
+      const stripWith = await box('nav[aria-label="Slides"]');
+
+      // The editor, with no companion: the slide is the same size and height on the page; only
+      // its horizontal centre follows the freed pane slot.
+      await open(null);
+      await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+      await expect(page.locator("[data-editor-companion], [data-canvas-companion]")).toHaveCount(0);
+      const slideWithout = await box("[data-slide-frame]");
+      const stripWithout = await box("[data-navigator]");
+
+      same(slideWith, slideWithout, ["y", "width", "height"], "slide");
+      same(stripWith, stripWithout, ["y", "height"], "strip");
+    });
+  }
 
   test("a lesson from a brief opens on its page and unlocks when the job ends", async ({
     signedInPage: { page },

@@ -26,9 +26,10 @@ describe("ThemeDialog", () => {
     fireEvent.click(paper);
     expect(read().themeId).toBe("playground");
     expect(paper).toHaveAttribute("aria-checked", "true");
-    // Browsing inside the dialog records nothing (the top bar is aria-hidden behind the modal);
+    // Browsing inside the dialog records nothing (the top bar is aria-hidden behind the modal, the
+    // button itself too: the save status beside it is a live region the modal leaves exposed);
     // Done commits the whole browse as one step.
-    expect(screen.getByRole("button", { name: "Undo", hidden: true })).toBeDisabled();
+    expect(screen.getByLabelText("Undo")).toBeDisabled();
     const other = tiles.find((t) => t.getAttribute("data-theme-tile") === "beacon");
     if (other) fireEvent.click(other);
     fireEvent.click(paper);

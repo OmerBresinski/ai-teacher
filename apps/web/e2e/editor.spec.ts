@@ -48,19 +48,20 @@ test.describe("lesson editor", () => {
     const count = await rows(page).count();
     expect(count).toBe(7);
     await expect(rows(page).first()).toHaveAttribute("aria-selected", "true");
-    // One full-size slide at fit: it sits inside the canvas with the 40px gutter on each side.
+    // One full-size slide at fit: it sits inside the canvas with a 16px gutter at each side and
+    // 76px above and below for the toolbar and the footer (ruling 186).
     const canvas = await page.getByRole("group", { name: "Slide canvas" }).boundingBox();
     const slide = await frame(page).boundingBox();
     if (!canvas || !slide) throw new Error("no layout");
     expect(Math.abs(slide.width / slide.height - 16 / 9)).toBeLessThan(0.02);
-    expect(slide.width).toBeLessThanOrEqual(canvas.width - 80 + 1);
-    expect(slide.height).toBeLessThanOrEqual(canvas.height - 80 + 1);
+    expect(slide.width).toBeLessThanOrEqual(canvas.width - 32 + 1);
+    expect(slide.height).toBeLessThanOrEqual(canvas.height - 152 + 1);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "/l/:id");
   });
 
-  test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 below slide 3 reorders", async ({
+  test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 past slide 3 reorders", async ({
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
@@ -83,12 +84,12 @@ test.describe("lesson editor", () => {
     await page.keyboard.press("Meta+ArrowUp");
     await expect(rows(page).nth(1)).toHaveAttribute("aria-label", second ?? "");
 
-    // Pointer: slide 1 to below slide 3.
+    // Pointer: slide 1 to after slide 3, along the filmstrip (ruling 186).
     const first = await label(0);
     const from = await centre(rows(page).nth(0));
     const target = await rows(page).nth(2).boundingBox();
     if (!target) throw new Error("no row");
-    await drag(page, from, 0, target.y + target.height - from.y, 8);
+    await drag(page, from, target.x + target.width - from.x, 0, 8);
     await expect(rows(page).nth(2)).toHaveAttribute(
       "aria-label",
       first?.replace("Slide 1", "Slide 3") ?? "",

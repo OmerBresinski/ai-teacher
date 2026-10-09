@@ -45,9 +45,20 @@ test.describe("real lesson intake over the fake worker", () => {
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible({
       timeout: 50_000,
     });
-    await expect(page.getByRole("button", { name: "Worksheets", exact: true })).toBeVisible({
+    // The Worksheet entry lives in the top bar's ⋯ (ruling 186).
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    await expect(page.getByRole("button", { name: "Worksheet", exact: true })).toBeVisible({
       timeout: 20_000,
     });
+    // The dialog lives outside the menu: opening it from ⋯ keeps it open as the menu closes.
+    await page.getByRole("button", { name: "Worksheet", exact: true }).click();
+    const worksheetsDialog = page.getByRole("dialog", { name: "Worksheets" });
+    await expect(worksheetsDialog).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(worksheetsDialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(worksheetsDialog).toBeHidden();
+    await page.keyboard.press("Escape");
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: "/tmp/live-intake-editor-desktop.png" });
 
@@ -78,7 +89,8 @@ test.describe("real lesson intake over the fake worker", () => {
     expect(worksheets.items[0]?.generatingJobId).toBeNull();
     expect(worksheets.items[0]?.generation?.completedAt).toBeTruthy();
 
-    await page.getByRole("button", { name: "Worksheets", exact: true }).click();
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    await page.getByRole("button", { name: "Worksheet", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Worksheets" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("Ready", { exact: true })).toHaveCount(1);

@@ -592,8 +592,7 @@
   pointer-events: none;
 }
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="desktop"] {
-  width: 0;
-  transition: none;
+  display: none;
 }
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
   height: 0;

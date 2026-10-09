@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tj/ui";
+import { FileText } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import {
@@ -33,8 +34,17 @@ export function LessonWorksheets({
   open,
   onOpenChange,
   onOpenWorksheet,
+  trigger = true,
+  onLabel,
 }: {
   lesson: Lesson;
+  /**
+   * `false`: no button here. The editor lists the entry in its ⋯ menu and mounts this outside the
+   * menu, so the dialog does not unmount when the menu closes.
+   */
+  trigger?: boolean;
+  /** The entry's label as it changes ("Worksheet generating…"), for a trigger rendered elsewhere. */
+  onLabel?: (label: string) => void;
   open: boolean;
   onOpenChange: (value: boolean) => void;
   onOpenWorksheet: (id: string) => void;
@@ -116,12 +126,20 @@ export function LessonWorksheets({
         ? "Review worksheet choice"
         : intent.intent && !intent.attempted
           ? "Worksheet waiting…"
-          : "Worksheets";
+          : "Worksheet";
+  useEffect(() => {
+    onLabel?.(label);
+  }, [label, onLabel]);
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => onOpenChange(true)}>
-        {label}
-      </Button>
+      {/* The lesson's one Worksheet entry (ruling 186): the list of its sheets, with the maker
+          inside. */}
+      {trigger ? (
+        <Button variant="ghost" size="sm" data-lesson-worksheets onClick={() => onOpenChange(true)}>
+          <FileText aria-hidden size={16} strokeWidth={1.5} />
+          {label}
+        </Button>
+      ) : null}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogTitle>Worksheets</DialogTitle>
@@ -206,7 +224,7 @@ export function LessonWorksheets({
               })
             }
           >
-            {list.data?.length ? "Add another worksheet" : "Make worksheet"}
+            {list.data?.length ? "Make another worksheet" : "Make a worksheet"}
           </Button>
           {cooldown && !active ? (
             <p className="text-muted-foreground text-sm">

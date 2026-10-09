@@ -21,7 +21,11 @@ import {
   moveSlideBy,
 } from "../slide-commands";
 import { useActiveSlideId, useSessionActions } from "../use-editor-session";
-import { CHROME_MIN_TOP, placeSlideActions } from "./place-slide-actions";
+import { CHROME_GAP, CHROME_MIN_TOP, placeSlideActions } from "./place-slide-actions";
+
+/** The full pill (Duplicate, Add, Delete, More) as drawn. */
+const FULL_PILL_W = 174;
+
 import { useSlideChrome } from "./use-slide-chrome";
 
 // 20px is the contextual toolbar's allowance, and this pill floats in the same band.
@@ -85,6 +89,12 @@ export function SlideActions({
   // Floating chrome never rides nearer the top than the bar plus the panel gap (72px).
   const top = Math.max(placedTop, CHROME_MIN_TOP);
   const only = slideCount <= 1;
+  // A slide too narrow for the toolbar and the full pill side by side above it (a reserved pane on
+  // a small screen): the pill keeps Add and folds Duplicate and Delete into More, so it still sits
+  // in the toolbar's row instead of dropping onto the slide.
+  const widest = avoid.reduce((w, b) => Math.max(w, b.width), 0);
+  const compact =
+    !inline && frame !== null && widest > 0 && frame.width < widest + FULL_PILL_W + CHROME_GAP * 2;
 
   return (
     // The kit's floating plate: `--shadow-2` carries the 1px ring, so there is no border.
@@ -106,13 +116,15 @@ export function SlideActions({
             }
       }
     >
-      <PillButton
-        label="Duplicate slide"
-        shortcut={hint("$mod+d")}
-        onClick={() => duplicateSlide(deps, id)}
-      >
-        <Copy aria-hidden {...ICON} />
-      </PillButton>
+      {compact ? null : (
+        <PillButton
+          label="Duplicate slide"
+          shortcut={hint("$mod+d")}
+          onClick={() => duplicateSlide(deps, id)}
+        >
+          <Copy aria-hidden {...ICON} />
+        </PillButton>
+      )}
 
       <AddSlidePicker
         themeId={lesson.themeId}
@@ -128,14 +140,16 @@ export function SlideActions({
       />
 
       {/* The name carries the reason it is off: a screen reader gets the same sentence the tooltip shows. */}
-      <PillButton
-        label={only ? "Delete slide. A lesson needs at least one slide" : "Delete slide"}
-        tooltipLabel={only ? "A lesson needs at least one slide" : undefined}
-        disabled={only}
-        onClick={() => deleteSlide(deps, id, activeSlideId)}
-      >
-        <Trash2 aria-hidden {...ICON} />
-      </PillButton>
+      {compact ? null : (
+        <PillButton
+          label={only ? "Delete slide. A lesson needs at least one slide" : "Delete slide"}
+          tooltipLabel={only ? "A lesson needs at least one slide" : undefined}
+          disabled={only}
+          onClick={() => deleteSlide(deps, id, activeSlideId)}
+        >
+          <Trash2 aria-hidden {...ICON} />
+        </PillButton>
+      )}
 
       <PanelSeparator />
 
@@ -147,6 +161,21 @@ export function SlideActions({
           </PillButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {compact ? (
+            <>
+              <DropdownMenuItem onSelect={() => duplicateSlide(deps, id)}>
+                <Copy aria-hidden size={16} strokeWidth={1.5} />
+                Duplicate slide
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={only}
+                onSelect={() => deleteSlide(deps, id, activeSlideId)}
+              >
+                <Trash2 aria-hidden size={16} strokeWidth={1.5} />
+                Delete slide
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <DropdownMenuItem disabled={index <= 0} onSelect={() => moveSlideBy(deps, id, -1)}>
             <ChevronUp aria-hidden size={16} strokeWidth={1.5} />
             Move up
