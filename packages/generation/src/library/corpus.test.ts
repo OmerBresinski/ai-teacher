@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { MODEL_LOADERS } from "./models";
-import { kit, libraryDom, loadModel, renderLibraryModel } from "./render";
+import { kit, lexendWidth, libraryDom, loadModel, renderLibraryModel, typeOf } from "./render";
+import type { J } from "./types";
 import { TARGETED } from "./vendor/tools/corpus-cases";
 
 /*
@@ -114,3 +115,39 @@ test("corpus extremes: no words off the slide", async () => {
   expect(drawn).toBeGreaterThan(100);
   expect(off).toEqual([]);
 }, 600_000);
+
+test("a model's own <style> sets the size its words are measured at (plant_growth .pg-job)", async () => {
+  const { win } = libraryDom();
+  const document = win.document;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  style.textContent = ".slide .pg-job{font-size:var(--fs-label);fill:var(--ink-2)}";
+  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  text.setAttribute("class", "pg-job");
+  svg.append(style, text);
+  document.body.append(svg);
+  const label = typeOf(text as never).fs;
+  text.setAttribute("class", "ts-tiny");
+  const tiny = typeOf(text as never).fs;
+  svg.remove();
+  // The kit's --fs-label, not the 16 px fallback: the y3 smoke lesson's jobs ran off the crop at 16.
+  expect(label).toBeGreaterThan(20);
+
+  await kit();
+  const m = await loadModel("plant_growth");
+  const preset = (m?.presets ?? []).find((p) => (p as { id?: string }).id === "y3-parts") as
+    | { params?: J }
+    | undefined;
+  const P = structuredClone((preset?.params ?? preset) as J) as { parts: { job: string }[] };
+  for (const part of P.parts)
+    part.job = "Spread through the soil; hold the plant in place; take in water from the soil.";
+  const d = await renderLibraryModel("plant_growth", P as unknown as J);
+  const left = Number(/viewBox="([\d.-]+)/.exec(d.svg)?.[1]);
+  for (const [, cls, body] of d.svg.matchAll(
+    /<text text-anchor="end" x="446"[^>]*class="([\w-]+)"[^>]*job">(.*?)<\/text>/g,
+  )) {
+    const fs = cls === "pg-job" ? label : tiny;
+    for (const [, line] of (body ?? "").matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g))
+      expect(446 - lexendWidth(line ?? "", fs, 500)).toBeGreaterThanOrEqual(left - 1);
+  }
+});

@@ -72,11 +72,34 @@ const PLAIN_CSS = (TOKENS as string).replace(/\/\*[\s\S]*?\*\//g, "");
 for (const block of PLAIN_CSS.matchAll(/(?<=^|\})\s*(:root|\.tk|\.theme-primary)\s*\{([^}]*)\}/g))
   for (const [, k, v] of (block[2] ?? "").matchAll(/(--(?:fs|w)-[\w-]+)\s*:\s*([^;]+);/g))
     VARS.set(k as string, (v as string).trim());
-const CLASS_TYPE = new Map<string, { size?: string; weight?: string }>();
-for (const [, cls, body] of PLAIN_CSS.matchAll(/\.slide \.([\w-]+)\s*\{([^}]*)\}/g)) {
-  const size = /font-size:\s*([^;]+);/.exec(body ?? "")?.[1]?.trim();
-  const weight = /font-weight:\s*([^;]+);/.exec(body ?? "")?.[1]?.trim();
-  if (size || weight) CLASS_TYPE.set(cls as string, { size, weight });
+type ClassType = Map<string, { size?: string; weight?: string }>;
+/** `.slide .cls { font-size; font-weight }` rules of a stylesheet, by class. */
+function classTypes(css: string): ClassType {
+  const map: ClassType = new Map();
+  for (const [, cls, body] of css.matchAll(/(?:\.slide\s+)?\.([\w-]+)\s*\{([^}]*)\}/g)) {
+    const size = /font-size:\s*([^;}]+)/.exec(body ?? "")?.[1]?.trim();
+    const weight = /font-weight:\s*([^;}]+)/.exec(body ?? "")?.[1]?.trim();
+    if (size || weight) map.set(cls as string, { size, weight });
+  }
+  return map;
+}
+const CLASS_TYPE = classTypes(PLAIN_CSS);
+/** Rules a model adds in its own `<style>` while it draws (plant_growth's `.pg-job`); they win. */
+const parsedStyles = new Map<string, ClassType>();
+function modelClassTypes(el: Element): ClassType[] {
+  const out: ClassType[] = [];
+  for (const st of el.ownerDocument?.querySelectorAll("style") ?? []) {
+    const css = st.textContent ?? "";
+    if (!css || css.length > 50_000) continue;
+    let m = parsedStyles.get(css);
+    if (!m) {
+      m = classTypes(css.replace(/\/\*[\s\S]*?\*\//g, ""));
+      if (parsedStyles.size > 500) parsedStyles.clear();
+      parsedStyles.set(css, m);
+    }
+    if (m.size) out.push(m);
+  }
+  return out.reverse();
 }
 const resolve = (v: string): number => {
   const m = /var\((--[\w-]+)\)/.exec(v);
@@ -89,6 +112,7 @@ const resolve = (v: string): number => {
 export function typeOf(el: Element): { fs: number; weight: number } {
   let fs: number | undefined;
   let weight: number | undefined;
+  const own = modelClassTypes(el);
   for (
     let e: Element | null = el;
     e && (fs === undefined || weight === undefined);
@@ -101,7 +125,7 @@ export function typeOf(el: Element): { fs: number; weight: number } {
     if (fs === undefined && s) fs = resolve(s) || undefined;
     if (weight === undefined && w) weight = resolve(w) || undefined;
     for (const c of e.classList) {
-      const t = CLASS_TYPE.get(c);
+      const t = own.find((m) => m.has(c))?.get(c) ?? CLASS_TYPE.get(c);
       if (fs === undefined && t?.size) fs = resolve(t.size) || undefined;
       if (weight === undefined && t?.weight) weight = resolve(t.weight) || undefined;
     }
