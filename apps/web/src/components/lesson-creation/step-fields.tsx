@@ -288,7 +288,7 @@ export function ObjectivesStep({
             onChange={onSlideCount}
             options={SLIDE_COUNTS.map((value) => ({
               value: String(value),
-              label: `${value} slides`,
+              label: `${value} slides, including title`,
             }))}
           />
         </div>
