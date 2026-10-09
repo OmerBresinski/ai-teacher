@@ -89,6 +89,7 @@ import {
   wordsOf,
 } from "./materialise";
 import {
+  type CoverageRules,
   coverage,
   lessonNotes,
   notesOnlyLine,
@@ -694,6 +695,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   await Promise.all(diagramJobs.values());
   const n = plan.slides.length;
   const flags = run.checker ?? {};
+  const coverageRules: CoverageRules = {
+    pictureTasks: flags.coverageCountsPictureTasks,
+    noDiscussion: flags.coverageExcludesDiscussion,
+    afterTeaching: flags.coverageExcludesPrediction,
+  };
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {
@@ -890,6 +896,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       chat,
       log,
       onUsd: () => {},
+      rules: coverageRules,
     });
     if (res.repaired) {
       plan.flow = res.plan.flow as Plan["flow"];
@@ -1489,8 +1496,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Coverage by the written slides' templates, as the objective repair judges it (the summary
   // used to classify by `does` alone and read 0 while an objective was unchecked).
   const unmet = plan.flow
-    ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string)
-        .missing
+    ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string, {
+        ...coverageRules,
+        slideOf: (k) => plan.slides[k - 1] as S | undefined,
+      }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });

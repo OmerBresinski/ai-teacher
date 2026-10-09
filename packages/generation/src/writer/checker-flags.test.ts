@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { type CheckerFlags, parseCheckerFlags } from "./checker-flags";
+import { coverage } from "./notes";
 import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 
 /*
@@ -128,5 +129,19 @@ describe("pointGuardLogOnly", () => {
     expect(on.events).toContainEqual(
       expect.objectContaining({ ev: "point-guard", slide: 3, how: "log-only" }),
     );
+  });
+});
+
+describe("objective coverage", () => {
+  // No pinned writer output has a discussion check or a check before its teaching; the flows below
+  // are the audit's cases (D36; R7T y12 o1 checked only by the starter on s3, first taught on s4).
+  test("coverageExcludesDiscussion: a discussion slide does not check (D36)", () => {
+    const flow = [
+      { slide: 3, teaches: [1] },
+      { slide: 4, teaches: [1] },
+    ];
+    const tpl = (k: number) => (k === 4 ? "discussion" : "explain");
+    expect(coverage(flow, 1, tpl).missing).toEqual([]);
+    expect(coverage(flow, 1, tpl, { noDiscussion: true }).unchecked).toEqual([1]);
   });
 });
