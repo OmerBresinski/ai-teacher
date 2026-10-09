@@ -5,6 +5,14 @@ import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
+import {
+  ACTIVITIES_DEFAULT,
+  activityFaults,
+  fromWriterActivity,
+  isWriterActivity,
+  withActivities,
+  withActivityMenu,
+} from "./activities";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { writerDrawerSystem } from "./diagram-contract.gen";
@@ -151,6 +159,11 @@ export type WriterRun = {
    * by code, and a model that cannot be drawn falls back to the drawer. Needs `drawDiagrams`.
    */
   library?: boolean;
+  /**
+   * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
+   * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
+   */
+  activities?: boolean;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -308,17 +321,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           },
         )
       : [];
-  const schema = libSchema(
+  const activities = run.activities ?? ACTIVITIES_DEFAULT;
+  const libbed = libSchema(
     writerSchema(stageKey, brief.slides, P),
     models.map((m) => m.id),
   );
+  const schema = activities ? withActivities(libbed, stageKey) : libbed;
+  const system = libSystem(writerSystem(brief, P), models);
   const main = run.recordedWriter
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: libSystem(writerSystem(brief, P), models),
+          system: activities ? withActivityMenu(system, stageKey) : system,
           user: localise(user),
           schema,
           name: "lesson",
@@ -351,6 +367,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   for (const [idx, raw] of written) {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
+    // An activity: the writer's fields to the template's, repaired to the stage's capacity.
+    if (isWriterActivity(s.template)) {
+      const a = fromWriterActivity(s, stageKey);
+      if (a.fixes.length) log({ ev: "activity-fixed", slide: idx + 1, fixes: a.fixes });
+      s = a.slide;
+    }
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
@@ -574,6 +596,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         }),
     );
     for (const [i, f] of dup) res[i]?.faults.push(f);
+    for (let i = 0; i < n; i++)
+      res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
     for (const h of gasFaults(gasTexts()))
       if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);

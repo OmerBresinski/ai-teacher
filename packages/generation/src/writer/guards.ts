@@ -1,3 +1,5 @@
+import { isWriterActivity } from "./activities";
+
 // The repair guards, in code: once repair applied, its "layout"
 // fixes broke slides. Pure functions over the slide JSON the main call writes; the stage calls
 // `repairable` before asking and `judgeRepair` before accepting, and keeps the original otherwise.
@@ -5,8 +7,14 @@ type S = Record<string, unknown>;
 
 /** Slides the repair never touches: the title page and the objectives slide. */
 const NEVER = new Set(["title", "objectives"]);
+/**
+ * An activity (TEACH-101 part c) is repaired by code only: the pinned repair schema has no
+ * activity layouts, so a model repair could only turn it into another layout.
+ */
 export function repairable(slide: S | undefined, index: number): boolean {
-  return !!slide && index > 1 && !NEVER.has(String(slide.template));
+  return (
+    !!slide && index > 1 && !NEVER.has(String(slide.template)) && !isWriterActivity(slide.template)
+  );
 }
 
 /** Keys that hold no pupil-facing words. */
