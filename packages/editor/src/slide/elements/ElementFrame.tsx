@@ -150,7 +150,14 @@ export function ElementFrame({
       </div>
 
       {ghost ? <StepBadge theme={theme} step={revealStep} /> : null}
-      {revealAnswer && sortIndex != null ? <SortBadge theme={theme} position={sortIndex} /> : null}
+      {revealAnswer && sortIndex != null ? (
+        <SortBadge
+          theme={theme}
+          position={sortIndex}
+          // A card's letter disc: the number takes its place rather than sitting off its corner.
+          cover={element.type === "shape" && element.shape === "ellipse"}
+        />
+      ) : null}
     </div>
   );
 }
@@ -185,21 +192,29 @@ function StepBadge({ theme, step }: { theme: Theme; step: number }) {
   );
 }
 
-function SortBadge({ theme, position }: { theme: Theme; position: number }) {
+function SortBadge({
+  theme,
+  position,
+  cover = false,
+}: {
+  theme: Theme;
+  position: number;
+  cover?: boolean;
+}) {
   return (
     <span
       data-answer-anim=""
       style={{
         position: "absolute",
-        top: -14,
-        left: -14,
-        width: 32,
-        height: 32,
+        top: cover ? 0 : -14,
+        left: cover ? 0 : -14,
+        width: cover ? "100%" : 32,
+        height: cover ? "100%" : 32,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 16,
-        background: theme.colors.accent,
+        borderRadius: cover ? "50%" : 16,
+        background: cover ? theme.colors.correct : theme.colors.accent,
         color: theme.colors.onAccent,
         fontFamily: theme.fonts.title,
         fontSize: 17,

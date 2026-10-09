@@ -1,0 +1,110 @@
+{
+  "pair": {
+    "KS1": {
+      "3 cards": 22,
+      "4 cards": 16,
+      "5 cards": 4
+    },
+    "KS2": {
+      "3 cards": 26,
+      "4 cards": 20,
+      "5 cards": 8
+    },
+    "KS3-5": {
+      "3 cards": 34,
+      "4 cards": 22,
+      "5 cards": 16
+    }
+  },
+  "group-sort": {
+    "KS1": {
+      "6 cards, 2 groups": 8,
+      "6 cards, 3 groups": 0,
+      "8 cards, 2 groups": 4,
+      "8 cards, 3 groups": 0
+    },
+    "KS2": {
+      "6 cards, 2 groups": 10,
+      "6 cards, 3 groups": 10,
+      "8 cards, 2 groups": 4,
+      "8 cards, 3 groups": 4
+    },
+    "KS3-5": {
+      "6 cards, 2 groups": 12,
+      "6 cards, 3 groups": 12,
+      "8 cards, 2 groups": 12,
+      "8 cards, 3 groups": 12
+    }
+  },
+  "sequence": {
+    "KS1": {
+      "4 cards": 16,
+      "5 cards": 4,
+      "6 cards": 0
+    },
+    "KS2": {
+      "4 cards": 20,
+      "5 cards": 12,
+      "6 cards": 4
+    },
+    "KS3-5": {
+      "4 cards": 26,
+      "5 cards": 20,
+      "6 cards": 4
+    }
+  },
+  "choose": {
+    "KS1": {
+      "2 cards": 48,
+      "3 cards": 30,
+      "4 cards": 16
+    },
+    "KS2": {
+      "2 cards": 56,
+      "3 cards": 30,
+      "4 cards": 20
+    },
+    "KS3-5": {
+      "2 cards": 60,
+      "3 cards": 40,
+      "4 cards": 26
+    }
+  },
+  "odd-one-out": {
+    "KS1": {
+      "3 cards": 30,
+      "4 cards": 16,
+      "5 cards": 4
+    },
+    "KS2": {
+      "3 cards": 30,
+      "4 cards": 20,
+      "5 cards": 12
+    },
+    "KS3-5": {
+      "3 cards": 40,
+      "4 cards": 26,
+      "5 cards": 20
+    }
+  },
+  "label": {
+    "KS1": {
+      "3 pointers": 22,
+      "4 pointers": 8,
+      "5 pointers": 0,
+      "6 pointers": 0
+    },
+    "KS2": {
+      "3 pointers": 24,
+      "4 pointers": 14,
+      "5 pointers": 6,
+      "6 pointers": 0
+    },
+    "KS3-5": {
+      "3 pointers": 46,
+      "4 pointers": 32,
+      "5 pointers": 14,
+      "6 pointers": 6
+    }
+  }
+}

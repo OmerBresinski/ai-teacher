@@ -174,7 +174,7 @@ on 2026-09-13, `lesson-editor` went to 321.1 KB and the check failed.
 | `lesson-editor` | `/l/:id` | 254.1 KB (2026-09-28, TEACH-19) | 305 KB |
 | `lesson-present` | `/l/:id/present` | 132.7 KB (2026-09-28, TEACH-19) | 160 KB |
 | `lesson-view` | `/l/:id/view` | 125.7 KB (2026-09-28, TEACH-19) | 151 KB |
-| `lesson-print` | `/l/:id/print` | 92.9 KB (2026-09-28, TEACH-19) | 112 KB |
+| `lesson-print` | `/l/:id/print` | 112.7 KB (2026-10-09, TEACH-101 part b) | 115 KB |
 | `worksheet-editor` | `/w/:id` | 198.6 KB (2026-09-28, TEACH-19) | 239 KB |
 | `worksheet-print` | `/w/:id/print` | 30.2 KB | 36 KB |
 
