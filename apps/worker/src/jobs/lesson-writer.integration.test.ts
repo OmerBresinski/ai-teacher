@@ -54,6 +54,15 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     if (!v.startsWith(`${WRITER_VERSION}/`)) return undefined;
     if (v.endsWith("/lesson")) return fixture.main;
     if (v.endsWith("/notes")) return fixture.notes;
+    // The writer planner's objectives call (TEACH-110 part f): the lab's schema, a list of strings.
+    if (v.endsWith("/objectives"))
+      return JSON.stringify({
+        objectives: [
+          "Describe who invaded Britain in AD 43.",
+          "Explain why the Romans invaded Britain.",
+          "Evaluate how far the invasion changed Britain.",
+        ],
+      });
     if (v.endsWith("/pupil_objectives"))
       return JSON.stringify({
         pupil: ["I can say who invaded", "I can explain why", "I can judge it"],
@@ -158,7 +167,16 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(planned.lesson.generation?.stage).toBe("planned");
     expect(planned.lesson.generation?.promptVersions.planned).toBe(WRITER_PLANNED_VERSION);
     expect(plannerOf(planned.lesson)).toBe("writer");
-    expect(planAi.calls.some((c) => c.context?.promptVersion?.startsWith(WRITER_VERSION))).toBe(
+    // The plan job's one model call is the writer's objectives call, on Sol, low (part f).
+    const planCalls = planAi.calls.filter((c) =>
+      c.context?.promptVersion?.startsWith(WRITER_VERSION),
+    );
+    expect(planCalls.map((c) => c.context?.promptVersion)).toEqual([
+      `${WRITER_VERSION}/objectives`,
+    ]);
+    expect(planCalls[0]?.modelId).toBe("openai/gpt-6.1-sol");
+    expect(planCalls[0]?.context?.effort).toBe("low");
+    expect(planAi.calls.some((c) => c.context?.promptVersion?.startsWith("plan-objectives"))).toBe(
       false,
     );
 
