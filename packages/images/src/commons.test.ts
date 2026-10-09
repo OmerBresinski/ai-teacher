@@ -4,6 +4,7 @@ import {
   COMMONS_LICENCES,
   COMMONS_USER_AGENT,
   CommonsError,
+  commonsLicenceAllowed,
   commonsPhotosOf,
   commonsSearch,
   coordinatesOf,
@@ -339,7 +340,7 @@ describe("Commons file downloads", () => {
   });
 });
 
-// TEACH-251: COMMONS_LICENCES. "free" keeps only the files that owe no credit; it is off.
+// TEACH-251: COMMONS_LICENCES. "free" keeps only the files that owe no credit; it is the default.
 describe("COMMONS_LICENCES", () => {
   const pages = [
     page(0, "CC BY-SA 4.0"),
@@ -355,9 +356,16 @@ describe("COMMONS_LICENCES", () => {
       ps.map((p) => p.licenceClass).sort(),
     );
 
-  test('defaults to "all": every reusable licence is a candidate', async () => {
-    expect(COMMONS_LICENCES).toBe("all");
-    expect(await run(commonsSearch(client))).toEqual([
+  test('defaults to "free": a CC BY or BY-SA file is refused', async () => {
+    expect(COMMONS_LICENCES).toBe("free");
+    expect(commonsLicenceAllowed({ licenceClass: "cc-by" })).toBe(false);
+    expect(commonsLicenceAllowed({ licenceClass: "cc-by-sa" })).toBe(false);
+    expect(commonsLicenceAllowed({ licenceClass: "cc0" })).toBe(true);
+    expect(await run(commonsSearch(client))).toEqual(["cc0", "public-domain", "public-domain"]);
+  });
+
+  test('"all": every reusable licence is a candidate', async () => {
+    expect(await run(commonsSearch(client, "all"))).toEqual([
       "cc-by",
       "cc-by-sa",
       "cc0",
