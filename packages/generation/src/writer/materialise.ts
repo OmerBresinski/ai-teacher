@@ -42,6 +42,8 @@ export type VisualAsk =
       aspect?: number;
       fixedShape?: boolean;
       set?: string;
+      /** Asked again straight to generation (a compare's failed column, WRITER-FIX-PLAN fault 3). */
+      retry?: "generate";
     }
   | {
       key: string;

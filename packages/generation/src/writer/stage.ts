@@ -1239,24 +1239,67 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (JSON.stringify(words) !== JSON.stringify(s)) swapSlide(i, words);
     path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
   };
+  /** A compare's column picture asks (WRITER-FIX-PLAN fault 3: the columns are one visual). */
+  const columnAsks = (i: number) =>
+    (asks.get(i) ?? []).filter(
+      (a): a is Extract<VisualAsk, { type: "photo" }> =>
+        a.type === "photo" && a.key.startsWith("col."),
+    );
+  /**
+   * Fault 3 (D51 y1 slides 3 and 10): a compare shows no column's picture when any failed. Each
+   * failed column is asked once more through generation; true when every column then has one.
+   */
+  const compareRetry = async (i: number, s: S): Promise<boolean> => {
+    const failed = columnAsks(i).filter((a) => visualState(i)(a.key).status === "failed");
+    if (!failed.length || !run.placeMore) return false;
+    await run.placeMore(
+      i,
+      failed.map((a) => ({ ...a, retry: "generate" as const })),
+      { heading: String(s.heading ?? ""), text: wordsOf(s), point: pointOf(s) },
+    );
+    const ok = columnAsks(i).every((a) => visualState(i)(a.key).status === "photo");
+    log({ ev: "compare-retry", slide: i + 1, cols: failed.map((a) => a.key), ok });
+    if (ok) relay(i);
+    return ok;
+  };
   const pictureLost = async (i: number) => {
+    await pictureLostOnce(i);
+    const s = plan.slides[i] as S | undefined;
+    if (s?.template !== "compare") return;
+    // The all-or-nothing drop in materialise, made visible in the log.
+    const failed = columnAsks(i)
+      .filter((a) => visualState(i)(a.key).status === "failed")
+      .map((a) => a.key);
+    if (failed.length) log({ ev: "compare-pictures-dropped", slide: i + 1, failed });
+  };
+  const pictureLostOnce = async (i: number) => {
     if (path.has(i) || i < 2) return;
+    const s0 = plan.slides[i] as S;
+    const compare = s0.template === "compare";
     const lost = (asks.get(i) ?? []).find(
       (a): a is Extract<VisualAsk, { type: "photo" }> =>
-        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+        a.type === "photo" &&
+        !a.set &&
+        (!a.fixedShape || (compare && a.key.startsWith("col."))) &&
+        visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
+    if (compare && lost.key.startsWith("col.") && (await compareRetry(i, s0))) {
+      path.set(i, "picture-compare-retry");
+      return;
+    }
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
     // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
-    // ported: a partial split never ships).
-    const s0 = plan.slides[i] as S;
+    // ported: a partial split never ships). A compare skips both: they replace a slide's own
+    // picture field, and a compare's pictures are its columns'.
     const n0 = notes.get(i);
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
     // tiles or a table that did land.
     const others = (asks.get(i) ?? [])
       .filter((a) => a.key !== lost.key)
       .map((a) => visualState(i)(a.key).status);
-    const how0 = !heldPhotoFills(s0, others)
+    const fills = !compare && heldPhotoFills(s0, others);
+    const how0 = !fills
       ? undefined
       : await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
           const oldAsks = asks.get(i) ?? [];
