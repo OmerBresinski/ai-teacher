@@ -42,6 +42,7 @@ export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   duplicateLogOnly: true,
   pointGuardLogOnly: true,
   coverageExcludesPrediction: true,
+  coverageExcludesDiscussion: true,
 };
 
 /** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
