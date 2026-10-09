@@ -1,0 +1,3 @@
+# tools/teacher-path (TEACH-227 part b): a throwaway BETTER_AUTH_SECRET invented for the tool's local
+# api, never used anywhere real; the commit was squashed away and the code now makes a random one per run.
+d70f911e183bddeb8ee43645df6d0d294aad4f08:tools/teacher-path/lib/stack.ts:tj-better-auth-secret:135
