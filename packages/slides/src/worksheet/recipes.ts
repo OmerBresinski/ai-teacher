@@ -19,7 +19,7 @@ import { clampSize, normaliseWords } from "./word-search";
  *
  * Moved here from `@tj/editor` (ADR 0030 item 4) so the worker can build the frame; the editor
  * re-exports every name from its old paths. Pure: `@tj/domain`, the doc builders, the word bank's
- * order and the word search only.
+ * order (the activities' seeded shuffle) and the word search only.
  *
  * With facts, every block cites the fact ids it drew on in `generatedFrom.factRefs` (ADR 0025
  * §2): the derived blocks cite their own facts, the framing blocks (a heading, an instruction

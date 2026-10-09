@@ -4,7 +4,6 @@ import { StoredImage } from "../images/StoredImage";
 import { RichText } from "../slide/elements/RichText";
 import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, type FillGapBlock, matchingOrder, optionLetter } from "./answers";
-import { gapCharsIn, longestAnswer } from "./gaps";
 import { sheetSummary } from "./metrics";
 import { WordSearchView } from "./WordSearch";
 
@@ -79,9 +78,10 @@ function BankWord({ word }: { word: string }) {
 }
 
 /**
- * Every blank is as wide as the longest answer in its run of fill-gap blocks (`gapCharsIn`), so
- * its length does not say which word fills it. With the answers view on, the answer sits inside
- * its blank, out of flow (`.ws-gap-answer`), so the line keeps its height.
+ * Every blank is as wide as the longest answer in its run of fill-gap blocks (`gapWidths`), so
+ * its length does not say which word fills it; CSS caps it at the column. With the answers view
+ * on, the answer sits inside its blank, out of flow (`.ws-gap-answer`), so the line keeps its
+ * height.
  */
 function gapMarkup(block: FillGapBlock, showAnswers: boolean, gapChars: number) {
   const width = Math.max(56, Math.round(gapChars * 6.4));
@@ -144,8 +144,11 @@ export function BlockContent({
   renderAnswer?: AnswerRenderer;
   /** `Worksheet.showMarks`: the "(2 marks)" label prints only when the sheet counts marks. */
   showMarks?: boolean;
-  /** A fill-gap block's blank width in characters (`gapCharsIn`); its own longest answer if unset. */
-  gapChars?: number;
+  /**
+   * A fill-gap block's blank width (`FlowItem.gapChars`). Required, so a caller cannot drop it
+   * and fall back to blanks that say which word fills them.
+   */
+  gapChars: number | undefined;
 }) {
   const rich = (doc: RichDoc, className?: string, emptyLabel?: string) => {
     if (renderStem) return renderStem({ doc, className });
@@ -203,7 +206,7 @@ export function BlockContent({
           {renderStem ? (
             renderStem({ doc: block.doc })
           ) : (
-            <SheetText html={gapMarkup(block, showAnswers, gapChars ?? longestAnswer(block))} />
+            <SheetText html={gapMarkup(block, showAnswers, gapChars ?? 0)} />
           )}
         </QuestionRow>
       );
@@ -462,7 +465,7 @@ export function FlowItemContent({
   renderStem,
 }: {
   item:
-    | { kind: "block"; block: WorksheetBlock }
+    | { kind: "block"; block: WorksheetBlock; gapChars?: number }
     | { kind: "rag" }
     | { kind: "key-title" }
     | { kind: "key-entry"; entry: AnswerEntry };
@@ -477,7 +480,7 @@ export function FlowItemContent({
         mode={mode}
         renderStem={renderStem}
         showMarks={worksheet.showMarks}
-        gapChars={gapCharsIn(worksheet.blocks, item.block.id)}
+        gapChars={item.gapChars}
       />
     );
   }

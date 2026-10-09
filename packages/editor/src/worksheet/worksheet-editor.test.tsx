@@ -7,7 +7,7 @@ import { demoWorksheet } from "../model/demo-worksheet";
 import { docFromText, uid } from "../model/factories";
 import { newBlock, numberQuestions, starterWorksheet } from "../model/worksheet-factories";
 import { answerKey } from "./answers";
-import { pointer, renderWorksheetEditor, row } from "./editor-test-harness";
+import { KEY, pointer, renderWorksheetEditor, row } from "./editor-test-harness";
 import { HEADER_KEY, RAG_KEY } from "./paginate";
 
 type Question = Extract<WorksheetBlock, { type: "question" }>;
@@ -183,18 +183,29 @@ describe("WorksheetEditor", () => {
       doc: docFromText(`[[gap:${id}-g]] is a word from the bank.`),
       gaps: [{ id: `${id}-g`, answer }],
     });
-    const { container } = renderWorksheetEditor(
-      withBlocks([
-        { id: "bank", type: "word-bank", words: ["Context window", "Token"] },
-        sentence("s1", "Token"),
-        sentence("s2", "Context window"),
-      ]),
-    );
+    const sheet = withBlocks([
+      { id: "bank", type: "word-bank", words: ["Context window", "Token"] },
+      sentence("s1", "Token"),
+      sentence("s2", "Context window"),
+    ]);
+    const { container, client } = renderWorksheetEditor(sheet);
     const width = (id: string) =>
       row(container, id).querySelector<HTMLElement>(".ws-gap")?.style.width;
     // "Context window" is 14 characters at 6.4pt: 90pt, on the short answer's blank too.
     expect(width("s1")).toBe("90pt");
     expect(width("s2")).toBe("90pt");
+
+    // A longer answer on s2 widens s1's blank as well, though s1 itself did not change.
+    act(() => {
+      client.setQueryData<Worksheet>(KEY, {
+        ...sheet,
+        blocks: sheet.blocks.map((b) =>
+          b.id === "s2" ? sentence("s2", "Large language model (LLM)") : b,
+        ),
+      });
+    });
+    expect(width("s1")).toBe("166pt");
+    expect(width("s2")).toBe("166pt");
   });
 
   test("row 4: setting marks on a question follows the AQA line rule and renumbers", () => {

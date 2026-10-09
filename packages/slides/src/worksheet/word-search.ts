@@ -71,7 +71,7 @@ export function directionVectors(directions: WordSearchDirections) {
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /** mulberry32: 32 bits of state, uniform enough for letters, four lines long. */
-export function prng(seed: number): () => number {
+function prng(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;

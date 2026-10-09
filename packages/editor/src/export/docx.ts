@@ -37,7 +37,7 @@ import {
 } from "docx";
 import { resolveImageSrc } from "../images/resolve-src";
 import { answerKey, matchingOrder, optionLetter } from "../worksheet/answers";
-import { gapCharsIn, longestAnswer } from "../worksheet/gaps";
+import { gapWidths } from "../worksheet/gaps";
 import { LINE_GAP, PAGE_PAD, pageMetrics } from "../worksheet/metrics";
 import { buildWordSearch, solutionMask, wordSearchLead } from "../worksheet/word-search";
 import { imageCredentials } from "./image-credentials";
@@ -447,7 +447,7 @@ function blockChildren(
     case "fill-gap": {
       // Every gap token becomes a blank as wide as the longest answer in its run of fill-gap
       // blocks, as on the sheet, so a blank's length does not say which word fills it.
-      const blank = "_".repeat(Math.max(10, (gapChars ?? longestAnswer(block)) + 4));
+      const blank = "_".repeat(Math.max(10, (gapChars ?? 0) + 4));
       const text = docToRuns(block.doc)
         .map((para) => para.runs.map((run) => run.text).join(""))
         .join("\n")
@@ -742,10 +742,9 @@ export async function buildWorksheetDocx(
   const images = await resolveImages(worksheet, options.imageOrigin);
 
   const children: (Paragraph | Table)[] = [...headerChildren(worksheet)];
-  for (const block of worksheet.blocks) {
-    const gapChars = gapCharsIn(worksheet.blocks, block.id);
-    children.push(...blockChildren(block, metrics.contentW, images, gapChars));
-  }
+  const gaps = gapWidths(worksheet.blocks);
+  for (const block of worksheet.blocks)
+    children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id)));
   if (worksheet.selfAssessment) children.push(...ragChildren());
   if (includeAnswerKey) children.push(...answerKeyChildren(worksheet, metrics.contentW));
 

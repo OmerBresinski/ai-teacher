@@ -85,8 +85,8 @@ export type BlockShellProps = {
   problems?: string[];
   /** `Worksheet.showMarks`, handed down so the printed markup matches `FlowItemContent`. */
   showMarks?: boolean;
-  /** A fill-gap block's blank width (`gapCharsIn`), for the same reason. */
-  gapChars?: number;
+  /** `FlowItem.gapChars`, for the same reason. */
+  gapChars: number | undefined;
   actions: BlockRowActions;
 };
 

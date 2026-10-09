@@ -71,13 +71,8 @@ describe("Sheet", () => {
     ]);
     const { container } = render(
       <div>
-        {sheet.blocks.map((block) => (
-          <FlowItemContent
-            key={block.id}
-            item={{ kind: "block", block }}
-            worksheet={sheet}
-            mode="print"
-          />
+        {buildFlow(sheet, false).map((item) => (
+          <FlowItemContent key={item.key} item={item} worksheet={sheet} mode="print" />
         ))}
       </div>,
     );

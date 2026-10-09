@@ -1,5 +1,6 @@
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { type AnswerEntry, answerKey } from "./answers";
+import { gapWidths } from "./gaps";
 import { CONTENT_H } from "./metrics";
 
 /**
@@ -10,7 +11,8 @@ import { CONTENT_H } from "./metrics";
  */
 
 export type FlowItem =
-  | { key: string; kind: "block"; block: WorksheetBlock }
+  /** `gapChars`: a fill-gap block's blank width (`gapWidths`); unset on every other block. */
+  | { key: string; kind: "block"; block: WorksheetBlock; gapChars?: number }
   | { key: string; kind: "rag" }
   | { key: string; kind: "key-title" }
   | { key: string; kind: "key-entry"; entry: AnswerEntry };
@@ -32,10 +34,12 @@ export const RAG_KEY = "__rag__";
 
 /** The document as a single ordered flow: blocks, then the answer key pages. */
 export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): FlowItem[] {
+  const gaps = gapWidths(worksheet.blocks);
   const items: FlowItem[] = worksheet.blocks.map((block) => ({
     key: block.id,
     kind: "block" as const,
     block,
+    gapChars: gaps.get(block.id),
   }));
   // The self-assessment strip is the last thing a pupil fills in, so it goes after the questions
   // and before the answer key. The page paints it at the foot of whichever page it lands on;

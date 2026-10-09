@@ -327,6 +327,22 @@ export const StoredWorksheetSchema = WorksheetSchema.extend({
   }),
 });
 
+/**
+ * The fill-gap sentences from `blocks[start]` on, up to the first block that is not one: the
+ * sentences a word bank above them serves, and the run whose blanks share one width.
+ */
+export function fillGapRun(
+  blocks: readonly WorksheetBlock[],
+  start: number,
+): Extract<WorksheetBlock, { type: "fill-gap" }>[] {
+  const run: Extract<WorksheetBlock, { type: "fill-gap" }>[] = [];
+  for (const block of blocks.slice(start)) {
+    if (block.type !== "fill-gap") break;
+    run.push(block);
+  }
+  return run;
+}
+
 export function parseWorksheet(input: unknown): Worksheet {
   const result = WorksheetSchema.safeParse(migrate(input));
   if (!result.success) throw new DocumentParseError(describeIssues(result.error, "worksheet"));

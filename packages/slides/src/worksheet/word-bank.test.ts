@@ -53,12 +53,11 @@ describe("mixedBank", () => {
     expect(bankGivesAway(mixed, TERMS.slice(0, 3))).toBe(false);
   });
 
-  test("a one-word bank, or one no order can fix, is left alone", () => {
+  test("a one-word bank is left alone; one no order can fix still holds every word", () => {
     const one = ["evaporation"];
     expect(mixedBank(one, one)).toBe(one);
     // "rain" fills both gaps, so wherever it goes it sits at one of them.
-    const stuck = ["rain", "rain"];
-    expect(mixedBank(stuck, ["rain", "rain"])).toBe(stuck);
+    expect(mixedBank(["rain", "rain"], ["rain", "rain"])).toEqual(["rain", "rain"]);
   });
 });
 

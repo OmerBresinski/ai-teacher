@@ -246,9 +246,9 @@ describe("worksheet Word export", () => {
       ]),
     });
     // 26 characters and four to spare, on the short answer's line as on the long one's.
-    const blank = "_".repeat(30);
-    expect(xml).toContain(`${blank} is an AI system.`);
-    expect(xml).toContain(`${blank} is a chunk of text.`);
+    const blankBefore = (rest: string) => xml.match(new RegExp(`(_+) ${rest}`))?.[1];
+    expect(blankBefore("is an AI system\\.")).toBe("_".repeat(30));
+    expect(blankBefore("is a chunk of text\\.")).toBe("_".repeat(30));
   });
 
   it("writes the word search as a table of single letters with its word bank", async () => {

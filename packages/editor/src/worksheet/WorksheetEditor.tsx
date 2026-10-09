@@ -27,7 +27,6 @@ import { blockProblems } from "./block-problems";
 import { type BlockSpec, blankStem, instructionBefore, isRich } from "./block-types";
 import { EditableHeader } from "./EditableHeader";
 import { EditableRagStrip } from "./EditableRagStrip";
-import { gapCharsIn } from "./gaps";
 import { HeaderToolbar } from "./HeaderToolbar";
 import { useSheetPagination } from "./measure";
 import { fitScale, pageMetrics } from "./metrics";
@@ -534,7 +533,7 @@ export function WorksheetEditor({
                             active === item.block.id ? blockProblems(item.block) : undefined
                           }
                           showMarks={worksheet.showMarks}
-                          gapChars={gapCharsIn(worksheet.blocks, item.block.id)}
+                          gapChars={item.gapChars}
                           actions={rowActions}
                         />
                       ) : item.kind === "rag" ? (

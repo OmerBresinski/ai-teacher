@@ -1,46 +1,28 @@
-import type { Id, WorksheetBlock } from "@tj/domain/documents";
-import type { FillGapBlock } from "./answers";
+import { fillGapRun, type Id, type WorksheetBlock } from "@tj/domain/documents";
+import { orderedGaps } from "./answers";
 
 /*
  * How wide a fill-gap blank is drawn. A blank sized to its own answer tells the pupil which bank
  * word goes where (the one long blank takes the one long term), so every blank in a run of
  * consecutive fill-gap blocks is as wide as the run's longest answer: room to write any of them,
- * no clue to which. The sheet, the measuring column and the Word export all read this, so the
- * page breaks the teacher sees stay the ones the printer makes.
+ * no clue to which. `buildFlow` stamps it on every flow item and the Word export reads it too, so
+ * the sheet, the measuring column, the editor rows and the .docx all draw the same blanks.
  */
-
-/** The block's longest answer, in characters; 0 for a block with no gaps yet. */
-export const longestAnswer = (block: FillGapBlock): number =>
-  Math.max(0, ...block.gaps.map((gap) => gap.answer.length));
-
-function runLengths(blocks: readonly WorksheetBlock[]): Map<Id, number> {
-  const lengths = new Map<Id, number>();
-  let run: FillGapBlock[] = [];
-  const close = () => {
-    const longest = Math.max(0, ...run.map(longestAnswer));
-    for (const block of run) lengths.set(block.id, longest);
-    run = [];
-  };
-  for (const block of blocks) {
-    if (block.type === "fill-gap") run.push(block);
-    else close();
-  }
-  close();
-  return lengths;
-}
-
-/** Block lists are immutable (the reducers return a new array), so one pass serves every row. */
-const cache = new WeakMap<readonly WorksheetBlock[], Map<Id, number>>();
 
 /**
- * The answer length, in characters, every blank of block `id` is drawn for: the longest answer in
- * its run of fill-gap blocks. `undefined` when `id` is not a fill-gap block in `blocks`.
+ * Each fill-gap block's blank width, in characters of answer: the longest answer in its run. A gap
+ * whose token was deleted from the text prints no blank, so it does not count.
  */
-export function gapCharsIn(blocks: readonly WorksheetBlock[], id: Id): number | undefined {
-  let lengths = cache.get(blocks);
-  if (!lengths) {
-    lengths = runLengths(blocks);
-    cache.set(blocks, lengths);
-  }
-  return lengths.get(id);
+export function gapWidths(blocks: readonly WorksheetBlock[]): Map<Id, number> {
+  const widths = new Map<Id, number>();
+  blocks.forEach((block, index) => {
+    if (block.type !== "fill-gap" || blocks[index - 1]?.type === "fill-gap") return;
+    const run = fillGapRun(blocks, index);
+    const longest = Math.max(
+      0,
+      ...run.flatMap((sentence) => orderedGaps(sentence).map((gap) => gap.answer.length)),
+    );
+    for (const sentence of run) widths.set(sentence.id, longest);
+  });
+  return widths;
 }
