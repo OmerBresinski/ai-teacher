@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { generateText, streamText } from "ai";
+import { APICallError, generateText, streamText } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { createBudget } from "./budget";
-import { estimatePreparedCall, MAX_IMAGE_INPUT_TOKENS, type PreparedCall } from "./budget-estimate";
+import {
+  estimatePreparedCall,
+  failedCallFloor,
+  MAX_IMAGE_INPUT_TOKENS,
+  type PreparedCall,
+} from "./budget-estimate";
 import { BudgetReservationError, withGenerationBudget } from "./budget-middleware";
 import { costUsd } from "./prices";
 import { createFakeAi } from "./testing";
@@ -93,41 +98,100 @@ describe("provider admission boundary", () => {
     expect(budget.remaining().usd).toBeLessThan(1);
   });
 
-  test("a provider error settles at the text floor; an aborted call that throws stays uncertain", async () => {
+  describe("a call with no output and no usage", () => {
     // "system" + "input": 11 UTF-8 bytes of text.
-    for (const stream of [false, true]) {
+    const floor = { calls: 1, inputTokens: 11, outputTokens: 0, costUsd: expect.any(Number) };
+    const http = () =>
+      new APICallError({
+        message: "provider 500",
+        url: "u",
+        requestBodyValues: {},
+        statusCode: 500,
+      });
+    const run = async (
+      stream: boolean,
+      error: unknown,
+      abort?: AbortController,
+    ): Promise<ReturnType<ReturnType<typeof createBudget>["totals"]>> => {
       const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
       const fail = async () => {
-        throw new Error("provider 500");
+        abort?.abort();
+        throw error;
       };
       const model = withGenerationBudget(
         new MockLanguageModelV4(stream ? { doStream: fail } : { doGenerate: fail }),
         id,
         budget,
       );
-      const call = stream ? model.doStream(params) : model.doGenerate(params);
-      await expect(call).rejects.toThrow("provider 500");
-      expect(budget.totals()).toEqual({
-        calls: 1,
-        inputTokens: 11,
-        outputTokens: 0,
-        costUsd: expect.any(Number),
-      });
-    }
-    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
-    const abort = new AbortController();
-    const model = withGenerationBudget(
-      new MockLanguageModelV4({
-        doGenerate: async () => {
-          abort.abort();
-          throw new Error("aborted");
-        },
-      }),
-      id,
-      budget,
-    );
-    await expect(model.doGenerate({ ...params, abortSignal: abort.signal })).rejects.toThrow();
-    expect(budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+      const call = { ...params, abortSignal: abort?.signal };
+      await expect(stream ? model.doStream(call) : model.doGenerate(call)).rejects.toBe(error);
+      return budget.totals();
+    };
+
+    test("finishReason error with empty content and null usage settles at the text floor", async () => {
+      const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+      const value = reply();
+      const model = withGenerationBudget(
+        new MockLanguageModelV4({
+          doGenerate: async () => ({
+            ...value,
+            content: [],
+            finishReason: { unified: "error" as const, raw: "error" },
+            usage: {
+              inputTokens: {
+                total: undefined,
+                noCache: undefined,
+                cacheRead: undefined,
+                cacheWrite: undefined,
+              },
+              outputTokens: { total: undefined, text: undefined, reasoning: undefined },
+            },
+          }),
+        }),
+        id,
+        budget,
+      );
+      await model.doGenerate(params);
+      expect(budget.totals()).toEqual(floor);
+    });
+
+    test("a provider HTTP error settles at the text floor, generated or streamed", async () => {
+      expect(await run(false, http())).toEqual(floor);
+      expect(await run(true, http())).toEqual(floor);
+    });
+
+    test("a provider HTTP error after an abort stays uncertain, generated or streamed", async () => {
+      for (const stream of [false, true])
+        expect(await run(stream, http(), new AbortController())).toMatchObject({
+          calls: 0,
+          uncertain: { calls: 1 },
+        });
+    });
+
+    test("a throw that is not a provider HTTP error stays uncertain: output may have been billed", async () => {
+      for (const stream of [false, true])
+        expect(await run(stream, new Error("response did not parse"))).toMatchObject({
+          calls: 0,
+          uncertain: { calls: 1 },
+        });
+    });
+
+    test("the floor counts text only: image parts are excluded", () => {
+      const image = {
+        type: "file" as const,
+        mediaType: "image/png",
+        data: { type: "data" as const, data: new Uint8Array(64) },
+      };
+      expect(
+        failedCallFloor({
+          ...params,
+          prompt: [
+            ...params.prompt,
+            { role: "user", content: [image, { type: "text", text: "ab" }] },
+          ],
+        }),
+      ).toEqual({ inputTokens: 13, outputTokens: 0 });
+    });
   });
 
   test("an aborted attempt retains its reservation until late complete usage settles it", async () => {

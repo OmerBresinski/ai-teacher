@@ -1,4 +1,4 @@
-import { type LanguageModel, wrapLanguageModel } from "ai";
+import { APICallError, type LanguageModel, wrapLanguageModel } from "ai";
 import type { Budget, BudgetReservation } from "./budget";
 import { estimatePreparedCall, failedCallFloor, type PreparedCall } from "./budget-estimate";
 import type { TokenUsage } from "./prices";
@@ -20,12 +20,18 @@ const count = (value: number | undefined): value is number =>
   Number.isSafeInteger(value) && (value ?? -1) >= 0;
 
 /**
- * A call that returned no output and no usage and was not aborted (a provider error, a
- * `finishReason: error` with empty content and null usage) settles at the prompt's text input rather than holding its whole estimate. An
- * aborted or timed-out call may still be billed for output, so it stays uncertain (ADR 0025 §15).
+ * A call with no output, no usage and no abort settles at its prompt's text input (ADR 0025 §15).
+ * A throw counts only as a provider HTTP error: a parse failure may follow billed output.
  */
-function settleFailed(budget: Budget, reservation: BudgetReservation, params: PreparedCall) {
-  if (params.abortSignal?.aborted) budget.markUncertain(reservation);
+function settleFailed(
+  budget: Budget,
+  reservation: BudgetReservation,
+  params: PreparedCall,
+  thrown?: { error: unknown },
+) {
+  const { error } = thrown ?? {};
+  const billedOnlyInput = !thrown || (APICallError.isInstance(error) && !!error.statusCode);
+  if (params.abortSignal?.aborted || !billedOnlyInput) budget.markUncertain(reservation);
   else budget.settle(reservation, failedCallFloor(params));
 }
 
@@ -79,8 +85,8 @@ export function withGenerationBudget(
         try {
           result = await doStream();
         } catch (error) {
-          // Nothing was streamed: settle at the floor unless the call was aborted.
-          settleFailed(budget, reservation, params);
+          // Nothing was streamed: a provider HTTP error settles at the floor.
+          settleFailed(budget, reservation, params, { error });
           release();
           throw error;
         }
@@ -165,11 +171,13 @@ export function withGenerationBudget(
             };
             budget.settle(reservation, usage);
           } else if (result.content.length === 0) settleFailed(budget, reservation, params);
-          // Output came back without usage: its tokens were billed but are unknown.
-          else uncertain();
+          else {
+            // Output came back without usage: its tokens were billed but are unknown.
+            uncertain();
+          }
           return result;
         } catch (error) {
-          settleFailed(budget, reservation, params);
+          settleFailed(budget, reservation, params, { error });
           throw error;
         } finally {
           params.abortSignal?.removeEventListener("abort", uncertain);
