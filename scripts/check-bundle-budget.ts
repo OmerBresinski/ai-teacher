@@ -146,7 +146,7 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 151 },
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
-  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 135 },
+  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 115 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
   { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 36 },
 ];
