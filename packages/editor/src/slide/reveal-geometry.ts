@@ -3,9 +3,9 @@
  * open question, and the tick on a right card. Pure geometry in slide space, so the renderer, the
  * tests and any capture agree without measuring the DOM.
  */
-import type { Slide, SlideElement } from "@tj/domain/documents";
+import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
-import { HEADING_NAME, isBackdrop } from "@tj/slides";
+import { countLines, HEADING_NAME, isBackdrop } from "@tj/slides";
 import { SAFE } from "../model/grid";
 
 export type Box = { x: number; y: number; w: number; h: number };
@@ -45,33 +45,34 @@ export type AnswerLane = Box & {
   mode: "lane" | "stage";
   /** An element the answer replaces while it is shown (the instruction line), if any. */
   replaces?: string;
+  /** Leading the answer is set at. */
+  lineHeight: number;
 };
 
-/** Average advance as a share of the size: a little wide of the body faces, so the estimate errs tall. */
-const ADVANCE = 0.56;
+/** Leading of an answer set in a lane: tight, so a two-line answer fits under the last item. */
+export const LANE_LEADING = 1.2;
 
 /**
- * Estimated height of `text` at `size` in a column `width` wide: words packed greedily into lines
- * of `width / (size * ADVANCE)` characters, explicit line breaks kept. Deterministic in every mode
- * (no measurement, so capture and SSR agree with the editor).
+ * Height of `text` at `size` in a column `width` wide, from the bundled font metrics
+ * (`countLines`, the headless ruler: it never counts short), so capture, SSR and the editor agree
+ * without measuring the DOM. Line breaks in a model answer are drawn as spaces.
  */
-export function answerHeight(text: string, width: number, size: number, lineHeight: number) {
-  const perLine = Math.max(1, Math.floor(width / (size * ADVANCE)));
-  let lines = 0;
-  for (const para of text.split(/\n/)) {
-    let used = 0;
-    lines++;
-    for (const word of para.split(/\s+/).filter(Boolean)) {
-      const need = used === 0 ? word.length : used + 1 + word.length;
-      if (need <= perLine) used = need;
-      else {
-        lines +=
-          used === 0 ? Math.ceil(word.length / perLine) - 1 : Math.ceil(word.length / perLine);
-        used = word.length % perLine || perLine;
-      }
-    }
-  }
-  return Math.ceil(lines * size * lineHeight);
+export function answerHeight(
+  text: string,
+  width: number,
+  size: number,
+  lineHeight: number,
+  theme: Theme,
+) {
+  const lines = countLines(
+    text.replace(/\s+/g, " "),
+    "small",
+    theme,
+    width,
+    theme.weights.body,
+    size,
+  );
+  return Math.ceil(Math.max(1, lines) * size * lineHeight);
 }
 
 /** Every box the answer must stay clear of: everything drawn but the full-slide backdrop. */
@@ -114,7 +115,7 @@ export function answerLane(
   slide: Slide,
   text: string,
   sizes: { base: number; stepped: number; floor: number },
-  lineHeight: number,
+  theme: Theme,
 ): AnswerLane {
   const bottom = SLIDE_H - SAFE.y;
   const instruction = slide.elements.find(
@@ -131,15 +132,15 @@ export function answerLane(
       if (w >= MIN_LANE_W) tried.push({ x, y: top, w, h: bottom - top, replaces });
     }
   }
-  const fits = (lane: Box, size: number) =>
-    answerHeight(text, answerTextWidth(lane), size, lineHeight) <= lane.h;
+  const fits = (lane: Box, size: number, leading = LANE_LEADING) =>
+    answerHeight(text, answerTextWidth(lane), size, leading, theme) <= lane.h;
   const ladder = [...new Set([sizes.base, sizes.stepped, sizes.floor])].filter(
     (n) => n >= sizes.floor,
   );
   for (const size of ladder) {
     for (const keep of [true, false]) {
       const lane = tried.find((l) => (l.replaces === undefined) === keep && fits(l, size));
-      if (lane) return { ...lane, size, mode: "lane" };
+      if (lane) return { ...lane, size, mode: "lane", lineHeight: LANE_LEADING };
     }
   }
   // Its own state: under the heading, the whole body width, as large as fits (down to the floor).
@@ -147,8 +148,24 @@ export function answerLane(
   const top = heading ? Math.min(heading.y + heading.h + LANE_GAP * 2, bottom - 120) : SAFE.y;
   const stage = { x: SAFE.x, y: top, w: SAFE.w, h: bottom - top };
   let size = Math.round(sizes.base * 1.5);
-  while (size > sizes.floor && !fits(stage, size)) size -= 1;
-  return { ...stage, size: Math.max(size, sizes.floor), mode: "stage" };
+  const leading = theme.lineHeights.small;
+  while (size > sizes.floor && !fits(stage, size, leading)) size -= 1;
+  return { ...stage, size: Math.max(size, sizes.floor), mode: "stage", lineHeight: leading };
+}
+
+/**
+ * What a big answer (`stage`) takes off the slide while it shows: every element its lane meets but
+ * the heading and the backdrop, so the answer sits on the slide's own clean ground. Nothing for an
+ * answer in a free lane, which meets no element.
+ */
+export function hiddenByAnswer(slide: Slide, lane: AnswerLane | null): Set<string> {
+  const out = new Set<string>();
+  if (!lane) return out;
+  if (lane.replaces) out.add(lane.replaces);
+  if (lane.mode !== "stage") return out;
+  for (const e of slide.elements)
+    if (e.name !== HEADING_NAME && !isBackdrop(e) && intersects(lane, e)) out.add(e.id);
+  return out;
 }
 
 /** The tick's diameter and its inset inside a card. */

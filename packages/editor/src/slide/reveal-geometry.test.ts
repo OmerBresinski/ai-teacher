@@ -19,6 +19,7 @@ import {
   answerTextWidth,
   type Box,
   hasText,
+  hiddenByAnswer,
   intersects,
   TICK_D,
   tickSpot,
@@ -42,7 +43,7 @@ function laneFor(slide: Slide, theme: Theme) {
   const base = resolveFontSize(theme, "small");
   const floor = fontFloor("small");
   const stepped = Math.max(floor, Math.round(base * 0.86));
-  return answerLane(slide, text, { base, stepped, floor }, theme.lineHeights.small);
+  return answerLane(slide, text, { base, stepped, floor }, theme);
 }
 
 function laidOut(): { label: string; slide: Slide; theme: Theme }[] {
@@ -81,14 +82,18 @@ function laneFaults(label: string, slide: Slide, theme: Theme, lane: AnswerLane)
   const text = explanationText(slide.question) ?? "";
   if (lane.x < 0 || lane.y < 0 || lane.x + lane.w > SLIDE_W || lane.y + lane.h > SLIDE_H)
     out.push(`${label}: off the slide`);
-  const need = answerHeight(text, answerTextWidth(lane), lane.size, theme.lineHeights.small);
+  const need = answerHeight(text, answerTextWidth(lane), lane.size, lane.lineHeight, theme);
   if (need > lane.h) out.push(`${label}: answer clipped (${need} > ${lane.h})`);
   if (lane.size < fontFloor("small")) out.push(`${label}: under the floor`);
-  const clear =
-    lane.mode === "lane"
-      ? slide.elements.filter((x) => x.id !== lane.replaces && !isBackdrop(x))
-      : slide.elements.filter((x) => x.name === "Heading");
-  for (const e of clear) if (intersects(lane, e)) out.push(`${label}: over ${e.name ?? e.type}`);
+  // Nothing still drawn underlaps the answer: a free lane meets no element, and a big answer takes
+  // off the slide everything its lane meets (never the heading).
+  const hidden = hiddenByAnswer(slide, lane);
+  const shown = slide.elements.filter((x) => !hidden.has(x.id) && !isBackdrop(x));
+  for (const e of shown) if (intersects(lane, e)) out.push(`${label}: over ${e.name ?? e.type}`);
+  if (lane.mode === "lane" && [...hidden].some((id) => id !== lane.replaces))
+    out.push(`${label}: a free lane hid an element`);
+  if (slide.elements.some((x) => x.name === "Heading" && hidden.has(x.id)))
+    out.push(`${label}: heading hidden`);
   return out;
 }
 
@@ -139,6 +144,9 @@ describe("the revealed answer never meets a text box", () => {
     expect(lane).not.toBeNull();
     if (!lane) return;
     expect(laneFaults("s6", slide, theme, lane)).toEqual([]);
+    // Two lines at the floor fit in the instruction's place: the big answer is not needed.
+    expect(lane.mode).toBe("lane");
+    expect(lane.replaces).toBe(slide.elements.find((e) => e.name === "Instruction")?.id);
   });
 
   test("every template with a reveal answer, at every key stage and theme", () => {

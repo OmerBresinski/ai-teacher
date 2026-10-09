@@ -35,7 +35,7 @@ import {
 import {
   type AnswerLane,
   answerLane,
-  LANE_GAP,
+  hiddenByAnswer,
   RULE_GAP,
   RULE_W,
   TICK_D,
@@ -164,8 +164,9 @@ export function SlideView({
     const base = resolveFontSize(theme, "small");
     const floor = fontFloor("small");
     const stepped = Math.max(floor, Math.round(base * 0.86));
-    return answerLane(slide, explanation, { base, stepped, floor }, theme.lineHeights.small);
+    return answerLane(slide, explanation, { base, stepped, floor }, theme);
   }, [slide, theme, explanation, panel]);
+  const hidden = useMemo(() => hiddenByAnswer(slide, lane), [slide, lane]);
 
   const bg = slide.background;
   const root = useRef<HTMLDivElement>(null);
@@ -221,7 +222,7 @@ export function SlideView({
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
-          (isDiagramMark(el) && mode !== "edit") || el.id === lane?.replaces ? null : (
+          (isDiagramMark(el) && mode !== "edit") || hidden.has(el.id) ? null : (
             <ElementFrame
               key={el.id}
               element={el}
@@ -336,30 +337,15 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
  * Reveal copy, always whole (TEACH-101 part d): in the lowest free lane on the slide, beside
  * pictures if it must, or in the instruction line's place, stepping down to the floor before it
  * gives up a lane (`answerLane`). It never overlaps another box and never moves one. When no lane
- * holds it, the reveal is its own state: the body is washed back and the answer set large under the
- * heading. Never clipped (research/04 §4).
+ * holds it, the reveal is its own state: every element its lane meets steps off the slide
+ * (`hiddenByAnswer`) and the answer is set large on the clean ground under the heading. Never
+ * clipped (research/04 §4).
  */
 function Explanation({ theme, text, lane }: { theme: Theme; text: string; lane: AnswerLane }) {
-  const lineHeight = theme.lineHeights.small;
+  const { lineHeight } = lane;
   const stage = lane.mode === "stage";
   return (
     <>
-      {stage ? (
-        <div
-          aria-hidden
-          data-answer-anim=""
-          data-answer-wash=""
-          style={{
-            position: "absolute",
-            left: 0,
-            top: lane.y - LANE_GAP,
-            width: SLIDE_W,
-            height: SLIDE_H - lane.y + LANE_GAP,
-            background: withAlpha(theme.colors.background, 0.97),
-            zIndex: 899,
-          }}
-        />
-      ) : null}
       <div
         data-answer-anim=""
         data-answer-lane={stage ? "stage" : lane.replaces ? "replaces-instruction" : "free"}
@@ -388,7 +374,6 @@ function Explanation({ theme, text, lane }: { theme: Theme; text: string; lane: 
         <p
           style={{
             margin: 0,
-            whiteSpace: "pre-line",
             fontFamily: theme.fonts.body,
             fontSize: lane.size,
             lineHeight,
