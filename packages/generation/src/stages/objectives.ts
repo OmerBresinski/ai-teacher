@@ -13,10 +13,19 @@ import {
   SOURCE_TEXT_MAX_CHARS,
   StageFailure,
 } from "../types";
-import { OBJECTIVES_FIRST_VERSION, WRITER_PLANNED_VERSION } from "./objectives-first";
+import { aiWriterServices } from "../writer/ai-services";
+import { writerBundle } from "../writer/bundle";
+import { fillTemplate } from "../writer/fixes";
+import { isFatal } from "../writer/services";
+import {
+  OBJECTIVES_FIRST_VERSION,
+  WRITER_OBJECTIVES_VERSION,
+  WRITER_PLANNED_VERSION,
+} from "./objectives-first";
 import { existingTitle, materialiseObjectives, materialiseTitle } from "./plan";
 import { audienceOf, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
+import { writerBrief } from "./write";
 
 /*
  * The objectives step of the objectives-first planner (TEACH-93, ADR 0033): the `plan-objectives`
@@ -82,6 +91,43 @@ export interface ObjectivesStepOptions {
   /** The `planned` stamp (the writer planner stamps its own, TEACH-110 part b). */
   plannedStamp?: string;
   effort?: PlannerEffortOption;
+  /**
+   * The writer planner's call (TEACH-110 part f) in place of `plan-objectives`: the writer
+   * bundle's pinned objectives prompt, user turn and schema on Sol, as base4f-p123 ran them.
+   */
+  writer?: boolean;
+}
+
+/** The writer's objectives call: the model, effort and output cap base4f-p123's harness used. */
+export const WRITER_OBJECTIVES = {
+  model: "gpt-6.1-sol",
+  effort: "low",
+  maxTokens: 3000,
+  /** The lab's deadline for one non-streamed call. */
+  timeoutMs: 40_000,
+} as const;
+
+/**
+ * One writer objectives call: `objectives.txt` as the system text, `objectives-user.txt` filled
+ * from the writer's brief, `objectives-schema.json` strict. It reads no curriculum source and
+ * writes no retrieval questions or anchors, as in the lab.
+ */
+export async function writerObjectivesCall(
+  lesson: Lesson,
+  deps: PipelineDeps,
+): Promise<{ text: string }[]> {
+  const P = writerBundle();
+  const r = await aiWriterServices(deps).chat({
+    ...WRITER_OBJECTIVES,
+    system: P.objectives,
+    user: fillTemplate(P.objectivesUser, writerBrief(lesson)),
+    schema: JSON.parse(P.objectivesSchema),
+    name: "objectives",
+    strict: true,
+  });
+  const list = (r.out as { objectives?: unknown } | undefined)?.objectives;
+  if (!Array.isArray(list)) throw new Error("objectives: no objectives array");
+  return list.filter((t): t is string => typeof t === "string").map((text) => ({ text }));
 }
 
 export async function runObjectivesStep(
@@ -113,7 +159,8 @@ export async function runObjectivesStep(
       "objectives pinned; no call",
     );
   } else {
-    const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
+    // The writer's prompt reads no curriculum extract, so none is loaded or checked for anchors.
+    const loaded = lesson.sources && !options.writer ? await deps.sources(lesson.sources) : [];
     const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
     const curriculum =
       selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
@@ -127,6 +174,32 @@ export async function runObjectivesStep(
         "plan call",
       );
       calls += 1;
+      if (options.writer) {
+        // Production's check and attempt count, on the writer's call. A failed call counts as an
+        // attempt (callStructured retries a provider failure once on its own).
+        const got = await writerObjectivesCall(lesson, deps).catch((error: unknown) => {
+          if (isFatal(error) || attempt >= OBJECTIVES_ATTEMPTS) throw error;
+          deps.logger.warn(
+            { stage: "plan", call: "objectives", attempt },
+            "objectives call failed",
+          );
+          return undefined;
+        });
+        if (!got) continue;
+        const check = checkObjectives(got, shape.verb, { hasSource: false });
+        issues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
+        deps.logger.info(
+          { stage: "plan", call: "objectives", count: got.length, issues: issues.length, attempt },
+          issues.length === 0 ? "objectives accepted" : "objectives blocked by the check",
+        );
+        if (issues.length === 0) {
+          objectives = got;
+          model = `openai/${WRITER_OBJECTIVES.model}`;
+          break;
+        }
+        if (attempt >= OBJECTIVES_ATTEMPTS) throw new ObjectivesBlocked(issues);
+        continue;
+      }
       const call = await callStructured({
         deps,
         stage: "plan",
@@ -193,7 +266,7 @@ export async function runObjectivesStep(
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
   const objectivesSlide = keepId(
     materialiseObjectives(lesson, facts, deps, {
-      promptVersion: planObjectivesPrompt.version,
+      promptVersion: options.writer ? WRITER_OBJECTIVES_VERSION : planObjectivesPrompt.version,
       model,
       at: deps.now().toISOString(),
     }),
@@ -230,7 +303,9 @@ export async function writerObjectives(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {
-  return (await runObjectivesStep(state, deps, { plannedStamp: WRITER_PLANNED_VERSION })).state;
+  return (
+    await runObjectivesStep(state, deps, { plannedStamp: WRITER_PLANNED_VERSION, writer: true })
+  ).state;
 }
 
 /** A rebuilt objectives slide under the id of the one it replaces, so the editor keeps it. */

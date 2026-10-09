@@ -740,6 +740,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       user: u,
       schema: repairSchemaFor(stageKey),
       name: "slide",
+      // Strict JSON, as base4f-p123 ran repair and restage (TEACH-110 part f).
+      strict: true,
     }).catch(
       whenNonFatal((e) => {
         log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });

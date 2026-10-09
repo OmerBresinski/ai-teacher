@@ -63,10 +63,12 @@ export const OBJECTIVES_FIRST_CHECKPOINT: Record<ObjectivesFirstStageName, Gener
   };
 
 /**
- * The writer planner's `planned` stamp (TEACH-110 part b): the writer's version, the objectives
- * step's, then the writer prompt bundle, so a lesson finishes on the bundle it was planned with. It starts with the writer's version, so it is never read as objectives-first.
+ * The writer planner's `planned` stamp (TEACH-110 part b): the writer's version, its objectives
+ * call's, then the writer prompt bundle, so a lesson finishes on the bundle it was planned with. It starts with the writer's version, so it is never read as objectives-first.
  */
-export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${planObjectivesPrompt.version}+bundle-${WRITER_BUNDLE_ID}`;
+/** The writer planner's objectives call: the bundle's own objectives prompt (TEACH-110 part f). */
+export const WRITER_OBJECTIVES_VERSION = "writer-objectives";
+export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${WRITER_OBJECTIVES_VERSION}+bundle-${WRITER_BUNDLE_ID}`;
 
 /** The writer bundle a writer lesson was planned with (its stamp's `bundle-<id>` part). */
 export function writerBundleOf(lesson: Lesson): WriterBundleId {

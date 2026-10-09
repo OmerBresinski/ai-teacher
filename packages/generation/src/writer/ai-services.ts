@@ -27,8 +27,14 @@ export const WRITER_VERSION = "lesson-writer.v1";
  */
 export function writerRoute(_cls: unknown, context: AiCallContext | undefined): string | undefined {
   if (!context?.promptVersion?.startsWith(`${WRITER_VERSION}/`)) return undefined;
-  return context.stage === "write" ? WRITER_MODEL : SMALL_MODEL;
+  return context.stage === "write" || context.stage === "write-frontier"
+    ? WRITER_MODEL
+    : SMALL_MODEL;
 }
+
+/** Whether a small call asks for the writer's model (the objectives call, TEACH-110 part f). */
+export const onWriterModel = (model: string | undefined) =>
+  model === WRITER_MODEL || `openai/${model}` === WRITER_MODEL;
 
 const usdOf = (modelId: string, u: { inputTokens?: number; outputTokens?: number } | undefined) => {
   return nonFatalSync(
@@ -54,13 +60,33 @@ export function chatCallOptions(r: ChatReq, signal: AbortSignal) {
   const providerOptions = base.providerOptions
     ? {
         ...base.providerOptions,
-        openai: { ...base.providerOptions.openai, strictJsonSchema: r.strict === true },
+        openai: {
+          ...base.providerOptions.openai,
+          strictJsonSchema: r.strict === true,
+          // The system text goes as a `system` message, as base4f-p123 sent it (the SDK otherwise
+          // sends `developer` to a reasoning model).
+          systemMessageMode: "system",
+        },
       }
     : undefined;
   return {
     abortSignal: r.timeoutMs ? AbortSignal.any([signal, AbortSignal.timeout(r.timeoutMs)]) : signal,
     maxOutputTokens: r.maxTokens ?? SMALL_CALL_MAX_TOKENS,
     ...(providerOptions ? { providerOptions } : {}),
+  };
+}
+
+/** The writer call's options: strict JSON and a `system` message, as base4f-p123 sent them. */
+export function writerProviderOptions(model: string, effort: WriterReq["effort"]) {
+  const base = providerOptionsFor(model, effort, true) as {
+    providerOptions?: Record<string, Record<string, unknown>>;
+  };
+  if (!base.providerOptions) return {};
+  return {
+    providerOptions: {
+      ...base.providerOptions,
+      openai: { ...base.providerOptions.openai, systemMessageMode: "system" },
+    },
   };
 }
 
@@ -77,11 +103,14 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
     log: (e) => deps.logger.info({ writer: e }, "writer stage"),
     async chat(r: ChatReq) {
       const t0 = Date.now();
-      const c = ctx("write-small", r.name, r.effort ?? "low");
+      // A call that names the writer's model runs on it (the objectives call); every other on Luna.
+      const sol = onWriterModel(r.model);
+      const c = ctx(sol ? "write-frontier" : "write-small", r.name, r.effort ?? "low");
+      const cls = sol ? "frontier" : "small";
       // Every call goes through the lesson's budget, like `callStructured`'s.
       const model = withGenerationBudget(
-        deps.ai.model("small", c),
-        writerRoute("small", c) ?? deps.ai.modelId("small"),
+        deps.ai.model(cls, c),
+        writerRoute(cls, c) ?? deps.ai.modelId(cls),
         deps.budget,
       );
       const result = await generateText({
@@ -91,7 +120,8 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         ...chatCallOptions(r, deps.signal),
       });
-      return { out: result.output, usd: usdOf(SMALL_MODEL, result.usage), ms: Date.now() - t0 };
+      const usd = usdOf(sol ? WRITER_MODEL : SMALL_MODEL, result.usage);
+      return { out: result.output, usd, ms: Date.now() - t0 };
     },
     async writer(r: WriterReq, onDelta): Promise<WriterResult> {
       const t0 = Date.now();
@@ -109,7 +139,8 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         maxOutputTokens: r.maxTokens,
         abortSignal: deps.signal,
-        ...providerOptionsFor(r.model, r.effort),
+        // Strict JSON, as base4f-p123 ran the writer (TEACH-110 part f): the schema lists every key.
+        ...writerProviderOptions(r.model, r.effort),
       });
       let text = "";
       for await (const delta of result.textStream) {

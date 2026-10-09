@@ -32,6 +32,9 @@ export const baseVisualsKS3_5 = "Pictures and diagrams:\n- A picture says what i
 export const diagramKinds = "{\"kinds\": [\"bar-model\", \"line-graph\", \"flow\", \"labelled-diagram\", \"number-line\", \"table\", \"particles\", \"hydrograph\", \"timeline\", \"layers\", \"cycle\", \"river\", \"bar-chart\", \"pie\", \"venn\", \"carroll\", \"cubes\"]}";
 
 /** sha256 of each file as pinned (`pinned: true` when the lab's pin list holds it). */
+export const objectives = "You're an expert teacher in England and head of department for this subject. Write the learning objectives for the lesson in the context, as a head of department writes them for a colleague to teach from, in the number the context gives.\n\nTogether they are what this lesson, at its length and number of slides, can teach and check well for this year group in England, pitched to the challenge the context gives: each one small enough to teach and check on a few of its slides, so a broad topic is narrowed to the part this lesson covers. Each names its content: the cases, studies, methods, terms, events or texts pupils learn, not a heading that stands for them. Each starts with the command word for what pupils do with that content, as this subject uses it at this age.\n\nEach is one objective that a single lesson can teach and check.\n";
+export const objectivesUser = "Topic: {{topic}}\nSubject: {{subject}}\nYear group: {{yearGroup}} ({{keyStage}})\nReading level: {{readingLevel}}\nChallenge: {{challenge ?? \"core\"}}\nLanguage: {{language}}\nLesson length: {{durationMin}} minutes\nSlides: {{slides.min}} to {{slides.max}}\nObjectives: {{count: objectiveCount(round((slides.min + slides.max) / 2)) from lesson-objectives.ts: \"one or two\" / \"two or three\" / \"three or four\"}}\n";
+export const objectivesSchema = "{\n \"type\": \"object\",\n \"additionalProperties\": false,\n \"required\": [\n  \"objectives\"\n ],\n \"properties\": {\n  \"objectives\": {\n   \"type\": \"array\",\n   \"minItems\": 1,\n   \"maxItems\": 4,\n   \"items\": {\n    \"type\": \"string\"\n   }\n  }\n }\n}";
 export const WRITER_PROMPT_SHA256 = {
   systemKS1: { file: "T/system.KS1.txt", sha256: "69700eb80a848a74ee89dff67fbef5e880c620d9f1c494942fc794913b0af387", pinned: true },
   systemKS2: { file: "T/system.KS2.txt", sha256: "418e2dfc7cf356eb0015ba82ee402c200d8e525381a161e475a74d2b0666efc6", pinned: true },
@@ -56,6 +59,9 @@ export const WRITER_PROMPT_SHA256 = {
   pupilObjectivesUser: { file: "shared/pupil-objectives-user.txt", sha256: "c9ba284cf44b528ba3f75f91734e9750db81e619b58ad38c24e582da676a2a28", pinned: true },
   pupilObjectivesSchema: { file: "shared/pupil-objectives-schema.json", sha256: "a2017252a1e0bc4f569179400a68be062fa5b2afd81b6f0ce735ea173ace76d4", pinned: true },
   objectiveRepair: { file: "shared/objective-repair.txt", sha256: "b5898343c50560349da5084adb5791b7445b81928d7d5033178a8650151a5955", pinned: true },
+  objectives: { file: "shared/objectives.txt", sha256: "9c1e22d6dd4f5a633b6ad0d6c5812a55c09bfb6392f056672750aeb7cb2e0b97", pinned: true },
+  objectivesUser: { file: "shared/objectives-user.txt", sha256: "8e065ad75ac13a2efd787e1259af1dba721fb3cd1d4d6c784e301817e10696c3", pinned: true },
+  objectivesSchema: { file: "shared/objectives-schema.json", sha256: "9fa8e9afb2c984270baf31737527db9ad0eb573540f02081544a726432b29646", pinned: true },
   diagramSpec: { file: "shared/diagram-spec.txt", sha256: "446b2a136879abddb6893c958513765330cba1dcebf14b5634e2bd22434abbe3", pinned: true },
   baseVisualsKS1: { file: "shared/base-visuals.KS1.txt", sha256: "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab", pinned: true },
   baseVisualsKS2: { file: "shared/base-visuals.KS2.txt", sha256: "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab", pinned: true },

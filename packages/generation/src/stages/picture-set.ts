@@ -482,6 +482,8 @@ export function directedSetJudges(
         input: { shows },
         schema: SetJudgeSchema,
         maxOutputTokens: SET_JUDGE_TOKENS,
+        // Strict JSON, as base4f-p123 ran the set judge (TEACH-110 part f): every key is required.
+        strict: true,
         images: urls.map((url, i) => ({ id: `panel-${i + 1}`, url })),
       });
       const o = call.output;
