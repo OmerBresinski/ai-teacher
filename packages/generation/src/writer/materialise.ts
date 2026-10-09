@@ -174,7 +174,8 @@ function figureNow(
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
     } as Figure;
   if (v.status === "diagram") {
-    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string } })?.drawn;
+    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string; bare?: boolean } })
+      ?.drawn;
     return (d ? { drawn: d } : { diagram: v.spec }) as Figure;
   }
   if (v.status === "failed") return undefined;

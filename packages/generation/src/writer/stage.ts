@@ -361,7 +361,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                 const { src, aspect, alt } = r.drawing;
                 drawnDiagrams.set(`${i}:${a.key}`, {
                   status: "diagram",
-                  spec: { drawn: { src, aspect, alt } },
+                  spec: { drawn: { src, aspect, alt, bare: true } },
                 });
                 log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
                 relay(i);

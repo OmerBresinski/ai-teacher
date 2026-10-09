@@ -667,7 +667,15 @@ export function inspectDrawnSvg(svgText: string): {
   return withDom(({ win, host }) => {
     // The first <style> is the embedded font and theme (CDATA, which happy-dom's parsers reject);
     // the kit's tokens are already in this document, and a model's own <style> is kept.
-    host.innerHTML = svgText.replace(/<style>\s*<!\[CDATA\[[\s\S]*?\]\]>\s*<\/style>/, "");
+    // happy-dom's HTML parser loses the drawing after an inline <style>, so a model's own rules go
+    // in the document's head while it is read, and every <style> leaves the markup.
+    const own = [...svgText.matchAll(/<style>(?!\s*<!\[CDATA\[)([\s\S]*?)<\/style>/g)].map(
+      (m) => m[1],
+    );
+    const sheet = win.document.createElement("style");
+    sheet.textContent = own.join("\n");
+    win.document.head.appendChild(sheet);
+    host.innerHTML = svgText.replace(/<style>[\s\S]*?<\/style>/g, "");
     const svg = host.querySelector("svg");
     const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
     const words: DrawnWords[] = [];
@@ -692,6 +700,7 @@ export function inspectDrawnSvg(svgText: string): {
       });
     }
     host.innerHTML = "";
+    sheet.remove();
     return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words };
   });
 }
