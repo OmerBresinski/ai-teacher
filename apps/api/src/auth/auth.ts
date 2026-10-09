@@ -337,7 +337,6 @@ export function createAuth({ env, db, mail, logger, storage }: CreateAuthOptions
               secret: env.BETTER_AUTH_SECRET,
               userId: session.userId,
               ctx,
-              storage,
             });
           },
         },

@@ -148,6 +148,9 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
           updatedAt: new Date(),
         };
       },
+      async delete(key: string) {
+        objects.delete(key);
+      },
       async *list(prefix: string) {
         for (const [key, o] of objects) {
           if (key.startsWith(prefix)) yield { key, size: o.bytes.length, updatedAt: new Date() };
@@ -253,9 +256,13 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
       const a = await visitor();
       await sessionFor(a.userId);
       await withPicture(a);
-      const key = `${a.workspaceId}/images/pic.jpg`;
+      // The first picture copies, the second fails: the copy already made must not be left behind.
+      const key = `${a.workspaceId}/images/pic2.jpg`;
       const storage = memoryStorage(key);
-      await storage.put(key, new Uint8Array([1]), { contentType: "image/jpeg" });
+      await storage.put(`${a.workspaceId}/images/pic.jpg`, new Uint8Array([1]), {
+        contentType: "image/jpeg",
+      });
+      await storage.put(key, new Uint8Array([2]), { contentType: "image/jpeg" });
       await expect(
         claimAnonymousWorkspace(db, { anonymousUserId: a.userId, userId: e.userId }, storage),
       ).rejects.toThrow("injected storage fault");
@@ -263,6 +270,43 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
         select workspace_id as workspace from documents where id = ${a.lessonId}`;
       expect(row?.workspace).toBe(a.workspaceId);
       expect(await sessionCount(a.userId)).toBe(1);
+      expect([...storage.objects.keys()].filter((k) => k.startsWith(`${e.workspaceId}/`))).toEqual(
+        [],
+      );
+    });
+
+    test("a stranger's pending claim for an existing account's address never lands in its library", async () => {
+      const victim = await newAccount("victim@example.test");
+      const own = await createDocument(
+        forWorkspace(db.unsafeDb, victim.workspaceId),
+        "lesson",
+        generatedLesson(),
+      );
+      const stranger = await visitor();
+      await writePendingClaim(db, {
+        secret: SECRET,
+        email: "victim@example.test",
+        anonymousUserId: stranger.userId,
+      });
+      await pending(victim.userId);
+      const rows = await db.sql<{ id: string }[]>`
+        select id from documents where workspace_id = ${victim.workspaceId}`;
+      expect(rows.map((r) => r.id)).toEqual([own.id]);
+      expect(await workspacesOf(victim.userId)).toEqual([victim.workspaceId]);
+      expect(await workspacesOf(stranger.userId)).toEqual([stranger.workspaceId]);
+    });
+
+    test("an older empty account is not handed a Workspace by a pending claim either", async () => {
+      const e = await newAccount("old-empty@example.test");
+      await db.sql`update users set created_at = now() - interval '1 day' where id = ${e.userId}`;
+      const stranger = await visitor();
+      await writePendingClaim(db, {
+        secret: SECRET,
+        email: "old-empty@example.test",
+        anonymousUserId: stranger.userId,
+      });
+      await pending(e.userId);
+      expect(await workspacesOf(e.userId)).toEqual([e.workspaceId]);
     });
   });
 

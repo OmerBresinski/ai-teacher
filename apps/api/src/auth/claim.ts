@@ -46,16 +46,25 @@ type ClaimIds = { anonymousUserId: string; userId: string };
 
 /**
  * `claimed`: the Workspace was handed over; `moved`: its lessons were moved into the account's
- * own Workspace; `nothing-to-claim`: see `claimAnonymousWorkspace`.
+ * own Workspace; `declined-existing`: only from the email-keyed pending claim, which never reaches
+ * an existing account (see `claimPending`); `nothing-to-claim`: see `claimAnonymousWorkspace`.
  */
-export type ClaimResult = "claimed" | "moved" | "nothing-to-claim";
+export type ClaimResult = "claimed" | "moved" | "declined-existing" | "nothing-to-claim";
 /** The object storage a move copies pictures through (`GET /files/*`'s adapter). */
-export type ClaimStorage = Pick<ReadableStorageAdapter, "get" | "put" | "list">;
+export type ClaimStorage = Pick<ReadableStorageAdapter, "get" | "put" | "list" | "delete">;
 /** Which entry point reached the claim; logged beside the result. */
 export type ClaimVia = "link" | "pending";
 
 /** How long a pending claim written at magic-link send time stays usable. */
 export const PENDING_CLAIM_TTL_MINUTES = 60;
+/**
+ * The pending claim (keyed by email alone, so anyone can point one at any address) only hands a
+ * Workspace to an account created this recently with nothing in it; it never moves lessons into an
+ * existing account's library. Only the same browser's guest session can do that (`claimOnLink`).
+ */
+export const NEW_ACCOUNT_MINUTES = 10;
+/** How a claim was proven: the guest's own session cookie, or only an email-keyed pending row. */
+type ClaimProof = { via: "link"; storage?: ClaimStorage; copied: string[] } | { via: "pending" };
 export const PENDING_CLAIM_PREFIX = "claim:";
 
 /**
@@ -89,7 +98,17 @@ export function claimAnonymousWorkspace(
   storage?: ClaimStorage,
 ): Promise<ClaimResult> {
   if (ids.anonymousUserId === ids.userId) return Promise.resolve("nothing-to-claim");
-  return db.sql.begin((tx) => handOver(tx, ids, storage));
+  const proof: ClaimProof = { via: "link", storage, copied: [] };
+  return db.sql
+    .begin((tx) => handOver(tx, ids, proof))
+    .catch(async (error: unknown) => {
+      // The rows rolled back: remove the pictures already copied under the account's prefix, so a
+      // failed move leaves no orphans there. Best effort; the original error is what matters.
+      if (storage) {
+        for (const key of proof.copied) await storage.delete(key).catch(() => {});
+      }
+      throw error;
+    });
 }
 
 /**
@@ -106,7 +125,7 @@ export function claimAnonymousWorkspace(
 async function handOver(
   tx: Tx,
   { anonymousUserId, userId }: ClaimIds,
-  storage?: ClaimStorage,
+  proof: ClaimProof,
 ): Promise<ClaimResult> {
   const [source] = await tx<{ id: string }[]>`
     select w.id from workspaces w
@@ -115,9 +134,12 @@ async function handOver(
     for update of w`;
   if (!source) return "nothing-to-claim";
 
-  const [target] = await tx<{ anonymous: boolean }[]>`
-    select is_anonymous as anonymous from users where id = ${userId}`;
+  const [target] = await tx<{ anonymous: boolean; isNew: boolean }[]>`
+    select is_anonymous as anonymous,
+           created_at > now() - make_interval(mins => ${NEW_ACCOUNT_MINUTES}) as "isNew"
+    from users where id = ${userId}`;
   if (!target || target.anonymous) return "nothing-to-claim";
+  if (proof.via === "pending" && !target.isNew) return "declined-existing";
 
   const [own] = await tx<{ id: string }[]>`
     select id from workspaces where owner_user_id = ${userId} for update`;
@@ -128,7 +150,8 @@ async function handOver(
             or exists (select 1 from sources where workspace_id = ${own.id}) as used`
     : [];
   if (own && content?.used) {
-    if (!(await moveInto(tx, source.id, own.id, storage))) return "nothing-to-claim";
+    if (proof.via === "pending") return "declined-existing";
+    if (!(await moveInto(tx, source.id, own.id, proof))) return "nothing-to-claim";
     result = "moved";
   } else {
     if (own) await tx`delete from workspaces where id = ${own.id}`;
@@ -154,7 +177,7 @@ async function moveInto(
   tx: Tx,
   from: string,
   to: string,
-  storage: ClaimStorage | undefined,
+  { storage, copied }: { storage?: ClaimStorage; copied: string[] },
 ): Promise<boolean> {
   const [held] = await tx<{ any: boolean }[]>`
     select exists (select 1 from documents where workspace_id = ${from}) as any`;
@@ -164,9 +187,9 @@ async function moveInto(
     for await (const object of storage.list(`${from}/`)) keys.push(object.key);
     for (const key of keys) {
       const object = await storage.get(key);
-      await storage.put(`${to}/${key.slice(from.length + 1)}`, object.body, {
-        contentType: object.contentType,
-      });
+      const copy = `${to}/${key.slice(from.length + 1)}`;
+      copied.push(copy);
+      await storage.put(copy, object.body, { contentType: object.contentType });
     }
   }
   const fromUrl = `/files/${from}/`;
@@ -285,18 +308,15 @@ async function browserHasAnonymousLesson(
  * Taking the row and claiming are one transaction, so a claim that fails leaves the row for the
  * next sign-in within its hour; deleting it consumes it, so two sessions cannot both claim, and
  * the newest live row wins should two sends have raced. When the browser has its own anonymous
- * lesson the row is dropped as `superseded` and `onLinkAccount` claims instead. Logs ids only and
- * never throws.
+ * lesson the row is dropped as `superseded` and `onLinkAccount` claims instead. The row proves only
+ * an email, so it hands over to a brand-new, empty account and never moves lessons into an existing
+ * one (`declined-existing`): otherwise any visitor could push a lesson into anyone's library. Logs
+ * ids only and never throws.
  */
 export async function claimPending(
   db: Sql,
   logger: ClaimLogger,
-  {
-    secret,
-    userId,
-    ctx,
-    storage,
-  }: { secret: string; userId: string; ctx: EndpointContext | null; storage?: ClaimStorage },
+  { secret, userId, ctx }: { secret: string; userId: string; ctx: EndpointContext | null },
 ): Promise<void> {
   if (ctx?.path === "/sign-in/anonymous") return;
   let anonymousUserId: string | undefined;
@@ -318,7 +338,7 @@ export async function claimPending(
       if (!taken) return undefined;
       anonymousUserId = taken.value;
       if (sameBrowser) return "superseded" as const;
-      return handOver(tx, { anonymousUserId: taken.value, userId }, storage);
+      return handOver(tx, { anonymousUserId: taken.value, userId }, { via: "pending" });
     });
     if (claim) {
       logger.info({ claim, via: "pending", anonymousUserId, userId }, "anonymous workspace claim");

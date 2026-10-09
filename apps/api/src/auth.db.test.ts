@@ -883,7 +883,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       );
     });
 
-    test("row 4 (ruling 127), another device: an older account with no lessons takes the Workspace", async () => {
+    test("row 4, another device: the email-keyed pending row never reaches an existing account", async () => {
       const e = await createTestUserWithWorkspace(db.unsafeDb, { email: "old@example.test" });
       await db.sql`update users set created_at = now() - interval '1 day' where id = ${e.userId}`;
       const a = await visitorWithLesson();
@@ -891,10 +891,11 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
         target: claimApp,
         cookie: a.cookie,
       });
-      expect((await meBody(claimApp, await verify(link))).workspaceId).toBe(a.workspaceId);
+      expect((await meBody(claimApp, await verify(link))).workspaceId).toBe(e.workspaceId);
+      expect([...(await workspacesFor(a.userId))].map((w) => w.id)).toEqual([a.workspaceId]);
       expect(await claimRows()).toEqual([]);
       expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
-        [{ claim: "claimed", via: "pending" }],
+        [{ claim: "declined-existing", via: "pending" }],
       );
     });
 
