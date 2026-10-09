@@ -18,7 +18,6 @@ import {
 } from "react";
 import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
 import { hasExplanationPanel } from "../layout/explanation";
-import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
 import { choiceMarks } from "./elements/choice";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
@@ -33,7 +32,15 @@ import {
   sortPositions,
   withAlpha,
 } from "./elements/kit";
-import { OverflowGlyph } from "./elements/TextView";
+import {
+  type AnswerLane,
+  answerLane,
+  hiddenByAnswer,
+  RULE_GAP,
+  RULE_W,
+  TICK_D,
+  tickSpot,
+} from "./reveal-geometry";
 import { applySlideClip } from "./slide-clip";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
@@ -152,6 +159,14 @@ export function SlideView({
    * everywhere else an unwritten reason is simply not shown.
    */
   const panel = revealAnswer && hasExplanationPanel(slide.question);
+  const lane = useMemo(() => {
+    if (!explanation || panel) return null;
+    const base = resolveFontSize(theme, "small");
+    const floor = fontFloor("small");
+    const stepped = Math.max(floor, Math.round(base * 0.86));
+    return answerLane(slide, explanation, { base, stepped, floor }, theme);
+  }, [slide, theme, explanation, panel]);
+  const hidden = useMemo(() => hiddenByAnswer(slide, lane), [slide, lane]);
 
   const bg = slide.background;
   const root = useRef<HTMLDivElement>(null);
@@ -207,7 +222,7 @@ export function SlideView({
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
-          isDiagramMark(el) && mode !== "edit" ? null : (
+          (isDiagramMark(el) && mode !== "edit") || hidden.has(el.id) ? null : (
             <ElementFrame
               key={el.id}
               element={el}
@@ -270,8 +285,8 @@ export function SlideView({
           ) : explanation ? (
             <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
           ) : null
-        ) : explanation ? (
-          <Explanation slide={slide} theme={theme} text={explanation} mode={mode} />
+        ) : explanation && lane ? (
+          <Explanation theme={theme} text={explanation} lane={lane} />
         ) : null}
       </div>
     </ImageOriginProvider>
@@ -318,95 +333,58 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
 /* Question reveal chrome                                              */
 /* ------------------------------------------------------------------ */
 
-const bottomOf = (el: SlideElement) => el.y + el.h;
-
-/** Gap between the lowest card and the explanation, and the smallest lane worth having. */
-const EXPLANATION_GAP = 19;
-const EXPLANATION_MIN_LANE = 48;
-const RULE_W = 3;
-
 /**
- * Reveal copy, under the options. Never overlaps them and never moves a card — and when
- * the lane is too short for the copy it steps the type down one stop and, failing that,
- * warns the author in edit mode rather than truncating in silence (research/04 §4).
+ * Reveal copy, always whole (TEACH-101 part d): in the lowest free lane on the slide, beside
+ * pictures if it must, or in the instruction line's place, stepping down to the floor before it
+ * gives up a lane (`answerLane`). It never overlaps another box and never moves one. When no lane
+ * holds it, the reveal is its own state: every element its lane meets steps off the slide
+ * (`hiddenByAnswer`) and the answer is set large on the clean ground under the heading. Never
+ * clipped (research/04 §4).
  */
-function Explanation({
-  slide,
-  theme,
-  text,
-  mode,
-}: {
-  slide: Slide;
-  theme: Theme;
-  text: string;
-  mode: SlideMode;
-}) {
-  const options = slide.elements.filter((e) => e.type === "option");
-  const anchors = options.length > 0 ? options : slide.elements;
-  const below = anchors.reduce<number>((m, e) => Math.max(m, bottomOf(e)), SAFE.y);
-  const top = Math.min(below + EXPLANATION_GAP, SLIDE_H - SAFE.y - EXPLANATION_MIN_LANE);
-  const available = SLIDE_H - SAFE.y - top;
-
-  const lineHeight = theme.lineHeights.small;
-  const width = SAFE.w - RULE_W - EXPLANATION_GAP;
-  // Deterministic in every mode: no measurement, so capture and SSR agree with the
-  // editor. ~0.5em average advance is close enough to pick a stop.
-  const heightAt = (size: number) =>
-    Math.ceil(
-      Math.max(1, Math.ceil(text.length / Math.max(1, Math.floor(width / (size * 0.5))))) *
-        size *
-        lineHeight,
-    );
-
-  const base = resolveFontSize(theme, "small");
-  const floor = fontFloor("small");
-  const stepped = Math.max(floor, Math.round(base * 0.86));
-  const size = heightAt(base) <= available ? base : stepped;
-  const overflowing = heightAt(size) > available;
-
+function Explanation({ theme, text, lane }: { theme: Theme; text: string; lane: AnswerLane }) {
+  const { lineHeight } = lane;
+  const stage = lane.mode === "stage";
   return (
-    <div
-      data-answer-anim=""
-      style={{
-        position: "absolute",
-        left: SAFE.x,
-        top,
-        width: SAFE.w,
-        maxHeight: available,
-        overflow: "hidden",
-        display: "flex",
-        gap: EXPLANATION_GAP,
-        zIndex: 900,
-      }}
-    >
-      <span
-        aria-hidden
+    <>
+      <div
+        data-answer-anim=""
+        data-answer-lane={stage ? "stage" : lane.replaces ? "replaces-instruction" : "free"}
         style={{
-          flex: `0 0 ${RULE_W}px`,
-          width: RULE_W,
-          background: theme.colors.accent,
-          borderRadius: 2,
-        }}
-      />
-      <p
-        style={{
-          margin: 0,
-          fontFamily: theme.fonts.body,
-          fontSize: size,
-          lineHeight,
-          fontWeight: theme.weights.body,
-          color: theme.colors.ink,
+          position: "absolute",
+          left: lane.x,
+          top: lane.y,
+          width: lane.w,
+          minHeight: stage ? lane.h : undefined,
+          display: "flex",
+          alignItems: stage ? "center" : undefined,
+          gap: RULE_GAP,
+          zIndex: 900,
         }}
       >
-        {text}
-      </p>
-      {overflowing && mode === "edit" ? (
-        <OverflowGlyph
-          theme={theme}
-          title="This explanation is longer than the room under the options."
+        <span
+          aria-hidden
+          style={{
+            flex: `0 0 ${RULE_W}px`,
+            width: RULE_W,
+            alignSelf: "stretch",
+            background: theme.colors.accent,
+            borderRadius: 2,
+          }}
         />
-      ) : null}
-    </div>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: theme.fonts.body,
+            fontSize: lane.size,
+            lineHeight,
+            fontWeight: theme.weights.body,
+            color: theme.colors.ink,
+          }}
+        >
+          {text}
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -457,6 +435,7 @@ function ChoiceMarks({
         const r = placed.get(id);
         if (!r) return null;
         const right = state === "right";
+        const tick = right ? tickSpot(slide, r) : null;
         return (
           <div
             key={id}
@@ -479,13 +458,14 @@ function ChoiceMarks({
               <span
                 role="img"
                 aria-label="Correct answer"
+                data-tick-spot=""
                 style={{
                   position: "absolute",
-                  right: 10,
-                  top: 10,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 36,
+                  left: tick?.left,
+                  top: tick?.top,
+                  width: TICK_D,
+                  height: TICK_D,
+                  borderRadius: TICK_D,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
