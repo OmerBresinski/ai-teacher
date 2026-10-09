@@ -107,7 +107,7 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
-import { ROLE_STAMP_DEFAULT, slideRoles } from "./role";
+import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideAsks, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
@@ -189,6 +189,12 @@ export type WriterRun = {
    * `ROLE_STAMP_DEFAULT` (off).
    */
   roleStamp?: boolean;
+  /**
+   * roleAsk (the slide-role contract, step 2): a diagram or library model keeps its answer back
+   * when the slide's role asks (role.ts `slideAsks`), not only on the question templates. Absent:
+   * `ROLE_ASK_DEFAULT` (off).
+   */
+  roleAsk?: boolean;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -380,6 +386,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   );
   const schema = activities ? withActivities(libbed, stageKey) : libbed;
   const system = libSystem(writerSystem(brief, P), models);
+  const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
+  /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
+  const asksPupils = (s: S) =>
+    roleAsk ? slideAsks(s) : QUESTION_TEMPLATES.has(String(s.template ?? ""));
   /** A diagram ask as the drawer reads it, sized to the slide's slot. */
   const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
     const slot = slotOf(String(s.template ?? ""));
@@ -399,7 +409,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         h: box.h,
         name: slot,
       },
-      question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
+      question: asksPupils(s),
     };
   };
   /** One slide as the deck shows it (no continuation slides), or undefined before it is laid. */
@@ -453,7 +463,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (a.type !== "diagram" || !s) continue;
       const slot = slotOf(String(s.template ?? ""));
       const box = slotBox(base.stage, slot);
-      const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
+      const question = asksPupils(s);
       const stop = new AbortController();
       diagramStops.set(i, [...(diagramStops.get(i) ?? []), stop]);
       /** Cancelled (its slide reopened) or the lesson failed: nothing more is drawn or kept. */

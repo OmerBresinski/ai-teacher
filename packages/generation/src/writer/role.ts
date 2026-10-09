@@ -6,6 +6,12 @@ type S = Record<string, unknown>;
 
 /** The production default: no role is stamped until the gate is turned on. */
 export const ROLE_STAMP_DEFAULT = false;
+/**
+ * roleAsk (the slide-role contract, step 2): the drawer's ask and the library fill hide a
+ * drawing's answer when the slide's role asks, not only on the four question templates. Default
+ * off until its evidence is in.
+ */
+export const ROLE_ASK_DEFAULT = false;
 
 export type SlideRole =
   | "teach"
@@ -59,8 +65,17 @@ const VISUAL_TEMPLATES = new Set([
 ]);
 
 /**
+ * A sentence that sets pupils a task without a question mark ("Find how many are in one group.",
+ * "Write half or quarter for A, B and C."): it opens with an ask verb (LIBRARY-PATH s4.1). A line
+ * that also gives a result ("Find one part: 24 ÷ 4 = 6 m.") is a worked step, not a task.
+ */
+const ASK_OPENER =
+  /(?:^|[.!:;]\s+)(?:find|work out|name|write|label|which|what|how many|calculate|sort|match|count|predict)\b/i;
+
+/**
  * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
- * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?").
+ * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?"),
+ * or a lead or point sentence that opens with an ask verb ("Find how many are in one group.").
  * A question used as the heading alone ("Why do polar bears have thick fur?") is not a task.
  */
 export function visualTask(s: S): boolean {
@@ -73,7 +88,10 @@ export function visualTask(s: S): boolean {
     s.lead,
     ...pts.map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p)),
   ];
-  return lines.some((l) => typeof l === "string" && l.includes("?"));
+  return lines.some(
+    (l) =>
+      typeof l === "string" && (l.includes("?") || (ASK_OPENER.test(l.trim()) && !l.includes("="))),
+  );
 }
 
 /** The role a slide has by its own fields, before its place in the deck is known. */
@@ -105,6 +123,12 @@ export function slideRole(s: S, ctx: RoleContext): SlideRole {
 
 /** The slide asks pupils something (discuss asks but hides nothing). */
 export const asks = (r: SlideRole) => r !== "teach" && r !== "worked";
+
+/**
+ * The slide asks by its own fields (roleAsk). Its place in the deck only splits a question set
+ * into retrieval or check, and both ask, so no deck context is needed.
+ */
+export const slideAsks = (s: S): boolean => asks(slideRole(s, { index: 0 }));
 
 /** The index of the first teaching slide (teach or worked) at or after `from`. */
 export function firstTeaching(slides: (S | undefined)[], from = 2): number | undefined {

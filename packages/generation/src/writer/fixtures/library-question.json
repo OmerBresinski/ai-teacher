@@ -1,0 +1,246 @@
+{
+  "note": "Writer slides copied from lab/rounds/BAKEOFF/ab/runs (scratchpad, not in the repo); fills completed with the right numbers (LIBRARY-PATH s4). Deck slide = writer index + 3.",
+  "cases": [
+    {
+      "id": "prod-lib-1 y2 s7",
+      "source": "prod-lib-1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 4,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Find one half of 16",
+        "lead": "Draw two equal groups. Find how many are in one group.",
+        "figure": {
+          "kind": "model",
+          "model": "equal_groups",
+          "intent": "Question: show sixteen ungrouped counters and two empty rings. Label the total '16'. Do not arrange counters into groups, show group counts or reveal the answer. Pupils draw the sharing on their worksheet.",
+          "alt": "Sixteen counters are ready to be shared between two empty rings."
+        }
+      },
+      "fill": {
+        "groups": 2,
+        "size": 8,
+        "division": "sharing"
+      },
+      "answer": ["8"],
+      "asks": true,
+      "via": "library"
+    },
+    {
+      "id": "prod-lib-1 y2 s9",
+      "source": "prod-lib-1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 6,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Find one quarter of 16",
+        "lead": "Draw four equal groups. Find how many are in one group.",
+        "figure": {
+          "kind": "model",
+          "model": "equal_groups",
+          "intent": "Question: show sixteen ungrouped counters and four empty rings. Label the total '16'. Keep group counts and the answer hidden. Do not pre-share the counters. Pupils draw the sharing on their worksheet.",
+          "alt": "Sixteen counters are ready to be shared between four empty rings."
+        }
+      },
+      "fill": {
+        "groups": 4,
+        "size": 4,
+        "division": "sharing"
+      },
+      "answer": ["4"],
+      "asks": true,
+      "via": "library"
+    },
+    {
+      "id": "prod-lib-1 y2 s10",
+      "source": "prod-lib-1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 7,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Name the shaded fraction",
+        "lead": "Write half or quarter for A, B and C.",
+        "figure": {
+          "kind": "model",
+          "model": "fractions",
+          "intent": "Question: show three shapes labelled only A, B and C. A is a circle split into two equal semicircles with one shaded. B is a square split into four equal smaller squares with one shaded. C is a rectangle split into four equal horizontal strips with one shaded. Do not display fraction names, symbols or answers.",
+          "alt": "A has one of two equal parts shaded; B and C each have one of four equal parts shaded."
+        }
+      },
+      "fill": {
+        "operation": "show",
+        "representation": "circle",
+        "fractions": [
+          {
+            "value": "1/2"
+          },
+          {
+            "value": "1/4"
+          },
+          {
+            "value": "1/4"
+          }
+        ],
+        "words": false
+      },
+      "answer": ["1/2", "1/4", "½", "¼", "half", "quarter"],
+      "asks": true,
+      "via": "drawer",
+      "drawer": {
+        "kind": "fraction-shapes",
+        "alt": "A has one of two equal parts shaded; B and C each have one of four equal parts shaded.",
+        "shapes": [
+          {
+            "shape": "circle",
+            "parts": 2,
+            "shaded": 1,
+            "name": "½"
+          },
+          {
+            "shape": "square",
+            "parts": 4,
+            "shaded": 1,
+            "name": "¼"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "horizontal",
+            "shaded": 1,
+            "name": "¼"
+          }
+        ]
+      },
+      "why": "the model refuses (the words name A, B, C, which it never labels) and falls back to the drawer; questionSafe drops the fraction names on an asking slide"
+    },
+    {
+      "id": "lib-wo1 y2 s4",
+      "source": "lib-wo1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 1,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Name the shaded part",
+        "lead": "Which shows one half? Which shows one quarter?",
+        "figure": {
+          "kind": "model",
+          "model": "fractions",
+          "intent": "Show two matching rectangles labelled A and B. A has four equal vertical parts with one shaded. B has two equal vertical parts with one shaded. Do not display fraction names or fraction symbols.",
+          "alt": "Shape A has four equal parts with one shaded. Shape B has two equal parts with one shaded."
+        }
+      },
+      "fill": {
+        "operation": "show",
+        "representation": "rectangle",
+        "fractions": [
+          {
+            "value": "1/4"
+          },
+          {
+            "value": "1/2"
+          }
+        ],
+        "words": false
+      },
+      "answer": ["1/2", "1/4", "½", "¼", "half", "quarter"],
+      "asks": true,
+      "via": "drawer",
+      "drawer": {
+        "kind": "fraction-shapes",
+        "alt": "Shape A has four equal parts with one shaded. Shape B has two equal parts with one shaded.",
+        "shapes": [
+          {
+            "shape": "rectangle",
+            "parts": 4,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "¼"
+          },
+          {
+            "shape": "rectangle",
+            "parts": 2,
+            "cut": "vertical",
+            "shaded": 1,
+            "name": "½"
+          }
+        ]
+      },
+      "why": "as s10: falls back to the drawer, whose fraction names questionSafe drops"
+    },
+    {
+      "id": "lib-wo1 y2 s7",
+      "source": "lib-wo1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 4,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Find one half of 10",
+        "lead": "Share equally into 2 groups. How many are in one group?",
+        "figure": {
+          "kind": "model",
+          "model": "equal_groups",
+          "intent": "Show ten ungrouped counters above two empty rings. Label the total 10. Keep the counters outside the rings and do not show the number in each group or the answer.",
+          "alt": "Ten counters are ready to be shared into two empty rings."
+        }
+      },
+      "fill": {
+        "groups": 2,
+        "size": 5,
+        "division": "sharing"
+      },
+      "answer": ["5"],
+      "asks": true,
+      "via": "library"
+    },
+    {
+      "id": "lib-wo1 y2 s9",
+      "source": "lib-wo1/T/y2-maths-halves-quarters/main.json",
+      "writerIndex": 6,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Find one quarter of 12",
+        "lead": "Share equally into 4 groups. How many are in one group?",
+        "figure": {
+          "kind": "model",
+          "model": "equal_groups",
+          "intent": "Show twelve ungrouped counters above four empty rings. Label the total 12. Keep the counters outside the rings and do not show the number in each group or the answer.",
+          "alt": "Twelve counters are ready to be shared into four empty rings."
+        }
+      },
+      "fill": {
+        "groups": 4,
+        "size": 3,
+        "division": "sharing"
+      },
+      "answer": ["3"],
+      "asks": true,
+      "via": "library"
+    },
+    {
+      "id": "d52 Alib y5 s7",
+      "source": "d52/Alib/full/y5-maths-fractions-of-amounts/main.json",
+      "writerIndex": 4,
+      "slide": {
+        "template": "big-visual",
+        "heading": "Which number tells us to divide?",
+        "lead": "The denominator makes the equal groups. The numerator tells us how many to take.",
+        "figure": {
+          "kind": "model",
+          "model": "fractions",
+          "intent": "Compare 1/5 of 35 and 3/5 of 35 side by side. Each drawing must contain 35 counters in five equal groups of seven. Select one group on the first and three groups on the second. Label the fractions, the whole amount 35, and each group 7. Show selected totals 7 and 21. Include a crossed-out claim 'For 3/5, divide by 3' and the correction 'Both amounts are divided into 5 equal groups'. Keep the drawings identical except for the number of selected groups.",
+          "alt": "Both fractions use five equal groups of seven; one fifth selects one group and three fifths selects three."
+        }
+      },
+      "fill": {
+        "operation": "of",
+        "representation": "set",
+        "fractions": [
+          {
+            "value": "3/5"
+          }
+        ],
+        "amount": 35,
+        "words": false
+      },
+      "answer": ["21"],
+      "asks": false,
+      "why": "heading-only question: teach by the contract (Q1); its lead answers it",
+      "via": "library"
+    }
+  ]
+}

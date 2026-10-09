@@ -5,8 +5,10 @@ import { replayRun, replayServices } from "./replay-fixture";
 import {
   asks,
   firstTeaching,
+  ROLE_ASK_DEFAULT,
   ROLE_STAMP_DEFAULT,
   type SlideRole,
+  slideAsks,
   slideRole,
   slideRoles,
   visualTask,
@@ -14,6 +16,20 @@ import {
 
 const at = (template: string, more: Record<string, unknown> = {}, index = 5, first = 2) =>
   slideRole({ template, heading: "A heading", ...more }, { index, firstTeaching: first });
+
+describe("roleAsk", () => {
+  test("is off by default", () => expect(ROLE_ASK_DEFAULT).toBe(false));
+  test("slideAsks: a visual task and a question set ask; teaching and worked slides do not", () => {
+    expect(slideAsks({ template: "big-visual", lead: "Find how many are in one group." })).toBe(
+      true,
+    );
+    expect(slideAsks({ template: "question-set", questions: ["1 + 1"] })).toBe(true);
+    expect(slideAsks({ template: "big-visual", heading: "Which number tells us to divide?" })).toBe(
+      false,
+    );
+    expect(slideAsks({ template: "steps" })).toBe(false);
+  });
+});
 
 describe("slideRole: one rule each, in order", () => {
   test("hinge", () => expect(at("hinge")).toBe("hinge"));
@@ -46,6 +62,19 @@ describe("slideRole: one rule each, in order", () => {
     expect(at("big-picture", { questions: ["Name it."] })).toBe("task");
     expect(at("big-picture", { questions: [" "], ask: "" })).toBe("teach");
   });
+  test("a visual slide whose lead or point sentence opens with an ask verb is a task", () => {
+    expect(
+      at("big-visual", { lead: "Draw two equal groups. Find how many are in one group." }),
+    ).toBe("task");
+    expect(at("big-visual", { lead: "Write half or quarter for A, B and C." })).toBe("task");
+    expect(at("visual-text", { points: [{ label: "Try", text: "Count the legs." }] })).toBe("task");
+  });
+  test("a worked lead that shares and states its answer still teaches", () =>
+    expect(
+      at("big-visual", {
+        lead: "Share into two equal groups. One group has 6: one half of 12 is 6.",
+      }),
+    ).toBe("teach"));
   test("a question as the heading alone does not make a task", () =>
     expect(
       at("visual-text", { heading: "Why do polar bears have thick fur?", lead: "Fur traps heat." }),
@@ -141,7 +170,9 @@ describe("roleStamp on the replay fixtures", () => {
       expect(Math.min(...slides)).toBe(3);
       for (const e of lines) counts[String(e.role)] = (counts[String(e.role)] ?? 0) + 1;
     }
-    expect(counts).toEqual({ teach: 52, practice: 32, hinge: 12, check: 5, worked: 15, task: 3 });
+    // roleAsk: 8 replay slides whose lead or point opens with an ask verb ("Your turn: Find one half
+    // of 10. Count one group.") moved from teach to task (step 1 counted teach 52, task 3).
+    expect(counts).toEqual({ teach: 44, practice: 32, hinge: 12, check: 5, worked: 15, task: 11 });
   }, 60_000);
 
   test("y2 halves: the picture asking which half is a task", async () => {
