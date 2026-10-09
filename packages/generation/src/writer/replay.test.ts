@@ -76,8 +76,14 @@ describe.each(LESSONS)("replay %s", (b) => {
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =
         want.elements.filter((e) => e.type === "image" && e.name === "Photo").length > 1;
-      for (const [k, e] of got.entries()) {
+      for (const [k, el] of got.entries()) {
         const w = want.elements[k] as El;
+        // Every writer element is the AI's (WRITER-CONTRACT §5); the lab's elements predate it.
+        expect({ at: `s${i + 1} #${k}`, by: el.authoredBy }).toEqual({
+          at: `s${i + 1} #${k}`,
+          by: "ai",
+        });
+        const { authoredBy: _by, ...e } = el;
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;

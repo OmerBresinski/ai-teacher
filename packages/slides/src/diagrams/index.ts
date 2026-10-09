@@ -52,6 +52,7 @@ export {
   captionRule,
   type DiagramSlot,
   fitsMeasured,
+  LIMIT_TEXT,
   LIMITS,
   limitLines,
   measuredLabel,

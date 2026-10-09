@@ -437,7 +437,7 @@ export const ParticlesSchema = z
     /** Movement marks: vibration in a solid, short arrows in a liquid or gas. */
     motion: z.boolean().default(false),
     /** For diffusion and dissolving: what the two colours are (a key under the panels). */
-    key: pair(label(18)).optional(),
+    key: pair(label(LIMITS.particles.keyChars)).optional(),
   })
   .refine(
     (p) => p.show !== "states" || new Set(p.states).size === p.states.length,

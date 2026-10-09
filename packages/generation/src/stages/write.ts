@@ -28,11 +28,15 @@ import { createProgressiveDeck } from "./progressive";
  * visibly. Nothing is saved from an incomplete output, so no headings-only deck ever ships.
  */
 
-/** Slides by tier (ruling 164): Quick 6–8, Standard 9–12, Detailed 13–20. */
+/**
+ * The teacher's slide count, exactly, counting the title and objectives slides (ADR 0036; it
+ * replaces ruling 164's tiers for the writer, which turned 10 into 9–12). No count keeps the
+ * Standard range; a count is held to 6–20.
+ */
 export function slideRange(slideCount: number | undefined): { min: number; max: number } {
-  if (slideCount !== undefined && slideCount <= 8) return { min: 6, max: 8 };
-  if (slideCount !== undefined && slideCount > 12) return { min: 13, max: 20 };
-  return { min: 9, max: 12 };
+  if (slideCount === undefined || !Number.isFinite(slideCount)) return { min: 9, max: 12 };
+  const n = Math.min(20, Math.max(6, Math.round(slideCount)));
+  return { min: n, max: n };
 }
 
 /**
