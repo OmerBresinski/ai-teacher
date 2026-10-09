@@ -22,12 +22,19 @@ const photo = (k: string): VisualState => ({
   photo: { src: `/files/${k}.jpg`, alt: k, aspect: 4 / 3 },
 });
 
-async function run(retryLands: boolean | "no-placer") {
+async function run(retryLands: boolean | "no-placer", look = false) {
   const brief = read("brief.json") as Brief;
   const objectives = (
     read("objectives.json") as { objectives: { teacher: string }[] }
   ).objectives.map((o) => o.teacher);
   const main = read("main.json") as { text: string; finishReason?: string };
+  if (look) {
+    const out = JSON.parse(main.text) as { slides: { columns: { text: string }[] }[] };
+    const col = out.slides[0]?.columns[0];
+    if (col) col.text = `Look at the pictures. ${col.text}`;
+    main.text = JSON.stringify(out);
+  }
+  const slideCalls: string[] = [];
   const events: El[] = [];
   const retried: VisualAsk[] = [];
   const placed = new Set<string>();
@@ -46,7 +53,11 @@ async function run(retryLands: boolean | "no-placer") {
       ...replay,
       log: (e) => events.push(e as El),
       // A reroute this replay never recorded fails, as a failed call does.
-      chat: (r: ChatReq) => replay.chat(r),
+      chat: (r: ChatReq) => {
+        if (r.name === "slide" && r.user.includes("Adults and their young"))
+          slideCalls.push(r.user);
+        return replay.chat(r);
+      },
     },
     visual,
     recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
@@ -62,7 +73,7 @@ async function run(retryLands: boolean | "no-placer") {
         }),
   });
   const images = ((res.slides[2]?.elements ?? []) as El[]).filter((e) => e.type === "image");
-  return { events, retried, images, slide: res.plan.slides[2] as El };
+  return { events, retried, images, slideCalls, slide: res.plan.slides[2] as El };
 }
 
 describe("compare pictures (WRITER-FIX-PLAN fault 3)", () => {
@@ -91,6 +102,38 @@ describe("compare pictures (WRITER-FIX-PLAN fault 3)", () => {
     expect(images).toEqual([]);
     const dropped = events.find((e) => e.ev === "compare-pictures-dropped" && e.slide === 3);
     expect(dropped?.failed).toContain("col.0");
+  }, 30_000);
+});
+
+describe("a compare whose retry failed stays a compare, text-only", () => {
+  for (const mode of [false, "no-placer"] as const)
+    test(`no reroute or restage (${mode === false ? "retry failed" : "no placer"})`, async () => {
+      const { events, slideCalls, slide } = await run(mode);
+      expect(slide.template).toBe("compare");
+      expect(slideCalls).toEqual([]);
+      const own = events.filter((e) => e.slide === 3).map((e) => e.ev);
+      expect(own).not.toContain("repair");
+      expect(own).not.toContain("restage-fallback");
+      expect(events).toContainEqual({ ev: "compare-text-only", slide: 3 });
+      expect(events).toContainEqual({
+        ev: "visual-path",
+        slide: 3,
+        path: "picture-compare-text-only",
+      });
+    }, 30_000);
+  test("its words stop pointing at the pictures", async () => {
+    const { events, slide } = await run(false, true);
+    const cols = slide.columns as { text: string }[];
+    expect(cols[0]?.text).toBe("A young cow is a calf.");
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "point-guard", slide: 3, how: "compare-strip" }),
+    );
+  }, 30_000);
+  test("a retry that lands keeps the words as written", async () => {
+    const { slide } = await run(true, true);
+    expect((slide.columns as { text: string }[])[0]?.text).toBe(
+      "Look at the pictures. A young cow is a calf.",
+    );
   }, 30_000);
 });
 

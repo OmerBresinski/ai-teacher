@@ -99,7 +99,7 @@ import {
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
-import { stripPointTasks } from "./point-guard";
+import { stripComparePointing, stripPointTasks } from "./point-guard";
 import {
   shapeSchema,
   shapeSystem,
@@ -1292,7 +1292,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const failed = columnAsks(i)
       .filter((a) => visualState(i)(a.key).status === "failed")
       .map((a) => a.key);
-    if (failed.length) log({ ev: "compare-pictures-dropped", slide: i + 1, failed });
+    if (!failed.length) return;
+    log({ ev: "compare-pictures-dropped", slide: i + 1, failed });
+    // The slide is text-only now: its words never ask pupils to look at the pictures.
+    const { slide: stripped, removed } = stripComparePointing(s);
+    if (!removed.length) return;
+    swapSlide(i, stripped);
+    log({ ev: "point-guard", slide: i + 1, removed, how: "compare-strip" });
   };
   const pictureLostOnce = async (i: number) => {
     if (path.has(i) || i < 2) return;
@@ -1306,22 +1312,24 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
-    if (compare && lost.key.startsWith("col.") && (await compareRetry(i, s0))) {
-      path.set(i, "picture-compare-retry");
+    if (compare && lost.key.startsWith("col.")) {
+      // The retry landed every column; else the compare stays a compare, text-only (never a
+      // reroute or restage: its columns' words stand without the pictures).
+      const ok = await compareRetry(i, s0);
+      path.set(i, ok ? "picture-compare-retry" : "picture-compare-text-only");
+      if (!ok) log({ ev: "compare-text-only", slide: i + 1 });
       return;
     }
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
     // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
-    // ported: a partial split never ships). A compare skips both: they replace a slide's own
-    // picture field, and a compare's pictures are its columns'.
+    // ported: a partial split never ships).
     const n0 = notes.get(i);
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
     // tiles or a table that did land.
     const others = (asks.get(i) ?? [])
       .filter((a) => a.key !== lost.key)
       .map((a) => visualState(i)(a.key).status);
-    const fills = !compare && heldPhotoFills(s0, others);
-    const how0 = !fills
+    const how0 = !heldPhotoFills(s0, others)
       ? undefined
       : await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
           const oldAsks = asks.get(i) ?? [];
