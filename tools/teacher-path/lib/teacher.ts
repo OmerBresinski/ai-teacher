@@ -216,7 +216,8 @@ async function startLesson(page: Page, brief: Brief, run: TeacherRun, web: strin
     .waitFor({ state: "visible", timeout: 180_000 });
   run.times.objectivesShownS = (Date.now() - t0) / 1000;
   await page.getByRole("combobox", { name: "Slides" }).click();
-  await page.getByRole("option", { name: `${brief.slideCount} slides`, exact: true }).click();
+  // The label may say more ("10 slides, including the title"): match the number at the start.
+  await page.getByRole("option", { name: new RegExp(`^${brief.slideCount} slides\\b`) }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   let go = Date.now();
   const sheet = page.getByRole("button", { name: "Just the slides" });
