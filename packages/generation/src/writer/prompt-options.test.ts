@@ -16,6 +16,7 @@ import {
   trimModels,
   type WriterPromptOptions,
   yearToken,
+  yearTokens,
 } from "./prompt-options";
 import { writerSchema } from "./schema";
 import { writerSystem } from "./stage";
@@ -99,6 +100,35 @@ describe("year and subject", () => {
     expect(subjectFamily("Maths and science")).toBeUndefined();
     expect(subjectFamily("Topic")).toBeUndefined();
     expect(subjectFamily("")).toBeUndefined();
+  });
+});
+
+describe("mixed year groups keep the union of their years", () => {
+  test("ranges and lists", () => {
+    expect(yearTokens("Year 1/2")).toEqual(["Y1", "Y2"]);
+    expect(yearTokens("Reception/Year 1")).toEqual(["Reception", "Y1"]);
+    expect(yearTokens("Years 5 and 6")).toEqual(["Y5", "Y6"]);
+    expect(yearTokens("Years 3 to 6")).toEqual(["Y3", "Y4", "Y5", "Y6"]);
+    expect(yearTokens("Y3-4")).toEqual(["Y3", "Y4"]);
+    expect(yearTokens("Year 9/10")).toEqual(["KS3", "KS4"]);
+    expect(yearTokens("Year 1")).toEqual(["Y1"]);
+    expect(yearTokens("Mixed")).toEqual([]);
+  });
+  test("a mixed class keeps what either year can use", async () => {
+    const one = await build(brief("Habitats", "Science", "Year 2", "ks1"), { [B]: true });
+    const mixed = await build(brief("Habitats", "Science", "Reception/Year 2", "ks1"), {
+      [B]: true,
+    });
+    // counting_subitising is Reception and Y1 only: not science, so neither keeps it; seasons_weather
+    // (Reception-Y2) both keep; playground (R-Y2) both keep; treehouse (Y3-6) neither.
+    expect(rows(mixed.system, "Themes:")).toEqual(rows(one.system, "Themes:"));
+    const y56 = await build(brief("Habitats", "Science", "Years 5 and 6", "ks2"), { [B]: true });
+    const y5 = await build(brief("Habitats", "Science", "Year 5", "ks2"), { [B]: true });
+    const ids = (x: { models: { id: string }[] }) => x.models.map((m) => m.id);
+    expect(ids(y56)).toEqual(expect.arrayContaining(ids(y5)));
+    // heart_circulation is Y2 and Y6: a Years 5 and 6 class keeps it, a Year 5 class does not.
+    expect(ids(y56)).toContain("heart_circulation");
+    expect(ids(y5)).not.toContain("heart_circulation");
   });
 });
 

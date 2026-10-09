@@ -48,14 +48,29 @@ export function promptOptionsTag(o?: WriterPromptOptions): string {
 /* The lesson's year and subject family                               */
 /* ------------------------------------------------------------------ */
 
-/** The library's year token for a year group: Reception, Y1-Y6, KS3, KS4, KS5; else undefined. */
-export function yearToken(yearGroup: string): string | undefined {
-  if (/\breception\b|\bYR\b|\bEYFS\b/i.test(yearGroup)) return "Reception";
-  const n = Number(/(?:year|yr|\by)\s*(\d{1,2})\b/i.exec(yearGroup)?.[1] ?? Number.NaN);
-  if (!Number.isInteger(n) || n < 1 || n > 13) return undefined;
-  if (n <= 6) return `Y${n}`;
-  return n <= 9 ? "KS3" : n <= 11 ? "KS4" : "KS5";
+const tokenOf = (n: number) => (n <= 6 ? `Y${n}` : n <= 9 ? "KS3" : n <= 11 ? "KS4" : "KS5");
+
+/**
+ * The library's year tokens for a year group (Reception, Y1-Y6, KS3, KS4, KS5). A mixed class
+ * ("Year 1/2", "Reception/Year 1", "Years 5 and 6", "Y3-4") is the union of its years; a range
+ * ("Years 3 to 6") fills in between. [] when no year can be read (keep everything).
+ */
+export function yearTokens(yearGroup: string): string[] {
+  const out = new Set<string>();
+  if (/\breception\b|\bYR\b|\bEYFS\b/i.test(yearGroup)) out.add("Reception");
+  if (/\b(?:years?|yrs?|y)\s*\d/i.test(yearGroup)) {
+    const nums = [...yearGroup.matchAll(/\d{1,2}/g)].map((m) => Number(m[0]));
+    const ranges = [
+      ...yearGroup.matchAll(/(\d{1,2})\s*(?:-|–|to)\s*(?:years?\s*|y\s*)?(\d{1,2})/gi),
+    ];
+    for (const r of ranges) for (let n = Number(r[1]); n <= Number(r[2]); n++) nums.push(n);
+    for (const n of nums) if (n >= 1 && n <= 13) out.add(tokenOf(n));
+  }
+  return ALL_YEARS.filter((y) => out.has(y));
 }
+
+/** The single token of a one-year group (the first of a mixed one); undefined when unread. */
+export const yearToken = (yearGroup: string): string | undefined => yearTokens(yearGroup)[0];
 
 export type Family =
   | "maths"
@@ -198,11 +213,11 @@ export const THEME_YEARS: Record<string, string[]> = {
 };
 
 /** What a lesson can use: undefined fields keep everything. */
-export type Lens = { year?: string; family?: Family };
+export type Lens = { years?: string[]; family?: Family };
 export const lensOf = (b: Pick<Brief, "yearGroup" | "subject">): Lens => {
-  const year = yearToken(b.yearGroup);
+  const years = yearTokens(b.yearGroup);
   const family = subjectFamily(b.subject);
-  return { ...(year ? { year } : {}), ...(family ? { family } : {}) };
+  return { ...(years.length ? { years } : {}), ...(family ? { family } : {}) };
 };
 
 /** Every diagram kind the menus know (a value outside it, such as a look's "picture", is kept). */
@@ -213,10 +228,10 @@ export const keepKind = (kind: string, l: Lens) =>
   CROSS_KINDS.includes(kind) ||
   FAMILY_MENUS[l.family].kinds.includes(kind);
 export const keepTheme = (id: string, l: Lens) =>
-  !l.year || !THEME_YEARS[id] || (THEME_YEARS[id] as string[]).includes(l.year);
+  !l.years || !THEME_YEARS[id] || l.years.some((y) => (THEME_YEARS[id] as string[]).includes(y));
 /** A catalogue entry for this lesson: its years include the lesson's, and its family is the lesson's or cross. */
 export const keepModel = (e: CatalogueEntry, l: Lens) =>
-  (!l.year || e.years.includes(l.year)) &&
+  (!l.years || l.years.some((y) => e.years.includes(y))) &&
   (!l.family || CROSS_MODELS.includes(e.id) || FAMILY_MENUS[l.family].models.includes(e.id));
 
 /** The catalogue for the lesson: everything unless trimMenus. */
