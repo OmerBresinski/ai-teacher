@@ -16,6 +16,45 @@ export const CHECK_TEMPLATES = new Set([
 export type FlowEntry = { slide: number; does?: string; teaches?: number[] };
 export type Coverage = { untaught: number[]; unchecked: number[]; missing: number[] };
 
+/** Coverage rules behind the checker flags (`checker-flags.ts`); all off is master's rule. */
+export type CoverageRules = {
+  /** coverageCountsPictureTasks: a task on a picture or diagram slide is a check. */
+  pictureTasks?: boolean;
+  /** coverageExcludesDiscussion (D36): a discussion slide is not a check. */
+  noDiscussion?: boolean;
+  /** coverageExcludesPrediction: a check counts only after the objective's first teaching slide. */
+  afterTeaching?: boolean;
+  /** The written slide for flow slide k (title = 1), for `pictureTasks`. */
+  slideOf?: (slide: number) => Record<string, unknown> | undefined;
+};
+
+const VISUAL_TEMPLATES = new Set([
+  "visual-text",
+  "big-visual",
+  "picture-text",
+  "diagram-text",
+  "big-picture",
+  "big-diagram",
+]);
+/**
+ * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
+ * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?
+ * Explain why."). An imperative teaching line ("Show that 1/2 = 2/4.") is not a task, and nor is
+ * a question used as the heading ("Why do polar bears have thick fur?").
+ */
+export function isPictureTask(s: Record<string, unknown> | undefined): boolean {
+  if (!s || !VISUAL_TEMPLATES.has(String(s.template ?? ""))) return false;
+  const said = (v: unknown): boolean =>
+    typeof v === "string" ? v.trim() !== "" : Array.isArray(v) && v.some(said);
+  if (["questions", "instruction", "ask", "prompt"].some((k) => said(s[k]))) return true;
+  const pts = Array.isArray(s.points) ? s.points : [];
+  const lines = [
+    s.lead,
+    ...pts.map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p)),
+  ];
+  return lines.some((l) => typeof l === "string" && l.includes("?"));
+}
+
 /**
  * Each objective needs at least one teaching slide and one checking slide naming it in `teaches`
  *. Flow slide numbers count from 1 with the title as 1 and the objectives slide
@@ -26,17 +65,29 @@ export function coverage(
   flow: FlowEntry[],
   objectives: number,
   templateOf: (slide: number) => string | undefined,
+  rules: CoverageRules = {},
 ): Coverage {
   const taught = new Set<number>();
   const checked = new Set<number>();
-  for (const f of flow) {
-    if (f.slide <= 2) continue;
+  const isCheck = (f: FlowEntry) => {
     const t = templateOf(f.slide);
-    const isCheck = t
-      ? CHECK_TEMPLATES.has(t)
-      : /\b(check|quiz|practi[cs]e|question|exit)/i.test(f.does ?? "");
-    for (const k of f.teaches ?? []) (isCheck ? checked : taught).add(k);
-  }
+    if (t === "discussion" && rules.noDiscussion) return false;
+    if (t && CHECK_TEMPLATES.has(t)) return true;
+    if (rules.pictureTasks && isPictureTask(rules.slideOf?.(f.slide))) return true;
+    return t ? false : /\b(check|quiz|practi[cs]e|question|exit)/i.test(f.does ?? "");
+  };
+  const body = flow.filter((f) => f.slide > 2);
+  const firstTaught = new Map<number, number>();
+  for (const f of body)
+    if (!isCheck(f))
+      for (const k of f.teaches ?? []) {
+        taught.add(k);
+        firstTaught.set(k, Math.min(firstTaught.get(k) ?? Infinity, f.slide));
+      }
+  for (const f of body)
+    if (isCheck(f))
+      for (const k of f.teaches ?? [])
+        if (!rules.afterTeaching || f.slide > (firstTaught.get(k) ?? Infinity)) checked.add(k);
   const all = Array.from({ length: objectives }, (_, i) => i + 1);
   const untaught = all.filter((k) => !taught.has(k));
   const unchecked = all.filter((k) => !checked.has(k));
@@ -91,10 +142,17 @@ export async function repairObjectives(o: {
   chat: Chat;
   log: (e: object) => void;
   onUsd: (usd: number) => void;
+  /** The checker flags' coverage rules; absent: master's rule. */
+  rules?: CoverageRules;
 }): Promise<{ plan: Plan; repaired: boolean; before: Coverage; after?: Coverage }> {
-  const tplOf = (p: Plan) => (slide: number) =>
-    (p.slides[slide - 1]?.template as string | undefined) ?? undefined;
-  const before = coverage(o.plan.flow, o.objectives.length, tplOf(o.plan));
+  const cover = (p: Plan) =>
+    coverage(
+      p.flow,
+      o.objectives.length,
+      (slide) => (p.slides[slide - 1]?.template as string | undefined) ?? undefined,
+      { ...o.rules, slideOf: (slide) => p.slides[slide - 1] },
+    );
+  const before = cover(o.plan);
   if (!before.missing.length) return { plan: o.plan, repaired: false, before };
   const user = [
     o.context,
@@ -152,7 +210,7 @@ export async function repairObjectives(o: {
     if (f) f.teaches = c.teaches;
     changed.push(c.n);
   }
-  const after = coverage(next.flow, o.objectives.length, tplOf(next));
+  const after = cover(next);
   // A repair that covers some missing objectives and loses none is kept (it used to be discarded
   // unless every objective was covered); what is still missing is logged as `stillMissing`.
   const ok =
