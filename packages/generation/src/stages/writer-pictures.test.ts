@@ -513,4 +513,28 @@ describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", 
     await pictures.settle(1_000);
     expect(pictures.state(6, "picture").status).toBe("photo");
   });
+
+  test("a key that failed in round one is asked again at the same index in a later round", async () => {
+    let calls = 0;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p8")] }),
+      deps: recordingDeps(cowAi()),
+      direct: async () => {
+        calls += 1;
+        return calls === 1 ? direction({ route: "none", pictures: [] }) : cowDirection();
+      },
+    });
+    const one = ask({ shows: "A cow", mustSee: ["cow"], named: false });
+    pictures.start(6, ask({ shows: "Cow, sheep and hen", mustSee: ["cow"], named: false }), slide);
+    await pictures.settle(1_000);
+    expect(pictures.state(6, "picture").status).toBe("failed");
+    // Asked again within the same round after settle: placed once, not twice.
+    pictures.start(6, one, slide);
+    pictures.start(6, one, slide);
+    await pictures.settle(1_000);
+    expect(pictures.state(6, "picture").status).toBe("photo");
+    expect(calls).toBe(2);
+  });
 });

@@ -88,7 +88,6 @@ import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from ".
 import { stripPointTasks } from "./point-guard";
 import { writerSchema } from "./schema";
 import {
-  isFatal,
   nonFatal,
   SMALL_MODEL,
   WRITER_EFFORT,
@@ -97,6 +96,7 @@ import {
   whenNonFatal,
   writerMaxTokens,
 } from "./services";
+import { slideStates } from "./slide-states";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -229,6 +229,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const drawnDiagrams = new Map<string, VisualState>();
   /** States code decided after the fact (match6 kept photo, orphan6, a stale drawing), by key. */
   const override = new Map<string, VisualState>();
+  /** `restore` puts a slide's override and drawn states back as they were when it was swapped. */
+  const states = slideStates<VisualState>([override, drawnDiagrams]);
   const visualState = (i: number) => (key: string) => {
     const o = override.get(`${i}:${key}`);
     if (o) return o;
@@ -563,6 +565,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
 
   // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {
+    states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
     // otherwise.
@@ -654,6 +657,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     oldAsks: VisualAsk[],
   ) => {
     plan.slides[i] = slide;
+    states.put(i, slide);
     if (n0) notes.set(i, n0);
     else notes.delete(i);
     asks.set(i, oldAsks);
@@ -760,19 +764,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     // orphan6 (BAKEOFF base4f): a fit repair that moved the only words naming a pictured thing drops
     // the picture, unless the slide asks pupils to look, point, match or find (keepPic).
+    let orphanDrop = false;
     if (mode === "fit") {
       const orphans = orphansAfterFit(o2.slide, moved);
       const keep = orphans.length > 0 && asksToSee(wordsOf(o2.slide));
       if (keep) log({ ev: "keep-pic", slide: i + 1, rule: "orphan6", orphans });
       if (orphans.length && !keep) {
+        orphanDrop = true;
         o2.slide = { ...o2.slide, picture: null };
-        override.set(`${i}:picture`, { status: "failed" });
         log({ ev: "orphan6-drop", slide: i + 1, orphans, moved });
       }
     }
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, o2.slide);
+    if (orphanDrop) override.set(`${i}:picture`, { status: "failed" });
     applyRepair(plan.slides, notes, i, r?.out);
     const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
@@ -987,42 +993,49 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // ported: a partial split never ships).
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
-    const how0 = await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
-      const oldAsks = asks.get(i) ?? [];
-      swapSlide(i, next);
-      const all = asks.get(i) ?? [];
-      const now = plan.slides[i] as S;
-      if (kind === "split")
-        await run.placeMore?.(
-          i,
-          all.filter((a) => a.type === "photo"),
-          { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
-        );
-      if (kind === "library" && run.drawDiagrams)
-        for (const a of all)
-          if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
-            const r = await drawWriterDiagram(diagramAsk(a, now), {
-              callDrawer: run.drawDiagrams.callDrawer,
-              drawerSystem: writerDrawerSystem,
-              theme: base.theme,
-              probe: layoutSlotProbe,
-              log: (e) => log({ ...e, slide: i + 1 }),
-            });
-            if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+    // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
+    // tiles or a table that did land.
+    const others = (asks.get(i) ?? [])
+      .filter((a) => a.key !== lost.key)
+      .map((a) => visualState(i)(a.key).status);
+    const how0 = !heldPhotoFills(s0, others)
+      ? undefined
+      : await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
+          const oldAsks = asks.get(i) ?? [];
+          swapSlide(i, next);
+          const all = asks.get(i) ?? [];
+          const now = plan.slides[i] as S;
+          if (kind === "split")
+            await run.placeMore?.(
+              i,
+              all.filter((a) => a.type === "photo"),
+              { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+            );
+          if (kind === "library" && run.drawDiagrams)
+            for (const a of all)
+              if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
+                const r = await drawWriterDiagram(diagramAsk(a, now), {
+                  callDrawer: run.drawDiagrams.callDrawer,
+                  drawerSystem: writerDrawerSystem,
+                  theme: base.theme,
+                  probe: layoutSlotProbe,
+                  log: (e) => log({ ...e, slide: i + 1 }),
+                });
+                if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+              }
+          const got = all.every((a) => {
+            const st = visualState(i)(a.key).status;
+            return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
+          });
+          const ok = got && all.length > 0;
+          log({ ev: "lost-picture", slide: i + 1, try: kind, ok });
+          if (ok) {
+            relay(i);
+            return true;
           }
-      const got = all.every((a) => {
-        const st = visualState(i)(a.key).status;
-        return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
-      });
-      const ok = got && all.length > 0;
-      log({ ev: "lost-picture", slide: i + 1, try: kind, ok });
-      if (ok) {
-        relay(i);
-        return true;
-      }
-      restore(i, s0, n0, oldAsks);
-      return false;
-    });
+          restore(i, s0, n0, oldAsks);
+          return false;
+        });
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;

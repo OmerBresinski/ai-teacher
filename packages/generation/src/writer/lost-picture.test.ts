@@ -5,6 +5,7 @@ import {
   compoundSubjects,
   libraryKind,
   lostPictureFallback,
+  otherVisual,
   routeLostPicture,
   splitLanded,
 } from "./lost-picture";
@@ -152,5 +153,45 @@ describe("lostPic after D48 live", () => {
     });
     expect(r.slide.heading).toBe("This farm");
     expect(r.slide.instruction).toBe("Say why.");
+  });
+});
+
+describe("lostPic never replaces another visual (#423 review)", () => {
+  const shaded = "A circle split into two equal parts with one part shaded";
+  const animals = "Separate photos: a cow, a sheep and a hen";
+  const tryAll = async (s: Record<string, unknown>, shows: string) => {
+    const tried: string[] = [];
+    const how = await lostPictureFallback(s, "picture", shows, async (_next, kind) => {
+      tried.push(kind);
+      return true;
+    });
+    return { how, tried };
+  };
+
+  test("a slide whose picture was its one visual takes the fallback", async () => {
+    expect((await tryAll({ heading: "h", picture: { shows: shaded } }, shaded)).how).toBe(
+      "library",
+    );
+    expect((await tryAll({ heading: "h", picture: { shows: animals } }, animals)).how).toBe(
+      "split",
+    );
+  });
+
+  test("a figure, tiles or a table on the slide blocks both the library drawing and the split", async () => {
+    for (const other of [
+      { figure: { kind: "table", shows: "x" } },
+      { tiles: [{ shows: "a lamb" }] },
+      { table: { rows: [["a", "b"]] } },
+    ])
+      for (const shows of [shaded, animals])
+        expect(await tryAll({ heading: "h", picture: { shows }, ...other }, shows)).toEqual({
+          how: undefined,
+          tried: [],
+        });
+  });
+
+  test("an empty tiles list or a null figure is no visual", () => {
+    expect(otherVisual({ picture: {}, tiles: [], figure: null }, "picture")).toBe(false);
+    expect(otherVisual({ figure: { shows: "x" } }, "figure")).toBe(false);
   });
 });

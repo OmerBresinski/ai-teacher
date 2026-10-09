@@ -851,6 +851,8 @@ export function createWriterPictures(opts: {
   const id = (index: number, key: string) => `${index}:${key}`;
   const requestOf = (ask: WriterPhotoAsk) => [ask.shows, ...ask.mustSee].join(". ");
   let settled = false;
+  /** Keys asked again in a later round (`start` after `settle`), so a round re-asks a key once. */
+  const reasked = new Set<string>();
 
   /** A placed picture as the stage reads it: its OWN aspect (the ranged slots shape round it). */
   const photoState = (
@@ -1042,7 +1044,13 @@ export function createWriterPictures(opts: {
   return {
     start(index, ask, slide) {
       const k = id(index, ask.key);
-      if (slots.has(k)) return;
+      const prev = slots.get(k);
+      // A later round (lostPic's split after settle) may ask a failed key again, once per round.
+      if (prev && !(settled && prev.state.status === "failed" && !reasked.has(k))) return;
+      if (prev) {
+        reasked.add(k);
+        heldPhotos.delete(k);
+      }
       const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
       if (ask.set) {
         if (!opts.maker) {
@@ -1101,6 +1109,7 @@ export function createWriterPictures(opts: {
         });
       if (fatal !== undefined) throw fatal;
       settled = true;
+      reasked.clear();
       for (const slot of slots.values())
         if (slot.state.status === "pending") {
           slot.state = { status: "failed" };

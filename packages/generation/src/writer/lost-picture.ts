@@ -73,6 +73,15 @@ export function routeLostPicture(shows: string): LostRoute {
 
 type Slide = Record<string, unknown>;
 
+/**
+ * Whether the slide holds another visual besides its lost picture (a figure, tiles, a table or a
+ * second picture field): the code fallbacks never replace one (#423 review).
+ */
+export function otherVisual(s: Slide, key: string): boolean {
+  const set = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v != null && v !== false);
+  return ["figure", "diagram", "picture", "tiles", "table"].some((f) => f !== key && set(s[f]));
+}
+
 /** The slide with its lost picture asked again as one picture per subject (the rest as tiles). */
 export function splitSlide(s: Slide, key: string, subjects: string[]): Slide {
   const pic = (x: string) => ({ shows: x, must_see: [x], subject: "generic" });
@@ -102,6 +111,7 @@ export async function lostPictureFallback(
   shows: string,
   attempt: (next: Slide, how: "split" | "library") => Promise<boolean>,
 ): Promise<"split" | "library" | undefined> {
+  if (otherVisual(s, key)) return undefined;
   const r = routeLostPicture(shows);
   if (r.how === "library" && (await attempt(librarySlide(s, key, r.kind, shows), "library")))
     return "library";
