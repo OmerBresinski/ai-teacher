@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type CheckerFlags, parseCheckerFlags } from "./checker-flags";
+import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import { coverage, type FlowEntry, isPictureTask } from "./notes";
 import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 
@@ -37,14 +37,42 @@ async function run(
   return { res, events, calls, images, pathOf };
 }
 
-describe("parseCheckerFlags", () => {
-  test("reads a comma list and refuses an unknown name", () => {
-    expect(parseCheckerFlags(" duplicateLogOnly,pointGuardLogOnly ")).toEqual({
-      duplicateLogOnly: true,
-      pointGuardLogOnly: true,
-    });
-    expect(parseCheckerFlags(undefined)).toEqual({});
-    expect(() => parseCheckerFlags("duplicateLogOnly,nope")).toThrow('unknown checker flag "nope"');
+describe("CHECKER_DEFAULTS, every shipped flag on together", () => {
+  test("y12: both drawn flows that missed their slot ship full width; no objective repair runs", async () => {
+    const r = await run("y12-psychology-multi-store-model", CHECKER_DEFAULTS);
+    expect([r.pathOf(4), r.pathOf(7)]).toEqual(["diagram-big", "diagram-big"]);
+    expect([r.images[3], r.images[6]]).toEqual([1, 1]);
+    expect(r.calls).not.toContain("objective_repair");
+  });
+  test("y8: pointGuard logs the dangling pointer on s3 while s4's widened table is relaid full width", async () => {
+    // The recorded s4 table with every cell three words wider: it misses the side panel, fits full width.
+    const b = "y8-french-my-family";
+    const rec = recordedVisuals(b);
+    const visual = (i: number, key: string, a: Parameters<typeof rec>[2]) => {
+      const v = rec(i, key, a);
+      if (i !== 3 || v.status !== "diagram") return v;
+      const spec = v.spec as { rows: string[][] };
+      return {
+        ...v,
+        spec: { ...spec, rows: spec.rows.map((x) => x.map((c) => `${c} mot mot mot`)) },
+      };
+    };
+    const r = await run(b, CHECKER_DEFAULTS, visual);
+    expect(r.events).toContainEqual(
+      expect.objectContaining({
+        ev: "point-guard",
+        slide: 3,
+        how: "log-only",
+        ships: "dangling pointer (D48)",
+      }),
+    );
+    expect(JSON.stringify(r.res.plan.slides[2])).toContain("Point and say");
+    expect(r.events).toContainEqual(
+      expect.objectContaining({ ev: "diagram-relaid", slide: 4, ok: true }),
+    );
+    expect(r.pathOf(4)).toBe("diagram-big");
+    expect(r.images[3]).toBe(1);
+    expect(r.res.slides[3]?.notes).toContain("Moved off the slide to fit the diagram:");
   });
 });
 
@@ -160,6 +188,18 @@ describe("objective coverage", () => {
     expect(off.calls).toContain("objective_repair");
     expect(on.calls).not.toContain("objective_repair");
     expect([off.images[3], on.images[3]]).toEqual([0, 1]);
+  });
+  test("an imperative teaching line is not a task; a question or a task field is", () => {
+    const pic = { template: "visual-text", heading: "Equivalent fractions" };
+    expect(isPictureTask({ ...pic, lead: "Show that 1/2 = 2/4." })).toBe(false);
+    expect(
+      isPictureTask({ ...pic, points: ["Say what each part shows.", "Tell your partner."] }),
+    ).toBe(false);
+    expect(isPictureTask({ ...pic, lead: "Which shaded part is one half? Explain why." })).toBe(
+      true,
+    );
+    expect(isPictureTask({ ...pic, questions: ["Shade one quarter."] })).toBe(true);
+    expect(isPictureTask({ ...pic, instruction: "Label the parts." })).toBe(true);
   });
   test("a teaching slide with a question heading is not a task", () => {
     expect(

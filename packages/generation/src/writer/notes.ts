@@ -36,44 +36,23 @@ const VISUAL_TEMPLATES = new Set([
   "big-picture",
   "big-diagram",
 ]);
-/*
- * A pupil task, by the evaluator's rule (BAKEOFF eval/llm/score.ts v4 `pupilTask`, so the writer and the
- * evaluator agree): an imperative answer cue at a sentence's start (after a list marker or "Now"), or a
- * question mark at its end. Headings neither set a task nor teach.
- */
-const TASK_CUE =
-  /^(identify|explain|describe|calculate|suggest|predict|find|work out|decide|write|state|name|sort|match|label|draw|discuss|evaluate|justify|tell|say|point|count|complete|choose|circle|show|give|fill|order|put|spot|answer|translate|correct|estimate|classify|shade|colour|color|tick|underline|solve|convert|plot|sketch|talk|try|turn to|agree or disagree|true or false|list|ask)\b/i;
-const LEAD_IN =
-  /^(?:\d+[.)]|[a-d][.)]|[•\-–]|now,?|then,?|next,?|your turn:?|try it:?|you try:?|on your whiteboard,?)\s*/i;
-const isTaskSentence = (sent: string) => {
-  const t = sent.trim().replace(LEAD_IN, "").replace(LEAD_IN, "");
-  return TASK_CUE.test(t) || /\?\s*$/.test(t);
-};
-const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/).filter((x) => x.trim());
-
 /**
- * A picture or diagram slide whose words are a pupil task ("Which shaded part is one half? Explain
- * why."): every text but the heading opens with a task sentence, and task sentences are more than
- * half of its sentences. A slide that also states content teaches.
+ * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
+ * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?
+ * Explain why."). An imperative teaching line ("Show that 1/2 = 2/4.") is not a task, and nor is
+ * a question used as the heading ("Why do polar bears have thick fur?").
  */
 export function isPictureTask(s: Record<string, unknown> | undefined): boolean {
   if (!s || !VISUAL_TEMPLATES.has(String(s.template ?? ""))) return false;
+  const said = (v: unknown): boolean =>
+    typeof v === "string" ? v.trim() !== "" : Array.isArray(v) && v.some(said);
+  if (["questions", "instruction", "ask", "prompt"].some((k) => said(s[k]))) return true;
   const pts = Array.isArray(s.points) ? s.points : [];
-  const els = [
-    typeof s.lead === "string" ? s.lead : "",
-    ...pts.map((p) =>
-      typeof p === "string"
-        ? p
-        : p && typeof p === "object"
-          ? [(p as { label?: unknown }).label, (p as { text?: unknown }).text]
-              .filter((x) => typeof x === "string" && x)
-              .join(": ")
-          : "",
-    ),
-  ].filter((x) => x.trim());
-  if (!els.length || !els.every((t) => isTaskSentence(sentences(t)[0] ?? ""))) return false;
-  const all = els.flatMap(sentences);
-  return all.filter(isTaskSentence).length * 2 > all.length;
+  const lines = [
+    s.lead,
+    ...pts.map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p)),
+  ];
+  return lines.some((l) => typeof l === "string" && l.includes("?"));
 }
 
 /**

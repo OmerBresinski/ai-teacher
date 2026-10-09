@@ -1,7 +1,9 @@
 /*
  * The checker's flags (CHECKER-AUDIT, 9 Oct 2026): each change to the writer stage's post-call
- * checking sits behind its own flag, default off, so every one is measured alone against the
- * same recorded writer outputs before any ships on.
+ * checking sits behind its own flag, so every one is measured alone against the same recorded
+ * writer outputs. `CHECKER_DEFAULTS` is what ships: each flag was turned on in its own commit once
+ * its replay row was better or the same (or a ruling required it). A caller turns one off with
+ * `false` in `WriterRun.checker`; there is no environment switch.
  */
 export const CHECKER_FLAGS = [
   /** A diagram that drew but did not fit its slot is laid out full width before any fallback. */
@@ -44,16 +46,3 @@ export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   coverageExcludesPrediction: true,
   coverageExcludesDiscussion: true,
 };
-
-/** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
-export function parseCheckerFlags(list: string | undefined): CheckerFlags {
-  const out: CheckerFlags = {};
-  for (const raw of (list ?? "").split(",")) {
-    const name = raw.trim();
-    if (!name) continue;
-    if (!(CHECKER_FLAGS as readonly string[]).includes(name))
-      throw new Error(`unknown checker flag "${name}"`);
-    out[name as CheckerFlag] = true;
-  }
-  return out;
-}

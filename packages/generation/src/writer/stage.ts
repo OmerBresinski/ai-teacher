@@ -275,7 +275,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const asks = new Map<number, VisualAsk[]>();
   const laid = new Map<number, Materialised>();
   /** fallbackOnlyOnFailure: slides laid out full width to fit their drawn diagram (points to notes). */
-  const relaid = new Set<number>();
+  // Held by the slide object itself: a later step that swaps the slide out clears it, and a
+  // restore that puts the relaid slide back brings it back.
+  const relaid = new Map<number, unknown>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
@@ -390,9 +392,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!m) return undefined;
     const own = notes.get(i)?.notes ?? "";
     const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
-    const fitted = relaid.has(i)
-      ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
-      : [];
+    const fitted =
+      relaid.has(i) && relaid.get(i) === plan.slides[i]
+        ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
+        : [];
     const said = [
       moved.length ? `On the slide: ${moved.join(" ")}` : "",
       fitted.length ? `Moved off the slide to fit the diagram: ${fitted.join(" ")}` : "",
@@ -950,7 +953,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       );
       if (left.length) restore(i, s0, n0, oldAsks);
       else {
-        relaid.add(i);
+        relaid.set(i, plan.slides[i]);
         path.set(i, "diagram-big");
       }
       log({
@@ -1424,8 +1427,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!check()[i]?.faults.some((f) => DANGLING.test(f))) return;
     const { slide: stripped, removed } = stripPointTasks(s);
     if (!removed.length) return;
+    // Intended under D48: the slide ships with its pointing line, which may dangle; logged so a
+    // run counts every one.
     if (flags.pointGuardLogOnly)
-      return void log({ ev: "point-guard", slide: i + 1, removed, how: "log-only" });
+      return void log({
+        ev: "point-guard",
+        slide: i + 1,
+        removed,
+        how: "log-only",
+        ships: "dangling pointer (D48)",
+      });
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, stripped);
