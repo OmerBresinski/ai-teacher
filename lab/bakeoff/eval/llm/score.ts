@@ -238,7 +238,15 @@ export const verifyCite = (
 export function summariseObjectives(
   d0: { slides: Slide[]; objectives: { id: string; text: string }[] },
   o: { objectives: ObjectiveRow[] },
-  opts: { text?: (s: Slide) => string } = {},
+  opts: {
+    text?: (s: Slide) => string;
+    /**
+     * Greg, 9 Oct (CHECKER-AUDIT): a check counts only after the slide that teaches its objective, so an
+     * objective with no verified taught slide has no valid check (its cites go to `early`). On by default,
+     * as the writer's coverageExcludesPrediction is; `false` is v4 (the lesson's first teaching slide).
+     */
+    untaughtHasNoCheck?: boolean;
+  } = {},
 ) {
   const d = withObjectivesRoles(d0);
   const sl: Record<number, Slide> = Object.fromEntries(d.slides.map((s) => [s.n, s]));
@@ -253,7 +261,11 @@ export function summariseObjectives(
     };
     const ok = (c: Cite, role: string) => verifyCite(sl, c, role, text);
     const taught = [...new Set(r.taught.filter((c) => ok(c, "teach")).map((c) => c.slide))];
-    const from = taught.length ? Math.min(...taught) : firstTeach;
+    const from = taught.length
+      ? Math.min(...taught)
+      : (opts.untaughtHasNoCheck ?? true)
+        ? Number.POSITIVE_INFINITY
+        : firstTeach;
     const cited = [...new Set(r.checked.filter((c) => ok(c, "question")).map((c) => c.slide))];
     const checked = cited.filter((n) => n > from);
     const early = cited.filter((n) => n <= from);

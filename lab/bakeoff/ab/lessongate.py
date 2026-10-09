@@ -64,9 +64,20 @@ def lesson_gate(r, e):
                     passed=False, missingObjectives=True, version=None)
     taught = all(o.get("taught") for o in s)
     soft = sum(1 for o in s if o.get("checked")) / len(s)
-    return dict(objectives=len(s), allTaught=taught, lessonCheck=bool(checks), checkSlides=checks,
+    # Greg, 9 Oct (CHECKER-AUDIT): a check placed before the teaching (a prediction or hook) does not
+    # count. A lesson-level check counts only when the summary's
+    # ordered `checked` lists hold it (a cite after its objective's first taught slide, score.ts v4),
+    # or it is the code-placed exit ticket (always last). On by default, in step with the writer's
+    # coverageExcludesPrediction; LESSONGATE_CHECK_AFTER_TEACHING=0 turns it off.
+    ok = checks
+    if os.environ.get("LESSONGATE_CHECK_AFTER_TEACHING") != "0":
+        cited = {c if isinstance(c, int) else (c or {}).get("slide") for o in s for c in (o.get("checked") or [])}
+        code_n = (load(f"{r}/lesson.json") or {}).get("exitTicket", {}) or {}
+        code_n = code_n.get("slide") if isinstance(code_n, dict) else None
+        ok = [n for n in checks if n in cited or n == code_n]
+    return dict(objectives=len(s), allTaught=taught, lessonCheck=bool(ok), checkSlides=ok,
                 untaught=[o.get("id") for o in s if not o.get("taught")], objectivesChecked=round(soft, 3),
-                passed=taught and bool(checks), missingObjectives=False, version=oj.get("version"))
+                passed=taught and bool(ok), missingObjectives=False, version=oj.get("version"))
 
 
 def eval_dir_for(runs_dir):
