@@ -19,7 +19,7 @@ All times are seconds from **go** (the last click that starts generation), read 
 | all slides editable | typing into the last slide works, counted only once the deck stopped growing |
 | pictures in | the last change to the saved document's picture `src`s (polled), with 30 s of quiet after done |
 | done | the generating shell is gone and the editor is up |
-| edit saves | three typed markers (during generation, last slide, after done) are still there after a reload |
+| edit saves | three typed markers (during generation, last slide, after done) are in the document the api returns after a reload (never what the page shows) |
 | failed writes | every non-GET api response of 400 or more, and every failed request, from the network log |
 | Export → PDF | Export, Export PDF, and the print view renders at least one page per slide |
 | slides delivered vs requested | the saved document's slide count against the count chosen on the objectives step |
@@ -36,9 +36,12 @@ Pass and fail come from `thresholds` in `config.json`.
 
 - **paid** (default): generates for real with the OpenAI and Pexels keys (`OPENAI_API_KEY`,
   `PEXELS_API_KEY`, or `~/.dayback-openai-key` and `~/.dayback-pexels-key`). Needs
-  `--stop-usd` (refused above 49.80) and `--spend <ledger.md>`. It writes a BEFORE row, checks
-  `ledger + spent so far + one lesson's ceiling <= stop` before every lesson, and writes an AFTER
-  row priced from the worker's and api's per-call log lines and the picture generator's log.
+  `--stop-usd` (refused above 49.80) and `--spend <ledger.md>`. It writes a BEFORE row, reserves
+  each lesson's worst case (`ceilingPerLessonUsd`) before it starts, refusing when the ledger plus
+  everything spent plus that reserve passes the stop, and writes an AFTER row. A lesson's spend is
+  priced from the worker's and api's per-call log lines over that lesson, and the picture
+  generator's log. It fails closed: if those logs are missing or unreadable, the lesson keeps its
+  full reservation as spent and the run stops. `bun test tools/teacher-path` covers the guard.
 - **cheap**: replays a lesson recorded by a paid run (`<out>/recording/`). It signs in, seeds the
   lesson through `POST /__test/seed-library` with its pictures, and runs the UI checks (open,
   type, reload, export, screenshots, sources). Only the objective check spends (about $0.002; skip

@@ -380,12 +380,7 @@ async function afterDone(
     .waitFor({ timeout: 30_000 })
     .catch(() => {});
   run.doc = await readDoc(page, stack.api, run.lessonId);
-  const saved = JSON.stringify(run.doc ?? {});
-  const shown = (await page.locator("body").textContent()) ?? "";
-  for (const e of run.edits) {
-    if (e.typedAtS === null) continue;
-    e.kept = saved.includes(e.marker) || shown.includes(e.marker);
-  }
+  markKept(run.edits, run.doc);
 
   // Export → PDF: the print view must render the lesson.
   try {
@@ -416,6 +411,15 @@ async function afterDone(
   } catch (e) {
     run.exportPdf.note = `failed: ${String(e).split("\n")[0]}`;
   }
+}
+
+/**
+ * An edit counts as saved only if the document read back from the api after the reload holds it.
+ * What the page shows is never evidence: an editor can show text the server refused.
+ */
+export function markKept(edits: TeacherRun["edits"], saved: Doc | null) {
+  const body = saved ? JSON.stringify(saved) : "";
+  for (const e of edits) if (e.typedAtS !== null) e.kept = body.includes(e.marker);
 }
 
 /** Paid mode: the whole path, generating for real. */

@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { type Analysis, analyse, checkObjectives } from "./lib/lesson";
-import { ledgerRow, ledgerTotal, logSize, spentInLog } from "./lib/spend";
+import { ledgerRow, ledgerTotal, logSize, SpendGuard, spentInLog } from "./lib/spend";
 import { fromWeb, preflight, prepareDatabase, ROOT, startStack } from "./lib/stack";
 import {
   type Brief,
@@ -125,21 +125,23 @@ type Row = TeacherRun & {
   spendUsd: { llm: number; images: number; check: number; total: number };
 };
 const rows: Row[] = [];
-let spent = 0;
+// Fail closed (paid): each lesson's worst case is reserved before it starts; an unreadable spend
+// keeps the reservation and stops the run. Free modes still count, against no stop.
+const guard = paid
+  ? new SpendGuard(() => ledgerTotal(ledger), stop, ceiling(config.ceilingPerLessonUsd))
+  : new SpendGuard(() => 0, Number.POSITIVE_INFINITY, 0);
+const apiLog = join(logDir, "api.log");
+let apiFrom = logSize(apiLog);
+let halted = "";
 const { chromium } = fromWeb("@playwright/test");
 const browser = await chromium.launch();
 try {
-  for (const brief of briefs) {
+  walk: for (const brief of briefs) {
     for (const who of generates ? whos : (["signed-in"] as Who[])) {
       const dir = join(out, `${brief.id}-${who}`);
-      if (paid) {
-        const room = ledgerTotal(ledger) + spent + ceiling(config.ceilingPerLessonUsd);
-        if (room > stop) {
-          console.log(
-            `skip ${brief.id} ${who}: ledger + spent + ceiling $${room.toFixed(2)} > stop`,
-          );
-          continue;
-        }
+      if (!guard.reserve()) {
+        console.log(`skip ${brief.id} ${who}: ledger + spent + one lesson's ceiling > stop`);
+        continue;
       }
       console.log(`${brief.id} ${who}: starting`);
       const from = logSize(stack.workerLog);
@@ -164,12 +166,27 @@ try {
       // Let the worker finish writing its last lines (notes, cost) before the log is read.
       await Bun.sleep(paid ? 3_000 : 0);
       const to = logSize(stack.workerLog);
-      const log = spentInLog(stack.workerLog, from, to);
+      const apiTo = logSize(apiLog);
       const docUsage = Number(run.doc?.generation?.usage?.costUsd ?? 0);
+      let log: { llm: number; images: number } | null = null;
+      try {
+        // This lesson's worker lines plus the api's own calls (objectives, check-input) meanwhile.
+        const w = spentInLog(stack.workerLog, from, to);
+        const a = spentInLog(apiLog, apiFrom, apiTo);
+        log = { llm: w.llm + a.llm, images: w.images + a.images };
+      } catch (e) {
+        halted = `spend unreadable after ${brief.id} ${who}: ${String(e)}`;
+      }
+      apiFrom = apiTo;
       const row: Row = {
         ...run,
         analysis: null,
-        spendUsd: { llm: Math.max(log.llm, docUsage), images: log.images, check: 0, total: 0 },
+        spendUsd: {
+          llm: Math.max(log?.llm ?? 0, docUsage),
+          images: log?.images ?? 0,
+          check: 0,
+          total: 0,
+        },
       };
       if (run.doc) {
         const recorded = generates
@@ -217,24 +234,33 @@ try {
         }
       }
       row.spendUsd.total = row.spendUsd.llm + row.spendUsd.images + row.spendUsd.check;
-      spent += row.spendUsd.total;
+      guard.settle(log ? row.spendUsd.total : null);
       rows.push(row);
       writeFileSync(join(dir, "lesson.json"), JSON.stringify(run.doc ?? null, null, 2));
       console.log(
         `${brief.id} ${who}: done=${run.times.doneS}s spend $${row.spendUsd.total.toFixed(4)}`,
       );
+      if (halted) {
+        console.log(`stopping: ${halted}; the lesson's reservation is booked as spent`);
+        break walk;
+      }
     }
   }
 } finally {
   await browser.close();
   stack.stop();
-  // Model calls the api made itself (objectives, check-input) count too.
-  const apiSpend = spentInLog(join(logDir, "api.log"));
-  spent += apiSpend.llm + apiSpend.images;
+  // Api calls after the last lesson (none expected); unreadable counts one lesson's check cap.
+  try {
+    const a = spentInLog(apiLog, apiFrom);
+    guard.add(a.llm + a.images);
+  } catch {
+    guard.add(paid ? config.ceilingPerLessonUsd.check : 0);
+  }
+  const spent = guard.spent;
   if (paid) {
     ledgerRow(
       ledger,
-      `${tag} AFTER (${out}): ${rows.length} lessons; worker and api calls priced from their log lines (an unpriced call at $0.02), pictures from the generator's log, objective check $${rows.reduce((a, r) => a + r.spendUsd.check, 0).toFixed(4)}`,
+      `${tag} AFTER (${out}): ${rows.length} lessons${halted ? ` (STOPPED: ${halted}; reservation booked)` : ""}; worker and api calls priced from their log lines (an unpriced call at $0.02), pictures from the generator's log, objective check $${rows.reduce((a, r) => a + r.spendUsd.check, 0).toFixed(4)}`,
       spent,
     );
   }
