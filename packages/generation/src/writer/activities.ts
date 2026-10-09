@@ -154,7 +154,9 @@ export function activityDefs(stage: WriterStage): Record<string, J> {
   const defs: Record<string, J> = {};
   for (const id of WRITER_ACTIVITIES) {
     const b = bounds(id, stage);
-    const label = { type: "string", maxLength: b.chars };
+    // The longest card word at any kept count; strict mode takes `pattern` (not `maxLength`), and
+    // the count's own cell is code's (`fromWriterActivity`).
+    const label = { type: "string", pattern: `^.{1,${b.chars}}$` };
     // pair: every card has a picture (its own card shape); the others may be word cards.
     const card: J = obj({
       label,
@@ -322,12 +324,19 @@ const centre = (e: { x: number; y: number; w: number; h: number }) => ({
   x: e.x + e.w / 2,
   y: e.y + e.h / 2,
 });
-/** Reading order of boxes: rows (40pt bands) top to bottom, then left to right. */
-const reading = (bs: { x: number; y: number; w: number; h: number }[]) =>
-  bs
-    .map((b, i) => ({ c: centre(b), i }))
-    .sort((a, b) => Math.round(a.c.y / 40) - Math.round(b.c.y / 40) || a.c.x - b.c.x)
-    .map(({ i }) => i);
+/**
+ * Reading order of boxes: rows top to bottom, then left to right. A card's marker or words sit at
+ * different heights on a picture card and a word card, so a new row starts only past `gap` points.
+ */
+const reading = (bs: { x: number; y: number; w: number; h: number }[], gap = 90) => {
+  const cs = bs.map((b, i) => ({ c: centre(b), i })).sort((a, b) => a.c.y - b.c.y);
+  let row = 0;
+  const rows = cs.map((x, k) => {
+    if (k > 0 && x.c.y - (cs[k - 1] as { c: { y: number } }).c.y > gap) row += 1;
+    return { ...x, row };
+  });
+  return rows.sort((a, b) => a.row - b.row || a.c.x - b.c.x).map(({ i }) => i);
+};
 const hasWord = (hay: string, needle: string) =>
   needle.length >= 3 &&
   new RegExp(`(^|[^a-z0-9])${needle.replace(/[/]/g, "\\/")}($|[^a-z0-9])`).test(hay);

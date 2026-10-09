@@ -67,8 +67,8 @@ function validate(schema: J, v: unknown, root: J = schema, path = "$"): string[]
   if (t === "null") return v === null ? [] : [`${path}: not null`];
   if (t === "string") {
     if (typeof v !== "string") return [`${path}: not a string`];
-    return typeof schema.maxLength === "number" && v.length > schema.maxLength
-      ? [`${path}: over ${schema.maxLength}`]
+    return typeof schema.pattern === "string" && !new RegExp(schema.pattern).test(v)
+      ? [`${path}: not ${schema.pattern}`]
       : [];
   }
   if (t === "integer" || t === "number") {
@@ -147,7 +147,7 @@ describe("schema", () => {
     const def = activityDefs("KS1").pair as J;
     const card = ((def.properties as J).cards as J).items as J;
     expect((card.properties as J).picture).toEqual({ type: "string" });
-    expect(((card.properties as J).label as J).maxLength).toBe(22);
+    expect(((card.properties as J).label as J).pattern).toBe("^.{1,22}$");
   });
 
   test("the fixture lesson is a valid strict answer to the KS1 schema", () => {
@@ -313,6 +313,14 @@ describe("checks on the laid-out slide", () => {
     for (const id of WRITER_ACTIVITIES) {
       const { s, m } = laid(id);
       expect(m.slide.question).toBeDefined();
+      expect(activityFaults(s, m.slide)).toEqual([]);
+    }
+  });
+
+  test("picture and word cards mixed on one slide raise no false leak", () => {
+    const some = (k: string): VisualState => (k === "card.0" ? photo(k) : { status: "failed" });
+    for (const id of WRITER_ACTIVITIES) {
+      const { s, m } = laid(id, {}, some);
       expect(activityFaults(s, m.slide)).toEqual([]);
     }
   });
