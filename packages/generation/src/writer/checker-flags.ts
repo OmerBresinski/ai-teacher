@@ -35,7 +35,10 @@ export const CHECKER_OFF: Required<CheckerFlags> = {
 };
 
 /** The shipped checker: each flag turned on in its own commit once its replay row showed it better or the same. */
-export const CHECKER_DEFAULTS: Required<CheckerFlags> = { ...CHECKER_OFF };
+export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
+  ...CHECKER_OFF,
+  fallbackOnlyOnFailure: true,
+};
 
 /** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
 export function parseCheckerFlags(list: string | undefined): CheckerFlags {
