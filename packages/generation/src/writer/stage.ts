@@ -449,6 +449,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                   intent: String(want.intent ?? a.shows),
                   alt: typeof want.alt === "string" ? want.alt : undefined,
                   words: wordsOf(s),
+                  heading: typeof s.heading === "string" ? s.heading : "",
+                  caption: typeof s.lead === "string" ? s.lead : "",
                   yearGroup: brief.yearGroup,
                   lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
                   question,

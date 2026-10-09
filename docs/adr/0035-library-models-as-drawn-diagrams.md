@@ -83,10 +83,18 @@ its params but not always to the slide. Three rules now hold in `packages/genera
 - **No silent clamp.** Params outside the bounds a drawing is held to are refused
   (`boundsRefusals`, in `checkParams` and again in `renderLibraryModel`); the repair call or the
   drawer takes over. `clampToSchema` stays as the bound definition, never as a silent fix.
-- **The drawing's text must match the words** (`consistency.ts`). Every number the slide's words use
-  (digits, fractions, number words from "two", "half", "quarter", "fifths" …) must be printed on the
-  full drawing; numbers left of "=" in a drawn sum must be the words'; letters the words name as
-  labels ("A, B and C") must be drawn. A mismatch falls back to the drawer.
+- **A number the drawing is built from is never defaulted.** `DRAWING_PARAMS` (fill.ts) names
+  them per model (equal_groups groups and size, fractions' fractions and, for a fraction of an
+  amount, amount, …); the always-needed ones are `required` in the filler's schema, and one the
+  fill leaves out is refused (one repair call, then the drawer).
+- **The drawing must not contradict the words that describe it** (`consistency.ts`): the slide's
+  heading and the model's caption only. Every model: letters the words name as labels ("A, B and
+  C") are drawn. Number models (`NUMBER_MODELS`) also: every drawn sum is arithmetically right on
+  every side; a fraction the words name is drawn; and when the words take a fraction of an amount,
+  that whole is drawn and every number in a drawn sum is given by the words or worked from them in
+  one step (8 + 8 = 16 for "half of 16" passes, 4 ÷ 2 = 2 does not). Number words ("twenty-five"),
+  tenths as decimals, and units (20p is £0.20; kinds must agree) are normalised. Only a
+  contradiction refuses, never an absence. A contradiction falls back to the drawer.
 - **A library model is a still.** The kit's builds start from an empty frame, so Present opened on a
   blank box. The drawn SVG carries no `data-s` tags: every surface, Present included, shows the
   drawing as it ends. Decision 2's "Present plays the model's builds" is withdrawn for library

@@ -22,8 +22,54 @@ import type { J, LibRefusal } from "./types";
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
 const NOT_FILLED = ["title", "text"];
 
+/**
+ * The params a model's drawing is built from, given the params as they will draw (TEACH-247 part
+ * i). One the fill leaves out is refused, never defaulted: a default draws a different number from
+ * the slide's ("half of 16" with no group size drew 2 groups of 2). The always-needed ones are also
+ * `required` in the schema the filler sees.
+ */
+export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) => string[] }> = {
+  equal_groups: {
+    always: [],
+    when: (p) => (p.layout === "grid" ? ["grid"] : ["groups", "size"]),
+  },
+  fractions: { always: ["fractions"], when: (p) => (p.operation === "of" ? ["amount"] : []) },
+  bar_model: {
+    always: ["type"],
+    when: (p) =>
+      p.type === "fraction"
+        ? ["amount", "fraction"]
+        : p.type === "percentage"
+          ? ["amount", "percent"]
+          : p.type === "multiplicative"
+            ? ["parts", "times"]
+            : ["parts"],
+  },
+  number_line: {
+    always: ["from", "to"],
+    when: (p) => (p.task === "round" ? ["round"] : p.task === "position" ? ["marks"] : ["jumps"]),
+  },
+  number_bonds: { always: ["whole", "parts"] },
+  place_value: { always: ["number"] },
+  column_methods: { always: ["a", "b"] },
+  coins_money: { always: ["amount"], when: (p) => (p.task === "change" ? ["paid"] : []) },
+};
+
+/** The drawing-defining params `own` (what the filler sent) leaves out, as refusals. */
+export function missingDrawingParams(id: string, own: J, params: J): LibRefusal[] {
+  const d = DRAWING_PARAMS[id];
+  if (!d) return [];
+  const need = [...d.always, ...(d.when?.(params) ?? [])];
+  return [...new Set(need)]
+    .filter((k) => own[k] === undefined || own[k] === null)
+    .map((k) => ({
+      path: k,
+      reason: `${k} is missing: the drawing is built from it, and the model's default would draw a different number`,
+    }));
+}
+
 /** The model's params schema as the filler sees it: no title or wording overrides, no $schema or x- keys. */
-export function fillSchema(params: J): J {
+export function fillSchema(params: J, id?: string): J {
   const strip = (n: unknown): unknown => {
     if (Array.isArray(n)) return n.map(strip);
     if (!n || typeof n !== "object") return n;
@@ -35,6 +81,8 @@ export function fillSchema(params: J): J {
   const s = strip(params) as J & { properties: J; required?: string[] };
   for (const k of NOT_FILLED) delete s.properties[k];
   if (s.required) s.required = s.required.filter((k) => !NOT_FILLED.includes(k));
+  const always = (id && DRAWING_PARAMS[id]?.always) || [];
+  if (always.length) s.required = [...new Set([...(s.required ?? []), ...always])];
   return s;
 }
 
@@ -50,13 +98,15 @@ export async function checkParams(
   const k = await kit();
   const own = { ...(out as J) };
   for (const key of NOT_FILLED) delete own[key];
-  const shape = k.schemaCheck(fillSchema(m.params), own);
+  const shape = k.schemaCheck(fillSchema(m.params, id), own);
   if (shape.length) return { refusals: shape, warnings: [] };
   // A value outside the bounds the drawing holds to (or a __proto__ / constructor key) is refused,
   // never clamped: a clamp would draw a different number from the one the slide asked for.
   const bounds = boundsRefusals(fillSchema(m.params), own);
   if (bounds.length) return { refusals: bounds, warnings: [] };
   const params = k.withDefaults(m.params, own);
+  const missing = missingDrawingParams(id, own, params);
+  if (missing.length) return { refusals: missing, warnings: [] };
   return nonFatalSync(
     () => {
       const v = m.validate(params);
@@ -107,6 +157,9 @@ export type LibraryAsk = {
   intent: string;
   alt?: string;
   words: string;
+  /** The slide's heading and the model's caption: what the drawing is checked against. */
+  heading?: string;
+  caption?: string;
   yearGroup: string;
   lesson: string;
   question?: boolean;
@@ -134,7 +187,7 @@ export async function libraryDiagram(
     () => undefined,
   );
   if (!m) return fallback(`no shipped model ${ask.model}`);
-  const schema = fillSchema(m.params);
+  const schema = fillSchema(m.params, ask.model);
   const user = tokens(LIB_PROMPTS.fillUser, {
     model: `${m.meta.id} (${m.meta.name})`,
     lesson: ask.lesson,
@@ -191,7 +244,12 @@ export async function libraryDiagram(
     (e) => String(e).slice(0, 160),
   );
   if (typeof full === "string") return fallback(`it did not draw: ${full}`);
-  const mismatch = drawingWordsMismatch(full.svg, ask.words);
+  // Only the words that describe the drawing: the slide's heading and the model's caption.
+  const about =
+    ask.heading !== undefined || ask.caption !== undefined
+      ? [ask.heading, ask.caption].filter(Boolean).join("\n")
+      : ask.words;
+  const mismatch = drawingWordsMismatch(ask.model, full.svg, about);
   if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
   const drawn =
     step === undefined
