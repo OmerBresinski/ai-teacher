@@ -100,6 +100,13 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
+import {
+  shapeSchema,
+  shapeSystem,
+  trimKindsBlock,
+  trimModels,
+  type WriterPromptOptions,
+} from "./prompt-options";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
@@ -171,6 +178,8 @@ export type WriterRun = {
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
   activities?: boolean;
+  /** The writer prompt's A/B options (`prompt-options.ts`); absent: all off, the pinned text. */
+  prompt?: WriterPromptOptions;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -342,7 +351,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const models =
     run.library && run.drawDiagrams
       ? await nonFatal(
-          () => catalogue(stageKey),
+          async () => trimModels(await catalogue(stageKey), brief, run.prompt),
           (e) => {
             log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
             return [];
@@ -354,7 +363,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     writerSchema(stageKey, brief.slides, P, { objectives: run.objectives.length }),
     models.map((m) => m.id),
   );
-  const schema = activities ? withActivities(libbed, stageKey) : libbed;
+  const schema = shapeSchema(
+    activities ? withActivities(libbed, stageKey) : libbed,
+    brief,
+    run.prompt,
+  );
   const system = libSystem(writerSystem(brief, P), models);
   /** A diagram ask as the drawer reads it, sized to the slide's slot. */
   const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
@@ -622,7 +635,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: activities ? withActivityMenu(system, stageKey) : system,
+          system: shapeSystem(
+            activities ? withActivityMenu(system, stageKey) : system,
+            brief,
+            stageKey,
+            run.prompt,
+          ),
           user: localise(user),
           schema,
           name: "lesson",
@@ -905,9 +923,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(i);
   };
   const diagramKinds = () =>
-    baseVisuals(stageKey)
-      .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
-      .trim() ?? "";
+    trimKindsBlock(
+      baseVisuals(stageKey)
+        .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
+        .trim() ?? "",
+      brief,
+      run.prompt,
+    );
   /** Slide i's faults, judged against the phase's frozen deck while repairs run in parallel. */
   const judged = (i: number): string[] => {
     const was = frozen;
