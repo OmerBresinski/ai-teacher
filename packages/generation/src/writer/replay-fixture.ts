@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pileSpec } from "@tj/slides/diagrams";
-import type { CheckerFlags } from "./checker-flags";
+import { CHECKER_OFF, type CheckerFlags } from "./checker-flags";
 import type { Brief } from "./fixes";
 import type { PhotoResult, VisualAsk, VisualState } from "./materialise";
 import type { ChatReq, WriterServices } from "./services";
@@ -157,7 +157,7 @@ export async function replayRun(
     onStreamEnd?: () => void;
     /** The saved brief changed before the run (a different slide count). */
     brief?: (b: Brief) => Brief;
-    /** The checker's flags for this run (`checker-flags.ts`); absent: master's checker. */
+    /** Flags turned on for this run (`checker-flags.ts`); the rest are off, as the recording ran. */
     checker?: CheckerFlags;
   } = {},
 ) {
@@ -190,7 +190,8 @@ export async function replayRun(
     visual,
     ...(o.visual ? {} : { placeMore: recorded.placeMore }),
     held: recordedHeld(b),
-    ...(o.checker ? { checker: o.checker } : {}),
+    // A replay reproduces its recorded run: every flag off unless the caller turns one on.
+    checker: { ...CHECKER_OFF, ...o.checker },
     ...(o.hooks ?? {}),
     ...(split
       ? {}

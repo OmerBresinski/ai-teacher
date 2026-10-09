@@ -23,6 +23,20 @@ export const CHECKER_FLAGS = [
 export type CheckerFlag = (typeof CHECKER_FLAGS)[number];
 export type CheckerFlags = Partial<Record<CheckerFlag, boolean>>;
 
+/** Every flag off: master's checker before the audit, which the recorded replays reproduce. */
+export const CHECKER_OFF: Required<CheckerFlags> = {
+  fallbackOnlyOnFailure: false,
+  fixTableToText: false,
+  duplicateLogOnly: false,
+  pointGuardLogOnly: false,
+  coverageCountsPictureTasks: false,
+  coverageExcludesDiscussion: false,
+  coverageExcludesPrediction: false,
+};
+
+/** The shipped checker: each flag turned on in its own commit once its replay row showed it better or the same. */
+export const CHECKER_DEFAULTS: Required<CheckerFlags> = { ...CHECKER_OFF };
+
 /** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
 export function parseCheckerFlags(list: string | undefined): CheckerFlags {
   const out: CheckerFlags = {};

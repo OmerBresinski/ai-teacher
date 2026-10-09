@@ -3,7 +3,7 @@
 // recording has no answer for fails, as a failed repair does. `bun src/writer/measure-checker.ts <out.json>`
 import { readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHECKER_FLAGS, type CheckerFlags } from "./checker-flags";
+import { CHECKER_DEFAULTS, CHECKER_FLAGS, type CheckerFlags } from "./checker-flags";
 import { wordsOf } from "./materialise";
 import { replayRun, replayServices } from "./replay-fixture";
 import { whenNonFatal } from "./services";
