@@ -106,12 +106,14 @@ export const isModel = (f: unknown): boolean =>
   isDia(f) && (f as { kind?: unknown }).kind === "model";
 
 /**
- * The points of a visual-text slide whose figure is a library model: big-diagram has no points, so
- * they are read in the notes instead of dropped.
+ * The lead and points of a slide whose figure is a library model: its big-diagram slide shows the
+ * heading and the drawing only, so they are read in the notes instead of dropped.
  */
 export function modelPoints(s: S | undefined): string[] {
-  if (!s || s.template !== "visual-text" || !isModel(s.figure)) return [];
-  return pts(s.points).map((p) =>
+  if (!s || (s.template !== "visual-text" && s.template !== "big-visual") || !isModel(s.figure))
+    return [];
+  const lead = typeof s.lead === "string" && s.lead.trim() ? [s.lead.trim()] : [];
+  return [...lead, ...pts(s.points)].map((p) =>
     typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
   );
 }
@@ -297,8 +299,12 @@ export function toInput(
     case "big-picture":
     case "big-diagram": {
       const f = fig(template === "big-picture" ? "picture" : "diagram");
+      // A library model gets the whole band: a caption would cost it a fifth of its height, and its
+      // words already sit at the kit's floor, so the lead is read in the notes (`modelPoints`).
+      const own =
+        template === "big-diagram" && isModel(raw.figure ?? s.diagram) && f && "drawn" in f;
       return f
-        ? { template, heading, lead, figure: f }
+        ? { template, heading, ...(own ? {} : { lead }), figure: f }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {
