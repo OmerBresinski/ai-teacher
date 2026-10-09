@@ -16,12 +16,12 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "5.0.94",
-    "@ai-sdk/openai": "4.0.75",
+    "@ai-sdk/amazon-bedrock": "5.0.106",
+    "@ai-sdk/openai": "4.0.84",
     "@tj/domain": "workspace:*",
-    "ai": "7.0.114",
-    "image-meta": "0.2.2",
-    "pino": "10.3.1",
+    "ai": "7.0.128",
+    "image-meta": "0.3.0",
+    "pino": "10.4.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
