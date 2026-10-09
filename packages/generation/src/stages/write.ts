@@ -196,11 +196,12 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         await pictures?.settle();
       },
       // lostPic: single pictures for a lost compound picture, placed and settled after editable.
+      // Only this slide's pictures are waited for: the slides' tails run in parallel.
       ...(pictures
         ? {
             placeMore: async (i, more, slide) => {
               for (const a of more) if (a.type === "photo") pictures.start(i, a, slide);
-              await pictures.settle();
+              await pictures.settleSlide(i);
             },
             held: (i, key) => pictures.held(i, key),
           }

@@ -839,6 +839,12 @@ export interface WriterPictures {
   state(index: number, key: string): WriterPictureState;
   /** Wait for every started ask, at most `deadlineMs`; an ask still running counts as failed. */
   settle(deadlineMs?: number): Promise<void>;
+  /**
+   * Wait for one slide's started asks only, at most `deadlineMs`; an ask of that slide still
+   * running stops and counts as failed. Other slides' placements are left running, so two slides'
+   * later rounds (lostPic, a diagram's picture fallback) never wait on or cancel each other.
+   */
+  settleSlide(index: number, deadlineMs?: number): Promise<void>;
   /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
   vetoed(index: number, key: string): string | undefined;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
@@ -1381,6 +1387,34 @@ export function createWriterPictures(opts: {
           slot.state = { status: "failed" };
           slot.miss = "deadline";
         }
+    },
+    async settleSlide(index, deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
+      const prefix = `${index}:`;
+      const mine = () => [...slots].filter(([k]) => k.startsWith(prefix));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
+      const deadline = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, deadlineMs);
+        onAbort = () => resolve();
+        opts.deps.signal.addEventListener("abort", onAbort, { once: true });
+      });
+      await Promise.race([Promise.all(mine().map(([, s]) => s.done)), deadline]);
+      if (timer) clearTimeout(timer);
+      if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
+      if (opts.deps.signal.aborted)
+        throw Object.assign(new Error("The lesson was stopped while its pictures were placed."), {
+          name: "AbortError",
+          cause: opts.deps.signal.reason,
+        });
+      if (fatal !== undefined) throw fatal;
+      for (const [k, slot] of mine()) {
+        // This slide's round is over: its keys may be asked once more in a later round.
+        reasked.delete(k);
+        if (slot.state.status !== "pending") continue;
+        slot.stop.abort();
+        slot.state = { status: "failed" };
+        slot.miss = "deadline";
+      }
     },
     vetoed(index, key) {
       const slot = slots.get(id(index, key));

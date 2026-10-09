@@ -88,14 +88,17 @@ import {
 import {
   coverage,
   lessonNotes,
+  notesOnlyLine,
   notesText,
   objectiveRepairSchema,
   renderedLines,
   repairObjectives,
+  type SlideNotes,
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
+import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
   isFatal,
@@ -697,6 +700,50 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   editable = true;
   await run.onEditable?.(deck());
 
+  // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
+  // The notes need each slide's final words and placed visuals, not the repairs. So the one call
+  // starts here, and a slide whose words or visuals change afterwards gets its note written again
+  // once that slide settles (below). Nothing waits for the notes until the very end.
+  const placedLines = (i: number) =>
+    (asks.get(i) ?? []).flatMap((a) => {
+      const v = visualState(i)(a.key);
+      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
+      if (v?.status === "diagram" && a.type === "diagram")
+        return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
+      return [];
+    });
+  const asShown = (i: number) =>
+    renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i));
+  const notesCall = (only?: number) => {
+    const lines = Array.from({ length: n }, (_, i) => i)
+      .filter((i) => i >= 2)
+      .map(asShown)
+      .join("\n\n");
+    const call = lessonNotes({
+      slides: only ?? n,
+      first: only ?? 3,
+      system: P.notes,
+      user:
+        fillTemplate(P.notesUser, brief, {
+          objectives: plan.objectives,
+          context: user,
+          slidesAsShown: lines,
+        }) + (only ? `\n\n${notesOnlyLine([only])}` : ""),
+      schema: JSON.parse(P.notesSchema),
+      chat,
+      log,
+      onUsd: () => {},
+    });
+    // Awaited at the end; a fatal error (a budget stop) is rethrown there, never unhandled.
+    void Promise.allSettled([call]);
+    return call;
+  };
+  /** Each slide as the deck-wide notes call saw it. */
+  const seenByNotes = new Map(Array.from({ length: n }, (_, i) => [i, asShown(i)] as const));
+  const deckNotes = notesCall();
+  /** Notes written again for a slide that changed after the deck-wide call saw it. */
+  const notesRedone = new Map<number, Promise<Map<number, SlideNotes>>>();
+
   // ── code checks ──
   const baseCheck = () =>
     Array.from({ length: n }, (_, i) =>
@@ -715,14 +762,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         words: plan.slides[i] ? wordsOf(plan.slides[i] as S) : "",
       }),
     );
+  /**
+   * The deck the parallel tail judges a slide against: every other slide as it was when the phase
+   * started, so one repair's verdict never depends on another repair still in flight.
+   */
+  let frozen: { slides: readonly unknown[]; own: number } | undefined;
+  const deckSlide = (i: number) =>
+    (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
   const check = () => {
     const res = baseCheck();
     // A slide that repeats another goes to repair to be made different or merged.
     const dup = duplicateFaults(
       Array.from({ length: n }, (_, i) => i)
-        .filter((i) => repairable(plan.slides[i] as S, i))
+        .filter((i) => repairable(deckSlide(i), i))
         .map((i) => {
-          const sl = plan.slides[i] as S;
+          const sl = deckSlide(i);
           return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
         }),
     );
@@ -735,7 +789,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return res;
   };
   const gasTexts = () =>
-    Array.from({ length: n }, (_, i) => (plan.slides[i] ? wordsOf(plan.slides[i] as S) : ""));
+    Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
 
@@ -843,6 +897,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     baseVisuals(stageKey)
       .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
       .trim() ?? "";
+  /** Slide i's faults, judged against the phase's frozen deck while repairs run in parallel. */
+  const judged = (i: number): string[] => {
+    const was = frozen;
+    if (phaseSlides) frozen = { slides: phaseSlides, own: i };
+    const out = check()[i]?.faults ?? [];
+    frozen = was;
+    return out;
+  };
+  /** The deck as the current parallel phase started (undefined outside one). */
+  let phaseSlides: readonly unknown[] | undefined;
   const repairOne = async (
     c: CheckResult,
     mode: "fit" | "stand-alone" | "reroute" = "fit",
@@ -958,7 +1022,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     swapSlide(i, o2.slide);
     if (orphanDrop) override.set(`${i}:picture`, { status: "failed" });
     applyRepair(plan.slides, notes, i, r?.out);
-    const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
+    const now = judged(i).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
     const fresh = [...kinds(now)].filter((k) => !was.has(k));
     const worse =
@@ -984,8 +1048,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       faults: [...left, "still over after one reword: cut the characters given above"],
     });
   };
-  // One at a time, in slide order: the replay and the live run see the same order.
-  for (const c of failing) await fitLoop(c);
+  // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
+  // call by the slide it sends, so it sees the same calls in any order.
+  phaseSlides = [...plan.slides];
+  await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
+    await fitLoop(c);
+  });
+  phaseSlides = undefined;
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
@@ -1242,17 +1311,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     path.set(i, `picture-${how}`);
   };
-  for (let i = 0; i < n; i++) await fallback(i);
-  const beforeLost = new Map(Array.from({ length: n }, (_, i) => [i, plan.slides[i]] as const));
-  const asksBeforeLost = new Map(
-    Array.from({ length: n }, (_, i) => [i, asks.get(i) ?? []] as const),
-  );
-  for (let i = 0; i < n; i++) await pictureLost(i);
+  // ── each slide's tail, in parallel (bounded): fallback, lost picture, keepPic, pointGuard ──
+  // Every step reads and writes only its own slide, so a slide settles as soon as its own work is
+  // done; it never waits behind another slide's restage or picture round.
   // keepPic (BAKEOFF base4f, fill-only): a photo match6 dropped from an ask slide fills the slide
   // only when it ended with no visual at all (no landed picture or diagram, no table); it never
   // replaces one a fallback made, and never overflows.
-  for (let i = 0; i < n; i++)
-    for (const a of asksBeforeLost.get(i) ?? []) {
+  const keepPic = (i: number, beforeLost: S | undefined, asksBeforeLost: VisualAsk[]) => {
+    for (const a of asksBeforeLost) {
       const h = a.type === "photo" ? run.held?.(i, a.key) : undefined;
       if (h?.status !== "photo") continue;
       const now = plan.slides[i] as S;
@@ -1263,7 +1329,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }
       const nn = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
-      swapSlide(i, beforeLost.get(i) as S);
+      swapSlide(i, beforeLost as S);
       override.set(`${i}:${a.key}`, h);
       relay(i);
       if ((check()[i]?.faults ?? []).some((f) => OVERFLOW.test(f))) {
@@ -1275,54 +1341,61 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       path.set(i, "picture-kept");
       log({ ev: "keep-pic", slide: i + 1, key: a.key, rule: "match6" });
     }
+  };
   // pointGuard (BAKEOFF base4f, D47): the code backstop. A slide that still points at nothing
   // (its picture lost, its rewrite still dangling) loses each pointing sentence and every question
   // about a lettered or left/right shape; "Answer from memory." where a task is left. The title
   // slide too. A strip that leaves the slide dangling is undone. (The lab ran its stand-alone
   // rewrite first; this stage has no stand-alone pass, so the strip is the only step.)
   const DANGLING = /^dangling:/;
-  for (let i = 0; i < n; i++) {
+  const pointGuard = (i: number) => {
     const s = plan.slides[i] as S | undefined;
-    if (!s || (i > 0 && !repairable(s, i))) continue;
-    if (!check()[i]?.faults.some((f) => DANGLING.test(f))) continue;
+    if (!s || (i > 0 && !repairable(s, i))) return;
+    if (!check()[i]?.faults.some((f) => DANGLING.test(f))) return;
     const { slide: stripped, removed } = stripPointTasks(s);
-    if (!removed.length) continue;
+    if (!removed.length) return;
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, stripped);
     const left = check()[i]?.faults.some((f) => DANGLING.test(f));
     if (left) restore(i, s, n0, oldAsks);
     log({ ev: "point-guard", slide: i + 1, removed, how: left ? "left" : "point-strip" });
-  }
+  };
+  const settleSlide = async (i: number) => {
+    await fallback(i);
+    const beforeLost = plan.slides[i] as S | undefined;
+    const asksBeforeLost = asks.get(i) ?? [];
+    await pictureLost(i);
+    keepPic(i, beforeLost, asksBeforeLost);
+    pointGuard(i);
+    // The slide is final: its note is written again only when what the notes call saw changed.
+    if (i >= 2 && asShown(i) !== seenByNotes.get(i)) {
+      log({ ev: "notes-redo", slide: i + 1 });
+      notesRedone.set(i, notesCall(i + 1));
+    }
+  };
+  phaseSlides = [...plan.slides];
+  await eachBounded(
+    Array.from({ length: n }, (_, i) => i),
+    TAIL_CONCURRENCY,
+    settleSlide,
+  );
+  phaseSlides = undefined;
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
 
-  // ── notes: one call on the final slides as shown, only placed visuals listed ──
-  const placedLines = (i: number) =>
-    (asks.get(i) ?? []).flatMap((a) => {
-      const v = visualState(i)(a.key);
-      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      if (v?.status === "diagram" && a.type === "diagram")
-        return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
-      return [];
-    });
-  const lines = Array.from({ length: n }, (_, i) => i)
-    .filter((i) => i >= 2)
-    .map((i) => renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i)))
-    .join("\n\n");
-  const got = await lessonNotes({
-    slides: n,
-    first: 3,
-    system: P.notes,
-    user: fillTemplate(P.notesUser, brief, {
-      objectives: plan.objectives,
-      context: user,
-      slidesAsShown: lines,
-    }),
-    schema: JSON.parse(P.notesSchema),
-    chat,
-    log,
-    onUsd: () => {},
-  });
+  // ── notes: the deck-wide call, with each changed slide's own note in its place ──
+  const got = await deckNotes;
+  for (const [i, redo] of notesRedone) {
+    const one = (await redo).get(i + 1);
+    // A redo that failed comes back blank: the deck-wide note is kept, never replaced by nothing.
+    const real =
+      one &&
+      [one.answers, one.misconceptions, one.background, one.run].some((v) =>
+        Array.isArray(v) ? v.length > 0 : typeof v === "string" && v.trim() !== "",
+      );
+    if (one && real) got.set(i + 1, one);
+    else log({ ev: "notes-redo-miss", slide: i + 1, kept: "deck" });
+  }
   for (const [k, s0] of got) {
     if (k < 3 || k > n) continue;
     // A multiple-choice answer starts with the correct letter as shown.
