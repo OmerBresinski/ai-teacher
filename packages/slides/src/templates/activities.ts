@@ -203,7 +203,7 @@ export function drawCard(
   c: Ctx,
   item: ActivityCard,
   r: Rect,
-  o: { marker?: string; role: Role; capLines: number; what: string },
+  o: { marker?: string; markerRight?: boolean; role: Role; capLines: number; what: string },
 ): CardParts {
   if (!item.figure) return wordCard(c, item.text, r, o.what, o.marker);
   const pad = 8;
@@ -233,7 +233,7 @@ export function drawCard(
   );
   if (o.marker) {
     const d = kit.markerDisc(c);
-    kit.disc(c, o.marker, pic.x + 8, pic.y + 8, d);
+    kit.disc(c, o.marker, o.markerRight ? pic.x + pic.w - 8 - d : pic.x + 8, pic.y + 8, d);
   }
   return { frame, ...(drawn ? { picture: drawn } : {}), word };
 }
@@ -398,13 +398,20 @@ function pair(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefine
     const value = wordAt(slot, k);
     const h = kit.measure(c, value, "body", tw, 600);
     if (!kit.wordsFit(c, value, "body", tw, c.s.body, 600)) c.over.push("pair word too wide");
-    words[k] = kit.text(
+    const el = kit.text(
       c,
       value,
       "body",
       { x: x + 20, y: y + (wordH - h) / 2, w: tw },
       { color: c.t.colors.ink, weight: 600, align: "center", name: "Word" },
     );
+    // The word box is the whole pill, its words centred: the reveal's answer card covers it all.
+    el.x = x + 6;
+    el.w = w - 12;
+    el.y = Math.round(y + 2);
+    el.h = Math.round(wordH - 4);
+    el.style = { ...el.style, autoHeight: false, valign: "middle" };
+    words[k] = el;
   });
   if (wordsOnly)
     return {
@@ -468,20 +475,23 @@ function sequence(c: Ctx, input: TemplateInput, area: Rect): QuestionData | unde
   const order = shuffled(cards.length, seedOf(input), LEAKS.sequence);
   const role: Role = cards.length <= 4 ? "body" : denseRole(c);
   const rects = cardRow(c, cards.length, area, role, 2);
-  const words: TextElement[] = [];
+  const targets: SlideElement[] = [];
   order.forEach((k, j) => {
     const r = rects[j];
     const card = cards[k];
-    if (r && card)
-      words[k] = drawCard(c, card, r, {
-        marker: LETTER(j),
-        role,
-        capLines: 2,
-        what: "sequence",
-      }).word;
+    if (!r || !card) return;
+    // The letter sits top-right so the reveal's number badge (top-left) never covers it.
+    const parts = drawCard(c, card, r, {
+      marker: LETTER(j),
+      markerRight: true,
+      role,
+      capLines: 2,
+      what: "sequence",
+    });
+    targets[k] = parts.picture ?? parts.frame;
   });
-  // The right order, as the words' ids: present numbers each card on the reveal.
-  return { type: "sort", order: cards.map((_, k) => (words[k] as TextElement).id) };
+  // The right order, as the cards' picture ids: present numbers each card on the reveal.
+  return { type: "sort", order: cards.map((_, k) => (targets[k] as SlideElement).id) };
 }
 
 function choose(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefined {
@@ -539,10 +549,9 @@ function label(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefin
     if (!t) return;
     const px = dr.x + Math.min(1, Math.max(0, t.x)) * dr.w;
     const py = dr.y + Math.min(1, Math.max(0, t.y)) * dr.h;
-    let vx = px - cx;
-    let vy = py - cy;
-    const len = Math.hypot(vx, vy) || 1;
-    if (len < 4) [vx, vy] = [1, 0];
+    // Sideways to the nearer edge, a little up or down: a pointer never lands on another part.
+    const vx = px <= cx ? -1 : 1;
+    const vy = Math.abs(py - cy) < 4 ? 0 : 0.35 * Math.sign(py - cy);
     const k = Math.hypot(vx, vy);
     const reach = 46;
     const clampX = (x: number) =>

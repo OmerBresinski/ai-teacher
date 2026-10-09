@@ -428,7 +428,7 @@ function optionText(slide: Slide, id: string): string {
   if (el.type === "option" || el.type === "text" || el.type === "gap-text")
     return docToPlainText(el.doc).trim();
   // A card or option box (template hinge, choose, odd one out): the words inside it.
-  if (el.type === "shape") return choiceText(slide, id) || el.name || "";
+  if (el.type === "shape" || el.type === "image") return choiceText(slide, id) || el.name || "";
   return el.name ?? "";
 }
 

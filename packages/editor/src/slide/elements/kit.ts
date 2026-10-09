@@ -226,6 +226,8 @@ export function choiceText(slide: Slide, id: string): string {
   if (!el) return "";
   const own = "doc" in el && el.doc ? docToPlainText(el.doc).trim() : "";
   if (own) return own;
+  // A card's picture (a sequence's order) is named by its alt text, which is the card's word.
+  if (el.type === "image") return el.alt?.trim() ?? "";
   const inside = (e: SlideElement) => {
     const cx = e.x + e.w / 2;
     const cy = e.y + e.h / 2;
