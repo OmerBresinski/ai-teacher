@@ -262,13 +262,68 @@ export function diagramAskOf(
   return { ...base, labels: labels as string[] };
 }
 
+/** The drawer's schema for one kind, or undefined for a kind it does not know. */
+const ownSchema = (kind: unknown) =>
+  (DiagramSpecSchema.options as unknown as { shape?: { kind?: { value?: unknown } } }[]).find(
+    (o) => o.shape?.kind?.value === kind,
+  ) as typeof DiagramSpecSchema | undefined;
+
+/** Optional text slots a clamp may drop when a string in them is past its limit. */
+const DROPPABLE_TEXT = new Set(["key", "arrows", "notes", "lump", "title"]);
+
+/**
+ * Over-cap slots held to the drawer's own limits, read from its schema's issues (PICTURES-DIAGRAMS
+ * fix 1): an array past its maximum keeps its first items (labels, notes, panels), a number under
+ * its minimum is raised to it (a panel's `count`), and an optional text slot whose words are too
+ * long is left out (a key over 18 characters), never cut mid-word. Anything else is left for the
+ * fault. Never throws; returns the input when nothing applies.
+ */
+export function clampSpec(spec: unknown): unknown {
+  if (!spec || typeof spec !== "object") return spec;
+  let s = structuredClone(spec) as J;
+  for (let round = 0; round < 3; round++) {
+    const own = ownSchema(s.kind);
+    const r = own?.safeParse(s);
+    if (!r || r.success) return s;
+    let changed = false;
+    for (const i of r.error.issues as {
+      code: string;
+      origin?: string;
+      path: PropertyKey[];
+      maximum?: unknown;
+      minimum?: unknown;
+    }[]) {
+      const path = i.path;
+      const last = path.at(-1);
+      const parent = path.slice(0, -1).reduce<unknown>((o, k) => (o as J)?.[k as string], s) as J;
+      if (!parent || typeof parent !== "object" || last === undefined) continue;
+      const at = parent[last as string];
+      if (i.code === "too_big" && i.origin === "array" && Array.isArray(at)) {
+        parent[last as string] = at.slice(0, Number(i.maximum));
+        changed = true;
+      } else if (i.code === "too_small" && i.origin === "number" && typeof at === "number") {
+        parent[last as string] = Number(i.minimum);
+        changed = true;
+      } else if (
+        i.code === "too_big" &&
+        i.origin === "string" &&
+        DROPPABLE_TEXT.has(String(path[0]))
+      ) {
+        const { [String(path[0])]: _drop, ...rest } = s;
+        s = rest;
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) return s;
+  }
+  return s;
+}
+
 /** Why a spec doesn't draw, in a line ("" when it does): the schema's issues as path: message. */
 export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): string {
   if (parses(out)) return "";
-  const kind = (out as { kind?: unknown })?.kind;
-  const own = (
-    DiagramSpecSchema.options as unknown as { shape?: { kind?: { value?: unknown } } }[]
-  ).find((o) => o.shape?.kind?.value === kind) as typeof DiagramSpecSchema | undefined;
+  const own = ownSchema((out as { kind?: unknown })?.kind);
   const r = (own ?? DiagramSpecSchema).safeParse(out);
   if (r.success) return "it did not draw";
   return r.error.issues
@@ -331,7 +386,7 @@ export function acceptWriterSpec(
       const sent = dropNulls(spec);
       const meaning =
         typeof (sent as J)?.kind === "string" && ((sent as J).kind as string) in MEANING_SCHEMAS;
-      const out = mendSpec(sent);
+      const out = clampSpec(mendSpec(sent));
       const fault =
         meaningFaults(meaning ? sent : out) ||
         diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) ||
@@ -446,9 +501,21 @@ async function drawerCall(
       },
     );
     if (callFault) return { fault: callFault };
-    fault = out ? diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) : "no output";
-    deps.log?.({ ev: "diagram-call", key: ask.key, attempt, ...(fault ? { fault } : {}) });
-    if (!fault) return { spec: out, fault: "" };
+    // The drawer's output is mended and clamped exactly as the writer's own spec is: a mendable
+    // slot (arrows on a compare, a key past 18 characters, a seventh label) is never a fault.
+    const mended = out ? clampSpec(mendSpec(dropNulls(out))) : undefined;
+    fault = mended
+      ? diagramFaultOf(mended, (o) => withLongLabels(() => parseDiagram(o)))
+      : "no output";
+    const firstFault = out && !fault ? diagramFaultOf(out, parseDiagram) : "";
+    deps.log?.({
+      ev: "diagram-call",
+      key: ask.key,
+      attempt,
+      ...(fault ? { fault } : {}),
+      ...(firstFault ? { mended: firstFault.slice(0, 200) } : {}),
+    });
+    if (!fault) return { spec: mended, fault: "" };
   }
   return { fault };
 }

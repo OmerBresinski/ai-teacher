@@ -6,6 +6,7 @@ import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
 import { writerRoute } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
+import { contractSystem } from "../writer/contract";
 import { pupilWordLimit, type Stage } from "../writer/fixes";
 import fixture from "../writer/fixtures/activities/y1-animals.json" with { type: "json" };
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
@@ -71,7 +72,7 @@ describe("a Year 12 lesson's requests", () => {
     };
     await runWriter({ brief, objectives: fixture.objectives, services });
     const P = writerBundle();
-    expect(writer?.system).toBe(P.systemKS3_5);
+    expect(writer?.system).toBe(contractSystem(P.systemKS3_5));
     expect(writer?.user).toContain("Year group: Year 12 (ks5)");
     expect(writer?.user).not.toContain("(ks3)");
     const pupil = chats.find((c) => c.name === "pupil_objectives");

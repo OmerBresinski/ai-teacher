@@ -50,10 +50,11 @@ describe("writer planner", () => {
     expect(writerRoute("frontier", ctx("generate", "generate-slide.v9"))).toBeUndefined();
     expect(writerRoute("frontier", undefined)).toBeUndefined();
   });
-  test("slide ranges by tier (ruling 164)", () => {
-    expect(slideRange(6)).toEqual({ min: 6, max: 8 });
-    expect(slideRange(8)).toEqual({ min: 6, max: 8 });
-    expect(slideRange(10)).toEqual({ min: 9, max: 12 });
+  test("the teacher's slide count is exact, title and objectives included (ADR 0036)", () => {
+    // Lesson 01a12146 asked for 10 and got 12: the tier 9–12 let the writer pick the top.
+    for (const n of [6, 8, 10, 12]) expect(slideRange(n)).toEqual({ min: n, max: n });
+    expect(slideRange(3)).toEqual({ min: 6, max: 6 });
+    expect(slideRange(30)).toEqual({ min: 20, max: 20 });
     expect(slideRange(undefined)).toEqual({ min: 9, max: 12 });
   });
 });

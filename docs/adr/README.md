@@ -40,6 +40,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0032 | Figures are drawn by code from named templates, with a `path` element | Accepted (amended 2026-09-26; amended by 0034) |
 | 0033 | Objectives-first planner behind `AI_LESSON_PLANNER`; the stamp decides the path | Accepted |
 | 0034 | Geometry and trigonometry figures: solver templates, figures on facts, on worksheets and in other slides | Accepted |
+| 0036 | The writer's slide count is exact, title and objectives included | Accepted |
 
 Template: `0000-template.md`.
 
