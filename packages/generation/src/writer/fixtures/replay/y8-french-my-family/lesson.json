@@ -8,18 +8,18 @@
   "ageBand": "ks3",
   "yearGroup": "Year 8",
   "language": "en-GB",
-  "createdAt": "2026-10-08T12:16:07.026Z",
-  "updatedAt": "2026-10-08T12:16:07.026Z",
+  "createdAt": "2026-10-08T23:13:05.982Z",
+  "updatedAt": "2026-10-08T23:13:05.982Z",
   "slides": [
     {
       "id": "s1",
       "kind": "title",
       "elements": [
         {
-          "id": "Q7GpL9xjkK",
+          "id": "L4e-EMJcQ6",
           "type": "text",
           "x": 64,
-          "y": 156,
+          "y": 173,
           "w": 640,
           "h": 73,
           "doc": {
@@ -49,12 +49,12 @@
           }
         },
         {
-          "id": "WHploaeo3H",
+          "id": "YTeitL8Jm8",
           "type": "text",
           "x": 64,
-          "y": 249,
+          "y": 266,
           "w": 640,
-          "h": 135,
+          "h": 102,
           "doc": {
             "type": "doc",
             "content": [
@@ -63,7 +63,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "My family\nRappelle-toi / Recall:\nWhat do je, il and elle mean?\nSay 12, 13 and 14 in French."
+                    "text": "My family\nDis ton prénom et ton âge.\nSay your name and age in French."
                   }
                 ]
               }
@@ -91,7 +91,7 @@
       "kind": "objectives",
       "elements": [
         {
-          "id": "DGDjvsHVoF",
+          "id": "Zi_zEQKBC8",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -122,7 +122,7 @@
           }
         },
         {
-          "id": "K2loZo4vng",
+          "id": "sjkZkTztat",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -156,7 +156,7 @@
           }
         },
         {
-          "id": "8YQ9SxlXBL",
+          "id": "n2Jqz0e0ni",
           "type": "text",
           "x": 105,
           "y": 164,
@@ -188,7 +188,7 @@
           }
         },
         {
-          "id": "OX-TYflGz0",
+          "id": "LUTW6HExZx",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -222,7 +222,7 @@
           }
         },
         {
-          "id": "aT4E82TGAV",
+          "id": "kl2OXmboEA",
           "type": "text",
           "x": 105,
           "y": 261,
@@ -254,7 +254,7 @@
           }
         },
         {
-          "id": "zwNSbRvUgU",
+          "id": "AX-Xt3n74N",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -288,7 +288,7 @@
           }
         },
         {
-          "id": "lVcvRxGxZD",
+          "id": "eUlvxqs8LY",
           "type": "text",
           "x": 105,
           "y": 358,
@@ -324,166 +324,10 @@
     },
     {
       "id": "s3",
-      "kind": "diagram",
-      "elements": [
-        {
-          "id": "jc38_RJPtV",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Les objectifs / Learning objectives"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "vUQTjexQPO",
-          "type": "shape",
-          "shape": "rounded",
-          "x": 64,
-          "y": 160,
-          "w": 832,
-          "h": 328,
-          "fill": "#dfebef",
-          "radius": 14,
-          "name": "Panel"
-        },
-        {
-          "id": "y3PBHRb9qI",
-          "type": "image",
-          "name": "Diagram",
-          "x": 86,
-          "y": 182,
-          "w": 788,
-          "h": 284,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20525%20189%22%20width%3D%22788%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Three%20learning%20objectives%20for%20describing%20family%20members.%22%3E%3Ctitle%3EThree%20learning%20objectives%20for%20describing%20family%20members.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22262.5%22%20y%3D%2218.4%22%3ELearning%20objectives%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22517%22%20height%3D%22149.9%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2225.5%22%3EObjectives%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2237%22%20x2%3D%22517%22%20y2%3D%2237%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2262.5%22%3EIdentify%20family%20members%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2274%22%20x2%3D%22517%22%20y2%3D%2274%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2299.5%22%3EDescribe%20names%2C%20ages%2C%20traits%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%22111%22%20x2%3D%22517%22%20y2%3D%22111%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%22136.5%22%3EWrite%20a%20family%20description%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "Three learning objectives for describing family members.",
-          "fit": "contain"
-        }
-      ],
-      "notes": "Running\nTake about 1 minute to introduce the learning goals. Pupils read them silently, then name one thing they already know about describing family in French.\n\nBackground\nThese objectives bring together family vocabulary, adjective agreement and a short piece of connected writing."
-    },
-    {
-      "id": "s4",
-      "kind": "diagram",
-      "elements": [
-        {
-          "id": "3-1Uw4cw43",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Écoute et répète / Listen and repeat"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "hOqT05CQTA",
-          "type": "shape",
-          "shape": "rounded",
-          "x": 64,
-          "y": 160,
-          "w": 832,
-          "h": 279,
-          "fill": "#dfebef",
-          "radius": 14,
-          "name": "Panel"
-        },
-        {
-          "id": "fv40lV-sV5",
-          "type": "image",
-          "name": "Diagram",
-          "x": 86,
-          "y": 182,
-          "w": 788,
-          "h": 235,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20788%20235%22%20width%3D%22788%22%20height%3D%22235%22%20role%3D%22img%22%20aria-label%3D%22A%20central%20teenage%20speaker%20is%20surrounded%20by%20six%20family%20panels%3B%20the%20parents%20and%20grandparents%20panels%20each%20show%20two%20people.%22%3E%3Ctitle%3EA%20central%20teenage%20speaker%20is%20surrounded%20by%20six%20family%20panels%3B%20the%20parents%20and%20grandparents%20panels%20each%20show%20two%20people.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22394%22%20y%3D%2218.4%22%3Emoi%20%2F%20me%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%22392.58%22%20cy%3D%2285.42%22%20r%3D%2217.45%22%20fill%3D%22%230B6E86%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22353.81%22%20y%3D%224%22%20width%3D%2277.54%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22382.88%22%20cy%3D%2217.57%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22305.34%22%20y%3D%2246.65%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22332.48%22%20cy%3D%2260.22%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22425.53%22%20y%3D%2246.65%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22452.67%22%20cy%3D%2260.22%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22305.34%22%20y%3D%2297.05%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22332.48%22%20cy%3D%22110.62%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22425.53%22%20y%3D%2297.05%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22452.67%22%20cy%3D%22110.62%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22334.42%22%20y%3D%22143.58%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22351.87%22%20cy%3D%22157.15%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22371.25%22%20cy%3D%22157.15%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%22396.45%22%20y%3D%22143.58%22%20width%3D%2254.28%22%20height%3D%2227.14%22%20rx%3D%225.43%22%20fill%3D%22%23f1f1f2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22413.9%22%20cy%3D%22157.15%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22433.29%22%20cy%3D%22157.15%22%20r%3D%225.82%22%20fill%3D%22%236D35D6%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%22291.86%22%20y1%3D%2260.22%22%20x2%3D%22332.48%22%20y2%3D%2260.22%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22332.48%22%20cy%3D%2260.22%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22end%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22288.86%22%20y%3D%2265.47%22%3Emon%20p%C3%A8re%20%2F%20father%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22493.29%22%20y1%3D%2260.22%22%20x2%3D%22452.67%22%20y2%3D%2260.22%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22452.67%22%20cy%3D%2260.22%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22496.29%22%20y%3D%2265.47%22%3Ema%20m%C3%A8re%20%2F%20mother%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22291.86%22%20y1%3D%22110.62%22%20x2%3D%22332.48%22%20y2%3D%22110.62%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22332.48%22%20cy%3D%22110.62%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22end%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22288.86%22%20y%3D%22115.87%22%3Emon%20fr%C3%A8re%20%2F%20brother%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22493.29%22%20y1%3D%22110.62%22%20x2%3D%22452.67%22%20y2%3D%22110.62%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22452.67%22%20cy%3D%22110.62%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22496.29%22%20y%3D%22115.87%22%3Ema%20s%C5%93ur%20%2F%20sister%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22324.82%22%20y1%3D%22157.15%22%20x2%3D%22361.56%22%20y2%3D%22157.15%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22361.56%22%20cy%3D%22157.15%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22end%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22321.82%22%20y%3D%22149.8%22%3Emes%20parents%20%2F%3C%2Ftspan%3E%3Ctspan%20x%3D%22321.82%22%20y%3D%22175%22%3Eparents%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22510.74%22%20y1%3D%22157.15%22%20x2%3D%22423.6%22%20y2%3D%22157.15%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22423.6%22%20cy%3D%22157.15%22%20r%3D%223.5%22%20fill%3D%22%230F172A%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22513.74%22%20y%3D%22137.2%22%3Emes%3C%2Ftspan%3E%3Ctspan%20x%3D%22513.74%22%20y%3D%22162.4%22%3Egrands-parents%20%2F%3C%2Ftspan%3E%3Ctspan%20x%3D%22513.74%22%20y%3D%22187.6%22%3Egrandparents%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "A central teenage speaker is surrounded by six family panels; the parents and grandparents panels each show two people.",
-          "fit": "contain"
-        },
-        {
-          "id": "2HFFczoQqI",
-          "type": "text",
-          "x": 64,
-          "y": 453,
-          "w": 832,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "mon / ma / mes = my"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Caption",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
-        }
-      ],
-      "notes": "Running\nSpend about 5 minutes listening and repeating together. Read aloud: « moi, mon père, ma mère, mon frère, ma sœur, mes parents, mes grands-parents ». Pause after each phrase for pupils to repeat, then repeat the sequence once more.\n\nMisconceptions\nPupils may choose mon or ma according to whether the speaker is a boy or a girl. The French noun decides: say mon père and ma mère, whoever is speaking.\n\nBackground\nFrench possessive adjectives agree with the noun that follows, not with the person who owns it. Mes is used before plural nouns."
-    },
-    {
-      "id": "s5",
       "kind": "content",
       "elements": [
         {
-          "id": "hqnsrMv_cO",
+          "id": "zOo1N5hgiG",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -497,7 +341,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Mon ou ma ? / Which one?"
+                    "text": "Les membres de ma famille"
                   }
                 ]
               }
@@ -514,10 +358,10 @@
           }
         },
         {
-          "id": "FmCReweBHu",
+          "id": "5nea_s8Ya8",
           "type": "text",
           "x": 64,
-          "y": 160,
+          "y": 284,
           "w": 680,
           "h": 34,
           "doc": {
@@ -528,7 +372,77 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "The French noun decides (not the person speaking.)"
+                    "text": "Montre et dis : qui est qui ?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "Pr9AcUaDzo",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mon, ma ou mes ?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "1vUejlIZjf",
+          "type": "text",
+          "x": 64,
+          "y": 177,
+          "w": 392,
+          "h": 102,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "All three mean “my”. Match the French noun, not the person speaking."
                   }
                 ]
               }
@@ -546,22 +460,22 @@
           }
         },
         {
-          "id": "SF_ommkRBX",
+          "id": "GqWLmQ5uoC",
           "type": "shape",
           "shape": "ellipse",
           "x": 66,
-          "y": 219,
+          "y": 312,
           "w": 9,
           "h": 9,
           "fill": "#0B6E86",
           "name": "Bullet"
         },
         {
-          "id": "vdzaxShgja",
+          "id": "qh_xVP3_fe",
           "type": "text",
           "x": 89,
-          "y": 206,
-          "w": 655,
+          "y": 299,
+          "w": 367,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -571,7 +485,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "father: ",
+                    "text": "mon: ",
                     "marks": [
                       {
                         "type": "bold"
@@ -580,7 +494,7 @@
                   },
                   {
                     "type": "text",
-                    "text": "French phrase: mon père"
+                    "text": "masculine singular"
                   }
                 ]
               }
@@ -598,126 +512,22 @@
           }
         },
         {
-          "id": "qfSJsLmj9A",
+          "id": "pI35Aq6eC0",
           "type": "shape",
           "shape": "ellipse",
           "x": 66,
-          "y": 262,
+          "y": 361,
           "w": 9,
           "h": 9,
           "fill": "#0B6E86",
           "name": "Bullet"
         },
         {
-          "id": "AapuLBFkUA",
+          "id": "E1XkengHEo",
           "type": "text",
           "x": 89,
-          "y": 249,
-          "w": 655,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "mother: ",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "text",
-                    "text": "French phrase: ma mère"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "LN7kodgrgm",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 305,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "yF3IRxKGLM",
-          "type": "text",
-          "x": 89,
-          "y": 292,
-          "w": 655,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "brother: ",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "text",
-                    "text": "French phrase: mon frère"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "sKq4gB8vH3",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
           "y": 348,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "UzT_0jxqzd",
-          "type": "text",
-          "x": 89,
-          "y": 335,
-          "w": 655,
+          "w": 367,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -727,7 +537,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "sister: ",
+                    "text": "ma: ",
                     "marks": [
                       {
                         "type": "bold"
@@ -736,7 +546,7 @@
                   },
                   {
                     "type": "text",
-                    "text": "French phrase: ma sœur"
+                    "text": "feminine singular"
                   }
                 ]
               }
@@ -754,22 +564,22 @@
           }
         },
         {
-          "id": "3TFhC8DZiE",
+          "id": "kLJBXhPSYi",
           "type": "shape",
           "shape": "ellipse",
           "x": 66,
-          "y": 391,
+          "y": 410,
           "w": 9,
           "h": 9,
           "fill": "#0B6E86",
           "name": "Bullet"
         },
         {
-          "id": "SwnCaK58vI",
+          "id": "y1gF49HGpp",
           "type": "text",
           "x": 89,
-          "y": 378,
-          "w": 655,
+          "y": 397,
+          "w": 367,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -779,7 +589,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "parents: ",
+                    "text": "mes: ",
                     "marks": [
                       {
                         "type": "bold"
@@ -788,7 +598,7 @@
                   },
                   {
                     "type": "text",
-                    "text": "French phrase: mes parents"
+                    "text": "plural"
                   }
                 ]
               }
@@ -806,66 +616,38 @@
           }
         },
         {
-          "id": "6Scwbf84Qe",
+          "id": "yZ6OjUmqDG",
           "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 434,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#dfebef",
+          "radius": 14,
+          "name": "Panel"
         },
         {
-          "id": "k8A9T8tgrh",
-          "type": "text",
-          "x": 89,
-          "y": 421,
-          "w": 655,
-          "h": 35,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "grandparents: ",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "text",
-                    "text": "French phrase: mes grands-parents"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
+          "id": "HFY_fxU2wN",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20316%20258%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Mon%20goes%20with%20p%C3%A8re%20and%20fr%C3%A8re%3B%20ma%20with%20m%C3%A8re%20and%20s%C5%93ur%3B%20mes%20with%20parents%20and%20grands-parents.%22%3E%3Ctitle%3EMon%20goes%20with%20p%C3%A8re%20and%20fr%C3%A8re%3B%20ma%20with%20m%C3%A8re%20and%20s%C5%93ur%3B%20mes%20with%20parents%20and%20grands-parents.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22308%22%20height%3D%22258%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2225.5%22%3Emon%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2281.09%22%20y%3D%2225.5%22%3Ema%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22151.81%22%20y%3D%2225.5%22%3Emes%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2237%22%20x2%3D%22308%22%20y2%3D%2237%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2262.5%22%3Ep%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2281.09%22%20y%3D%2262.5%22%3Em%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22151.81%22%20y%3D%2262.5%22%3Eparents%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2274%22%20x2%3D%22308%22%20y2%3D%2274%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2299.5%22%3Efr%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2281.09%22%20y%3D%2299.5%22%3Es%C5%93ur%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22151.81%22%20y%3D%2299.5%22%3Egrands-parents%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Mon goes with père and frère; ma with mère and sœur; mes with parents and grands-parents.",
+          "fit": "contain"
         }
       ],
-      "notes": "Running\nAllow about 4 minutes for pupils to say or write the matching phrases individually. Check the six answers as a class and ask pupils to explain why the possessive changes.\n\nAnswers\n1. mon père\n2. ma mère\n3. mon frère\n4. ma sœur\n5. mes parents\n6. mes grands-parents\n\nMisconceptions\nPupils may use mon for every male family member and ma for every female one. These words match the French noun: père and frère are masculine; mère and sœur are feminine; parents and grands-parents are plural, so use mes.\n\nBackground\nPère and mère are the singular words for father and mother. Parents and grands-parents are plural forms."
+      "notes": ""
     },
     {
-      "id": "s6",
+      "id": "s5",
       "kind": "multiple-choice",
       "elements": [
         {
-          "id": "vI51ECatbX",
+          "id": "tVRjP1yFr_",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -879,7 +661,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Choisis / Choose"
+                    "text": "Choisis la bonne réponse"
                   }
                 ]
               }
@@ -896,10 +678,10 @@
           }
         },
         {
-          "id": "k48qW2nMQz",
+          "id": "GYwn3Lm2sm",
           "type": "text",
           "x": 64,
-          "y": 208,
+          "y": 255,
           "w": 832,
           "h": 34,
           "doc": {
@@ -910,7 +692,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "A girl says: « ___ père, ___ mère, ___ parents ». Which set fits?"
+                    "text": "Léa says “my brother”. Which is correct?"
                   }
                 ]
               }
@@ -928,12 +710,12 @@
           }
         },
         {
-          "id": "foWf962ATK",
+          "id": "bUou8vXiJM",
           "type": "shape",
           "shape": "rounded",
           "x": 64,
-          "y": 264,
-          "w": 407,
+          "y": 311,
+          "w": 265,
           "h": 75,
           "fill": "#FFFFFF",
           "radius": 14,
@@ -942,11 +724,11 @@
           "strokeWidth": 1
         },
         {
-          "id": "NS1n7m7Ush",
+          "id": "aeu6edi_Fw",
           "type": "shape",
           "shape": "ellipse",
           "x": 84,
-          "y": 286,
+          "y": 333,
           "w": 31,
           "h": 31,
           "fill": "#0B6E86",
@@ -976,11 +758,11 @@
           }
         },
         {
-          "id": "QnCyQJqAHE",
+          "id": "ang8CK_Rj0",
           "type": "text",
           "x": 129,
-          "y": 284,
-          "w": 322,
+          "y": 331,
+          "w": 180,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -990,7 +772,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "mon, ma, mon"
+                    "text": "mes frère"
                   }
                 ]
               }
@@ -1008,12 +790,12 @@
           }
         },
         {
-          "id": "AyVQH5GzcQ",
+          "id": "HxdZshMVQm",
           "type": "shape",
           "shape": "rounded",
-          "x": 489,
-          "y": 264,
-          "w": 407,
+          "x": 347,
+          "y": 311,
+          "w": 265,
           "h": 75,
           "fill": "#FFFFFF",
           "radius": 14,
@@ -1022,11 +804,11 @@
           "strokeWidth": 1
         },
         {
-          "id": "Xb_1GeMo5_",
+          "id": "WE7XaMP0tt",
           "type": "shape",
           "shape": "ellipse",
-          "x": 509,
-          "y": 286,
+          "x": 367,
+          "y": 333,
           "w": 31,
           "h": 31,
           "fill": "#0B6E86",
@@ -1056,11 +838,11 @@
           }
         },
         {
-          "id": "MAT-llSH1h",
+          "id": "K_qPJjuD6h",
           "type": "text",
-          "x": 554,
-          "y": 284,
-          "w": 322,
+          "x": 412,
+          "y": 331,
+          "w": 180,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -1070,7 +852,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ma, ma, mes"
+                    "text": "mon frère"
                   }
                 ]
               }
@@ -1088,12 +870,12 @@
           }
         },
         {
-          "id": "jul3uMRJI1",
+          "id": "kLDe33_Qd4",
           "type": "shape",
           "shape": "rounded",
-          "x": 64,
-          "y": 357,
-          "w": 407,
+          "x": 630,
+          "y": 311,
+          "w": 265,
           "h": 75,
           "fill": "#FFFFFF",
           "radius": 14,
@@ -1102,11 +884,11 @@
           "strokeWidth": 1
         },
         {
-          "id": "LZD4dJCEcV",
+          "id": "M_cHGuivfb",
           "type": "shape",
           "shape": "ellipse",
-          "x": 84,
-          "y": 379,
+          "x": 650,
+          "y": 333,
           "w": 31,
           "h": 31,
           "fill": "#0B6E86",
@@ -1136,11 +918,11 @@
           }
         },
         {
-          "id": "zTv8pxpGw0",
+          "id": "I6rmorRtEG",
           "type": "text",
-          "x": 129,
-          "y": 377,
-          "w": 322,
+          "x": 695,
+          "y": 331,
+          "w": 180,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -1150,7 +932,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "mon, ma, mes"
+                    "text": "ma frère"
                   }
                 ]
               }
@@ -1166,27 +948,316 @@
             "padding": 0,
             "color": "#0F172A"
           }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s6",
+      "kind": "image-text",
+      "elements": [
+        {
+          "id": "-QGbSINEWI",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Décrire mon frère"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
         },
         {
-          "id": "u9LDYWe4xc",
+          "id": "cI1opkmgUO",
+          "type": "text",
+          "x": 64,
+          "y": 171,
+          "w": 392,
+          "h": 57,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mon frère s’appelle Hugo. Il a douze ans. Il est gentil."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "7bu8tavw8U",
           "type": "shape",
           "shape": "rounded",
-          "x": 489,
-          "y": 357,
-          "w": 407,
-          "h": 75,
-          "fill": "#FFFFFF",
-          "radius": 14,
-          "name": "Option",
-          "stroke": "#D9E1EA",
-          "strokeWidth": 1
+          "x": 64,
+          "y": 242,
+          "w": 392,
+          "h": 93,
+          "fill": "#dfebef",
+          "radius": 12,
+          "name": "Key card"
         },
         {
-          "id": "MiaoEypoBG",
+          "id": "7mqHp4oD_j",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 242,
+          "w": 5,
+          "h": 93,
+          "fill": "#0B6E86",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "v-Uf9g1e0r",
+          "type": "text",
+          "x": 84,
+          "y": 257,
+          "w": 357,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "WTQviPHNhV",
+          "type": "text",
+          "x": 84,
+          "y": 290,
+          "w": 357,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "il/elle s’appelle… = his/her name is…"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "csiQrhwG5P",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 345,
+          "w": 392,
+          "h": 93,
+          "fill": "#dfebef",
+          "radius": 12,
+          "name": "Key card"
+        },
+        {
+          "id": "vTQSxahoRo",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 345,
+          "w": 5,
+          "h": 93,
+          "fill": "#0B6E86",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "wEcux34aY_",
+          "type": "text",
+          "x": 84,
+          "y": 360,
+          "w": 357,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Age"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "5dqwhhFvqw",
+          "type": "text",
+          "x": 84,
+          "y": 393,
+          "w": 357,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "il/elle a… ans = he/she is… years old"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "3sV9nJWICz",
+          "type": "image",
+          "name": "Photo",
+          "x": 504,
+          "y": 194,
+          "w": 392,
+          "h": 261,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a1179a-c842-754d-a55e-51229052031b.png",
+          "alt": "A boy offers picked-up books to another child, who smiles at him.",
+          "request": "an imaginary boy helping a younger child pick up dropped books. boy helping child. books on ground. friendly facial expression",
+          "fit": "cover",
+          "radius": 14,
+          "source": {
+            "provider": "generated",
+            "id": "01a1179a-c842-754d-a55e-51229052031b"
+          },
+          "style": "photo"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s7",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "rHPBbcWJDa",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "À toi : mon frère"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "P25b_8poar",
           "type": "shape",
           "shape": "ellipse",
-          "x": 509,
-          "y": 379,
+          "x": 64,
+          "y": 191,
           "w": 31,
           "h": 31,
           "fill": "#0B6E86",
@@ -1199,7 +1270,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "D"
+                    "text": "1"
                   }
                 ]
               }
@@ -1216,11 +1287,11 @@
           }
         },
         {
-          "id": "XDJv013ksr",
+          "id": "3G2IJ6e5Uz",
           "type": "text",
-          "x": 554,
-          "y": 377,
-          "w": 322,
+          "x": 113,
+          "y": 189,
+          "w": 711,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -1230,13 +1301,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "mon, mon, mes"
+                    "text": "Name: Louis. Write “My brother’s name is Louis”."
                   }
                 ]
               }
             ]
           },
-          "name": "Option text",
+          "name": "Item",
           "style": {
             "preset": "body",
             "autoHeight": true,
@@ -1246,16 +1317,202 @@
             "padding": 0,
             "color": "#0F172A"
           }
+        },
+        {
+          "id": "DzY2m90uJT",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 239,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "PQNGDHM-c5",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 256,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "4u32nVQZUh",
+          "type": "text",
+          "x": 113,
+          "y": 254,
+          "w": 711,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Age: 13 (treize). Write his age."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "niymnj8ha5",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 304,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "AxAOiF583i",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 321,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "UMSghTPP1B",
+          "type": "text",
+          "x": 113,
+          "y": 319,
+          "w": 711,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Personality: kind (gentil). Write his personality."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "Bjagq_uW-z",
+          "type": "text",
+          "x": 113,
+          "y": 377,
+          "w": 711,
+          "h": 57,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Écris trois phrases. / Write three sentences.\nil s’appelle… • il a… ans • il est…"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#4F5D6E"
+          }
         }
       ],
-      "notes": "Running\nGive pupils about 3 minutes to choose an option alone, then compare with a partner. Take a class vote and ask a pupil to justify the answer using each noun.\n\nAnswers\nC — mon, ma, mes\n\nMisconceptions\nA uses mon for parents, but parents is plural and needs mes. B uses ma for père, but père is masculine. D uses mon for mère, but mère is feminine. The correct sequence is mon père, ma mère, mes parents.\n\nBackground\nThe speaker being a girl does not change the possessive adjective. The noun determines whether to use mon, ma or mes."
+      "notes": ""
     },
     {
-      "id": "s7",
-      "kind": "image-text",
+      "id": "s8",
+      "kind": "content",
       "elements": [
         {
-          "id": "l-rCsnOT-g",
+          "id": "u5vHPSSPIZ",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -1269,7 +1526,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Décrire quelqu’un / Describe someone"
+                    "text": "L’adjectif change aussi"
                   }
                 ]
               }
@@ -1286,12 +1543,67 @@
           }
         },
         {
-          "id": "tNY3b-df96",
-          "type": "text",
+          "id": "g5AShPDS5i",
+          "type": "shape",
+          "shape": "rounded",
           "x": 64,
-          "y": 160,
-          "w": 392,
-          "h": 68,
+          "y": 112,
+          "w": 404,
+          "h": 408,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Panel",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "xGVPztf7ch",
+          "type": "image",
+          "name": "Photo",
+          "x": 74,
+          "y": 122,
+          "w": 384,
+          "h": 288,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11d8a-a0d6-7728-a276-2d8f6062a7cc.png",
+          "alt": "A smiling teenage boy playing a colourful board game, with the game clearly visible.",
+          "request": "an imaginary brother smiling during a family game. smiling teenage boy. colourful board game",
+          "subjects": [
+            {
+              "name": "smiling teenage boy",
+              "x": 0.22,
+              "y": 0.02,
+              "w": 0.62,
+              "h": 0.71
+            },
+            {
+              "name": "colourful board game",
+              "x": 0.02,
+              "y": 0.67,
+              "w": 0.85,
+              "h": 0.32999999999999996
+            }
+          ],
+          "crop": {
+            "x": 0.0005555555555555869,
+            "y": 0,
+            "w": 0.8888888888888888,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 14,
+          "source": {
+            "provider": "generated",
+            "id": "01a11d8a-a0d6-7728-a276-2d8f6062a7cc"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "DlS2aRrs9e",
+          "type": "text",
+          "x": 74,
+          "y": 418,
+          "w": 384,
+          "h": 29,
           "doc": {
             "type": "doc",
             "content": [
@@ -1300,7 +1612,228 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Il / elle = he / she. In French, age uses a: ‘has’."
+                    "text": "Il / he"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "AJbzqtVxxL",
+          "type": "text",
+          "x": 74,
+          "y": 451,
+          "w": 384,
+          "h": 59,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Il est gentil ou amusant.\nHe is kind or funny."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "2GubOF6qYK",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 492,
+          "y": 112,
+          "w": 404,
+          "h": 408,
+          "fill": "#FFFFFF",
+          "radius": 14,
+          "name": "Panel",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 1
+        },
+        {
+          "id": "6chWMSH5Vs",
+          "type": "image",
+          "name": "Photo",
+          "x": 502,
+          "y": 122,
+          "w": 384,
+          "h": 288,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11d8a-e78b-7244-b6bb-4c76a4c10447.png",
+          "alt": "A smiling teenage girl playing a colourful board game, with the game clearly visible.",
+          "request": "an imaginary sister smiling during a family game. smiling teenage girl. colourful board game",
+          "subjects": [
+            {
+              "name": "smiling teenage girl",
+              "x": 0.16,
+              "y": 0.02,
+              "w": 0.62,
+              "h": 0.73
+            },
+            {
+              "name": "colourful board game",
+              "x": 0.08,
+              "y": 0.7,
+              "w": 0.8300000000000001,
+              "h": 0.25
+            }
+          ],
+          "crop": {
+            "x": 0.050555555555555576,
+            "y": 0,
+            "w": 0.8888888888888888,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 14,
+          "source": {
+            "provider": "generated",
+            "id": "01a11d8a-e78b-7244-b6bb-4c76a4c10447"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "muC2EU6pqy",
+          "type": "text",
+          "x": 502,
+          "y": 418,
+          "w": 384,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Elle / she"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "ISQ3GSwXPc",
+          "type": "text",
+          "x": 502,
+          "y": 451,
+          "w": 384,
+          "h": 59,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Elle est gentille ou amusante.\nShe is kind or funny."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s9",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "xM0a3tmObE",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mes frères et sœurs"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "_5yqUWqYge",
+          "type": "text",
+          "x": 64,
+          "y": 170,
+          "w": 392,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "J’ai un frère. Je n’ai pas de sœur."
                   }
                 ]
               }
@@ -1310,7 +1843,7 @@
           "style": {
             "preset": "body",
             "autoHeight": true,
-            "fontSize": 25,
+            "fontSize": 21,
             "lineHeight": 1.35,
             "fontWeight": 700,
             "padding": 0,
@@ -1318,123 +1851,214 @@
           }
         },
         {
-          "id": "xk4HUEn1K0",
+          "id": "ntMPAp0D7I",
           "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 261,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "Wz_cZCzD1Q",
-          "type": "text",
-          "x": 89,
-          "y": 248,
-          "w": 367,
-          "h": 105,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Mon frère s’appelle Léo. Il a treize ans. Il est gentil et amusant."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "eAHx-Nntcy",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 380,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "7m6v2T_xrl",
-          "type": "text",
-          "x": 89,
-          "y": 367,
-          "w": 367,
-          "h": 105,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Ma sœur s’appelle Léa. Elle a treize ans. Elle est gentille et amusante."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "Otqwtwqy0C",
-          "type": "image",
-          "name": "Photo",
-          "x": 504,
-          "y": 194,
+          "shape": "rounded",
+          "x": 64,
+          "y": 213,
           "w": 392,
-          "h": 261,
-          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-888b-7537-a1cb-76cb42727141.png",
-          "alt": "A friendly teenage brother and sister stand together, both smiling.",
-          "request": "Two friendly teenage siblings, a boy and a girl. teenage boy. teenage girl. friendly smiles",
-          "fit": "cover",
-          "radius": 14,
-          "source": {
-            "id": "01a11b70-888b-7536-ae4c-66d3b0436565",
-            "licence": "generated (openai-2026-10)",
-            "pageUrl": "https://openai.com/policies/",
-            "provider": "generated",
-            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
-            "photographerUrl": "https://openai.com/policies/"
+          "h": 93,
+          "fill": "#dfebef",
+          "radius": 12,
+          "name": "Key card"
+        },
+        {
+          "id": "g6mGCH88ME",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 213,
+          "w": 5,
+          "h": 93,
+          "fill": "#0B6E86",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "dBGWm5lPey",
+          "type": "text",
+          "x": 84,
+          "y": 228,
+          "w": 357,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "J’ai…"
+                  }
+                ]
+              }
+            ]
           },
-          "style": "illustration"
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "QlIdEDBGK1",
+          "type": "text",
+          "x": 84,
+          "y": 261,
+          "w": 357,
+          "h": 30,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "I have…: un frère / une sœur"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "07nbgh48pC",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 316,
+          "w": 392,
+          "h": 122,
+          "fill": "#dfebef",
+          "radius": 12,
+          "name": "Key card"
+        },
+        {
+          "id": "qcFLQfBOWY",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 316,
+          "w": 5,
+          "h": 122,
+          "fill": "#0B6E86",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "RdyCx621pA",
+          "type": "text",
+          "x": 84,
+          "y": 331,
+          "w": 357,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Je n’ai pas de…"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0B6E86"
+          }
+        },
+        {
+          "id": "KLpPispqhV",
+          "type": "text",
+          "x": 84,
+          "y": 364,
+          "w": 357,
+          "h": 59,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "I don’t have any…: de frère / de sœur"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "quBBIa6-q6",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#dfebef",
+          "radius": 14,
+          "name": "Panel"
+        },
+        {
+          "id": "8R8aT-GDkB",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22This%20speaker%20has%20one%20brother%20and%20no%20sisters.%22%3E%3Ctitle%3EThis%20speaker%20has%20one%20brother%20and%20no%20sisters.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22185%22%20height%3D%22158%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2225.5%22%3ESibling%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2296.02%22%20y%3D%2225.5%22%3ENumber%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2237%22%20x2%3D%22185%22%20y2%3D%2237%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2262.5%22%3Efr%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2296.02%22%20y%3D%2262.5%22%3E1%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2274%22%20x2%3D%22185%22%20y2%3D%2274%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2299.5%22%3Es%C5%93ur%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2296.02%22%20y%3D%2299.5%22%3E0%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "This speaker has one brother and no sisters.",
+          "fit": "contain"
         }
       ],
-      "notes": "Running\nSpend about 5 minutes reading the two examples aloud. Pupils identify the name, age and personality detail in each, then practise reading one sentence each with a partner.\n\nMisconceptions\nPupils may use être for age, as in English, or give the adjective the wrong ending. In French, age uses avoir: il a treize ans. Match the adjective to the person: gentil and amusant for a boy; gentille and amusante for a girl.\n\nBackground\nS’appeler means ‘to be called’. French uses avoir, literally ‘to have’, to state someone’s age. Many adjectives add -e in the feminine form."
+      "notes": ""
     },
     {
-      "id": "s8",
+      "id": "s10",
       "kind": "open-response",
       "elements": [
         {
-          "id": "5CzULI1JWQ",
+          "id": "hjYD3sIReE",
           "type": "text",
           "x": 64,
           "y": 46,
@@ -1448,7 +2072,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "À toi / Your turn"
+                    "text": "À toi : les frères et sœurs"
                   }
                 ]
               }
@@ -1465,7 +2089,220 @@
           }
         },
         {
-          "id": "UD3ylI7qWu",
+          "id": "VGSD-OSElO",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 209,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "3TQ-9YRTYm",
+          "type": "text",
+          "x": 113,
+          "y": 207,
+          "w": 711,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Sisters: 1. Write “I have a sister”."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "QVBS3QCv36",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 257,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "MX7h08KBHn",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 274,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "KMWkRPP0Og",
+          "type": "text",
+          "x": 113,
+          "y": 272,
+          "w": 711,
+          "h": 35,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Brothers: 0. Write “I don’t have any brothers”."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "T8l7SIHIaL",
+          "type": "text",
+          "x": 113,
+          "y": 330,
+          "w": 711,
+          "h": 86,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Écris deux phrases. / Write two sentences.\nJ’ai… • Je n’ai pas de…\nun frère = a brother • une sœur = a sister"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#4F5D6E"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s11",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "B8Pv1eCPaE",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Décris cette famille"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "AhXPWQH5Oc",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
@@ -1499,456 +2336,11 @@
           }
         },
         {
-          "id": "Z01sjZ8SDO",
+          "id": "-upWP53wpl",
           "type": "text",
           "x": 113,
           "y": 175,
           "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Brother: Hugo, 14, kind. Write three sentences: name, age and personality."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "pracKi8u5R",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 260,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "tFXni1EQAb",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 277,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "5kg1X7PoLE",
-          "type": "text",
-          "x": 113,
-          "y": 275,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Sister: Inès, 12, funny. Write three sentences: name, age and personality."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "NcJNgOelMD",
-          "type": "text",
-          "x": 113,
-          "y": 368,
-          "w": 711,
-          "h": 114,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Écris en français / Write in French.\nName: s’appelle • Age: a … ans • Personality: est\nkind: gentil/gentille • funny: amusant/amusante\n12: douze • 14: quatorze"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Instruction",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
-        }
-      ],
-      "notes": "Running\nGive pupils about 7 minutes to write the two descriptions independently. Ask them to underline the name, age and personality phrase, then check the adjective endings with a partner.\n\nAnswers\n1. Mon frère s’appelle Hugo. Il a quatorze ans. Il est gentil.\n2. Ma sœur s’appelle Inès. Elle a douze ans. Elle est amusante.\n\nMisconceptions\nPupils may write il for the sister or elle for the brother; link il to Hugo and elle to Inès. They may also leave the adjective unchanged: use gentil for Hugo and amusante for Inès. Say il a / elle a for age, not il est / elle est.\n\nBackground\nQuatorze and douze are the French words for 14 and 12. The adjective endings here match the gender of the person described."
-    },
-    {
-      "id": "s9",
-      "kind": "diagram",
-      "elements": [
-        {
-          "id": "Nqi_p28fVm",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Frères et sœurs / Siblings"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "uJ8ceb4Nwk",
-          "type": "text",
-          "x": 64,
-          "y": 183,
-          "w": 392,
-          "h": 68,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "J’ai = I have. Je n’ai pas de = I don’t have any."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Lead",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.35,
-            "fontWeight": 700,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "I4QPQxN7_F",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 284,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "cCUq5d9Q0o",
-          "type": "text",
-          "x": 89,
-          "y": 271,
-          "w": 367,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "J’ai un frère et deux sœurs. / I have a brother and two sisters."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "laLFH08AMy",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 368,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "4SF5p2SRrT",
-          "type": "text",
-          "x": 89,
-          "y": 355,
-          "w": 367,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Je n’ai pas de frère. / I don’t have any brothers."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "G8HeOztRRY",
-          "type": "shape",
-          "shape": "rounded",
-          "x": 504,
-          "y": 160,
-          "w": 392,
-          "h": 328,
-          "fill": "#dfebef",
-          "radius": 14,
-          "name": "Panel"
-        },
-        {
-          "id": "hmkDIiHQ_E",
-          "type": "image",
-          "name": "Diagram",
-          "x": 526,
-          "y": 182,
-          "w": 348,
-          "h": 284,
-          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20290%20237%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22J%E2%80%99ai%20un%20fr%C3%A8re%20becomes%20je%20n%E2%80%99ai%20pas%20de%20fr%C3%A8re%3B%20j%E2%80%99ai%20une%20s%C5%93ur%20becomes%20je%20n%E2%80%99ai%20pas%20de%20s%C5%93ur.%22%3E%3Ctitle%3EJ%E2%80%99ai%20un%20fr%C3%A8re%20becomes%20je%20n%E2%80%99ai%20pas%20de%20fr%C3%A8re%3B%20j%E2%80%99ai%20une%20s%C5%93ur%20becomes%20je%20n%E2%80%99ai%20pas%20de%20s%C5%93ur.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%2296.22%22%20y1%3D%2261.8%22%20x2%3D%22180.74%22%20y2%3D%2261.8%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22185.78%2C61.8%20179.48%2C65.58%20180.43%2C61.8%20179.48%2C58.02%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22141%22%20y%3D%2251.55%22%3Enegative%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2296.22%22%20y1%3D%22175.2%22%20x2%3D%22180.74%22%20y2%3D%22175.2%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22185.78%2C175.2%20179.48%2C178.98%20180.43%2C175.2%20179.48%2C171.42%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23F7F9FB%22%20stroke-width%3D%225.88%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22141%22%20y%3D%22164.95%22%3Enegative%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%2216.65%22%20width%3D%2290.22%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2247.11%22%20y%3D%2256.55%22%3EJ%E2%80%99ai%20un%3C%2Ftspan%3E%3Ctspan%20x%3D%2247.11%22%20y%3D%2281.75%22%3Efr%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22189.78%22%20y%3D%2216.65%22%20width%3D%2290.22%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%2243.95%22%3EJe%20n%E2%80%99ai%3C%2Ftspan%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%2269.15%22%3Epas%20de%3C%2Ftspan%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%2294.35%22%3Efr%C3%A8re%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%22130.05%22%20width%3D%2290.22%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2247.11%22%20y%3D%22157.35%22%3EJ%E2%80%99ai%3C%2Ftspan%3E%3Ctspan%20x%3D%2247.11%22%20y%3D%22182.55%22%3Eune%3C%2Ftspan%3E%3Ctspan%20x%3D%2247.11%22%20y%3D%22207.75%22%3Es%C5%93ur%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22189.78%22%20y%3D%22130.05%22%20width%3D%2290.22%22%20height%3D%2290.3%22%20rx%3D%227.35%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%22157.35%22%3EJe%20n%E2%80%99ai%3C%2Ftspan%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%22182.55%22%3Epas%20de%3C%2Ftspan%3E%3Ctspan%20x%3D%22234.89%22%20y%3D%22207.75%22%3Es%C5%93ur%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
-          "alt": "J’ai un frère becomes je n’ai pas de frère; j’ai une sœur becomes je n’ai pas de sœur.",
-          "fit": "contain"
-        }
-      ],
-      "notes": "Running\nSpend about 5 minutes reading the examples together. Pupils make one affirmative and one negative sentence about siblings, using the sentence pattern shown.\n\nMisconceptions\nPupils may keep un or une after the negative, or omit de. In this construction, say je n’ai pas de frère and je n’ai pas de sœur. With an affirmative sentence, use un or une: j’ai un frère; j’ai une sœur.\n\nBackground\nIn French, the article usually changes to de after ne… pas when saying you do not have something. The phrase is pronounced as one unit: je n’ai pas de."
-    },
-    {
-      "id": "s10",
-      "kind": "image-text",
-      "elements": [
-        {
-          "id": "jTUp157SLr",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Un petit texte / A short text"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "88l_GoZ6-F",
-          "type": "text",
-          "x": 64,
-          "y": 201,
-          "w": 392,
-          "h": 68,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "J’ai une sœur. Je n’ai pas de frère."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Lead",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.35,
-            "fontWeight": 700,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "FM_5JHbDzt",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 302,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "n7kattG8Ct",
-          "type": "text",
-          "x": 89,
-          "y": 289,
-          "w": 367,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Ma sœur s’appelle Zoé. Elle a douze ans."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "8ffLtt0cZH",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 66,
-          "y": 386,
-          "w": 9,
-          "h": 9,
-          "fill": "#0B6E86",
-          "name": "Bullet"
-        },
-        {
-          "id": "Rt82zIBUlS",
-          "type": "text",
-          "x": 89,
-          "y": 373,
-          "w": 367,
           "h": 35,
           "doc": {
             "type": "doc",
@@ -1958,134 +2350,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Elle est gentille et amusante."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Point",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 25,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "f3QZropEjD",
-          "type": "image",
-          "name": "Photo",
-          "x": 504,
-          "y": 194,
-          "w": 392,
-          "h": 261,
-          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-a25b-76bf-a90c-17ce9e37a76b.png",
-          "alt": "A teenage girl and her younger sister, together with both smiling faces clearly visible.",
-          "request": "A teenage speaker with one younger sister. teenage speaker. younger sister. two smiling faces",
-          "fit": "cover",
-          "radius": 14,
-          "source": {
-            "id": "01a11b70-a25b-76be-839c-cffa1a97ae0a",
-            "licence": "generated (openai-2026-10)",
-            "pageUrl": "https://openai.com/policies/",
-            "provider": "generated",
-            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
-            "photographerUrl": "https://openai.com/policies/"
-          },
-          "style": "illustration"
-        }
-      ],
-      "notes": "Running\nAllow about 4 minutes for pupils to read the short text aloud in pairs. Ask them to identify its sibling sentences and the three details about the sister.\n\nMisconceptions\nPupils may write une after the negative, or use elle est for age. Keep de in je n’ai pas de frère, and use elle a douze ans for age. Gentille and amusante describe a feminine person.\n\nBackground\nThe text combines the negative sibling structure with the name, age and personality patterns practised earlier. Zoé is a feminine name, so the example uses elle and feminine adjective forms."
-    },
-    {
-      "id": "s11",
-      "kind": "open-response",
-      "elements": [
-        {
-          "id": "WpyMUbwu3y",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Décris ta famille / Describe your family"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "HwfSRYOstu",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 189,
-          "w": 31,
-          "h": 31,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 17,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "Jksi8O0u7d",
-          "type": "text",
-          "x": 113,
-          "y": 187,
-          "w": 711,
-          "h": 70,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "You have one brother and no sisters. Write both sibling sentences."
+                    "text": "You have one sister and no brothers. Write two sentences."
                   }
                 ]
               }
@@ -2103,22 +2368,22 @@
           }
         },
         {
-          "id": "GcTHYo7toa",
+          "id": "giB-rwAPwW",
           "type": "shape",
           "shape": "rect",
           "x": 64,
-          "y": 272,
+          "y": 225,
           "w": 760,
           "h": 1,
           "fill": "#D9E1EA",
           "name": "Rule"
         },
         {
-          "id": "w0gnpqAN3E",
+          "id": "g3093fOwJN",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
-          "y": 289,
+          "y": 242,
           "w": 31,
           "h": 31,
           "fill": "#0B6E86",
@@ -2148,12 +2413,12 @@
           }
         },
         {
-          "id": "2aaJL5OnUI",
+          "id": "qgc2TTQuQK",
           "type": "text",
           "x": 113,
-          "y": 287,
+          "y": 240,
           "w": 711,
-          "h": 70,
+          "h": 35,
           "doc": {
             "type": "doc",
             "content": [
@@ -2162,7 +2427,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Your brother is called Sami. He is 13 and kind. Add his name, age and personality."
+                    "text": "Your sister is Zoé, aged 12 (douze). Write her name and age."
                   }
                 ]
               }
@@ -2180,237 +2445,24 @@
           }
         },
         {
-          "id": "RfF7nIgY7t",
-          "type": "text",
-          "x": 113,
-          "y": 380,
-          "w": 711,
-          "h": 57,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Écris un petit texte / Write a short text.\n13 = treize • kind = gentil/gentille"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Instruction",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.35,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#4F5D6E"
-          }
-        }
-      ],
-      "notes": "Running\nGive pupils about 8 minutes to write the sibling sentences and description independently. Have them check the pronoun, age verb and adjective ending before sharing with a partner.\n\nAnswers\nJ’ai un frère. Je n’ai pas de sœur. Mon frère s’appelle Sami. Il a treize ans. Il est gentil.\n\nMisconceptions\nPupils may use je n’ai pas une sœur; after this negative use de: je n’ai pas de sœur. They may use elle for Sami or write est treize ans. Use il for Sami and il a treize ans for his age.\n\nBackground\nTreize means 13. Sami is a boy’s name in this example, so the description uses il and the masculine form gentil."
-    },
-    {
-      "id": "s12",
-      "kind": "open-response",
-      "elements": [
-        {
-          "id": "VkPbOCqP9e",
-          "type": "text",
-          "x": 64,
-          "y": 46,
-          "w": 832,
-          "h": 50,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Ma famille / My family"
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Heading",
-          "style": {
-            "preset": "heading",
-            "autoHeight": true,
-            "fontSize": 44,
-            "lineHeight": 1.12,
-            "fontWeight": 600,
-            "padding": 0
-          }
-        },
-        {
-          "id": "2JMJ-Em67A",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 171,
-          "w": 26,
-          "h": 26,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "1"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 14,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "67gvwlqCoe",
-          "type": "text",
-          "x": 105,
-          "y": 169,
-          "w": 719,
-          "h": 59,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Write about your own or an imaginary family: say which siblings you have and one sibling type you do not have."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "Hk9JYVoCnh",
+          "id": "6pkKbnMl6s",
           "type": "shape",
           "shape": "rect",
           "x": 64,
-          "y": 236,
+          "y": 290,
           "w": 760,
           "h": 1,
           "fill": "#D9E1EA",
           "name": "Rule"
         },
         {
-          "id": "rKaY8OdbKE",
+          "id": "gqTdBCEHRa",
           "type": "shape",
           "shape": "ellipse",
           "x": 64,
-          "y": 246,
-          "w": 26,
-          "h": 26,
-          "fill": "#0B6E86",
-          "name": "Marker",
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "2"
-                  }
-                ]
-              }
-            ]
-          },
-          "textStyle": {
-            "preset": "body",
-            "fontSize": 14,
-            "fontWeight": 700,
-            "color": "#FFFFFF",
-            "align": "center",
-            "valign": "middle",
-            "padding": 0
-          }
-        },
-        {
-          "id": "HNGX4-zPdf",
-          "type": "text",
-          "x": 105,
-          "y": 244,
-          "w": 719,
-          "h": 30,
-          "doc": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Describe one family member: name, age and one personality trait."
-                  }
-                ]
-              }
-            ]
-          },
-          "name": "Item",
-          "style": {
-            "preset": "body",
-            "autoHeight": true,
-            "fontSize": 21,
-            "lineHeight": 1.4,
-            "fontWeight": 400,
-            "padding": 0,
-            "color": "#0F172A"
-          }
-        },
-        {
-          "id": "6PNp3YYogQ",
-          "type": "shape",
-          "shape": "rect",
-          "x": 64,
-          "y": 282,
-          "w": 760,
-          "h": 1,
-          "fill": "#D9E1EA",
-          "name": "Rule"
-        },
-        {
-          "id": "ZB5Ylh2gsM",
-          "type": "shape",
-          "shape": "ellipse",
-          "x": 64,
-          "y": 292,
-          "w": 26,
-          "h": 26,
+          "y": 307,
+          "w": 31,
+          "h": 31,
           "fill": "#0B6E86",
           "name": "Marker",
           "doc": {
@@ -2429,7 +2481,7 @@
           },
           "textStyle": {
             "preset": "body",
-            "fontSize": 14,
+            "fontSize": 17,
             "fontWeight": 700,
             "color": "#FFFFFF",
             "align": "center",
@@ -2438,12 +2490,12 @@
           }
         },
         {
-          "id": "9ObG8NvAcF",
+          "id": "Ir-pGzq_t9",
           "type": "text",
-          "x": 105,
-          "y": 290,
-          "w": 719,
-          "h": 30,
+          "x": 113,
+          "y": 305,
+          "w": 711,
+          "h": 35,
           "doc": {
             "type": "doc",
             "content": [
@@ -2452,7 +2504,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Check mon/ma/mes, il/elle, a … ans and the adjective ending."
+                    "text": "She is funny. Write her personality."
                   }
                 ]
               }
@@ -2462,7 +2514,7 @@
           "style": {
             "preset": "body",
             "autoHeight": true,
-            "fontSize": 21,
+            "fontSize": 25,
             "lineHeight": 1.4,
             "fontWeight": 400,
             "padding": 0,
@@ -2470,12 +2522,12 @@
           }
         },
         {
-          "id": "-4VjjCgXwF",
+          "id": "7bdamoPiGv",
           "type": "text",
-          "x": 105,
-          "y": 333,
-          "w": 719,
-          "h": 114,
+          "x": 113,
+          "y": 363,
+          "w": 711,
+          "h": 86,
           "doc": {
             "type": "doc",
             "content": [
@@ -2484,7 +2536,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Écris 5–6 phrases / Write 5–6 sentences.\nHelp: j’ai • je n’ai pas de • s’appelle • a • est\nkind: gentil/gentille • funny: amusant/amusante\nStretch: describe a second family member with a different pronoun."
+                    "text": "Écris cinq phrases. / Write five sentences.\nfrère • sœur • il/elle s’appelle… • il/elle a… ans • il/elle est…\ngentil/gentille = kind • amusant/amusante = funny"
                   }
                 ]
               }
@@ -2502,7 +2554,297 @@
           }
         }
       ],
-      "notes": "Running\nAllow about 12 minutes for pupils to write 5–6 sentences independently. They should include a sibling they have, one sibling type they do not have, and name, age and personality details for one family member. Invite confident pupils to complete the stretch by describing another person with a different pronoun.\n\nAnswers\nExample: J’ai un frère. Je n’ai pas de sœur. Mon frère s’appelle Adam. Il a douze ans. Il est gentil.\n\nMisconceptions\nPupils may use the wrong possessive for the family noun, mismatch il or elle, use être for age, or forget the feminine adjective ending. Check that the possessive matches the noun, the pronoun matches the person, age uses a, and the adjective agrees: for example, ma sœur… elle est gentille.\n\nBackground\nA short connected description can be built from familiar sentence patterns. Encourage pupils to use an imaginary family if they prefer not to write about their own."
+      "notes": ""
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "G7fwlhAyVK",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 50,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Présente ta famille"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "YzqJzN3baZ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 171,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Onsc5oM5go",
+          "type": "text",
+          "x": 113,
+          "y": 169,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose a real or imaginary family. Write what siblings you have and do not have."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "a7VxcIlAgk",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 248,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "qkO7jUPYjt",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 259,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "9I2S3EZa8A",
+          "type": "text",
+          "x": 113,
+          "y": 257,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose one family member. Write their name, age and one personality trait."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "RcG1bXX447",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 336,
+          "w": 760,
+          "h": 1,
+          "fill": "#D9E1EA",
+          "name": "Rule"
+        },
+        {
+          "id": "rlTkOMuZKC",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 347,
+          "w": 31,
+          "h": 31,
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "VOKyHGn3XX",
+          "type": "text",
+          "x": 113,
+          "y": 345,
+          "w": 711,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Défi / Stretch: add a second family member with a different trait."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#0F172A"
+          }
+        },
+        {
+          "id": "nqV5QnCjx1",
+          "type": "text",
+          "x": 113,
+          "y": 429,
+          "w": 711,
+          "h": 29,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Écris un petit paragraphe. / Write a short paragraph."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 21,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#4F5D6E"
+          }
+        }
+      ],
+      "notes": ""
     }
   ],
   "bakeoff": {

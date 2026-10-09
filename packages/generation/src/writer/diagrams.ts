@@ -26,6 +26,7 @@ import {
   meaningFaults,
   mendSpec,
   parseDiagram,
+  pileSpec,
   SLOT_LIMITS,
   type StageGroup,
   slotBox,
@@ -455,6 +456,19 @@ export async function drawWriterDiagram(
   });
   return nonFatal(
     async (): Promise<DrawnWriterDiagram> => {
+      // unshared (BAKEOFF base4f): counters the writer asked for not shared yet are one pile (or
+      // the row its words describe), never the answer, before any drawer call.
+      if (ask.kind === "equal-groups" && ask.spec !== undefined) {
+        const w = ask.spec as { shows?: unknown; alt?: unknown };
+        const pile = pileSpec(
+          ask.spec,
+          `${ask.shows} ${String(w.shows ?? "")} ${String(w.alt ?? "")}`,
+        );
+        if (pile) {
+          deps.log?.({ ev: "unshared-pile", key: ask.key, total: pile.total });
+          return done(pile, "code");
+        }
+      }
       if (ask.spec !== undefined) {
         const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe);
         deps.log?.({

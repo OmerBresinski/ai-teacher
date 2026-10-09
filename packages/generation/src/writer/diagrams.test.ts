@@ -282,9 +282,17 @@ describe("replay: saved base4 writer outputs (lab/ab 92f1b36d)", () => {
         return !!svg && createHash("sha256").update(stripBuilds(svg)).digest("hex") === row.sha256;
       });
       if (hit) same += 1;
-      else console.log(`  differs: ${row.lesson} slide ${row.slide}`);
+      // readGraph and labels3 (TEACH-110 part e) redraw measured line graphs and particle keys on
+      // purpose: those drawings may differ from base4's, no other kind may.
+      else
+        expect({
+          row: `${row.lesson} slide ${row.slide}`,
+          redrawn: row.specs.some((s) =>
+            ["line-graph", "particles"].includes(String((s as { kind?: unknown }).kind)),
+          ),
+        }).toEqual({ row: `${row.lesson} slide ${row.slide}`, redrawn: true });
     }
-    expect(same).toBe(fixture.rows.length);
+    expect(same).toBeGreaterThan(fixture.rows.length - 10);
   });
   test("the writer's specs draw by code as the lab's did (D14), and every diagram asked is drawn", () => {
     const specs = fixture.figures.filter((f) => writerSpecOf(f.figure as J));

@@ -438,3 +438,103 @@ test("a generated single picture is shown to the judge on its own bytes, and pla
   expect(s.status).toBe("photo");
   if (s.status === "photo") expect(s.photo.aspect).toBe(1.5);
 });
+
+describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", () => {
+  const cowAi = () =>
+    createFakeAi({
+      script: [
+        verdict({
+          pick: "p8",
+          onSubject: true,
+          clear: true,
+          fits: true,
+          visible: ["cow"],
+          count: "one",
+          boxes: [{ item: "cow", left: 0.1, top: 0.2, right: 0.6, bottom: 0.9 }],
+        }),
+      ],
+    });
+  const cowDirection = async () =>
+    direction({
+      route: "pexels",
+      pictures: [
+        {
+          shows: "A cow and its calf",
+          mustShow: ["cow"],
+          queries: ["cow calf"],
+          imagePrompt: "A cow and a calf.",
+        },
+      ],
+    });
+  const cowAsk = ask({
+    shows: "A cow and its calf",
+    mustSee: ["adult cow", "young calf"],
+    named: false,
+  });
+
+  test("a picture missing a thing the slide names is dropped, and held on a find slide", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p8")] }),
+      deps: recordingDeps(cowAi()),
+      direct: cowDirection,
+    });
+    pictures.start(4, cowAsk, { heading: "Find the pairs", text: "Find the cow and its calf." });
+    await pictures.settle(1_000);
+    expect(pictures.state(4, "picture")).toEqual({ status: "failed" });
+    expect(pictures.vetoed(4, "picture") ?? "none").toBe("none");
+    expect(pictures.held(4, "picture")?.status).toBe("photo");
+  });
+
+  test("words that name only what the judge saw keep the picture (match6w)", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p8")] }),
+      deps: recordingDeps(cowAi()),
+      direct: cowDirection,
+    });
+    pictures.start(4, cowAsk, { heading: "Farm animals", text: "This is a cow." });
+    await pictures.settle(1_000);
+    expect(pictures.state(4, "picture").status).toBe("photo");
+  });
+
+  test("an ask started after settle is placed in a second round", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p8")] }),
+      deps: recordingDeps(cowAi()),
+      direct: cowDirection,
+    });
+    await pictures.settle(1_000);
+    pictures.start(6, ask({ shows: "A cow", mustSee: ["cow"], named: false }), slide);
+    await pictures.settle(1_000);
+    expect(pictures.state(6, "picture").status).toBe("photo");
+  });
+
+  test("a key that failed in round one is asked again at the same index in a later round", async () => {
+    let calls = 0;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p8")] }),
+      deps: recordingDeps(cowAi()),
+      direct: async () => {
+        calls += 1;
+        return calls === 1 ? direction({ route: "none", pictures: [] }) : cowDirection();
+      },
+    });
+    const one = ask({ shows: "A cow", mustSee: ["cow"], named: false });
+    pictures.start(6, ask({ shows: "Cow, sheep and hen", mustSee: ["cow"], named: false }), slide);
+    await pictures.settle(1_000);
+    expect(pictures.state(6, "picture").status).toBe("failed");
+    // Asked again within the same round after settle: placed once, not twice.
+    pictures.start(6, one, slide);
+    pictures.start(6, one, slide);
+    await pictures.settle(1_000);
+    expect(pictures.state(6, "picture").status).toBe("photo");
+    expect(calls).toBe(2);
+  });
+});

@@ -1,39 +1,45 @@
 import { describe, expect, test } from "bun:test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 
 /*
- * Replay (TEACH-110 part b): a saved writer output from the pinned evidence runs through the
- * ported stage, with the run's recorded repair and notes answers and its recorded pictures and
- * drawings, and must reproduce that run's saved slides. No model is called.
+ * Parity (TEACH-110 part e): the saved base4f-p123 writer outputs (lab/ab-base4f, runs
+ * base4f-p123-1 and -2) run through the stage with the run's recorded repair, objective-repair
+ * and notes answers and the lab replay's picture states, and must reproduce the lab's replayed
+ * decks (runs base4f-p123s-1 and -2, keepPic e3e89767, unshared 5ad4ed59; DECISIONS.md D48c)
+ * element for element. No model is called.
  *
- * Documented differences:
+ * Not compared:
  *  - element ids (random per layout); picture `source`, `style` and `period` stamps (TEACH-251);
- *  - list-marker badges: part a lays the numeral badge at master's sizes (25 at KS2, 21 at KS3
- *    where the run had 14 to 20), which moves each marker's box and the text set against it
- *    (items, options, an instruction, rules). Those elements are compared exactly except their
- *    box, within 8 pt (y1 slide 6's instruction: 40 pt), and the badge's own font size;
- *  - a run whose notes call was refused by its budget (y1) has empty notes here too.
+ *  - a list marker's numeral size (part a lays badges at master's sizes; boxes are unchanged);
+ *  - speaker notes: the lab replay's notes call failed on every lesson, the stage replays the
+ *    original run's notes.
+ *
+ * Photos in ranged (multi-picture) slots keep their own shape inside the run's box (TEACH-237).
+ *
+ * One documented difference: r2 y1 slide 6 "Find the pairs". The lab replay kept a split of 5 of
+ * its 8 single pictures (splitOk), replacing the matching table the original run shipped. splitOk
+ * is not ported: a split ships only when every picture lands, so the slide is the reroute's
+ * adults / young word table, as the original run shipped it.
  */
 
-const SKIP: Record<string, number[]> = {};
-/** The marker badge and the text laid against it (items, options, a question set's instruction). */
-const BADGE_ALIGNED = new Set(["Marker", "Item", "Option text", "Instruction", "Rule"]);
-const plain = (d: unknown): string => {
-  const n = d as { text?: string; content?: unknown[] } | undefined;
-  return n?.text ?? (n?.content ?? []).map(plain).join(" ");
-};
-/** How far a badge-aligned element may sit from the run's, in points, by default. */
-const TOLERANCE = 8;
-/** Documented larger moves: a question set's instruction under part a's bigger KS1 badges. */
-const WIDER: Record<string, Record<number, number>> = { "y1-science-animals-young": { 5: 40 } };
+const DIR = join(import.meta.dir, "fixtures/replay");
+const LESSONS = readdirSync(DIR).sort();
 const stable = (e: El) => {
   const { id: _i, source: _s, style: _t, period: _p, ...rest } = e;
+  // A list marker's numeral is laid at master's badge sizes (TEACH-110 part a), not the lab's.
+  if (rest.name === "Marker" && rest.textStyle) {
+    const { fontSize: _f, ...ts } = rest.textStyle as El;
+    return { ...rest, textStyle: ts };
+  }
   return rest;
 };
+
 /**
  * TEACH-237: a photo in a ranged slot (compare, picture-sequence, tiles) takes its own shape inside
  * the run's box instead of being cropped to it, so its box may be smaller and its crop gone. Every
- * other field, and every word box, is still the run's.
+ * other field is still the run's.
  */
 function expectRangedPhoto(got: El, want: El, at: string) {
   const { x, y, w, h, crop: _c, ...rest } = stable(got);
@@ -47,56 +53,18 @@ function expectRangedPhoto(got: El, want: El, at: string) {
   expect({ at, inside }).toEqual({ at, inside: true });
 }
 
-/** An element compared exactly, except a badge-aligned one's box (within `tol`) and badge size. */
-function expectSame(got: El, want: El, tol: number, at: string, ranged = false) {
-  const g = stable(got);
-  const w = stable(want);
-  if (ranged && w.type === "image" && w.name === "Photo") {
-    expectRangedPhoto(got, want, at);
-    return;
-  }
-  if (!BADGE_ALIGNED.has(String(w.name))) {
-    expect({ at, el: g }).toEqual({ at, el: w });
-    return;
-  }
-  for (const k of ["x", "y", "w", "h"]) {
-    const d = Math.abs(Number(g[k]) - Number(w[k]));
-    expect({ at, k, within: d <= tol }).toEqual({ at, k, within: true });
-  }
-  const style = (x: El) => {
-    const { fontSize: _f, ...s } = (x.textStyle ?? {}) as El;
-    return s;
-  };
-  const { x: _x, y: _y, w: _w, h: _h, textStyle: _ts, ...words } = g;
-  const { x: _x2, y: _y2, w: _w2, h: _h2, textStyle: _ts2, ...wantWords } = w;
-  expect({ at, el: words, style: style(g) }).toEqual({ at, el: wantWords, style: style(w) });
-  if (w.name !== "Marker")
-    expect({ at, fontSize: (g.textStyle as El | undefined)?.fontSize }).toEqual({
-      at,
-      fontSize: (w.textStyle as El | undefined)?.fontSize,
-    });
-}
-
-describe.each([
-  "y1-science-animals-young",
-  "y2-maths-halves-quarters",
-  "y5-maths-fractions-of-amounts",
-  "y8-french-my-family",
-  "y11-chemistry-rates-of-reaction",
-  "y12-psychology-multi-store-model",
-])("replay %s", (b) => {
-  test("the stage reproduces the saved slides", async () => {
+describe.each(LESSONS)("replay %s", (b) => {
+  test("the stage reproduces the lab's replayed slides", async () => {
     const out = await replayRun(b);
     const saved = savedSlides(b);
     expect(out.slides.length).toBe(saved.length);
     out.slides.forEach((s, i) => {
-      const want = saved[i] as El & { elements: El[]; notes?: string };
+      const want = saved[i] as El & { elements: El[] };
       const got = s.elements as unknown as El[];
-      expect({ i, notes: s.notes }).toEqual({ i, notes: want.notes ?? "" });
-      if (SKIP[b]?.includes(i)) {
-        // The words are the run's, minus the picture.
-        const words = (els: El[]) => els.filter((e) => e.type === "text").map((e) => plain(e.doc));
-        expect({ i, words: words(got) }).toEqual({ i, words: words(want.elements) });
+      if (b === "y1-science-animals-young-r2" && i === 5) {
+        // the matching table, never a partial split of single photos
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
+        expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
         return;
       }
       expect({ i, kind: s.kind, background: s.background }).toEqual({
@@ -105,12 +73,20 @@ describe.each([
         background: want.background as never,
       });
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
-      const tol = WIDER[b]?.[i] ?? TOLERANCE;
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =
         want.elements.filter((e) => e.type === "image" && e.name === "Photo").length > 1;
-      for (const [k, e] of got.entries())
-        expectSame(e, want.elements[k] as El, tol, `s${i + 1} #${k}`, ranged);
+      for (const [k, e] of got.entries()) {
+        const w = want.elements[k] as El;
+        if (ranged && w.type === "image" && w.name === "Photo") {
+          expectRangedPhoto(e, w, `s${i + 1} #${k}`);
+          continue;
+        }
+        expect({ at: `s${i + 1} #${k}`, el: stable(e) }).toEqual({
+          at: `s${i + 1} #${k}`,
+          el: stable(w),
+        });
+      }
     });
   });
 });

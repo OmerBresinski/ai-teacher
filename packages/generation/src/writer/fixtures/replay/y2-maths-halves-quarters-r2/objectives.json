@@ -1,0 +1,37 @@
+{
+  "objectives": [
+    {
+      "teacher": "Identify one half and one quarter of a shape split into two or four equal parts.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Find one half of an even number of objects up to 20 by sharing them into two equal groups.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Find one quarter of 4, 8, 12, 16 or 20 objects by sharing them into four equal groups.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 276,
+    "completion_tokens": 139,
+    "total_tokens": 415,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 55,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.001942,
+  "ms": 4867,
+  "firstTokenMs": 3454
+}

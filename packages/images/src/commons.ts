@@ -514,8 +514,9 @@ export function createCommonsClient(
 
 /**
  * Which Commons licences the director may place (TEACH-251): "all" (CC0, public domain, CC BY and
- * BY-SA), or "free", only files that owe no credit (CC0, public domain and the PD mark). Off by
- * default: "free" is the one-line switch if credited photos are ever to be avoided altogether.
+ * BY-SA), or "free", only files that owe no credit (CC0, public domain and the PD mark). "all" is
+ * the default (Greg, 9 Oct 2026): credited Commons photos are placed, and their credits are shown
+ * (#417). "free" is the one-line switch to refuse them.
  */
 export type CommonsLicences = "all" | "free";
 export const COMMONS_LICENCES: CommonsLicences = "all";

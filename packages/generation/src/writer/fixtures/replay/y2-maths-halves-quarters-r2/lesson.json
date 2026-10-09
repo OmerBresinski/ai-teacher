@@ -1,0 +1,2416 @@
+{
+  "version": 1,
+  "id": "bakeoff-T-y2-maths-halves-quarters",
+  "title": "Halves and quarters",
+  "themeId": "splash",
+  "fitVersion": 3,
+  "subject": "Maths",
+  "ageBand": "ks1",
+  "yearGroup": "Year 2",
+  "language": "en-GB",
+  "createdAt": "2026-10-08T23:13:05.491Z",
+  "updatedAt": "2026-10-08T23:13:05.491Z",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "HjLrcEdda2",
+          "type": "text",
+          "x": 64,
+          "y": 133,
+          "w": 640,
+          "h": 164,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Halves and quarters"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "style": {
+            "preset": "title",
+            "autoHeight": false,
+            "fontSize": 77,
+            "lineHeight": 1.06,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#FFFFFF",
+            "valign": "bottom"
+          }
+        },
+        {
+          "id": "SAelhRFz76",
+          "type": "text",
+          "x": 64,
+          "y": 317,
+          "w": 640,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Share 4 apples fairly between 2 children. How many each?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Subtitle",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#FFFFFF"
+          }
+        }
+      ],
+      "background": {
+        "color": "#0A5CA2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "9ae42nJqOP",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Today we are learning to"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "bk-X3zoHA5",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 176,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "BNRGCLtYxJ",
+          "type": "text",
+          "x": 119,
+          "y": 174,
+          "w": 665,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Identify one half and one quarter of a shape split into two or four equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "XyPuR8SNfL",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 267,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "UcS2jlehxW",
+          "type": "text",
+          "x": 119,
+          "y": 265,
+          "w": 665,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find one half of an even number of objects up to 20 by sharing them into two equal groups."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "f0yRU7lK4k",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 358,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "qMAr-6mdVp",
+          "type": "text",
+          "x": 119,
+          "y": 356,
+          "w": 665,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find one quarter of 4, 8, 12, 16 or 20 objects by sharing them into four equal groups."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s3",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "x_CkScFqnv",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Equal parts"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "0kZwF4tarw",
+          "type": "text",
+          "x": 64,
+          "y": 160,
+          "w": 392,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Equal parts are the same size."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "faZgAtysqb",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 291,
+          "w": 12,
+          "h": 12,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "Fhl-R8b9YB",
+          "type": "text",
+          "x": 97,
+          "y": 274,
+          "w": 359,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One half: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "one of two equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "zv4yzQFuiR",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 402,
+          "w": 12,
+          "h": 12,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "_AD5wWeKuV",
+          "type": "text",
+          "x": 97,
+          "y": 385,
+          "w": 359,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One quarter: ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "one of four equal parts."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "aKSlyUNhbz",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "NZq70W-A_N",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22The%20first%20rectangle%20has%20one%20of%20two%20equal%20parts%20shaded.%20The%20second%20has%20one%20of%20four%20equal%20parts%20shaded.%22%3E%3Ctitle%3EThe%20first%20rectangle%20has%20one%20of%20two%20equal%20parts%20shaded.%20The%20second%20has%20one%20of%20four%20equal%20parts%20shaded.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cpath%20d%3D%22M0%2C32.07%20H39.25%20V81.13%20H0%20Z%22%20fill%3D%22%230a5ca2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39.25%2C32.07%20H78.5%20V81.13%20H39.25%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M0%2C32.07%20H39.25%20V81.13%20H0%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M0%2C32.07%20H39.25%20V81.13%20H0%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39.25%2C32.07%20H78.5%20V81.13%20H39.25%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39.25%2C32.07%20H78.5%20V81.13%20H39.25%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M0%2C32.07%20H78.5%20V81.13%20H0%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2239.25%22%20y%3D%22113.33%22%3E%C2%BD%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M106.5%2C32.07%20H126.13%20V81.13%20H106.5%20Z%22%20fill%3D%22%230a5ca2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M126.13%2C32.07%20H145.75%20V81.13%20H126.13%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M145.75%2C32.07%20H165.38%20V81.13%20H145.75%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M165.38%2C32.07%20H185%20V81.13%20H165.38%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M106.5%2C32.07%20H126.13%20V81.13%20H106.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M106.5%2C32.07%20H126.13%20V81.13%20H106.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M126.13%2C32.07%20H145.75%20V81.13%20H126.13%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M126.13%2C32.07%20H145.75%20V81.13%20H126.13%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M145.75%2C32.07%20H165.38%20V81.13%20H145.75%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M145.75%2C32.07%20H165.38%20V81.13%20H145.75%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M165.38%2C32.07%20H185%20V81.13%20H165.38%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M165.38%2C32.07%20H185%20V81.13%20H165.38%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M106.5%2C32.07%20H185%20V81.13%20H106.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22145.75%22%20y%3D%22113.33%22%3E%C2%BC%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "The first rectangle has one of two equal parts shaded. The second has one of four equal parts shaded.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 4 minutes checking the meaning of equal parts. Ask pupils to point to each part in the diagram and say how many equal parts make a half and a quarter.\n\nMisconceptions\nPupils may think parts are equal just because there are two or four of them. Emphasise that equal parts must be the same size; the number of parts alone is not enough.\n\nBackground\nThis introduces the key idea needed for both fractions of shapes and sharing groups of objects."
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "QnFQcUj_w7",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name the shaded part"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "CsOS_BI3Nc",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 267,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "TwxT4URGHc",
+          "type": "image",
+          "name": "Diagram",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 223,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20438%20124%22%20width%3D%22788%22%20height%3D%22223%22%20role%3D%22img%22%20aria-label%3D%22Shape%20A%20is%20a%20square%20with%20four%20equal%20parts%20and%20one%20shaded.%20Shape%20B%20is%20a%20circle%20with%20two%20equal%20parts%20and%20one%20shaded.%22%3E%3Ctitle%3EShape%20A%20is%20a%20square%20with%20four%20equal%20parts%20and%20one%20shaded.%20Shape%20B%20is%20a%20circle%20with%20two%20equal%20parts%20and%20one%20shaded.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cpath%20d%3D%22M62.9%2C2%20H100.5%20V39.6%20H62.9%20Z%22%20fill%3D%22%230a5ca2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C2%20H138.1%20V39.6%20H100.5%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C39.6%20H100.5%20V77.2%20H62.9%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C39.6%20H138.1%20V77.2%20H100.5%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C2%20H100.5%20V39.6%20H62.9%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C2%20H100.5%20V39.6%20H62.9%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C2%20H138.1%20V39.6%20H100.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C2%20H138.1%20V39.6%20H100.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C39.6%20H100.5%20V77.2%20H62.9%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C39.6%20H100.5%20V77.2%20H62.9%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C39.6%20H138.1%20V77.2%20H100.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M100.5%2C39.6%20H138.1%20V77.2%20H100.5%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M62.9%2C2%20H138.1%20V77.2%20H62.9%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22100.5%22%20y%3D%22109.4%22%3EA%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C2%20A37.6%2C37.6%200%200%201%20329.5%2C77.2%20Z%22%20fill%3D%22%230a5ca2%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C77.2%20A37.6%2C37.6%200%200%201%20329.5%2C2%20Z%22%20fill%3D%22%23dbecf5%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C2%20A37.6%2C37.6%200%200%201%20329.5%2C77.2%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C2%20A37.6%2C37.6%200%200%201%20329.5%2C77.2%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C77.2%20A37.6%2C37.6%200%200%201%20329.5%2C2%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23EDF8FC%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M329.5%2C39.6%20L329.5%2C77.2%20A37.6%2C37.6%200%200%201%20329.5%2C2%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%222%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M291.9%2C39.6%20A37.6%2C37.6%200%201%201%20367.1%2C39.6%20A37.6%2C37.6%200%201%201%20291.9%2C39.6%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%223.5%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22329.5%22%20y%3D%22109.4%22%3EB%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Shape A is a square with four equal parts and one shaded. Shape B is a circle with two equal parts and one shaded.",
+          "fit": "contain"
+        },
+        {
+          "id": "I7fIgqMgLj",
+          "type": "text",
+          "x": 64,
+          "y": 441,
+          "w": 832,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say half or quarter for A and B. Explain why."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 5 minutes. Pupils decide independently, then explain A and B to a partner. Take answers as a class and ask pupils to justify each using the number of equal parts.\n\nAnswers\nA: one quarter. B: one half.\n\nMisconceptions\nPupils may count the parts without checking whether they are equal, or may call one shaded part a half regardless of how many equal parts there are. Ask: ‘How many equal parts are there altogether?’ Then connect one shaded part to that total.\n\nBackground\nA fraction names a number of equal parts of a whole. The shaded part is one part in each example."
+    },
+    {
+      "id": "s5",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "J9xvdhZJlg",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Two parts: always halves?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "LGtu6Ub5gA",
+          "type": "text",
+          "x": 64,
+          "y": 160,
+          "w": 392,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "These are two parts, but they are not halves."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "N0kyJMtO4e",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 282,
+          "w": 392,
+          "h": 188,
+          "fill": "#d6e8f3",
+          "radius": 12,
+          "name": "Key card"
+        },
+        {
+          "id": "fprLmBO34k",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 282,
+          "w": 5,
+          "h": 188,
+          "fill": "#0A5CA2",
+          "radius": 0,
+          "name": "Key edge"
+        },
+        {
+          "id": "MXSnbU04TD",
+          "type": "text",
+          "x": 92,
+          "y": 305,
+          "w": 341,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Equal"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Key label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "9MuZvNIgTx",
+          "type": "text",
+          "x": 92,
+          "y": 354,
+          "w": 341,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Halves must be the same size."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "a3Zv5sRFSg",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "dfpQl_u4SW",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22A%20bar%20is%20split%20into%20a%20short%20shaded%20part%20and%20a%20part%20three%20times%20as%20long.%22%3E%3Ctitle%3EA%20bar%20is%20split%20into%20a%20short%20shaded%20part%20and%20a%20part%20three%20times%20as%20long.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%225.08%22%20y%3D%2278.4%22%20width%3D%2239.09%22%20height%3D%2279.6%22%20fill%3D%22%230A5CA2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%23FFFFFF%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2224.63%22%20y%3D%22128%22%3E1%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2250.33%22%20y%3D%2278.4%22%20width%3D%22129.59%22%20height%3D%2279.6%22%20fill%3D%22%23dde8f2%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22115.13%22%20y%3D%22128%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M2%2C68.6%20Q2%2C57.4%2013.2%2C57.4%20L81.3%2C57.4%20Q92.5%2C57.4%2092.5%2C46.2%20Q92.5%2C57.4%20103.7%2C57.4%20L171.8%2C57.4%20Q183%2C57.4%20183%2C68.6%22%20fill%3D%22none%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22600%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.5%22%20y%3D%2229.4%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A bar is split into a short shaded part and a part three times as long.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 4 minutes. Ask pupils to decide whether the parts are halves and explain their reasoning to a partner. Invite a pupil to point out which part is larger.\n\nAnswers\nNo. The two parts are different sizes, so they are not halves. Halves must be two equal parts.\n\nMisconceptions\nPupils may think any two parts make halves. Use the bar to compare the sizes: two unequal parts are not halves, even though there are two of them.\n\nBackground\nThe word ‘half’ means one of two equal parts, not simply one of two pieces."
+    },
+    {
+      "id": "s6",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "ADWMUxmKaV",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Choose one answer"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "wA1mjjWW5H",
+          "type": "text",
+          "x": 64,
+          "y": 197,
+          "w": 832,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which tells us about one quarter?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Stem",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "crjDx4Yeiz",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 264,
+          "w": 265,
+          "h": 179,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "yNUEMZu9MZ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 84,
+          "y": 333,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "C9Sse_goMP",
+          "type": "text",
+          "x": 139,
+          "y": 307,
+          "w": 170,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One of two equal parts"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "-lotXTHSN-",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 347,
+          "y": 264,
+          "w": 265,
+          "h": 179,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "9_pHA2aFeh",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 367,
+          "y": 333,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Hruysod5fW",
+          "type": "text",
+          "x": 422,
+          "y": 307,
+          "w": 170,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One of four equal parts"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "-9LXFBEPaq",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 630,
+          "y": 264,
+          "w": 265,
+          "h": 179,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Option",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "o6jwtPlGGa",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 650,
+          "y": 333,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "fsiPtSkbIO",
+          "type": "text",
+          "x": 705,
+          "y": 284,
+          "w": 170,
+          "h": 139,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One of four parts of any size"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 3 minutes. Pupils choose an answer silently, then show or say their choice. Ask them to explain why the other choices do not describe a quarter.\n\nAnswers\nB: One of four equal parts.\n\nMisconceptions\n‘One of two equal parts’ describes a half. ‘One of four parts of any size’ misses the need for equal parts. A quarter is one of four equal parts.\n\nBackground\nThe same equal-parts idea applies whether the whole is a shape or a group of objects."
+    },
+    {
+      "id": "s7",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "mhctOSioZT",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find half of 10"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "jUcoNRjkdY",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 175,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "OJsUWuPlHc",
+          "type": "text",
+          "x": 128,
+          "y": 172,
+          "w": 328,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Count 10 counters."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "SyvNvpeRLa",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 246,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "G8WGqiQu5R",
+          "type": "text",
+          "x": 128,
+          "y": 243,
+          "w": 328,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Share into 2 equal groups."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "1PeA7sBxcU",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 363,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "MtkpnYtNpu",
+          "type": "text",
+          "x": 128,
+          "y": 360,
+          "w": 328,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Count one group: half of 10 is 5."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "rh4iI1uaDU",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "f2E_Jzi4qs",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20193%20158%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Two%20rings%20each%20contain%20five%20counters.%22%3E%3Ctitle%3ETwo%20rings%20each%20contain%20five%20counters.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2246.25%22%20cy%3D%2255.22%22%20r%3D%2238.85%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2246.25%22%20cy%3D%2238.52%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2243.36%22%20cy%3D%2235.63%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2262.14%22%20cy%3D%2250.06%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2259.25%22%20cy%3D%2247.17%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2256.07%22%20cy%3D%2268.74%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2253.18%22%20cy%3D%2265.85%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2236.43%22%20cy%3D%2268.74%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2233.54%22%20cy%3D%2265.85%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2230.36%22%20cy%3D%2250.06%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2227.47%22%20cy%3D%2247.17%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2246.25%22%20y%3D%22123.47%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22138.75%22%20cy%3D%2255.22%22%20r%3D%2238.85%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22138.75%22%20cy%3D%2238.52%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22135.86%22%20cy%3D%2235.63%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22154.64%22%20cy%3D%2250.06%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22151.75%22%20cy%3D%2247.17%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22148.57%22%20cy%3D%2268.74%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22145.68%22%20cy%3D%2265.85%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22128.93%22%20cy%3D%2268.74%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22126.04%22%20cy%3D%2265.85%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22122.86%22%20cy%3D%2250.06%22%20r%3D%229.03%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22119.97%22%20cy%3D%2247.17%22%20r%3D%222.71%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22138.75%22%20y%3D%22123.47%22%3E5%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Two rings each contain five counters.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 6 minutes working through the example together. Pupils count the counters, share them one at a time between two groups, then count one group aloud.\n\nMisconceptions\nPupils may count all 10 counters as the answer, or make groups that are not equal. Check that each group has the same number; one group contains 5.\n\nBackground\nSharing equally into two groups is a practical way to find half. It builds on pupils’ experience of counting objects and making equal groups."
+    },
+    {
+      "id": "s8",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "zNwv9lojHO",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find half of 12"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "FWE3HHISVz",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 221,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "vnEANKtID4",
+          "type": "image",
+          "name": "Diagram",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 177,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20438%2098%22%20width%3D%22788%22%20height%3D%22177%22%20role%3D%22img%22%20aria-label%3D%22Twelve%20counters%20are%20shown%20in%20one%20row%2C%20not%20yet%20shared.%22%3E%3Ctitle%3ETwelve%20counters%20are%20shown%20in%20one%20row%2C%20not%20yet%20shared.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2233.68%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2229.78%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2266.65%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2262.74%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2299.62%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2295.71%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22132.58%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22128.68%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22165.55%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22161.64%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22198.52%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22194.61%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22231.48%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22227.58%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22264.45%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22260.54%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22297.42%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22293.51%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22330.38%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22326.48%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22363.35%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22359.44%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22396.32%22%20cy%3D%2249%22%20r%3D%2212.21%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22392.41%22%20cy%3D%2245.09%22%20r%3D%223.66%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Twelve counters are shown in one row, not yet shared.",
+          "fit": "contain"
+        },
+        {
+          "id": "wZEkt2nEPq",
+          "type": "text",
+          "x": 64,
+          "y": 395,
+          "w": 832,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw 2 rings. Share these counters equally. Count one group."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 5 minutes. Pupils draw two rings and share the counters equally, then count one group. Ask them to compare their groups with a partner.\n\nAnswers\nHalf of 12 is 6.\n\nMisconceptions\nPupils may give 12 as the answer because that is the starting total, or make unequal groups. Remind them to share one counter at a time between the two rings and check the groups match.\n\nBackground\nSharing one at a time helps ensure the groups are equal. Counting one of the two groups gives the half."
+    },
+    {
+      "id": "s9",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "0g7KbhCOYD",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find a quarter of 12"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "JUNsx0cLwQ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 175,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "e94jCSsqGT",
+          "type": "text",
+          "x": 128,
+          "y": 172,
+          "w": 328,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Count 12 counters."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "BbCOSwmqvr",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 246,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "mT87USsFXY",
+          "type": "text",
+          "x": 128,
+          "y": 243,
+          "w": 328,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Share into 4 equal groups."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "zfXFub7eJO",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 363,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "EZMa5uHpMi",
+          "type": "text",
+          "x": 128,
+          "y": 360,
+          "w": 328,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Count one group: a quarter of 12 is 3."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "BQgrDCXAVg",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "me8BM6mfhG",
+          "type": "image",
+          "name": "Diagram",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20268%20218%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Four%20rings%20each%20contain%20three%20counters.%22%3E%3Ctitle%3EFour%20rings%20each%20contain%20three%20counters.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%2232.82%22%20r%3D%2230.82%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%2219.57%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2261.62%22%20cy%3D%2216.19%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2276.48%22%20cy%3D%2239.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2273.1%22%20cy%3D%2236.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2253.52%22%20cy%3D%2239.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2250.14%22%20cy%3D%2236.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2265%22%20y%3D%2293.04%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22195%22%20cy%3D%2232.82%22%20r%3D%2230.82%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22195%22%20cy%3D%2219.57%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22191.62%22%20cy%3D%2216.19%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22206.48%22%20cy%3D%2239.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22203.1%22%20cy%3D%2236.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22183.52%22%20cy%3D%2239.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22180.14%22%20cy%3D%2236.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22195%22%20y%3D%2293.04%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%22141.82%22%20r%3D%2230.82%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%22128.57%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2261.62%22%20cy%3D%22125.19%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2276.48%22%20cy%3D%22148.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2273.1%22%20cy%3D%22145.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2253.52%22%20cy%3D%22148.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2250.14%22%20cy%3D%22145.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2265%22%20y%3D%22202.04%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3Ccircle%20cx%3D%22195%22%20cy%3D%22141.82%22%20r%3D%2230.82%22%20fill%3D%22%23d2e5f1%22%20stroke%3D%22none%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%22195%22%20cy%3D%22128.57%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22191.62%22%20cy%3D%22125.19%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22206.48%22%20cy%3D%22148.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22203.1%22%20cy%3D%22145.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22183.52%22%20cy%3D%22148.45%22%20r%3D%2210.56%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22180.14%22%20cy%3D%22145.07%22%20r%3D%223.17%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22195%22%20y%3D%22202.04%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Four rings each contain three counters.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Running\nSpend about 6 minutes modelling the sharing. Pupils count the counters, distribute them one at a time into four groups, and count one group together.\n\nMisconceptions\nPupils may share the 12 counters into two groups instead of four, or count all four groups as the answer. Check that there are four equal groups and that one group has 3.\n\nBackground\nA quarter of a group is found by sharing the whole into four equal groups and counting one group."
+    },
+    {
+      "id": "s10",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "8ErStEihTY",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find a quarter of 16"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "fsY14wlt-b",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 221,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "FUFle-dL-J",
+          "type": "image",
+          "name": "Diagram",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 177,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20438%2098%22%20width%3D%22788%22%20height%3D%22177%22%20role%3D%22img%22%20aria-label%3D%22Sixteen%20counters%20are%20shown%20in%20one%20row%2C%20not%20yet%20shared.%22%3E%3Ctitle%3ESixteen%20counters%20are%20shown%20in%20one%20row%2C%20not%20yet%20shared.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Ccircle%20cx%3D%2267.51%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2262.52%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22109.65%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22104.66%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22151.79%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22146.8%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22193.93%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22188.94%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22236.07%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22231.08%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22278.21%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22273.22%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22320.35%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22315.36%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22362.49%22%20cy%3D%2227.93%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22357.5%22%20cy%3D%2222.94%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%2267.51%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2262.52%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22109.65%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22104.66%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22151.79%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22146.8%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22193.93%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22188.94%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22236.07%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22231.08%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22278.21%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22273.22%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22320.35%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22315.36%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3Ccircle%20cx%3D%22362.49%22%20cy%3D%2270.07%22%20r%3D%2215.61%22%20fill%3D%22%230A5CA2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22357.5%22%20cy%3D%2265.08%22%20r%3D%224.68%22%20fill%3D%22%23EDF8FC%22%20fill-opacity%3D%220.45%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Sixteen counters are shown in one row, not yet shared.",
+          "fit": "contain"
+        },
+        {
+          "id": "wq2TDsI9C2",
+          "type": "text",
+          "x": 64,
+          "y": 395,
+          "w": 832,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw 4 rings. Share these counters equally. Count one group."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 5 minutes. Pupils draw four rings, share the counters equally, and count one group. Have them check that all four groups contain the same number.\n\nAnswers\nA quarter of 16 is 4.\n\nMisconceptions\nPupils may divide into two groups because they have just found halves, or give the total number of counters. Point to the four rings and ask how many counters are in one equal group.\n\nBackground\nSharing 16 into four equal groups gives 4 in each group. This is one of the target amounts for finding a quarter."
+    },
+    {
+      "id": "s11",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "1mXn2KP2UP",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw and share"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "tQfY2oAqeJ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 183,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "miA5qYedVT",
+          "type": "text",
+          "x": 128,
+          "y": 180,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find half of 18 counters."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "tkwfXUdshL",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 247,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "KWkioi12Jy",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 270,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "N_7jiJHmEL",
+          "type": "text",
+          "x": 128,
+          "y": 267,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find a quarter of 8 counters."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "YUXmYpXbY4",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 334,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "V1sbN0xLtl",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 357,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "DJJubobkgr",
+          "type": "text",
+          "x": 128,
+          "y": 354,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Stretch: find half and a quarter of 20. Compare."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "faX0xqtkTI",
+          "type": "text",
+          "x": 128,
+          "y": 429,
+          "w": 696,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw equal groups. Circle the group you count."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 10 minutes. Pupils work independently, drawing equal groups and circling the group counted. Ask early finishers to explain their comparison for 20; take a few methods as a class.\n\nAnswers\n1. Half of 18 is 9.\n2. A quarter of 8 is 2.\n3. Half of 20 is 10 and a quarter of 20 is 5. Half is greater than a quarter; 10 is twice 5.\n\nMisconceptions\nPupils may use two groups for the quarter task, or report the total across all groups rather than one group. For the stretch, some may think the half and quarter are equal; share 20 into two groups and four groups to compare 10 and 5.\n\nBackground\nThe stretch compares two fractions of the same whole. For these amounts, a half is twice the size of a quarter."
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "-39014EGEx",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Plan a picnic"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "UbTHE5Sh65",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 183,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "Qdt91kRnp_",
+          "type": "text",
+          "x": 128,
+          "y": 180,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw a square sandwich. Show one quarter."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "jx8DG4W7BT",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 247,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "sAa-LiujL4",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 270,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "P4l5VSd2to",
+          "type": "text",
+          "x": 128,
+          "y": 267,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "There are 14 grapes. Find half of them."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "EGMsUjRgp0",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 334,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "L6cAU-iKAC",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 357,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "wpFdbh_WU2",
+          "type": "text",
+          "x": 128,
+          "y": 354,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "There are 20 berries. Find a quarter of them."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "k2F7iNuMRJ",
+          "type": "text",
+          "x": 128,
+          "y": 429,
+          "w": 696,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw your answers on the worksheet."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": "Running\nSpend about 10 minutes. Pupils complete the three tasks on the worksheet. Ask them to show equal parts in the sandwich and draw or describe their sharing for the fruit. Review answers together.\n\nAnswers\n1. A square split into four equal parts, with one part shown as the quarter.\n2. Half of 14 grapes is 7 grapes.\n3. A quarter of 20 berries is 5 berries.\n\nMisconceptions\nPupils may draw four unequal parts for the sandwich; ask whether each part is the same size. They may share 14 into four groups or 20 into two groups, so check that they choose two groups for a half and four for a quarter.\n\nBackground\nThe sandwich task applies quarters to a shape, while the grapes and berries apply sharing to amounts. Fourteen can be shared equally into two groups; 20 can be shared equally into four."
+    }
+  ],
+  "bakeoff": {
+    "arm": "T",
+    "brief": "y2-maths-halves-quarters",
+    "objectives": [
+      {
+        "teacher": "Identify one half and one quarter of a shape split into two or four equal parts.",
+        "pupil": "Identify one half and one quarter of a shape split into two or four equal parts."
+      },
+      {
+        "teacher": "Find one half of an even number of objects up to 20 by sharing them into two equal groups.",
+        "pupil": "Find one half of an even number of objects up to 20 by sharing them into two equal groups."
+      },
+      {
+        "teacher": "Find one quarter of 4, 8, 12, 16 or 20 objects by sharing them into four equal groups.",
+        "pupil": "Find one quarter of 4, 8, 12, 16 or 20 objects by sharing them into four equal groups."
+      }
+    ]
+  }
+}

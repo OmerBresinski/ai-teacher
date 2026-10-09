@@ -43,6 +43,8 @@ export {
   svgOfDataUrl,
   withBuilds,
 } from "./builds";
+export { pileSpec } from "./groups";
+export { mendParticleLabels, particleLabelFaults } from "./labels3";
 export {
   CHARS_PER_WORD,
   captionRule,
@@ -103,6 +105,12 @@ export { family as svgFontFamily } from "./svg";
 export function parseDiagram(spec: unknown): DiagramSpec | undefined {
   // Round 8: a spec in its meaning form (meaning.ts) is drawn from the form code derives.
   spec = fromMeaning(spec);
+  // BAKEOFF base4f (unshared): a one-group pile is drawn as is (groups.ts `pileSpec`).
+  if ((spec as { pile?: unknown })?.pile === true) {
+    const p = spec as { kind?: unknown; total?: unknown; groups?: unknown };
+    if (p.kind === "equal-groups" && p.groups === 1 && typeof p.total === "number")
+      return spec as DiagramSpec;
+  }
   const r = DiagramSpecSchema.safeParse(spec);
   if (r.success) return r.data;
   return longLabels > 0 ? parseLong(spec, r.error.issues).spec : undefined;

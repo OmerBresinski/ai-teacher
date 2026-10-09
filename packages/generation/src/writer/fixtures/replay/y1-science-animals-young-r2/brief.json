@@ -1,0 +1,19 @@
+{
+  "id": "y1-science-animals-young",
+  "topic": "Animals and their young",
+  "subject": "Science",
+  "yearGroup": "Year 1",
+  "year": 1,
+  "keyStage": "ks1",
+  "theme": "splash",
+  "readingLevel": "Year 1",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "ABLATE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

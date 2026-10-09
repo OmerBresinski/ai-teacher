@@ -1,0 +1,84 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": "Pupils may think parts are equal just because there are two or four of them. Emphasise that equal parts must be the same size; the number of parts alone is not enough.",
+      "background": "This introduces the key idea needed for both fractions of shapes and sharing groups of objects.",
+      "run": "Spend about 4 minutes checking the meaning of equal parts. Ask pupils to point to each part in the diagram and say how many equal parts make a half and a quarter."
+    },
+    {
+      "n": 4,
+      "answers": ["A: one quarter. B: one half."],
+      "misconceptions": "Pupils may count the parts without checking whether they are equal, or may call one shaded part a half regardless of how many equal parts there are. Ask: ‘How many equal parts are there altogether?’ Then connect one shaded part to that total.",
+      "background": "A fraction names a number of equal parts of a whole. The shaded part is one part in each example.",
+      "run": "Spend about 5 minutes. Pupils decide independently, then explain A and B to a partner. Take answers as a class and ask pupils to justify each using the number of equal parts."
+    },
+    {
+      "n": 5,
+      "answers": [
+        "No. The two parts are different sizes, so they are not halves. Halves must be two equal parts."
+      ],
+      "misconceptions": "Pupils may think any two parts make halves. Use the bar to compare the sizes: two unequal parts are not halves, even though there are two of them.",
+      "background": "The word ‘half’ means one of two equal parts, not simply one of two pieces.",
+      "run": "Spend about 4 minutes. Ask pupils to decide whether the parts are halves and explain their reasoning to a partner. Invite a pupil to point out which part is larger."
+    },
+    {
+      "n": 6,
+      "answers": ["One of four equal parts."],
+      "misconceptions": "‘One of two equal parts’ describes a half. ‘One of four parts of any size’ misses the need for equal parts. A quarter is one of four equal parts.",
+      "background": "The same equal-parts idea applies whether the whole is a shape or a group of objects.",
+      "run": "Spend about 3 minutes. Pupils choose an answer silently, then show or say their choice. Ask them to explain why the other choices do not describe a quarter."
+    },
+    {
+      "n": 7,
+      "answers": null,
+      "misconceptions": "Pupils may count all 10 counters as the answer, or make groups that are not equal. Check that each group has the same number; one group contains 5.",
+      "background": "Sharing equally into two groups is a practical way to find half. It builds on pupils’ experience of counting objects and making equal groups.",
+      "run": "Spend about 6 minutes working through the example together. Pupils count the counters, share them one at a time between two groups, then count one group aloud."
+    },
+    {
+      "n": 8,
+      "answers": ["Half of 12 is 6."],
+      "misconceptions": "Pupils may give 12 as the answer because that is the starting total, or make unequal groups. Remind them to share one counter at a time between the two rings and check the groups match.",
+      "background": "Sharing one at a time helps ensure the groups are equal. Counting one of the two groups gives the half.",
+      "run": "Spend about 5 minutes. Pupils draw two rings and share the counters equally, then count one group. Ask them to compare their groups with a partner."
+    },
+    {
+      "n": 9,
+      "answers": null,
+      "misconceptions": "Pupils may share the 12 counters into two groups instead of four, or count all four groups as the answer. Check that there are four equal groups and that one group has 3.",
+      "background": "A quarter of a group is found by sharing the whole into four equal groups and counting one group.",
+      "run": "Spend about 6 minutes modelling the sharing. Pupils count the counters, distribute them one at a time into four groups, and count one group together."
+    },
+    {
+      "n": 10,
+      "answers": ["A quarter of 16 is 4."],
+      "misconceptions": "Pupils may divide into two groups because they have just found halves, or give the total number of counters. Point to the four rings and ask how many counters are in one equal group.",
+      "background": "Sharing 16 into four equal groups gives 4 in each group. This is one of the target amounts for finding a quarter.",
+      "run": "Spend about 5 minutes. Pupils draw four rings, share the counters equally, and count one group. Have them check that all four groups contain the same number."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "Half of 18 is 9.",
+        "A quarter of 8 is 2.",
+        "Half of 20 is 10 and a quarter of 20 is 5. Half is greater than a quarter; 10 is twice 5."
+      ],
+      "misconceptions": "Pupils may use two groups for the quarter task, or report the total across all groups rather than one group. For the stretch, some may think the half and quarter are equal; share 20 into two groups and four groups to compare 10 and 5.",
+      "background": "The stretch compares two fractions of the same whole. For these amounts, a half is twice the size of a quarter.",
+      "run": "Spend about 10 minutes. Pupils work independently, drawing equal groups and circling the group counted. Ask early finishers to explain their comparison for 20; take a few methods as a class."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "A square split into four equal parts, with one part shown as the quarter.",
+        "Half of 14 grapes is 7 grapes.",
+        "A quarter of 20 berries is 5 berries."
+      ],
+      "misconceptions": "Pupils may draw four unequal parts for the sandwich; ask whether each part is the same size. They may share 14 into four groups or 20 into two groups, so check that they choose two groups for a half and four for a quarter.",
+      "background": "The sandwich task applies quarters to a shape, while the grapes and berries apply sharing to amounts. Fourteen can be shared equally into two groups; 20 can be shared equally into four.",
+      "run": "Spend about 10 minutes. Pupils complete the three tasks on the worksheet. Ask them to show equal parts in the sandwich and draw or describe their sharing for the fruit. Review answers together."
+    }
+  ]
+}

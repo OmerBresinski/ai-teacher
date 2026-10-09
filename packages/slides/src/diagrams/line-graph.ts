@@ -24,6 +24,13 @@ function nextNice(s: number): number {
   return up * p;
 }
 
+/**
+ * D44 (BAKEOFF A/B, readGraph): a measured line graph a pupil must read
+ * values from gets graph paper (an upright line at every x tick and faint minor lines at a fifth of
+ * the y step) and a dot on every plotted point, so "the volume at 20 s" can be read. Qualitative graphs and energy profiles have no ticks, so they never get it.
+ */
+const readGraph = true;
+
 export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
   const small = sub(fs);
@@ -201,6 +208,27 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     );
     out.push(text(x, left - 8, Y(v), [num(v)], { fs: small, anchor: "end", fill: c.ink }));
   }
+  // readGraph (D44): graph paper, drawn under everything else.
+  if (readGraph && yt.length > 1 && xt.length > 1) {
+    const ystep = (yt[1] as number) - (yt[0] as number);
+    const minor = ystep / 5;
+    for (
+      let v = (yt[0] as number) + minor;
+      v < (yt[yt.length - 1] as number) - minor / 2;
+      v += minor
+    )
+      if (
+        Math.abs((v - (yt[0] as number)) / ystep - Math.round((v - (yt[0] as number)) / ystep)) >
+        1e-6
+      )
+        out.push(
+          `<line x1="${n(left)}" y1="${n(Y(v))}" x2="${n(left + pw)}" y2="${n(Y(v))}" stroke="${c.line}" stroke-width="0.75" stroke-opacity="0.6"/>`,
+        );
+    for (const v of xt)
+      out.push(
+        `<line x1="${n(X(v))}" y1="${n(top)}" x2="${n(X(v))}" y2="${n(top + ph)}" stroke="${c.line}" stroke-width="1.5"/>`,
+      );
+  }
   // Modern looks: no tick marks and no upright axes; the gridlines and the baseline carry the scale.
   const modern = look().preset !== "current";
   for (const v of xt) {
@@ -329,6 +357,12 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       out.push(
         `<path d="${d}" fill="none" stroke="${colour}" stroke-width="${n(Math.max(3.5, fs * 0.22))}" stroke-linejoin="round" stroke-linecap="round"/>`,
       );
+      // readGraph (D44): a dot on every plotted point, so a pupil reads the data, not the curve.
+      if (readGraph && !g.qualitative && !energy)
+        for (const [px, py] of s.points)
+          out.push(
+            `<circle cx="${n(X(px))}" cy="${n(Ys(py))}" r="${n(Math.max(3.5, fs * 0.2))}" fill="${colour}" stroke="${c.surface}" stroke-width="1.5"/>`,
+          );
     }
   }
 
