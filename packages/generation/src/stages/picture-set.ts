@@ -351,10 +351,62 @@ export async function makePictureSet(
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
   deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, aspect: slotAspect });
 
-  /** Panels judged alone and as a set; each passing panel placed. */
-  const settle = async (panels: Uint8Array[], judged: PanelVerdict[], usd: number, set: string) => {
+  // Partial-set fallback (one regenerate per slot): each panel not placed is generated alone, same
+  // request in the lesson's look, judged alone; placed panels are kept.
+  const solo = (a: SetAsk, k: number): Promise<SetPicture | undefined> =>
+    nonFatal(
+      async () => {
+        const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
+        if (!made) return undefined;
+        const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
+        deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
+        if (!verdict.ok) return undefined;
+        return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
+      },
+      (e) => {
+        deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
+        return undefined;
+      },
+    );
+  /** Panels a judge has failed, already being made alone (C4): at most once per slot. */
+  const early = new Map<number, Promise<SetPicture | undefined>>();
+  const regenerate = (k: number) => {
+    const a = asks[k];
+    if (!a || early.has(k)) return;
+    const p = solo(a, k);
+    // Awaited at the end (a fatal error still stops the set there); never left unhandled.
+    void Promise.allSettled([p]);
+    early.set(k, p);
+  };
+  /**
+   * Panels judged alone and as a set; each passing panel placed. C4 (TEACH-110 part h): the set
+   * judge runs beside the panel judges (both need only the panel bytes); with `early`, a panel
+   * either judge fails is made alone at once instead of after both verdicts.
+   */
+  const settle = async (
+    panels: Uint8Array[],
+    judging: Promise<PanelVerdict>[],
+    usd: number,
+    set: string,
+    early = false,
+  ) => {
     const urls = panels.map(dataUrl);
-    const verdict = await deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined));
+    const verdictP = deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined));
+    if (early) {
+      judging.forEach((j, k) => {
+        void j.then(
+          (v) => (v.ok ? undefined : regenerate(k)),
+          () => undefined,
+        );
+      });
+      void verdictP.then(
+        (v) => {
+          if (v && !v.same) for (const k of v.odd) regenerate(k);
+        },
+        () => undefined,
+      );
+    }
+    const [judged, verdict] = await Promise.all([Promise.all(judging), verdictP]);
     const odd = new Set(verdict?.odd ?? []);
     const pass = judged.map((j, k) => j.ok && (!verdict || verdict.same || !odd.has(k)));
     deps.log({
@@ -385,10 +437,8 @@ export async function makePictureSet(
         const dup = duplicatePanels(panels);
         if (dup.length)
           throw new Error(`strip repeats a panel: ${dup.map((pair) => pair.join("=")).join(", ")}`);
-        const judged = await Promise.all(
-          asks.map((a, k) => judge(a, dataUrl(panels[k] ?? new Uint8Array()))),
-        );
-        first = await settle(panels, judged, made.costUsd, setKey);
+        const judging = asks.map((a, k) => judge(a, dataUrl(panels[k] ?? new Uint8Array())));
+        first = await settle(panels, judging, made.costUsd, setKey);
         if (first.every(Boolean)) break;
       }
     } else if (mode === "grid") {
@@ -409,7 +459,12 @@ export async function makePictureSet(
       // Two pictures of the set on near-identical cells: the later one fails.
       for (const [a, b] of duplicatePanels(panels)) judged[Math.max(a, b)] = { ok: false };
       deps.log({ ev: "grid-pick", set: setKey, judged: all.map((v) => v.ok), pick });
-      first = await settle(panels, judged, made.costUsd, setKey);
+      first = await settle(
+        panels,
+        judged.map((j) => Promise.resolve(j)),
+        made.costUsd,
+        setKey,
+      );
     } else {
       // Single pictures (the default for 3 or 4 until the grid's paid check): each made alone in
       // the lesson's look, judged alone, then all of them by the set judge.
@@ -421,11 +476,13 @@ export async function makePictureSet(
       );
       if (made.every((m) => !m)) return "none";
       const panels = made.map((m) => m?.bytes ?? new Uint8Array());
-      const judged = await Promise.all(
-        asks.map((a, k) => (made[k] ? judge(a, dataUrl(panels[k] as Uint8Array)) : { ok: false })),
+      const judging = asks.map((a, k) =>
+        made[k]
+          ? judge(a, dataUrl(panels[k] as Uint8Array))
+          : Promise.resolve<PanelVerdict>({ ok: false }),
       );
       const usd = made.reduce((t, m) => t + (m?.costUsd ?? 0), 0);
-      first = await settle(panels, judged, usd, `${setKey}#solo`);
+      first = await settle(panels, judging, usd, `${setKey}#solo`, true);
     }
     return undefined;
   };
@@ -434,24 +491,7 @@ export async function makePictureSet(
     return undefined;
   });
   if (tried === "none") return asks.map(() => undefined);
-  // Partial-set fallback (one regenerate per slot): each panel not placed is generated alone, same
-  // request in the lesson's look, judged alone; placed panels are kept.
-  const solo = (a: SetAsk, k: number): Promise<SetPicture | undefined> =>
-    nonFatal(
-      async () => {
-        const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
-        if (!made) return undefined;
-        const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
-        deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
-        if (!verdict.ok) return undefined;
-        return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
-      },
-      (e) => {
-        deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
-        return undefined;
-      },
-    );
-  const out = await Promise.all(asks.map((a, k) => first[k] ?? solo(a, k)));
+  const out = await Promise.all(asks.map((a, k) => first[k] ?? early.get(k) ?? solo(a, k)));
   deps.log({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
   return out;
 }
