@@ -201,8 +201,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     JSON.parse(
       k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
     );
+  // The repair's layouts menu: the one the lab's repair calls sent (BAKEOFF prompts/T, heading
+  // room in characters), not the arm's menu the system text was built from (TEACH-110 part f).
   const layoutsMenu = (k: string) =>
-    k === "KS1" ? P.layoutsKS1 : k === "KS2" ? P.layoutsKS2 : P.layoutsKS3_5;
+    k === "KS1" ? P.repairLayoutsKS1 : k === "KS2" ? P.repairLayoutsKS2 : P.repairLayoutsKS3_5;
   const baseVisuals = (k: string) =>
     k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 

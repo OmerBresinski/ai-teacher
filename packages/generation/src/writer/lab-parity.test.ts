@@ -6,7 +6,9 @@ import { openaiSchemaFaults } from "@tj/slides/diagrams";
 import pino from "pino";
 import { catalogue, libSchema } from "../library/catalogue";
 import { checkObjectives } from "../objectives-check";
+import { SET_JUDGE_JSON_SCHEMA, SET_JUDGE_SYSTEM } from "../prompts/set-judge";
 import { WRITER_OBJECTIVES, writerObjectivesCall } from "../stages/objectives";
+import { directedSetJudges } from "../stages/picture-set";
 import { shapeOf } from "../stages/shared";
 import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
@@ -144,4 +146,42 @@ describe("strict JSON on the writer path", () => {
         expect(openaiSchemaFaults(schema, true)).toEqual([]);
     },
   );
+});
+
+describe("set judge request", () => {
+  test("sends the lab's request: system message, low-detail panels, set_judge, its schema, strict", async () => {
+    const { bodies, deps } = capture(JSON.stringify({ same: true, odd: [], why: "same calf" }));
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const v = await directedSetJudges(sampleBriefLesson(), deps).judgeSet(
+      ["a calf", "a cow"],
+      [png, png],
+    );
+    expect(v).toEqual({ same: true, odd: [], why: "same calf" });
+    const b = bodies[0] as Record<string, unknown>;
+    expect(b.model).toBe("gpt-6-luna");
+    expect(b.reasoning_effort).toBe("low");
+    expect(b.max_completion_tokens).toBe(2000);
+    expect(b.messages).toEqual([
+      { role: "system", content: SET_JUDGE_SYSTEM },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Panel 1: a calf\nPanel 2: a cow" },
+          { type: "image_url", image_url: { url: png, detail: "low" } },
+          { type: "image_url", image_url: { url: png, detail: "low" } },
+        ],
+      },
+    ]);
+    expect(b.response_format).toEqual({
+      type: "json_schema",
+      json_schema: { name: "set_judge", strict: true, schema: SET_JUDGE_JSON_SCHEMA },
+    });
+  });
+});
+
+test("the repair's layouts menu is the one the lab's repair calls sent (room in characters)", () => {
+  const P = writerBundle();
+  for (const m of [P.repairLayoutsKS1, P.repairLayoutsKS2, P.repairLayoutsKS3_5])
+    expect(m).toMatch(/^Layouts\. A heading is up to \d+ characters\./);
 });

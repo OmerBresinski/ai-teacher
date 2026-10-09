@@ -32,6 +32,11 @@ const UNPINNED = new Set([
   "T/caps.KS2.json",
   "T/caps.KS3-5.json",
   "shared/diagram-kinds.json",
+  // The repair's layouts menu: read by the lab harness from BAKEOFF prompts/T, never pinned
+  // (TEACH-110 part f); the compiled-request comparison checks it against the runs' requests.
+  "repair/layouts.KS1.txt",
+  "repair/layouts.KS2.txt",
+  "repair/layouts.KS3-5.txt",
 ]);
 const BUNDLES = Object.values(WRITER_BUNDLES) as WriterBundle[];
 

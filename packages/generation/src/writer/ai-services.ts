@@ -1,7 +1,7 @@
 import type { AiCallContext } from "@tj/ai";
 import { costUsd, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
-import { providerOptionsFor } from "../call";
+import { imageMediaType, providerOptionsFor } from "../call";
 import type { PipelineDeps } from "../types";
 import {
   type ChatReq,
@@ -76,6 +76,30 @@ export function chatCallOptions(r: ChatReq, signal: AbortSignal) {
   };
 }
 
+/**
+ * A small call's user turn: the text alone, or the text then each picture as an `image_url` at
+ * low detail, as base4f-p123's harness sent them (TEACH-110 part f).
+ */
+export function chatUserTurn(r: Pick<ChatReq, "user" | "images">) {
+  if (!r.images?.length) return { prompt: r.user };
+  return {
+    messages: [
+      {
+        role: "user" as const,
+        content: [
+          { type: "text" as const, text: r.user },
+          ...r.images.map((url) => ({
+            type: "file" as const,
+            data: new URL(url),
+            mediaType: imageMediaType(url),
+            providerOptions: { openai: { imageDetail: "low" } },
+          })),
+        ],
+      },
+    ],
+  };
+}
+
 /** The writer call's options: strict JSON and a `system` message, as base4f-p123 sent them. */
 export function writerProviderOptions(model: string, effort: WriterReq["effort"]) {
   const base = providerOptionsFor(model, effort, true) as {
@@ -116,7 +140,7 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
       const result = await generateText({
         model,
         system: r.system,
-        prompt: r.user,
+        ...chatUserTurn(r),
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         ...chatCallOptions(r, deps.signal),
       });
