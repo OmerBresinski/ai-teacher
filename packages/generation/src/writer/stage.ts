@@ -794,10 +794,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   let frozen: { slides: readonly unknown[]; own: number } | undefined;
   const deckSlide = (i: number) =>
     (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
-  const check = () => {
-    const res = baseCheck();
-    // A slide that repeats another goes to repair to be made different or merged.
-    const dup = duplicateFaults(
+  const duplicates = () =>
+    duplicateFaults(
       Array.from({ length: n }, (_, i) => i)
         .filter((i) => repairable(deckSlide(i), i))
         .map((i) => {
@@ -805,7 +803,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
         }),
     );
-    for (const [i, f] of dup) res[i]?.faults.push(f);
+  const check = () => {
+    const res = baseCheck();
+    // A slide that repeats another goes to repair to be made different or merged
+    // (duplicateLogOnly: it is logged once below and never repaired).
+    if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
     for (let i = 0; i < n; i++)
       res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
@@ -817,6 +819,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  if (flags.duplicateLogOnly)
+    for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
   // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {

@@ -93,3 +93,27 @@ describe("fixTableToText", () => {
     expect(on.pathOf(3)).not.toBe("table-text");
   });
 });
+
+describe("duplicateLogOnly", () => {
+  test("a repeated slide is logged and never sent to repair", async () => {
+    const all = [
+      "y1-science-animals-young",
+      "y2-maths-halves-quarters",
+      "y5-maths-fractions-of-amounts",
+      "y5-maths-fractions-of-amounts-r2",
+    ];
+    let seen = 0;
+    let saved = 0;
+    for (const b of all) {
+      const off = await run(b, {});
+      const on = await run(b, { duplicateLogOnly: true });
+      seen += on.events.filter((e) => e.ev === "duplicate-seen").length;
+      saved += off.calls.length - on.calls.length;
+      expect(on.events.some((e) => e.ev === "repair" && String(e.fix).includes("duplicate"))).toBe(
+        false,
+      );
+    }
+    expect(seen).toBeGreaterThan(0);
+    expect(saved).toBeGreaterThan(0);
+  });
+});
