@@ -32,6 +32,11 @@ export interface FakeCall {
    * out of the fake that stands in for the model).
    */
   promptText: string;
+  /**
+   * The system-role text of the prompt, joined. For tests that pin what a stage compiles into its
+   * request (e.g. the writer offers no diagram-library menu), never for shaping an answer.
+   */
+  systemText?: string | undefined;
   /** The provider's signal, for signal-aware scripts and deadline assertions. */
   abortSignal?: AbortSignal | undefined;
 }
@@ -84,6 +89,11 @@ function userText(prompt: FakePrompt): string {
     for (const part of message.content) if (part.type === "text") parts.push(part.text);
   }
   return parts.join("\n");
+}
+
+/** The system turns' text, joined. */
+function systemText(prompt: FakePrompt): string {
+  return prompt.flatMap((m) => (m.role === "system" ? [m.content] : [])).join("\n");
 }
 
 /** The user turns' image (file) parts, counted. */
@@ -143,6 +153,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       context,
       usage: {},
       promptText: userText(prompt),
+      systemText: systemText(prompt),
       abortSignal,
       ...(providerOptions !== undefined ? { providerOptions } : {}),
       ...(imageParts(prompt) > 0 ? { imageParts: imageParts(prompt) } : {}),

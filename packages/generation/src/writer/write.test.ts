@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createFakeAi, type FakeCall } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
+import { WRITER_WORDS } from "../library/catalogue";
 import { WRITER_PLANNED_VERSION } from "../stages/objectives-first";
 import { write } from "../stages/write";
 import {
@@ -203,5 +204,20 @@ describe("repair, restage and fallback order (FOR-CODE item 5)", () => {
     expect(calls.slice(restageAt + 1).some((c) => c.system === "repair")).toBe(false);
     // The picture is gone from the slide (fixed fallback: figure dropped).
     expect((out.slides[4]?.elements ?? []).some((e) => e.name === "Photo")).toBe(false);
+  });
+});
+
+describe("the diagram library is off for the writer (TEACH-247 part j)", () => {
+  test("the writer's compiled request has no library menu, and no fill call runs", async () => {
+    const ai = fakeAi();
+    const out = await write(initialState(planned()), recordingDeps(ai));
+    expect(out.lesson.generation?.stage).toBe("generated");
+    const lesson = ai.calls.filter((c) => c.context?.promptVersion === `${WRITER_VERSION}/lesson`);
+    expect(lesson).toHaveLength(1);
+    const system = lesson[0]?.systemText ?? "";
+    expect(system).toContain("Diagram kinds:");
+    expect(system).not.toContain(WRITER_WORDS.menuLine);
+    expect(system).not.toContain(WRITER_WORDS.header);
+    expect(ai.calls.some((c) => (c.systemText ?? "").startsWith("Set the parameters"))).toBe(false);
   });
 });
