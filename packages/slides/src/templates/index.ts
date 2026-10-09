@@ -87,7 +87,15 @@ export type Figure =
     }
   | { diagram: unknown }
   /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
-  | { drawn: { src: string; aspect: number; alt?: string } };
+  | {
+      drawn: {
+        src: string;
+        aspect: number;
+        alt?: string;
+        /** Brings its own canvas (a diagram-library model, ADR 0035): no wash panel, no inset. */
+        bare?: boolean;
+      };
+    };
 export type TemplateId =
   | "title"
   | "objectives"
@@ -607,8 +615,9 @@ function figurePanel(
     return tilePanel(c, [{ ...f, tiles: undefined }, ...f.tiles], rect, f.tileMode ?? "grid");
   if ("drawn" in f) {
     if (!svgDrawsSomething(f.drawn.src)) return false;
-    box(c, rect, wash(c.t));
-    const i = G.inset;
+    // A library model's own cream canvas is its panel: a wash and inset round it doubled the margin.
+    if (!f.drawn.bare) box(c, rect, wash(c.t));
+    const i = f.drawn.bare ? 0 : G.inset;
     const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
     const a = f.drawn.aspect || inner.w / inner.h;
     const w = Math.min(inner.w, Math.round(inner.h * a));

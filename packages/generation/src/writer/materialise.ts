@@ -101,6 +101,21 @@ const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" i
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
 
+/** A figure the diagram library draws (`kind: "model"`). */
+export const isModel = (f: unknown): boolean =>
+  isDia(f) && (f as { kind?: unknown }).kind === "model";
+
+/**
+ * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
+ * output that still carries them, read in the notes rather than dropped. The stage logs it.
+ */
+export function modelPoints(s: S | undefined): string[] {
+  if (!s || s.template !== "big-visual" || !isModel(s.figure)) return [];
+  return pts(s.points).map((p) =>
+    typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
+  );
+}
+
 /**
  * The menu's merged entries back to catalogue templates: `visual-text` is picture-text or
  * diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape (a `kind` is a
@@ -155,7 +170,8 @@ function figureNow(
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
     } as Figure;
   if (v.status === "diagram") {
-    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string } })?.drawn;
+    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string; bare?: boolean } })
+      ?.drawn;
     return (d ? { drawn: d } : { diagram: v.spec }) as Figure;
   }
   if (v.status === "failed") return undefined;
@@ -280,6 +296,7 @@ export function toInput(
     case "big-picture":
     case "big-diagram": {
       const f = fig(template === "big-picture" ? "picture" : "diagram");
+      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it.
       return f
         ? { template, heading, lead, figure: f }
         : { template: "explain", heading, lead: lead ?? "" };
@@ -374,6 +391,16 @@ export function toInput(
  * words stand in for labels; a freeform figure keeps `{kind, shows, labels}` for the drawer.
  */
 function diagramVisualAsk(key: string, f: S): VisualAsk {
+  // A library model (TEACH-247 part h): the writer's intent is what it shows; code fills it.
+  if (f.kind === "model")
+    return {
+      key,
+      type: "diagram",
+      kind: "model",
+      shows: String(f.intent ?? ""),
+      labels: [],
+      spec: { model: f.model, intent: f.intent, alt: f.alt },
+    };
   const spec = writerSpecOf(f);
   const base = {
     key,

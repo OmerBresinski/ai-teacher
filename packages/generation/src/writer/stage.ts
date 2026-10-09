@@ -1,11 +1,14 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
+import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
+import { libraryDiagram } from "../library/fill";
 import { pointOf } from "../stages/picture-director";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { writerDrawerSystem } from "./diagram-contract.gen";
 import {
+  DRAWER_TIMEOUT_MS,
   type DrawerCall,
   drawWriterDiagram,
   layoutSlotProbe,
@@ -59,6 +62,7 @@ import {
   codeTitle,
   type Materialised,
   materialise,
+  modelPoints,
   type Plan,
   questionsOf,
   type VisualAsk,
@@ -77,6 +81,7 @@ import {
 import { writerSchema } from "./schema";
 import {
   isFatal,
+  nonFatal,
   SMALL_MODEL,
   WRITER_EFFORT,
   WRITER_MODEL,
@@ -130,6 +135,12 @@ export type WriterRun = {
    * call (gpt-6-luna). Absent: every diagram slot stays a placeholder (or `visual`'s state).
    */
   drawDiagrams?: { callDrawer: DrawerCall };
+  /**
+   * The diagram library (TEACH-247 part h, ADR 0035): the writer sees the shipped models'
+   * catalogue and may ask for one; its params are filled on the drawer's call, the model is drawn
+   * by code, and a model that cannot be drawn falls back to the drawer. Needs `drawDiagrams`.
+   */
+  library?: boolean;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
   /**
@@ -230,14 +241,29 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     P.user,
   );
   const stageKey = promptStage(brief.keyStage);
-  const schema = writerSchema(stageKey, brief.slides, P);
+  // The library's catalogue goes after base4's diagram kinds, in the system text and the schema.
+  // A library that fails to load is no library: the writer runs with base4's kinds only.
+  const models =
+    run.library && run.drawDiagrams
+      ? await nonFatal(
+          () => catalogue(stageKey),
+          (e) => {
+            log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
+            return [];
+          },
+        )
+      : [];
+  const schema = libSchema(
+    writerSchema(stageKey, brief.slides, P),
+    models.map((m) => m.id),
+  );
   const main = run.recordedWriter
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: writerSystem(brief, P),
+          system: libSystem(writerSystem(brief, P), models),
           user: localise(user),
           schema,
           name: "lesson",
@@ -300,39 +326,100 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         if (a.type !== "diagram" || !s) continue;
         const slot = slotOf(String(s.template ?? ""));
         const box = slotBox(base.stage, slot);
+        const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
         jobs.push(
-          drawWriterDiagram(
-            {
-              key: a.key,
-              kind: a.kind,
-              shows: a.shows,
-              labels: a.labels,
-              ...(a.spec !== undefined ? { spec: a.spec } : {}),
-              words: wordsOf(s),
-              yearGroup: brief.yearGroup,
-              stage: base.stage,
-              slot: {
-                placement: slot === "full" ? "across the slide" : "beside text",
-                w: box.w,
-                h: box.h,
-                name: slot,
+          nonFatal(
+            async () => {
+              // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
+              if (a.kind !== "model") return a;
+              const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
+              // Library models are full slides only (ADR 0035): a side-slot ask from an old or
+              // replayed output is today's drawer's, for the model's base kind.
+              if (slot !== "full") {
+                const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
+                log({ ev: "lib-side-slot", slide: i + 1, model: want.model, kind });
+                return { ...a, kind, labels: [], spec: undefined };
+              }
+              if (modelPoints(s).length)
+                log({ ev: "lib-points-to-notes", slide: i + 1, model: want.model });
+              const r = await libraryDiagram(
+                {
+                  key: a.key,
+                  model: String(want.model ?? ""),
+                  intent: String(want.intent ?? a.shows),
+                  alt: typeof want.alt === "string" ? want.alt : undefined,
+                  words: wordsOf(s),
+                  yearGroup: brief.yearGroup,
+                  lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
+                  question,
+                },
+                async (req) =>
+                  (
+                    await callDrawer({
+                      model: "gpt-6-luna",
+                      effort: "low",
+                      ...req,
+                      name: "diagram",
+                      strict: false,
+                      timeoutMs: DRAWER_TIMEOUT_MS,
+                    })
+                  ).out,
+                (e) => log({ ...e, slide: i + 1 }),
+              );
+              if (r.ok) {
+                const { src, aspect, alt } = r.drawing;
+                drawnDiagrams.set(`${i}:${a.key}`, {
+                  status: "diagram",
+                  spec: { drawn: { src, aspect, alt, bare: true } },
+                });
+                log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
+                relay(i);
+                return undefined;
+              }
+              return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
+            },
+            // A throw anywhere in the library path is the drawer's job, never a rejected batch.
+            (e) => {
+              log({ ev: "lib-failed", slide: i + 1, key: a.key, err: String(e).slice(0, 200) });
+              return a.kind === "model"
+                ? { ...a, kind: FALLBACK_KIND, labels: [], spec: undefined }
+                : a;
+            },
+          ).then((a2) => {
+            if (!a2) return;
+            return drawWriterDiagram(
+              {
+                key: a2.key,
+                kind: a2.kind,
+                shows: a2.shows,
+                labels: a2.labels,
+                ...(a2.spec !== undefined ? { spec: a2.spec } : {}),
+                words: wordsOf(s),
+                yearGroup: brief.yearGroup,
+                stage: base.stage,
+                slot: {
+                  placement: slot === "full" ? "across the slide" : "beside text",
+                  w: box.w,
+                  h: box.h,
+                  name: slot,
+                },
+                question,
               },
-              question: QUESTION_TEMPLATES.has(String(s.template ?? "")),
-            },
-            {
-              callDrawer,
-              drawerSystem: writerDrawerSystem,
-              theme: base.theme,
-              probe: layoutSlotProbe,
-              log: (e) => log({ ...e, slide: i + 1 }),
-            },
-          ).then((r) => {
-            drawnDiagrams.set(
-              `${i}:${a.key}`,
-              r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
-            );
-            log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
-            relay(i);
+              {
+                callDrawer,
+                drawerSystem: writerDrawerSystem,
+                theme: base.theme,
+                probe: layoutSlotProbe,
+                log: (e) => log({ ...e, slide: i + 1 }),
+              },
+            ).then((r) => {
+              drawnDiagrams.set(
+                `${i}:${a.key}`,
+                r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
+              );
+              log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
+              relay(i);
+            });
           }),
         );
       }
@@ -346,7 +433,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     for (let i = 0; i < Math.max(n, 2); i++) {
       const m = laid.get(i) ?? (i === 0 ? title : undefined);
       if (!m) continue;
-      slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" });
+      const own = notes.get(i)?.notes ?? "";
+      const moved = modelPoints(plan.slides[i] as S | undefined).filter(
+        (p) => p && !own.includes(p),
+      );
+      const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
+      slides.push({ id: `s${i + 1}`, ...m.slide, notes: [own, said].filter(Boolean).join("\n\n") });
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
     }
