@@ -348,4 +348,31 @@ export const TARGETED: Case[] = [
     preset: "y4-further-away",
     params: {},
   },
+  {
+    id: "food_chain",
+    label: "r2: a long name on a narrow card grows the card, never spills out of it",
+    expect: "drawn",
+    preset: "y2-grass-rabbit-fox",
+    params: {
+      organisms: [
+        { kind: "grass", name: "Children counted these carefully during the long" },
+        { kind: "rabbit", name: "Rabbit" },
+        { kind: "fox", name: "Fox" },
+      ],
+    },
+  },
+  {
+    id: "materials_test",
+    label: "r2: long object names keep a gutter and their material a line of its own",
+    expect: "drawn",
+    preset: "rec-float-sink",
+    params: {},
+  },
+  {
+    id: "timeline",
+    label: "r2: era names stay clear of event stems in every era row",
+    expect: "drawn",
+    preset: "y2-my-life",
+    params: {},
+  },
 ];

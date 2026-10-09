@@ -1,7 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { buildCount, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { BASE_KIND, catalogue, EXCLUDED, FALLBACK_KIND, libSchema, libSystem } from "./catalogue";
 import { checkParams, fillSchema, libraryDiagram, questionStep } from "./fill";
+import { endDrawThread } from "./guard";
 import { MODEL_LOADERS } from "./models";
 import { kit, loadModel, MAX_SVG_BYTES, renderLibraryModel } from "./render";
 
@@ -142,3 +143,5 @@ describe("fill and check", () => {
     expect(none).toMatchObject({ ok: false, fallbackKind: "cycle" });
   });
 });
+
+afterAll(() => endDrawThread());

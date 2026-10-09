@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { MODEL_LOADERS } from "./models";
-import { kit, libraryDom } from "./render";
+import { kit, libraryDom, loadModel, renderLibraryModel } from "./render";
 import { TARGETED } from "./vendor/tools/corpus-cases";
 
 /*
@@ -75,4 +75,42 @@ test("flexibility corpus, shipped models", async () => {
   expect(results.filter((r) => r.altMiss?.length).map((r) => `${key(r)}: ${r.altMiss}`)).toEqual(
     [],
   );
+}, 600_000);
+
+/*
+ * Fit on the corpus extremes (each model's first preset as is, with the longest labels and with the
+ * extreme numbers): no word is drawn off the slide or below its foot, measured with the Lexend
+ * advance tables the worker lays out with. The same cases were checked against the lab's Chromium
+ * render, pixel for pixel, when this shipped (PR #422).
+ */
+test("corpus extremes: no words off the slide", async () => {
+  await kit();
+  // @ts-expect-error the lab's corpus runner is untyped JS (vendored from lab/library/tools)
+  const CO = await import("./vendor/tools/corpus.js");
+  const { win } = libraryDom();
+  const g = globalThis as Record<string, unknown>;
+  const off: string[] = [];
+  let drawn = 0;
+  for (const id of Object.keys(MODEL_LOADERS)) {
+    const m = await loadModel(id);
+    const first = m?.presets[0]?.id;
+    g.document = win.document;
+    g.getComputedStyle = (el: unknown) => win.getComputedStyle(el as never);
+    const cases = (
+      (await CO.casesFor(id)) as { label: string; params: Record<string, unknown> }[]
+    ).filter((c) =>
+      [" as is", " longLabels max", " oddNumbers max"].some((s) => c.label === `${first}${s}`),
+    );
+    delete g.document;
+    delete g.getComputedStyle;
+    for (const c of cases) {
+      if (!m?.validate(c.params).ok) continue;
+      const r = await renderLibraryModel(id, c.params).catch(() => undefined);
+      if (!r) continue;
+      drawn++;
+      off.push(...r.offSlide.map((w) => `${id} | ${c.label}: ${w}`));
+    }
+  }
+  expect(drawn).toBeGreaterThan(100);
+  expect(off).toEqual([]);
 }, 600_000);

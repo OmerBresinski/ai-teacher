@@ -522,8 +522,8 @@ export function render(root, P, ctx) {
     const A = { s: kSet, cls: 'rise', c: `${kProp}:soft` };
     const pose = RIGS[M.test](rg, o, A, ctx, P, kT, kSet);
     // names under the bench
-    const nm = o.name ? textBlock(g, 0, 572, o.name, { cls: 'ts-label', maxW: cw - 4, maxLines: 2, lh: 32, anchor: 'middle', edit: `objects.${o.i}.name`, a: { fill: 'var(--ink)' } }) : null;
-    const my = nm ? 572 + nm.h - 4 : 572;
+    const nm = o.name ? textBlock(g, 0, 572, o.name, { cls: 'ts-label', maxW: cw - 28 /* a 14-unit gutter each side: neighbouring names never touch */, maxLines: 2, lh: 32, anchor: 'middle', edit: `objects.${o.i}.name`, a: { fill: 'var(--ink)' } }) : null;
+    const my = nm ? 572 + nm.h + 2 : 572; // a full line step under the name, so the material never touches it
     computed(T(g, 0, my, nm ? o.mat : cap1(o.mat), nm ? 'ts-small' : 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)' }), `objects.${o.i}.material`);
     if (my > GRID.bottom - 4) ctx.warn(`materials_test: the name “${o.name}” pushes its material below the slide's live area.`);
     // the result word above the rig, until the sort replaces it with the group heading

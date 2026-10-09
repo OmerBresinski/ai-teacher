@@ -41,16 +41,35 @@ image element `name: "Diagram"` whose `src` is an SVG data URL, with `builds` co
    draw the intent, or that does not render goes to `drawWriterDiagram` as the model's base kind
    (`bar_model` → `bar-model`, …) or `labelled-diagram`, with the intent as its request. From
    there today's chain applies (repair, restage); a slot is never left empty by the library.
-6. **What ships.** The vendored kit and models are copied byte for byte from lab/lib-next
-   0c27ede7 into `library/vendor/` (two comments reworded), and only models whose latest
-   counter-judge passed and that render on happy-dom are registered (`library/models.ts`); the
-   rest are listed with reasons in `library/catalogue.ts` `EXCLUDED`.
+6. **What ships.** The kit and models are vendored from lab/lib-next `32dd891e` (library round 2
+   plus the long-label fixes) into `library/vendor/`, byte for byte except two reworded comments.
+   Every registered model that draws outside a browser is shipped (`library/models.ts`, 52). The two
+   left out are listed with reasons in `library/catalogue.ts` `EXCLUDED`: `states_of_matter` needs
+   DOMPoint and SVG transform lists, and `river_real` loads 29 MB of river data at run time.
+7. **Bounded and on a deadline.** Before anything draws, the writer's params are held to the
+   schema's bounds. Lists, numbers and strings that have no bound get a default one (60 items,
+   ±1,000,000, 400 letters), and `__proto__`, `constructor` and `prototype` keys are dropped. The
+   draw runs on one shared worker thread (`library/render-worker.ts`, built as
+   `dist/library-render-worker.js`). Each drawing gets a 3 s deadline, and the thread is ended and
+   replaced after a missed deadline, after a fault, and every 40 drawings. A miss falls back to
+   the drawer.
 
 ## Consequences
 
 - The editor edits a library diagram as it edits a drawer diagram (move, resize, replace, delete);
   editing a model's params in the editor is not part of this decision.
 - Each library diagram adds about 80-120 KB to the lesson document (the font is most of it).
+- Measured on the bundled draw thread: the first drawing takes about 180 ms (the thread loads
+  happy-dom, the kit and the model), and later ones about 11 ms each. RSS goes from 32 MB to
+  about 116 MB with the thread loaded, and stays near 216 MB across 60 drawings with one recycle.
+- Fidelity (9 Oct): on 115 corpus extremes (each model's first preset as is, with the longest
+  labels and with the extreme numbers), the worker's SVG and the same models laid out natively in
+  Chromium were compared pixel by pixel at 1440 wide. 95 differ in under 0.2% of pixels and all
+  others in at most 3%, except one sequences_patterns case, where the whole row sits a little
+  further along (17%, same content). By eye, every pair has the same text fit and layout.
+  Getting there took two fixes: Lexend's weight 500 is measured between the 400 and 600 tables,
+  and curves and arcs are sampled for `getBBox`. `corpus.test.ts` checks the same extremes for
+  words drawn off the slide.
 - The library's corpus test runs in CI on happy-dom (`library/corpus.test.ts`): no throws, the
   audit's targeted cases, and alt text. Its Chromium clipping ratchet stays in the lab.
 - A model added later ships by passing its counter-judge, rendering in `library.test.ts`, and being

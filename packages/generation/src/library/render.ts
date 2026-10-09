@@ -111,9 +111,21 @@ export function typeOf(el: Element): { fs: number; weight: number } {
 }
 
 /** Width of a text element in slide units: Lexend advances (the primary theme's only family). */
-function textLength(el: Element): number {
+export function textLength(el: Element): number {
   const { fs, weight } = typeOf(el);
-  return textWidth(el.textContent ?? "", { stack: FONT_STACKS.lexend } as never, fs, weight);
+  return lexendWidth(el.textContent ?? "", fs, weight);
+}
+
+/**
+ * Lexend is one variable font: the advance tables hold 400, 600 and 700, and a weight between two
+ * of them is set between their widths (500, the kit's body weight, is not 600's width).
+ */
+export function lexendWidth(s: string, fs: number, weight: number): number {
+  const at = (w: number) => textWidth(s, { stack: FONT_STACKS.lexend } as never, fs, w);
+  if (weight <= 400) return at(400);
+  if (weight < 600) return at(400) + ((at(600) - at(400)) * (weight - 400)) / 200;
+  if (weight < 700) return at(600) + ((at(700) - at(600)) * (weight - 600)) / 100;
+  return at(700);
 }
 
 export function libraryDom() {
@@ -204,59 +216,138 @@ function parseTransform(t: string | null): M {
 }
 const num = (el: Element, k: string) => Number.parseFloat(el.getAttribute(k) ?? "") || 0;
 
-/** The points of a path's outline (control points included: a box that errs wide). */
+/** Points along a path's outline: curves and arcs sampled, so a box fits the drawn shape. */
 function pathPoints(d: string): [number, number][] {
   const out: [number, number][] = [];
   const toks = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g) ?? [];
   let cmd = "M";
-  let x = 0;
-  let y = 0;
-  let sx = 0;
-  let sy = 0;
+  let [x, y, sx, sy] = [0, 0, 0, 0];
+  let ctrl: [number, number] | undefined;
   let i = 0;
   const n = () => Number(toks[i++]);
+  const N = 12;
+  const cubic = (p1: number[], p2: number[], p3: number[]) => {
+    for (let k = 1; k <= N; k++) {
+      const t = k / N;
+      const m = 1 - t;
+      out.push([
+        m * m * m * x +
+          3 * m * m * t * (p1[0] as number) +
+          3 * m * t * t * (p2[0] as number) +
+          t * t * t * (p3[0] as number),
+        m * m * m * y +
+          3 * m * m * t * (p1[1] as number) +
+          3 * m * t * t * (p2[1] as number) +
+          t * t * t * (p3[1] as number),
+      ]);
+    }
+  };
+  const quad = (p1: number[], p2: number[]) => {
+    for (let k = 1; k <= N; k++) {
+      const t = k / N;
+      const m = 1 - t;
+      out.push([
+        m * m * x + 2 * m * t * (p1[0] as number) + t * t * (p2[0] as number),
+        m * m * y + 2 * m * t * (p1[1] as number) + t * t * (p2[1] as number),
+      ]);
+    }
+  };
+  const arc = (
+    rx0: number,
+    ry0: number,
+    rot: number,
+    large: number,
+    sweep: number,
+    x2: number,
+    y2: number,
+  ) => {
+    let rx = Math.abs(rx0);
+    let ry = Math.abs(ry0);
+    if (!rx || !ry) return void out.push([x2, y2]);
+    const phi = (rot * Math.PI) / 180;
+    const [c, s0] = [Math.cos(phi), Math.sin(phi)];
+    const dx = (x - x2) / 2;
+    const dy = (y - y2) / 2;
+    const x1p = c * dx + s0 * dy;
+    const y1p = -s0 * dx + c * dy;
+    const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lam > 1) [rx, ry] = [rx * Math.sqrt(lam), ry * Math.sqrt(lam)];
+    const num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+    const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+    const co = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, num / den));
+    const cxp = (co * rx * y1p) / ry;
+    const cyp = (-co * ry * x1p) / rx;
+    const cx = c * cxp - s0 * cyp + (x + x2) / 2;
+    const cy = s0 * cxp + c * cyp + (y + y2) / 2;
+    const ang = (ux: number, uy: number, vx: number, vy: number) =>
+      Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    const t1 = ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+    let dt = ang((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+    if (!sweep && dt > 0) dt -= 2 * Math.PI;
+    if (sweep && dt < 0) dt += 2 * Math.PI;
+    for (let k = 1; k <= 2 * N; k++) {
+      const t = t1 + (dt * k) / (2 * N);
+      out.push([
+        cx + rx * Math.cos(t) * c - ry * Math.sin(t) * s0,
+        cy + rx * Math.cos(t) * s0 + ry * Math.sin(t) * c,
+      ]);
+    }
+  };
   while (i < toks.length) {
     if (/[a-zA-Z]/.test(toks[i] ?? "")) cmd = toks[i++] as string;
-    const rel = cmd === cmd.toLowerCase();
+    else if (!Number.isFinite(Number(toks[i]))) break;
+    const rel = cmd !== cmd.toUpperCase();
     const C = cmd.toUpperCase();
+    const pt = (): [number, number] => {
+      const px = n() + (rel ? x : 0);
+      const py = n() + (rel ? y : 0);
+      return [px, py];
+    };
+    let nextCtrl: [number, number] | undefined;
     if (C === "Z") {
-      x = sx;
-      y = sy;
+      [x, y] = [sx, sy];
+      out.push([x, y]);
       if (i < toks.length && !/[a-zA-Z]/.test(toks[i] ?? "")) i++;
-      continue;
-    }
-    const pairs = { M: 1, L: 1, T: 1, C: 3, S: 2, Q: 2 }[C as "M"];
-    if (pairs) {
-      for (let p = 0; p < pairs; p++) {
-        const px = n() + (rel ? x : 0);
-        const py = n() + (rel ? y : 0);
-        out.push([px, py]);
-        if (p === pairs - 1) {
-          x = px;
-          y = py;
-        }
-      }
-      if (C === "M") {
-        sx = x;
-        sy = y;
-        cmd = rel ? "l" : "L";
-      }
+    } else if (C === "M") {
+      [x, y] = pt();
+      [sx, sy] = [x, y];
+      out.push([x, y]);
+      cmd = rel ? "l" : "L";
+    } else if (C === "L" || C === "T") {
+      const p = pt();
+      if (C === "T") {
+        const c1: [number, number] = ctrl ? [2 * x - ctrl[0], 2 * y - ctrl[1]] : [x, y];
+        quad(c1, p);
+        nextCtrl = c1;
+      } else out.push(p);
+      [x, y] = p;
     } else if (C === "H") {
       x = n() + (rel ? x : 0);
       out.push([x, y]);
     } else if (C === "V") {
       y = n() + (rel ? y : 0);
       out.push([x, y]);
+    } else if (C === "C" || C === "S") {
+      const c1: [number, number] =
+        C === "C" ? pt() : ctrl ? [2 * x - ctrl[0], 2 * y - ctrl[1]] : [x, y];
+      const c2 = pt();
+      const p = pt();
+      cubic(c1, c2, p);
+      nextCtrl = c2;
+      [x, y] = p;
+    } else if (C === "Q") {
+      const c1 = pt();
+      const p = pt();
+      quad(c1, p);
+      nextCtrl = c1;
+      [x, y] = p;
     } else if (C === "A") {
-      const rx = Math.abs(n());
-      const ry = Math.abs(n());
-      i += 3;
-      const px = n() + (rel ? x : 0);
-      const py = n() + (rel ? y : 0);
-      out.push([x - rx, y - ry], [px + rx, py + ry], [px - rx, py - ry], [x + rx, y + ry]);
-      x = px;
-      y = py;
+      const [rx, ry, rot, large, sweep] = [n(), n(), n(), n(), n()];
+      const p = pt();
+      arc(rx, ry, rot, large, sweep, p[0], p[1]);
+      [x, y] = p;
     } else i++;
+    ctrl = nextCtrl;
   }
   return out;
 }
@@ -297,6 +388,8 @@ function ownPoints(el: Element): [number, number][] | undefined {
   }
   if (tag === "path") return pathPoints(el.getAttribute("d") ?? "");
   if (tag === "text") {
+    // Words on a curve sit on their path, which is drawn (or measured) as its own mark.
+    if (el.querySelector("textPath, textpath")) return undefined;
     const { fs } = typeOf(el);
     // Tspans with their own x are lines; others are coloured runs of one line.
     const spans = [...el.querySelectorAll("tspan")].filter((t) => t.hasAttribute("x"));
@@ -379,7 +472,83 @@ export type LibraryDrawing = {
   alt: string;
   warnings: string[];
   bytes: number;
+  /** Words drawn off the slide or below its foot (the box from the Lexend advance tables). */
+  offSlide: string[];
 };
+
+/** Bounds for a list or a number whose schema sets none: a drawing never gets more. */
+export const DEFAULT_MAX_ITEMS = 60;
+export const DEFAULT_NUMBER_BOUND = 1_000_000;
+export const DEFAULT_MAX_LENGTH = 400;
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/**
+ * Params held to the schema's bounds before anything draws: every list cut to its maxItems (or
+ * DEFAULT_MAX_ITEMS), every number into its minimum and maximum (or +-DEFAULT_NUMBER_BOUND), every
+ * string to its maxLength (or DEFAULT_MAX_LENGTH), and no `__proto__`, `constructor` or
+ * `prototype` key at any depth. A value inside its bounds is returned as it is.
+ */
+export function clampToSchema(schema: unknown, value: unknown): unknown {
+  const s = (schema ?? {}) as J;
+  if (Array.isArray(value)) {
+    const max = typeof s.maxItems === "number" ? s.maxItems : DEFAULT_MAX_ITEMS;
+    return value.slice(0, max).map((v) => clampToSchema(s.items, v));
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return typeof s.minimum === "number" ? s.minimum : 0;
+    const lo = typeof s.minimum === "number" ? s.minimum : -DEFAULT_NUMBER_BOUND;
+    const hi = typeof s.maximum === "number" ? s.maximum : DEFAULT_NUMBER_BOUND;
+    return Math.min(hi, Math.max(lo, value));
+  }
+  if (typeof value === "string")
+    return value.slice(0, typeof s.maxLength === "number" ? s.maxLength : DEFAULT_MAX_LENGTH);
+  if (value && typeof value === "object") {
+    const props = (s.properties ?? {}) as Record<string, unknown>;
+    const out: J = {};
+    for (const [k, v] of Object.entries(value as J)) {
+      if (UNSAFE_KEYS.has(k)) continue;
+      out[k] = clampToSchema(props[k] ?? s.additionalProperties, v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/** Each visible text drawn off the slide or below the foot rule, as "words @x,y". */
+function wordsOffSlide(svg: Element, foot: Element | null): string[] {
+  const out: string[] = [];
+  const walk = (el: Element, m: M) => {
+    const tag = el.tagName.toLowerCase();
+    if (SKIP_TAGS.includes(tag) || el === foot) return;
+    if (el.classList.contains("off") || el.classList.contains("live")) return;
+    const mm = mul(m, parseTransform(el.getAttribute("transform")));
+    if (tag === "text") {
+      const words = (el.textContent ?? "").trim();
+      const pts = words ? ownPoints(el) : undefined;
+      if (pts?.length) {
+        const t = pts.map(([x, y]) => [
+          mm[0] * x + mm[2] * y + mm[4],
+          mm[1] * x + mm[3] * y + mm[5],
+        ]);
+        const xs = t.map((p) => p[0] as number);
+        const ys = t.map((p) => p[1] as number);
+        if (
+          Math.min(...xs) < -2 ||
+          Math.max(...xs) > W + 2 ||
+          Math.min(...ys) < -2 ||
+          Math.max(...ys) > FOOT + 4
+        )
+          out.push(
+            `${words.slice(0, 40)} @${Math.round(Math.min(...xs))},${Math.round(Math.min(...ys))}`,
+          );
+      }
+      return;
+    }
+    for (const c of el.children) walk(c, mm);
+  };
+  for (const c of svg.children) walk(c, ID);
+  return out;
+}
 
 const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const PAD = 18;
@@ -399,7 +568,7 @@ export async function renderLibraryModel(
   const k = await kit();
   return withDom(({ host }) => {
     // The slide's heading is the title: the drawing carries none.
-    const P = { ...params, title: "" };
+    const P = { ...(clampToSchema(model.params, params) as J), title: "" };
     const stage = k.mountSlide(host, model, P, { theme: "primary" });
     try {
       if (opts.step !== undefined) stage.show(opts.step, true);
@@ -407,6 +576,7 @@ export async function renderLibraryModel(
       const root = svg.firstElementChild;
       const foot = (root?.children[2] as Element | undefined) ?? null;
       const box = drawnBox(svg, foot);
+      const offSlide = wordsOffSlide(svg, foot);
       const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
       const x0 = Math.max(0, box ? box.x0 - PAD : 0);
       const x1 = Math.min(W, box ? box.x1 + PAD : W);
@@ -444,6 +614,7 @@ export async function renderLibraryModel(
         alt: stage.alt ?? model.meta.name,
         warnings: stage.warnings ?? [],
         bytes,
+        offSlide,
       };
     } finally {
       stage.destroy();

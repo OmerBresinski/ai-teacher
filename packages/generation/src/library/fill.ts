@@ -11,9 +11,10 @@
  * Any failure returns the drawer kind to fall back to, never an empty slot. Never throws, except a
  * budget or abort error from the call, which stops the job as every other call's does.
  */
-import { nonFatal } from "../writer/services";
+import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
-import { kit, type LibraryDrawing, loadModel, renderLibraryModel } from "./render";
+import { drawLibraryModel } from "./guard";
+import { clampToSchema, kit, type LibraryDrawing, loadModel } from "./render";
 import type { J, LibRefusal } from "./types";
 
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
@@ -49,18 +50,20 @@ export async function checkParams(
   for (const key of NOT_FILLED) delete own[key];
   const shape = k.schemaCheck(fillSchema(m.params), own);
   if (shape.length) return { refusals: shape, warnings: [] };
-  const params = k.withDefaults(m.params, own);
-  try {
-    const v = m.validate(params);
-    return v.ok
-      ? { params, refusals: [], warnings: v.warnings ?? [] }
-      : { refusals: v.refusals, warnings: [] };
-  } catch (e) {
-    return {
+  // No __proto__ / constructor keys reach the kit's withDefaults; bounds hold before it runs.
+  const params = k.withDefaults(m.params, clampToSchema(fillSchema(m.params), own));
+  return nonFatalSync(
+    () => {
+      const v = m.validate(params);
+      return v.ok
+        ? { params, refusals: [], warnings: v.warnings ?? [] }
+        : { refusals: v.refusals, warnings: [] };
+    },
+    (e) => ({
       refusals: [{ path: "(all)", reason: `validate threw: ${String(e).slice(0, 160)}` }],
       warnings: [],
-    };
-  }
+    }),
+  );
 }
 
 /** What `intent` asks of model `id` that it cannot draw (empty: it can, as far as we know). */
@@ -79,12 +82,12 @@ export async function questionStep(id: string, params: J): Promise<number | unde
   if (!keys?.length) return undefined;
   const m = await loadModel(id);
   if (!m?.builds) return undefined;
-  let steps: { key: string }[];
-  try {
-    steps = m.builds(params).steps;
-  } catch {
-    return undefined;
-  }
+  const builds = m.builds;
+  const steps = nonFatalSync(
+    () => builds(params).steps,
+    () => undefined,
+  );
+  if (!steps) return undefined;
   const first = steps.findIndex((s) => keys.includes(s.key.split(":")[0] as string));
   if (first <= 0) return undefined;
   return first - 1;
@@ -178,7 +181,7 @@ export async function libraryDiagram(
   }
   const p = params;
   const drawn = await nonFatal(
-    () => renderLibraryModel(ask.model, p, step === undefined ? {} : { step }),
+    () => drawLibraryModel(ask.model, p, step === undefined ? {} : { step }),
     (e) => String(e).slice(0, 160),
   );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);

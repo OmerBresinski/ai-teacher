@@ -1,7 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { endDrawThread } from "../library/guard";
 import { loadModel } from "../library/render";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
@@ -88,3 +89,5 @@ describe("writer stage: library models", () => {
     expect(svgOfDataUrl(String(diagram?.src))).not.toContain("theme-primary");
   }, 60_000);
 });
+
+afterAll(() => endDrawThread());

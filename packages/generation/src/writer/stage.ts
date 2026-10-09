@@ -1,7 +1,7 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
-import { catalogue, libSchema, libSystem } from "../library/catalogue";
+import { catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf } from "../stages/picture-director";
 import { type WriterBundleId, writerBundle } from "./bundle";
@@ -80,6 +80,7 @@ import {
 import { writerSchema } from "./schema";
 import {
   isFatal,
+  nonFatal,
   SMALL_MODEL,
   WRITER_EFFORT,
   WRITER_MODEL,
@@ -240,7 +241,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   );
   const stageKey = promptStage(brief.keyStage);
   // The library's catalogue goes after base4's diagram kinds, in the system text and the schema.
-  const models = run.library && run.drawDiagrams ? await catalogue(stageKey) : [];
+  // A library that fails to load is no library: the writer runs with base4's kinds only.
+  const models =
+    run.library && run.drawDiagrams
+      ? await nonFatal(
+          () => catalogue(stageKey),
+          (e) => {
+            log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
+            return [];
+          },
+        )
+      : [];
   const schema = libSchema(
     writerSchema(stageKey, brief.slides, P),
     models.map((m) => m.id),
@@ -316,46 +327,55 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         const box = slotBox(base.stage, slot);
         const question = QUESTION_TEMPLATES.has(String(s.template ?? ""));
         jobs.push(
-          (async () => {
-            // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
-            if (a.kind !== "model") return a;
-            const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
-            const r = await libraryDiagram(
-              {
-                key: a.key,
-                model: String(want.model ?? ""),
-                intent: String(want.intent ?? a.shows),
-                alt: typeof want.alt === "string" ? want.alt : undefined,
-                words: wordsOf(s),
-                yearGroup: brief.yearGroup,
-                lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
-                question,
-              },
-              async (req) =>
-                (
-                  await callDrawer({
-                    model: "gpt-6-luna",
-                    effort: "low",
-                    ...req,
-                    name: "diagram",
-                    strict: false,
-                    timeoutMs: DRAWER_TIMEOUT_MS,
-                  })
-                ).out,
-              (e) => log({ ...e, slide: i + 1 }),
-            );
-            if (r.ok) {
-              const { src, aspect, alt } = r.drawing;
-              drawnDiagrams.set(`${i}:${a.key}`, {
-                status: "diagram",
-                spec: { drawn: { src, aspect, alt } },
-              });
-              log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
-              relay(i);
-              return undefined;
-            }
-            return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
-          })().then((a2) => {
+          nonFatal(
+            async () => {
+              // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
+              if (a.kind !== "model") return a;
+              const want = (a.spec ?? {}) as { model?: unknown; intent?: unknown; alt?: unknown };
+              const r = await libraryDiagram(
+                {
+                  key: a.key,
+                  model: String(want.model ?? ""),
+                  intent: String(want.intent ?? a.shows),
+                  alt: typeof want.alt === "string" ? want.alt : undefined,
+                  words: wordsOf(s),
+                  yearGroup: brief.yearGroup,
+                  lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
+                  question,
+                },
+                async (req) =>
+                  (
+                    await callDrawer({
+                      model: "gpt-6-luna",
+                      effort: "low",
+                      ...req,
+                      name: "diagram",
+                      strict: false,
+                      timeoutMs: DRAWER_TIMEOUT_MS,
+                    })
+                  ).out,
+                (e) => log({ ...e, slide: i + 1 }),
+              );
+              if (r.ok) {
+                const { src, aspect, alt } = r.drawing;
+                drawnDiagrams.set(`${i}:${a.key}`, {
+                  status: "diagram",
+                  spec: { drawn: { src, aspect, alt } },
+                });
+                log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
+                relay(i);
+                return undefined;
+              }
+              return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
+            },
+            // A throw anywhere in the library path is the drawer's job, never a rejected batch.
+            (e) => {
+              log({ ev: "lib-failed", slide: i + 1, key: a.key, err: String(e).slice(0, 200) });
+              return a.kind === "model"
+                ? { ...a, kind: FALLBACK_KIND, labels: [], spec: undefined }
+                : a;
+            },
+          ).then((a2) => {
             if (!a2) return;
             return drawWriterDiagram(
               {

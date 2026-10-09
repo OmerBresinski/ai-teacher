@@ -272,14 +272,14 @@ export const params = {
             type: "string",
             title: "Name on the slide",
             description: "Leave empty for the job name, or write a real name like “Mrs Patel”.",
-            maxLength: 40,
+            maxLength: 32 /* round 2: what a name holds in two lines with a gutter to its neighbours; longer is refused */,
             default: "",
           },
           job: {
             type: "string",
             title: "What they do",
             description: "Leave empty to use ours.",
-            maxLength: 48 /* libfix: what the lane holds at the most items (tools/laneFit); longer is refused, never cut */,
+            maxLength: 40 /* libfix: what the lane holds at the most items (tools/laneFit); longer is refused, never cut */,
             default: "",
           },
           vehicle: { type: "boolean", title: "Show their vehicle", default: true },
@@ -771,7 +771,7 @@ export function render(root, P, ctx) {
     }
     fig.setAttribute("transform", `translate(${fx - cx} 0)`);
     if (x.role === "lollipop") top = Math.min(top, lolli.top);
-    const maxW = sw - 16;
+    const maxW = sw - 20; // a 10-unit gutter each side: names and jobs in neighbouring columns never touch
     const lg = h("g", { s: bi(`helper:${x.i}`), cls: "rise", c: softFor(x.i, true) }, root);
     const nb = textBlock(lg, cx, NAME_Y, x.name, {
       cls: "ts-label",

@@ -12,7 +12,13 @@ import { isFatal, nonFatal, nonFatalSync, whenNonFatal } from "./services";
 const SRC = join(import.meta.dir, "..");
 const WRITER = readdirSync(join(SRC, "writer"))
   .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "services.ts")
-  .map((f) => `writer/${f}`);
+  .map((f) => `writer/${f}`)
+  // The diagram library (TEACH-247 part h) recovers the same way.
+  .concat(
+    readdirSync(join(SRC, "library"))
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && !f.endsWith(".gen.ts"))
+      .map((f) => `library/${f}`),
+  );
 /**
  * The writer planner's picture director (TEACH-251 part b) and its set maker (TEACH-237) have none. illustrate.ts and
  * photo-bank.ts belong to objectives-first, prod's default pipeline, where a budget stop is no

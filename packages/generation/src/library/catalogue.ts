@@ -32,7 +32,7 @@ export const LIB_PROMPTS = {
 
 /**
  * Registered models production does not ship, and why (the PR lists them). The shipped set is
- * `MODEL_LOADERS`: every model lab/library registers at 0c27ede7 (library round 2) that draws
+ * `MODEL_LOADERS`: every model lab/library registers at 32dd891e (library round 2) that draws
  * outside a browser.
  */
 export const EXCLUDED: Record<string, string> = {

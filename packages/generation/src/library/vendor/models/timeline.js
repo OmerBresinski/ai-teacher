@@ -739,7 +739,7 @@ export function render(root, P, ctx) {
       for (let d = 0; d <= (xb - xa) / 2; d += 6)
         for (const c of [(xa + xb) / 2 - d, (xa + xb) / 2 + d]) {
           if (c - w / 2 < xa + 8 || c + w / 2 > xb - 8) continue;
-          if (e.row === 0 && dots.some((dx) => Math.abs(dx - c) < w / 2 + 16)) continue;
+          if (dots.some((dx) => Math.abs(dx - c) < w / 2 + 16)) continue; // event stems cross every era row, not only the first
           return c;
         }
       return null;

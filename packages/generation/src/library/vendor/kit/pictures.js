@@ -194,23 +194,25 @@ export function pictureCard(
     // the biggest type step that fits the card with every word whole; if a word is still too long at the
     // smallest step, the card widens to hold it rather than break it ("Lifeguar-d")
     const whole = String(name).trim().split(/\s+/).join(" ");
-    let use = "ts-label",
-      L = [],
-      lh = 30,
-      fitW = maxW;
-    for (const [c, l] of [
-      ["ts-label", 30],
-      ["ts-small", 26],
-      ["ts-tiny", 22],
-    ]) {
-      use = c;
-      lh = l;
-      L = wrap(g, name, c, maxW);
-      if (L.length * l <= textH - pad && L.join(" ") === whole) break;
-    }
-    if (L.join(" ") !== whole) {
-      fitW = Math.max(...whole.split(" ").map((wd) => measure(g, wd, use))) + 2;
-      L = wrap(g, name, use, fitW);
+    // line heights that match the real type (label 30 px, small 24 px; tiny is the same 24 px in a fainter
+    // ink, so it is never used here: a card's words keep the same ink as its neighbours')
+    const fitAt = (c, l, w0 = maxW) => {
+      let w = w0, L = wrap(g, name, c, w);
+      if (L.join(" ") !== whole) { w = Math.max(maxW, ...whole.split(" ").map((wd) => measure(g, wd, c)) + 2); L = wrap(g, name, c, w); }
+      return { c, l, L, w, need: L.length * l + pad * 2 };
+    };
+    // a narrow slot first lets the card widen (up to 40% more) at the label size, so cards side by side keep
+    // one type size; only then does it grow taller or step down
+    const tries = [fitAt("ts-label", 34), fitAt("ts-label", 34, maxW * 1.2), fitAt("ts-label", 34, maxW * 1.4), fitAt("ts-small", 28)];
+    // the biggest step that fits the card's height; failing that, the label size if the card need grow by
+    // at most half again, else the small size: the card then grows upwards (its base stays put) to hold every line
+    let pick = tries.find((t) => t.need <= textH) || (tries[2].need <= textH * 1.5 ? tries[2] : tries[3]);
+    let use = pick.c, L = pick.L, lh = pick.l, fitW = pick.w;
+    if (pick.need > textH) {
+      const grow = pick.need - textH, r = g.querySelector("rect");
+      r.setAttribute("y", +r.getAttribute("y") - grow);
+      r.setAttribute("height", +r.getAttribute("height") + grow);
+      textTop -= grow; textH += grow;
     }
     if (fitW > maxW) {
       const grow = fitW - maxW;
@@ -225,7 +227,7 @@ export function pictureCard(
     if (edit) t.dataset.edit = edit;
   }
   const rr = g.querySelector("rect");
-  g.box = { x: +rr.getAttribute("x"), y: y0, w: +rr.getAttribute("width"), h: H0 };
+  g.box = { x: +rr.getAttribute("x"), y: +rr.getAttribute("y"), w: +rr.getAttribute("width"), h: +rr.getAttribute("height") };
   noteArt(name, "card");
   return g;
 }
