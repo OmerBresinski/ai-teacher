@@ -64,9 +64,9 @@ export const setCorrectOption = (worksheet: Worksheet, blockId: Id, optionId: st
 export const applyBlockProposals = (
   worksheet: Worksheet,
   proposals: readonly Proposal[],
-): Worksheet => {
-  const touched = new Set<Id>();
-  const applied = edit(worksheet, (w) => {
+): Worksheet =>
+  edit(worksheet, (w) => {
+    const touched = new Set<Id>();
     for (const proposal of proposals) {
       const { blockId } = proposal.target;
       if (blockId === undefined || proposal.block === undefined) continue;
@@ -75,10 +75,8 @@ export const applyBlockProposals = (
       w.blocks[at] = proposal.block;
       touched.add(proposal.block.id);
     }
+    w.blocks = mixWordBanks(w.blocks, touched);
   });
-  const blocks = mixWordBanks(applied.blocks, touched);
-  return blocks === applied.blocks ? applied : { ...applied, blocks };
-};
 
 export const deleteBlock = (worksheet: Worksheet, id: Id): Worksheet =>
   edit(worksheet, (w) => {
