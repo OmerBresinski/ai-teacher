@@ -235,6 +235,10 @@ export function notesText(s: SlideNotes | undefined): string {
  * or a schema failure, each try under a deadline; every slide number gets an entry (missing ones
  * empty). Never throws: a lesson whose notes fail ships with empty notes, and the failure is logged.
  */
+/** The line after the lesson that asks the notes call for some slides only (code wording). */
+export const notesOnlyLine = (slides: number[]) =>
+  `Write the notes for these slides only: ${slides.join(", ")}.`;
+
 export async function lessonNotes(o: {
   slides: number;
   system: string;
@@ -285,7 +289,7 @@ export async function lessonNotes(o: {
           model: "gpt-6-luna",
           effort: "low",
           system: o.system,
-          user: `${o.user}\n\nWrite the notes for these slides only: ${missing.join(", ")}.`,
+          user: `${o.user}\n\n${notesOnlyLine(missing)}`,
           schema: o.schema as ChatReq["schema"],
           name: "notes",
           // Strict JSON, as base4f-p123 ran it (TEACH-110 part f): the notes schema lists every key.
