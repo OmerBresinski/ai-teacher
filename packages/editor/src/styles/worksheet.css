@@ -390,6 +390,8 @@
 .ws-gap {
   display: inline-block;
   min-width: 56pt;
+  /* A run's blanks share its longest answer's width; a very long one stops at the column. */
+  max-width: 100%;
   border-bottom: 0.75pt solid var(--ws-rule-strong);
   vertical-align: baseline;
 }

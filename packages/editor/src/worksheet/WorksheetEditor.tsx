@@ -533,6 +533,7 @@ export function WorksheetEditor({
                             active === item.block.id ? blockProblems(item.block) : undefined
                           }
                           showMarks={worksheet.showMarks}
+                          gapChars={item.gapChars}
                           actions={rowActions}
                         />
                       ) : item.kind === "rag" ? (

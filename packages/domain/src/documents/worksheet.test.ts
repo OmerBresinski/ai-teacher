@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { generatedWorksheet, worksheet } from "./fixtures.test-helpers";
 import {
+  fillGapRun,
   isWorksheet,
   MAX_CRITERIA,
+  orderedGaps,
   parseStoredWorksheet,
   parseWorksheet,
   WORD_SEARCH_MAX_SIZE,
   WORD_SEARCH_MIN_SIZE,
+  type WorksheetBlock,
   WorksheetBlockSchema,
 } from "./worksheet";
 
@@ -203,5 +206,48 @@ describe("parseWorksheet", () => {
 
   test("a future version is refused before validation", () => {
     expect(() => parseWorksheet({ ...worksheet(), version: 3 })).toThrow(/newer version/);
+  });
+});
+
+describe("fillGapRun", () => {
+  const doc = { type: "doc" as const, content: [] };
+  const gap = (id: string): WorksheetBlock => ({ id, type: "fill-gap", doc, gaps: [] });
+  const blocks: WorksheetBlock[] = [
+    { id: "bank", type: "word-bank", words: ["rain"] },
+    gap("s1"),
+    gap("s2"),
+    { id: "q", type: "question", doc, answerLines: 2 },
+    gap("s3"),
+  ];
+
+  test("the sentences from the start index up to the first block that is not one", () => {
+    expect(fillGapRun(blocks, 1).map((b) => b.id)).toEqual(["s1", "s2"]);
+    expect(fillGapRun(blocks, 4).map((b) => b.id)).toEqual(["s3"]);
+  });
+
+  test("nothing when the start block is not a fill-gap or is past the end", () => {
+    expect(fillGapRun(blocks, 0)).toEqual([]);
+    expect(fillGapRun(blocks, 5)).toEqual([]);
+  });
+});
+
+describe("orderedGaps", () => {
+  test("gaps in token order; a gap whose token is gone is left out", () => {
+    const block: WorksheetBlock = {
+      id: "s",
+      type: "fill-gap",
+      doc: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "[[gap:b]] then [[gap:a]]." }] },
+        ],
+      },
+      gaps: [
+        { id: "a", answer: "second" },
+        { id: "gone", answer: "orphan" },
+        { id: "b", answer: "first" },
+      ],
+    };
+    expect(orderedGaps(block).map((g) => g.answer)).toEqual(["first", "second"]);
   });
 });

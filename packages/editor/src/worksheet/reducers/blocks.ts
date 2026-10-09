@@ -7,6 +7,7 @@ import {
   type Worksheet,
   type WorksheetBlock,
 } from "@tj/domain/documents";
+import { mixWordBanks } from "@tj/slides/worksheet";
 import { uid } from "../../model/factories";
 import { edit, type WithId } from "./core";
 
@@ -57,18 +58,24 @@ export const setCorrectOption = (worksheet: Worksheet, blockId: Id, optionId: st
 /**
  * Apply a job's block proposals (ADR 0025 §19): each replaces the block with `target.blockId` in
  * place, keeping its position. Slide proposals are ignored here (`applyProposals` on the lesson).
+ * A vocabulary edit rewrites a word bank and its sentences together, so once they are all in place
+ * every bank they touched is mixed against its sentences' new answers (`mixWordBanks`).
  */
 export const applyBlockProposals = (
   worksheet: Worksheet,
   proposals: readonly Proposal[],
 ): Worksheet =>
   edit(worksheet, (w) => {
+    const touched = new Set<Id>();
     for (const proposal of proposals) {
       const { blockId } = proposal.target;
       if (blockId === undefined || proposal.block === undefined) continue;
       const at = w.blocks.findIndex((b) => b.id === blockId);
-      if (at !== -1) w.blocks[at] = proposal.block;
+      if (at === -1) continue;
+      w.blocks[at] = proposal.block;
+      touched.add(proposal.block.id);
     }
+    w.blocks = mixWordBanks(w.blocks, touched);
   });
 
 export const deleteBlock = (worksheet: Worksheet, id: Id): Worksheet =>

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Finding, Lesson, WorksheetBlock } from "@tj/domain/documents";
-import { docFromText, estimateMinutes, resolveRecipe } from "@tj/slides";
+import { docFromText, estimateMinutes, isPlaceholder, resolveRecipe } from "@tj/slides";
 import { repairPrompt } from "../prompts";
 import { assignFactIds } from "../specs";
 import {
@@ -113,6 +113,36 @@ describe("checkWorksheet", () => {
     expect(
       result.findings.filter((f) => f.target.blockId === target.id && f.severity === "error"),
     ).toEqual([]);
+  });
+
+  test("a word bank the repair writes in gap order is mixed before the sheet is kept", async () => {
+    const recipe = resolveRecipe("cloze", facts);
+    const frame = buildFrame(
+      { recipe, facts, lesson, worksheetId: "ws-1", practiceMinutes: 10 },
+      { now: () => new Date("2026-09-17T10:00:00.000Z") },
+    );
+    const blocks = frame.worksheet.blocks.filter((b) => !isPlaceholder(b));
+    const bank = blocks.find((b) => b.type === "word-bank") as WorksheetBlock;
+    const answers = blocks.flatMap((b) =>
+      b.type === "fill-gap" ? b.gaps.map((g) => g.answer) : [],
+    );
+    const findings: Finding[] = [
+      { check: "spec-rule", severity: "error", target: { blockId: bank.id }, message: "Too long." },
+    ];
+    const factRefs = facts.vocabulary.map((v) => v.id);
+    const ai = createFakeAi({
+      script: routed([json({ type: "word-bank", words: answers, factRefs })]),
+    });
+    const result = await checkWorksheet(
+      { lesson, worksheet: { ...frame.worksheet, blocks }, practiceMinutes: 10, findings },
+      recordingDeps(ai),
+    );
+    expect(result.repaired).toBe(1);
+    const fresh = result.worksheet.blocks.find((b) => b.id === bank.id);
+    if (fresh?.type !== "word-bank") throw new Error("bank");
+    expect(fresh.authoredBy).toBe("ai");
+    expect([...fresh.words].sort()).toEqual([...answers].sort());
+    for (const [i, answer] of answers.entries()) expect(fresh.words[i]).not.toBe(answer);
   });
 
   test("a budget stop between repairs records the budget finding and keeps the sheet", async () => {

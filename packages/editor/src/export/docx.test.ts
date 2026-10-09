@@ -219,7 +219,7 @@ describe("worksheet Word export", () => {
     // Lettered options with a box to tick.
     expect(xml).toContain("☐  A  Evaporation");
     expect(xml).toContain("☐  B  Precipitation");
-    // The gap is a blank as wide as its answer.
+    // The gap is a blank as wide as the longest answer in its run.
     expect(xml).toContain("______________");
     expect(xml).toContain("Liquid becomes gas");
     expect(xml).toContain("Show your working");
@@ -227,6 +227,28 @@ describe("worksheet Word export", () => {
     expect(xml).toContain("What happens");
     // A page break block, and the answer key's own break.
     expect(xml).toContain('w:type="page"');
+  });
+
+  it("gives every blank in a run of fill-gap sentences the run's longest answer", async () => {
+    const sentence = (id: string, answer: string, rest: string): WorksheetBlock => ({
+      id,
+      type: "fill-gap",
+      doc: docFromText(`[[gap:${id}-g]] ${rest}`),
+      gaps: [{ id: `${id}-g`, answer }],
+    });
+    const { xml } = await xmlFor({
+      ...everyBlockSheet(),
+      includeAnswerKey: false,
+      blocks: numberQuestions([
+        { id: "bank", type: "word-bank", words: ["Large language model (LLM)", "Token"] },
+        sentence("s1", "Large language model (LLM)", "is an AI system."),
+        sentence("s2", "Token", "is a chunk of text."),
+      ]),
+    });
+    // 26 characters and four to spare, on the short answer's line as on the long one's.
+    const blankBefore = (rest: string) => xml.match(new RegExp(`(_+) ${rest}`))?.[1];
+    expect(blankBefore("is an AI system\\.")).toBe("_".repeat(30));
+    expect(blankBefore("is a chunk of text\\.")).toBe("_".repeat(30));
   });
 
   it("writes the word search as a table of single letters with its word bank", async () => {
