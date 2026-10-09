@@ -6,7 +6,7 @@ import type { WriterStage } from "./schema";
  * exact replacements of pinned base4f-p123 lines, so a test arm changes only its listed lines:
  *  - clarity (T1): one definition of a question slide for the answer rules; Fits rows for every
  *    count the schema allows, generated from measured capacity; no "write the JSON in the same
- *    order"; the slide count counts the title and objectives; the short command only where pupils
+ *    order"; the short command only where pupils
  *    act; the history picture line tied to "named"; the Higher-tier sentence only at KS4;
  *  - recallAfterObjectives (T4): the recall slide straight after the objectives, never the title;
  *  - answerVisibility (T5): hinge stems answerable alone; a model slide teaches and never asks,
@@ -37,10 +37,6 @@ export const CLARITY_EDITS: Edit[] = [
   {
     from: "Work through these four steps in order, and write the JSON in the same order.",
     to: "Work through these four steps in order.",
-  },
-  {
-    from: "The context gives a range of slides.",
-    to: "The context gives a range of slides, counting the title and objectives.",
   },
   {
     from: "A slide tells pupils what to do as a short command.",

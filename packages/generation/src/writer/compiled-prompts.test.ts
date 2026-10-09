@@ -7,7 +7,7 @@ import { writerSchema } from "./schema";
 import { writerSystem } from "./stage";
 
 /*
- * #431 review: the writer's compiled prompts against origin/master e9cb9b81, by hash (sha256, 16
+ * #431 review: the writer's compiled prompts against origin/master db5996d0 (#438), by hash (sha256, 16
  * hex), for y1, y5, y11 and y12. Equal except the intended changes, each undone here to reach
  * master's hash:
  *  - systemActivities: the activity menu's pair line (prompt-engineer, fault 4);
@@ -19,40 +19,40 @@ import { writerSystem } from "./stage";
 const sha = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 const MASTER: Record<string, Record<string, string>> = {
   y1: {
-    system: "5d2348d72ff97ca3",
-    systemActivities: "9bfb6892d2b9f39e",
-    schema: "c7eebd1413222a57",
-    schemaActivities: "eb794726a72d5f6c",
+    system: "ee117f26e928c9be",
+    systemActivities: "9c853602c38bf791",
+    schema: "b3cd59927b0a5886",
+    schemaActivities: "9f56c20a601c466b",
     user: "9ffbb70ea5ae3a28",
     objectivesUser: "69e673f812b90d69",
     pupilSystem: "3d4f02f2e3abfca8",
     pupilUser: "60abf1cd2bf07067",
   },
   y5: {
-    system: "be391339ebc89e3f",
-    systemActivities: "5cb3246313429098",
-    schema: "1ef6e8c7573b47a1",
-    schemaActivities: "d8e54d9144583171",
+    system: "c1f30ffd083653c3",
+    systemActivities: "51d53bbfbe11d08c",
+    schema: "2a8b1ce52c3499bb",
+    schemaActivities: "5593824901b70364",
     user: "c26c5992e1db048e",
     objectivesUser: "5be0267edf610bfb",
     pupilSystem: "3d4f02f2e3abfca8",
     pupilUser: "dec15f411181bc89",
   },
   y11: {
-    system: "99436194ed46e3cd",
-    systemActivities: "ad65ae04df345772",
-    schema: "9cc95a24639cf759",
-    schemaActivities: "67f0f1886f716d86",
+    system: "facae247b8aaf45a",
+    systemActivities: "4b7dcf7d41e56713",
+    schema: "2e0b12966bc4cc7d",
+    schemaActivities: "2001038ab241873e",
     user: "87d38790d45c179b",
     objectivesUser: "d327cf28aa903fbc",
     pupilSystem: "3d4f02f2e3abfca8",
     pupilUser: "981c12ef2f5ecb55",
   },
   y12: {
-    system: "99436194ed46e3cd",
-    systemActivities: "ad65ae04df345772",
-    schema: "9cc95a24639cf759",
-    schemaActivities: "67f0f1886f716d86",
+    system: "facae247b8aaf45a",
+    systemActivities: "4b7dcf7d41e56713",
+    schema: "2e0b12966bc4cc7d",
+    schemaActivities: "2001038ab241873e",
     user: "94ec9f20b327b8dc",
     objectivesUser: "ee0b24a8d6e1e272",
     pupilSystem: "3d4f02f2e3abfca8",

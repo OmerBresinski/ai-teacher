@@ -96,8 +96,9 @@ for (const full of [false, true])
           const higher = b.keyStage === "ks4" ? [] : [{ from: HIGHER_TIER, to: "" }];
           expect(now).toBe(replaced(was, [...CLARITY_EDITS, ...higher]));
         }
-        // Five wording lines (the Higher-tier sentence shares the demand paragraph), plus Fits.
-        expect(diff.length - fits).toBe(b.keyStage === "ks4" ? 5 : 6);
+        // Four wording lines (#438 already counts the title and objectives), and the demand
+        // paragraph outside KS4 (the Higher-tier sentence), plus Fits.
+        expect(diff.length - fits).toBe(b.keyStage === "ks4" ? 4 : 5);
         expect(fits).toBeGreaterThanOrEqual(6);
         expect(on.system.includes(HIGHER_TIER)).toBe(b.keyStage === "ks4");
         expect(off.system.includes(HIGHER_TIER)).toBe(true);
