@@ -279,6 +279,17 @@ export interface LessonLook {
   line?: string;
 }
 
+/**
+ * The look a lesson's picture sets are made in, from the writer's `design.picture_style` (C5,
+ * TEACH-110 part h): an illustration lesson's locked style, else the house photo look, so every
+ * panel of a set shares one look. The lines are code's defaults above; no prompt text changes.
+ */
+export function setLookOf(design?: { picture_style?: "photo" | "illustration" }): LessonLook {
+  return design?.picture_style === "illustration"
+    ? { style: "illustration" }
+    : { style: "photo", generic: "generate" };
+}
+
 /** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
@@ -796,6 +807,18 @@ export interface WriterPictures {
    * point, match or find; the stage uses it only when the slide ends with no visual.
    */
   held(index: number, key: string): WriterPictureState | undefined;
+  /**
+   * C5 (TEACH-110 part h): the lesson's one look for its picture sets, once the writer's `design`
+   * is known (before any slide's asks). Every panel of a set is made in it; single pictures keep
+   * `opts.look`.
+   */
+  lookForSets(look: LessonLook): void;
+  /**
+   * Cancels every slot of a slide (TEACH-110 part h): the final parse opened the slide again with
+   * other words, so its asks start afresh. A placement still running stops; a placed photo is
+   * uncredited; a key not asked again ends failed after `settle`, never a placeholder.
+   */
+  forget(index: number): void;
 }
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
@@ -832,7 +855,18 @@ export function createWriterPictures(opts: {
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
 }): WriterPictures {
-  type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  type Slot = {
+    state: WriterPictureState;
+    miss?: WriterPictureMiss;
+    done: Promise<void>;
+    /** Cancels this slot's own placement (`forget`: its slide was opened again). */
+    stop: AbortController;
+  };
+  /** The round's deps with the slot's own stop on the signal. */
+  const slotDeps = (slot: Slot): PipelineDeps => ({
+    ...deps,
+    signal: AbortSignal.any([deps.signal, slot.stop.signal]),
+  });
   type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
   // A second round (lostPic's single pictures after editable) gets a fresh stopper and batcher.
@@ -856,6 +890,8 @@ export function createWriterPictures(opts: {
   const id = (index: number, key: string) => `${index}:${key}`;
   const requestOf = (ask: WriterPhotoAsk) => [ask.shows, ...ask.mustSee].join(". ");
   let settled = false;
+  /** The look sets are made in (C5): `lookForSets`, else `opts.look`. */
+  let setLook = opts.look;
   /** Keys asked again in a later round (`start` after `settle`), so a round re-asks a key once. */
   const reasked = new Set<string>();
 
@@ -940,7 +976,7 @@ export function createWriterPictures(opts: {
       lesson: opts.lesson,
       country: opts.country,
       images: opts.images,
-      deps,
+      deps: slotDeps(slot),
       taken,
       ...(direct ? { direct } : {}),
       ...(bank ? { bank } : {}),
@@ -1063,10 +1099,13 @@ export function createWriterPictures(opts: {
         ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
         ...(maker.allow ? { allow: maker.allow } : {}),
         ...(maker.spent ? { spent: maker.spent } : {}),
-        signal: deps.signal,
+        signal: AbortSignal.any([
+          deps.signal,
+          ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
+        ]),
         log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
       },
-      opts.look,
+      setLook,
     ).then(
       (made) => {
         for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
@@ -1089,13 +1128,18 @@ export function createWriterPictures(opts: {
         reasked.add(k);
         heldPhotos.delete(k);
       }
-      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
+      const slot: Slot = {
+        state: { status: "pending" },
+        done: Promise.resolve(),
+        stop: new AbortController(),
+      };
       if (ask.set) {
         if (!opts.maker) {
           slots.set(k, {
             state: { status: "failed" },
             miss: "set-not-searched",
             done: Promise.resolve(),
+            stop: new AbortController(),
           });
           return;
         }
@@ -1161,6 +1205,24 @@ export function createWriterPictures(opts: {
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
+    forget(index) {
+      const prefix = `${index}:`;
+      for (const [k, slot] of slots) {
+        if (!k.startsWith(prefix)) continue;
+        // Its photo is no longer on any slide: uncredited, and a late answer is ignored.
+        if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
+        slot.state = { status: "failed" };
+        slot.miss = undefined;
+        slot.stop.abort();
+        slots.delete(k);
+        heldPhotos.delete(k);
+        reasked.delete(k);
+      }
+      for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
+    },
+    lookForSets(look) {
+      setLook = look;
+    },
   };
 }
 

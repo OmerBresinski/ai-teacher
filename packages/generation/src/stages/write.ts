@@ -1,4 +1,10 @@
-import { type AgeBand, deriveAgeBand, type Lesson, type Slide } from "@tj/domain/documents";
+import {
+  type AgeBand,
+  deriveAgeBand,
+  type Lesson,
+  type Slide,
+  type SlideGenerationState,
+} from "@tj/domain/documents";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
@@ -9,7 +15,8 @@ import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { writerBundleOf } from "./objectives-first";
-import { createWriterPictures, withPhotoSources } from "./picture-director";
+import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
+import { createProgressiveDeck } from "./progressive";
 
 /*
  * The writer planner's generate step (TEACH-110 part b): the base4 lesson writer, with the
@@ -83,7 +90,11 @@ export function writerBrief(lesson: Lesson): Brief {
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const lesson = state.lesson;
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
-  const toLesson = (slides: { id: string; notes: string }[], stage: "generated" | "planned") =>
+  const toLesson = (
+    slides: { id: string; notes: string }[],
+    stage: "generated" | "planned",
+    slideStates?: Record<string, SlideGenerationState>,
+  ) =>
     ({
       ...lesson,
       slides: slides as unknown as Slide[],
@@ -99,8 +110,12 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}`,
         },
         usage: deps.budget.totals(),
+        ...(slideStates ? { slideStates } : {}),
       },
     }) as Lesson;
+  /** Every slide of `slides` in one state. */
+  const allIn = (slides: { id: string }[], state: SlideGenerationState) =>
+    Object.fromEntries(slides.map((s) => [s.id, state]));
   // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
   // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
   const images = deps.images as DirectedPlacer | undefined;
@@ -120,7 +135,38 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     : undefined;
   const credited = <T extends { elements: unknown[] }>(slides: T[]) =>
     pictures ? withPhotoSources(slides, pictures.sources()) : slides;
+  // C2 (TEACH-110 part h): each slide the stream closes is saved read-only as it is laid out; the
+  // plan's own title and objectives slides stand until the writer's replace them. The checkpoint
+  // stays `planned`, so a retry still resumes at the writer.
+  const range = writerBrief(lesson).slides;
+  type Laid = Parameters<NonNullable<Parameters<typeof runWriter>[0]["onSlide"]>>[1];
+  const progressive = createProgressiveDeck<Laid>({
+    onError: (err) =>
+      deps.logger.warn({ stage: "generate", err: String(err).slice(0, 200) }, "slide save failed"),
+    write: async (patches) => {
+      if (deps.signal.aborted) return;
+      const slides: { id: string; notes: string; elements: unknown[] }[] = [];
+      const states: Record<string, SlideGenerationState> = {};
+      const last = Math.max(1, ...patches.keys());
+      for (let i = 0; i <= last; i++) {
+        const own = patches.get(i);
+        const planned = lesson.slides[i] as unknown as (typeof slides)[number] | undefined;
+        const slide = own?.slide ?? planned;
+        if (!slide) continue;
+        slides.push(slide);
+        states[slide.id] = own?.state ?? "done";
+      }
+      const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned", states));
+      const written = [...patches.keys()].filter((i) => i >= 2).length;
+      const percent = Math.min(65, 20 + Math.round((45 * written) / range.max));
+      await deps.onProgress(percent, "Writing slides", "generate", updatedAt);
+    },
+  });
   let out: Awaited<ReturnType<typeof runWriter>>;
+  /** Aborted when the stage fails: the writer's diagram jobs start no further call. */
+  const failed = new AbortController();
+  /** The editable deck is saved: from here a failure keeps it (today's behaviour). */
+  let editableSaved = false;
   try {
     const services = aiWriterServices(deps);
     out = await runWriter({
@@ -137,6 +183,12 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       library: false,
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
+      onSlide: (i, slide) => progressive.patch(i, slide),
+      // A slide the final parse opened from other words: its pictures start afresh.
+      onReopen: (i) => pictures?.forget(i),
+      signal: failed.signal,
+      // C5: a lesson's picture sets share one look, from the writer's picture style.
+      onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
       onAsks: (i, asks, slide) => {
         for (const a of asks) if (a.type === "photo") pictures?.start(i, a, slide);
       },
@@ -154,20 +206,34 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           }
         : {}),
       onEditable: async (slides) => {
-        // Editable: every slide is laid out; the checkpoint stays at `planned` until the end.
-        const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned"));
+        // Editable: every slide is laid out and done (rule (a): editable waits for the pictures);
+        // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
+        await progressive.close();
+        editableSaved = true;
+        const { updatedAt } = await deps.persist(
+          toLesson(credited(slides), "planned", allIn(slides, "done")),
+        );
         await deps.onProgress(70, "Slides written", "generate", updatedAt);
       },
     });
   } catch (error) {
-    if (error instanceof WriterIncompleteError) {
-      // Nothing of the writer's output is saved; its cost is, so the retry's budget counts it.
+    // No streamed save lands after the failure; pictures and diagram jobs started off the stream
+    // stop spending, whatever the failure (K3, a budget stop, a cancel or any other throw).
+    failed.abort();
+    await progressive.close();
+    if (pictures) await pictures.settle(0).then(undefined, () => undefined);
+    // Slides still `writing` are rolled back to the plan: the stream showed them, the lesson never
+    // ships them. Its cost is saved, so a retry's budget counts it.
+    const streamed = !editableSaved && progressive.patches().size > 0;
+    if (error instanceof WriterIncompleteError || streamed) {
       await deps.persist({
         ...lesson,
         ...(lesson.generation
           ? { generation: { ...lesson.generation, usage: deps.budget.totals() } }
           : {}),
       });
+    }
+    if (error instanceof WriterIncompleteError) {
       throw new StageFailure("generate", error.message, {
         cause: error,
         ...(error.deterministic ? { reason: "writer-length" as const } : {}),
@@ -175,7 +241,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
     throw error;
   }
-  const done = toLesson(credited(out.slides), "generated");
+  const done = toLesson(credited(out.slides), "generated", allIn(out.slides, "done"));
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
   return { ...state, lesson: done };

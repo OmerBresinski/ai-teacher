@@ -200,6 +200,58 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(done.lesson.slides.slice(0, 2).map((s) => s.kind)).toEqual(["title", "objectives"]);
   });
 
+  test("C2: slides are saved read-only while the writer streams, before it ends", async () => {
+    // TEACH-110 part h: the writer's answer arrives in paced pieces (a model writing over time).
+    const PIECE = 150;
+    const PACE = 40;
+    const pieces = Math.ceil(fixture.main.length / PIECE);
+    let writerStart = 0;
+    const paced = labAi({
+      extra: (call) => {
+        if (call.context?.promptVersion === `${WRITER_VERSION}/lesson`) {
+          writerStart = performance.now();
+          return { text: fixture.main, stream: { pieceChars: PIECE, paceMs: PACE } };
+        }
+        return writerAnswers(call);
+      },
+      route: writerRoute,
+    });
+    const { lessonId } = await planOnly();
+    const genJob = await confirm(lessonId);
+    const seen: { at: number; message: string; kinds: string[]; states: string[] }[] = [];
+    await lessonGenerateJob({
+      ...ctxFor(genJob, { lessonId, revision: 1 }, depsWith(paced, "writer")),
+      progress: async (_percent: number, message: string) => {
+        if (message !== "Writing slides" && message !== "Slides written") return;
+        const r = await row(lessonId);
+        seen.push({
+          at: performance.now(),
+          message,
+          kinds: r.lesson.slides.map((x) => x.kind),
+          states: Object.values(r.lesson.generation?.slideStates ?? {}),
+        });
+      },
+    } as never);
+    const writerEnd = writerStart + (pieces - 1) * PACE;
+    const first = seen[0];
+    expect(first?.message).toBe("Writing slides");
+    // the first save lands while the writer is still streaming
+    expect(first?.at ?? Number.POSITIVE_INFINITY).toBeLessThan(writerEnd);
+    // read-only: the streamed slides are `writing`; the plan's title and objectives stand
+    expect(first?.states).toContain("writing");
+    expect(first?.kinds.slice(0, 2)).toEqual(["title", "objectives"]);
+    // a part of the deck (at most one save a second), then the editable deck with every slide done
+    const editable = seen.find((x) => x.message === "Slides written");
+    const streamed = seen.filter((x) => x.message === "Writing slides" && x.at < writerEnd);
+    const most = Math.max(...streamed.map((x) => x.kinds.length));
+    expect(most).toBeGreaterThan(2);
+    expect(most).toBeLessThan(editable?.kinds.length ?? 0);
+    expect(editable?.states.every((x) => x === "done")).toBe(true);
+    const done = await row(lessonId);
+    expect(done.lesson.generation?.stage).toBe("generated");
+    expect(done.lesson.slides.length).toBe(12);
+  });
+
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {
     const { genAi, done } = await planAndGenerate("objectives-first");
     expect(genAi.calls.filter((c) => c.modelId === "openai/gpt-6.1-sol")).toHaveLength(1);
@@ -225,6 +277,7 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
       planned.lesson.slides.map((x) => x.kind),
     );
     expect(after.lesson.generation?.stage).toBe("planned");
+    expect(after.lesson.generation?.slideStates).toBeUndefined();
     expect(after.lesson.generation?.usage?.calls).toBeGreaterThan(0);
 
     // The retry (same job): no objectives call, straight to the writer, and the cost carries on.

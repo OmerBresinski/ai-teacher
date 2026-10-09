@@ -398,3 +398,134 @@ describe("the set flow: a budget stop stops the set", () => {
     await expect(makePictureSet(asks(2), f.deps)).rejects.toBeInstanceOf(BudgetExceeded);
   });
 });
+
+describe("C4: the set judge beside the panel judges (TEACH-110 part h)", () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const timed = (opts: { panelMs: number; setMs: number; odd: number[]; failPanel?: string }) => {
+    const f = fakes({ strips: [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])] });
+    const t0 = performance.now();
+    const at = () => performance.now() - t0;
+    const marks: Record<string, number> = {};
+    let gens = 0;
+    const generate = f.deps.generator.generate;
+    f.deps.generator = {
+      model: f.deps.generator.model,
+      generate: async (req) => {
+        gens += 1;
+        if (gens > 4) marks[`regen${gens - 4}`] ??= at();
+        return generate(req);
+      },
+    };
+    let firstRound = true;
+    f.deps.judgePanel = async (ask) => {
+      marks[`panel:${ask.key}`] ??= at();
+      await sleep(opts.panelMs);
+      if (ask.key === "p3") firstRound = false;
+      return { ok: !(firstRound && ask.key === opts.failPanel) };
+    };
+    f.deps.judgeSet = async () => {
+      marks.set ??= at();
+      await sleep(opts.setMs);
+      marks.setDone ??= at();
+      return { same: opts.odd.length === 0, odd: opts.odd };
+    };
+    return { f, marks, run: () => makePictureSet(asks(4), f.deps), at };
+  };
+
+  test("the set judge starts with the panel judges; odd panels regenerate on its verdict", async () => {
+    const t = timed({ panelMs: 80, setMs: 30, odd: [1, 2, 3] });
+    const out = await t.run();
+    expect(Math.abs((t.marks.set ?? 99) - (t.marks["panel:p0"] ?? 0))).toBeLessThan(15);
+    // the regenerations start once the set judge has spoken, before the panel judges end
+    expect(t.marks.regen1 ?? 999).toBeLessThan((t.marks["panel:p0"] ?? 0) + 80);
+    expect(t.marks.regen1 ?? 0).toBeGreaterThanOrEqual(t.marks.setDone ?? 0);
+    // same verdicts and placements as judging one after the other: 1 kept, 3 made alone
+    expect(t.f.made()).toBe(7);
+    expect(out.map((p) => p?.set)).toEqual([
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo1",
+      "p0+p1+p2+p3#solo2",
+      "p0+p1+p2+p3#solo3",
+    ]);
+  });
+
+  test("a panel its own judge fails regenerates before the set judge answers", async () => {
+    const t = timed({ panelMs: 10, setMs: 80, odd: [], failPanel: "p2" });
+    const out = await t.run();
+    expect(t.marks.regen1 ?? 999).toBeLessThan(t.marks.setDone ?? 0);
+    expect(t.f.made()).toBe(5);
+    expect(out.map((p) => p?.set)).toEqual([
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo2",
+      "p0+p1+p2+p3#solo",
+    ]);
+  });
+});
+
+describe("C4: a fatal set judge stops the early solos (TEACH-110 part h)", () => {
+  test("the set rejects and no solo is judged or placed after it", async () => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const f = fakes({ strips: [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])] });
+    let gens = 0;
+    let rejected = false;
+    const late: string[] = [];
+    const generate = f.deps.generator.generate;
+    f.deps.generator = {
+      model: f.deps.generator.model,
+      generate: async (req) => {
+        gens += 1;
+        // the solo (5th) generation takes a while; the first four are quick
+        if (gens > 4) await sleep(40);
+        if (rejected) late.push("generate-finished");
+        return generate(req);
+      },
+    };
+    f.deps.judgePanel = async (ask) => {
+      if (rejected) late.push(`judge:${ask.key}`);
+      return { ok: ask.key !== "p1" };
+    };
+    f.deps.judgeSet = async () => {
+      await sleep(10);
+      throw new BudgetExceeded("usd");
+    };
+    const saves = () => f.made();
+    await expect(
+      makePictureSet(asks(4), f.deps).finally(() => {
+        rejected = true;
+      }),
+    ).rejects.toBeInstanceOf(BudgetExceeded);
+    await sleep(80);
+    // the early solo for p1 had started; it was waited for, and nothing ran after the rejection
+    expect(gens).toBe(5);
+    expect(late).toEqual([]);
+    expect(saves()).toBe(5);
+  });
+});
+
+describe("card pictures are made at their slot's shape (TEACH-110 part h)", () => {
+  const sizesFor = async (n: number, aspect: number, panelOk?: (a: SetAsk) => boolean) => {
+    const f = fakes({
+      strips: [stripPng([30, 50]), stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60])],
+      ...(panelOk ? { panelOk: (a: SetAsk, call: number) => call >= n || panelOk(a) } : {}),
+      set: { same: true, odd: [] },
+    });
+    await makePictureSet(
+      asks(n).map((a) => ({ ...a, aspect })),
+      f.deps,
+    );
+    return f.prompts.map((p) => p.split(" ")[0]);
+  };
+  test("sets of 4: 4:3 cards ask for 1536x1024, square for 1024x1024, portrait for 1024x1536", async () => {
+    expect(new Set(await sizesFor(4, 184 / 138))).toEqual(new Set(["1536x1024"]));
+    expect(new Set(await sizesFor(4, 1))).toEqual(new Set(["1024x1024"]));
+    expect(new Set(await sizesFor(4, 0.7))).toEqual(new Set(["1024x1536"]));
+  });
+  test("a panel's fallback asks for the same shape; strips keep their wide size", async () => {
+    const sizes = await sizesFor(4, 184 / 138, (a) => a.key !== "p1");
+    expect(sizes).toHaveLength(5);
+    expect(new Set(sizes)).toEqual(new Set(["1536x1024"]));
+    const strip = await sizesFor(2, 184 / 138, (a) => a.key !== "p1");
+    expect(strip).toEqual(["2048x1152", "1536x1024"]);
+  });
+});

@@ -6,6 +6,7 @@ import {
   createOpenAiImageGenerator,
   createPexelsClient,
   type ImageGenerator,
+  limitPexels,
   type PexelsClient,
 } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
@@ -85,7 +86,8 @@ export function createWorkerDeps(
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {
-          client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }),
+          // C6 (TEACH-110 part h): a token bucket, and one short retry on a 429 burst.
+          client: limitPexels(createPexelsClient({ apiKey: env.PEXELS_API_KEY })),
           storage: storage.adapter,
         }
       : undefined,
