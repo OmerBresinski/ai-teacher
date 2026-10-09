@@ -41,6 +41,7 @@ export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   coverageCountsPictureTasks: true,
   duplicateLogOnly: true,
   pointGuardLogOnly: true,
+  coverageExcludesPrediction: true,
 };
 
 /** Flags from a comma-separated list (`WRITER_CHECKER_FLAGS`); unknown names are refused. */
