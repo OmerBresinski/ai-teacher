@@ -14,7 +14,7 @@ type Ev = Record<string, unknown>;
 async function run(
   b: string,
   checker: CheckerFlags,
-  visual?: Parameters<typeof replayRun>[1]["visual"],
+  visual?: NonNullable<Parameters<typeof replayRun>[1]>["visual"],
 ) {
   const events: Ev[] = [];
   const calls: string[] = [];
