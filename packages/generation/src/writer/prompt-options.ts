@@ -1,5 +1,6 @@
 import type { CatalogueEntry } from "../library/catalogue";
 import type { Brief } from "./fixes";
+import { answerText, clarityText, recallText } from "./prompt-edits";
 import type { WriterStage } from "./schema";
 import { nonFatalSync } from "./services";
 
@@ -13,6 +14,10 @@ import { nonFatalSync } from "./services";
  *  - examples: the "Example slides from other lessons" block as pinned (`all`), removed (`none`),
  *    or 2-3 chosen by code (`matched`).
  * Code only drops and reorders the pinned lines; no prompt word changes.
+ * Three wording options (#431, CROSSCHECK T1, T4, T5; `prompt-edits.ts`) replace listed lines:
+ *  - clarity: wording-only fixes and Fits rows for every count the schema allows;
+ *  - recallAfterObjectives: the recall slide straight after the objectives;
+ *  - answerVisibility: hinge stems answerable alone, model slides that teach and never ask.
  */
 
 type J = Record<string, unknown>;
@@ -21,16 +26,27 @@ export type WriterPromptOptions = {
   trimMenus?: boolean;
   cacheOrder?: boolean;
   examples?: "all" | "none" | "matched";
+  clarity?: boolean;
+  recallAfterObjectives?: boolean;
+  answerVisibility?: boolean;
 };
 export const PROMPT_OPTIONS_OFF: Required<WriterPromptOptions> = {
   trimMenus: false,
   cacheOrder: false,
   examples: "all",
+  clarity: false,
+  recallAfterObjectives: false,
+  answerVisibility: false,
 };
 
 /** True when every option is at its default (the pinned text goes out byte for byte). */
 export const optionsOff = (o?: WriterPromptOptions) =>
-  !o?.trimMenus && !o?.cacheOrder && (o?.examples ?? "all") === "all";
+  !o?.trimMenus &&
+  !o?.cacheOrder &&
+  (o?.examples ?? "all") === "all" &&
+  !o?.clarity &&
+  !o?.recallAfterObjectives &&
+  !o?.answerVisibility;
 
 /** A short tag for the run record: "off", or e.g. "trim+cache+ex-matched". */
 export function promptOptionsTag(o?: WriterPromptOptions): string {
@@ -39,6 +55,9 @@ export function promptOptionsTag(o?: WriterPromptOptions): string {
     o?.trimMenus ? "trim" : "",
     o?.cacheOrder ? "cache" : "",
     (o?.examples ?? "all") !== "all" ? `ex-${o?.examples}` : "",
+    o?.clarity ? "clarity" : "",
+    o?.recallAfterObjectives ? "recall" : "",
+    o?.answerVisibility ? "answers" : "",
   ]
     .filter(Boolean)
     .join("+");
@@ -413,12 +432,23 @@ function examplesBlock(
  * examples.
  */
 export function shapeSystem(
-  system: string,
-  b: Pick<Brief, "topic" | "subject" | "yearGroup">,
+  pinned: string,
+  b: Pick<Brief, "topic" | "subject" | "yearGroup"> & Partial<Pick<Brief, "keyStage">>,
   stage: WriterStage,
   o?: WriterPromptOptions,
+  /** The schema the call sends; `clarity` reads each layout's item range from it. */
+  schema?: J,
 ): string {
-  if (optionsOff(o)) return system;
+  if (optionsOff(o)) return pinned;
+  // The wording options first, on the pinned lines; then the block options.
+  let system = pinned;
+  if (o?.clarity) {
+    if (!schema || !b.keyStage)
+      throw new Error("prompt option clarity needs the schema and key stage");
+    system = clarityText(system, stage, b.keyStage, schema);
+  }
+  if (o?.recallAfterObjectives) system = recallText(system);
+  if (o?.answerVisibility) system = answerText(system);
   const trailing = /\n*$/.exec(system)?.[0] ?? "";
   let blocks = system.slice(0, system.length - trailing.length).split("\n\n");
   const l = lensOf(b);

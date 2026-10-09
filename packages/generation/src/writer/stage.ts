@@ -640,6 +640,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             brief,
             stageKey,
             run.prompt,
+            schema,
           ),
           user: localise(user),
           schema,
