@@ -160,7 +160,10 @@ describe("useAutosave", () => {
   });
 
   test("three failures in a row are one toast, updated in place, never a second one", async () => {
-    const onSave = mock((_l: Lesson) => Promise.reject(new Error("offline")));
+    let fail = true;
+    const onSave = mock((_l: Lesson) =>
+      fail ? Promise.reject(new Error("offline")) : Promise.resolve(),
+    );
     const { result } = renderHook(() => {
       const autosave = useAutosave(onSave, { delay: 10 });
       return { autosave, state: useSaveState(autosave) };
@@ -174,6 +177,9 @@ describe("useAutosave", () => {
     expect([...ids]).toEqual([SAVE_FAILED_TOAST_ID]);
     expect(toastSpy).not.toHaveBeenCalled();
     expect(toastDismissSpy).not.toHaveBeenCalled();
+    // Back online, so the unmount's flush cannot raise a toast into the next test.
+    fail = false;
+    await act(() => result.current.autosave.flush());
   });
 
   test("a SaveRefusedError says Not saved without the generic toast", async () => {
