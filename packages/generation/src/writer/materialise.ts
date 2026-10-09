@@ -78,7 +78,7 @@ export type MaterialiseCtx = {
   visual: (key: string) => VisualState;
 };
 export type Materialised = {
-  slide: Pick<Slide, "kind" | "elements" | "background">;
+  slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
   over: string[];
   diagram?: string[];
 };
@@ -155,6 +155,11 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
     const p = (c as S)?.picture;
     if (isPic(p)) out.push({ key: `col.${n}`, f: p });
   });
+  // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
+  (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
+    const p = (c as S)?.picture;
+    if (isPic(p)) out.push({ key: `card.${n}`, f: p });
+  });
   return out;
 }
 
@@ -212,7 +217,15 @@ function figureNow(
 }
 
 /** Templates whose photo slots crop to their own box. */
-const FIXED_SHAPE = new Set(["compare", "picture-sequence"]);
+const FIXED_SHAPE = new Set([
+  "compare",
+  "picture-sequence",
+  "pair",
+  "group-sort",
+  "sequence",
+  "choose",
+  "odd-one-out",
+]);
 /** Each photo slot's shape on this slide, measured off the slide laid out with every slot open. */
 export function slotShapes(
   s: S,
@@ -384,7 +397,48 @@ export function toInput(
         figure: fig("figure"),
       };
     case "hinge":
-      return { template, heading, stem: str(s.stem), options: strs(s.options) };
+      return {
+        template,
+        heading,
+        stem: str(s.stem),
+        options: strs(s.options),
+        ...(s.correct !== undefined ? { correct: Number(s.correct) } : {}),
+        ...(s.explanation ? { explanation: str(s.explanation) } : {}),
+      };
+    case "pair":
+    case "group-sort":
+    case "sequence":
+    case "choose":
+    case "odd-one-out":
+    case "label": {
+      // A card's picture is pending (an open slot), placed, or failed: a failed card is word-only.
+      const cards = (Array.isArray(s.cards) ? s.cards : []).map((c0, n) => {
+        const c = (c0 ?? {}) as S;
+        const f = isPic(c.picture) ? figureNow(`card.${n}`, c.picture, ctx, mark) : undefined;
+        return {
+          text: str(c.text),
+          ...(f ? { figure: f } : {}),
+          ...(c.group !== undefined ? { group: Number(c.group) } : {}),
+        };
+      });
+      const targets = (Array.isArray(s.targets) ? s.targets : []).map((t0) => {
+        const t = (t0 ?? {}) as S;
+        return { x: Number(t.x), y: Number(t.y), text: str(t.text) };
+      });
+      const f = fig("diagram") ?? fig("figure");
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        cards,
+        ...(Array.isArray(s.groups) ? { groups: strs(s.groups) } : {}),
+        ...(s.correct !== undefined ? { correct: Number(s.correct) } : {}),
+        ...(s.explanation ? { explanation: str(s.explanation) } : {}),
+        ...(targets.length ? { targets } : {}),
+        ...(Array.isArray(s.extra) ? { extra: strs(s.extra) } : {}),
+        ...(f ? { figure: f } : {}),
+      };
+    }
     case "question-set":
     case "practice":
     case "exit-ticket":
@@ -449,8 +503,14 @@ export function visualsOf(
   const shows = (pre: string) =>
     figs.filter(({ key, f }) => key.startsWith(pre) && !isDia(f)).map(({ f }) => f.shows);
   // A sequence's panels are made together as one set; a compare card gets its own picture.
+  // Activity cards are made as one set too: the director makes a generic set in one style and
+  // sends a named or historical set down its ladder card by card (ruling 163).
   const setOf = (key: string) =>
-    key.startsWith("seq.") && shows("seq.").length >= 2 ? "seq" : undefined;
+    key.startsWith("seq.") && shows("seq.").length >= 2
+      ? "seq"
+      : key.startsWith("card.") && shows("card.").length >= 2
+        ? "cards"
+        : undefined;
   return figs.map(
     ({ key, f }): VisualAsk =>
       isDia(f)

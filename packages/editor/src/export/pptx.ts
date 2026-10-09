@@ -57,6 +57,7 @@ import { createRoot } from "react-dom/client";
 import { resolveImageSrc } from "../images/resolve-src";
 import { normaliseAngle } from "../model/geometry";
 import {
+  choiceText,
   clamp,
   GAP_TOKEN,
   gapAnswers,
@@ -426,6 +427,8 @@ function optionText(slide: Slide, id: string): string {
   if (!el) return "";
   if (el.type === "option" || el.type === "text" || el.type === "gap-text")
     return docToPlainText(el.doc).trim();
+  // A card or option box (template hinge, choose, odd one out): the words inside it.
+  if (el.type === "shape") return choiceText(slide, id) || el.name || "";
   return el.name ?? "";
 }
 

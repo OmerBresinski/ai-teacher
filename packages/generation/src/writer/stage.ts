@@ -1,5 +1,6 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
+import { listAnswers } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
@@ -173,7 +174,7 @@ export type WriterRun = {
    */
   beforeEditable?: () => Promise<void>;
 };
-export type WriterSlide = Pick<Slide, "kind" | "elements" | "background"> & {
+export type WriterSlide = Pick<Slide, "kind" | "elements" | "background" | "question"> & {
   id: string;
   notes: string;
 };
@@ -481,7 +482,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         (p) => p && !own.includes(p),
       );
       const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
-      slides.push({ id: `s${i + 1}`, ...m.slide, notes: [own, said].filter(Boolean).join("\n\n") });
+      const q = m.slide.question ?? listQuestion(plan.slides[i] as S | undefined, notes.get(i));
+      slides.push({
+        id: `s${i + 1}`,
+        ...m.slide,
+        ...(q ? { question: q } : {}),
+        notes: [own, said].filter(Boolean).join("\n\n"),
+      });
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
     }
@@ -1186,4 +1193,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     writer: { usd: main.usd, ms: main.ms, finishReason: main.finishReason ?? null },
     summary: { textOnlyTeach, dangling },
   };
+}
+
+/**
+ * A question list's answers (question set, practice, exit ticket) as slide question data, from the
+ * notes stage's one answer per question, so present hides them until the reveal (TEACH-101 part b).
+ */
+function listQuestion(
+  s: S | undefined,
+  n: { answers: string[] } | undefined,
+): Slide["question"] | undefined {
+  if (!s || !["question-set", "practice", "exit-ticket"].includes(String(s.template))) return;
+  const qs = Array.isArray(s.questions) ? s.questions.map(String) : [];
+  return listAnswers(qs, n?.answers);
 }

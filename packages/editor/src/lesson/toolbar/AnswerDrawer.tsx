@@ -19,7 +19,7 @@ import { useId } from "react";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
-import { docToPlainText } from "../../text/static";
+import { choiceText } from "../../slide/elements/kit";
 import { useHistory } from "../document-context";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
 
@@ -74,11 +74,8 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
   const set = (next: QuestionData) => history.dispatch(reducers.setQuestion, slide.id, next);
   const type = (next: QuestionData) => typing.run(() => set(next));
 
-  const optionText = (id: string) => {
-    const el = slide.elements.find((e) => e.id === id);
-    const text = el && "doc" in el && el.doc ? docToPlainText(el.doc) : "";
-    return text.trim() || "Untitled option";
-  };
+  // A card or option box drawn as a shape is named by the words inside it.
+  const optionText = (id: string) => choiceText(slide, id) || "Untitled option";
   /** A picture has no text to name it by, so the layers name is the label. */
   const pictureName = (id: string, i: number) =>
     slide.elements.find((e) => e.id === id)?.name?.trim() || `Picture ${i + 1}`;

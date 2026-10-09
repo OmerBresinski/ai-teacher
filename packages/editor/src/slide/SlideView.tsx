@@ -23,6 +23,7 @@ import { docToPlainText } from "../text/static";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
+  choiceMarks,
   explanationText,
   fontFloor,
   isStatic,
@@ -239,6 +240,15 @@ export function SlideView({
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
         ) : null}
 
+        {slide.question?.type === "multiple-choice" ? (
+          <ChoiceMarks
+            slide={slide}
+            theme={theme}
+            revealAnswer={revealAnswer}
+            answerProgress={answerProgress ?? 0}
+          />
+        ) : null}
+
         {revealAnswer && slide.question?.type === "image-match" ? (
           <ImageMatchAnswers slide={slide} theme={theme} question={slide.question} />
         ) : null}
@@ -417,6 +427,83 @@ function placedById(elements: readonly SlideElement[]): Map<string, Placed> {
   };
   walk(elements, 0, 0);
   return out;
+}
+
+/**
+ * The choice reveal for cards and option boxes (template hinge, choose, odd one out): each wrong
+ * card is washed back in turn, then the right one is ringed with a tick, over the whole card so
+ * its picture dims with its word. `option` elements draw their own (`OptionView`).
+ */
+function ChoiceMarks({
+  slide,
+  theme,
+  revealAnswer,
+  answerProgress,
+}: {
+  slide: Slide;
+  theme: Theme;
+  revealAnswer: boolean;
+  answerProgress: number;
+}) {
+  const marks = useMemo(
+    () => choiceMarks(slide, revealAnswer, answerProgress),
+    [slide, revealAnswer, answerProgress],
+  );
+  if (marks.length === 0) return null;
+  const placed = placedById(slide.elements);
+  return (
+    <>
+      {marks.map(({ id, state }) => {
+        const r = placed.get(id);
+        if (!r) return null;
+        const right = state === "right";
+        return (
+          <div
+            key={id}
+            data-answer-anim=""
+            data-choice-mark={state}
+            style={{
+              position: "absolute",
+              left: r.x,
+              top: r.y,
+              width: r.w,
+              height: r.h,
+              zIndex: 800,
+              pointerEvents: "none",
+              borderRadius: Math.min(theme.radius, 16),
+              background: right ? undefined : withAlpha(theme.colors.background, 0.62),
+              boxShadow: right ? `0 0 0 4px ${theme.colors.correct}` : undefined,
+            }}
+          >
+            {right ? (
+              <span
+                role="img"
+                aria-label="Correct answer"
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 10,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 36,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: theme.colors.correct,
+                  color: theme.colors.surface,
+                  fontWeight: 700,
+                  fontSize: 22,
+                  lineHeight: 1,
+                }}
+              >
+                ✓
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 /** `matching` reveal: one line per pair, drawn between the two cards. */

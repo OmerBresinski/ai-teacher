@@ -21,9 +21,14 @@ const CI = process.env.CI === "true";
 const E2E_KIT = process.env.E2E_KIT === "1";
 const SCREENSHOTS = process.env.TEACH_SCREENSHOTS === "1";
 // The optional kit gate cannot reuse a developer's production-mode e2e server: it needs Vite dev.
-const ports = E2E_KIT
-  ? { api: 3813, worker: 3823, web: 4194 }
-  : { api: 3811, worker: 3822, web: 4193 };
+// `E2E_PORT_BASE=<n>` moves the three servers to n, n+1, n+2, so a second worktree can run the
+// suite beside another one (or beside `bun run dev`) without sharing servers.
+const PORT_BASE = Number(process.env.E2E_PORT_BASE ?? 0);
+const ports = PORT_BASE
+  ? { api: PORT_BASE, worker: PORT_BASE + 1, web: PORT_BASE + 2 }
+  : E2E_KIT
+    ? { api: 3813, worker: 3823, web: 4194 }
+    : { api: 3811, worker: 3822, web: 4193 };
 export const E2E_PORTS = ports;
 export const E2E_API_URL = `http://localhost:${E2E_PORTS.api}`;
 export const E2E_WEB_URL = `http://localhost:${E2E_PORTS.web}`;

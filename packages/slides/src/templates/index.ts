@@ -10,6 +10,7 @@
  */
 import type {
   ImageElement,
+  QuestionData,
   RichDoc,
   ShapeElement,
   Slide,
@@ -22,6 +23,10 @@ import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
+
+export { type ActivityFixture, activityFixtures } from "./activity-fixtures";
+export type { ActivityCard, ActivityId };
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -112,7 +117,8 @@ export type TemplateId =
   | "discussion"
   | "practice"
   | "exit-ticket"
-  | "equation-hero";
+  | "equation-hero"
+  | ActivityId;
 
 export type TemplateInput = {
   template: TemplateId;
@@ -138,6 +144,23 @@ export type TemplateInput = {
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
   formula?: string;
   figure?: Figure;
+  /** Hinge, choose, odd one out: the correct option or card, 1-based in the order given. */
+  correct?: number;
+  /** Hinge, choose, odd one out: the one-line reason shown with the revealed answer. */
+  explanation?: string;
+  /** Question set, practice, exit ticket: one answer per question, hidden until revealed. */
+  answers?: string[];
+  /**
+   * Activities: the cards, each one word or phrase and one single-subject picture slot, in the
+   * answer's order (pairs as given, a sequence in its right order); the template shuffles them.
+   */
+  cards?: ActivityCard[];
+  /** Group sort: the 2-3 group names; each card's `group` is an index into them. */
+  groups?: string[];
+  /** Label: each pointer's spot on the drawn diagram (fractions 0..1) and the word it wants. */
+  targets?: { x: number; y: number; text: string }[];
+  /** Label: words in the bank that no pointer wants. */
+  extra?: string[];
 };
 
 /** A point: plain words, or words with a short label (a key card in a lead + points column). */
@@ -147,7 +170,7 @@ export const pointLabel = (p: TemplatePoint): string | undefined =>
   typeof p === "string" ? undefined : p.label?.trim() || undefined;
 
 export type TemplateResult = {
-  slide: Pick<Slide, "kind" | "elements" | "background">;
+  slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
   over: string[];
   /** Round 2: why a diagram on this slide could not draw (drawDiagram's reasons); the slide was laid out without it. */
   diagram?: string[];
@@ -157,8 +180,10 @@ export type TemplateResult = {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-type Role = keyof Scale;
-type Ctx = {
+export type Role = keyof Scale;
+export type Ctx = {
+  /** The answer, kept off the elements so present hides it until the reveal. */
+  question?: QuestionData;
   t: Theme;
   s: Scale;
   over: string[];
@@ -924,6 +949,26 @@ function numbered(
 /* The templates                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The drawing kit the activity templates (`./activities`) share with the templates here, so every
+ * slide measures and draws text, panels, markers and photos one way.
+ */
+export const kit = {
+  LH,
+  measure: (...a: Parameters<typeof measure>) => measure(...a),
+  text: (...a: Parameters<typeof text>) => text(...a),
+  box: (...a: Parameters<typeof box>) => box(...a),
+  disc: (...a: Parameters<typeof disc>) => disc(...a),
+  rule: (...a: Parameters<typeof rule>) => rule(...a),
+  heading: (...a: Parameters<typeof heading>) => heading(...a),
+  wordsFit: (...a: Parameters<typeof wordsFit>) => wordsFit(...a),
+  photoBox: (...a: Parameters<typeof photoBox>) => photoBox(...a),
+  figurePanel: (...a: Parameters<typeof figurePanel>) => figurePanel(...a),
+  markerDisc: (c: Ctx) => markerDisc(c),
+  wash: (t: Theme) => wash(t),
+  doc,
+};
+
 const KIND: Record<TemplateId, SlideKind> = {
   title: "title",
   objectives: "objectives",
@@ -941,6 +986,12 @@ const KIND: Record<TemplateId, SlideKind> = {
   practice: "open-response",
   "exit-ticket": "exit-ticket",
   "equation-hero": "worked-example",
+  pair: "image-match",
+  "group-sort": "fill-gap",
+  sequence: "sort",
+  choose: "multiple-choice",
+  "odd-one-out": "multiple-choice",
+  label: "fill-gap",
 };
 
 /**
@@ -1503,15 +1554,17 @@ export function layoutTemplate(
         );
         y += sH;
       }
+      const optionIds: string[] = [];
       opts.forEach((o, k) => {
         const x = G.margin + (k % g.perRow) * (g.w + gap);
         const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
-        box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
+        const card = box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
           stroke: c.t.colors.line,
           strokeWidth: 1,
           radius: Math.min(c.t.radius, 16),
           name: "Option",
         });
+        optionIds.push(card.id);
         disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
         const th = measure(c, o, "body", g.iw);
         text(
@@ -1523,6 +1576,14 @@ export function layoutTemplate(
         );
       });
       c.s = full;
+      // The answer is question data on the option cards, so present hides it until the reveal.
+      const right = Number(input.correct);
+      if (Number.isInteger(right) && right >= 1 && right <= optionIds.length)
+        c.question = {
+          type: "multiple-choice",
+          options: optionIds.map((id, k) => ({ id, correct: k === right - 1 })),
+          ...(input.explanation?.trim() ? { explanation: input.explanation.trim() } : {}),
+        };
       break;
     }
     case "question-set":
@@ -1540,8 +1601,18 @@ export function layoutTemplate(
           ruled: true,
           ...(input.instruction ? { after: input.instruction } : {}),
         });
+      c.question = listAnswers(qs, input.answers);
+      if (!c.question) delete c.question;
       break;
     }
+    case "pair":
+    case "group-sort":
+    case "sequence":
+    case "choose":
+    case "odd-one-out":
+    case "label":
+      layoutActivity(c, input as TemplateInput & { template: ActivityId });
+      break;
     case "discussion": {
       heading(c, input.heading);
       const prompt = input.lead ?? "";
@@ -1570,8 +1641,32 @@ export function layoutTemplate(
     }
   }
   return {
-    slide: { kind: KIND[tpl], elements: c.els, ...(background ? { background } : {}) },
+    slide: {
+      kind: KIND[tpl],
+      elements: c.els,
+      ...(background ? { background } : {}),
+      ...(c.question ? { question: c.question } : {}),
+    },
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
   };
 }
+
+/**
+ * A question list's answers as one model answer, numbered when there is more than one question:
+ * present shows it on the reveal, the answer drawer edits it, the PowerPoint key lists it.
+ */
+export function listAnswers(
+  questions: string[],
+  answers: string[] | undefined,
+): QuestionData | undefined {
+  const got = (answers ?? []).slice(0, Math.max(1, questions.length)).map((a) => a.trim());
+  if (!got.some(Boolean)) return undefined;
+  const modelAnswer =
+    got.length > 1 ? got.map((a, i) => `${i + 1}. ${a || "…"}`).join("\n") : (got[0] ?? "");
+  return { type: "open-response", modelAnswer };
+}
+
+/** Whether a template is one of the activity layouts (cards, groups, pointers). */
+export const isActivity = (id: string): id is ActivityId =>
+  (ACTIVITY_IDS as readonly string[]).includes(id);
