@@ -98,7 +98,7 @@ describe("SignInSheet (TEACH-245)", () => {
   });
 });
 
-describe("preview lesson and the declined claim (ruling 112)", () => {
+describe("preview lesson and a move that failed (ruling 127)", () => {
   beforeEach(() => localStorage.clear());
 
   it("remembers the lesson for a day, for that lesson only", () => {
@@ -114,11 +114,11 @@ describe("preview lesson and the declined claim (ruling 112)", () => {
     expect(previewLesson("lesson-1")).toBeNull();
   });
 
-  it("row 6: a 404 for the lesson this browser signed in from says it stayed in the preview", () => {
+  it("row 6: a 404 for the lesson this browser signed in from says it could not be moved", () => {
     rememberPreviewLesson("lesson-1", "Volcanoes");
     params = { lessonId: "lesson-1" };
     render(<LessonNotFoundPage />);
-    expect(screen.getByText("This lesson stayed in the preview")).toBeVisible();
+    expect(screen.getByText("We couldn't move this lesson")).toBeVisible();
     expect(screen.getByRole("link", { name: "Make “Volcanoes” again" })).toHaveAttribute(
       "href",
       "/lessons/new?topic=Volcanoes",

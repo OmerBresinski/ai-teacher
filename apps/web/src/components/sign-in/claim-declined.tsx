@@ -4,18 +4,18 @@ import { NotFoundPage } from "@/components/not-found-page";
 import { type PreviewLesson, previewLesson } from "./preview-lesson";
 
 /**
- * An existing account signed in from a signed-out lesson (ruling 112): the lesson stays with the
- * preview, so `/l/<id>` 404s for them. Offer the brief again with the same topic.
+ * A signed-out lesson that could not be moved into the account that signed in (ruling 127: shown
+ * only when the move fails), so `/l/<id>` 404s for them. Offer the brief again with the topic.
  */
 export function ClaimDeclined({ preview }: { preview: PreviewLesson }) {
   return (
     <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center p-6">
       <Card>
         <CardHeader>
-          <CardTitle>This lesson stayed in the preview</CardTitle>
+          <CardTitle>We couldn't move this lesson</CardTitle>
           <CardDescription>
-            You signed in to an account you already had, so the lesson you made before signing in
-            stays in the preview. Make it again in your account.
+            The lesson you made before signing in could not be added to your account. Make it again
+            and it will be saved there.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -24,7 +24,7 @@ export function ClaimDeclined({ preview }: { preview: PreviewLesson }) {
             search={{ topic: preview.topic }}
             className={buttonVariants({ variant: "primary" })}
           >
-            Make “{preview.topic}” again
+            {preview.topic ? `Make “${preview.topic}” again` : "Make it again"}
           </Link>
         </CardContent>
       </Card>
@@ -33,8 +33,8 @@ export function ClaimDeclined({ preview }: { preview: PreviewLesson }) {
 }
 
 /**
- * `/l/$lessonId` not found. When this browser asked to sign in from that very lesson, the lesson
- * was not claimed (ruling 112), so say so; otherwise the usual not-found page.
+ * `/l/$lessonId` not found. When this browser asked to sign in from that very lesson, the move
+ * failed (ruling 127), so say so; otherwise the usual not-found page.
  */
 export function LessonNotFoundPage() {
   const { lessonId } = useParams({ strict: false });

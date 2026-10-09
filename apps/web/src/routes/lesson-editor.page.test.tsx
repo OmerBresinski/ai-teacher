@@ -21,7 +21,8 @@ mock.module("@tanstack/react-router", () => ({
 }));
 
 const actualUi = await import("@tj/ui");
-const toastSpy = mock();
+// `toast.error` and `toast.dismiss` too: autosave raises and clears its failure toast with them.
+const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 const { LessonEditorPage } = await import("./lesson-editor.page");
@@ -29,7 +30,7 @@ const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNC
   await import("@/components/generating-lesson");
 const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
-const { SIGN_IN_TO_EDIT } = await import("@/components/sign-in/sign-in-copy");
+const { SIGN_IN_TO_EDIT, SIGN_IN_TO_EXPORT } = await import("@/components/sign-in/sign-in-copy");
 
 const JOB_ID = "01a06a15-1849-7000-ac6a-c07e27fe308b";
 const WORKSPACE_ID = "01a06a15-1849-7000-ac6a-c07e27fe3000";
@@ -831,8 +832,18 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     renderAs(ANONYMOUS_ME);
     const banner = await screen.findByTestId("generating-shell");
     expect(within(banner).getByRole("button", { name: SIGN_IN_TO_EDIT })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    // Export is the sign-in sheet's door, never the export menu (ruling 109).
+    expect(within(banner).getByRole("button", { name: "Export" })).toHaveAttribute(
+      "data-sign-in-to-export",
+    );
     expect(screen.queryByRole("button", { name: /Worksheet/ })).toBeNull();
+  });
+
+  it("Export opens the sign-in sheet for export, and nothing is written (ruling 127)", async () => {
+    renderAs(ANONYMOUS_ME);
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    expect(await screen.findByRole("dialog", { name: SIGN_IN_TO_EXPORT })).toBeVisible();
+    expect(writes()).toEqual([]);
   });
 
   it("row 2: ready is read-only; paging and Present work and nothing is written", async () => {
@@ -844,7 +855,9 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     });
     expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
     expect(screen.queryByRole("listbox", { name: "Slides" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute(
+      "data-sign-in-to-export",
+    );
     expect(screen.queryByRole("button", { name: "Make a copy" })).toBeNull();
     expect(within(viewer).getByText(/^1 \/ \d+$/)).toBeVisible();
     fireEvent.click(within(viewer).getByRole("button", { name: "Next" }));

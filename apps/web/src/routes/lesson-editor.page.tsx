@@ -8,8 +8,8 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
-import { Button, IconButton } from "@tj/ui";
-import { ArrowLeft, FileText, LockKeyhole } from "lucide-react";
+import { Button, IconButton, toast } from "@tj/ui";
+import { ArrowLeft, Download, FileText, LockKeyhole } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -26,8 +26,16 @@ import { sessionBoundary } from "@/lib/session-boundary";
 import "@/components/lesson-creation/creation.css";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
-import { forgetPreviewLesson, rememberPreviewLesson } from "@/components/sign-in/preview-lesson";
-import { SIGN_IN_TO_EDIT } from "@/components/sign-in/sign-in-copy";
+import {
+  forgetPreviewLesson,
+  previewLesson,
+  rememberPreviewLesson,
+} from "@/components/sign-in/preview-lesson";
+import {
+  SAVED_TO_YOUR_LESSONS,
+  SIGN_IN_TO_EDIT,
+  SIGN_IN_TO_EXPORT,
+} from "@/components/sign-in/sign-in-copy";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { usePromptEdit } from "@/hooks/use-prompt-edit";
@@ -105,17 +113,27 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const { data: me } = useQuery({ ...meQueryOptions, staleTime: Number.POSITIVE_INFINITY });
   const anonymous = me?.user.isAnonymous === true;
   const [signInOpen, setSignInOpen] = useState(false);
+  // What the sheet resumes after sign-in (ruling 127): the editor, or Export's print view.
+  const [signInFor, setSignInFor] = useState<"edit" | "export">("edit");
   const title = data?.title;
-  const openSignIn = useCallback(() => {
-    // Kept for the tab the link opens in: if the claim is declined this is the topic it offers.
-    rememberPreviewLesson(lessonId, title ?? "");
-    setSignInOpen(true);
-  }, [lessonId, title]);
-  // Signed in and the lesson opened: it is theirs now, so nothing is left to offer again.
+  const askSignIn = useCallback(
+    (intent: "edit" | "export") => {
+      // Kept for the tab the link opens in: if the move fails this is the topic it offers.
+      rememberPreviewLesson(lessonId, title ?? "");
+      setSignInFor(intent);
+      setSignInOpen(true);
+    },
+    [lessonId, title],
+  );
+  const openSignIn = useCallback(() => askSignIn("edit"), [askSignIn]);
+  const openExportSignIn = useCallback(() => askSignIn("export"), [askSignIn]);
+  // Signed in and the lesson opened: it is theirs now (ruling 127), so say so once and forget it.
   const owned = me != null && !anonymous && data != null;
   useEffect(() => {
-    if (owned) forgetPreviewLesson();
-  }, [owned]);
+    if (!owned) return;
+    if (previewLesson(lessonId)) toast(SAVED_TO_YOUR_LESSONS);
+    forgetPreviewLesson();
+  }, [owned, lessonId]);
   // The body fetch writes the row state beside it, so this query only needs its own request when
   // the meta was invalidated later (a 409, the job's terminal event). Enabling it after the body
   // has arrived keeps the hover-preload path to one `GET /documents/:id`.
@@ -298,18 +316,25 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // While the lesson is being made, the generating shell shows both side by side; the editor's
   // top bar keeps Export visible and lists the Worksheets control in its ⋯ (ruling 186).
   const exportSlot = anonymous ? (
-    <Button
-      variant="default"
-      size="sm"
-      onClick={openSignIn}
-      aria-label={SIGN_IN_TO_EDIT}
-      data-sign-in-to-edit=""
-    >
-      <LockKeyhole aria-hidden size={16} strokeWidth={1.5} />
-      {/* A phone's bar has room for the verb only; the name stays the whole label. */}
-      <span className="hidden sm:inline">{SIGN_IN_TO_EDIT}</span>
-      <span className="sm:hidden">Sign in</span>
-    </Button>
+    <>
+      {/* Export is behind sign-in too (ruling 109); after it the print view opens (ruling 127). */}
+      <Button variant="ghost" size="sm" onClick={openExportSignIn} data-sign-in-to-export="">
+        <Download aria-hidden size={16} strokeWidth={1.5} />
+        Export
+      </Button>
+      <Button
+        variant="default"
+        size="sm"
+        onClick={openSignIn}
+        aria-label={SIGN_IN_TO_EDIT}
+        data-sign-in-to-edit=""
+      >
+        <LockKeyhole aria-hidden size={16} strokeWidth={1.5} />
+        {/* A phone's bar has room for the verb only; the name stays the whole label. */}
+        <span className="hidden sm:inline">{SIGN_IN_TO_EDIT}</span>
+        <span className="sm:hidden">Sign in</span>
+      </Button>
+    </>
   ) : (
     <>
       {worksheetsSlot}
@@ -397,7 +422,17 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       {content}
       {anonymous && signInOpen ? (
         <Suspense fallback={null}>
-          <SignInSheet open onOpenChange={setSignInOpen} redirect={`/l/${lessonId}`} />
+          <SignInSheet
+            open
+            onOpenChange={setSignInOpen}
+            redirect={signInFor === "export" ? `/l/${lessonId}/print` : `/l/${lessonId}`}
+            title={signInFor === "export" ? SIGN_IN_TO_EXPORT : SIGN_IN_TO_EDIT}
+            description={
+              signInFor === "export"
+                ? "Your lesson stays here. Once you are signed in, it opens ready to print or save as a PDF."
+                : undefined
+            }
+          />
         </Suspense>
       ) : null}
       {showStory && destination ? (

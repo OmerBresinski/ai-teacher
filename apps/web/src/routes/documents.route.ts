@@ -79,7 +79,7 @@ export const lessonEditorRoute = createRoute({
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),
-  // A signed-out lesson that an existing account did not claim 404s here (TEACH-245, ruling 112).
+  // A signed-out lesson whose move into the account failed 404s here (TEACH-245, ruling 127).
   notFoundComponent: lazyRouteComponent(
     () => import("@/components/sign-in/claim-declined"),
     "LessonNotFoundPage",

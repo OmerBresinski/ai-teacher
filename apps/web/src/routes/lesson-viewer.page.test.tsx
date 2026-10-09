@@ -9,7 +9,8 @@ const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let lessonId = "demo-water-cycle";
 const navigate = mock();
-const toastSpy = mock();
+// `toast.error` and `toast.dismiss` too: autosave raises and clears its failure toast with them.
+const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,

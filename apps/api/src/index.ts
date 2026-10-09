@@ -47,7 +47,7 @@ const auth = createAuth({
   db,
   mail: testMail ?? loadMailSender(env, logger),
   logger,
-  storage,
+  storage: storage.adapter,
 });
 // ADR 0006: the api only enqueues/cancels; `role: "enqueue-only"` disables pg-boss maintenance
 // (`supervise`) and cron (`schedule`) so only the worker runs them.

@@ -5,7 +5,10 @@ import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
+  SAVE_FAILED_DESCRIPTION,
   SAVE_FAILED_MESSAGE,
+  SAVE_FAILED_TOAST_ID,
+  SAVE_RETRY_LABEL,
   SaveRefusedError,
   useAutosave,
   useSaveState,
@@ -17,13 +20,20 @@ import {
  * option: the tests run it at 20 ms and wait on the state machine instead of advancing a clock.
  */
 
-const toastSpy = mock((..._args: unknown[]) => {});
+const toastErrorSpy = mock((..._args: unknown[]) => {});
+const toastDismissSpy = mock((..._args: unknown[]) => {});
+const toastSpy = Object.assign(
+  mock((..._args: unknown[]) => {}),
+  { error: toastErrorSpy, dismiss: toastDismissSpy },
+);
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
 afterEach(() => {
   cleanup();
   toastSpy.mockReset();
+  toastErrorSpy.mockReset();
+  toastDismissSpy.mockReset();
 });
 afterAll(() => mock.restore());
 
@@ -102,27 +112,54 @@ describe("useAutosave", () => {
     expect(result.current.settled).toBe(third);
   });
 
-  test("row 12: a rejected write says Not saved, toasts once, and keeps the unload guard", async () => {
-    const onSave = mock((_l: Lesson) => Promise.reject(new Error("quota")));
+  test("row 12: a rejected write says Not saved loudly, every time, with Retry, and keeps the unload guard", async () => {
+    let fail = true;
+    const onSave = mock((_l: Lesson) =>
+      fail ? Promise.reject(new Error("quota")) : Promise.resolve(),
+    );
     const { result } = renderHook(() => {
       const autosave = useAutosave(onSave, { delay: 10 });
       return { autosave, state: useSaveState(autosave) };
     });
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
-    expect(toastSpy).toHaveBeenCalledTimes(1);
-    expect(toastSpy.mock.calls[0]?.[0]).toBe(SAVE_FAILED_MESSAGE);
+    expect(toastErrorSpy).toHaveBeenCalledTimes(1);
+    const [message, options] = toastErrorSpy.mock.calls[0] as [
+      string,
+      {
+        id: string;
+        duration: number;
+        description: string;
+        action: { label: string; onClick: () => void };
+      },
+    ];
+    expect(message).toBe(SAVE_FAILED_MESSAGE);
+    // Persistent until a save succeeds, never a few seconds of small print.
+    expect(options).toMatchObject({
+      id: SAVE_FAILED_TOAST_ID,
+      duration: Number.POSITIVE_INFINITY,
+      description: SAVE_FAILED_DESCRIPTION,
+      action: { label: SAVE_RETRY_LABEL },
+    });
 
-    // A second failure is not a second toast.
+    // A later edit that fails too is said again, in the same toast (same id, so no stack).
     act(() => result.current.autosave.onChange(newLesson("B")));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(result.current.state).toBe("failed"));
-    expect(toastSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledTimes(2));
+    expect(toastErrorSpy.mock.calls[1]?.[1]).toMatchObject({ id: SAVE_FAILED_TOAST_ID });
 
     // Unsaved work: `beforeunload` is answered (preventDefault) so the browser asks.
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
+
+    // Retry writes what is pending; a good save clears the toast and says Saved.
+    fail = false;
+    await act(async () => options.action.onClick());
+    await waitFor(() => expect(result.current.state).toBe("saved"));
+    // (The unload above also tried a write; Retry is the last one, and it wrote "B".)
+    expect(onSave.mock.calls.at(-1)?.[0]?.title).toBe("B");
+    expect(toastDismissSpy).toHaveBeenCalledWith(SAVE_FAILED_TOAST_ID);
   });
 
   test("a SaveRefusedError says Not saved without the generic toast", async () => {
@@ -134,6 +171,7 @@ describe("useAutosave", () => {
     act(() => result.current.autosave.onChange(newLesson("A")));
     await waitFor(() => expect(result.current.state).toBe("failed"));
     expect(toastSpy).not.toHaveBeenCalled();
+    expect(toastErrorSpy).not.toHaveBeenCalled();
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);

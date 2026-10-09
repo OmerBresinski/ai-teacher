@@ -6,8 +6,10 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
  * Autosave for both editors (TeachDeck `components/editor/use-autosave.ts` and
  * `lib/worksheet/autosave.ts`), with the one thing the write itself cannot give the chrome: an
  * outcome. Edits are "Unsaved changes" for the 800 ms before a write is even attempted, "Saving…"
- * while it runs, "Saved" after, and "Not saved" when it rejects — said out loud once, with the
- * unload warning as the net.
+ * while it runs, "Saved" after, and "Not saved" when it rejects. A failed save is loud: a toast
+ * that stays until the next save succeeds, with Retry, raised again by every later failure (one
+ * toast id, so it never stacks), and the indicator itself becomes a Retry button. The unload
+ * warning is the last net.
  *
  * Generic in the document (`Lesson` or `Worksheet`): the write is the `onSave(document)` prop
  * (ADR 0022 §5) — `PUT /documents/:id` in the app; nothing here knows that. Exposed as
@@ -22,8 +24,12 @@ export type SavableDocument = Lesson | Worksheet;
 /** TeachDeck's `AUTOSAVE_MS`. */
 export const AUTOSAVE_MS = 800;
 
-export const SAVE_FAILED_MESSAGE =
-  "Could not save your changes. Export a copy before you close the tab.";
+export const SAVE_FAILED_MESSAGE = "Your changes are not saved";
+export const SAVE_FAILED_DESCRIPTION =
+  "Keep this tab open and retry. If it keeps failing, export a copy before you close the tab.";
+export const SAVE_RETRY_LABEL = "Retry";
+/** The one toast a failing autosave owns: re-raised in place, dismissed by the next good save. */
+export const SAVE_FAILED_TOAST_ID = "autosave-failed";
 
 /**
  * Reject `onSave` with this when the app has already told the teacher why the write was refused
@@ -70,8 +76,6 @@ export function useAutosave<D extends SavableDocument>(
     let settled: D | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight: Promise<void> | null = null;
-    /** One toast per run of failures: typing through a broken save must not stack twelve of them. */
-    let warned = false;
 
     const notify = () => {
       for (const l of listeners) l();
@@ -89,10 +93,17 @@ export function useAutosave<D extends SavableDocument>(
     };
 
     const fail = (reported: boolean) => {
-      // `pending` stays set on purpose: the beforeunload warning is the net.
+      // `pending` stays set on purpose: Retry writes it, and the beforeunload warning is the net.
       setState("failed");
-      if (!warned && !reported) toast(SAVE_FAILED_MESSAGE, { duration: 12_000 });
-      warned = true;
+      if (reported) return;
+      // Every failure raises it again (a teacher who dismissed it and kept typing hears about the
+      // next one too); the shared id updates the one toast in place instead of stacking more.
+      toast.error(SAVE_FAILED_MESSAGE, {
+        id: SAVE_FAILED_TOAST_ID,
+        description: SAVE_FAILED_DESCRIPTION,
+        duration: Number.POSITIVE_INFINITY,
+        action: { label: SAVE_RETRY_LABEL, onClick: () => void flush() },
+      });
     };
 
     const write = async (): Promise<void> => {
@@ -105,7 +116,7 @@ export function useAutosave<D extends SavableDocument>(
       setState("saving");
       try {
         await onSaveRef.current(document);
-        warned = false;
+        toast.dismiss(SAVE_FAILED_TOAST_ID);
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
@@ -171,8 +182,12 @@ export function useAutosave<D extends SavableDocument>(
 
 const SAVED = (): SaveState => "saved";
 
-/** The half of an `Autosave` the indicator reads; independent of the document type. */
-export type SaveStateSource = Pick<Autosave, "subscribe" | "getState">;
+/**
+ * The half of an `Autosave` the indicator reads; independent of the document type. With `flush`,
+ * a failed state is a Retry button.
+ */
+export type SaveStateSource = Pick<Autosave, "subscribe" | "getState"> &
+  Partial<Pick<Autosave, "flush">>;
 
 /** What the saved indicator should say right now. */
 export function useSaveState(autosave: SaveStateSource): SaveState {

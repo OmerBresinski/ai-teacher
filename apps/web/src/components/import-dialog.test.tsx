@@ -13,7 +13,8 @@ import { installFakeApi } from "@/test/fake-api";
 
 const { fakeApi, restore: restoreFetch } = installFakeApi();
 
-const toastSpy = mock();
+// `toast.error` and `toast.dismiss` too: autosave raises and clears its failure toast with them.
+const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
