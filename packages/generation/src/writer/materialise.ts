@@ -528,6 +528,20 @@ export function visualsOf(
   );
 }
 
+/**
+ * Every element the writer path lays down is the AI's (`authoredBy: "ai"`), so the editor reads a
+ * writer slide as generated (`isGeneratedSlide`): no "Why?" lane owed on a hinge with no
+ * explanation (the false "clashing" fault), and the generated-slide protections apply.
+ */
+export function aiAuthored<T extends { slide: { elements: unknown[] } }>(m: T): T {
+  const elements = m.slide.elements.map((e) =>
+    e && typeof e === "object" && !(e as { authoredBy?: unknown }).authoredBy
+      ? { ...e, authoredBy: "ai" }
+      : e,
+  );
+  return { ...m, slide: { ...m.slide, elements } };
+}
+
 /** Lay one slide out from its JSON and the visuals' current states. */
 export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
   let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
@@ -539,7 +553,7 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     );
     r = { ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage), diagram: why };
   }
-  return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
+  return aiAuthored({ slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) });
 }
 
 /** The objectives slide from the approved objectives (the writer never writes slide 2). */
@@ -549,7 +563,7 @@ export function codeObjectives(ctx: Omit<MaterialiseCtx, "visual">): Materialise
     ctx.theme,
     ctx.stage,
   );
-  return { slide: r.slide, over: r.over };
+  return aiAuthored({ slide: r.slide, over: r.over });
 }
 
 /** The title slide in code from the brief, before the writer answers. */
@@ -559,7 +573,7 @@ export function codeTitle(brief: Brief, ctx: { theme: Theme; stage: Stage }): Ma
     ctx.theme,
     ctx.stage,
   );
-  return { slide: r.slide, over: r.over };
+  return aiAuthored({ slide: r.slide, over: r.over });
 }
 
 /** The questions on a slide (the answerable check and the notes' answers). */

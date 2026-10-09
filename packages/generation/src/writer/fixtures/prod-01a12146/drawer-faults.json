@@ -1,0 +1,79 @@
+{
+  "source": "scratchpad/quality-prd/prod-lesson-01a12146/worker-logs-12h.jsonl (9 Oct 2026). The logs keep each drawer fault, not the spec: each spec here is rebuilt so the drawer's schema gives exactly the logged fault, which the test asserts before mending.",
+  "cases": [
+    {
+      "job": "01a12146-450e",
+      "slide": 8,
+      "attempt": 0,
+      "fault": "key.0: Too big: expected string to have <=18 characters; key.1: Too big: expected string to have <=18 characters; spec: a compare draws no arrow between its panels (they are not a process): leave out `arrows`",
+      "spec": {
+        "kind": "particles",
+        "alt": "Two populations of moths before and after the trees darken.",
+        "show": "compare",
+        "panels": [
+          { "state": "gas", "count": 10, "extra": 2 },
+          { "state": "gas", "count": 4, "extra": 8 }
+        ],
+        "captions": ["Before", "After"],
+        "key": ["Light-coloured moths", "Dark-coloured moths"],
+        "arrows": ["natural selection"]
+      }
+    },
+    {
+      "job": "01a12146-450e",
+      "slide": 7,
+      "attempt": 0,
+      "fault": "spec: a compare draws no arrow between its panels (they are not a process): leave out `arrows`",
+      "spec": {
+        "kind": "particles",
+        "alt": "Moths on pale bark and on sooty bark.",
+        "show": "compare",
+        "panels": [
+          { "state": "gas", "count": 8, "extra": 2 },
+          { "state": "gas", "count": 3, "extra": 7 }
+        ],
+        "captions": ["Pale bark", "Sooty bark"],
+        "arrows": ["pollution"]
+      }
+    },
+    {
+      "job": "01a12146-450e",
+      "slide": 8,
+      "attempt": 1,
+      "fault": "panels.1.count: Too small: expected number to be >=2; panels.2.count: Too small: expected number to be >=2",
+      "spec": {
+        "kind": "particles",
+        "alt": "Fewer pale moths survive each generation.",
+        "show": "compare",
+        "panels": [
+          { "state": "gas", "count": 6 },
+          { "state": "gas", "count": 1 },
+          { "state": "gas", "count": 1 }
+        ],
+        "captions": ["Start", "Later", "Much later"]
+      }
+    },
+    {
+      "job": "01a1214d-8f80",
+      "slide": 10,
+      "attempt": 0,
+      "fault": "labels: Too big: expected array to have <=6 items",
+      "spec": {
+        "kind": "labelled-diagram",
+        "alt": "A plant cell with its parts labelled.",
+        "w": 100,
+        "shapes": [{ "type": "rect", "x": 10, "y": 10, "w": 80, "h": 80 }],
+        "labels": [
+          { "text": "Cell wall", "at": [12, 50] },
+          { "text": "Cell membrane", "at": [15, 30] },
+          { "text": "Cytoplasm", "at": [30, 70] },
+          { "text": "Nucleus", "at": [50, 50] },
+          { "text": "Vacuole", "at": [60, 40] },
+          { "text": "Chloroplast", "at": [70, 70] },
+          { "text": "Mitochondrion", "at": [40, 20] },
+          { "text": "Ribosome", "at": [80, 30] }
+        ]
+      }
+    }
+  ]
+}

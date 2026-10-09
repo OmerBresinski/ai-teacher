@@ -551,18 +551,19 @@ describe("the writer stage on a fake model", () => {
    * sha256 of the system text and schema the writer is sent, per key stage, taken on origin/master
    * bf4e7b49 (before activities), Standard (9-12 slides): activities off must send exactly these.
    */
+  // Repinned for TEACH-110 part k: the contract lines (contract.ts) and the teaches enum.
   const MASTER = {
     ks1: [
-      "5d2348d72ff97ca3a57f1ba40236534884edcc68f5ed55831b399e2960a5a94b",
-      "c7eebd1413222a576ea2a50f8392a251a3206c6063e58eb11bc110af00e05b55",
+      "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
+      "675aa7a2d7b7fd539acdac1fda02855c1dfc340944eee8c20e8a3220e8b8048c",
     ],
     ks2: [
-      "be391339ebc89e3fa496a341e69692a77aa950b5b2fa0bc781cf9aa071b81031",
-      "1ef6e8c7573b47a18afe8fec9e66c4c9ad3c3618450fafd969276b9764ed0783",
+      "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
+      "2770aa00349752b41ab055c9ae7aa40732ce6866027c615ffbb4a20f46f22e91",
     ],
     ks4: [
-      "99436194ed46e3cd3ca27043575566f7c72c7f16c15fd373d67479de7494ef63",
-      "9cc95a24639cf759e0920a3026fbb522e674594ab96115a2ddac44844070a435",
+      "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
+      "de2c774b27d484f7ee834c7744d558346ad861dad7c3f4861074249b941ab9c6",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");

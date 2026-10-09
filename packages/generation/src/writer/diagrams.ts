@@ -262,13 +262,16 @@ export function diagramAskOf(
   return { ...base, labels: labels as string[] };
 }
 
+/** The drawer's schema for one kind, or undefined for a kind it does not know. */
+const ownSchema = (kind: unknown) =>
+  (DiagramSpecSchema.options as unknown as { shape?: { kind?: { value?: unknown } } }[]).find(
+    (o) => o.shape?.kind?.value === kind,
+  ) as typeof DiagramSpecSchema | undefined;
+
 /** Why a spec doesn't draw, in a line ("" when it does): the schema's issues as path: message. */
 export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): string {
   if (parses(out)) return "";
-  const kind = (out as { kind?: unknown })?.kind;
-  const own = (
-    DiagramSpecSchema.options as unknown as { shape?: { kind?: { value?: unknown } } }[]
-  ).find((o) => o.shape?.kind?.value === kind) as typeof DiagramSpecSchema | undefined;
+  const own = ownSchema((out as { kind?: unknown })?.kind);
   const r = (own ?? DiagramSpecSchema).safeParse(out);
   if (r.success) return "it did not draw";
   return r.error.issues
@@ -446,9 +449,23 @@ async function drawerCall(
       },
     );
     if (callFault) return { fault: callFault };
-    fault = out ? diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) : "no output";
-    deps.log?.({ ev: "diagram-call", key: ask.key, attempt, ...(fault ? { fault } : {}) });
-    if (!fault) return { spec: out, fault: "" };
+    // The drawer's output is mended exactly as the writer's own spec is (arrows on a compare are
+    // left out). Nothing is cut or raised to fit a limit: a spec past one goes back to the drawer
+    // with the limit it broke, and a second miss falls to the restage ladder (a picture of the same
+    // thing, words that stand alone, the figure's parts as points), never drawn with changed data.
+    const mended = out ? mendSpec(dropNulls(out)) : undefined;
+    fault = mended
+      ? diagramFaultOf(mended, (o) => withLongLabels(() => parseDiagram(o)))
+      : "no output";
+    const firstFault = out && !fault ? diagramFaultOf(out, parseDiagram) : "";
+    deps.log?.({
+      ev: "diagram-call",
+      key: ask.key,
+      attempt,
+      ...(fault ? { fault } : {}),
+      ...(firstFault ? { mended: firstFault.slice(0, 200) } : {}),
+    });
+    if (!fault) return { spec: mended, fault: "" };
   }
   return { fault };
 }

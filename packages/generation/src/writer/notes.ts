@@ -1,6 +1,7 @@
 // The writer stage's objective coverage and notes:
 // objective coverage from the flow's `teaches`, one targeted objective repair, and one notes call
 // per lesson on the slides as rendered.
+import { teachesSchema } from "./contract";
 import { type ChatReq, nonFatal, whenNonFatal } from "./services";
 
 /** Templates whose slide checks pupils rather than teaching them. */
@@ -105,6 +106,18 @@ export async function repairObjectives(o: {
     JSON.stringify({ flow: o.plan.flow, slides: o.plan.slides.slice(2) }),
     "",
     `Missing objectives: ${before.missing.join(", ")}`,
+    // Each missing objective with what it lacks, so the repair targets that slide kind.
+    ...before.missing.map(
+      (k) =>
+        `- ${k}: ${[
+          before.untaught.includes(k) ? "no slide teaches it" : "",
+          before.unchecked.includes(k)
+            ? "no hinge, question-set, practice, exit-ticket or discussion slide checks it"
+            : "",
+        ]
+          .filter(Boolean)
+          .join("; ")}`,
+    ),
   ].join("\n");
   const r = await o
     .chat({
@@ -112,7 +125,7 @@ export async function repairObjectives(o: {
       effort: "low",
       system: o.system,
       user,
-      schema: o.schema as ChatReq["schema"],
+      schema: withObjectiveNumbers(o.schema, o.objectives.length) as ChatReq["schema"],
       name: "objective_repair",
       strict: false,
     } as ChatReq)
@@ -140,7 +153,12 @@ export async function repairObjectives(o: {
     changed.push(c.n);
   }
   const after = coverage(next.flow, o.objectives.length, tplOf(next));
-  const ok = changed.length > 0 && after.missing.length === 0;
+  // A repair that covers some missing objectives and loses none is kept (it used to be discarded
+  // unless every objective was covered); what is still missing is logged as `stillMissing`.
+  const ok =
+    changed.length > 0 &&
+    after.missing.length < before.missing.length &&
+    after.missing.every((k) => before.missing.includes(k));
   o.log({
     ev: "objective-repair",
     missing: before.missing,
@@ -153,6 +171,23 @@ export async function repairObjectives(o: {
   return ok
     ? { plan: next, repaired: true, before, after }
     : { plan: o.plan, repaired: false, before, after };
+}
+
+/** The repair schema with `changes[].teaches` held to the approved objectives' numbers. */
+export function withObjectiveNumbers(schema: unknown, objectives: number): unknown {
+  const s = schema as { properties?: { changes?: { items?: { properties?: object } } } };
+  const item = s?.properties?.changes?.items;
+  if (!item?.properties || objectives < 1) return schema;
+  return {
+    ...s,
+    properties: {
+      ...s.properties,
+      changes: {
+        ...s.properties?.changes,
+        items: { ...item, properties: { ...item.properties, teaches: teachesSchema(objectives) } },
+      },
+    },
+  };
 }
 
 /* ── notes, one call per lesson ─────────────────── */

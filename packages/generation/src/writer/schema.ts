@@ -1,4 +1,5 @@
 import { type WriterBundle, writerBundle } from "./bundle";
+import { freeformLabels, teachesSchema } from "./contract";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -212,13 +213,37 @@ function withDiagramSpecs(b: WriterBundle, schema: J, stage: WriterStage): J {
   return schema;
 }
 
-/** The writer's strict schema for a lesson of `min..max` slides at this stage. */
+/**
+ * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
+ * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
+ * `objectives` count, `flow[].teaches` held to `1..objectives`. `pinned` gives the lab's pinned
+ * schema with no contract (the evidence pins compare against it).
+ */
 export function writerSchema(
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
+  opts: { objectives?: number; pinned?: boolean } = {},
 ): J {
-  return withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
+  const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
+  if (opts.pinned) return s;
+  const defs = s.$defs as Record<string, J>;
+  const free = defs["diagram-freeform"];
+  if (free)
+    defs["diagram-freeform"] = {
+      ...free,
+      properties: { ...(free.properties as J), labels: freeformLabels() },
+    };
+  const n = opts.objectives ?? 0;
+  if (n > 0) {
+    const flow = (s.properties as Record<string, J>).flow as J;
+    const entry = flow.items as J;
+    flow.items = {
+      ...entry,
+      properties: { ...(entry.properties as J), teaches: teachesSchema(n) },
+    };
+  }
+  return s;
 }
 
 /** The schema as the pinned file holds it (one-space indent, trailing newline). */
@@ -226,4 +251,4 @@ export const schemaText = (
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
-) => `${JSON.stringify(writerSchema(stage, slides, b), null, 1)}\n`;
+) => `${JSON.stringify(writerSchema(stage, slides, b, { pinned: true }), null, 1)}\n`;

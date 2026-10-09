@@ -40,7 +40,7 @@ export function objectiveCount(b: Brief): string {
 
 /**
  * K3: why a writer output is incomplete, or undefined when it is whole. A stream cut at the token
- * limit, JSON that does not close, or fewer slides than the brief allows fails the job instead of
+ * limit, JSON that does not close, or a deck more than 2 under the count fails the job instead of
  * saving the flow's placeholders as a headings-only deck.
  */
 export function writerIncomplete(o: {
@@ -59,8 +59,10 @@ export function writerIncomplete(o: {
   if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
   const n = Array.isArray(out?.slides) ? out.slides.length : 0;
-  if (n < o.minSlides - 2)
-    return `${n} slides after title and objectives, under ${o.minSlides - 2}`;
+  // A small count miss (up to 2 under, or any over) ships as written and is logged (count.ts,
+  // ADR 0036); more than 2 under the count, title and objectives included, is incomplete.
+  if (n + 2 < o.minSlides - 2)
+    return `${n + 2} slides with title and objectives, more than 2 under ${o.minSlides}`;
   return undefined;
 }
 
@@ -412,6 +414,15 @@ export function fixedFallback(
     ].includes(tpl)
   )
     out.template = "explain";
+  // A lost diagram's named parts are kept as the slide's points when it has none of its own, so
+  // what the drawing named is still taught (PICTURES-DIAGRAMS fix 4); explain holds up to three.
+  const own = Array.isArray(out.points) && out.points.length > 0;
+  if (lost.type === "diagram" && !own && parts.length >= 2 && parts.length <= 3) {
+    if (!["explain", "steps", "equation-hero"].includes(String(out.template)))
+      out.template = "explain";
+    if (out.template === "explain")
+      return { slide: { ...out, points: parts }, how: "figure-as-points" };
+  }
   return { slide: out, how: "figure-dropped" };
 }
 
@@ -473,7 +484,10 @@ export type FillExtras = {
 export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string {
   const get = (path: string): unknown =>
     path.split(".").reduce<unknown>((o, k) => (o as S | undefined)?.[k], b);
-  return text.trim().replace(/\{\{([^}]+)\}\}/g, (_, raw: string) => {
+  // An exact count (ADR 0036) reads "Slides: 10", never "10 to 10".
+  const exact = b.slides !== undefined && b.slides.min === b.slides.max;
+  const src = exact ? text.replace("{{slides.min}} to {{slides.max}}", "{{slides.min}}") : text;
+  return src.trim().replace(/\{\{([^}]+)\}\}/g, (_, raw: string) => {
     const expr = raw.trim();
     const t = expr.match(/^([\w.]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
     if (t) return get(t[1] as string) ? (t[2] as string) : (t[3] as string);

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { countMiss } from "./count";
 import { fnv, shuffleHinge, withCorrectLetter, writerIncomplete } from "./fixes";
 import { writerSchema } from "./schema";
 
@@ -57,10 +58,18 @@ describe("K3: an incomplete writer output (row 5)", () => {
       "finish_reason length (token limit)",
     );
   });
-  test("too few slides", () => {
-    expect(writerIncomplete({ text: JSON.stringify({ slides: [1, 2, 3] }), minSlides: 9 })).toBe(
-      "3 slides after title and objectives, under 7",
+  test("more than 2 under the count fails (K3); within 2 under, or over, ships and logs (ADR 0036)", () => {
+    // Deck sizes count title and objectives; `slides` holds slide 3 on.
+    const text = (deck: number) => JSON.stringify({ slides: Array.from({ length: deck - 2 }) });
+    expect(writerIncomplete({ text: text(3), minSlides: 10 })).toBe(
+      "3 slides with title and objectives, more than 2 under 10",
     );
+    expect(writerIncomplete({ text: text(7), minSlides: 10 })).toMatch(/more than 2 under/);
+    for (const deck of [8, 9, 11]) {
+      expect(writerIncomplete({ text: text(deck), minSlides: 10 })).toBeUndefined();
+      expect(countMiss(deck - 2, 10)).toEqual({ requested: 10, delivered: deck });
+    }
+    expect(countMiss(8, 10)).toBeUndefined();
   });
 });
 

@@ -15,6 +15,8 @@ import {
 } from "./activities";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
+import { contractSystem } from "./contract";
+import { countMiss } from "./count";
 import { writerDrawerSystem } from "./diagram-contract.gen";
 import {
   acceptWriterSpec,
@@ -225,10 +227,13 @@ export type WriterOutput = {
   summary: { textOnlyTeach: number; dangling: { slide: number; fault: string }[] };
 };
 
-/** The writer's system text for the brief's stage, exactly as pinned (nothing appended). */
+/**
+ * The writer's system text for the brief's stage: the pinned text with the contract lines that
+ * come from the drawer's schema and the exact slide count (contract.ts), nothing appended.
+ */
 export function writerSystem(brief: Brief, P = writerBundle()): string {
   const k = promptStage(brief.keyStage);
-  return k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5;
+  return contractSystem(k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5);
 }
 
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
@@ -346,7 +351,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       : [];
   const activities = run.activities ?? ACTIVITIES_DEFAULT;
   const libbed = libSchema(
-    writerSchema(stageKey, brief.slides, P),
+    writerSchema(stageKey, brief.slides, P, { objectives: run.objectives.length }),
     models.map((m) => m.id),
   );
   const schema = activities ? withActivities(libbed, stageKey) : libbed;
@@ -647,6 +652,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     title?: S;
     slides?: S[];
   };
+  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
+  const miss =
+    brief.slides.min === brief.slides.max
+      ? countMiss(out.slides?.length ?? 0, brief.slides.max)
+      : undefined;
+  if (miss) log({ ev: "count-miss", level: "warn", ...miss });
   plan.design = out.design;
   plan.flow = out.flow;
   if (!designShown) run.onDesign?.(plan.design);
@@ -1421,14 +1432,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const dangling = checks.flatMap((c) =>
     c.faults.filter((f) => VISUAL_DANGLING.test(f)).map((f) => ({ slide: c.slide, fault: f })),
   );
-  log({
-    ev: "summary",
-    textOnlyTeach,
-    dangling: dangling.length,
-    coverage: plan.flow
-      ? coverage(plan.flow, run.objectives.length, () => undefined).missing.length
-      : 0,
-  });
+  // Coverage by the written slides' templates, as the objective repair judges it (the summary
+  // used to classify by `does` alone and read 0 while an objective was unchecked).
+  const unmet = plan.flow
+    ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string)
+        .missing
+    : [];
+  if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
+  log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
   return {
     slides: deck(),
     plan,
