@@ -107,6 +107,7 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
+import { ROLE_STAMP_DEFAULT, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
@@ -182,6 +183,12 @@ export type WriterRun = {
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
   figureSpecRepair?: boolean;
+  /**
+   * roleStamp (the slide-role contract, step 1): each written slide's role (role.ts) is worked out
+   * once the writer's slides are all open and logged (`slide-role`). Nothing reads it yet. Absent:
+   * `ROLE_STAMP_DEFAULT` (off).
+   */
+  roleStamp?: boolean;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -713,6 +720,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  // ── roleStamp: each written slide's role, logged only (no consumer reads it yet) ──
+  if (run.roleStamp ?? ROLE_STAMP_DEFAULT)
+    for (const [i, role] of slideRoles(plan.slides as (S | undefined)[]))
+      log({
+        ev: "slide-role",
+        slide: i + 1,
+        template: String(plan.slides[i]?.template ?? ""),
+        role,
+      });
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
   await Promise.all(diagramJobs.values());
   const n = plan.slides.length;
