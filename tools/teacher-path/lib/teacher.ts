@@ -333,7 +333,8 @@ async function waitForLesson(
     if (
       run.lessonId &&
       shell === 0 &&
-      editor &&
+      // A guest's finished lesson opens read-only (TEACH-245), with no Rename control.
+      (editor || run.who === "guest") &&
       running === false &&
       (sawShell || (landedAt && Date.now() - landedAt > 8_000))
     ) {
