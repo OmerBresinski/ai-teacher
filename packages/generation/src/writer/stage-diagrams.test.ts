@@ -54,6 +54,7 @@ for (const b of [
         drawDiagrams: { callDrawer },
         // The lab run predates figure-text.ts, which redraws its 16-in-10-groups figure.
         figureText: false,
+        figureSpecRepair: false,
       });
       const svgs = (els: El[]) =>
         els

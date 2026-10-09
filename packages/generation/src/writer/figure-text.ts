@@ -14,8 +14,13 @@
 
 type J = Record<string, unknown>;
 
-/** On unless a run turns it off (`WriterRun.figureText`). */
+/** On unless a run turns it off (`WriterRun.figureText`): words rewritten from the spec. */
 export const FIGURE_TEXT_DEFAULT = true;
+/** On unless a run turns it off (`WriterRun.figureSpecRepair`): an undrawable spec corrected. */
+export const FIGURE_SPEC_REPAIR_DEFAULT = true;
+
+/** Which of the two behaviours run; each is off unless set. */
+export type FigureTextOptions = { fromSpec?: boolean; specRepair?: boolean };
 
 const NUMBER_WORDS = [
   "zero",
@@ -264,11 +269,12 @@ export type FigureTextChange = {
 /** One figure: its spec fixed (an undrawable group count) or its words rewritten from it. */
 export function figureTextFixOne(
   spec: J,
+  opts: FigureTextOptions = { fromSpec: true, specRepair: true },
 ): { spec: J; action: "groups" | "words"; why: string } | undefined {
   const kind = KINDS[str(spec.kind)];
   if (!kind) return undefined;
   const words = [str(spec.alt), str(spec.shows)].filter(Boolean).join(". ");
-  if (spec.kind === "equal-groups") {
+  if (opts.specRepair && spec.kind === "equal-groups") {
     const total = Number(spec.total);
     const groups = Number(spec.groups);
     if (total > 0 && groups > 0 && total % groups !== 0) {
@@ -281,6 +287,7 @@ export function figureTextFixOne(
         };
     }
   }
+  if (!opts.fromSpec) return undefined;
   const why = kind.miss(spec, words);
   if (!why) return undefined;
   const text = kind.words(spec);
@@ -288,12 +295,15 @@ export function figureTextFixOne(
 }
 
 /** Every figure on a slide checked against its own words; unchanged when they all agree. */
-export function figureTextFix(slide: J): { slide: J; changes: FigureTextChange[] } {
+export function figureTextFix(
+  slide: J,
+  opts: FigureTextOptions = { fromSpec: true, specRepair: true },
+): { slide: J; changes: FigureTextChange[] } {
   const changes: FigureTextChange[] = [];
   let out = slide;
   for (const [key, v] of Object.entries(slide)) {
     if (!v || typeof v !== "object" || Array.isArray(v)) continue;
-    const fix = figureTextFixOne(v as J);
+    const fix = figureTextFixOne(v as J, opts);
     if (!fix) continue;
     out = { ...out, [key]: fix.spec };
     changes.push({ key, kind: str((v as J).kind), action: fix.action, why: fix.why });

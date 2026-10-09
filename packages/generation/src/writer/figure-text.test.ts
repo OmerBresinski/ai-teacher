@@ -145,6 +145,15 @@ describe("figureTextFix", () => {
     );
   });
 
+  test("each behaviour runs only under its own flag", () => {
+    const s = groups(16, 10, "Sixteen counters in one collection.", "One collection.");
+    expect(figureTextFix(s, { specRepair: true }).changes.map((c) => c.action)).toEqual(["groups"]);
+    expect(figureTextFix(s, { fromSpec: true }).changes.map((c) => c.action)).toEqual(["words"]);
+    expect(figureTextFix(s, {}).changes).toEqual([]);
+    const t = frenchTable("A number bank for one to twenty.");
+    expect(figureTextFix(t, { specRepair: true }).changes).toEqual([]);
+  });
+
   test("other kinds and slides without figures are untouched", () => {
     const s = { heading: "x", figure: { kind: "line-graph", alt: "1 to 20", shows: "" } };
     expect(figureTextFix(s)).toEqual({ slide: s, changes: [] });
