@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { type CheckerFlags, parseCheckerFlags } from "./checker-flags";
-import { coverage } from "./notes";
+import { coverage, type FlowEntry, isPictureTask } from "./notes";
 import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 
 /*
@@ -133,6 +135,42 @@ describe("pointGuardLogOnly", () => {
 });
 
 describe("objective coverage", () => {
+  const plan = (b: string) => {
+    const main = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures/replay", b, "main.json"), "utf8"),
+    ) as { text: string };
+    const p = JSON.parse(main.text) as { flow: FlowEntry[]; slides: Record<string, unknown>[] };
+    const slides = [{}, {}, ...p.slides] as Record<string, unknown>[];
+    return {
+      flow: p.flow,
+      slideOf: (k: number) => slides[k - 1],
+      tpl: (k: number) => slides[k - 1]?.template as string,
+    };
+  };
+  test("coverageCountsPictureTasks: y2 s4 'Which shaded part is one half?' on drawn shapes checks objective 1", async () => {
+    const p = plan("y2-maths-halves-quarters");
+    expect(coverage(p.flow, 2, p.tpl).missing).toEqual([1]);
+    expect(coverage(p.flow, 2, p.tpl, { pictureTasks: true, slideOf: p.slideOf }).missing).toEqual(
+      [],
+    );
+    expect(isPictureTask(p.slideOf(4))).toBe(true);
+    // The objective repair no longer fires, so the picture task is not replaced by a text hinge.
+    const off = await run("y2-maths-halves-quarters", {});
+    const on = await run("y2-maths-halves-quarters", { coverageCountsPictureTasks: true });
+    expect(off.calls).toContain("objective_repair");
+    expect(on.calls).not.toContain("objective_repair");
+    expect([off.images[3], on.images[3]]).toEqual([0, 1]);
+  });
+  test("a teaching slide with a question heading is not a task", () => {
+    expect(
+      isPictureTask({
+        template: "visual-text",
+        heading: "Why do polar bears have thick fur?",
+        lead: "Thick fur traps a layer of warm air.",
+        points: ["Fat under the skin slows heat loss."],
+      }),
+    ).toBe(false);
+  });
   // No pinned writer output has a discussion check or a check before its teaching; the flows below
   // are the audit's cases (D36; R7T y12 o1 checked only by the starter on s3, first taught on s4).
   test("coverageExcludesDiscussion: a discussion slide does not check (D36)", () => {
