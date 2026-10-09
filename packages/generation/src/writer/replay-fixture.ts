@@ -154,9 +154,12 @@ export async function replayRun(
     hooks?: Pick<WriterRun, "onAsks" | "onSlide" | "onEditable" | "onReopen">;
     /** Called when the streamed text has all been handed over, before the writer call returns. */
     onStreamEnd?: () => void;
+    /** The saved brief changed before the run (a different slide count). */
+    brief?: (b: Brief) => Brief;
   } = {},
 ) {
-  const brief = JSON.parse(read(b, "brief.json")) as Brief;
+  const saved = JSON.parse(read(b, "brief.json")) as Brief;
+  const brief = o.brief ? o.brief(saved) : saved;
   const objectives = (
     JSON.parse(read(b, "objectives.json")) as { objectives: { teacher: string }[] }
   ).objectives.map((o) => o.teacher);

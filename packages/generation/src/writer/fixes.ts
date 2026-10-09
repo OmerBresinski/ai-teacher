@@ -40,7 +40,7 @@ export function objectiveCount(b: Brief): string {
 
 /**
  * K3: why a writer output is incomplete, or undefined when it is whole. A stream cut at the token
- * limit, JSON that does not close, or fewer slides than the brief allows fails the job instead of
+ * limit, JSON that does not close, or no written slide fails the job instead of
  * saving the flow's placeholders as a headings-only deck.
  */
 export function writerIncomplete(o: {
@@ -59,10 +59,9 @@ export function writerIncomplete(o: {
   if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
   const n = Array.isArray(out?.slides) ? out.slides.length : 0;
-  // One short of the count is a slip the stage ships with a warning (count.ts, ADR 0036); more is
-  // a cut stream.
-  if (n < o.minSlides - 3)
-    return `${n} slides after title and objectives, under ${o.minSlides - 3}`;
+  // A count miss ships as written and is logged (count.ts, ADR 0036); only an output with no
+  // written slide at all is incomplete (the headings-only deck K3 exists to stop).
+  if (n === 0) return "no slides after title and objectives";
   return undefined;
 }
 

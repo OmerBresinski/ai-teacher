@@ -35,20 +35,21 @@ Evidence for what the count counts:
    exactly n and `slides` to exactly n − 2; the user turn reads `Slides: 10`, and the system
    sentence says the count includes the title and the objectives (`writer/contract.ts`
    `COUNT_LINE`; the pinned bundle files are unchanged, the line is replaced in code).
-3. **What is guaranteed.** The strict schema asks for exactly n, and code holds it after the
-   writer answers (`writer/count.ts` `fitCount`, called in `writer/stage.ts`):
-   - **Over by any number:** each extra slide is trimmed in code, with no model call. The trimmed
-     slide is the one whose loss leaves the objectives most covered: a teaching slide before a
-     check slide, then the one with fewest words. The flow is renumbered, and slides opened while
-     streaming past the new end are cancelled. A `count-fit` warning names the trimmed slides. A
-     deck is never longer than n.
-   - **One short:** the deck ships as written (n − 1 slides) with a `count-fit` warning,
-     `short: 1`. The job does not fail. No slide is invented to fill the gap.
-   - **Two or more short:** K3 (`writerIncomplete`) still fails the job, as before. A gap that
-     size is a cut or broken stream, not a count slip, and the job's retry is the right answer.
-   - A `length` finish or JSON that does not parse still fails the job (K3).
-   So a writer lesson has exactly n slides, or n − 1 with a logged warning, or the job fails and
-   retries. Continuation pages added by the fit repair are not counted (`fitReport` `delivered`).
+3. **What is guaranteed, and what is not.** The prompt (`Slides: N`, the count sentence) and the
+   strict schema (`flow` exactly N, `slides` exactly N − 2) are the enforcement. Code does not
+   trim or pad a deck. A trim protects nothing structural: it can drop the recall opener, half of
+   a worked example and its "your turn" pair, the plenary, or a slide another slide refers to.
+   A mid-deck trim also moves every later slide's index, so pictures are fetched again, and a
+   trimmed tail slide's pictures are orphaned but still billed. So:
+   - **Over or under by any number:** the deck ships as written, and the stage logs `count-miss`
+     (`level: "warn"`, `requested`, `delivered`; `writer/count.ts`, called in `writer/stage.ts`).
+     The job does not fail. A brief with no count (a range) logs nothing.
+   - **No written slide at all,** a `length` finish, or JSON that does not parse still fails the
+     job (K3). That is the headings-only deck K3 exists to stop.
+   - The miss rate is measured from `count-miss` and the teacher's-path check (`fitReport`
+     requested against delivered). A model-side repair (add one slide, or merge two) is added only
+     if misses turn out to be common.
+   Continuation pages added by the fit repair are not counted (`fitReport` `delivered`).
 
 ## Consequences
 

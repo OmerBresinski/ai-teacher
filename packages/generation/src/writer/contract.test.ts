@@ -12,13 +12,13 @@ import { isGeneratedSlide } from "@tj/slides/reflow";
 import { getTheme } from "@tj/slides/themes";
 import { WRITER_BUNDLES, writerBundle } from "./bundle";
 import { COUNT_LINE, contractSystem, drawerLimits, PINNED_LINES } from "./contract";
-import { fitCount, type WriterOut } from "./count";
 import { diagramFaultOf, drawWriterDiagram } from "./diagrams";
-import { type Brief, fillTemplate, fixedFallback, writerIncomplete } from "./fixes";
+import { type Brief, fillTemplate, fixedFallback } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import prod from "./fixtures/prod-01a12146/drawer-faults.json" with { type: "json" };
 import { codeObjectives, codeTitle, materialise } from "./materialise";
 import { coverage, repairObjectives } from "./notes";
+import { replayRun, replayServices, savedSlides } from "./replay-fixture";
 import { writerSchema } from "./schema";
 import { writerSystem } from "./stage";
 
@@ -253,41 +253,44 @@ describe("writer slides are the AI's (the false 'clashing' fault)", () => {
   });
 });
 
-describe("the exact count is held in code (ADR 0036)", () => {
-  const dir = join(import.meta.dir, "fixtures/replay/y11-chemistry-rates-of-reaction");
+describe("a count miss ships whole and is logged (ADR 0036)", () => {
+  const b = "y11-chemistry-rates-of-reaction";
   const main = JSON.parse(
-    JSON.parse(readFileSync(join(dir, "main.json"), "utf8")).text,
-  ) as WriterOut;
-  const objectives = (
-    JSON.parse(readFileSync(join(dir, "objectives.json"), "utf8")) as { objectives: unknown[] }
-  ).objectives.length;
-  const total = (main.slides?.length ?? 0) + 2;
-  const tpl = (o: WriterOut) => (k: number) => o.slides?.[k - 3]?.template as string | undefined;
+    JSON.parse(readFileSync(join(import.meta.dir, "fixtures/replay", b, "main.json"), "utf8")).text,
+  ) as { slides: unknown[] };
+  const total = main.slides.length + 2;
 
-  test("one over is trimmed to the count, the trimmed slide losing no objective", () => {
-    const fit = fitCount(main, total - 1, objectives);
-    expect((fit.out.slides?.length ?? 0) + 2).toBe(total - 1);
-    expect(fit.out.flow).toHaveLength(total - 1);
-    expect(fit.out.flow?.map((f) => f.slide)).toEqual(
-      Array.from({ length: total - 1 }, (_, k) => k + 1),
-    );
-    expect(fit.trimmed).toHaveLength(1);
-    expect(coverage(fit.out.flow ?? [], objectives, tpl(fit.out)).missing).toEqual(
-      coverage(main.flow ?? [], objectives, tpl(main)).missing,
-    );
+  test("an N+1 deck (the writer wrote one more than asked) ships every slide, warns, orphans no picture", async () => {
+    const logs: J[] = [];
+    const asked = new Set<number>();
+    const reopened: number[] = [];
+    const out = await replayRun(b, {
+      brief: (br) => ({ ...br, slides: { min: total - 1, max: total - 1 } }),
+      services: { ...replayServices(b), log: (e) => logs.push(e as J) },
+      hooks: {
+        onAsks: (i, asks) => {
+          if (asks.length) asked.add(i);
+        },
+        onReopen: (i) => reopened.push(i),
+      },
+    });
+    // Same deck as the saved replay at its own count: nothing trimmed, nothing moved.
+    expect(out.slides.length).toBe(savedSlides(b).length);
+    expect(out.plan.slides.length).toBe(total);
+    expect(logs.filter((e) => e.ev === "count-miss")).toEqual([
+      { ev: "count-miss", level: "warn", requested: total - 1, delivered: total },
+    ]);
+    // Every slide that asked for a picture is still in the deck; none was reopened or dropped.
+    expect([...asked].every((i) => i < out.plan.slides.length)).toBe(true);
+    expect(reopened).toEqual([]);
   });
 
-  test("one short ships with the shortfall reported, and K3 does not fail it; two short is a cut stream", () => {
-    const text = JSON.stringify(main);
-    expect(writerIncomplete({ text, minSlides: total + 1 })).toBeUndefined();
-    expect(fitCount(main, total + 1, objectives).short).toBe(1);
-    expect(writerIncomplete({ text, minSlides: total + 2 })).toMatch(/under/);
-  });
-
-  test("the exact count already met changes nothing", () => {
-    const fit = fitCount(main, total, objectives);
-    expect(fit.trimmed).toEqual([]);
-    expect(fit.short).toBe(0);
-    expect(fit.out.slides).toEqual(main.slides);
+  test("the count asked for logs nothing", async () => {
+    const logs: J[] = [];
+    await replayRun(b, {
+      brief: (br) => ({ ...br, slides: { min: total, max: total } }),
+      services: { ...replayServices(b), log: (e) => logs.push(e as J) },
+    });
+    expect(logs.some((e) => e.ev === "count-miss")).toBe(false);
   });
 });

@@ -57,10 +57,13 @@ describe("K3: an incomplete writer output (row 5)", () => {
       "finish_reason length (token limit)",
     );
   });
-  test("too few slides", () => {
-    expect(writerIncomplete({ text: JSON.stringify({ slides: [1, 2, 3] }), minSlides: 9 })).toBe(
-      "3 slides after title and objectives, under 6",
+  test("no written slide fails; a count miss does not (ADR 0036: shipped and logged)", () => {
+    expect(writerIncomplete({ text: JSON.stringify({ slides: [] }), minSlides: 9 })).toBe(
+      "no slides after title and objectives",
     );
+    expect(
+      writerIncomplete({ text: JSON.stringify({ slides: [1, 2, 3] }), minSlides: 9 }),
+    ).toBeUndefined();
   });
 });
 
