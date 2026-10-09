@@ -264,7 +264,12 @@ export function charsOver(slide: unknown, stage: string): string[] {
 /** Whether a writer slide asks for any picture or diagram (its figure, a card's or a panel's). */
 export function asksVisual(s: S): boolean {
   if (["figure", "picture", "diagram"].some((k) => s[k] && typeof s[k] === "object")) return true;
-  const cards = [...((s.columns as unknown[]) ?? []), ...((s.sequence as unknown[]) ?? [])];
+  // Activity cards (TEACH-101) are the look's `cards` kind: a picture on any card meets it.
+  const cards = [
+    ...((s.columns as unknown[]) ?? []),
+    ...((s.sequence as unknown[]) ?? []),
+    ...((s.cards as unknown[]) ?? []),
+  ];
   return cards.some((c) => !!c && typeof c === "object" && !!(c as S).picture);
 }
 /** Layouts that take one picture in their own field: `figure` or `picture`. */
@@ -463,12 +468,25 @@ export function applyRepair(
   }
 }
 
-/** The pupil line's word limit: the objectives slide's measured room for this many objectives. */
+/**
+ * A pupil line's reading target by stage (WRITER-FIX-PLAN fault 1): the slide's room is a fit
+ * ceiling, and passed as the limit it was filled (20 words at KS1 for two objectives).
+ */
+export const PUPIL_READ_WORDS: Record<Stage, number> = {
+  ks1: 8,
+  ks2: 12,
+  ks3: 15,
+  ks4: 15,
+  ks5: 15,
+};
+
+/** The pupil line's word limit: the age's reading target, never more than the slide's room. */
 export function pupilWordLimit(stage: Stage, n: number): number {
+  const read = PUPIL_READ_WORDS[stage];
   const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
   const chars = room?.[`${n} objectives`];
-  if (chars) return Math.max(6, Math.floor(chars / 6));
-  return stage === "ks1" ? 8 : stage === "ks2" ? 10 : 12;
+  const fit = chars ? Math.max(6, Math.floor(chars / 6)) : read;
+  return Math.min(read, fit);
 }
 
 export type FillExtras = {

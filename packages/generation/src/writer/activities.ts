@@ -216,6 +216,32 @@ export function withActivities(schema: J, stage: WriterStage): J {
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
+/** Abbreviations whose full stop ends no sentence ("Mr. Fox", "St. Paul's", "e.g. a cat"). */
+const ABBREVIATION = /\b(?:Mrs|Mr|Ms|Dr|St|Prof|Mt|No|vs|etc|approx|e\.g|i\.e|cf)\./gi;
+const withoutAbbreviations = (t: string) => t.replace(ABBREVIATION, (m) => m.replace(/\./g, ""));
+
+/** A pair's instruction when the writer's cannot stand (WRITER-FIX-PLAN fault 4). */
+export const PAIR_INSTRUCTION = "Match each picture to its name.";
+/** The fix line (logged in `activity-fixed`) for an instruction code replaced. */
+export const INSTRUCTION_REPLACED = "activity-instruction-replaced";
+
+/**
+ * The instruction an activity shows. A pair holds one task (picture to the label that names it),
+ * so a pair instruction of more than one sentence carries a second task its cards cannot hold
+ * (D51 y1: "Match each picture. Name its adult.") and is replaced by code's; a pair with none gets
+ * code's. Other families keep the writer's as written.
+ */
+export function activityInstruction(
+  id: string,
+  written: string,
+): { text: string; replaced: boolean } {
+  if (id !== "pair") return { text: written, replaced: false };
+  if (!written) return { text: PAIR_INSTRUCTION, replaced: false };
+  if (/[.!?]\s+\S/.test(withoutAbbreviations(written)))
+    return { text: PAIR_INSTRUCTION, replaced: true };
+  return { text: written, replaced: false };
+}
+
 /**
  * The writer's activity slide as the template's input shape (what `materialise` reads): labels to
  * `text`, a picture phrase to a one-subject picture ask, 1-based group and correct to 0-based /
@@ -313,10 +339,12 @@ export function fromWriterActivity(
   const named = (p: string) =>
     /^hist/i.test(lessonSubject) ||
     /\s(?!I\b)[A-Z][a-z]/.test(` ${p.split(/\s+/).slice(1).join(" ")}`);
+  const instruction = activityInstruction(id, str(raw.instruction));
+  if (instruction.replaced) fixes.push(`${INSTRUCTION_REPLACED}: ${str(raw.instruction)}`);
   const slide: S = {
     template: id,
     heading: str(raw.heading),
-    ...(str(raw.instruction) ? { lead: str(raw.instruction) } : {}),
+    ...(instruction.text ? { lead: instruction.text } : {}),
     cards: cards.map((c) => ({
       text: c.text,
       ...(c.picture

@@ -99,7 +99,14 @@ import {
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
-import { stripPointTasks } from "./point-guard";
+import { stripComparePointing, stripPointTasks } from "./point-guard";
+import {
+  shapeSchema,
+  shapeSystem,
+  trimKindsBlock,
+  trimModels,
+  type WriterPromptOptions,
+} from "./prompt-options";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
@@ -171,6 +178,8 @@ export type WriterRun = {
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
   activities?: boolean;
+  /** The writer prompt's A/B options (`prompt-options.ts`); absent: all off, the pinned text. */
+  prompt?: WriterPromptOptions;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -342,7 +351,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const models =
     run.library && run.drawDiagrams
       ? await nonFatal(
-          () => catalogue(stageKey),
+          async () => trimModels(await catalogue(stageKey), brief, run.prompt),
           (e) => {
             log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
             return [];
@@ -354,7 +363,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     writerSchema(stageKey, brief.slides, P, { objectives: run.objectives.length }),
     models.map((m) => m.id),
   );
-  const schema = activities ? withActivities(libbed, stageKey) : libbed;
+  const schema = shapeSchema(
+    activities ? withActivities(libbed, stageKey) : libbed,
+    brief,
+    run.prompt,
+  );
   const system = libSystem(writerSystem(brief, P), models);
   /** A diagram ask as the drawer reads it, sized to the slide's slot. */
   const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
@@ -622,7 +635,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: activities ? withActivityMenu(system, stageKey) : system,
+          system: shapeSystem(
+            activities ? withActivityMenu(system, stageKey) : system,
+            brief,
+            stageKey,
+            run.prompt,
+            schema,
+          ),
           user: localise(user),
           schema,
           name: "lesson",
@@ -905,9 +924,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(i);
   };
   const diagramKinds = () =>
-    baseVisuals(stageKey)
-      .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
-      .trim() ?? "";
+    trimKindsBlock(
+      baseVisuals(stageKey)
+        .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
+        .trim() ?? "",
+      brief,
+      run.prompt,
+    );
   /** Slide i's faults, judged against the phase's frozen deck while repairs run in parallel. */
   const judged = (i: number): string[] => {
     const was = frozen;
@@ -1239,17 +1262,68 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (JSON.stringify(words) !== JSON.stringify(s)) swapSlide(i, words);
     path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
   };
+  /** A compare's column picture asks (WRITER-FIX-PLAN fault 3: the columns are one visual). */
+  const columnAsks = (i: number) =>
+    (asks.get(i) ?? []).filter(
+      (a): a is Extract<VisualAsk, { type: "photo" }> =>
+        a.type === "photo" && a.key.startsWith("col."),
+    );
+  /**
+   * Fault 3 (D51 y1 slides 3 and 10): a compare shows no column's picture when any failed. Each
+   * failed column is asked once more through generation; true when every column then has one.
+   */
+  const compareRetry = async (i: number, s: S): Promise<boolean> => {
+    const failed = columnAsks(i).filter((a) => visualState(i)(a.key).status === "failed");
+    if (!failed.length || !run.placeMore) return false;
+    await run.placeMore(
+      i,
+      failed.map((a) => ({ ...a, retry: "generate" as const })),
+      { heading: String(s.heading ?? ""), text: wordsOf(s), point: pointOf(s) },
+    );
+    const ok = columnAsks(i).every((a) => visualState(i)(a.key).status === "photo");
+    log({ ev: "compare-retry", slide: i + 1, cols: failed.map((a) => a.key), ok });
+    if (ok) relay(i);
+    return ok;
+  };
   const pictureLost = async (i: number) => {
+    await pictureLostOnce(i);
+    const s = plan.slides[i] as S | undefined;
+    if (s?.template !== "compare") return;
+    // The all-or-nothing drop in materialise, made visible in the log.
+    const failed = columnAsks(i)
+      .filter((a) => visualState(i)(a.key).status === "failed")
+      .map((a) => a.key);
+    if (!failed.length) return;
+    log({ ev: "compare-pictures-dropped", slide: i + 1, failed });
+    // The slide is text-only now: its words never ask pupils to look at the pictures.
+    const { slide: stripped, removed } = stripComparePointing(s);
+    if (!removed.length) return;
+    swapSlide(i, stripped);
+    log({ ev: "point-guard", slide: i + 1, removed, how: "compare-strip" });
+  };
+  const pictureLostOnce = async (i: number) => {
     if (path.has(i) || i < 2) return;
+    const s0 = plan.slides[i] as S;
+    const compare = s0.template === "compare";
     const lost = (asks.get(i) ?? []).find(
       (a): a is Extract<VisualAsk, { type: "photo" }> =>
-        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+        a.type === "photo" &&
+        !a.set &&
+        (!a.fixedShape || (compare && a.key.startsWith("col."))) &&
+        visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
+    if (compare && lost.key.startsWith("col.")) {
+      // The retry landed every column; else the compare stays a compare, text-only (never a
+      // reroute or restage: its columns' words stand without the pictures).
+      const ok = await compareRetry(i, s0);
+      path.set(i, ok ? "picture-compare-retry" : "picture-compare-text-only");
+      if (!ok) log({ ev: "compare-text-only", slide: i + 1 });
+      return;
+    }
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
     // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
     // ported: a partial split never ships).
-    const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
     // tiles or a table that did land.

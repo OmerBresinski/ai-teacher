@@ -89,3 +89,22 @@ export function stripPointTasks(slide: S): { slide: S; removed: string[] } {
     out.instruction = FROM_MEMORY;
   return { slide: out, removed };
 }
+
+/**
+ * A compare whose column pictures were dropped (WRITER-FIX-PLAN fault 3): the slide-level strip,
+ * and each column's text loses its pointing sentences ("Look at the pictures.") too.
+ */
+export function stripComparePointing(slide: S): { slide: S; removed: string[] } {
+  const top = stripPointTasks(slide);
+  const removed = [...top.removed];
+  const cols = Array.isArray(top.slide.columns) ? (top.slide.columns as S[]) : [];
+  const columns = cols.map((c) => {
+    const t = typeof c?.text === "string" ? c.text : "";
+    const kept = keepSentences(t);
+    if (kept === t.trim()) return c;
+    removed.push(t);
+    return { ...c, text: kept };
+  });
+  if (!removed.length) return { slide, removed };
+  return { slide: { ...top.slide, ...(cols.length ? { columns } : {}) }, removed };
+}

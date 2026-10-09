@@ -804,6 +804,8 @@ export interface WriterPhotoAsk {
   fixedShape?: boolean;
   /** A same-subject set's panel: made together by the generator (TEACH-237), not searched. */
   set?: string;
+  /** Asked again straight to generation: a stock route becomes library-or-generate (fault 3). */
+  retry?: "generate";
 }
 
 /** What the stage lays a picture slot out with (`materialise.ts` `VisualState`, photo part). */
@@ -904,6 +906,18 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
 };
+
+/**
+ * The director's answer with a stock route sent to the library or the generator (a retry after
+ * the stock pick failed; WRITER-FIX-PLAN fault 3). Commons, code and none are kept: a real thing
+ * is never generated (ruling 163).
+ */
+export const generateRoute =
+  (direct: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>) =>
+  async (input: PictureDirectorInput): Promise<PictureDirection | undefined> => {
+    const d = await direct(input);
+    return d?.route === "pexels" ? { ...d, route: "library-or-generate" } : d;
+  };
 
 export function createWriterPictures(opts: {
   lesson: Lesson;
@@ -1030,6 +1044,8 @@ export function createWriterPictures(opts: {
     real = realOnly(ask, [ask.shows]),
   ) => {
     let reason: PictureOutcome["reason"];
+    const asked = direct ?? ((input: PictureDirectorInput) => directPicture(input, deps));
+    const directed = ask.retry === "generate" ? generateRoute(asked) : direct;
     return placeWriterPicture({
       ask: {
         key: ask.key,
@@ -1046,7 +1062,7 @@ export function createWriterPictures(opts: {
       images: opts.images,
       deps: slotDeps(slot),
       taken,
-      ...(direct ? { direct } : {}),
+      ...(directed ? { direct: directed } : {}),
       ...(bank ? { bank } : {}),
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {

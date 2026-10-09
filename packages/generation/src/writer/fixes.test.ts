@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { countMiss } from "./count";
-import { fnv, shuffleHinge, withCorrectLetter, writerIncomplete } from "./fixes";
+import { asksVisual, fnv, shuffleHinge, withCorrectLetter, writerIncomplete } from "./fixes";
 import { writerSchema } from "./schema";
 
 const FIX = join(import.meta.dir, "fixtures");
@@ -116,4 +116,13 @@ describe("seeded hinge shuffle (row 6)", () => {
     expect(shuffleHinge(s, "a")).toBe(s);
   });
   test("fnv is the 32-bit FNV-1a", () => expect(fnv("a")).toBe(0xe40c292c));
+});
+
+describe("asksVisual: activity cards (WRITER-FIX-PLAN fault 4 side note)", () => {
+  test("a card with a picture meets the look's cards kind", () => {
+    expect(
+      asksVisual({ template: "pair", cards: [{ text: "kitten", picture: { shows: "a kitten" } }] }),
+    ).toBe(true);
+    expect(asksVisual({ template: "pair", cards: [{ text: "kitten" }] })).toBe(false);
+  });
 });

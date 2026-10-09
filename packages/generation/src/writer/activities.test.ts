@@ -7,12 +7,15 @@ import { getTheme } from "@tj/slides/themes";
 import {
   activityDefs,
   activityFaults,
+  activityInstruction,
   activityMenu,
   bounds,
   cellFor,
   elementText,
   fitsLine,
   fromWriterActivity,
+  INSTRUCTION_REPLACED,
+  PAIR_INSTRUCTION,
   WRITER_ACTIVITIES,
   type WriterActivity,
   withActivities,
@@ -581,5 +584,47 @@ describe("the writer stage on a fake model", () => {
       expect(sha(seen.writer?.system ?? "")).toBe(system);
       expect(sha(JSON.stringify(seen.writer?.schema))).toBe(schema);
     }
+  });
+});
+
+describe("the pair instruction (WRITER-FIX-PLAN fault 4)", () => {
+  test("two sentences are two tasks: code's instruction replaces them", () => {
+    expect(activityInstruction("pair", "Match each picture. Name its adult.")).toEqual({
+      text: PAIR_INSTRUCTION,
+      replaced: true,
+    });
+  });
+  test("one sentence is kept; none gets code's", () => {
+    expect(activityInstruction("pair", "Match each baby to its name.")).toEqual({
+      text: "Match each baby to its name.",
+      replaced: false,
+    });
+    expect(activityInstruction("pair", "")).toEqual({ text: PAIR_INSTRUCTION, replaced: false });
+  });
+  test("an abbreviation's full stop is not a sentence end", () => {
+    for (const t of [
+      "Match each animal to Mr. Fox's word.",
+      "Match Dr. Seuss's characters to their names.",
+      "Match each saint to St. Paul's window.",
+      "Match each young animal, e.g. a calf, to its name.",
+      "Match each picture, i.e. each baby, to its name.",
+    ])
+      expect(activityInstruction("pair", t)).toEqual({ text: t, replaced: false });
+    expect(activityInstruction("pair", "Match Mr. Fox's cubs. Name their mother.").replaced).toBe(
+      true,
+    );
+  });
+  test("other families keep the writer's instruction as written", () => {
+    expect(activityInstruction("choose", "Look. Pick one.").text).toBe("Look. Pick one.");
+    expect(activityInstruction("choose", "").text).toBe("");
+  });
+  test("fromWriterActivity lays the replaced line and logs why", () => {
+    const raw = { ...writerActivity("pair"), instruction: "Match each picture. Name its adult." };
+    const a = fromWriterActivity(raw, "KS1");
+    expect(a.slide.lead).toBe(PAIR_INSTRUCTION);
+    expect(a.fixes).toContain(`${INSTRUCTION_REPLACED}: Match each picture. Name its adult.`);
+    const one = fromWriterActivity({ ...raw, instruction: "Match the pictures." }, "KS1");
+    expect(one.slide.lead).toBe("Match the pictures.");
+    expect(one.fixes.some((f) => f.startsWith(INSTRUCTION_REPLACED))).toBe(false);
   });
 });

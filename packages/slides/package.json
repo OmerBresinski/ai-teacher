@@ -20,6 +20,7 @@
     "./templates/pupil-words": "./src/templates/pupil-words.ts",
     "./templates/activities": "./src/templates/activities.ts",
     "./templates/activity-capacity.json": "./src/templates/activity-capacity.json",
+    "./templates/fits-extra.json": "./src/templates/fits-extra.gen.json",
     "./diagram-builds": "./src/diagrams/builds.ts"
   },
   "scripts": {
