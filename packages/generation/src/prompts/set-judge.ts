@@ -36,5 +36,23 @@ export const setJudgePrompt = {
   },
 };
 
+/**
+ * The schema the set judge sends, byte for byte as base4f-p123 sent it (`set-judge-schema.json`,
+ * TEACH-110 part f); `SetJudgeSchema` validates the answer.
+ */
+export const SET_JUDGE_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["same", "odd", "why"],
+  properties: {
+    same: { type: "boolean" },
+    odd: { type: "array", items: { type: "integer", minimum: 0 } },
+    why: { type: "string" },
+  },
+} as const;
+
+/** The lab's deadline for one non-streamed call. */
+export const SET_JUDGE_TIMEOUT_MS = 40_000;
+
 /** The answer is three short fields; base4 capped it at 2000 tokens. */
 export const SET_JUDGE_TOKENS = 2000;

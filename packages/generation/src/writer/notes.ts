@@ -258,6 +258,8 @@ export async function lessonNotes(o: {
           user: o.user,
           schema: o.schema as ChatReq["schema"],
           name: "notes",
+          // Strict JSON, as base4f-p123 ran it (TEACH-110 part f): the notes schema lists every key.
+          strict: true,
           timeoutMs: o.timeoutMs ?? 60_000,
         } as ChatReq);
         o.onUsd(r.usd);
@@ -286,6 +288,8 @@ export async function lessonNotes(o: {
           user: `${o.user}\n\nWrite the notes for these slides only: ${missing.join(", ")}.`,
           schema: o.schema as ChatReq["schema"],
           name: "notes",
+          // Strict JSON, as base4f-p123 ran it (TEACH-110 part f): the notes schema lists every key.
+          strict: true,
           timeoutMs: o.timeoutMs ?? 60_000,
         } as ChatReq);
         o.onUsd(r.usd);

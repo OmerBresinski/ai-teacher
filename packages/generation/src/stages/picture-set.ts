@@ -19,10 +19,16 @@ import {
   splitGrid,
   splitPanels,
 } from "@tj/images";
-import { callStructured } from "../call";
-import { SET_JUDGE_TOKENS, SetJudgeSchema, setJudgePrompt } from "../prompts/set-judge";
+import {
+  SET_JUDGE_JSON_SCHEMA,
+  SET_JUDGE_TIMEOUT_MS,
+  SET_JUDGE_TOKENS,
+  SetJudgeSchema,
+  setJudgePrompt,
+} from "../prompts/set-judge";
 import type { PipelineDeps } from "../types";
-import { nonFatal, whenNonFatal } from "../writer/services";
+import { aiWriterServices } from "../writer/ai-services";
+import { nonFatal, SMALL_MODEL, whenNonFatal } from "../writer/services";
 import { judgeMadeDirected, plainSubject } from "./illustrate";
 import { mustShowOf } from "./photo-bank";
 import {
@@ -473,18 +479,21 @@ export function directedSetJudges(
       return { ok, ...(boxes ? { boxes } : {}), ...(why ? { why } : {}) };
     },
     async judgeSet(shows, urls) {
-      const call = await callStructured({
-        deps,
-        stage: "illustrate",
-        cls: "standard",
+      // The request base4f-p123 sent (TEACH-110 part f): its JSON schema strict, named
+      // `set_judge`, a `system` message and the panels at low detail, on Luna, low.
+      const r = await aiWriterServices(deps).chat({
+        model: SMALL_MODEL,
         effort: "low",
-        prompt: setJudgePrompt,
-        input: { shows },
-        schema: SetJudgeSchema,
-        maxOutputTokens: SET_JUDGE_TOKENS,
-        images: urls.map((url, i) => ({ id: `panel-${i + 1}`, url })),
+        system: setJudgePrompt.system,
+        user: setJudgePrompt.user({ shows }),
+        images: urls,
+        schema: SET_JUDGE_JSON_SCHEMA,
+        name: "set_judge",
+        strict: true,
+        maxTokens: SET_JUDGE_TOKENS,
+        timeoutMs: SET_JUDGE_TIMEOUT_MS,
       });
-      const o = call.output;
+      const o = SetJudgeSchema.parse(r.out);
       return { same: o.same, odd: o.odd, ...(o.why ? { why: o.why } : {}) };
     },
   };

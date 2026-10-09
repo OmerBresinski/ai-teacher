@@ -499,7 +499,7 @@ describe("illustrate", () => {
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(3);
-    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v3");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v4");
     expect(ai.calls[0]?.promptText).toContain(
       "do not reject a caption for not mentioning them: front teeth",
     );

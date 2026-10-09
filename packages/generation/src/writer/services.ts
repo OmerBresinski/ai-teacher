@@ -84,6 +84,8 @@ export type ChatReq = {
   strict?: boolean;
   timeoutMs?: number;
   maxTokens?: number;
+  /** Pictures (data URLs) sent after the user text, in order, at low detail (the set judge). */
+  images?: string[];
 };
 export type ChatResult = { out?: unknown; usd: number; ms: number };
 
