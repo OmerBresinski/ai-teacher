@@ -176,7 +176,10 @@ function plan(P) {
   if (pv !== 'none') items.push({ key: 'pitch', caption: pv === 'keyboard' ? 'Each sound gets a note. On a keyboard, higher notes are further to the right.' : 'Each sound gets a note. On a stave, higher notes sit higher up.' });
   if (pv !== 'none' && sc) items.push({ key: 'steps', caption: P.pitch.pattern === 'major' ? 'A major scale steps tone, tone, semitone, tone, tone, tone, semitone.' : 'A major pentatonic scale has five notes and no semitone steps.' });
   const name = pv !== 'none' && sc ? scaleName(P) : null;
-  const summary = name ? `The ${name}, played to a rhythm over a steady beat.` : P.showRhythm ? `${P.bars} bar${P.bars > 1 ? 's' : ''} of ${bt} beats: a rhythm played over a steady beat.` : `${P.bars * bt} steady beats, ${bt} in every bar.`;
+  // more than 8 beats with pitch: the rhythm gives way to the keyboard or stave (render), so the summary
+  // must not say the slide shows them together
+  const apart = pv !== 'none' && bt * P.bars > 8;
+  const summary = name ? (apart ? `The ${name}: clap the rhythm first, then play these notes to it.` : `The ${name}, played to a rhythm over a steady beat.`) : P.showRhythm ? `${P.bars} bar${P.bars > 1 ? 's' : ''} of ${bt} beats: a rhythm played over a steady beat.` : `${P.bars * bt} steady beats, ${bt} in every bar.`;
   return { items, summary };
 }
 function scaleName(P) {

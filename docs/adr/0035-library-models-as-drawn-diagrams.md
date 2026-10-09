@@ -42,7 +42,7 @@ image element `name: "Diagram"` whose `src` is an SVG data URL, with `builds` co
    (`bar_model` → `bar-model`, …) or `labelled-diagram`, with the intent as its request. From
    there today's chain applies (repair, restage); a slot is never left empty by the library.
 6. **What ships.** The vendored kit and models are copied byte for byte from lab/lib-next
-   8fbfb912 into `library/vendor/` (two comments reworded), and only models whose latest
+   0c27ede7 into `library/vendor/` (two comments reworded), and only models whose latest
    counter-judge passed and that render on happy-dom are registered (`library/models.ts`); the
    rest are listed with reasons in `library/catalogue.ts` `EXCLUDED`.
 

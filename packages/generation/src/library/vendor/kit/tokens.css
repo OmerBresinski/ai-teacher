@@ -631,13 +631,15 @@
   transform: scaleX(0);
   opacity: 1;
 }
+/* the gap is a little longer than the path and the hidden offset a little past it, so no dash ends on the
+   path while it is hidden: a dash end there draws a round cap, a stray dot before the line arrives */
 .slide .draw {
-  stroke-dasharray: 1 1;
+  stroke-dasharray: 1 1.1;
   stroke-dashoffset: 0;
 }
 .slide .off.draw {
   opacity: 1;
-  stroke-dashoffset: 1;
+  stroke-dashoffset: 1.05;
 }
 .slide [data-s].fly,
 .slide [data-h].snap {

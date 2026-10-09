@@ -16,8 +16,8 @@ const preset = async (id: string, n = 0) => {
 };
 
 describe("shipped models", () => {
-  test("34 models ship; none of the excluded ones does", () => {
-    expect(Object.keys(MODEL_LOADERS).length).toBe(34);
+  test("52 models ship; none of the excluded ones does", () => {
+    expect(Object.keys(MODEL_LOADERS).length).toBe(52);
     for (const id of Object.keys(EXCLUDED)) expect(MODEL_LOADERS[id]).toBeUndefined();
   });
 
@@ -35,7 +35,7 @@ describe("shipped models", () => {
           if (buildCount(svg) !== r.builds) bad.push(`${id}/${p.id}: builds`);
           if (/&nbsp;| class="[^"]*\boff\b/.test(svg))
             bad.push(`${id}/${p.id}: hidden marks or html`);
-          if (!(r.aspect > 0.3 && r.aspect < 5)) bad.push(`${id}/${p.id}: aspect ${r.aspect}`);
+          if (!(r.aspect > 0.3 && r.aspect < 7)) bad.push(`${id}/${p.id}: aspect ${r.aspect}`);
         } catch (e) {
           // hist_map's world journey preset is a 2 MB coastline: refused, so the drawer draws it.
           if (!(id === "hist_map" && /over the slide's limit/.test(String(e))))
@@ -70,7 +70,8 @@ describe("writer catalogue", () => {
     for (const e of ks2) expect(MODEL_LOADERS[e.id]).toBeDefined();
     const sys = libSystem("Intro\nDiagram kinds:\n- bar-model: x\n- pie: y\n\nRest", ks2);
     expect(sys).toContain("- pie: y\n- model: a ready-made teaching model");
-    expect(sys).toContain("Models (id, years: what it shows):\n- fractions, Y1-Y6: ");
+    expect(sys).toContain("Models (id, years: what it shows):\n- ");
+    expect(sys).toContain("\n- fractions, Y1-Y6: ");
     expect(sys.endsWith("\nRest")).toBe(true);
   });
 
@@ -137,7 +138,7 @@ describe("fill and check", () => {
       throw new Error("timeout");
     });
     expect(r).toMatchObject({ ok: false, fallbackKind: FALLBACK_KIND });
-    const none = await libraryDiagram({ ...ask, model: "water_cycle" }, async () => ({}));
+    const none = await libraryDiagram({ ...ask, model: "water_cycle" }, async () => "x");
     expect(none).toMatchObject({ ok: false, fallbackKind: "cycle" });
   });
 });

@@ -47,6 +47,7 @@ export function wrap(p, s, cls, maxW, a) {
     if (cur) { out.push(cur); cur = ''; }
     if (measure(p, w, cls, a) <= maxW) { cur = w; continue; }
     const parts = breakWord(p, w, cls, maxW, a); out.push(...parts.slice(0, -1)); cur = parts[parts.length - 1];
+    out.broke = true; // a word split across lines: callers try a smaller size or another place first
   }
   if (cur) out.push(cur); return out;
 }

@@ -31,31 +31,13 @@ export const LIB_PROMPTS = {
 };
 
 /**
- * Models production does not ship, and why (the PR lists them). The shipped set is
- * `MODEL_LOADERS`: the counter-judged passes of lab/library's LIBRARY-REPORT.md at 8fbfb912 that
- * draw outside a browser.
+ * Registered models production does not ship, and why (the PR lists them). The shipped set is
+ * `MODEL_LOADERS`: every model lab/library registers at 0c27ede7 (library round 2) that draws
+ * outside a browser.
  */
 export const EXCLUDED: Record<string, string> = {
-  number_line: "failed its counter-judge (round 4)",
-  sequences_patterns: "failed its counter-judge (round 4)",
-  sort_venn_carroll: "failed its counter-judge (round 4); redesigned and not re-judged",
-  volcano_earthquake: "failed its counter-judge (round 4)",
-  water_cycle: "failed its counter-judge (round 4)",
-  movement_court: "failed its counter-judge (round 4)",
-  counting_subitising: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  place_value: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  column_methods: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  equal_groups: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  balance_equations: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  plant_growth: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  evolution_adaptation: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  sound_vibration: "redesigned overnight 7-8 Oct; the redesign has no verdict yet",
-  timeline: "never judged",
-  collision_theory: "never judged",
-  river_real: "never judged (and 29 MB of river data)",
-  rivers_coasts: "the lab keeps it from the writer: baked-in course view draws real rivers wrong",
-  place_change: "the lab keeps it from the writer: baked-in objects with wrong date windows",
   states_of_matter: "needs SVG transform lists (DOMPoint, baseVal) that only a layout engine has",
+  river_real: "draws from 29 MB of river data loaded at run time (prepare), not bundled",
 };
 
 /** A model that fails its fill falls back to the drawer as this kind (the lab's BASE_KIND). */
@@ -95,43 +77,8 @@ export async function catalogue(stage: WriterStage): Promise<CatalogueEntry[]> {
   }
   return out;
 }
-/** lab/library/models/registry.js order (the catalogue lists models in it). */
-const GALLERY_ORDER = [
-  "number_bonds",
-  "fractions",
-  "bar_model",
-  "measuring_scales",
-  "clock_time",
-  "coins_money",
-  "area_perimeter",
-  "shape_2d",
-  "shape_3d_nets",
-  "angles_turns",
-  "coordinate_grid",
-  "data_chart",
-  "life_cycle",
-  "food_chain",
-  "body_map",
-  "heart_circulation",
-  "classify_key",
-  "microhabitat_survey",
-  "materials_test",
-  "mixtures_separating",
-  "light_shadows",
-  "circuits",
-  "forces_magnets",
-  "rocks_soil_fossils",
-  "earth_sun_moon",
-  "seasons_weather",
-  "climate_biomes",
-  "map_skills",
-  "hist_map",
-  "community_helpers",
-  "algorithm_grid",
-  "rhythm_grid",
-  "colour_mixing",
-  "cycle_wheel",
-];
+/** lab/library/models/registry.js order (MODEL_LOADERS keeps it). */
+const GALLERY_ORDER = Object.keys(MODEL_LOADERS);
 
 const yearsText = (ys: string[]) =>
   ys.length > 2 ? `${ys[0]}-${ys[ys.length - 1]}` : ys.join(", ");

@@ -36,11 +36,16 @@ export function textBlock(
   const steps = cls === "ts-tiny" ? ["ts-tiny"] : [cls, "ts-tiny"];
   let use = cls,
     L = [];
+  // a size that splits a word across lines loses to the next size down that keeps every word whole
+  let first = null;
   for (const c of steps) {
     use = c;
     L = wrap(p, s, c, maxW, a);
-    if (L.length <= maxLines) break;
+    if (L.length <= maxLines && !L.broke) break;
+    if (L.length <= maxLines && !first) first = [c, L];
   }
+  if ((L.length > maxLines || L.broke) && first) [use, L] = first;
+  const broke = !!L.broke;
   if (L.length > maxLines) {
     // last resort: cut the last line (whole words first) so it ends in "…" inside maxW
     L = L.slice(0, maxLines);
@@ -55,7 +60,7 @@ export function textBlock(
   const t = lines(p, x, y, L, use, lhUse, Object.assign({ "text-anchor": anchor }, a));
   editable(t, edit);
   const w = Math.max(0, ...L.map((l) => measure(p, l, use, a)));
-  return { el: t, w, h: L.length * lhUse, lines: L, lh: lhUse, cls: use };
+  return { el: t, w, h: L.length * lhUse, lines: L, lh: lhUse, cls: use, broke };
 }
 
 /** Knockout label: text on a soft ground so it reads over scenery. */

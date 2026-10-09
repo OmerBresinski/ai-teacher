@@ -746,8 +746,8 @@ export function render(root, P, ctx) {
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
         pathLength: 1,
-        "stroke-dasharray": "1 1",
-        "stroke-dashoffset": 1,
+        "stroke-dasharray": "1 1.1", // gap past the path end: no round-cap dot while hidden
+        "stroke-dashoffset": 1.05,
         s: k,
         c: buggy ? `${bi("fix")}:soft` : null,
       },
@@ -1161,7 +1161,7 @@ export function render(root, P, ctx) {
   const setTrails = (k, frac, subsK) => {
     for (const t of trails) {
       if (t.k < k) t.el.setAttribute("stroke-dashoffset", 0);
-      else if (t.k > k) t.el.setAttribute("stroke-dashoffset", 1);
+      else if (t.k > k) t.el.setAttribute("stroke-dashoffset", 1.05);
       else if (subsK && subsK.length > t.run.subs.length) {
         // the rerun draws many runs in one build: each fills in its share of the walk
         const all = trails.filter((q) => q.k === k);
@@ -1172,9 +1172,9 @@ export function render(root, P, ctx) {
         for (let q = 0; q < idx; q++) acc += lens[q];
         t.el.setAttribute(
           "stroke-dashoffset",
-          1 - clamp((frac * tot - acc) / (lens[idx] || 1), 0, 1),
+          (1 - clamp((frac * tot - acc) / (lens[idx] || 1), 0, 1)) * 1.05,
         );
-      } else t.el.setAttribute("stroke-dashoffset", 1 - frac);
+      } else t.el.setAttribute("stroke-dashoffset", (1 - frac) * 1.05);
     }
   };
   const holdAt = (k) => {
@@ -1198,7 +1198,7 @@ export function render(root, P, ctx) {
     reset() {
       setShift(shift);
       bot.pose(cx(good.start.c), cy(good.start.r), good.start.deg);
-      trails.forEach((t) => t.el.setAttribute("stroke-dashoffset", 1));
+      trails.forEach((t) => t.el.setAttribute("stroke-dashoffset", 1.05));
     },
     still() {
       setShift(0);
