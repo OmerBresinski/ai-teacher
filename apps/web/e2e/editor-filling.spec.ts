@@ -154,3 +154,30 @@ test.describe("editing while the lesson fills @smoke", () => {
     await expect(page.locator("[data-slide-frame]")).toContainText("where rain goes");
   });
 });
+
+test.describe("a guest while the lesson fills @smoke", () => {
+  test("keeps the generating view: slides arrive without a reload, and Stop works", async ({
+    page,
+  }) => {
+    // The whole guest path over the fake worker: brief, objectives, generation.
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/lessons/new?topic=Adaptations");
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeVisible({
+      timeout: 35_000,
+    });
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    const shell = page.getByTestId("generating-shell");
+    await expect(shell.locator("[data-slide-thumb]").first()).toBeVisible({ timeout: 20_000 });
+    // A guest never gets the editor mid-run (ADR 0037): the shell stays, with its Stop.
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
+    if (process.env.TEACH_SCREENSHOTS) {
+      const shots = path.resolve(import.meta.dirname, "../../../../pr-shots/TEACH-202-b");
+      await page.screenshot({ path: path.join(shots, "guest-writing.png") });
+    }
+    await shell.getByRole("button", { name: "Stop" }).click();
+    await expect(shell).toHaveAttribute("data-state", "cancelled", { timeout: 20_000 });
+  });
+});
