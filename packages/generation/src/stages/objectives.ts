@@ -8,6 +8,7 @@ import {
 } from "../prompts/plan-objectives";
 import { assignFactIds, EMPTY_PLAN_FACTS } from "../specs";
 import {
+  InputRejected,
   type PipelineDeps,
   type PipelineState,
   SOURCE_TEXT_MAX_CHARS,
@@ -17,7 +18,7 @@ import { aiWriterServices } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { fillTemplate } from "../writer/fixes";
 import { isFatal } from "../writer/services";
-import { checkInput } from "./check-input";
+import { checkInput, structuralGuard } from "./check-input";
 import {
   OBJECTIVES_FIRST_VERSION,
   WRITER_OBJECTIVES_VERSION,
@@ -325,6 +326,13 @@ export async function checkedWriterObjectives(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {
+  // The Identifier guard first, synchronously: guarded text never reaches any model, so neither
+  // call starts when it hits.
+  const guarded = structuralGuard(state);
+  if (guarded.length > 0) {
+    deps.logger.info({ stage: "check-input", findings: guarded.length }, "input checked");
+    throw new InputRejected(guarded);
+  }
   const checked = checkInput(state, deps);
   // Handled below: awaited by the gate, or after an objectives failure.
   checked.catch(() => {});

@@ -38,15 +38,25 @@ function briefTexts(brief: NonNullable<PipelineState["lesson"]["brief"]>): strin
   ].filter((t): t is string => typeof t === "string" && t.length > 0);
 }
 
+/**
+ * The Identifier guard alone, synchronous and with no model call: a learner identifier in the
+ * brief's text (an email, an id number, "a pupil called …"). Any hit means the text must not
+ * reach a model at all (ADR 0024 §2, principle P6). Callers that start model calls beside the
+ * check (C14) run this first.
+ */
+export function structuralGuard(state: PipelineState): Finding[] {
+  const brief = state.lesson.brief;
+  if (!brief) throw new Error("check-input: the lesson has no brief");
+  return briefTexts(brief).some((text) => findNamePatterns(text).length > 0) ? [GUARD_FINDING] : [];
+}
+
 export async function checkInput(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const brief = state.lesson.brief;
   if (!brief) throw new Error("check-input: the lesson has no brief");
 
-  // A structural hit is a learner identifier in the text (an email, an id number, "a pupil
-  // called …"): that text must not reach a model at all (ADR 0024 §2, principle P6), so the
-  // model call is skipped, not added to.
-  const structural = briefTexts(brief).some((text) => findNamePatterns(text).length > 0);
-  const findings: Finding[] = structural ? [GUARD_FINDING] : [];
+  // A structural hit is a learner identifier in the text: the model call is skipped, not added to.
+  const findings: Finding[] = structuralGuard(state);
+  const structural = findings.length > 0;
 
   if (!structural) {
     const call = await callStructured({

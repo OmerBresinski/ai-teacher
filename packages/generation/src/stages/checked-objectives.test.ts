@@ -67,4 +67,27 @@ describe("check-input beside the writer's objectives (C14)", () => {
     expect(deps.persisted).toHaveLength(0);
     expect(deps.progress.some((p) => p.message === "Planned")).toBe(false);
   });
+
+  test("guarded text (a learner identifier) reaches no model: neither call starts", async () => {
+    const calls: string[] = [];
+    const ai = labAi({
+      route: writerRoute,
+      extra: (call) => {
+        calls.push(call.context?.promptVersion ?? "");
+        return undefined;
+      },
+    });
+    const deps = recordingDeps(ai);
+    const lesson = romansLesson();
+    const named = {
+      ...lesson,
+      brief: { ...lesson.brief, topic: "Romans for jo.bloggs@school.org" },
+    } as typeof lesson;
+    await expect(checkedWriterObjectives(initialState(named), deps)).rejects.toBeInstanceOf(
+      InputRejected,
+    );
+    expect(calls).toEqual([]);
+    expect(ai.calls).toHaveLength(0);
+    expect(deps.persisted).toHaveLength(0);
+  });
 });
