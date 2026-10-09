@@ -369,8 +369,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     let s = slideNoEmDash(raw);
     // An activity: the writer's fields to the template's, repaired to the stage's capacity.
     if (isWriterActivity(s.template)) {
-      const a = fromWriterActivity(s, stageKey);
-      if (a.fixes.length) log({ ev: "activity-fixed", slide: idx + 1, fixes: a.fixes });
+      const a = fromWriterActivity(s, stageKey, brief.subject);
+      if (a.converted) log({ ev: "activity-dropped", slide: idx + 1, why: a.converted });
+      else if (a.fixes.length) log({ ev: "activity-fixed", slide: idx + 1, fixes: a.fixes });
       s = a.slide;
     }
     // The hinge's correct option lands at a seeded, uniform position.

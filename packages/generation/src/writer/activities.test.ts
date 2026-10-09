@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import type { Slide } from "@tj/domain/documents";
+import { LEAKS, shuffled } from "@tj/slides/templates/activities";
 import CAPACITY from "@tj/slides/templates/activity-capacity.json" with { type: "json" };
 import { getTheme } from "@tj/slides/themes";
 import {
@@ -303,6 +305,133 @@ describe("mapping and code repair", () => {
   });
 });
 
+describe("an activity with a wrong or missing answer never ships", () => {
+  const conv = (raw: S) => fromWriterActivity(raw, "KS2");
+  test("an out-of-range correct, a card in no group, too few cards: a plain slide, logged why", () => {
+    const choose = writerActivity("choose");
+    for (const correct of [0, 4, 1.5, null]) {
+      const r = conv({ ...choose, correct });
+      expect(r.slide.template).toBe("explain");
+      expect(r.converted).toContain("out of range");
+      expect(r.slide.correct).toBeUndefined();
+    }
+    const gs = writerActivity("group-sort");
+    const badGroup = conv({
+      ...gs,
+      cards: (gs.cards as S[]).map((c, k) => (k === 0 ? { ...c, group: 3 } : c)),
+    });
+    expect(badGroup.converted).toBe("group out of range");
+    const emptyGroup = conv({
+      ...gs,
+      cards: (gs.cards as S[]).map((c) => ({ ...c, group: 1 })),
+    });
+    expect(emptyGroup.converted).toBe("a group with no cards");
+    const pair = writerActivity("pair");
+    const few = conv({
+      ...pair,
+      cards: [...(pair.cards as S[]).slice(0, 2), { label: "", picture: "x" }],
+    });
+    expect(few.converted).toBe("cards under 3");
+    expect(few.slide).toMatchObject({ template: "explain", points: ["chick", "lamb"] });
+    const empty = conv({
+      ...choose,
+      cards: (choose.cards as S[]).map((c, k) => (k === 1 ? { ...c, label: " " } : c)),
+    });
+    expect(empty.converted).toBe("the correct card is empty");
+    // A good one is not converted, and keeps its 1-based answer.
+    expect(conv(choose).converted).toBeUndefined();
+    expect(conv(choose).slide.correct).toBe(2);
+  });
+
+  test("the stage lays a converted slide as content with no question to reveal", async () => {
+    const main = {
+      ...fixture.main,
+      slides: fixture.main.slides.map((x) => (x.template === "choose" ? { ...x, correct: 9 } : x)),
+    };
+    const logs: object[] = [];
+    const out = await runWriter({
+      brief,
+      objectives: fixture.objectives,
+      activities: true,
+      pupilWording: false,
+      visual: (_i, key) => photo(key),
+      services: {
+        log: (e) => logs.push(e),
+        writer: async () =>
+          ({ text: JSON.stringify(main), usd: 0, ms: 1, finishReason: "stop" }) as never,
+        chat: async () => {
+          throw new Error("none");
+        },
+      },
+    });
+    expect(out.slides[8]?.question).toBeUndefined();
+    expect(logs).toContainEqual({
+      ev: "activity-dropped",
+      slide: 9,
+      why: "correct 9 out of range",
+    });
+  });
+});
+
+describe("ruling 163: the card's subject reaches the director", () => {
+  test("a history lesson's cards, and a card naming someone, are named; a science chick is not", () => {
+    const pics = (subject: string, picture: string) =>
+      (
+        fromWriterActivity(
+          {
+            ...writerActivity("sequence"),
+            cards: Array.from({ length: 4 }, (_, k) => ({ label: `c${k}`, picture })),
+          },
+          "KS2",
+          subject,
+        ).slide.cards as { picture: { subject: string } }[]
+      ).map((c) => c.picture.subject);
+    expect(pics("History", "a ship")).toEqual(Array(4).fill("named"));
+    expect(pics("Science", "a portrait of Henry VIII")).toEqual(Array(4).fill("named"));
+    expect(pics("Science", "a fluffy chick")).toEqual(Array(4).fill("generic"));
+    const s = fromWriterActivity(
+      {
+        ...writerActivity("pair"),
+        cards: [
+          { label: "x", picture: "Queen Victoria" },
+          { label: "y", picture: "a portrait of Florence Nightingale" },
+          { label: "z", picture: "a chick" },
+        ],
+      },
+      "KS2",
+      "Science",
+    ).slide;
+    const asks = visualsOf(s, 3, ctxFor());
+    expect(asks.map((a) => a.type === "photo" && a.named)).toEqual([true, true, false]);
+  });
+});
+
+describe("shuffles never show the answer order", () => {
+  test("pair is always a derangement and sequence never in order or reversed, over many seeds", () => {
+    for (let k = 0; k < 400; k++) {
+      for (const n of [3, 4, 5]) {
+        const o = shuffled(n, `pair-${k}`, LEAKS.pair);
+        expect(o.some((v, i) => v === i)).toBe(false);
+      }
+      for (const n of [4, 5, 6]) {
+        const o = shuffled(n, `seq-${k}`, LEAKS.sequence);
+        expect(o.every((v, i) => v === i)).toBe(false);
+        expect(o.every((v, i) => v === n - 1 - i)).toBe(false);
+        expect(o.some((v, i) => v === i)).toBe(false);
+      }
+    }
+  });
+
+  test("on the laid-out slide, over many headings, pair and sequence raise no order leak", () => {
+    for (let k = 0; k < 40; k++)
+      for (const id of ["pair", "sequence"] as const) {
+        const s = { ...fromWriterActivity(writerActivity(id), "KS1").slide, heading: `H ${k}` };
+        const m = materialise(s, ctxFor(photo));
+        expect(activityFaults(s, m.slide)).toEqual([]);
+      }
+  });
+});
+
 describe("checks on the laid-out slide", () => {
   const laid = (id: WriterActivity, over: S = {}, visual = photo) => {
     const s = { ...fromWriterActivity(writerActivity(id), "KS1").slide, ...over };
@@ -418,15 +547,38 @@ describe("the writer stage on a fake model", () => {
     expect(faults.filter((f) => /^(leak|activity):/.test(f))).toEqual([]);
   });
 
-  test("activities off (the default): neither the menu nor the schema has them", async () => {
-    const seen: { writer?: WriterReq; chats: ChatReq[] } = { chats: [] };
-    await runWriter({
-      brief,
-      objectives: fixture.objectives,
-      services: services(seen),
-      pupilWording: false,
-    }).catch(() => undefined);
-    expect(seen.writer?.system).not.toContain("Activity layouts.");
-    expect(JSON.stringify(seen.writer?.schema)).not.toContain('"group-sort"');
+  /**
+   * sha256 of the system text and schema the writer is sent, per key stage, taken on origin/master
+   * bf4e7b49 (before activities), Standard (9-12 slides): activities off must send exactly these.
+   */
+  const MASTER = {
+    ks1: [
+      "5d2348d72ff97ca3a57f1ba40236534884edcc68f5ed55831b399e2960a5a94b",
+      "c7eebd1413222a576ea2a50f8392a251a3206c6063e58eb11bc110af00e05b55",
+    ],
+    ks2: [
+      "be391339ebc89e3fa496a341e69692a77aa950b5b2fa0bc781cf9aa071b81031",
+      "1ef6e8c7573b47a18afe8fec9e66c4c9ad3c3618450fafd969276b9764ed0783",
+    ],
+    ks4: [
+      "99436194ed46e3cd3ca27043575566f7c72c7f16c15fd373d67479de7494ef63",
+      "9cc95a24639cf759e0920a3026fbb522e674594ab96115a2ddac44844070a435",
+    ],
+  } as const;
+  const sha = (x: string) => createHash("sha256").update(x).digest("hex");
+
+  test("activities off (the default): the writer is sent master's system text and schema, byte for byte", async () => {
+    for (const [keyStage, [system, schema]] of Object.entries(MASTER)) {
+      const seen: { writer?: WriterReq; chats: ChatReq[] } = { chats: [] };
+      const out = await runWriter({
+        brief: { ...brief, keyStage, slides: { min: 9, max: 12 } } as Brief,
+        objectives: ["Name animals and their young"],
+        services: services(seen),
+        pupilWording: false,
+      });
+      expect(out.slides.length).toBeGreaterThan(2);
+      expect(sha(seen.writer?.system ?? "")).toBe(system);
+      expect(sha(JSON.stringify(seen.writer?.schema))).toBe(schema);
+    }
   });
 });

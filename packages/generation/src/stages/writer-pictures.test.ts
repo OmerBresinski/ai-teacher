@@ -589,6 +589,13 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     expect([...pictures.sources().values()]).toEqual([]);
   });
 
+  test("a card naming a person is never generated, whatever the subject", async () => {
+    const pictures = generatedOnly("Science");
+    pictures.start(4, { ...card, named: true }, slide);
+    await pictures.settle(5_000);
+    expect(pictures.state(4, "card.0").status).toBe("failed");
+  });
+
   test("a science card may be generated; a history slide picture keeps the director's ladder", async () => {
     const science = generatedOnly("Science");
     science.start(4, card, slide);

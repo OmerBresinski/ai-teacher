@@ -917,7 +917,7 @@ export function createWriterPictures(opts: {
    */
   const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
     ask.key.startsWith("card.") &&
-    (/^hist/i.test(opts.lesson.subject ?? "") || isHistoricalSet(shows));
+    (ask.named || /^hist/i.test(opts.lesson.subject ?? "") || isHistoricalSet(shows));
   const place = (
     slot: Slot,
     index: number,

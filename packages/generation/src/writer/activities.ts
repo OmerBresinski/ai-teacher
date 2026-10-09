@@ -223,35 +223,64 @@ const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
  * measured cell are repaired here (fewer cards, never smaller words); what code cannot repair is
  * left for the layout's `over` marks. Returns the slide and what was fixed, for the log.
  */
-export function fromWriterActivity(raw: S, stage: WriterStage): { slide: S; fixes: string[] } {
+export function fromWriterActivity(
+  raw: S,
+  stage: WriterStage,
+  lessonSubject = "",
+): { slide: S; fixes: string[]; converted?: string } {
   const id = raw.template as WriterActivity;
   const fixes: string[] = [];
+  const asks = id === "choose" || id === "odd-one-out";
+  const raws = Array.isArray(raw.cards) ? (raw.cards as S[]) : [];
+  /**
+   * An activity whose answer is wrong or missing never ships: it becomes a plain content slide
+   * (the heading, the instruction and the cards' words as points) and the stage logs why.
+   */
+  const plain = (why: string) => ({
+    slide: {
+      template: "explain",
+      heading: str(raw.heading),
+      lead: str(raw.instruction),
+      points: raws.map((c) => str(c?.label)).filter(Boolean),
+    } as S,
+    fixes: [...fixes, why],
+    converted: why,
+  });
   const b = bounds(id, stage);
   const groups = Array.isArray(raw.groups) ? raw.groups.map(str).filter(Boolean) : [];
-  type Card = { text: string; picture?: string; group?: number; answer: boolean };
+  type Card = { text: string; picture?: string; group?: number; answer: boolean; bad?: boolean };
   const correct = Number(raw.correct);
-  let cards: Card[] = (Array.isArray(raw.cards) ? (raw.cards as S[]) : []).flatMap((c, k) => {
-    const text = str(c?.label);
-    if (!text) {
-      fixes.push(`card ${k + 1} empty`);
-      return [];
-    }
-    const g = Number(c?.group);
-    const group = id === "group-sort" ? g - 1 : undefined;
-    if (group !== undefined && !(Number.isInteger(group) && group >= 0 && group < groups.length)) {
-      fixes.push(`card ${k + 1} in no group`);
-      return [];
-    }
-    const picture = str(c?.picture) || undefined;
-    return [
-      {
-        text,
-        ...(picture ? { picture } : {}),
-        ...(group !== undefined ? { group } : {}),
-        answer: k === correct - 1,
-      },
-    ];
-  });
+  if (asks && !(Number.isInteger(correct) && correct >= 1 && correct <= raws.length))
+    return plain(`correct ${String(raw.correct)} out of range`);
+  let cards: Card[] = (Array.isArray(raw.cards) ? (raw.cards as S[]) : []).flatMap(
+    (c, k): Card[] => {
+      const text = str(c?.label);
+      if (!text) {
+        fixes.push(`card ${k + 1} empty`);
+        return [];
+      }
+      const g = Number(c?.group);
+      const group = id === "group-sort" ? g - 1 : undefined;
+      if (
+        group !== undefined &&
+        !(Number.isInteger(group) && group >= 0 && group < groups.length)
+      ) {
+        fixes.push(`card ${k + 1} in no group`);
+        return [{ text, answer: false, bad: true }];
+      }
+      const picture = str(c?.picture) || undefined;
+      return [
+        {
+          text,
+          ...(picture ? { picture } : {}),
+          ...(group !== undefined ? { group } : {}),
+          answer: k === correct - 1,
+        },
+      ];
+    },
+  );
+  if (cards.some((c) => c.bad)) return plain("group out of range");
+  if (asks && !cards.some((c) => c.answer)) return plain("the correct card is empty");
   /** Drops one card code may lose: never the answer, in a group sort from the fullest group. */
   const dropOne = (): boolean => {
     let at = -1;
@@ -275,7 +304,15 @@ export function fromWriterActivity(raw: S, stage: WriterStage): { slide: S; fixe
     dropOne()
   )
     fixes.push(`card words over ${cellFor(id, stage, cards.length + 1)} characters`);
+  if (cards.length < b.cards[0]) return plain(`cards under ${b.cards[0]}`);
+  if (id === "group-sort" && groups.some((_, g) => !cards.some((c) => c.group === g)))
+    return plain("a group with no cards");
   const right = cards.findIndex((c) => c.answer);
+  // Ruling 163: a history lesson's card, or a card naming a person, place or thing (a capitalised
+  // word after the first), is a named subject: a real picture or its word, never generated.
+  const named = (p: string) =>
+    /^hist/i.test(lessonSubject) ||
+    /\s(?!I\b)[A-Z][a-z]/.test(` ${p.split(/\s+/).slice(1).join(" ")}`);
   const slide: S = {
     template: id,
     heading: str(raw.heading),
@@ -283,19 +320,24 @@ export function fromWriterActivity(raw: S, stage: WriterStage): { slide: S; fixe
     cards: cards.map((c) => ({
       text: c.text,
       ...(c.picture
-        ? { picture: { shows: c.picture, must_see: [c.picture], subject: "generic" } }
+        ? {
+            picture: {
+              shows: c.picture,
+              must_see: [c.picture],
+              subject: named(c.picture) ? "named" : "generic",
+            },
+          }
         : {}),
       ...(c.group !== undefined ? { group: c.group } : {}),
     })),
     ...(id === "group-sort" ? { groups } : {}),
     ...(id === "choose" || id === "odd-one-out"
       ? {
-          correct: right >= 0 ? right + 1 : 0,
+          correct: right + 1,
           ...(str(raw.explanation) ? { explanation: str(raw.explanation) } : {}),
         }
       : {}),
   };
-  if ((id === "choose" || id === "odd-one-out") && right < 0) fixes.push("no correct card");
   return { slide, fixes };
 }
 
