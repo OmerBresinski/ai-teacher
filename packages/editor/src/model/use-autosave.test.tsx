@@ -159,6 +159,23 @@ describe("useAutosave", () => {
     expect(toastDismissSpy).toHaveBeenCalledWith(SAVE_FAILED_TOAST_ID);
   });
 
+  test("three failures in a row are one toast, updated in place, never a second one", async () => {
+    const onSave = mock((_l: Lesson) => Promise.reject(new Error("offline")));
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      return { autosave, state: useSaveState(autosave) };
+    });
+    for (const [i, title] of ["A", "B", "C"].entries()) {
+      act(() => result.current.autosave.onChange(newLesson(title)));
+      await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledTimes(i + 1));
+    }
+    // Sonner replaces a toast that shares an id, so one id across every call is one toast on screen.
+    const ids = new Set(toastErrorSpy.mock.calls.map((c) => (c[1] as { id: string }).id));
+    expect([...ids]).toEqual([SAVE_FAILED_TOAST_ID]);
+    expect(toastSpy).not.toHaveBeenCalled();
+    expect(toastDismissSpy).not.toHaveBeenCalled();
+  });
+
   test("a SaveRefusedError says Not saved without the generic toast", async () => {
     const onSave = mock((_l: Lesson) => Promise.reject(new SaveRefusedError("stale")));
     const { result } = renderHook(() => {
