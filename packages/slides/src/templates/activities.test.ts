@@ -12,7 +12,7 @@ import table from "./activity-capacity.json";
 import { activityFixtures } from "./activity-fixtures";
 import { layoutTemplate, type TemplateInput } from "./index";
 
-const FIX = activityFixtures((n) => `/files/act/${n}.jpg`);
+const FIX = activityFixtures((n) => ({ src: `/files/act/${n}.jpg`, aspect: 4 / 3 }));
 const themeFor = (stage: string) => getTheme(stage === "ks1" ? "splash" : "studio");
 const lay = (input: TemplateInput, stage: "ks1" | "ks4") =>
   layoutTemplate(input, themeFor(stage), stage);

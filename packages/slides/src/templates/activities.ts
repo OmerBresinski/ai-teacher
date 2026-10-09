@@ -31,7 +31,7 @@ import type {
 import { uid } from "../factories";
 import { seededOrder } from "../layouts";
 import { MIN_FONT_SIZE } from "../themes";
-import { type Ctx, type Figure, G, kit, type Role, type TemplateInput } from "./index";
+import { type Ctx, type Figure, G, kit, type Role, rangeBox, type TemplateInput } from "./index";
 
 export const ACTIVITY_IDS = [
   "pair",
@@ -131,7 +131,14 @@ export function cardGrid(n: number, r: Rect, cols: number, gap = 12): Rect[] {
 }
 
 /**
- * The picture slot: a photo (cropped to the slot), a drawn diagram (contained), or an open slot
+ * A card picture's shape range (#420 slot ranges, option A): the slot takes the photo's own shape
+ * inside it, so the whole picture shows or it is trimmed round the judge's subject boxes, never cut
+ * to a thin strip. An open slot takes the card's shape clamped to the range.
+ */
+export const CARD_RANGE = [0.75, 1.5] as const;
+
+/**
+ * The picture slot: a photo (shaped by `CARD_RANGE`), a drawn diagram (contained), or an open slot
  * the picture director fills later. Returns the element the slot drew.
  */
 function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined {
@@ -150,6 +157,7 @@ function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined 
   } else if (f && "diagram" in f) kit.figurePanel(c, f, r);
   else {
     const p = f && "photo" in f ? f : undefined;
+    const box = rangeBox(r, p?.aspect ?? r.w / r.h, CARD_RANGE);
     kit.photoBox(
       c,
       {
@@ -158,67 +166,137 @@ function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined 
         ...(p?.aspect ? { aspect: p.aspect } : {}),
         request: p?.request ?? item.text,
         ...(p?.subjects ? { subjects: p.subjects } : {}),
+        ...(p?.source ? { source: p.source } : {}),
       },
-      r,
+      box,
       true,
     );
   }
   return c.els.slice(before).at(-1);
 }
 
-export type CardParts = { frame: ShapeElement; picture?: SlideElement; word: TextElement };
+export type CardParts = {
+  frame: ShapeElement;
+  picture?: SlideElement;
+  word?: TextElement;
+  marker?: ShapeElement;
+};
+
+/** The card's marker disc: a little taller than one caption line, never over the picture. */
+const stripDisc = (c: Ctx, role: Role) =>
+  Math.min(kit.markerDisc(c), Math.round(lineH(c, role) * 1.1));
+
+/** Draws a marker disc and returns it, named after its card so answer lists can quote it. */
+function marker(c: Ctx, label: string, x: number, y: number, d: number, word: string) {
+  kit.disc(c, label, x, y, d);
+  const el = c.els.at(-1) as ShapeElement;
+  if (word) el.name = `Marker: ${word}`;
+  return el;
+}
 
 /**
  * A word-only card, the fallback when a card's picture could not be found or made: the same frame
  * and place, the word set large and centred, so the activity still works without a picture.
  */
-export function wordCard(c: Ctx, value: string, r: Rect, what: string, marker?: string): CardParts {
+export function wordCard(c: Ctx, value: string, r: Rect, what: string, label?: string): CardParts {
   const frame = kit.box(c, r, kit.wash(c.t), {
     stroke: c.t.colors.line,
     strokeWidth: 1,
     radius: Math.min(c.t.radius, 16),
     name: "Card",
   });
-  const role: Role = kit.measure(c, value, "lead", r.w - 24, 700) <= r.h - 24 ? "lead" : "body";
+  const d = label ? stripDisc(c, "body") : 0;
   const w = r.w - 24;
+  const role: Role = kit.measure(c, value, "lead", w, 700) <= r.h - 36 - d ? "lead" : "body";
   const h = kit.measure(c, value, role, w, 700);
-  if (h > r.h - 24) c.over.push(`${what} word ${Math.round(h / lineH(c, role))} lines`);
+  if (h > r.h - 24 - d) c.over.push(`${what} word ${Math.round(h / lineH(c, role))} lines`);
   if (!kit.wordsFit(c, value, role, w, c.s[role], 700)) c.over.push(`${what} word too wide`);
   const word = kit.text(
     c,
     value,
     role,
-    { x: r.x + 12, y: r.y + Math.max(12, (r.h - h) / 2), w },
+    { x: r.x + 12, y: r.y + Math.max(12, (r.h - d - h) / 2), w },
     { color: c.t.colors.ink, weight: 700, align: "center", name: "Card word" },
   );
-  if (marker) kit.disc(c, marker, r.x + 8, r.y + 8, kit.markerDisc(c));
-  return { frame, word };
+  const m = label ? marker(c, label, r.x + (r.w - d) / 2, r.y + r.h - d - 8, d, value) : undefined;
+  return { frame, word, ...(m ? { marker: m } : {}) };
+}
+
+/** The width `text` takes on one line in the lead face (step 4pt): the narrowest box it fits. */
+function textWidth(c: Ctx, text: string): number {
+  for (let w = 40; w < 800; w += 4)
+    if (kit.measure(c, text, "lead", w, 700) <= lineH(c, "lead")) return w;
+  return 800;
+}
+
+/** The most lines any of `words` takes at `role` in `w`. */
+const rawLines = (c: Ctx, words: string[], role: Role, w: number) =>
+  Math.round(Math.max(0, ...words.map((t) => kit.measure(c, t, role, w, 600))) / lineH(c, role));
+
+/** The caption lines a row of cards needs (1 or 2); more than 2 is marked over by `drawCard`. */
+export function captionLines(c: Ctx, words: string[], role: Role, w: number): number {
+  return Math.min(2, Math.max(1, rawLines(c, words, role, w)));
 }
 
 /**
- * A card: a framed picture slot with its word under it, the marker (a letter or number) on the
- * picture's top-left. The word gets `capLines` lines at `role`; more is marked over.
+ * The caption role for a set of cards: `role` when every word fits two lines beside its marker,
+ * else the scale's small step (never under the floor). Words longer still are marked over.
+ */
+function fitRole(c: Ctx, words: string[], role: Role, w: number): Role {
+  const dense = denseRole(c);
+  if (role === dense) return role;
+  return rawLines(c, words, role, stripTextW(c, w, role, true)) <= 2 ? role : dense;
+}
+
+/** The caption strip's height: `lines` of the role, or the marker alone when there are no words. */
+const stripH = (c: Ctx, role: Role, lines: number, withMarker: boolean) =>
+  Math.max(lineH(c, role) * lines, withMarker ? stripDisc(c, role) : 0) + 16;
+
+/** The words' width on a card strip with a marker at its left. */
+const stripTextW = (c: Ctx, w: number, role: Role, withMarker: boolean) =>
+  w - 16 - (withMarker ? stripDisc(c, role) + 6 : 0);
+
+/**
+ * A card: a framed picture slot over a label strip. The marker (a letter or number) sits at the
+ * strip's left, never on the picture; with no words it sits in the strip's middle. The words get
+ * `capLines` lines at `role`; more is marked over.
  */
 export function drawCard(
   c: Ctx,
   item: ActivityCard,
   r: Rect,
-  o: { marker?: string; markerRight?: boolean; role: Role; capLines: number; what: string },
+  o: { marker?: string; role: Role; capLines: number; what: string },
 ): CardParts {
   if (!item.figure) return wordCard(c, item.text, r, o.what, o.marker);
   const pad = 8;
-  const capH = lineH(c, o.role) * o.capLines + 2 * pad;
+  const inset = 6;
+  const hasWords = !!item.text.trim();
+  const d = o.marker ? stripDisc(c, o.role) : 0;
+  const capH = stripH(c, o.role, hasWords ? o.capLines : 0, !!o.marker);
   const frame = kit.box(c, r, c.t.colors.surface, {
     stroke: c.t.colors.line,
     strokeWidth: 1,
     radius: Math.min(c.t.radius, 16),
     name: "Card",
   });
-  const inset = 6;
   const pic = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - capH - inset };
-  if (pic.h < 40) c.over.push(`${o.what} picture ${Math.round(pic.h)}pt`);
+  if (pic.h < 60) c.over.push(`${o.what} picture ${Math.round(pic.h)}pt`);
   const drawn = picture(c, item, pic);
-  const w = r.w - 2 * pad;
+  const y0 = r.y + r.h - capH;
+  const m = o.marker
+    ? marker(
+        c,
+        o.marker,
+        hasWords ? r.x + pad : r.x + (r.w - d) / 2,
+        y0 + (capH - d) / 2,
+        d,
+        item.text,
+      )
+    : undefined;
+  if (!hasWords)
+    return { frame, ...(drawn ? { picture: drawn } : {}), ...(m ? { marker: m } : {}) };
+  const x = r.x + pad + (d ? d + 6 : 0);
+  const w = stripTextW(c, r.w, o.role, !!o.marker);
   const h = kit.measure(c, item.text, o.role, w, 600);
   if (h > lineH(c, o.role) * o.capLines + 1)
     c.over.push(`${o.what} word ${Math.round(h / lineH(c, o.role))} lines`);
@@ -228,23 +306,29 @@ export function drawCard(
     c,
     item.text,
     o.role,
-    { x: r.x + pad, y: r.y + r.h - capH + pad + Math.max(0, (capH - 2 * pad - h) / 2), w },
+    { x, y: y0 + Math.max(pad, (capH - h) / 2), w },
     { color: c.t.colors.ink, weight: 600, align: "center", name: "Card word" },
   );
-  if (o.marker) {
-    const d = kit.markerDisc(c);
-    kit.disc(c, o.marker, o.markerRight ? pic.x + pic.w - 8 - d : pic.x + 8, pic.y + 8, d);
-  }
-  return { frame, ...(drawn ? { picture: drawn } : {}), word };
+  return { frame, ...(drawn ? { picture: drawn } : {}), word, ...(m ? { marker: m } : {}) };
 }
 
-/** One row of `n` cards across `r`, each `aspect` (w/h) for the picture plus its caption. */
-function cardRow(c: Ctx, n: number, r: Rect, role: Role, capLines: number): Rect[] {
+/** One row of `n` cards across `r`: a 4:3-ish picture over its strip, centred in the band. */
+function cardRow(c: Ctx, n: number, r: Rect, capH: number): Rect[] {
   const w = Math.floor((r.w - GAP * (n - 1)) / n);
-  const capH = lineH(c, role) * capLines + 16;
-  const h = Math.min(r.h, Math.round(w * 0.82) + capH);
+  const h = Math.min(r.h, Math.round((w - 12) / 1.25) + capH + 6);
   const y = r.y + Math.round((r.h - h) / 2);
   return Array.from({ length: n }, (_, i) => ({ x: r.x + i * (w + GAP), y, w, h }));
+}
+
+/** The row geometry for `cards`: the role, the caption lines, the strip height, the rects. */
+function rowOf(c: Ctx, cards: ActivityCard[], area: Rect, preferred: Role) {
+  const n = cards.length;
+  const w = Math.floor((area.w - GAP * (n - 1)) / n);
+  const words = cards.map((x) => x.text);
+  const role = fitRole(c, words, preferred, w);
+  const lines = captionLines(c, words, role, stripTextW(c, w, role, true));
+  const rects = cardRow(c, n, area, stripH(c, role, lines, true));
+  return { role, lines, rects };
 }
 
 /* ------------------------------------------------------------------ */
@@ -374,14 +458,25 @@ function pair(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefine
   // A card whose picture failed: every picture becomes its word on a lettered card, and the
   // answer is a matching question (word to word), so no slot is ever left asking for a picture.
   const wordsOnly = cards.some((x) => !x.figure);
-  const picH = Math.min(Math.round(w * 0.82), area.h - wordH - GAP);
+  const picH = Math.min(
+    Math.round((w - 12) / 1.25) + stripH(c, "body", 0, true) + 6,
+    area.h - wordH - GAP,
+  );
   const y0 = area.y + Math.round((area.h - (picH + GAP + wordH)) / 2);
   const pictures: SlideElement[] = [];
   cards.forEach((card, i) => {
     const r = { x: area.x + i * (w + GAP), y: y0, w, h: picH };
-    const el = wordsOnly ? wordCard(c, card.text, r, "card").word : picture(c, card, r);
+    // The letter sits on the card's strip under the picture, never on the picture itself.
+    const parts = wordsOnly
+      ? wordCard(c, card.text, r, "card", LETTER(i))
+      : drawCard(c, { ...card, text: "" }, r, {
+          marker: LETTER(i),
+          role: "body",
+          capLines: 0,
+          what: "pair",
+        });
+    const el = wordsOnly ? parts.word : parts.picture;
     if (el) pictures[i] = el;
-    kit.disc(c, LETTER(i), r.x + 10, r.y + 10, kit.markerDisc(c));
   });
   const words: TextElement[] = [];
   order.forEach((k, slot) => {
@@ -446,15 +541,25 @@ function groupSort(c: Ctx, input: TemplateInput, area: Rect): QuestionData | und
   const order = shuffled(cards.length, seedOf(input), (o) =>
     LEAKS.groups(o.map((k) => cards[k]?.group ?? -1)),
   );
-  const colW = 240;
-  const grid = { x: area.x, y: area.y, w: area.w - colW - 20, h: area.h };
+  // The group column is as wide as its longest name needs (one line), within 200-260.
+  const nameW = Math.max(...names.map((n) => textWidth(c, n)));
+  const colW = Math.min(260, Math.max(200, nameW + stripDisc(c, "lead") + 44));
+  const grid = { x: area.x, y: area.y, w: area.w - colW - 16, h: area.h };
   const cols = cards.length <= 6 ? 3 : 4;
   const role = denseRole(c);
-  const rects = cardGrid(cards.length, grid, cols);
+  const rects = cardGrid(cards.length, grid, cols, 10);
+  const cw = rects[0]?.w ?? grid.w;
+  const lines = captionLines(
+    c,
+    cards.map((x) => x.text),
+    role,
+    stripTextW(c, cw, role, true),
+  );
   order.forEach((k, j) => {
     const r = rects[j];
     const card = cards[k];
-    if (r && card) drawCard(c, card, r, { marker: String(j + 1), role, capLines: 2, what: "card" });
+    if (r && card)
+      drawCard(c, card, r, { marker: String(j + 1), role, capLines: lines, what: "card" });
   });
   const gapIds = drawGroups(c, names, { x: area.x + area.w - colW, y: area.y, w: colW, h: area.h });
   return {
@@ -474,23 +579,21 @@ function sequence(c: Ctx, input: TemplateInput, area: Rect): QuestionData | unde
   if (!cards.length) return undefined;
   const order = shuffled(cards.length, seedOf(input), LEAKS.sequence);
   const role: Role = cards.length <= 4 ? "body" : denseRole(c);
-  const rects = cardRow(c, cards.length, area, role, 2);
+  const { role: rowRole, lines, rects } = rowOf(c, cards, area, role);
   const targets: SlideElement[] = [];
   order.forEach((k, j) => {
     const r = rects[j];
     const card = cards[k];
     if (!r || !card) return;
-    // The letter sits top-right so the reveal's number badge (top-left) never covers it.
     const parts = drawCard(c, card, r, {
       marker: LETTER(j),
-      markerRight: true,
-      role,
-      capLines: 2,
+      role: rowRole,
+      capLines: lines,
       what: "sequence",
     });
-    targets[k] = parts.picture ?? parts.frame;
+    targets[k] = parts.marker ?? parts.frame;
   });
-  // The right order, as the cards' picture ids: present numbers each card on the reveal.
+  // The right order, as the cards' marker ids: on the reveal each letter becomes its number.
   return { type: "sort", order: cards.map((_, k) => (targets[k] as SlideElement).id) };
 }
 
@@ -502,12 +605,17 @@ function choose(c: Ctx, input: TemplateInput, area: Rect): QuestionData | undefi
   if (!ok) c.over.push(`${input.template}: no correct card`);
   const order = shuffled(cards.length, seedOf(input), LEAKS.choose);
   const role: Role = cards.length <= 4 ? "body" : denseRole(c);
-  const rects = cardRow(c, cards.length, area, role, 2);
+  const { role: rowRole, lines, rects } = rowOf(c, cards, area, role);
   const options = order.flatMap((k, j) => {
     const r = rects[j];
     const card = cards[k];
     if (!r || !card) return [];
-    const parts = drawCard(c, card, r, { marker: LETTER(j), role, capLines: 2, what: "option" });
+    const parts = drawCard(c, card, r, {
+      marker: LETTER(j),
+      role: rowRole,
+      capLines: lines,
+      what: "option",
+    });
     return [{ id: parts.frame.id, correct: k === right - 1 }];
   });
   if (!ok) return undefined;

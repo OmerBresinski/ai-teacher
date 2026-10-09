@@ -25,8 +25,6 @@ export {
   materialiseSlides,
   variantsFor,
 } from "@tj/slides";
-/** The writer templates and the activity fixtures, for seeded e2e lessons (TEACH-101 part b). */
-export { activityFixtures, layoutTemplate } from "@tj/slides/templates";
 export { clearEditThreads, EDIT_THREAD_PREFIX } from "./lesson/edit-chat/thread-storage";
 export { demoWorksheet } from "./model/demo-worksheet";
 export { type DemoDocument, demoWorkspace } from "./model/demo-workspace";

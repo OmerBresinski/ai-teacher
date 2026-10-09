@@ -5,10 +5,17 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import type { Lesson, Slide } from "@tj/domain/documents";
-import { activityFixtures, getTheme, layoutTemplate, newLesson } from "@tj/editor/starter";
+import { activityFixtures, type FixturePhoto, layoutTemplate } from "@tj/editor/fixtures";
+import { getTheme, newLesson } from "@tj/editor/starter";
 import { E2E_API_URL } from "./fixtures";
 
 export const PHOTO_DIR = new URL("./fixtures/activities/", import.meta.url);
+/** Each fixture photo's shape and its real credit (Pexels or Wikimedia Commons, with licence). */
+const CREDITS = JSON.parse(readFileSync(new URL("credits.json", PHOTO_DIR), "utf8")) as Record<
+  string,
+  Omit<FixturePhoto, "src">
+>;
+const photo = (name: string): FixturePhoto => ({ src: `/files/act/${name}.jpg`, ...CREDITS[name] });
 
 /** Serves `/files/act/<name>.jpg` from the fixture photos. */
 export async function servePhotos(page: Page) {
@@ -26,7 +33,7 @@ export async function servePhotos(page: Page) {
 export function activityLesson(stage: "ks1" | "ks4"): Lesson {
   const themeId = stage === "ks1" ? "splash" : "studio";
   const theme = getTheme(themeId);
-  const fixtures = activityFixtures((n) => `/files/act/${n}.jpg`).filter((f) => f.stage === stage);
+  const fixtures = activityFixtures(photo).filter((f) => f.stage === stage);
   const base: Lesson = {
     ...newLesson(`Activities ${stage.toUpperCase()}`, themeId),
     id: `act-${stage}`,

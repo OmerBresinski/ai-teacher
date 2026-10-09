@@ -18,73 +18,73 @@
   },
   "group-sort": {
     "KS1": {
-      "6 cards, 2 groups": 20,
+      "6 cards, 2 groups": 16,
       "6 cards, 3 groups": 0,
-      "8 cards, 2 groups": 12,
+      "8 cards, 2 groups": 4,
       "8 cards, 3 groups": 0
     },
     "KS2": {
+      "6 cards, 2 groups": 18,
+      "6 cards, 3 groups": 18,
+      "8 cards, 2 groups": 4,
+      "8 cards, 3 groups": 4
+    },
+    "KS3-5": {
       "6 cards, 2 groups": 26,
       "6 cards, 3 groups": 26,
       "8 cards, 2 groups": 16,
       "8 cards, 3 groups": 16
-    },
-    "KS3-5": {
-      "6 cards, 2 groups": 30,
-      "6 cards, 3 groups": 30,
-      "8 cards, 2 groups": 20,
-      "8 cards, 3 groups": 20
     }
   },
   "sequence": {
     "KS1": {
-      "4 cards": 20,
-      "5 cards": 20,
-      "6 cards": 12
+      "4 cards": 16,
+      "5 cards": 4,
+      "6 cards": 0
     },
     "KS2": {
       "4 cards": 20,
-      "5 cards": 20,
-      "6 cards": 16
+      "5 cards": 12,
+      "6 cards": 4
     },
     "KS3-5": {
-      "4 cards": 30,
-      "5 cards": 26,
-      "6 cards": 18
+      "4 cards": 26,
+      "5 cards": 20,
+      "6 cards": 4
     }
   },
   "choose": {
     "KS1": {
-      "2 cards": 44,
+      "2 cards": 48,
       "3 cards": 30,
-      "4 cards": 20
+      "4 cards": 16
     },
     "KS2": {
       "2 cards": 56,
-      "3 cards": 32,
+      "3 cards": 30,
       "4 cards": 20
     },
     "KS3-5": {
       "2 cards": 60,
       "3 cards": 40,
-      "4 cards": 30
+      "4 cards": 26
     }
   },
   "odd-one-out": {
     "KS1": {
       "3 cards": 30,
-      "4 cards": 20,
-      "5 cards": 20
+      "4 cards": 16,
+      "5 cards": 4
     },
     "KS2": {
-      "3 cards": 32,
+      "3 cards": 30,
       "4 cards": 20,
-      "5 cards": 20
+      "5 cards": 12
     },
     "KS3-5": {
       "3 cards": 40,
-      "4 cards": 30,
-      "5 cards": 26
+      "4 cards": 26,
+      "5 cards": 20
     }
   },
   "label": {

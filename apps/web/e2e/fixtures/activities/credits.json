@@ -1,0 +1,280 @@
+{
+  "boscastle": {
+    "aspect": 1.333,
+    "source": {
+      "provider": "commons",
+      "id": "commons-999166",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Boscastle_34.jpg",
+      "photographer": "Benjamin Evans",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Boscastle_34.jpg",
+      "author": "Benjamin Evans",
+      "licence": "Public domain",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Boscastle_34.jpg"
+    }
+  },
+  "chicks": {
+    "aspect": 0.748,
+    "source": {
+      "provider": "pexels",
+      "id": "37884976",
+      "pageUrl": "https://www.pexels.com/photo/cute-baby-chicks-in-natural-setting-37884976/",
+      "photographer": "Umar S",
+      "photographerUrl": "https://www.pexels.com/@umar-s-812619232"
+    }
+  },
+  "cow": {
+    "aspect": 0.665,
+    "source": {
+      "provider": "pexels",
+      "id": "22780165",
+      "pageUrl": "https://www.pexels.com/photo/cow-on-grass-22780165/",
+      "photographer": "Stephen Kim",
+      "photographerUrl": "https://www.pexels.com/@stephen-kim-2333610"
+    }
+  },
+  "dog": {
+    "aspect": 0.752,
+    "source": {
+      "provider": "pexels",
+      "id": "36608294",
+      "pageUrl": "https://www.pexels.com/photo/golden-retriever-relaxing-indoors-portrait-36608294/",
+      "photographer": "Garuda",
+      "photographerUrl": "https://www.pexels.com/@garuda-929115"
+    }
+  },
+  "duck": {
+    "aspect": 0.665,
+    "source": {
+      "provider": "pexels",
+      "id": "5123206",
+      "pageUrl": "https://www.pexels.com/photo/muscovy-duck-sitting-on-ground-5123206/",
+      "photographer": "Rachael Holzman",
+      "photographerUrl": "https://www.pexels.com/@rachael-holzman-3433910"
+    }
+  },
+  "frog": {
+    "aspect": 0.8,
+    "source": {
+      "provider": "pexels",
+      "id": "37775188",
+      "pageUrl": "https://www.pexels.com/photo/close-up-of-frog-in-fresh-green-grass-37775188/",
+      "photographer": "Florence Mathiot",
+      "photographerUrl": "https://www.pexels.com/@florence-mathiot-417781"
+    }
+  },
+  "great-bath": {
+    "aspect": 1.473,
+    "source": {
+      "provider": "commons",
+      "id": "commons-35323216",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Ba%C3%B1os_Romanos,_Bath,_Inglaterra,_2014-08-12,_DD_39-41_HDR.JPG",
+      "photographer": "Diego Delso",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Ba%C3%B1os_Romanos,_Bath,_Inglaterra,_2014-08-12,_DD_39-41_HDR.JPG",
+      "author": "Diego Delso",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ba%C3%B1os_Romanos,_Bath,_Inglaterra,_2014-08-12,_DD_39-41_HDR.JPG"
+    }
+  },
+  "hadrian": {
+    "aspect": 1.337,
+    "source": {
+      "provider": "commons",
+      "id": "commons-101730445",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Section_of_Hadrian%27s_Wall_1.jpg",
+      "photographer": "quisnovus from Gloucester, England",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Section_of_Hadrian%27s_Wall_1.jpg",
+      "author": "quisnovus from Gloucester, England",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Section_of_Hadrian%27s_Wall_1.jpg"
+    }
+  },
+  "hatching": {
+    "aspect": 0.75,
+    "source": {
+      "provider": "pexels",
+      "id": "26845761",
+      "pageUrl": "https://www.pexels.com/photo/close-up-of-eggs-and-a-freshly-hatched-chick-in-the-nest-26845761/",
+      "photographer": "Amritpal singh  Datla",
+      "photographerUrl": "https://www.pexels.com/@amritpal-singh-datla-49911496"
+    }
+  },
+  "icicle": {
+    "aspect": 0.671,
+    "source": {
+      "provider": "pexels",
+      "id": "36575340",
+      "pageUrl": "https://www.pexels.com/photo/close-up-of-melting-icicle-with-water-droplet-36575340/",
+      "photographer": "Tobias Eicher",
+      "photographerUrl": "https://www.pexels.com/@tobias-eicher-2160223093"
+    }
+  },
+  "lamb": {
+    "aspect": 0.75,
+    "source": {
+      "provider": "pexels",
+      "id": "37769835",
+      "pageUrl": "https://www.pexels.com/photo/adorable-lamb-and-sheep-grazing-in-ankara-37769835/",
+      "photographer": "Nora",
+      "photographerUrl": "https://www.pexels.com/@nora-2161831206"
+    }
+  },
+  "mosaic": {
+    "aspect": 0.665,
+    "source": {
+      "provider": "pexels",
+      "id": "35363746",
+      "pageUrl": "https://www.pexels.com/photo/ancient-roman-mosaic-in-archaeological-site-35363746/",
+      "photographer": "Rino Adamo",
+      "photographerUrl": "https://www.pexels.com/@rinoadamo"
+    }
+  },
+  "rentenmark": {
+    "aspect": 0.91,
+    "source": {
+      "provider": "commons",
+      "id": "commons-11893901",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:1000_Rentenmark_1923-11-1_xx.jpg",
+      "photographer": "Deutsche Rentenbank",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:1000_Rentenmark_1923-11-1_xx.jpg",
+      "author": "Deutsche Rentenbank",
+      "licence": "Public domain",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:1000_Rentenmark_1923-11-1_xx.jpg"
+    }
+  },
+  "river-city": {
+    "aspect": 0.75,
+    "source": {
+      "provider": "pexels",
+      "id": "39457990",
+      "pageUrl": "https://www.pexels.com/photo/urban-river-flooding-amidst-heavy-rainfall-39457990/",
+      "photographer": "Engin Akyurt",
+      "photographerUrl": "https://www.pexels.com/@enginakyurt"
+    }
+  },
+  "river-trees": {
+    "aspect": 0.75,
+    "source": {
+      "provider": "pexels",
+      "id": "34162194",
+      "pageUrl": "https://www.pexels.com/photo/flooded-river-landscape-with-dense-trees-34162194/",
+      "photographer": "Matthew Parker",
+      "photographerUrl": "https://www.pexels.com/@matthew-parker-1595606107"
+    }
+  },
+  "sheep": {
+    "aspect": 0.665,
+    "source": {
+      "provider": "pexels",
+      "id": "19416334",
+      "pageUrl": "https://www.pexels.com/photo/beautiful-sheeps-19416334/",
+      "photographer": "Pon Esakki Sundar",
+      "photographerUrl": "https://www.pexels.com/@pon-esakki-sundar-834937569"
+    }
+  },
+  "silchester": {
+    "aspect": 1.333,
+    "source": {
+      "provider": "commons",
+      "id": "commons-14080224",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Surviving_Wall_-_geograph.org.uk_-_1340569.jpg",
+      "photographer": "Sebastian Ballard",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Surviving_Wall_-_geograph.org.uk_-_1340569.jpg",
+      "author": "Sebastian Ballard",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Surviving_Wall_-_geograph.org.uk_-_1340569.jpg"
+    }
+  },
+  "tadpole-big": {
+    "aspect": 1.313,
+    "source": {
+      "provider": "commons",
+      "id": "commons-16321138",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Greater_Leaf_Folding_tadpole_14_12_2010.JPG",
+      "photographer": "Purves, M.",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Greater_Leaf_Folding_tadpole_14_12_2010.JPG",
+      "author": "Purves, M.",
+      "licence": "CC BY-SA 3.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Greater_Leaf_Folding_tadpole_14_12_2010.JPG"
+    }
+  },
+  "tadpoles-pond": {
+    "aspect": 0.665,
+    "source": {
+      "provider": "pexels",
+      "id": "15388189",
+      "pageUrl": "https://www.pexels.com/photo/plants-leaves-on-water-15388189/",
+      "photographer": "Serg Alesenko",
+      "photographerUrl": "https://www.pexels.com/@sergk1"
+    }
+  },
+  "tadpoles-small": {
+    "aspect": 1.398,
+    "source": {
+      "provider": "commons",
+      "id": "commons-38254415",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Motorbike_Frog_Tadpoles.jpg",
+      "photographer": "Grahame",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Motorbike_Frog_Tadpoles.jpg",
+      "author": "Grahame",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Motorbike_Frog_Tadpoles.jpg"
+    }
+  },
+  "thames-barrier": {
+    "aspect": 0.75,
+    "source": {
+      "provider": "pexels",
+      "id": "19623433",
+      "pageUrl": "https://www.pexels.com/photo/structure-of-the-thames-river-barrier-and-modern-architecture-skyline-19623433/",
+      "photographer": "Anna Rynkowska",
+      "photographerUrl": "https://www.pexels.com/@anna-rynkowska-118639719"
+    }
+  },
+  "upton-flood": {
+    "aspect": 1.333,
+    "source": {
+      "provider": "commons",
+      "id": "commons-9179375",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Upton_on_Severn_in_the_floods_-_geograph.org.uk_-_31514.jpg",
+      "photographer": "john spivey",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Upton_on_Severn_in_the_floods_-_geograph.org.uk_-_31514.jpg",
+      "author": "john spivey",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Upton_on_Severn_in_the_floods_-_geograph.org.uk_-_31514.jpg"
+    }
+  },
+  "vindolanda": {
+    "aspect": 1.333,
+    "source": {
+      "provider": "commons",
+      "id": "commons-13610674",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Vindolanda_Roman_fort_-_geograph.org.uk_-_918778.jpg",
+      "photographer": "Chris Gunns",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:Vindolanda_Roman_fort_-_geograph.org.uk_-_918778.jpg",
+      "author": "Chris Gunns",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vindolanda_Roman_fort_-_geograph.org.uk_-_918778.jpg"
+    }
+  },
+  "york-flood": {
+    "aspect": 1.365,
+    "source": {
+      "provider": "commons",
+      "id": "commons-153219026",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:The_River_Ouse_in_flood_seen_from_the_end_of_Alma_Terrace,_York_-_geograph.org.uk_-_6767837.jpg",
+      "photographer": "habiloid",
+      "photographerUrl": "https://commons.wikimedia.org/wiki/File:The_River_Ouse_in_flood_seen_from_the_end_of_Alma_Terrace,_York_-_geograph.org.uk_-_6767837.jpg",
+      "author": "habiloid",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:The_River_Ouse_in_flood_seen_from_the_end_of_Alma_Terrace,_York_-_geograph.org.uk_-_6767837.jpg"
+    }
+  }
+}

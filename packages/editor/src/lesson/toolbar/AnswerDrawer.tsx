@@ -19,7 +19,7 @@ import { useId } from "react";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
-import { choiceText } from "../../slide/elements/kit";
+import { choiceText } from "../../slide/elements/choice";
 import { useHistory } from "../document-context";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
 

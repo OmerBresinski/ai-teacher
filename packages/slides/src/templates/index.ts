@@ -10,6 +10,7 @@
  */
 import type {
   ImageElement,
+  PhotoSource,
   QuestionData,
   RichDoc,
   ShapeElement,
@@ -25,7 +26,7 @@ import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 
-export { type ActivityFixture, activityFixtures } from "./activity-fixtures";
+export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export type { ActivityCard, ActivityId };
 
 /* ------------------------------------------------------------------ */
@@ -89,6 +90,8 @@ export type Figure =
       tileMode?: "grid" | "together" | "shuffled";
       /** A short caption under the photo when it is a tile. */
       caption?: string;
+      /** Where the photo came from (Pexels, Commons, generated), for the credits page. */
+      source?: PhotoSource;
     }
   | { diagram: unknown }
   /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
@@ -481,7 +484,14 @@ export function rangeBox(
  */
 function photoBox(
   c: Ctx,
-  f: { photo: string; alt?: string; aspect?: number; request?: string; subjects?: SubjectBox[] },
+  f: {
+    photo: string;
+    alt?: string;
+    aspect?: number;
+    request?: string;
+    subjects?: SubjectBox[];
+    source?: PhotoSource;
+  },
   box0: { x: number; y: number; w: number; h: number },
   cover = true,
   range?: AspectRange,
@@ -519,6 +529,7 @@ function photoBox(
     alt: f.alt ?? "",
     ...(f.request ? { request: f.request } : {}),
     ...(f.subjects ? { subjects: f.subjects } : {}),
+    ...(f.source ? { source: f.source } : {}),
     ...(crop ? { crop } : {}),
     fit: "cover",
     radius: c.t.radius,

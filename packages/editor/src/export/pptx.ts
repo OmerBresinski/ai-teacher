@@ -56,8 +56,8 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { resolveImageSrc } from "../images/resolve-src";
 import { normaliseAngle } from "../model/geometry";
+import { choiceText } from "../slide/elements/choice";
 import {
-  choiceText,
   clamp,
   GAP_TOKEN,
   gapAnswers,

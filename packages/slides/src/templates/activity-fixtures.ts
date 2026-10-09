@@ -4,7 +4,11 @@
  * (`apps/web/e2e/fixtures/activities/<name>.jpg`, served from `/files/act/<name>.jpg`).
  * The label diagrams are drawn SVGs (a label activity never points at a photo).
  */
+import type { PhotoSource } from "@tj/domain/documents";
 import type { Stage, TemplateInput } from "./index";
+
+/** A fixture photo as served: its url, its own shape and its real credit. */
+export type FixturePhoto = { src: string; aspect?: number; source?: PhotoSource };
 
 export type ActivityFixture = { name: string; stage: Stage; input: TemplateInput };
 
@@ -41,10 +45,24 @@ export const CELL_SVG = svg(
   360,
 );
 
-export function activityFixtures(src: (photo: string) => string): ActivityFixture[] {
-  const card = (text: string, photo: string, group?: number) => ({
+/**
+ * `photo(name)` gives each named photo's url, shape and credit. One KS4 card (the group sort's
+ * "Heavy rain") has no picture on purpose: it shows the word-only fallback a failed card takes.
+ */
+export function activityFixtures(photo: (name: string) => FixturePhoto): ActivityFixture[] {
+  const picture = (name: string, text: string) => {
+    const p = photo(name);
+    return {
+      photo: p.src,
+      alt: text,
+      request: text,
+      ...(p.aspect ? { aspect: p.aspect } : {}),
+      ...(p.source ? { source: p.source } : {}),
+    };
+  };
+  const card = (text: string, name: string, group?: number) => ({
     text,
-    figure: { photo: src(photo), alt: text, request: text },
+    figure: picture(name, text),
     ...(group === undefined ? {} : { group }),
   });
   return [
@@ -100,16 +118,13 @@ export function activityFixtures(src: (photo: string) => string): ActivityFixtur
       input: {
         template: "group-sort",
         heading: "Sort the flood cards: cause, effect or response?",
-        lead: "Write the card numbers in each box.",
         groups: ["Cause", "Effect", "Response"],
         cards: [
-          card("Heavy rain", "rain", 0),
-          card("Snow melts fast", "icicle", 0),
+          { text: "Heavy rain", group: 0 },
+          card("Snow melts", "icicle", 0),
           card("Homes cut off", "upton-flood", 1),
-          card("Streets flooded", "york-flood", 1),
-          card("Banks burst", "river-city", 1),
-          card("Fields flooded", "river-trees", 1),
-          card("Barrier closes", "thames-barrier", 2),
+          card("Roads flooded", "york-flood", 1),
+          card("Barrier shuts", "thames-barrier", 2),
           card("Clean-up", "boscastle", 2),
         ],
       },
@@ -136,7 +151,6 @@ export function activityFixtures(src: (photo: string) => string): ActivityFixtur
         template: "sequence",
         heading: "Order the stages of a river flood",
         cards: [
-          card("Days of heavy rain", "rain"),
           card("River rises in the fields", "river-trees"),
           card("Water bursts the banks", "river-city"),
           card("Streets under water", "york-flood"),

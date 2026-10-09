@@ -20,10 +20,10 @@ import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
+import { choiceMarks } from "./elements/choice";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
-  choiceMarks,
   explanationText,
   fontFloor,
   isStatic,
