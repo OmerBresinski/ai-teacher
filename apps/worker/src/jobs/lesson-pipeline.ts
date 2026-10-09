@@ -23,7 +23,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
-import { createGeneratingBank, savePicture } from "../picture-generator";
+import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -79,11 +79,13 @@ function pictureMaker(
   const gen = deps.imageGeneration;
   if (!gen || !deps.images) return {};
   const save = savePicture(deps.images.storage, workspaceId);
+  const remove = removePicture(deps.images.storage, workspaceId);
   return {
     pictureMaker: {
-      bank: createGeneratingBank({ generator: gen.generator, cap: gen.cap, save, logger }),
+      bank: createGeneratingBank({ generator: gen.generator, cap: gen.cap, save, remove, logger }),
       generator: gen.generator,
       save: (bytes) => save(bytes),
+      remove,
       allow: (size) => gen.cap.allow(size),
       spent: (usd) => gen.cap.spent(usd),
     },

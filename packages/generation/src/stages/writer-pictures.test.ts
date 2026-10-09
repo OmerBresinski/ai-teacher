@@ -500,7 +500,8 @@ test("a generated single picture is shown to the judge on its own bytes, and pla
       direction({
         route: "library-or-generate",
         pictures: [
-          { shows: "A hen", mustShow: ["a hen"], queries: ["hen"], imagePrompt: "A hen." },
+          // An imagined subject: library-or-generate goes straight to generation (TEACH-167 part b).
+          { shows: "A cartoon hen", mustShow: ["a hen"], queries: ["hen"], imagePrompt: "A hen." },
         ],
       }),
   });
@@ -651,7 +652,13 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
         direction({
           route: "library-or-generate",
           pictures: [
-            { shows: "A ship", mustShow: ["a ship"], queries: ["ship"], imagePrompt: "A ship." },
+            // An imagined subject: straight to generation (TEACH-167 part b).
+            {
+              shows: "A cartoon ship",
+              mustShow: ["a ship"],
+              queries: ["ship"],
+              imagePrompt: "A ship.",
+            },
           ],
         }),
     });
@@ -716,5 +723,163 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     await pictures.settle(5_000);
     expect(made).toBe(0);
     expect(pictures.state(4, "card.0").status).toBe("failed");
+  });
+});
+
+describe("split at ask, on real slots (TEACH-167 part b)", () => {
+  const panelPng = (v: number) =>
+    encodePng({ width: 64, height: 96, rgb: new Uint8Array(64 * 96 * 3).fill(v) });
+  const splitMaker = () => {
+    const prompts: string[] = [];
+    const saved: number[] = [];
+    const removed: string[] = [];
+    let n = 0;
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: "fake-image",
+      generate: async (req) => {
+        prompts.push(req.prompt);
+        n += 1;
+        return { bytes: panelPng(40 * n), mime: "image/png", costUsd: 0.005, ms: 1 } as never;
+      },
+    };
+    return {
+      prompts,
+      saved,
+      removed,
+      maker: {
+        bank: STOCK_ONLY_BANK,
+        generator,
+        save: async (bytes: Uint8Array) => {
+          saved.push(bytes.length);
+          return { id: `g${saved.length}`, src: `/files/g${saved.length}.png` };
+        },
+        remove: async (src: string) => {
+          removed.push(src);
+        },
+      },
+    };
+  };
+  const dogs = ask({
+    key: "picture",
+    shows: "Three golden retrievers: a small puppy, an older puppy and an adult dog",
+    mustSee: ["golden retriever"],
+    named: false,
+    aspect: 1.6,
+  });
+  const ok = verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: ["dog"] });
+  const set = JSON.stringify({ same: true, odd: [], why: "one dog growing" });
+  const saw = (item: string) =>
+    verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: [item] });
+
+  test("a compound ask is one generated set joined into the slot's one picture", async () => {
+    const m = splitMaker();
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({ script: [saw("small puppy"), saw("older puppy"), saw("adult dog"), set] }),
+      ),
+      maker: m.maker,
+      direct: async () => {
+        throw new Error("a split ask never asks the director");
+      },
+    });
+    pictures.start(3, dogs, slide);
+    expect(pictures.state(3, "picture").status).toBe("pending");
+    await pictures.settle(5_000);
+    const s = pictures.state(3, "picture");
+    expect(s.status).toBe("photo");
+    if (s.status !== "photo") return;
+    // One panel per subject, never the whole picture first.
+    expect(m.prompts).toHaveLength(3);
+    expect(s.photo.subjects?.map((x) => x.name)).toEqual([
+      "small puppy",
+      "older puppy",
+      "adult dog",
+    ]);
+    // Three panels saved, then the joined picture: three 64-wide panels and two 8 px gaps.
+    expect(m.saved).toHaveLength(4);
+    expect(s.photo.src).toBe("/files/g4.png");
+    expect(s.photo.aspect).toBeCloseTo((3 * 64 + 16) / 96, 3);
+    expect(s.photo.subjects?.[1]?.x).toBeCloseTo(72 / 208, 3);
+    expect(pictures.sources().get("/files/g4.png")?.provider).toBe("generated");
+    // The three panels are only parts of it: deleted; the joined picture stays.
+    expect(m.removed.sort()).toEqual(["/files/g1.png", "/files/g2.png", "/files/g3.png"]);
+  });
+
+  test("a single-subject ask is not split: it goes to the director", async () => {
+    const m = splitMaker();
+    let directed = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      maker: m.maker,
+      direct: async () => {
+        directed += 1;
+        return direction({ route: "none", pictures: [] });
+      },
+    });
+    pictures.start(
+      3,
+      ask({ key: "picture", shows: "A golden retriever puppy", named: false }),
+      slide,
+    );
+    await pictures.settle(5_000);
+    expect(directed).toBe(1);
+    expect(m.prompts).toHaveLength(0);
+  });
+
+  test("a panel the judge refuses leaves the slot without a picture, never a partial one", async () => {
+    const m = splitMaker();
+    const no = verdict({ pick: "made", onSubject: false, clear: true, fits: false, visible: [] });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("small puppy"), saw("older puppy"), no, set, no, no, no],
+        }),
+      ),
+      maker: m.maker,
+    });
+    pictures.start(3, dogs, slide);
+    await pictures.settle(5_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+    expect(pictures.vetoed(3, "picture")).toBe("No suitable picture was found.");
+    // Every panel that was stored is deleted again: nothing is left behind.
+    expect(m.saved.length).toBeGreaterThan(0);
+    expect(m.removed).toHaveLength(m.saved.length);
+  });
+
+  test("ruling 163: a historical compound ask is never split and generated, whatever the subject", async () => {
+    const m = splitMaker();
+    let directed = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      maker: m.maker,
+      direct: async () => {
+        directed += 1;
+        return direction({ route: "none", pictures: [] });
+      },
+    });
+    pictures.start(
+      3,
+      ask({
+        key: "picture",
+        shows: "Three Victorian inventions: a steam engine, a telegraph and a sewing machine",
+        named: false,
+      }),
+      slide,
+    );
+    await pictures.settle(5_000);
+    expect(m.prompts).toHaveLength(0);
+    expect(directed).toBe(1);
   });
 });

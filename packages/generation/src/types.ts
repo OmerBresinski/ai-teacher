@@ -335,6 +335,8 @@ export interface PictureMaker {
   generator: Pick<ImageGenerator, "model" | "generate">;
   /** Store one set panel's PNG; its public src. */
   save(bytes: Uint8Array): Promise<{ id: string; src: string }>;
+  /** Delete a stored picture by its src (a split's panels, TEACH-167 part b); absent, kept. */
+  remove?(src: string): Promise<void>;
   /** Sets of 3 or 4 as one 2x2 grid; absent, single pictures. */
   grid?: boolean;
   /** May one more generation of `size` run (the daily cap)? */

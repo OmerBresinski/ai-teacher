@@ -344,3 +344,29 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } | 
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   return { width: dv.getUint32(16), height: dv.getUint32(20) };
 }
+
+/**
+ * Panels side by side as one picture (TEACH-167 part b: a compound ask split at ask time fills its
+ * one slot): each panel is cut to the shortest panel's height around its middle, and panels are
+ * separated by `gap` white pixels. Returns the PNG and each panel's box as fractions of the whole.
+ */
+export function joinPanels(
+  pngs: Uint8Array[],
+  gap = 8,
+): { png: Uint8Array; boxes: { left: number; right: number }[] } {
+  const rs = pngs.map(decodePng);
+  if (!rs.length) throw new Error("no panels to join");
+  const height = Math.min(...rs.map((r) => r.height));
+  const cut = rs.map((r) => crop(r, 0, Math.floor((r.height - height) / 2), r.width, height));
+  const width = cut.reduce((w, r) => w + r.width, 0) + gap * (cut.length - 1);
+  const rgb = new Uint8Array(width * height * 3).fill(255);
+  const boxes: { left: number; right: number }[] = [];
+  let x = 0;
+  for (const r of cut) {
+    for (let y = 0; y < height; y++)
+      rgb.set(r.rgb.subarray(y * r.width * 3, (y + 1) * r.width * 3), (y * width + x) * 3);
+    boxes.push({ left: x / width, right: (x + r.width) / width });
+    x += r.width + gap;
+  }
+  return { png: encodePng({ width, height, rgb }), boxes };
+}

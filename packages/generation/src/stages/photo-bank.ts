@@ -7,6 +7,7 @@
  */
 import { createHash } from "node:crypto";
 import type { CountArray } from "@tj/images";
+import { whenNonFatal } from "../writer/services";
 import type { PlacedPhoto } from "./illustrate";
 
 /** The code-level switch (default on), so the bank can be A/B tested against the stock ladder. */
@@ -188,11 +189,17 @@ export interface BankOutcome {
 export async function findPicture(
   req: BankRequest,
   bank: PictureBank,
-  fetchStock: () => Promise<PlacedPhoto | undefined>,
+  fetchStock: (signal?: AbortSignal) => Promise<PlacedPhoto | undefined>,
   signal: AbortSignal,
   judgeMade?: (picture: MadePicture, reuse?: boolean) => Promise<boolean>,
   now: () => number = Date.now,
   verdicts?: VerdictCache,
+  /**
+   * C7 (TEACH-167 part b): a generic stock-first search still running after `raceMs` starts its
+   * generation beside it. The first good picture wins; the loser is cancelled (see `race`).
+   * Absent: stock, then generation, one after the other.
+   */
+  raceMs?: number,
 ): Promise<BankOutcome> {
   const t0 = now();
   const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => ({
@@ -201,11 +208,11 @@ export async function findPicture(
     route: req.route,
     ms: now() - t0,
   });
-  const make = async (faithful: boolean) => {
+  const make = async (faithful: boolean, sig: AbortSignal = signal) => {
     // Ruling 163 (narrowed later): nothing is generated for a past event or person.
     if (req.period && req.depicts && !req.draw) return undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
+      const made = await bank.generate(req, faithful, sig).catch(rethrowAbort);
       if (made && !styleAllowed(req, made)) {
         // A photo-style picture for a historical request: the wrong kind, so no retry either.
         await bank.reject?.(made).catch(rethrowAbort);
@@ -243,6 +250,7 @@ export async function findPicture(
   // With the library unreachable nothing could be stored, so nothing is generated.
   if (libraryDown) return done(await fetchStock().catch(rethrowAbort), "fetched");
   if (req.draw) return done(await make(false), "generated");
+  if (req.route !== "real" && req.stockFirst && raceMs !== undefined) return race(raceMs);
   if (req.route === "real" || req.stockFirst) {
     const fetched = await fetchStock().catch(rethrowAbort);
     if (fetched) {
@@ -259,6 +267,76 @@ export async function findPicture(
     );
   }
   return done(await make(false), "generated");
+
+  /**
+   * Stock first, and generation beside it once stock has run `ms`. The race settles exactly once:
+   * the first good picture wins and is the only one placed (and, from stock, remembered). The
+   * other side is cancelled (its stock search or generation aborted through its own signal), and
+   * any picture it still delivers, made or fetched, is taken back out (`reject`), never placed.
+   */
+  async function race(ms: number): Promise<BankOutcome> {
+    const stockStop = new AbortController();
+    const genStop = new AbortController();
+    /** A side cancelled because the other won answers nothing; the job's own abort still throws. */
+    const lost = (stop: AbortController) => (error: unknown) => {
+      if (stop.signal.aborted && !signal.aborted) return undefined;
+      return rethrowAbort(error);
+    };
+    const discard = (p: PlacedPhoto) =>
+      (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
+    const stockP = fetchStock(AbortSignal.any([signal, stockStop.signal])).then(
+      undefined,
+      lost(stockStop),
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<"late">((resolve) => {
+      timer = setTimeout(() => resolve("late"), ms);
+    });
+    const early = await Promise.race([stockP, late]);
+    clearTimeout(timer);
+    if (early !== "late") {
+      if (early) {
+        await bank.remember(req, early).catch(whenNonFatal(() => undefined));
+        return done(early, "fetched");
+      }
+      return done(await make(false), "generated");
+    }
+    // Stock is slow: generation starts beside it.
+    const genP = make(false, AbortSignal.any([signal, genStop.signal])).then(
+      undefined,
+      lost(genStop),
+    );
+    type Win = { via: "fetched" | "generated"; p: PlacedPhoto };
+    let won: Win | undefined;
+    const win = await new Promise<Win | undefined>((resolve, reject) => {
+      const side = (via: Win["via"], answer: Promise<PlacedPhoto | undefined>) =>
+        answer.then((p) => {
+          if (!p) return;
+          // One synchronous check-and-set: two answers can never both win.
+          if (won) {
+            // A later answer of either side: removed, awaited by nobody. Its own failure, even an
+            // abort or a budget stop, is caught here: the race is already decided, and a rejection
+            // nobody awaits would crash the worker. The bank logs its own delete failures.
+            void discard(p).then(undefined, () => undefined);
+            return;
+          }
+          won = { via, p };
+          (via === "fetched" ? genStop : stockStop).abort();
+          resolve(won);
+        });
+      // Both sides done with no winner is no picture; a job abort before a winner rejects.
+      Promise.all([side("fetched", stockP), side("generated", genP)]).then(
+        () => resolve(undefined),
+        reject,
+      );
+    });
+    if (!win) return done(undefined, "none");
+    if (win.via === "fetched") {
+      await bank.remember(req, win.p).catch(whenNonFatal(() => undefined));
+      return done(win.p, "fetched");
+    }
+    return done(win.p, "generated");
+  }
 }
 
 function rethrowAbort(error: unknown): undefined {

@@ -96,6 +96,18 @@ export function savePicture(storage: StorageAdapter, workspaceId: WorkspaceId, i
 }
 
 /**
+ * Delete a stored picture of this workspace's images by its public src (TEACH-167 part b: a
+ * judged-out or raced-out generation, or a set panel no slide shows). Any other src is left alone.
+ */
+export function removePicture(storage: StorageAdapter, workspaceId: WorkspaceId) {
+  const prefix = `/files/${storageKey(workspaceId, "images", "_").slice(0, -1)}`;
+  return async (src: string): Promise<void> => {
+    if (!src.startsWith(prefix) || src.length === prefix.length) return;
+    await storage.delete(src.slice("/files/".length));
+  };
+}
+
+/**
  * The director's bank for one lesson job: a count is drawn in code (free, never capped); any other
  * generation runs at the size nearest the slot's shape under the daily cap and is stored whole, with
  * its own aspect: the slide shows it at that shape (or trims only background, `placePhoto`), so the
@@ -105,6 +117,8 @@ export function createGeneratingBank(opts: {
   generator?: Pick<ImageGenerator, "model" | "generate">;
   cap: DailyImageCap;
   save: (bytes: Uint8Array, contentType?: string) => Promise<{ id: string; src: string }>;
+  /** Delete a stored picture (`removePicture`); absent, a rejected picture stays stored. */
+  remove?: (src: string) => Promise<void>;
   logger: Logger;
 }): PictureBank {
   return {
@@ -112,6 +126,10 @@ export function createGeneratingBank(opts: {
       return undefined;
     },
     async remember() {},
+    // No library rows here: a picture the judge refused, or a race's loser, is deleted outright.
+    async reject(photo) {
+      await opts.remove?.(photo.src);
+    },
     async generate(req, faithful, signal) {
       if (req.draw) {
         const svg = countArraySvg(req.draw, req.aspect ?? 1);
