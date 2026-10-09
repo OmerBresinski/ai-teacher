@@ -1278,7 +1278,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     // A table is words already: one that cannot draw keeps its data as text lines.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
-    if (dAsk.kind === "table" && t.rows.length) {
+    if (dAsk.kind === "table" && t.rows.length && !flags.fixTableToText) {
       swapSlide(i, asTableText(s, t));
       path.set(i, "table-text");
       return;

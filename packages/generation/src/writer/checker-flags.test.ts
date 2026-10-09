@@ -70,3 +70,26 @@ describe("fallbackOnlyOnFailure", () => {
     expect(on.pathOf(3)).toBe("picture");
   });
 });
+
+describe("fixTableToText", () => {
+  // y10 (teacher-path proof-master-writer, signed in) s3 shipped "Formed 1882: Members:
+  // Austria-Hungary" from a table whose first column groups rows; y12 s3's table, forced to fail
+  // here, is the same path.
+  // The recorded table, grown to 40 rows so no layout can place it (as y10's could not).
+  const failS3 = (b: string) => {
+    const rec = recordedVisuals(b);
+    return (i: number, key: string, a: Parameters<typeof rec>[2]) => {
+      const v = rec(i, key, a);
+      if (i !== 2 || v.status !== "diagram") return v;
+      const spec = v.spec as { rows: string[][] };
+      return { ...v, spec: { ...spec, rows: Array.from({ length: 10 }, () => spec.rows).flat() } };
+    };
+  };
+  test("a table that cannot be shown is never rebuilt as label: value rows", async () => {
+    const b = "y12-psychology-multi-store-model";
+    const off = await run(b, {}, failS3(b));
+    const on = await run(b, { fixTableToText: true }, failS3(b));
+    expect(off.pathOf(3)).toBe("table-text");
+    expect(on.pathOf(3)).not.toBe("table-text");
+  });
+});
