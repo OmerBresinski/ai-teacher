@@ -33,12 +33,10 @@ for (const b of runs)
       log: (e: object) => events.push(e as Record<string, unknown>),
       chat: async (r: Parameters<typeof base.chat>[0]) => {
         calls[r.name] = (calls[r.name] ?? 0) + 1;
-        try {
-          return await base.chat(r);
-        } catch (e) {
+        return base.chat(r).catch((e: unknown) => {
           misses.push(r.name);
           throw e;
-        }
+        });
       },
     };
     const res = await replayRun(b, { services, checker });
