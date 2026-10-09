@@ -490,11 +490,9 @@ export async function drawWriterDiagram(
       // unshared (BAKEOFF base4f): counters the writer asked for not shared yet are one pile (or
       // the row its words describe), never the answer, before any drawer call.
       if (ask.kind === "equal-groups" && ask.spec !== undefined) {
-        const w = ask.spec as { shows?: unknown; alt?: unknown };
-        const pile = pileSpec(
-          ask.spec,
-          `${ask.shows} ${String(w.shows ?? "")} ${String(w.alt ?? "")}`,
-        );
+        // G3: only what the slide asks to show; the alt ("Find the number in one ring") is not read.
+        const w = ask.spec as { shows?: unknown };
+        const pile = pileSpec(ask.spec, `${ask.shows} ${String(w.shows ?? "")}`);
         if (pile) {
           deps.log?.({ ev: "unshared-pile", key: ask.key, total: pile.total });
           return done(pile, "code");
