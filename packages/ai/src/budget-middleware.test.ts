@@ -93,6 +93,43 @@ describe("provider admission boundary", () => {
     expect(budget.remaining().usd).toBeLessThan(1);
   });
 
+  test("a provider error settles at the text floor; an aborted call that throws stays uncertain", async () => {
+    // "system" + "input": 11 UTF-8 bytes of text.
+    for (const stream of [false, true]) {
+      const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+      const fail = async () => {
+        throw new Error("provider 500");
+      };
+      const model = withGenerationBudget(
+        new MockLanguageModelV4(stream ? { doStream: fail } : { doGenerate: fail }),
+        id,
+        budget,
+      );
+      const call = stream ? model.doStream(params) : model.doGenerate(params);
+      await expect(call).rejects.toThrow("provider 500");
+      expect(budget.totals()).toEqual({
+        calls: 1,
+        inputTokens: 11,
+        outputTokens: 0,
+        costUsd: expect.any(Number),
+      });
+    }
+    const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+    const abort = new AbortController();
+    const model = withGenerationBudget(
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          abort.abort();
+          throw new Error("aborted");
+        },
+      }),
+      id,
+      budget,
+    );
+    await expect(model.doGenerate({ ...params, abortSignal: abort.signal })).rejects.toThrow();
+    expect(budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+  });
+
   test("an aborted attempt retains its reservation until late complete usage settles it", async () => {
     const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
     const started = Promise.withResolvers<void>();

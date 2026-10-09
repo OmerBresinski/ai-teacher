@@ -219,8 +219,12 @@ What the code says today, read on `master` at `9752445`:
 
     Confirmed usage remains `calls/inputTokens/outputTokens/costUsd`. Optional `reserved` and
     `uncertain` aggregates are separate, participate in admission, and accompany checkpoints and
-    summaries. A timeout/abort or missing complete usage moves its reservation to uncertain,
-    never to free allowance. A late complete usage report can settle it once, but cannot return
+    summaries. A timeout/abort moves its reservation to uncertain, never to free allowance. A
+    call that was not aborted and returned neither output nor complete usage (a provider error,
+    or `finishReason: error` with empty content and null usage) settles at the UTF-8 bytes of its prompt's text as
+    input and no output, never zero and never its whole estimate (register layout-05, 10 Oct
+    2026: ten failed photo picks held $0.21 of a $0.50 lesson and the writer was refused). Output
+    returned without usage stays uncertain. A late complete usage report can settle it once, but cannot return
     late content to the pipeline. On resume, saved pending reservations become uncertain; prior
     aggregate USD is copied exactly, never re-priced using synthetic tokens. This remains
     checkpoint accounting: an authoritative crash-safe/global ledger is TEACH-279.
