@@ -18,7 +18,6 @@ import {
 } from "react";
 import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
 import { hasExplanationPanel } from "../layout/explanation";
-import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
 import { choiceMarks } from "./elements/choice";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
@@ -278,7 +277,7 @@ export function SlideView({
             <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
           ) : null
         ) : explanation && lane ? (
-          <Explanation slide={slide} theme={theme} text={explanation} mode={mode} lane={lane} />
+          <Explanation theme={theme} text={explanation} mode={mode} lane={lane} />
         ) : null}
       </div>
     </ImageOriginProvider>
@@ -332,13 +331,11 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
  * author in edit mode rather than printing over the words (TEACH-101 part d; research/04 §4).
  */
 function Explanation({
-  slide,
   theme,
   text,
   mode,
   lane,
 }: {
-  slide: Slide;
   theme: Theme;
   text: string;
   mode: SlideMode;
