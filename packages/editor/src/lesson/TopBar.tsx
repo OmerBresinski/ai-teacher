@@ -168,7 +168,21 @@ export function TopBar({
                 <Ellipsis aria-hidden size={16} strokeWidth={1.5} />
               </IconButton>
             </PopoverTrigger>
-            <PopoverContent aria-label="Lesson actions" align="end" className="w-56 p-1.5">
+            <PopoverContent
+              aria-label="Lesson actions"
+              align="end"
+              className="w-56 p-1.5"
+              // Focus the first action that works, not Share: focused, Share's hint opens and the
+              // first Escape would only close that hint instead of the menu.
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                const content = e.currentTarget as HTMLElement;
+                const first = content.querySelector<HTMLElement>(
+                  'button:not([disabled]):not([aria-disabled="true"])',
+                );
+                (first ?? content).focus();
+              }}
+            >
               {/* A column of full-width rows: the content's own wrapper is a plain block. */}
               <div className="flex flex-col items-stretch gap-0.5 [&_button]:w-full [&_button]:justify-start">
                 {secondaryActions}

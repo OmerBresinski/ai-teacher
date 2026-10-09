@@ -555,6 +555,23 @@ export function EditChatPane({
   useEffect(() => {
     if (focusTick > 0) view.field.current?.focus();
   }, [focusTick]);
+  // Escape from the top bar (where focus lands when ⋯ closes) or from nowhere closes the open pane
+  // too, as it does from inside it. The canvas keeps its own Escape (deselect).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const target = e.target as Element | null;
+      if (target !== document.body && !target?.closest?.("[data-topbar]")) return;
+      // A menu or dialog still open owns this Escape. A top-bar tooltip (shown because focus came
+      // back to its button) does not: it closes along with the pane.
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="menu"]')) return;
+      e.preventDefault();
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
   return (
     <>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc closes the pane from anywhere inside it */}

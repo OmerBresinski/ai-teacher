@@ -180,6 +180,22 @@ test.describe("editor shell (layout A, rulings 186 and 187)", () => {
     await expect(page.getByRole("complementary", { name: "Edit with Dayback" })).toHaveCount(0);
   });
 
+  test("Escape closes ⋯, then a second Escape closes the chat", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.addInitScript(() => localStorage.setItem("dayback.edit-pane.open", "1"));
+    await page.goto(paths.lesson("demo-water-cycle"));
+    await expect(pane(page)).toBeVisible();
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    const menu = page.getByRole("dialog", { name: "Lesson actions" });
+    await expect(menu).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(pane(page)).toBeHidden();
+    await expect(bubble(page)).toBeFocused();
+  });
+
   test("folded to dots, the strip keeps its keys: arrows move, ⌘ arrows reorder", async ({
     signedInPage: { page, paths },
   }) => {
