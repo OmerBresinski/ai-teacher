@@ -38,7 +38,45 @@ async function seedGenerated(page: Page): Promise<string> {
   return lesson;
 }
 
+const frameOf = (page: Page) => page.locator("[data-slide-frame]").first();
+async function settledFrame(page: Page) {
+  let last = await frameOf(page).boundingBox();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(100);
+    const next = await frameOf(page).boundingBox();
+    if (last && next && Math.abs(next.x - last.x) < 0.5 && Math.abs(next.width - last.width) < 0.5)
+      return next;
+    last = next;
+  }
+  if (!last) throw new Error("no slide");
+  return last;
+}
+
 test.describe("facts panel and proposals", () => {
+  // Layout A (rulings 186, 187): Facts shares the right pane slot with the chat.
+  test("Facts opens in the pane slot in place of the chat and never moves the slide", async ({
+    signedInPage: { page },
+  }) => {
+    await page.addInitScript(() => localStorage.setItem("dayback.edit-pane.open", "1"));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/l/${await seedGenerated(page)}`);
+    await expect(page.getByRole("complementary", { name: "Edit with Dayback" })).toBeVisible();
+    const before = await settledFrame(page);
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    await page.getByRole("button", { name: "Facts" }).click();
+    const facts = page.getByRole("complementary", { name: "Facts" });
+    await expect(facts).toBeVisible();
+    await expect(facts).toHaveAttribute("data-side-pane", "docked");
+    // One pane in the slot: the chat closed.
+    await expect(page.getByRole("complementary", { name: "Edit with Dayback" })).toBeHidden();
+    const after = await settledFrame(page);
+    const factsBox = await facts.boundingBox();
+    if (!factsBox) throw new Error("no facts");
+    expect(after.width).toBeCloseTo(before.width, 0);
+    expect(after.x).toBeCloseTo(before.x, 0);
+    expect(after.x + after.width).toBeLessThanOrEqual(factsBox.x + 0.5);
+  });
+
   test("editing an objective cascades to the slides that use it; one toast, one undo", async ({
     signedInPage: { page },
   }) => {

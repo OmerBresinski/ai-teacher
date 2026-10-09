@@ -34,8 +34,17 @@ export function LessonWorksheets({
   open,
   onOpenChange,
   onOpenWorksheet,
+  trigger = true,
+  onLabel,
 }: {
   lesson: Lesson;
+  /**
+   * `false`: no button here. The editor lists the entry in its ⋯ menu and mounts this outside the
+   * menu, so the dialog does not unmount when the menu closes.
+   */
+  trigger?: boolean;
+  /** The entry's label as it changes ("Worksheet generating…"), for a trigger rendered elsewhere. */
+  onLabel?: (label: string) => void;
   open: boolean;
   onOpenChange: (value: boolean) => void;
   onOpenWorksheet: (id: string) => void;
@@ -118,14 +127,19 @@ export function LessonWorksheets({
         : intent.intent && !intent.attempted
           ? "Worksheet waiting…"
           : "Worksheet";
+  useEffect(() => {
+    onLabel?.(label);
+  }, [label, onLabel]);
   return (
     <>
       {/* The lesson's one Worksheet entry (ruling 186): the list of its sheets, with the maker
           inside. */}
-      <Button variant="ghost" size="sm" data-lesson-worksheets onClick={() => onOpenChange(true)}>
-        <FileText aria-hidden size={16} strokeWidth={1.5} />
-        {label}
-      </Button>
+      {trigger ? (
+        <Button variant="ghost" size="sm" data-lesson-worksheets onClick={() => onOpenChange(true)}>
+          <FileText aria-hidden size={16} strokeWidth={1.5} />
+          {label}
+        </Button>
+      ) : null}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogTitle>Worksheets</DialogTitle>

@@ -7,6 +7,8 @@ import type { EditableFactKind, FactPatch, FactValues } from "../model/reducers/
 import { useEditSession } from "../model/use-edit-session";
 import { useHistory, useLesson } from "./document-context";
 import { useProposals } from "./proposals-context";
+import { sidePaneClass } from "./SidePaneDock";
+import type { PaneMode } from "./shell-layout";
 import { PanelSection } from "./toolbar/shared";
 import { useCoalescedIds } from "./use-coalesced-ids";
 
@@ -29,7 +31,18 @@ const NEW_FACT: Record<EditableFactKind, FactValues> = {
   question: { kind: "question", stem: "New question", answer: "", reasoning: "" },
 };
 
-export function FactsPanel({ onClose }: { onClose: () => void }) {
+export function FactsPanel({
+  onClose,
+  pane,
+}: {
+  onClose: () => void;
+  /**
+   * Desktop: Facts opens in layout A's right pane slot under the shell rules (ruling 187), in place
+   * of the chat, so it never narrows the canvas or sits under the pane. Without it (phone) the
+   * panel is an in-flow column.
+   */
+  pane?: { mode: PaneMode; width: number };
+}) {
   const lesson = useLesson();
   const history = useHistory();
   const { onFactsChanged, busy, reservedFactIds } = useProposals();
@@ -66,7 +79,12 @@ export function FactsPanel({ onClose }: { onClose: () => void }) {
     <aside
       aria-label={FACTS_PANEL_LABEL}
       data-facts-panel
-      className="flex w-(--facts-panel-width,320px) shrink-0 flex-col border-border border-l bg-card"
+      data-side-pane={pane?.mode}
+      style={pane ? { width: pane.width } : undefined}
+      className={cn(
+        "flex shrink-0 flex-col border-border border-l bg-card",
+        pane ? sidePaneClass(pane.mode) : "w-(--facts-panel-width,320px)",
+      )}
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-border border-b px-3">
         <h2 className="m-0 font-semibold text-body">{FACTS_PANEL_LABEL}</h2>

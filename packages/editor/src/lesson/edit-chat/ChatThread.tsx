@@ -200,7 +200,7 @@ function Exchange({ turn, view, live }: { turn: Turn; view: ChatView; live: bool
         <p className="m-0 whitespace-pre-wrap break-words rounded-[18px] rounded-br-md bg-accent px-3.5 py-2 text-[14px] text-foreground leading-5">
           {turn.said}
         </p>
-        <span className="pr-1 text-[12px] text-ink-3 leading-4">{turn.scopeLabel}</span>
+        <span className="pr-1 text-[13px] text-ink-3 leading-4">{turn.scopeLabel}</span>
       </div>
       <div className="flex gap-3" data-edit-reply>
         <div className="w-8 shrink-0">
@@ -388,7 +388,7 @@ function ChangeCard({
       data-edit-card
     >
       {late ? (
-        <span className="font-medium text-[12px] text-ink-3 leading-4">Suggested text</span>
+        <span className="font-medium text-[13px] text-ink-3 leading-4">Suggested text</span>
       ) : null}
       {boxes.slice(0, 3).map((b) => (
         <div key={b.id} className="flex flex-col gap-2">
@@ -408,7 +408,7 @@ function ChangeCard({
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
               className={cn(
-                "flex cursor-pointer items-start gap-1 rounded-sm text-left text-[12px] text-ink-3 leading-4 hover:text-ink-2",
+                "flex cursor-pointer items-start gap-1 rounded-sm text-left text-[13px] text-ink-3 leading-4 hover:text-ink-2",
                 focusRing,
               )}
             >
@@ -429,7 +429,7 @@ function ChangeCard({
           ) : null}
         </div>
       ))}
-      {note ? <p className="m-0 text-[12px] text-ink-3 leading-4">{note}</p> : null}
+      {note ? <p className="m-0 text-[13px] text-ink-3 leading-4">{note}</p> : null}
       {primary || secondary ? (
         <div className="flex flex-wrap items-center gap-1">
           {primary}
@@ -472,7 +472,7 @@ function Composer({ view, empty }: { view: ChatView; empty: boolean }) {
       <div className="flex flex-col gap-2 rounded-[20px] bg-background p-2 shadow-[0_0_0_1px_var(--color-border),0_2px_8px_rgb(0_0_0/0.04)] transition-shadow focus-within:shadow-[0_0_0_2px_var(--color-ring),0_2px_8px_rgb(0_0_0/0.06)]">
         <span
           data-edit-chat-scope
-          className="inline-flex h-6 items-center gap-0.5 self-start rounded-full bg-muted pr-0.5 pl-2.5 text-[12px] text-ink-2 leading-4"
+          className="inline-flex h-6 items-center gap-0.5 self-start rounded-full bg-muted pr-0.5 pl-2.5 text-[13px] text-ink-2 leading-4"
         >
           {view.chip}
           {view.widen ? (

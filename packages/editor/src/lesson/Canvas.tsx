@@ -73,8 +73,7 @@ export type CanvasProps = {
   /** Travels as the report context for a placed picture. */
   lessonId?: string;
   /**
-   * How many px at the canvas's right edge something lies over (the Dayback pane at 1280 px or
-   * less, ruling 186). The slide keeps its fitted size and moves left into its own margin, as far
+   * How many px at the canvas's right edge the open pane takes (rulings 186, 187). The slide keeps its fitted size and moves left into its own margin, as far
    * as the margin allows, to stay clear of it.
    */
   clearRight?: number;
@@ -602,7 +601,7 @@ function CanvasFooter({
         // Clear of the Dayback bubble at the bottom right (ruling 186).
         mobile || !bubble ? "right-4" : "right-20",
       )}
-      // Clear of a pane lying over the canvas (ruling 186, 1280 px or less).
+      // Clear of the open pane in the right slot (rulings 186, 187).
       style={clearRight > 0 ? { right: clearRight + 16 } : undefined}
     >
       <ResidualBadge className="pointer-events-auto" />

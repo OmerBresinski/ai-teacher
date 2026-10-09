@@ -50,6 +50,14 @@ test.describe("real lesson intake over the fake worker", () => {
     await expect(page.getByRole("button", { name: "Worksheet", exact: true })).toBeVisible({
       timeout: 20_000,
     });
+    // The dialog lives outside the menu: opening it from ⋯ keeps it open as the menu closes.
+    await page.getByRole("button", { name: "Worksheet", exact: true }).click();
+    const worksheetsDialog = page.getByRole("dialog", { name: "Worksheets" });
+    await expect(worksheetsDialog).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(worksheetsDialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(worksheetsDialog).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: "/tmp/live-intake-editor-desktop.png" });

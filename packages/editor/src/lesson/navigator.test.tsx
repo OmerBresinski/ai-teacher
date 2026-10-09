@@ -32,8 +32,8 @@ describe("Navigator", () => {
       expect(nav()).toHaveAttribute("data-navigator-mode", "dots");
       expect(thumb()).toBeNull();
       // One dot per slide; a dot opens its slide.
-      fireEvent.click(screen.getByRole("button", { name: "Slide 2" }));
-      expect(screen.getByRole("button", { name: "Slide 2" })).toHaveAttribute(
+      fireEvent.click(screen.getByRole("option", { name: "Slide 2" }));
+      expect(screen.getByRole("option", { name: "Slide 2" })).toHaveAttribute(
         "aria-current",
         "true",
       );
@@ -43,6 +43,13 @@ describe("Navigator", () => {
       expect(again.container.querySelector("[data-navigator]")).toHaveAttribute(
         "data-navigator-mode",
         "dots",
+      );
+      // Folded, the dots are still the Slides listbox: the arrows move the open slide.
+      fireEvent.click(screen.getByRole("option", { name: "Slide 1" }));
+      fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "ArrowRight" });
+      expect(screen.getByRole("option", { name: "Slide 2" })).toHaveAttribute(
+        "aria-current",
+        "true",
       );
       fireEvent.click(screen.getByRole("button", { name: "Show slide strip" }));
       expect(localStorage.getItem("tj:filmstrip-dots")).toBe("0");

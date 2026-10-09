@@ -34,7 +34,10 @@ export function EditChatBubble({
   takeFocus = false,
   host,
 }: {
-  /** Layout A: the canvas row; the bubble sits at its bottom right, centred on the zoom row. */
+  /**
+   * Layout A: the canvas row; the bubble sits at its bottom right, centred on the zoom row. `null`
+   * while the row is not mounted yet: nothing renders, so the bubble mounts once, in place.
+   */
   host?: HTMLElement | null;
   state: BubbleState;
   /** Read out once when an answer lands while the pane is closed. */
@@ -84,5 +87,6 @@ export function EditChatBubble({
       </span>
     </>
   );
+  if (host === null) return null;
   return host ? createPortal(node, host) : node;
 }

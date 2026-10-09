@@ -206,7 +206,10 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
     // mount is retried a frame later.
     if (!activeId || !focusWithin.current) return;
     const focusRow = () => {
-      const row = document.getElementById(`slide-opt-${activeId}`);
+      // A thumb in the strip, or its dot when the strip is folded.
+      const row =
+        document.getElementById(`slide-opt-${activeId}`) ??
+        document.getElementById(`slide-dot-${activeId}`);
       if (row && row !== document.activeElement) row.focus({ preventScroll: true });
       return !!row;
     };
@@ -630,19 +633,38 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
             <span className="mr-2 text-ink-3 text-meta tabular-nums" data-tabular>
               {activeIndex + 1} / {list.length}
             </span>
-            {list.map((sl, i) => (
-              <button
-                key={sl.id}
-                type="button"
-                aria-label={`Slide ${i + 1}`}
-                aria-current={sl.id === activeId ? "true" : undefined}
-                onClick={() => goTo(i)}
-                className={cn(
-                  "block size-2 rounded-full transition-colors duration-(--duration-fast)",
-                  sl.id === activeId ? "bg-foreground" : "bg-border-strong hover:bg-ink-3",
-                )}
-              />
-            ))}
+            {/* Folded, the dots are still the Slides listbox: arrows move the open slide, ⌘ arrows
+                reorder, Delete and ⌘D work as in the strip. The context menu needs the strip. */}
+            <div
+              role="listbox"
+              aria-label="Slides"
+              aria-multiselectable
+              aria-orientation="horizontal"
+              tabIndex={-1}
+              onKeyDown={onKeyDown}
+              onFocus={listboxProps.onFocus}
+              onBlur={listboxProps.onBlur}
+              className="flex items-center gap-1.5 outline-none"
+              data-navigator-dots
+            >
+              {list.map((sl, i) => (
+                <button
+                  key={sl.id}
+                  id={`slide-dot-${sl.id}`}
+                  type="button"
+                  role="option"
+                  aria-label={`Slide ${i + 1}`}
+                  aria-selected={selected.has(sl.id)}
+                  aria-current={sl.id === activeId ? "true" : undefined}
+                  tabIndex={sl.id === activeId ? 0 : -1}
+                  onClick={(e) => pick(sl.id, e)}
+                  className={cn(
+                    "block size-2 rounded-full outline-none transition-colors duration-(--duration-fast) focus-visible:shadow-focus",
+                    sl.id === activeId ? "bg-foreground" : "bg-border-strong hover:bg-ink-3",
+                  )}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <div

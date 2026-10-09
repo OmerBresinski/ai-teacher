@@ -132,8 +132,9 @@ export type LessonEditorProps = {
   /** The app's Worksheet control (list and maker), the one Worksheet entry in ⋯ (ruling 186). */
   worksheetsSlot?: ReactNode;
   /**
-   * The Dayback pane on the right (ruling 186): docked above 1280 px, over the filmstrip at 1280 px
-   * or less. `content` stays mounted while closed so its work carries on.
+   * A pane in the right slot (rulings 186, 187): reserved while the slide beside it stays usable,
+   * else over the filmstrip (`shell-layout.ts`). `content` stays mounted while closed so its work
+   * carries on.
    */
   sidePane?: { open: boolean; label: string; content: ReactNode };
 };
@@ -210,9 +211,12 @@ export function LessonEditor({
       toggle: () =>
         setChatOpen((open) => {
           writePaneOpen(!open);
+          // One pane in the right slot: opening the chat closes Facts.
+          if (!open) setFactsOpen(false);
           return !open;
         }),
       openAndFocus: () => {
+        setFactsOpen(false);
         setChatOpen(true);
         writePaneOpen(true);
         setChatFocusTick((n) => n + 1);
@@ -224,6 +228,9 @@ export function LessonEditor({
   const [canvasBox, setCanvasBox] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
     if (!bubbleHost) return;
+    // Measured before the first paint, so the pane never paints docked and then flips to overlay.
+    const first = bubbleHost.getBoundingClientRect();
+    setCanvasBox({ w: first.width, h: first.height });
     const ro = new ResizeObserver(([entry]) => {
       if (entry) setCanvasBox({ w: entry.contentRect.width, h: entry.contentRect.height });
     });
@@ -231,8 +238,13 @@ export function LessonEditor({
     return () => ro.disconnect();
   }, [bubbleHost]);
   const paneMode = canvasBox.w > 0 ? shellPaneMode(canvasBox.w, canvasBox.h, paneW) : "docked";
-  const hasPane = !mobile && (chatAvailable || sidePane !== undefined || Boolean(companion));
-  const paneOpen = !mobile && (Boolean(sidePane?.open) || Boolean(companion) || editChat.open);
+  const factsAvailable =
+    Boolean(lesson?.facts) &&
+    (onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined);
+  const hasPane =
+    !mobile && (chatAvailable || factsAvailable || sidePane !== undefined || Boolean(companion));
+  const paneOpen =
+    !mobile && (Boolean(sidePane?.open) || Boolean(companion) || editChat.open || factsOpen);
   const proposalsEnabled =
     onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined;
   // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
@@ -506,7 +518,15 @@ export function LessonEditor({
                             onNewWorksheet={onNewWorksheet}
                             onToggleFacts={
                               proposalsEnabled && lesson.facts
-                                ? () => setFactsOpen((open) => !open)
+                                ? () =>
+                                    setFactsOpen((open) => {
+                                      // One pane in the right slot: Facts swaps with the chat.
+                                      if (!open && chatOpen) {
+                                        setChatOpen(false);
+                                        writePaneOpen(false);
+                                      }
+                                      return !open;
+                                    })
                                 : undefined
                             }
                             factsOpen={factsOpen}
@@ -580,7 +600,12 @@ export function LessonEditor({
                                 {companion}
                               </SidePaneDock>
                             ) : null}
-                            {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
+                            {factsOpen ? (
+                              <FactsPanel
+                                onClose={() => setFactsOpen(false)}
+                                pane={mobile ? undefined : { mode: paneMode, width: paneW }}
+                              />
+                            ) : null}
                             {!mobile && sidePane ? (
                               <SidePaneDock
                                 open={sidePane.open}
