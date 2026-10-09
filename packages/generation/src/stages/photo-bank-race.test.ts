@@ -187,11 +187,11 @@ describe("C7: stock races generation after the threshold", () => {
 
   test("generation lands a moment before stock: exactly one is placed, the other removed", async () => {
     // Neither side listens to its signal, so both answers arrive.
-    const { bank, log } = fakeBank(() => after(40, madePhoto("/g.png")));
+    const { bank, log } = fakeBank(() => after(5, madePhoto("/g.png")));
     const out = await findPicture(
       req,
       bank,
-      () => after(62, stockPhoto("/p.jpg")),
+      () => after(50, stockPhoto("/p.jpg")),
       new AbortController().signal,
       async () => true,
       Date.now,
@@ -205,11 +205,11 @@ describe("C7: stock races generation after the threshold", () => {
   });
 
   test("stock lands a moment before generation: exactly one is placed, the other removed", async () => {
-    const { bank, log } = fakeBank(() => after(64, madePhoto("/g.png")));
+    const { bank, log } = fakeBank(() => after(40, madePhoto("/g.png")));
     const out = await findPicture(
       req,
       bank,
-      () => after(62, stockPhoto("/p.jpg")),
+      () => after(30, stockPhoto("/p.jpg")),
       new AbortController().signal,
       async () => true,
       Date.now,
