@@ -279,6 +279,17 @@ export interface LessonLook {
   line?: string;
 }
 
+/**
+ * The look a lesson's picture sets are made in, from the writer's `design.picture_style` (C5,
+ * TEACH-110 part h): an illustration lesson's locked style, else the house photo look, so every
+ * panel of a set shares one look. The lines are code's defaults above; no prompt text changes.
+ */
+export function setLookOf(design?: { picture_style?: "photo" | "illustration" }): LessonLook {
+  return design?.picture_style === "illustration"
+    ? { style: "illustration" }
+    : { style: "photo", generic: "generate" };
+}
+
 /** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
@@ -796,6 +807,12 @@ export interface WriterPictures {
    * point, match or find; the stage uses it only when the slide ends with no visual.
    */
   held(index: number, key: string): WriterPictureState | undefined;
+  /**
+   * C5 (TEACH-110 part h): the lesson's one look for its picture sets, once the writer's `design`
+   * is known (before any slide's asks). Every panel of a set is made in it; single pictures keep
+   * `opts.look`.
+   */
+  lookForSets(look: LessonLook): void;
 }
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
@@ -856,6 +873,8 @@ export function createWriterPictures(opts: {
   const id = (index: number, key: string) => `${index}:${key}`;
   const requestOf = (ask: WriterPhotoAsk) => [ask.shows, ...ask.mustSee].join(". ");
   let settled = false;
+  /** The look sets are made in (C5): `lookForSets`, else `opts.look`. */
+  let setLook = opts.look;
   /** Keys asked again in a later round (`start` after `settle`), so a round re-asks a key once. */
   const reasked = new Set<string>();
 
@@ -1066,7 +1085,7 @@ export function createWriterPictures(opts: {
         signal: deps.signal,
         log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
       },
-      opts.look,
+      setLook,
     ).then(
       (made) => {
         for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
@@ -1161,6 +1180,9 @@ export function createWriterPictures(opts: {
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
+    lookForSets(look) {
+      setLook = look;
+    },
   };
 }
 

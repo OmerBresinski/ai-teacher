@@ -9,7 +9,10 @@ import type { DirectedPlacer } from "./illustrate";
 import {
   createDirectorBatcher,
   createWriterPictures,
+  HOUSE_PHOTO_LINE,
+  ILLUSTRATION_LINE,
   STOCK_ONLY_BANK,
+  setLookOf,
   type WriterPhotoAsk,
   withPhotoSources,
 } from "./picture-director";
@@ -369,6 +372,44 @@ describe("writer pictures: generated sets", () => {
     expect([...pictures.sources().values()].every((src) => src.provider === "generated")).toBe(
       true,
     );
+  });
+
+  test("C5: a set is made in the lesson's look once the writer's design is known", async () => {
+    const run = async (design?: { picture_style?: "photo" | "illustration" }) => {
+      const m = maker();
+      const prompts: string[] = [];
+      const generate = m.maker.generator.generate;
+      m.maker.generator.generate = async (req) => {
+        prompts.push(req.prompt);
+        return generate(req);
+      };
+      const ok = (item: string) =>
+        verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: [item] });
+      const pictures = createWriterPictures({
+        lesson: science,
+        country: "UK",
+        images: images({}),
+        deps: recordingDeps(
+          createFakeAi({
+            script: [ok("chick"), ok("hen"), JSON.stringify({ same: true, odd: [], why: "x" })],
+          }),
+        ),
+        maker: m.maker,
+      });
+      if (design) pictures.lookForSets(setLookOf(design));
+      pictures.start(2, ask(chick), slide);
+      pictures.start(2, ask(hen), slide);
+      await pictures.settle(5_000);
+      return prompts[0] ?? "";
+    };
+    expect(setLookOf({ picture_style: "photo" })).toEqual({ style: "photo", generic: "generate" });
+    expect(setLookOf(undefined)).toEqual({ style: "photo", generic: "generate" });
+    expect(setLookOf({ picture_style: "illustration" })).toEqual({ style: "illustration" });
+    expect((await run({ picture_style: "photo" })).startsWith(HOUSE_PHOTO_LINE)).toBe(true);
+    expect((await run({ picture_style: "illustration" })).startsWith(ILLUSTRATION_LINE)).toBe(true);
+    // no look given: today's prompt, unchanged
+    const plain = await run();
+    expect(plain.startsWith(HOUSE_PHOTO_LINE) || plain.startsWith(ILLUSTRATION_LINE)).toBe(false);
   });
 
   test("a named set takes the director's ladder, not the generator", async () => {

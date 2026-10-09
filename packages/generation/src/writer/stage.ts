@@ -179,6 +179,11 @@ export type WriterRun = {
    * editable deck (`onEditable`) supersedes every one of them.
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
+  /**
+   * The writer's `design` as soon as it is known: when it closes in the stream (before any slide),
+   * else at the final parse, before the first slide opens.
+   */
+  onDesign?: (design: Plan["design"]) => void;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
   /**
@@ -540,6 +545,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // each slide in order; a slide opens as it closes. Anything out of that order stops the stream
   // opening slides, and the final parse opens the rest. ──
   let streaming = !run.recordedWriter;
+  let designShown = false;
   /** The next index the stream may open: the title (0), then 2, 3, … */
   let nextOpen = 0;
   const stopStream = (why: string, e?: unknown) => {
@@ -552,6 +558,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const [key, k] = path;
     if (key === "design") {
       plan.design = value as Plan["design"];
+      designShown = true;
+      run.onDesign?.(plan.design);
       return;
     }
     if (key === "flow") {
@@ -613,6 +621,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   plan.design = out.design;
   plan.flow = out.flow;
+  if (!designShown) run.onDesign?.(plan.design);
   const written: [number, S][] = [
     ...(out.title ? ([[0, out.title]] as [number, S][]) : []),
     ...(out.slides ?? []).map((s, k): [number, S] => [k + 2, s]),

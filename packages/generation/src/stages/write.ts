@@ -15,7 +15,7 @@ import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { writerBundleOf } from "./objectives-first";
-import { createWriterPictures, withPhotoSources } from "./picture-director";
+import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
 import { createProgressiveDeck } from "./progressive";
 
 /*
@@ -180,6 +180,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       onSlide: (i, slide) => progressive.patch(i, slide),
+      // C5: a lesson's picture sets share one look, from the writer's picture style.
+      onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
       onAsks: (i, asks, slide) => {
         for (const a of asks) if (a.type === "photo") pictures?.start(i, a, slide);
       },
