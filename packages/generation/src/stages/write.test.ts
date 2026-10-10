@@ -4,6 +4,7 @@ import type { AgeBand, Lesson } from "@tj/domain/documents";
 import pino from "pino";
 import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
+import { withActivityMenu } from "../writer/activities";
 import { writerRoute } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { contractSystem } from "../writer/contract";
@@ -72,7 +73,8 @@ describe("a Year 12 lesson's requests", () => {
     };
     await runWriter({ brief, objectives: fixture.objectives, services });
     const P = writerBundle();
-    expect(writer?.system).toBe(contractSystem(P.systemKS3_5));
+    // Activities are on by default (TEACH-101 part e): the KS3-5 text carries the KS3-5 menu.
+    expect(writer?.system).toBe(withActivityMenu(contractSystem(P.systemKS3_5), "KS3-5"));
     expect(writer?.user).toContain("Year group: Year 12 (ks5)");
     expect(writer?.user).not.toContain("(ks3)");
     const pupil = chats.find((c) => c.name === "pupil_objectives");

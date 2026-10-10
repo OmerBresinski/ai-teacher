@@ -230,7 +230,7 @@ export type WriterRun = {
   libraryMenuRank?: boolean;
   /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
-   * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
+   * the schema. Absent: `ACTIVITIES_DEFAULT` (on).
    */
   activities?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
