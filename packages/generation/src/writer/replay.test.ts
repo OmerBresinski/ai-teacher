@@ -22,6 +22,10 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  * its 8 single pictures (splitOk), replacing the matching table the original run shipped. splitOk
  * is not ported: a split ships only when every picture lands, so the slide is the reroute's
  * adults / young word table, as the original run shipped it.
+ *
+ * One deliberate change since the lab replay (TEACH-75 part b):
+ *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
+ *    (ruling 198, register layout-06).
  */
 
 const DIR = join(import.meta.dir, "fixtures/replay");
@@ -84,6 +88,13 @@ describe.each(LESSONS)("replay %s", (b) => {
           by: "ai",
         });
         const { authoredBy: _by, ...e } = el;
+        if (b === "y11-chemistry-rates-of-reaction" && i === 8 && w.name !== "Heading") {
+          expect({ at: `s${i + 1} #${k}`, el: stable({ ...e, y: Number(e.y) - 49 }) }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: stable(w),
+          });
+          continue;
+        }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;
