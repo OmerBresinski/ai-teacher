@@ -329,6 +329,11 @@ export function acceptWriterSpec(
   ask: WriterDiagramAsk,
   theme: Theme,
   probe?: SlotProbe,
+  /**
+   * `fitActs: false` (checks "log", TEACH-312 part i): a spec that parses is drawn even when it
+   * does not fit its slot; the slot fault is logged ("r2-spec-fit-logged"), never a refusal.
+   */
+  o: { fitActs?: boolean; log?: (e: J) => void } = {},
 ): { spec?: unknown; fault: string } {
   return nonFatalSync(
     (): { spec?: unknown; fault: string } => {
@@ -336,11 +341,16 @@ export function acceptWriterSpec(
       const meaning =
         typeof (sent as J)?.kind === "string" && ((sent as J).kind as string) in MEANING_SCHEMAS;
       const out = mendSpec(sent);
-      const fault =
+      const drawn =
         meaningFaults(meaning ? sent : out) ||
-        diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o))) ||
-        slotFault(out, ask, theme, probe);
-      return fault ? { fault } : { spec: out, fault: "" };
+        diagramFaultOf(out, (o) => withLongLabels(() => parseDiagram(o)));
+      if (drawn) return { fault: drawn };
+      const fit = slotFault(out, ask, theme, probe);
+      if (fit && o.fitActs === false) {
+        o.log?.({ ev: "r2-spec-fit-logged", key: ask.key, fault: fit });
+        return { spec: out, fault: "" };
+      }
+      return fit ? { fault: fit } : { spec: out, fault: "" };
     },
     (e) => ({ fault: `it does not draw: ${String(e).slice(0, 120)}` }),
   );
@@ -418,6 +428,8 @@ export type DrawDeps = {
   theme: Theme;
   probe?: SlotProbe;
   log?: (e: J) => void;
+  /** False (checks "log"): a writer spec that parses is never refused for its fit (part i). */
+  fitActs?: boolean;
 };
 
 export type DrawnWriterDiagram = {
@@ -519,7 +531,10 @@ export async function drawWriterDiagram(
         }
       }
       if (ask.spec !== undefined) {
-        const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe);
+        const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe, {
+          fitActs: deps.fitActs,
+          log: deps.log,
+        });
         deps.log?.({
           ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
           key: ask.key,

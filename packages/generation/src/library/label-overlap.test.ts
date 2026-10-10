@@ -46,6 +46,25 @@ describe("label overlap on library stills (diagrams-09)", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toContain("overlap");
   });
+  test("checks only logged (TEACH-312 part i): the overlap is logged and the model ships", async () => {
+    const ev: Record<string, unknown>[] = [];
+    const r = await libraryDiagram(
+      { ...ask, labelOverlap: true, logOnly: true },
+      async () => FILL,
+      (e) => ev.push(e),
+    );
+    expect(r.ok).toBe(true);
+    expect(
+      ev.some((e) => e.ev === "lib-check-logged" && String(e.reason).includes("overlap")),
+    ).toBe(true);
+    expect(ev.some((e) => e.ev === "lib-fallback")).toBe(false);
+  });
+  test("checks only logged: a model that cannot be filled still falls back", async () => {
+    const r = await libraryDiagram({ ...ask, logOnly: true }, async () => {
+      throw new Error("no fill");
+    });
+    expect(r.ok).toBe(false);
+  });
   test("stacked words and a heart without overlaps are not overlaps", async () => {
     const m = await loadModel("counting_subitising");
     const p = (await kit()).withDefaults(
