@@ -472,11 +472,14 @@ export function answersPanel(
     content: answers.map((a) => ({
       type: "paragraph",
       content: [
+        // The chip holds the number only and the gap after it is plain text, so every number's
+        // chip and gap are drawn alike (a "1" chip with its space inside touched its answer).
         {
           type: "text",
-          text: `${a.n} `,
+          text: String(a.n),
           marks: [{ type: "bold" }, { type: "textStyle", attrs: { color: t.colors.accent } }],
         },
+        { type: "text", text: " " },
         { type: "text", text: a.text },
       ],
     })),

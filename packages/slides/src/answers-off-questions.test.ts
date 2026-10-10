@@ -55,7 +55,7 @@ describe("a quick check's answers never cover its questions", () => {
       const words = JSON.stringify(answers.elements);
       expect(words).toContain("Quick check: answers");
       for (const [i, a] of ANSWERS.entries()) {
-        expect(words).toContain(`"${i + 1} "`);
+        expect(words).toContain(`"text":"${i + 1}"`);
         expect(words).toContain(a);
       }
       expect(answers.elements.every((e) => !e.revealStep)).toBe(true);
@@ -70,5 +70,21 @@ describe("a quick check's answers never cover its questions", () => {
     );
     expect(pages).toHaveLength(1);
     expect(pages[0]?.elements.some((e) => (e.revealStep ?? 0) >= 1)).toBe(true);
+  });
+});
+
+describe("every answer number is drawn the same way", () => {
+  it("the chip holds the number only; the gap after it is plain text", async () => {
+    const { answersPanel } = await import("./structure");
+    const panel = answersPanel(
+      ANSWERS.map((text, i) => ({ n: i + 1, text })),
+      getTheme("studio"),
+    );
+    for (const [i, p] of (panel?.doc?.content ?? []).entries()) {
+      const [num, gap] = p.content ?? [];
+      expect(num?.text).toBe(String(i + 1));
+      expect(gap?.text).toBe(" ");
+      expect(gap?.marks).toBeUndefined();
+    }
   });
 });
