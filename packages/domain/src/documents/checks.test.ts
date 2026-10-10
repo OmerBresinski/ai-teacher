@@ -657,6 +657,30 @@ describe("checkLesson", () => {
       ]);
     });
 
+    test("degenerate-question (TEACH-75 part b): a question list's lines are its stems, not its heading", () => {
+      const l = generatedLesson();
+      const list = (id: string, heading: string, items: string[]): Slide => ({
+        id,
+        kind: "open-response",
+        elements: [
+          generatedText(`${id}-h`, heading, ["o1"], { style: { preset: "heading" } }),
+          ...items.map((t, k) => ({ ...generatedText(`${id}-i${k}`, t, ["o1"]), name: "Item" })),
+        ],
+        question: { type: "open-response" },
+      });
+      l.slides.push(
+        list("s-list", "Explain how the bear survives", [
+          "What temperature challenge does this bear face?",
+          "How does its thick fur help it survive?",
+        ]),
+        list("s-list-bad", "Quick check", ["Why do bears hibernate?", "The bear's fur."]),
+      );
+      const findings = of(checkLesson(l, generatedWorksheet()), "degenerate-question");
+      const by = (id: string) => findings.filter((f) => f.target.slideId === id);
+      expect(by("s-list")).toEqual([]);
+      expect(by("s-list-bad").map((f) => f.message.includes("The bear's fur"))).toEqual([true]);
+    });
+
     test("leaked-language: house rules in pupil text and repair commentary in notes are errors; the clean fixture has none", () => {
       const l = generatedLesson();
       l.slides.push(contentSlide("s-l", "Hand in your answers — no names needed."));

@@ -457,6 +457,7 @@ function intro(c: Ctx, input: TemplateInput): number {
     { color: c.t.colors.muted, name: "Instruction" },
   );
   if (el.h > lineH(c, "body") + 1) c.over.push("instruction 2 lines");
+  c.bodyFromHeading = true;
   return Math.max(G.band.y, el.y + el.h + 18);
 }
 
