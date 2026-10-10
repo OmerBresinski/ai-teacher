@@ -15,7 +15,14 @@ import {
 } from "./activities";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
-import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
+import {
+  ANY_POINTING,
+  type CheckResult,
+  checkSlide,
+  duplicateFaults,
+  referentFault,
+  slideNoEmDash,
+} from "./checks";
 import { contractSystem } from "./contract";
 import { countMiss } from "./count";
 import { writerDrawerSystem } from "./diagram-contract.gen";
@@ -101,14 +108,12 @@ import {
   lessonNotes,
   notesOnlyLine,
   notesText,
-  objectiveRepairSchema,
   renderedLines,
-  repairObjectives,
   type SlideNotes,
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
-import { stripPointTasks } from "./point-guard";
+import { pointTaskFault, stripPointTasks } from "./point-guard";
 import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
@@ -128,8 +133,8 @@ import { slideStates } from "./slide-states";
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
  * writer call with the teacher's approved objectives as givens, K3 on its output, the seeded
- * hinge shuffle, the flow's `look_at` honoured, code checks on each laid-out slide, the objective
- * coverage repair, one bounded fit repair (measure and retry), and one notes call on the final
+ * hinge shuffle, the flow's `look_at` honoured, code checks on each laid-out slide, objective
+ * coverage logged, one bounded fit repair (measure and retry), and one notes call on the final
  * slides as shown.
  *
  * Pictures and diagrams are not made here (parts d and TEACH-251/237 make them): every slot
@@ -337,6 +342,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Held by the slide object itself: a later step that swaps the slide out clears it, and a
   // restore that puts the relaid slide back brings it back.
   const relaid = new Map<number, unknown>();
+  /** noTableText: a table that could not be shown, as note lines, held by the slide object as `relaid` is. */
+  const tableNotes = new Map<number, { slide: unknown; lines: string[] }>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
@@ -469,9 +476,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       relaid.has(i) && relaid.get(i) === plan.slides[i]
         ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
         : [];
+    const tn = tableNotes.get(i);
+    const table = tn && tn.slide === plan.slides[i] ? tn.lines : [];
     const said = [
       moved.length ? `On the slide: ${moved.join(" ")}` : "",
       fitted.length ? `Moved off the slide to fit the diagram: ${fitted.join(" ")}` : "",
+      table.length ? `The table could not be shown on the slide:\n${table.join("\n")}` : "",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -954,7 +964,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
-  // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {
     states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
@@ -1016,26 +1025,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     relay(i);
   };
-  if (plan.flow?.some((f) => Array.isArray(f.teaches)) && run.objectives.length > 0) {
-    const res = await repairObjectives({
-      plan: { flow: plan.flow, slides: plan.slides as S[] },
-      objectives: run.objectives,
-      context: user,
-      system: P.objectiveRepair,
-      schema: objectiveRepairSchema(repairSchemaFor(stageKey)),
-      chat,
-      log,
-      onUsd: () => {},
-      rules: coverageRules,
-    });
-    if (res.repaired) {
-      plan.flow = res.plan.flow as Plan["flow"];
-      for (let i = 2; i < n; i++)
-        if (res.plan.slides[i] !== plan.slides[i]) swapSlide(i, res.plan.slides[i] as S);
-      checks = check();
-    }
-  }
-
   // ── one bounded repair: failing slides only, one call each ──
   // Dangling and unanswerable are reported, never a repair trigger: the ask / ask_without pair is
   // the fix by construction.
@@ -1417,16 +1406,54 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }
       restore(i, s, n0, oldAsks);
     }
-    // A table is words already: one that cannot draw keeps its data as text lines.
+    // A table is words already: one that cannot draw keeps its data, as text lines on the slide
+    // (flag off) or, by default, in the speaker notes beside the writer's own slide.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
-    if (dAsk.kind === "table" && t.rows.length && !flags.fixTableToText) {
+    if (dAsk.kind === "table" && t.rows.length && !flags.noTableText) {
       swapSlide(i, asTableText(s, t));
       path.set(i, "table-text");
       return;
     }
-    const words = asWords(s);
-    if (JSON.stringify(words) !== JSON.stringify(s)) swapSlide(i, words);
-    path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
+    // Otherwise the slide stays as the writer wrote it: its lines are laid in their ask_without
+    // form and the figure's slot closes (materialise). SIMPLIFY S3: the stand-alone rewrite into
+    // words and the fixed figure-dropped slide were the same or worse than this on every replay
+    // firing, and the rewrite cost a model call.
+    path.set(i, "unshown");
+    unpoint(i);
+    if (dAsk.kind === "table" && t.rows.length)
+      tableNotes.set(i, {
+        slide: plan.slides[i],
+        lines: [...(t.header?.length ? [t.header] : []), ...t.rows].map((r) => r.join(" | ")),
+      });
+  };
+  /**
+   * An unshown visual never leaves its slide pointing at it, whatever ask_without said (null, or
+   * still "look at…"): each sentence that points goes; if the slide still points, its figure
+   * fields go and code strips the remaining pointing sentences (fixedFallback). Kept only when no
+   * dangling fault is left.
+   */
+  const dangles = (i: number) => {
+    if ((check()[i]?.faults ?? []).some((f) => /^dangling:/.test(f))) return true;
+    const els = laid.get(i)?.slide.elements ?? [];
+    if (els.some((e) => e.type === "image")) return false;
+    const shown = asShown(i);
+    return !!(pointTaskFault(shown) ?? referentFault(shown, false));
+  };
+  const unpoint = (i: number) => {
+    if (!dangles(i)) return;
+    const s0 = plan.slides[i] as S;
+    const n0 = notes.get(i);
+    const oldAsks = asks.get(i) ?? [];
+    const { slide: stripped, removed } = stripPointTasks(s0, ANY_POINTING);
+    if (removed.length) {
+      swapSlide(i, stripped);
+      if (!dangles(i))
+        return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "sentences" });
+    }
+    swapSlide(i, fixedFallback(plan.slides[i] as S, { type: "photo" }, [], 0).slide);
+    if (!dangles(i)) return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "bare" });
+    restore(i, s0, n0, oldAsks);
+    log({ ev: "unshown-strip", slide: i + 1, removed, how: "left" });
   };
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;
@@ -1683,7 +1710,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const dangling = checks.flatMap((c) =>
     c.faults.filter((f) => VISUAL_DANGLING.test(f)).map((f) => ({ slide: c.slide, fault: f })),
   );
-  // Coverage by the written slides' templates, as the objective repair judges it (the summary
+  // An objective the coverage rule reads as untaught or unchecked is logged here, never repaired
+  // by a model call (SIMPLIFY S3: on the replay every gap was a picture or matching task the rule
+  // does not count). Coverage by the written slides' templates and the checker's rules (the summary
   // used to classify by `does` alone and read 0 while an objective was unchecked).
   const unmet = plan.flow
     ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string, {

@@ -8,8 +8,11 @@
 export const CHECKER_FLAGS = [
   /** A diagram that drew but did not fit its slot is laid out full width before any fallback. */
   "fallbackOnlyOnFailure",
-  /** No `table-text` fallback: its rows lose a table's grouped cells (y10 "Formed 1882: Members: …"). */
-  "fixTableToText",
+  /**
+   * A table that cannot draw is never rewritten as text lines (y10 "Formed 1882: Members: …"):
+   * the slide keeps the writer's own words and the table's rows go to the speaker notes.
+   */
+  "noTableText",
   /** The duplicate check is logged, never sent to repair (fault-ledger #7). */
   "duplicateLogOnly",
   /** pointGuard logs what it would strip and leaves the slide as it is (D48). */
@@ -28,7 +31,7 @@ export type CheckerFlags = Partial<Record<CheckerFlag, boolean>>;
 /** Every flag off: master's checker before the audit, which the recorded replays reproduce. */
 export const CHECKER_OFF: Required<CheckerFlags> = {
   fallbackOnlyOnFailure: false,
-  fixTableToText: false,
+  noTableText: false,
   duplicateLogOnly: false,
   pointGuardLogOnly: false,
   coverageCountsPictureTasks: false,
@@ -40,6 +43,7 @@ export const CHECKER_OFF: Required<CheckerFlags> = {
 export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   ...CHECKER_OFF,
   fallbackOnlyOnFailure: true,
+  noTableText: true,
   coverageCountsPictureTasks: true,
   duplicateLogOnly: true,
   pointGuardLogOnly: true,

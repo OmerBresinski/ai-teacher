@@ -37,6 +37,27 @@ const rolesOf = (b: string) => {
   return slideRoles([undefined, undefined, ...slides]);
 };
 
+/**
+ * SIMPLIFY S3 (TEACH-312 part f): the original runs rewrote these slides into words after their
+ * diagram could not be shown (words-rewrite). The stage now keeps the writer's slide, laid without
+ * its figure, so only the heading is compared (deck index, title = 0).
+ */
+const UNSHOWN: Record<string, number[]> = {
+  "y11-chemistry-rates-of-reaction": [8],
+  "y11-chemistry-rates-of-reaction-r2": [6],
+  "y12-psychology-multi-store-model": [3, 6],
+  "y12-psychology-multi-store-model-r2": [3],
+};
+/**
+ * SIMPLIFY S3: the original y2 run's objective repair replaced slide 4's "Which shaded part is one
+ * half?" on drawn shapes with a text hinge. The repair call is gone, so the writer's drawn task stays.
+ */
+const OBJECTIVE_KEPT: Record<string, number[]> = { "y2-maths-halves-quarters": [3] };
+const headingOf = (els: El[]) => {
+  const h = els.find((e) => e.name === "Heading");
+  return JSON.stringify(h?.doc ?? h?.text ?? null);
+};
+
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
 const stable = (e: El) => {
@@ -81,6 +102,15 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(false);
         expect(new Set(photos.map((e) => e.src)).size).toBe(4);
         expect(photos).toHaveLength(4);
+        return;
+      }
+      if (OBJECTIVE_KEPT[b]?.includes(i)) {
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
+        return;
+      }
+      if (UNSHOWN[b]?.includes(i)) {
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(false);
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
         return;
       }
       const kind =

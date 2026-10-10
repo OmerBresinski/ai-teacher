@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pileSpec } from "@tj/slides/diagrams";
 import { CHECKER_OFF, type CheckerFlags } from "./checker-flags";
@@ -31,15 +31,11 @@ export function replayServices(b: string): WriterServices {
   // A run whose notes call the budget refused has no notes file: the call fails here too.
   const notesText = read(b, "notes.json");
   const notes = notesText.trim() ? JSON.parse(notesText) : null;
-  // The objective repair's recorded answer, when the run made that call.
-  const objFile = join(DIR, b, "objective-repair.json");
-  const objective = existsSync(objFile) ? JSON.parse(readFileSync(objFile, "utf8")) : null;
   return {
     log: () => {},
     writer: () => Promise.reject(new Error("the replay never calls the writer")),
     chat: async (r: ChatReq) => {
       if (r.name === "notes" && notes) return { out: notes, usd: 0, ms: 0 };
-      if (r.name === "objective_repair" && objective) return { out: objective, usd: 0, ms: 0 };
       if (r.name === "slide") {
         const hit = repairs.find((x) => r.user.includes(JSON.stringify(x.input)));
         if (hit?.out) return { out: hit.out, usd: 0, ms: 0 };
@@ -162,6 +158,8 @@ export async function replayRun(
     brief?: (b: Brief) => Brief;
     /** Flags turned on for this run (`checker-flags.ts`); the rest are off, as the recording ran. */
     checker?: CheckerFlags;
+    /** The saved writer text changed before the run (a test's edited slide). */
+    text?: (text: string) => string;
   } = {},
 ) {
   const saved = JSON.parse(read(b, "brief.json")) as Brief;
@@ -169,7 +167,8 @@ export async function replayRun(
   const objectives = (
     JSON.parse(read(b, "objectives.json")) as { objectives: { teacher: string }[] }
   ).objectives.map((o) => o.teacher);
-  const main = JSON.parse(read(b, "main.json")) as { text: string; finishReason?: string | null };
+  const main0 = JSON.parse(read(b, "main.json")) as { text: string; finishReason?: string | null };
+  const main = o.text ? { ...main0, text: o.text(main0.text) } : main0;
   const recorded = recordedVisuals(b);
   const visual = o.visual ?? recorded;
   const services = o.services ?? replayServices(b);

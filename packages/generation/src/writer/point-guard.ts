@@ -27,9 +27,9 @@ export function pointTaskFault(words: string): string | undefined {
 }
 
 const sentences = (t: string) => t.match(/[^.?!]+[.?!]*\s*/g) ?? [t];
-const keepSentences = (t: string) =>
+const keepSentences = (t: string, extra?: RegExp) =>
   sentences(t)
-    .filter((p) => !POINT_TASK.test(p))
+    .filter((p) => !POINT_TASK.test(p) && !extra?.test(p))
     .join("")
     .trim();
 
@@ -43,14 +43,17 @@ const textOf = (p: unknown) =>
 const withText = (p: unknown, t: string) =>
   typeof p === "string" ? t : { ...(p as object), text: t };
 
-/** The slide with every pointing task removed (identity when there is none). */
-export function stripPointTasks(slide: S): { slide: S; removed: string[] } {
+/**
+ * The slide with every pointing task removed (identity when there is none). `extra` also removes
+ * each sentence it matches (an unshown visual's referent words, `ANY_POINTING`).
+ */
+export function stripPointTasks(slide: S, extra?: RegExp): { slide: S; removed: string[] } {
   const out: S = { ...slide };
   const removed: string[] = [];
   for (const k of ["lead", "instruction", "stem", "prompt"]) {
     const v = out[k];
     if (typeof v !== "string") continue;
-    const kept = keepSentences(v);
+    const kept = keepSentences(v, extra);
     if (kept !== v.trim()) {
       removed.push(v);
       if (kept) out[k] = kept;
@@ -66,7 +69,7 @@ export function stripPointTasks(slide: S): { slide: S; removed: string[] } {
         removed.push(t);
         continue;
       }
-      const kept = keepSentences(t);
+      const kept = keepSentences(t, extra);
       if (kept !== t.trim()) removed.push(t);
       if (kept) next.push(withText(p, kept));
     }

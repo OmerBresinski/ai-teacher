@@ -44,7 +44,7 @@ describe("CHECKER_DEFAULTS, every shipped flag on together", () => {
     expect([r.images[3], r.images[6]]).toEqual([1, 1]);
     expect(r.calls).not.toContain("objective_repair");
   });
-  test("y8: pointGuard logs the dangling pointer on s3 while s4's widened table is relaid full width", async () => {
+  test("y8: s3's unshown family tree leaves no pointer while s4's widened table is relaid full width", async () => {
     // The recorded s4 table with every cell three words wider: it misses the side panel, fits full width.
     const b = "y8-french-my-family";
     const rec = recordedVisuals(b);
@@ -58,15 +58,11 @@ describe("CHECKER_DEFAULTS, every shipped flag on together", () => {
       };
     };
     const r = await run(b, CHECKER_DEFAULTS, visual);
-    expect(r.events).toContainEqual(
-      expect.objectContaining({
-        ev: "point-guard",
-        slide: 3,
-        how: "log-only",
-        ships: "dangling pointer (D48)",
-      }),
-    );
-    expect(JSON.stringify(r.res.plan.slides[2])).toContain("Point and say");
+    // s3's family tree is unshown: its pointing line is stripped there (SIMPLIFY S3), so
+    // pointGuard has nothing left to log.
+    expect(r.events).toContainEqual(expect.objectContaining({ ev: "unshown-strip", slide: 3 }));
+    expect(r.events.some((e) => e.ev === "point-guard" && e.slide === 3)).toBe(false);
+    expect(JSON.stringify(r.res.plan.slides[2])).not.toContain("Point and say");
     expect(r.events).toContainEqual(
       expect.objectContaining({ ev: "diagram-relaid", slide: 4, ok: true }),
     );
@@ -80,7 +76,7 @@ describe("fallbackOnlyOnFailure", () => {
   test("y12 s4 and s7: a drawn flow that did not fit beside the words is shown full width, not rewritten", async () => {
     const off = await run("y12-psychology-multi-store-model", {});
     const on = await run("y12-psychology-multi-store-model", { fallbackOnlyOnFailure: true });
-    expect([off.pathOf(4), off.pathOf(7)]).toEqual(["words-rewrite", "words-rewrite"]);
+    expect([off.pathOf(4), off.pathOf(7)]).toEqual(["unshown", "unshown"]);
     expect([off.images[3], off.images[6]]).toEqual([0, 0]);
     expect([on.pathOf(4), on.pathOf(7)]).toEqual(["diagram-big", "diagram-big"]);
     expect([on.images[3], on.images[6]]).toEqual([1, 1]);
@@ -102,7 +98,7 @@ describe("fallbackOnlyOnFailure", () => {
   });
 });
 
-describe("fixTableToText", () => {
+describe("noTableText", () => {
   // y10 (teacher-path proof-master-writer, signed in) s3 shipped "Formed 1882: Members:
   // Austria-Hungary" from a table whose first column groups rows; y12 s3's table, forced to fail
   // here, is the same path.
@@ -119,7 +115,7 @@ describe("fixTableToText", () => {
   test("a table that cannot be shown is never rebuilt as label: value rows", async () => {
     const b = "y12-psychology-multi-store-model";
     const off = await run(b, {}, failS3(b));
-    const on = await run(b, { fixTableToText: true }, failS3(b));
+    const on = await run(b, { noTableText: true }, failS3(b));
     expect(off.pathOf(3)).toBe("table-text");
     expect(on.pathOf(3)).not.toBe("table-text");
   });
@@ -150,15 +146,14 @@ describe("duplicateLogOnly", () => {
 });
 
 describe("pointGuardLogOnly", () => {
-  test("y8 s3: the pointing line is logged, the slide keeps its words", async () => {
+  test("y8 s3: an unshown visual's pointing line goes either way; pointGuard has nothing left", async () => {
+    // SIMPLIFY S3: the unshown path strips its own pointing words before pointGuard runs.
     const off = await run("y8-french-my-family", {});
     const on = await run("y8-french-my-family", { pointGuardLogOnly: true });
     const words = (r: Awaited<ReturnType<typeof run>>) => JSON.stringify(r.res.plan.slides[2]);
     expect(words(off)).not.toContain("Point and say");
-    expect(words(on)).toContain("Point and say");
-    expect(on.events).toContainEqual(
-      expect.objectContaining({ ev: "point-guard", slide: 3, how: "log-only" }),
-    );
+    expect(words(on)).not.toContain("Point and say");
+    expect(on.events.some((e) => e.ev === "point-guard" && e.slide === 3)).toBe(false);
   });
 });
 
@@ -182,12 +177,11 @@ describe("objective coverage", () => {
       [],
     );
     expect(isPictureTask(p.slideOf(4))).toBe(true);
-    // The objective repair no longer fires, so the picture task is not replaced by a text hinge.
+    // No objective repair call is made either way (SIMPLIFY S3), so the picture task stays.
     const off = await run("y2-maths-halves-quarters", {});
     const on = await run("y2-maths-halves-quarters", { coverageCountsPictureTasks: true });
-    expect(off.calls).toContain("objective_repair");
-    expect(on.calls).not.toContain("objective_repair");
-    expect([off.images[3], on.images[3]]).toEqual([0, 1]);
+    expect([...off.calls, ...on.calls]).not.toContain("objective_repair");
+    expect([off.images[3], on.images[3]]).toEqual([1, 1]);
   });
   test("an imperative teaching line is not a task; a question or a task field is", () => {
     const pic = { template: "visual-text", heading: "Equivalent fractions" };

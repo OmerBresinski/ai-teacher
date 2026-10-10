@@ -193,18 +193,17 @@ describe("repair, restage and fallback order (FOR-CODE item 5)", () => {
       },
     };
     const seen = recordedVisuals(b);
-    // Slide 5's picture (index 4) is lost: no source found.
+    // Every picture is lost (no source found). A diagram that cannot be shown no longer restages
+    // (SIMPLIFY S3): only a lost picture's reroute does.
     const out = await replayRun(b, {
       services,
-      visual: (i, key, a) =>
-        i === 4 && key === "picture" ? { status: "failed" } : seen(i, key, a),
+      visual: (i, key, a) => (a.type === "photo" ? { status: "failed" } : seen(i, key, a)),
     });
     const restageAt = calls.findIndex((c) => c.system === "restage");
     expect(restageAt).toBeGreaterThanOrEqual(0);
     // Every fit repair runs before the restage, none after it.
     expect(calls.slice(restageAt + 1).some((c) => c.system === "repair")).toBe(false);
-    // The picture is gone from the slide (fixed fallback: figure dropped).
-    expect((out.slides[4]?.elements ?? []).some((e) => e.name === "Photo")).toBe(false);
+    expect(out.slides.some((s) => s.elements.some((e) => e.name === "Photo"))).toBe(false);
   });
 });
 
