@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
-import { LessonFactsSchema } from "@tj/domain/documents";
+import {
+  entriesWritten,
+  LessonFactsSchema,
+  outlineIndices,
+  richDocToPlainText,
+} from "@tj/domain/documents";
 import {
   getTheme,
   materialiseSlide,
   measureHeadless,
   SAFE_BOTTOM,
-  syncAnswersSlide,
   THEMES,
   textPartsOf,
 } from "@tj/slides";
@@ -450,6 +454,37 @@ describe("a quick check whose answers would cover its questions gets an answers 
 
   /** The fixture plan's facts, schema-valid, with a slide per outline entry; covering checks at `at`. */
   const SETS = new Set(["starter", "instructions", "exit-ticket"]);
+  const heading = (text: string): TextElement =>
+    ({
+      id: `h-${text}`,
+      type: "text",
+      name: "Heading",
+      x: 64,
+      y: 46,
+      w: 832,
+      h: 54,
+      doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+      style: { preset: "heading" },
+    }) as TextElement;
+  const headingOf = (s: Slide): string => {
+    const h = s.elements.find((e) => e.name === "Heading");
+    return h?.type === "text" ? richDocToPlainText(h.doc) : s.id;
+  };
+  const shortCheck = () =>
+    withAnswersReveal(
+      materialiseSlide(
+        {
+          kind: "instructions",
+          factRefs: [],
+          heading: "Quick check",
+          steps: ["One?", "Two?"],
+          footnote: "Answers: 1 Yes  ·  2 No",
+        },
+        "studio",
+        meta,
+      ),
+      "studio",
+    );
   const planned = (count: number) => {
     const facts = LessonFactsSchema.parse(
       assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60),
@@ -461,6 +496,7 @@ describe("a quick check whose answers would cover its questions gets an answers 
         : ({
             ...after(i === facts.outline.length - 1 ? "Back to slide 1." : ""),
             id: `slide-${i}`,
+            elements: [heading(`Slide ${i}`)],
           } as Slide),
     );
     return { themeId: "studio", facts, slides, at };
@@ -500,7 +536,6 @@ describe("a quick check whose answers would cover its questions gets an answers 
     const lesson = planned(1);
     const c = lesson.at[0] ?? 0;
     const once = withAnswersSlides(lesson);
-    const theme = getTheme("studio");
     // The new questions' answers fit under them: the answers slide and its entry go.
     const short = withAnswersReveal(
       materialiseSlide(
@@ -520,7 +555,7 @@ describe("a quick check whose answers would cover its questions gets an answers 
       ...once,
       slides: once.slides.map((s, i) => (i === c ? { ...short, id: s.id } : s)),
     };
-    const dropped = syncAnswersSlide(fits, `slide-${c}`, theme).deck;
+    const dropped = withAnswersSlides(fits, undefined, new Set([`slide-${c}`]));
     expect(dropped.slides).toHaveLength(once.slides.length - 1);
     expect(LessonFactsSchema.parse(dropped.facts).outline.some((e) => e.answersTo)).toBe(false);
     // Long answers again: exactly one answers slide comes back.
@@ -528,9 +563,89 @@ describe("a quick check whose answers would cover its questions gets an answers 
       ...dropped,
       slides: dropped.slides.map((s, i) => (i === c ? { ...check("studio"), id: s.id } : s)),
     };
-    const back = syncAnswersSlide(again, `slide-${c}`, theme).deck;
+    const back = withAnswersSlides(again, undefined, new Set([`slide-${c}`]));
     expect(back.slides).toHaveLength(once.slides.length);
     expect(LessonFactsSchema.parse(back.facts).outline.filter((e) => e.answersTo)).toHaveLength(1);
+  });
+
+  test("a regenerated check with no answers drops its old answers slide and entry", () => {
+    const lesson = planned(1);
+    const c = lesson.at[0] ?? 0;
+    const once = withAnswersSlides(lesson);
+    const bare = { ...after(""), id: `slide-${c}`, kind: "instructions" } as Slide;
+    const regen = { ...once, slides: once.slides.map((s, i) => (i === c ? bare : s)) };
+    const out = withAnswersSlides(regen, undefined, new Set([`slide-${c}`]));
+    expect(out.slides).toHaveLength(lesson.slides.length);
+    expect(LessonFactsSchema.parse(out.facts).outline.some((e) => e.answersTo)).toBe(false);
+  });
+
+  /** A deck's invariants (ruling 200): entries line up, ids unique, answers only where needed. */
+  const holds = (l: { slides: Slide[]; facts?: LessonFacts }) => {
+    const facts = LessonFactsSchema.parse(l.facts);
+    expect(entriesWritten(l.slides)).toBe(facts.outline.length);
+    const at = outlineIndices(l.slides);
+    facts.outline.forEach((e, k) => {
+      if (!e.answersTo) return;
+      expect(facts.outline[k - 1]?.id).toBe(e.answersTo);
+      const check = l.slides[at.indexOf(k - 1)] as Slide;
+      expect(check.elements.some((x) => x.name === "Answers" || (x.revealStep ?? 0) > 0)).toBe(
+        false,
+      );
+    });
+    for (const s of l.slides) {
+      const panel = s.elements.find((x) => x.name === "Answers" && (x.revealStep ?? 0) > 0);
+      if (panel) expect(JSON.stringify(s.elements)).not.toContain("Explain how chlorophyll");
+    }
+  };
+
+  test("property: over decks with continuations, checks and regenerates, the invariants hold", () => {
+    let seed = 7;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    for (let run = 0; run < 40; run++) {
+      const base = planned(3);
+      // A continuation after some teaching slides (same kind, "<heading> (continued)").
+      const slides: Slide[] = [];
+      for (const s of base.slides) {
+        slides.push(s);
+        if (!base.at.includes(Number(s.id.split("-")[1])) && s.kind !== "title" && rand() < 0.3) {
+          slides.push({
+            ...s,
+            id: `${s.id}-c`,
+            elements: [heading(`${headingOf(s)} (continued)`)],
+          });
+        }
+      }
+      // Each check covers its questions, or not, at random.
+      const deck = {
+        ...base,
+        slides: slides.map((s) => {
+          const k = Number(s.id.split("-")[1]);
+          if (!base.at.includes(k) || s.id.endsWith("-c")) return s;
+          return rand() < 0.5 ? s : { ...shortCheck(), id: s.id };
+        }),
+      };
+      for (const s of deck.slides) if (s.kind !== "title") void s;
+      const once = withAnswersSlides(deck);
+      holds(once);
+      expect(withAnswersSlides(once)).toBe(once);
+      // Regenerate one check at random: covering, fitting or bare.
+      const k = base.at[Math.floor(rand() * base.at.length)] ?? 0;
+      const roll = rand();
+      const fresh =
+        roll < 0.34
+          ? check("studio")
+          : roll < 0.67
+            ? shortCheck()
+            : ({ ...after(""), kind: "instructions" } as Slide);
+      const regen = {
+        ...once,
+        slides: once.slides.map((s) => (s.id === `slide-${k}` ? { ...fresh, id: s.id } : s)),
+      };
+      holds(withAnswersSlides(regen, undefined, new Set([`slide-${k}`])));
+    }
   });
 
   test("a deck with no covering panel comes back as it was", () => {
