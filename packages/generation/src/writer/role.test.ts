@@ -19,7 +19,7 @@ const at = (template: string, more: Record<string, unknown> = {}, index = 5, fir
   slideRole({ template, heading: "A heading", ...more }, { index, firstTeaching: first });
 
 describe("roleAsk", () => {
-  test("is off by default", () => expect(ROLE_ASK_DEFAULT).toBe(false));
+  test("is on by default (TEACH-312 part e)", () => expect(ROLE_ASK_DEFAULT).toBe(true));
   test("slideHidesAnswer: a visual task and a question set hide; teaching and worked slides do not", () => {
     expect(
       slideHidesAnswer({ template: "big-visual", lead: "Find how many are in one group." }),
@@ -221,9 +221,9 @@ async function stamped(b: string, roleStamp?: boolean) {
 }
 
 describe("roleStamp on the replay fixtures", () => {
-  test("off by default: no role is logged", async () => {
-    expect(ROLE_STAMP_DEFAULT).toBe(false);
-    expect(await stamped(LESSONS[0] as string)).toEqual([]);
+  test("on by default; off logs no role", async () => {
+    expect(ROLE_STAMP_DEFAULT).toBe(true);
+    expect(await stamped(LESSONS[0] as string, false)).toEqual([]);
   });
 
   test("role counts across the 12 recorded outputs", async () => {

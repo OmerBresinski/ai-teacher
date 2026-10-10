@@ -186,13 +186,13 @@ export type WriterRun = {
   /**
    * roleStamp (the slide-role contract, step 1): each written slide's role (role.ts) is worked out
    * once the writer's slides are all open and logged (`slide-role`). Nothing reads it yet. Absent:
-   * `ROLE_STAMP_DEFAULT` (off).
+   * `ROLE_STAMP_DEFAULT` (on).
    */
   roleStamp?: boolean;
   /**
    * roleAsk (the slide-role contract, step 2): a diagram or library model keeps its answer back
    * when the slide's role asks (role.ts `slideHidesAnswer`; a discussion hides nothing), not only
-   * on the question templates. Absent: `ROLE_ASK_DEFAULT` (off).
+   * on the question templates. Absent: `ROLE_ASK_DEFAULT` (on).
    */
   roleAsk?: boolean;
   /**
