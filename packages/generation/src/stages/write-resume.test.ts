@@ -6,7 +6,7 @@ import { initialState, type RecordedDeps, recordingDeps, writerFixture } from ".
 import type { PipelineState } from "../types";
 import { WRITER_VERSION, writerRoute } from "../writer/ai-services";
 import { checkedWriterObjectives } from "./objectives";
-import { write } from "./write";
+import { hasEditableDeck, write } from "./write";
 
 /*
  * A retry never visibly undoes work (production job 01a126e5-ee5a, 10 Oct): attempt 0 threw in the
@@ -74,6 +74,17 @@ function storedAfter(deps: RecordedDeps): Lesson {
   return { ...last, slides };
 }
 
+/** Speaker notes on every kept body slide (`s3` on) once the retry has finished. */
+function expectNotesOnFinished(stored: Lesson, out: Lesson) {
+  const states = stored.generation?.slideStates ?? {};
+  const body = stored.slides.filter((s) => states[s.id] === "done" && /^s([3-9]|\d\d)$/.test(s.id));
+  expect(body.length).toBeGreaterThan(0);
+  for (const slide of body) {
+    const now = out.slides.find((s) => s.id === slide.id);
+    expect((now?.notes ?? "").length).toBeGreaterThan((slide.notes ?? "").length);
+  }
+}
+
 /** Every save of the retry: no finished slide is `writing`, changed or missing. */
 function expectFinishedUntouched(stored: Lesson, retry: RecordedDeps) {
   const states = stored.generation?.slideStates ?? {};
@@ -83,7 +94,10 @@ function expectFinishedUntouched(stored: Lesson, retry: RecordedDeps) {
   for (const { lesson } of retry.persisted) {
     for (const slide of finished) {
       expect(lesson.generation?.slideStates?.[slide.id]).not.toBe("writing");
-      expect(lesson.slides.find((s) => s.id === slide.id)).toEqual(slide);
+      // Words, pictures and layout as saved; only the speaker notes may be added.
+      const { notes: _n, ...shown } = slide;
+      const { notes: _m, ...now } = lesson.slides.find((s) => s.id === slide.id) ?? slide;
+      expect(now).toEqual(shown);
     }
   }
 }
@@ -93,7 +107,7 @@ async function plannedState(): Promise<PipelineState> {
 }
 
 describe("a retry after the write stage threw", () => {
-  test("after the editable deck was saved: finishes from it without writing again", async () => {
+  test("after the editable deck was saved: finishes from it without writing again, notes written", async () => {
     const planned = await plannedState();
     const first = writerAi();
     const a0 = recordingDeps(first.ai);
@@ -116,7 +130,11 @@ describe("a retry after the write stage threw", () => {
     expectFinishedUntouched(stored, retry);
     expect(second.calls.lesson).toBe(0);
     expect(out.lesson.generation?.stage).toBe("generated");
-    expect(out.lesson.slides).toEqual(stored.slides);
+    // Every slide as saved, now with its speaker notes (written after editable, so none yet).
+    expect(out.lesson.slides.map(({ notes: _n, ...s }) => s)).toEqual(
+      stored.slides.map(({ notes: _n, ...s }) => s),
+    );
+    expectNotesOnFinished(stored, out.lesson);
   });
 
   test("mid-stream: keeps the finished slides and writes the rest off-screen", async () => {
@@ -145,5 +163,31 @@ describe("a retry after the write stage threw", () => {
     expect(second.calls.lesson).toBe(1);
     expect(out.lesson.generation?.stage).toBe("generated");
     expect(out.lesson.slides.length).toBeGreaterThan(stored.slides.length);
+    expectNotesOnFinished(stored, out.lesson);
   }, 20_000);
+});
+
+describe("hasEditableDeck", () => {
+  test("a stale editableAt never skips the writer: it needs the writer's planned checkpoint", async () => {
+    const planned = await plannedState();
+    const a0 = recordingDeps(writerAi().ai);
+    const deps0: RecordedDeps = {
+      ...a0,
+      onProgress: async (_p, message) => {
+        if (message === "Slides written") throw new TypeError("x is undefined");
+      },
+    };
+    await expect(write(planned, deps0)).rejects.toBeInstanceOf(TypeError);
+    const stored = a0.persisted.at(-1)?.lesson as Lesson;
+    const g = stored.generation as NonNullable<Lesson["generation"]>;
+    expect(hasEditableDeck(stored)).toBe(true);
+    expect(hasEditableDeck({ ...stored, generation: { ...g, stage: "generated" } })).toBe(false);
+    expect(
+      hasEditableDeck({
+        ...stored,
+        generation: { ...g, promptVersions: { ...g.promptVersions, planned: "objectives.v9" } },
+      }),
+    ).toBe(false);
+    expect(hasEditableDeck({ ...stored, generation: { ...g, editableAt: undefined } })).toBe(false);
+  });
 });

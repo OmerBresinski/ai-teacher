@@ -11,10 +11,11 @@ import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
+import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
-import { writerBundleOf } from "./objectives-first";
+import { isWriterStamp, writerBundleOf } from "./objectives-first";
 import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
 import { createProgressiveDeck } from "./progressive";
 
@@ -102,7 +103,12 @@ export function finishedSlides(lesson: Lesson): Map<string, Slide> {
 
 /** True when an earlier attempt saved the whole editable deck: a retry finishes from it. */
 export function hasEditableDeck(lesson: Lesson): boolean {
-  if (lesson.generation?.editableAt === undefined || lesson.slides.length === 0) return false;
+  const g = lesson.generation;
+  // The stamp counts only at the writer's own checkpoint: a row that moved on (or was re-planned,
+  // which clears `generation`) never skips the writer on a stale field.
+  if (g?.stage !== "planned" || g.editableAt === undefined || lesson.slides.length === 0)
+    return false;
+  if (!isWriterStamp(g.promptVersions.planned)) return false;
   return finishedSlides(lesson).size === lesson.slides.length;
 }
 
@@ -159,11 +165,27 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // j). An earlier attempt that saved the editable deck is finished from it: no second writer
   // call, no slide back to `writing`, every word and placed picture as the teacher saw them.
   if (hasEditableDeck(lesson)) {
+    // What the writer does after editable, minus anything that changes a slide: its pictures were
+    // settled before editable (rule (a)), so no slot is open; the speaker notes are written here.
+    const slides = await notesForSavedSlides({
+      slides: lesson.slides as unknown as { id: string; notes?: string; elements: unknown[] }[],
+      brief: writerBrief(lesson),
+      objectives,
+      bundle: writerBundleOf(lesson),
+      services: aiWriterServices(deps),
+    });
     deps.logger.info(
-      { stage: "generate", slides: lesson.slides.length },
+      {
+        stage: "generate",
+        slides: slides.length,
+        pictures: slides
+          .flatMap((s) => s.elements)
+          .filter((e) => (e as { type?: string }).type === "image").length,
+        withNotes: slides.filter((s) => (s.notes ?? "").trim() !== "").length,
+      },
       "writer resumed from the editable deck",
     );
-    const done = toLesson(lesson.slides, "generated", allIn(lesson.slides, "done"));
+    const done = toLesson(slides, "generated", allIn(slides, "done"));
     const { updatedAt } = await deps.persist(done);
     await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
     return { ...state, lesson: done };
@@ -366,7 +388,18 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
     throw error;
   }
-  const deck = kept(credited(out.slides));
+  // The finished slides kept from an earlier attempt were saved before any notes were written:
+  // they get theirs from one notes call over the deck as it ships.
+  const deck = offScreen
+    ? await notesForSavedSlides({
+        slides: kept(credited(out.slides)),
+        brief: writerBrief(lesson),
+        objectives,
+        bundle: writerBundleOf(lesson),
+        services: aiWriterServices(deps),
+        only: new Set(finished.keys()),
+      })
+    : credited(out.slides);
   const done = toLesson(deck, "generated", allIn(deck, "done"));
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
