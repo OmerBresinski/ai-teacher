@@ -1,5 +1,5 @@
 {
-  "note": "lib arm (D30 fixes): per-model data the code reads after the fill call. answerKeys: build keys (the model's own builds(P).steps[].key) that show the answer; a question slide draws the last build before the first of them, or no model. cannot: what the model cannot draw, with the intent patterns (case-insensitive regex) that ask for it. Not prompt text.",
+  "note": "lib arm (D30 fixes): per-model data the code reads after the fill call. answerKeys: build keys (the model's own builds(P).steps[].key) that show the answer; a question slide draws the last build before the first of them, or no model. cannot: what the model cannot draw, with the intent patterns (case-insensitive regex) that ask for it. Not prompt text. optionalPanels (S10 step 2, flag libraryPanelsOff): boolean params that add a panel or step beyond the slide's idea; left unset by the fill they are off unless the writer's intent matches one of `when` (case-insensitive regex).",
   "models": {
     "fractions": {
       "answerKeys": [
@@ -95,6 +95,87 @@
             "boltzmann",
             "distribution of energies"
           ]
+        }
+      ],
+      "optionalPanels": [
+        {
+          "param": "showCounter",
+          "what": "the collisions-each-second counter",
+          "when": [
+            "collisions? (?:each|per|a) second",
+            "\\bcount",
+            "frequen",
+            "how often",
+            "rate of collision"
+          ]
+        }
+      ]
+    },
+    "heart_circulation": {
+      "optionalPanels": [
+        {
+          "param": "showPulse",
+          "what": "the pulse panel",
+          "when": ["\\bpulse", "heart ?rate", "\\bbeats?\\b", "exercis"]
+        }
+      ]
+    },
+    "measuring_scales": {
+      "optionalPanels": [
+        {
+          "param": "zoom",
+          "what": "the close-up of the reading",
+          "when": ["zoom", "magnif", "close[- ]?up", "closer"]
+        }
+      ]
+    },
+    "rocks_soil_fossils": {
+      "optionalPanels": [
+        {
+          "param": "soilInside",
+          "what": "the close look at topsoil",
+          "when": ["topsoil", "humus", "inside the soil", "close[- ]?up", "closer"]
+        }
+      ]
+    },
+    "earth_sun_moon": {
+      "optionalPanels": [
+        {
+          "param": "orbitTimes",
+          "what": "the orbit-times comparison",
+          "when": [
+            "orbit(?:al)? (?:times?|period)",
+            "length of (?:a|its) year",
+            "longer (?:its )?year",
+            "how long .*orbit"
+          ]
+        }
+      ]
+    },
+    "rivers_coasts": {
+      "optionalPanels": [
+        {
+          "param": "showMeander",
+          "what": "the meander on the low land",
+          "when": ["meander", "\\bbends?\\b"]
+        }
+      ]
+    },
+    "plant_growth": {
+      "optionalPanels": [
+        {
+          "param": "showCut",
+          "what": "the stem cut across",
+          "when": ["\\bcut\\b", "cross[- ]?section", "inside the stem", "xylem", "\\btubes?\\b"]
+        }
+      ]
+    },
+    "evolution_adaptation": {
+      "optionalPanels": [
+        {
+          "param": "showCounts",
+          "what": "the population counts",
+          "when": ["\\bcounts?\\b", "how many", "tally", "number of", "population"]
         }
       ]
     }

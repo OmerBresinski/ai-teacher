@@ -64,18 +64,115 @@ export const STAGE_YEARS: Record<WriterStage, string[]> = {
 
 export type CatalogueEntry = { id: string; teaches: string; years: string[] };
 
-/** Shipped models whose years meet the stage's, in the library's gallery order. */
-export async function catalogue(stage: WriterStage): Promise<CatalogueEntry[]> {
+/**
+ * Models kept for a lesson in any subject (flag `libraryMenuFilter`): general representations
+ * (chronology, data, sorting, cycles) that any subject's lesson may draw on.
+ */
+export const GENERAL_MODELS = ["timeline", "data_chart", "sort_venn_carroll", "cycle_wheel"];
+
+/** The lesson's year as the models' `meta.years` name it ("Year 5" -> Y5, Year 8 -> KS3). */
+export function yearToken(yearGroup: string): string | undefined {
+  if (/reception|\bEYFS\b/i.test(yearGroup)) return "Reception";
+  const n = Number(/(\d+)/.exec(yearGroup)?.[1]);
+  if (!Number.isFinite(n) || n < 1 || n > 13) return undefined;
+  return n <= 6 ? `Y${n}` : n <= 9 ? "KS3" : n <= 11 ? "KS4" : "KS5";
+}
+
+/** The lesson's subject as the models' `meta.subjects` name it (undefined: no match known). */
+export function subjectToken(subject: string): string[] | undefined {
+  const s = subject.toLowerCase();
+  if (/math/.test(s)) return ["Maths"];
+  if (/science|biolog|chemist|physic/.test(s)) return ["Science"];
+  if (/geograph/.test(s)) return ["Geography"];
+  if (/histor/.test(s)) return ["History"];
+  if (/\bre\b|religio/.test(s)) return ["RE"];
+  if (/pshe|wellbeing|citizenship/.test(s)) return ["PSHE"];
+  if (/\bpe\b|physical education|sport/.test(s)) return ["PE"];
+  if (/comput/.test(s)) return ["Computing"];
+  if (/music/.test(s)) return ["Music"];
+  if (/design and tech|\bd ?& ?t\b/.test(s)) return ["Design and technology"];
+  if (/\bart\b/.test(s)) return ["Art", "Art and design"];
+  return undefined;
+}
+
+/**
+ * The lesson a catalogue is filtered for (flag `libraryMenuFilter`); with `objectives` (flag
+ * `libraryMenuRank`) the kept models are also ordered by relevance to them.
+ */
+export type MenuFilter = { yearGroup: string; subject: string; objectives?: string[] };
+
+const STOP = new Set(
+  "a an and are as at be by can for from how in into is it its of on or that the their them they this to use using what when where which why with will pupils pupil learners children understand know identify describe explain recognise show work out find able".split(
+    " ",
+  ),
+);
+/** Content words, lower case, crudely stemmed (plural, -ing, -ed): the ranking's only text step. */
+export function contentWords(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (raw.length < 3 || STOP.has(raw)) continue;
+    out.add(raw.replace(/(?:ies)$/, "y").replace(/(?:ing|ed|es|s)$/, "") || raw);
+  }
+  return out;
+}
+
+/**
+ * The catalogue ordered by relevance to the lesson's objectives (flag `libraryMenuRank`): each
+ * model scores the objective content words found in its id, name and teaches line; higher first,
+ * ties in gallery order. Deterministic; never drops a model.
+ */
+export function rankByObjectives<T extends { id: string; teaches: string; name?: string }>(
+  entries: T[],
+  objectives: string[],
+): T[] {
+  const want = contentWords(objectives.join(" "));
+  const score = (e: T) => {
+    const have = contentWords(`${e.id.replace(/_/g, " ")} ${e.name ?? ""} ${e.teaches}`);
+    let n = 0;
+    for (const w of want) if (have.has(w)) n++;
+    return n;
+  };
+  return entries
+    .map((e, i) => ({ e, i, s: score(e) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.e);
+}
+
+/**
+ * Shipped models whose years meet the stage's, in the library's gallery order. With `filter`
+ * (flag `libraryMenuFilter`, CROSSCHECK point 1): only models for the lesson's year, and for its
+ * subject or general (`GENERAL_MODELS`). A year or subject the code cannot read filters nothing
+ * on that axis. An empty list means no Models block, no model kind line and no model schema
+ * branch (`libSystem` and `libSchema` add nothing for it).
+ */
+export async function catalogue(
+  stage: WriterStage,
+  filter?: MenuFilter,
+): Promise<CatalogueEntry[]> {
   const { loadModel } = await import("./render");
   const want = STAGE_YEARS[stage];
+  const year = filter && yearToken(filter.yearGroup);
+  const subjects = filter && subjectToken(filter.subject);
   const out: CatalogueEntry[] = [];
+  const names = new Map<string, string>();
   for (const id of GALLERY_ORDER) {
     if (!MODEL_LOADERS[id]) continue;
     const m = await loadModel(id);
-    if (m?.meta.years.some((y) => want.includes(y)))
-      out.push({ id, teaches: m.meta.teaches, years: m.meta.years });
+    if (!m?.meta.years.some((y) => want.includes(y))) continue;
+    if (filter) {
+      if (year && !m.meta.years.includes(year)) continue;
+      const own = m.meta.subjects ?? [];
+      if (subjects && !GENERAL_MODELS.includes(id) && !own.some((x) => subjects.includes(x)))
+        continue;
+    }
+    out.push({ id, teaches: m.meta.teaches, years: m.meta.years });
+    names.set(id, m.meta.name);
   }
-  return out;
+  if (!filter?.objectives?.length) return out;
+  return rankByObjectives(
+    out.map((e) => ({ ...e, name: names.get(e.id) })),
+    filter.objectives,
+  ).map(({ name: _n, ...e }) => e);
 }
 /** lab/library/models/registry.js order (MODEL_LOADERS keeps it). */
 const GALLERY_ORDER = Object.keys(MODEL_LOADERS);
@@ -129,6 +226,11 @@ export function libSchema(base: J, ids: string[], w = WRITER_WORDS): J {
   return s;
 }
 
-type MetaEntry = { answerKeys: string[]; cannot: { what: string; when: string[] }[] };
+type MetaEntry = {
+  answerKeys?: string[];
+  cannot?: { what: string; when: string[] }[];
+  /** Panels or steps beyond the slide's idea: off unless the intent names them (`libraryPanelsOff`). */
+  optionalPanels?: { param: string; what: string; when: string[] }[];
+};
 /** Per-model data the code reads after the fill (lab ab/lib-meta.json; not prompt text). */
 export const LIB_META = (libMeta as { models: Record<string, MetaEntry> }).models;

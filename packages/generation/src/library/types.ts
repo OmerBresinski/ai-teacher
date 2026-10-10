@@ -6,7 +6,7 @@ export type LibMeta = {
   id: string;
   name: string;
   years: string[];
-  subjects: string[];
+  subjects?: string[];
   teaches: string;
 };
 export type LibParams = J & { properties: Record<string, J>; required?: string[] };

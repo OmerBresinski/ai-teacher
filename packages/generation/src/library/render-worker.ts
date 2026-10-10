@@ -8,12 +8,15 @@ import { kit, renderLibraryModel } from "./render";
 import type { J } from "./types";
 
 declare const self: Worker;
-type Job = { id: string; params: J; step?: number };
+type Job = { id: string; params: J; step?: number; typeScale?: number };
 
 await kit();
 self.onmessage = async (e: MessageEvent<Job>) => {
-  const { id, params, step } = e.data;
-  const answer = await renderLibraryModel(id, params, step === undefined ? {} : { step }).then(
+  const { id, params, step, typeScale } = e.data;
+  const answer = await renderLibraryModel(id, params, {
+    ...(step === undefined ? {} : { step }),
+    ...(typeScale === undefined ? {} : { typeScale }),
+  }).then(
     (drawing) => ({ type: "done" as const, drawing }),
     (err: unknown) => ({ type: "error" as const, message: String(err).slice(0, 300) }),
   );

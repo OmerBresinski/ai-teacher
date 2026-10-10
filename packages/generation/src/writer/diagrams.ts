@@ -32,6 +32,7 @@ import {
   slotBox,
   slotLimit,
   strictForm,
+  UNSHARED_ASK,
   withAskedCounts,
   withBuilds,
   withLongLabels,
@@ -378,6 +379,23 @@ export function questionSafe<T>(spec: T): T {
   return { ...rest, bars } as T;
 }
 
+const norm = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+/**
+ * A drawing never repeats the slide's heading (the first line of its words) as its own title: the
+ * slide already shows it (S10 paid L y2 s7 "Now share 16" drawn twice). Other titles are kept.
+ */
+export function noHeadingTitle<T>(spec: T, words: string): T {
+  const s = spec as J;
+  if (!s || typeof s !== "object" || typeof s.title !== "string") return spec;
+  const heading = norm(words.split("\n")[0] ?? "");
+  if (!heading || norm(s.title) !== heading) return spec;
+  return { ...s, title: null } as T;
+}
+
 /** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
 export type DrawerCall = (req: {
   model: "gpt-6-luna";
@@ -481,7 +499,7 @@ export async function drawWriterDiagram(
 ): Promise<DrawnWriterDiagram> {
   let ask = ask0;
   const done = (spec: unknown, via: "code" | "drawer"): DrawnWriterDiagram => ({
-    spec: ask0.question ? questionSafe(spec) : spec,
+    spec: noHeadingTitle(ask0.question ? questionSafe(spec) : spec, ask0.words),
     via,
     fault: "",
   });
@@ -514,7 +532,18 @@ export async function drawWriterDiagram(
         };
       }
       const r = await drawerCall(ask, deps);
-      if (r.spec) return done(withAskedCounts(r.spec, ask.labels), "drawer");
+      if (r.spec) {
+        // On an asking slide the drawer's spec (a retry or a library fallback included) is held to
+        // the request: counters the request says are not grouped yet are one pile, never the groups
+        // a retry may add to pass the schema (two groups of 8 for "share 16"). A teaching slide's
+        // groups are drawn as the drawer gave them.
+        const pile = ask0.question ? pileSpec(r.spec, ask0.shows, UNSHARED_ASK) : undefined;
+        if (pile) {
+          deps.log?.({ ev: "unshared-pile", key: ask.key, total: pile.total, via: "drawer" });
+          return done(pile, "drawer");
+        }
+        return done(withAskedCounts(r.spec, ask.labels), "drawer");
+      }
       return { via: "none", fault: r.fault };
     },
     (e): DrawnWriterDiagram => ({
