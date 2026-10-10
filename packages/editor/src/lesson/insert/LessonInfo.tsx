@@ -1,16 +1,19 @@
 import { deriveAgeBand } from "@tj/domain/documents";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Info } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import { RailButton } from "../../kit/Rail";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
 import { useHistory, useLesson } from "../document-context";
+import type { LessonInfoFieldsProps } from "./LessonInfoFields";
 import { languageLabel } from "./lesson-info-options";
 
 // The edit fields (and the Radix Select they use) load when the popover first opens.
-const loadFields = () => import("./LessonInfoFields");
-const LessonInfoFields = lazy(() => loadFields().then((m) => ({ default: m.LessonInfoFields })));
+const fields = lazyLoader<LessonInfoFieldsProps>(() =>
+  import("./LessonInfoFields").then((m) => m.LessonInfoFields),
+);
 
 export { YEAR_GROUPS } from "./lesson-info-options";
 
@@ -57,7 +60,7 @@ export function LessonInfo() {
       onOpenChange={(open) => {
         if (open) {
           setEditing(false);
-          void loadFields();
+          fields.preload();
         } else typing.end();
       }}
     >
@@ -92,14 +95,12 @@ export function LessonInfo() {
           </div>
 
           {editing ? (
-            <Suspense fallback={null}>
-              <LessonInfoFields
-                lesson={lesson}
-                typing={typing}
-                setMeta={setMeta}
-                setYearGroup={setYearGroup}
-              />
-            </Suspense>
+            <LazyPart
+              loader={fields}
+              props={{ lesson, typing, setMeta, setYearGroup }}
+              fallback={null}
+              failed={(retry) => <RetryLoad className="h-8 w-full" onRetry={retry} />}
+            />
           ) : null}
         </div>
       </PopoverContent>

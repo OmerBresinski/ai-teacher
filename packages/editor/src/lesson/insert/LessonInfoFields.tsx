@@ -17,18 +17,15 @@ import { DEFAULT_LANGUAGE, LANGUAGES, NOT_SET, YEAR_GROUPS } from "./lesson-info
  * The Info popover's edit fields. They load only when a teacher opens the popover (the Radix
  * Select they use is off the editor's first paint, TEACH-113's route budget).
  */
-export function LessonInfoFields({
-  lesson,
-  typing,
-  setMeta,
-  setYearGroup,
-}: {
+export type LessonInfoFieldsProps = {
   lesson: Lesson;
   typing: ReturnType<typeof useEditSession>;
   setMeta: (patch: reducers.LessonMetaPatch) => void;
   /** Sets the year group and the key stage derived from it (`undefined` clears both). */
   setYearGroup: (yearGroup: string | undefined) => void;
-}) {
+};
+
+export function LessonInfoFields({ lesson, typing, setMeta, setYearGroup }: LessonInfoFieldsProps) {
   const subjectId = useId();
   const yearId = useId();
   const readingId = useId();

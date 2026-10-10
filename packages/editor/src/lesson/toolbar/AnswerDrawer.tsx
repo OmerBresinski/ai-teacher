@@ -10,7 +10,8 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { lazy, Suspense, useId } from "react";
+import { useId } from "react";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
@@ -20,21 +21,28 @@ import type { AnswerSelectProps } from "./AnswerSelect";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
 
 // The pickers (a Radix Select) load on the drawer's first hover, focus or open.
-const loadAnswerSelect = () => import("./AnswerSelect");
-const AnswerSelect = lazy(() => loadAnswerSelect().then((m) => ({ default: m.AnswerSelect })));
-const preloadAnswerSelect = () => void loadAnswerSelect();
+const answerSelect = lazyLoader<AnswerSelectProps>(() =>
+  import("./AnswerSelect").then((m) => m.AnswerSelect),
+);
+const preloadAnswerSelect = answerSelect.preload;
 
 const TRUE_FALSE = [
   { value: "true", label: "True" },
   { value: "false", label: "False" },
 ] as const;
 
-/** `AnswerSelect` behind a fallback of the trigger's own box, so the row never shifts. */
+/**
+ * `AnswerSelect` behind a fallback of the trigger's own box, so the row never shifts; a failed
+ * chunk fetch shows a retry in that box instead of taking down the editor.
+ */
 function LazySelect(props: AnswerSelectProps) {
   return (
-    <Suspense fallback={<div className={props.className} />}>
-      <AnswerSelect {...props} />
-    </Suspense>
+    <LazyPart
+      loader={answerSelect}
+      props={props}
+      fallback={<div className={props.className} />}
+      failed={(retry) => <RetryLoad className={props.className} onRetry={retry} />}
+    />
   );
 }
 
