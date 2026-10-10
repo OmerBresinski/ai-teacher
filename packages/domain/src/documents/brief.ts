@@ -32,11 +32,14 @@ export const SLIDE_TIER_RANGES: Record<SlideTier, { min: number; max: number }> 
   standard: { min: 9, max: 12 },
   detailed: { min: 13, max: 20 },
 };
-/** The exact count the older outline planners build for a tier: they plan to one of `SLIDE_COUNTS`. */
-const PLANNER_COUNT_OF_TIER: Record<SlideTier, SlideCount> = {
+/**
+ * The exact count the outline planners (objectives-first, facts) build for a tier: always inside
+ * the tier's range, so the writer is never asked for slides the outline did not plan.
+ */
+export const PLANNER_COUNT_OF_TIER: Record<SlideTier, number> = {
   quick: 8,
   standard: 10,
-  detailed: 12,
+  detailed: 16,
 };
 /** How hard the lesson is pitched relative to the year group (ruling 74). */
 export const BRIEF_LEVELS = ["easier", "standard", "harder"] as const;
@@ -91,9 +94,13 @@ export function slideTierOf(brief: DeckLength | undefined): SlideTier {
       : "detailed";
 }
 
-/** The exact count an outline planner builds: the brief's own count, else its tier's. */
-export function plannerSlideCount(brief: DeckLength | undefined): SlideCount {
+/**
+ * The exact count an outline planner builds: a tier's planner count (inside its range), else an
+ * older lesson's own count, else the Standard tier's.
+ */
+export function plannerSlideCount(brief: DeckLength | undefined): number {
+  if (brief?.slideTier) return PLANNER_COUNT_OF_TIER[brief.slideTier];
   const n = brief?.slideCount;
-  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n)) return n as SlideCount;
-  return brief?.slideTier ? PLANNER_COUNT_OF_TIER[brief.slideTier] : DEFAULT_SLIDE_COUNT;
+  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n)) return n;
+  return PLANNER_COUNT_OF_TIER[DEFAULT_SLIDE_TIER];
 }

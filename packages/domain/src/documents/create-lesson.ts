@@ -82,24 +82,32 @@ export const OBJECTIVE_TEXT_MAX = 300;
  * and, optionally, a new deck length or duration. What the edit does is `applyObjectiveEdits`'s
  * call.
  */
-export const GenerateLessonSchema = z.strictObject({
-  expectedRevision: z.number().int().min(0),
-  objectives: z
-    .array(
-      z.strictObject({
-        id: FactIdSchema.optional(),
-        text: guarded(z.string().trim().min(1).max(OBJECTIVE_TEXT_MAX)),
-      }),
-    )
-    // No `.min(1)`: an empty list is well-formed but cannot be confirmed — the route answers 422
-    // (TDD T4), not the 400 a malformed body gets.
-    .max(MAX_CONFIRMED_OBJECTIVES),
-  slideCount: BriefSchema.shape.slideCount,
-  slideTier: BriefSchema.shape.slideTier,
-  durationMin: DurationMinSchema.optional(),
-  // Ruling 116: the lesson's starting theme (last used, else the class default) travels with the confirm.
-  themeId: z.string().optional(),
-});
+export const SLIDE_TIER_AND_COUNT_MESSAGE = "Send a slide tier or a slide count, not both.";
+export const GenerateLessonSchema = z
+  .strictObject({
+    expectedRevision: z.number().int().min(0),
+    objectives: z
+      .array(
+        z.strictObject({
+          id: FactIdSchema.optional(),
+          text: guarded(z.string().trim().min(1).max(OBJECTIVE_TEXT_MAX)),
+        }),
+      )
+      // No `.min(1)`: an empty list is well-formed but cannot be confirmed — the route answers 422
+      // (TDD T4), not the 400 a malformed body gets.
+      .max(MAX_CONFIRMED_OBJECTIVES),
+    slideCount: BriefSchema.shape.slideCount,
+    slideTier: BriefSchema.shape.slideTier,
+    durationMin: DurationMinSchema.optional(),
+    // Ruling 116: the lesson's starting theme (last used, else the class default) travels with the confirm.
+    themeId: z.string().optional(),
+  })
+  .refine((v) => v.slideTier === undefined || v.slideCount === undefined, {
+    // Ruling 164: a confirm names a tier or (older clients) an exact count, never both; a body
+    // with both is a 400 rather than one silently winning.
+    message: SLIDE_TIER_AND_COUNT_MESSAGE,
+    path: ["slideTier"],
+  });
 export type GenerateLesson = z.infer<typeof GenerateLessonSchema>;
 export type GenerateLessonInput = z.input<typeof GenerateLessonSchema>;
 

@@ -35,11 +35,12 @@ describe("BriefSchema", () => {
     expect(slideTierOf(undefined)).toBe("standard");
   });
 
-  test("plannerSlideCount: an older exact count, else the tier's planner count", () => {
-    expect(plannerSlideCount({ slideCount: 6, slideTier: "detailed" })).toBe(6);
+  test("plannerSlideCount: the tier's planner count, inside its range; else an older exact count", () => {
+    expect(plannerSlideCount({ slideCount: 6, slideTier: "detailed" })).toBe(16);
+    expect(plannerSlideCount({ slideCount: 6 })).toBe(6);
     expect(plannerSlideCount({ slideTier: "quick" })).toBe(8);
     expect(plannerSlideCount({ slideTier: "standard" })).toBe(10);
-    expect(plannerSlideCount({ slideTier: "detailed" })).toBe(12);
+    expect(plannerSlideCount({ slideTier: "detailed" })).toBe(16);
     expect(plannerSlideCount({})).toBe(10);
   });
 
