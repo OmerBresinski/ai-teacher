@@ -1,5 +1,6 @@
 import type { Lesson, LessonFacts, Slide } from "@tj/domain/documents";
 import { callStructured } from "../call";
+import { curriculumBlock, curriculumFor } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
 import {
   type PlanRetrievalQuestion,
@@ -17,6 +18,7 @@ import {
 import { aiWriterServices } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { fillTemplate } from "../writer/fixes";
+import { locale } from "../writer/locale";
 import { isFatal } from "../writer/services";
 import { checkInput, structuralGuard } from "./check-input";
 import {
@@ -115,9 +117,31 @@ export const WRITER_OBJECTIVES = {
 } as const;
 
 /**
- * One writer objectives call: `objectives.txt` as the system text, `objectives-user.txt` filled
- * from the writer's brief, `objectives-schema.json` strict. It reads no curriculum source and
- * writes no retrieval questions or anchors, as in the lab.
+ * The writer objectives call's user turn: `objectives-user.txt` filled from the writer's brief,
+ * plus the statutory curriculum statements for the brief's year and subject as `{{curriculum}}`
+ * (`curriculumFor`, HEART1 plan F). A template without the placeholder renders exactly as
+ * before; with it and no data for the year or subject, the block is empty.
+ */
+export function writerObjectivesUser(
+  lesson: Lesson,
+  template: string = writerBundle().objectivesUser,
+): string {
+  const brief = writerBrief(lesson);
+  const lookup = curriculumFor({
+    country: locale().country,
+    subject: brief.subject,
+    yearGroup: brief.yearGroup,
+    topic: brief.topic,
+  });
+  return fillTemplate(template, brief, {
+    curriculum: curriculumBlock(lookup, brief.yearGroup),
+  }).trimEnd();
+}
+
+/**
+ * One writer objectives call: `objectives.txt` as the system text, `writerObjectivesUser` as the
+ * user turn, `objectives-schema.json` strict. It loads no uploaded source and writes no retrieval
+ * questions or anchors, as in the lab.
  */
 export async function writerObjectivesCall(
   lesson: Lesson,
@@ -127,7 +151,7 @@ export async function writerObjectivesCall(
   const r = await aiWriterServices(deps).chat({
     ...WRITER_OBJECTIVES,
     system: P.objectives,
-    user: fillTemplate(P.objectivesUser, writerBrief(lesson)),
+    user: writerObjectivesUser(lesson, P.objectivesUser),
     schema: JSON.parse(P.objectivesSchema),
     name: "objectives",
     strict: true,

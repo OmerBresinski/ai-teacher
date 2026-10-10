@@ -1,0 +1,146 @@
+{
+  "_provenance": {
+    "title": "National curriculum in England: art and design programmes of study",
+    "publisher": "Department for Education",
+    "sourceUrl": "https://www.gov.uk/government/publications/national-curriculum-in-england-art-and-design-programmes-of-study/national-curriculum-in-england-art-and-design-programmes-of-study",
+    "sourceUpdated": "2013-09-11T16:00:00+01:00",
+    "retrieved": "2026-10-10",
+    "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0.",
+    "scope": "Statutory programme-of-study statements only (the 'Pupils should be taught' lists), verbatim. Non-statutory notes and guidance, aims, purpose of study and appendices are not included."
+  },
+  "statements": [
+    {
+      "id": "england.art-and-design.y1-2.key-stage-1.1",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "to use a range of materials creatively to design and make products"
+    },
+    {
+      "id": "england.art-and-design.y1-2.key-stage-1.2",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "to use drawing, painting and sculpture to develop and share their ideas, experiences and imagination"
+    },
+    {
+      "id": "england.art-and-design.y1-2.key-stage-1.3",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "to develop a wide range of art and design techniques in using colour, pattern, texture, line, shape, form and space"
+    },
+    {
+      "id": "england.art-and-design.y1-2.key-stage-1.4",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "about the work of a range of artists, craft makers and designers, describing the differences and similarities between different practices and disciplines, and making links to their own work"
+    },
+    {
+      "id": "england.art-and-design.y3-6.key-stage-2.1",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "to create sketch books to record their observations and use them to review and revisit ideas"
+    },
+    {
+      "id": "england.art-and-design.y3-6.key-stage-2.2",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "to improve their mastery of art and design techniques, including drawing, painting and sculpture with a range of materials [for example, pencil, charcoal, paint, clay]"
+    },
+    {
+      "id": "england.art-and-design.y3-6.key-stage-2.3",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "about great artists, architects and designers in history"
+    },
+    {
+      "id": "england.art-and-design.y7-9.key-stage-3.1",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "to use a range of techniques to record their observations in sketchbooks, journals and other media as a basis for exploring their ideas"
+    },
+    {
+      "id": "england.art-and-design.y7-9.key-stage-3.2",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "to use a range of techniques and media, including painting"
+    },
+    {
+      "id": "england.art-and-design.y7-9.key-stage-3.3",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "to increase their proficiency in the handling of different materials"
+    },
+    {
+      "id": "england.art-and-design.y7-9.key-stage-3.4",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "to analyse and evaluate their own work, and that of others, in order to strengthen the visual impact or applications of their work"
+    },
+    {
+      "id": "england.art-and-design.y7-9.key-stage-3.5",
+      "country": "england",
+      "subject": "art and design",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "about the history of art, craft, design and architecture, including periods, styles and major movements from ancient times up to the present day"
+    }
+  ]
+}

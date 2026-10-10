@@ -1,0 +1,267 @@
+{
+  "_provenance": {
+    "title": "National curriculum in England: physical education programmes of study",
+    "publisher": "Department for Education",
+    "sourceUrl": "https://www.gov.uk/government/publications/national-curriculum-in-england-physical-education-programmes-of-study/national-curriculum-in-england-physical-education-programmes-of-study",
+    "sourceUpdated": "2013-09-11T16:00:00+01:00",
+    "retrieved": "2026-10-10",
+    "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0.",
+    "scope": "Statutory programme-of-study statements only (the 'Pupils should be taught' lists), verbatim. Non-statutory notes and guidance, aims, purpose of study and appendices are not included."
+  },
+  "statements": [
+    {
+      "id": "england.physical-education.y1-2.key-stage-1.1",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "master basic movements including running, jumping, throwing and catching, as well as developing balance, agility and co-ordination, and begin to apply these in a range of activities"
+    },
+    {
+      "id": "england.physical-education.y1-2.key-stage-1.2",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "participate in team games, developing simple tactics for attacking and defending"
+    },
+    {
+      "id": "england.physical-education.y1-2.key-stage-1.3",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "perform dances using simple movement patterns"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.1",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "use running, jumping, throwing and catching in isolation and in combination"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.2",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "play competitive games, modified where appropriate [for example, badminton, basketball, cricket, football, hockey, netball, rounders and tennis], and apply basic principles suitable for attacking and defending"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.3",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "develop flexibility, strength, technique, control and balance [for example, through athletics and gymnastics]"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.4",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "perform dances using a range of movement patterns"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.5",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "take part in outdoor and adventurous activity challenges both individually and within a team"
+    },
+    {
+      "id": "england.physical-education.y3-6.key-stage-2.6",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "compare their performances with previous ones and demonstrate improvement to achieve their personal best"
+    },
+    {
+      "id": "england.physical-education.y3-6.swimming-and-water-safety.1",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Swimming and water safety",
+      "headings": ["Swimming and water safety"],
+      "text": "swim competently, confidently and proficiently over a distance of at least 25 metres"
+    },
+    {
+      "id": "england.physical-education.y3-6.swimming-and-water-safety.2",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Swimming and water safety",
+      "headings": ["Swimming and water safety"],
+      "text": "use a range of strokes effectively [for example, front crawl, backstroke and breaststroke]"
+    },
+    {
+      "id": "england.physical-education.y3-6.swimming-and-water-safety.3",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Swimming and water safety",
+      "headings": ["Swimming and water safety"],
+      "text": "perform safe self-rescue in different water-based situations"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.1",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "use a range of tactics and strategies to overcome opponents in direct competition through team and individual games [for example, badminton, basketball, cricket, football, hockey, netball, rounders, rugby and tennis]"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.2",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "develop their technique and improve their performance in other competitive sports [for example, athletics and gymnastics]"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.3",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "perform dances using advanced dance techniques in a range of dance styles and forms"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.4",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "take part in outdoor and adventurous activities which present intellectual and physical challenges and be encouraged to work in a team, building on trust and developing skills to solve problems, either individually or as a group"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.5",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "analyse their performances compared to previous ones and demonstrate improvement to achieve their personal best"
+    },
+    {
+      "id": "england.physical-education.y7-9.key-stage-3.6",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "take part in competitive sports and activities outside school through community links or sports clubs"
+    },
+    {
+      "id": "england.physical-education.y10-11.key-stage-4.1",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "use and develop a variety of tactics and strategies to overcome opponents in team and individual games [for example, badminton, basketball, cricket, football, hockey, netball, rounders, rugby and tennis]"
+    },
+    {
+      "id": "england.physical-education.y10-11.key-stage-4.2",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "develop their technique and improve their performance in other competitive sports [for example, athletics and gymnastics] or other physical activities [for example, dance]"
+    },
+    {
+      "id": "england.physical-education.y10-11.key-stage-4.3",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "take part in further outdoor and adventurous activities in a range of environments which present intellectual and physical challenges and which encourage pupils to work in a team, building on trust and developing skills to solve problems, either individually or as a group"
+    },
+    {
+      "id": "england.physical-education.y10-11.key-stage-4.4",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "evaluate their performances compared to previous ones and demonstrate improvement across a range of physical activities to achieve their personal best"
+    },
+    {
+      "id": "england.physical-education.y10-11.key-stage-4.5",
+      "country": "england",
+      "subject": "physical education",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "continue to take part regularly in competitive sports and activities outside school through community links or sports clubs"
+    }
+  ]
+}
