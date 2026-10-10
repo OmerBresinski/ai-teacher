@@ -53,10 +53,20 @@ export function readabilityFaults(
 }
 
 /**
+ * Faults that leave nothing (or nothing readable) drawn: the drawer returned an empty part (a flow,
+ * cubes or groups with no room at a readable size, a key with no room). Such an attempt is never
+ * the least-bad drawing; a spec with only these is refused, as it does not draw.
+ */
+const drawsNothing = (f: string): boolean =>
+  f === "it does not draw" ||
+  /does not fit its zone at a readable size|do not fit the space|^no room for the key/.test(f);
+
+/**
  * The diagram for `spec` in `rect`, or why it cannot be drawn readably there. Tries the spec as
  * normalised and then each simpler form, each from the zone's label size (or `rect.fs`) down to
  * the key stage's small-text floor, and takes the first that reads cleanly. When none does, the
- * attempt with the fewest faults is drawn anyway (the spec as given first, the largest size first)
+ * spec as given is drawn anyway at its size with the fewest faults (a simpler form only when it
+ * cannot draw at all)
  * and its faults come back as `warnings`: only a spec that does not parse or cannot be drawn at
  * all is refused. Never throws.
  */
@@ -93,8 +103,10 @@ export function drawDiagram(
           if (faults.length) {
             if (fs === base.fs || last.length === 0) last = faults;
             if (
-              !faults.includes("it does not draw") &&
-              (!least || faults.length < least.faults.length)
+              !faults.some(drawsNothing) &&
+              (!least ||
+                rung < least.rung ||
+                (rung === least.rung && faults.length < least.faults.length))
             )
               least = { form, fs, rung, faults };
             continue;

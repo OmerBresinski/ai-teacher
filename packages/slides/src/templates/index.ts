@@ -716,8 +716,11 @@ function figurePanel(
   // Anything else is a failure: no panel, no wash, and the caller takes the words-only sibling.
   const draw = (): { el: SlideElement; note?: string } | undefined => {
     const r = drawDiagram(f.diagram, c.t, { ...inner, fs: c.s.small });
-    if (!r.ok) {
-      c.fails?.push(...r.reasons);
+    // A drawing that only draws with warnings (TEACH-247 part n) is a miss for this panel, as
+    // before: the layout tries its other rooms (full width, a continued table) and the writer
+    // stage decides what ships. drawDiagram itself never refuses it.
+    if (!r.ok || r.warnings) {
+      c.fails?.push(...(r.ok ? (r.warnings ?? []) : r.reasons));
       return undefined;
     }
     return { el: r.element, ...(r.fs < c.s.small ? { note: `diagram labels ${r.fs}pt` } : {}) };
@@ -1215,7 +1218,7 @@ function drawnSize(
     h: rect.h - 2 * i,
     fs: c.s.small,
   });
-  if (!r.ok) return undefined;
+  if (!r.ok || r.warnings) return undefined;
   // The drawing is zoomed to fill its box: each text on the slide is its font size times that
   // zoom. The smallest text in the drawing is the one that counts.
   const el = r.element as { w?: number; h?: number; src?: string };
