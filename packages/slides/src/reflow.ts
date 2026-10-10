@@ -81,7 +81,7 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
-import { ladderStops, resolveTextStyle, STEPPABLE } from "./text-style";
+import { ladderStops, resolveFontSize, resolveTextStyle, STEPPABLE } from "./text-style";
 import { fontFloor, type TextRole } from "./themes";
 
 /* ------------------------------------------------------------------ */
@@ -327,12 +327,26 @@ export function stepDownSize(
   role?: TextRole,
 ): number {
   const floor = fontFloor(preset, role);
-  if (size <= floor) return floor;
-  const next = stops(theme).find((s) => s < size - EPS);
-  // Below the smallest stop there is still room above the floor: give up 10%.
-  const target = next ?? Math.round(size * 0.9);
-  return Math.max(floor, Math.round(target));
+  // At or under the floor: up to the floor when the renderer draws it there, else as it is.
+  if (size <= floor) return resolveFontSize(theme, preset, floor, role) === floor ? floor : size;
+  // A theme read at a key stage draws text only on its stage's steps (`resolveFontSize`), so a
+  // size between them is drawn larger than it was measured (prod-15). Walk down until the size the
+  // renderer draws is smaller; none is, and the text stays where it is.
+  let target = size;
+  for (let i = 0; i < MAX_TRIES && target > floor; i++) {
+    const next = stops(theme).find((s) => s < target - EPS);
+    // Below the smallest stop there is still room above the floor: give up 10%.
+    target = Math.max(floor, Math.round(next ?? target * 0.9));
+    const drawn = resolveFontSize(theme, preset, target, role);
+    // The next size the renderer would draw is under the role's floor: no step.
+    if (drawn < floor - EPS) return size;
+    if (drawn < size - EPS) return drawn;
+  }
+  return size;
 }
+
+/** How many candidate sizes a step down tries before it gives up. */
+const MAX_TRIES = 8;
 
 /** Resolved size of an element's text, honouring an in-flight step-down override. */
 function sizeOf(
