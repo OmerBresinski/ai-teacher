@@ -207,8 +207,8 @@ describe("repair, restage and fallback order (FOR-CODE item 5)", () => {
   });
 });
 
-describe("the diagram library is off for the writer (TEACH-247 part j)", () => {
-  test("the writer's compiled request has no library menu, and no fill call runs", async () => {
+describe("the diagram library is on for the writer (TEACH-247 part m)", () => {
+  test("the writer's compiled request offers the filtered library menu", async () => {
     const ai = fakeAi();
     const out = await write(initialState(planned()), recordingDeps(ai));
     expect(out.lesson.generation?.stage).toBe("generated");
@@ -216,8 +216,7 @@ describe("the diagram library is off for the writer (TEACH-247 part j)", () => {
     expect(lesson).toHaveLength(1);
     const system = lesson[0]?.systemText ?? "";
     expect(system).toContain("Diagram kinds:");
-    expect(system).not.toContain(WRITER_WORDS.menuLine);
-    expect(system).not.toContain(WRITER_WORDS.header);
-    expect(ai.calls.some((c) => (c.systemText ?? "").startsWith("Set the parameters"))).toBe(false);
+    expect(system).toContain(WRITER_WORDS.menuLine);
+    expect(system).toContain(WRITER_WORDS.header);
   });
 });
