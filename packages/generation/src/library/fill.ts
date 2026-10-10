@@ -187,6 +187,8 @@ export type LibraryAsk = {
   yearGroup: string;
   lesson: string;
   question?: boolean;
+  /** Words printed over words fall back (flag `libraryLabelOverlap`, diagrams-09). */
+  labelOverlap?: boolean;
   /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
   panelsOff?: boolean;
   /**
@@ -219,6 +221,37 @@ export function placedTypeSize(
     minPt: min ? min.fs * scale : Number.POSITIVE_INFINITY,
     ...(min ? { word: min.words } : {}),
   };
+}
+
+/**
+ * Pairs of words in a drawn library SVG whose boxes overlap (more than `tol` view-box units each
+ * way), read back with `inspectDrawnSvg` as the drawer's label check reads its own (diagrams-09:
+ * the fractions model's "7" printed over "3/5 of 35 = 21", 0.48 of the "7"). Two words count when the
+ * other covers over `share` of the smaller one's box each way: over all 202 presets the most a
+ * stacked pair covers is 0.3 ("6" over "six"). The same word at the same place is one word drawn
+ * twice (a halo copy), not an overlap.
+ */
+export const OVERLAP_SHARE = 0.4;
+export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, string, number][] {
+  const { words } = inspectDrawnSvg(svg);
+  const out: [string, string, number][] = [];
+  for (let i = 0; i < words.length; i++)
+    for (let j = i + 1; j < words.length; j++) {
+      const a = words[i];
+      const b = words[j];
+      if (!a || !b) continue;
+      const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (ox <= 2 || oy <= 2) continue;
+      // How much of the smaller word's box the other covers, each way (stacked lines graze).
+      const k = Math.min(
+        ox / Math.max(1, Math.min(a.x1 - a.x0, b.x1 - b.x0)),
+        oy / Math.max(1, Math.min(a.y1 - a.y0, b.y1 - b.y0)),
+      );
+      if (a.words === b.words && k > 0.95) continue;
+      if (k > share) out.push([a.words, b.words, Math.round(k * 100) / 100]);
+    }
+  return out;
 }
 
 const tokens = (t: string, v: Record<string, string>) =>
@@ -311,6 +344,21 @@ export async function libraryDiagram(
           (e) => String(e).slice(0, 160),
         );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);
+  // Words over words (flag `libraryLabelOverlap`): the drawer's text-box reading of the still.
+  if (ask.labelOverlap) {
+    const o = nonFatalSync(
+      () => overlappingWords(drawn.svg),
+      () => undefined,
+    );
+    if (!o) return fallback("its words could not be read for overlaps");
+    if (o.length)
+      return fallback(
+        `its words overlap: ${o
+          .slice(0, 2)
+          .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
+          .join(", ")}`,
+      );
+  }
   // The type floor (flag `libraryModelBody`): words under 18 pt where the drawing is placed.
   if (ask.place) {
     const t = nonFatalSync(

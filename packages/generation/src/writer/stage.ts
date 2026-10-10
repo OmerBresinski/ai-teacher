@@ -186,6 +186,11 @@ export type WriterRun = {
    */
   libraryPanelsOff?: boolean;
   /**
+   * Library turn-on, step 3 (diagrams-09; default off): a drawn model whose words print over one
+   * another (read back from the still) falls back to the drawer.
+   */
+  libraryLabelOverlap?: boolean;
+  /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
@@ -521,6 +526,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               question,
               ...(run.libraryModelBody ? { place: MODEL_PLACE } : {}),
               ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
+              ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
             },
             async (req) =>
               (
