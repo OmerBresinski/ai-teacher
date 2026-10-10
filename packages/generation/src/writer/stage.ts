@@ -191,6 +191,12 @@ export type WriterRun = {
    */
   libraryLabelOverlap?: boolean;
   /**
+   * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
+   * schema's model enum hold only models for the lesson's year and its subject (or general
+   * ones); an empty list leaves out the Models block, the model kind line and the schema branch.
+   */
+  libraryMenuFilter?: boolean;
+  /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
@@ -391,7 +397,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const models =
     run.library && run.drawDiagrams
       ? await nonFatal(
-          () => catalogue(stageKey),
+          () =>
+            catalogue(
+              stageKey,
+              run.libraryMenuFilter
+                ? { yearGroup: brief.yearGroup, subject: brief.subject }
+                : undefined,
+            ),
           (e) => {
             log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
             return [];

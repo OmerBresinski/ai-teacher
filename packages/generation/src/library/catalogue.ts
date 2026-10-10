@@ -64,16 +64,67 @@ export const STAGE_YEARS: Record<WriterStage, string[]> = {
 
 export type CatalogueEntry = { id: string; teaches: string; years: string[] };
 
-/** Shipped models whose years meet the stage's, in the library's gallery order. */
-export async function catalogue(stage: WriterStage): Promise<CatalogueEntry[]> {
+/**
+ * Models kept for a lesson in any subject (flag `libraryMenuFilter`): general representations
+ * (chronology, data, sorting, cycles) that any subject's lesson may draw on.
+ */
+export const GENERAL_MODELS = ["timeline", "data_chart", "sort_venn_carroll", "cycle_wheel"];
+
+/** The lesson's year as the models' `meta.years` name it ("Year 5" -> Y5, Year 8 -> KS3). */
+export function yearToken(yearGroup: string): string | undefined {
+  if (/reception|\bEYFS\b/i.test(yearGroup)) return "Reception";
+  const n = Number(/(\d+)/.exec(yearGroup)?.[1]);
+  if (!Number.isFinite(n) || n < 1 || n > 13) return undefined;
+  return n <= 6 ? `Y${n}` : n <= 9 ? "KS3" : n <= 11 ? "KS4" : "KS5";
+}
+
+/** The lesson's subject as the models' `meta.subjects` name it (undefined: no match known). */
+export function subjectToken(subject: string): string[] | undefined {
+  const s = subject.toLowerCase();
+  if (/math/.test(s)) return ["Maths"];
+  if (/science|biolog|chemist|physic/.test(s)) return ["Science"];
+  if (/geograph/.test(s)) return ["Geography"];
+  if (/histor/.test(s)) return ["History"];
+  if (/\bre\b|religio/.test(s)) return ["RE"];
+  if (/pshe|wellbeing|citizenship/.test(s)) return ["PSHE"];
+  if (/\bpe\b|physical education|sport/.test(s)) return ["PE"];
+  if (/comput/.test(s)) return ["Computing"];
+  if (/music/.test(s)) return ["Music"];
+  if (/design and tech|\bd ?& ?t\b/.test(s)) return ["Design and technology"];
+  if (/\bart\b/.test(s)) return ["Art", "Art and design"];
+  return undefined;
+}
+
+/** The lesson a catalogue is filtered for (flag `libraryMenuFilter`). */
+export type MenuFilter = { yearGroup: string; subject: string };
+
+/**
+ * Shipped models whose years meet the stage's, in the library's gallery order. With `filter`
+ * (flag `libraryMenuFilter`, CROSSCHECK point 1): only models for the lesson's year, and for its
+ * subject or general (`GENERAL_MODELS`). A year or subject the code cannot read filters nothing
+ * on that axis. An empty list means no Models block, no model kind line and no model schema
+ * branch (`libSystem` and `libSchema` add nothing for it).
+ */
+export async function catalogue(
+  stage: WriterStage,
+  filter?: MenuFilter,
+): Promise<CatalogueEntry[]> {
   const { loadModel } = await import("./render");
   const want = STAGE_YEARS[stage];
+  const year = filter && yearToken(filter.yearGroup);
+  const subjects = filter && subjectToken(filter.subject);
   const out: CatalogueEntry[] = [];
   for (const id of GALLERY_ORDER) {
     if (!MODEL_LOADERS[id]) continue;
     const m = await loadModel(id);
-    if (m?.meta.years.some((y) => want.includes(y)))
-      out.push({ id, teaches: m.meta.teaches, years: m.meta.years });
+    if (!m?.meta.years.some((y) => want.includes(y))) continue;
+    if (filter) {
+      if (year && !m.meta.years.includes(year)) continue;
+      const own = (m.meta as { subjects?: string[] }).subjects ?? [];
+      if (subjects && !GENERAL_MODELS.includes(id) && !own.some((x) => subjects.includes(x)))
+        continue;
+    }
+    out.push({ id, teaches: m.meta.teaches, years: m.meta.years });
   }
   return out;
 }
