@@ -95,8 +95,48 @@ export function subjectToken(subject: string): string[] | undefined {
   return undefined;
 }
 
-/** The lesson a catalogue is filtered for (flag `libraryMenuFilter`). */
-export type MenuFilter = { yearGroup: string; subject: string };
+/**
+ * The lesson a catalogue is filtered for (flag `libraryMenuFilter`); with `objectives` (flag
+ * `libraryMenuRank`) the kept models are also ordered by relevance to them.
+ */
+export type MenuFilter = { yearGroup: string; subject: string; objectives?: string[] };
+
+const STOP = new Set(
+  "a an and are as at be by can for from how in into is it its of on or that the their them they this to use using what when where which why with will pupils pupil learners children understand know identify describe explain recognise show work out find able".split(
+    " ",
+  ),
+);
+/** Content words, lower case, crudely stemmed (plural, -ing, -ed): the ranking's only text step. */
+export function contentWords(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (raw.length < 3 || STOP.has(raw)) continue;
+    out.add(raw.replace(/(?:ies)$/, "y").replace(/(?:ing|ed|es|s)$/, "") || raw);
+  }
+  return out;
+}
+
+/**
+ * The catalogue ordered by relevance to the lesson's objectives (flag `libraryMenuRank`): each
+ * model scores the objective content words found in its id, name and teaches line; higher first,
+ * ties in gallery order. Deterministic; never drops a model.
+ */
+export function rankByObjectives<T extends { id: string; teaches: string; name?: string }>(
+  entries: T[],
+  objectives: string[],
+): T[] {
+  const want = contentWords(objectives.join(" "));
+  const score = (e: T) => {
+    const have = contentWords(`${e.id.replace(/_/g, " ")} ${e.name ?? ""} ${e.teaches}`);
+    let n = 0;
+    for (const w of want) if (have.has(w)) n++;
+    return n;
+  };
+  return entries
+    .map((e, i) => ({ e, i, s: score(e) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.e);
+}
 
 /**
  * Shipped models whose years meet the stage's, in the library's gallery order. With `filter`
@@ -114,6 +154,7 @@ export async function catalogue(
   const year = filter && yearToken(filter.yearGroup);
   const subjects = filter && subjectToken(filter.subject);
   const out: CatalogueEntry[] = [];
+  const names = new Map<string, string>();
   for (const id of GALLERY_ORDER) {
     if (!MODEL_LOADERS[id]) continue;
     const m = await loadModel(id);
@@ -125,8 +166,13 @@ export async function catalogue(
         continue;
     }
     out.push({ id, teaches: m.meta.teaches, years: m.meta.years });
+    names.set(id, m.meta.name);
   }
-  return out;
+  if (!filter?.objectives?.length) return out;
+  return rankByObjectives(
+    out.map((e) => ({ ...e, name: names.get(e.id) })),
+    filter.objectives,
+  ).map(({ name: _n, ...e }) => e);
 }
 /** lab/library/models/registry.js order (MODEL_LOADERS keeps it). */
 const GALLERY_ORDER = Object.keys(MODEL_LOADERS);

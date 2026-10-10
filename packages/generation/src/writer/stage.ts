@@ -197,6 +197,12 @@ export type WriterRun = {
    */
   libraryMenuFilter?: boolean;
   /**
+   * Library turn-on, step 5 (default off; with `libraryMenuFilter`): the kept models are ordered
+   * by a deterministic word match of their teaches line against the lesson's objectives. Never
+   * drops a model, only reorders.
+   */
+  libraryMenuRank?: boolean;
+  /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
@@ -401,7 +407,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             catalogue(
               stageKey,
               run.libraryMenuFilter
-                ? { yearGroup: brief.yearGroup, subject: brief.subject }
+                ? {
+                    yearGroup: brief.yearGroup,
+                    subject: brief.subject,
+                    ...(run.libraryMenuRank ? { objectives: run.objectives } : {}),
+                  }
                 : undefined,
             ),
           (e) => {
