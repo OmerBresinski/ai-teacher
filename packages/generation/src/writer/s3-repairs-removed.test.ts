@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CHECKER_DEFAULTS } from "./checker-flags";
-import { replayRun, replayServices } from "./replay-fixture";
+import { replayRun, replayServices, withUnshowable } from "./replay-fixture";
 
 /*
  * SIMPLIFY S3 (TEACH-312 part f): the writer stage's repairs that made slides worse are gone.
@@ -13,12 +13,13 @@ import { replayRun, replayServices } from "./replay-fixture";
  * Recorded writer outputs (fixtures/replay), recorded answers, no model call.
  */
 type Ev = Record<string, unknown>;
-async function run(b: string) {
+async function run(b: string, visual?: ReturnType<typeof withUnshowable>) {
   const events: Ev[] = [];
   const calls: { name: string; user: string }[] = [];
   const base = replayServices(b);
   const res = await replayRun(b, {
     checker: CHECKER_DEFAULTS,
+    ...(visual ? { visual } : {}),
     services: {
       ...base,
       log: (e) => events.push(e as Ev),
@@ -40,7 +41,9 @@ describe("a diagram that cannot be shown keeps the writer's slide", () => {
     ["y12-psychology-multi-store-model-r2", 4],
     ["y8-french-my-family", 3],
   ])("%s s%d: no words-rewrite or figure-dropped, no stand-alone call", async (b, slide) => {
-    const r = await run(b);
+    // y8 s3's family tree now draws (TEACH-247 part n): a drawing that cannot be shown takes its
+    // place, so the slide still takes the cannot-be-shown path.
+    const r = await run(b, b === "y8-french-my-family" ? withUnshowable(b, slide - 1) : undefined);
     expect(r.pathOf(slide)).toBe("unshown");
     expect(r.events.some((e) => e.ev === "restage-fallback" && e.slide === slide)).toBe(false);
     // The slide is the writer's own (same heading), not a restaged rewrite.

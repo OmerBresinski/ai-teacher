@@ -53,6 +53,17 @@ const UNSHOWN: Record<string, number[]> = {
  * half?" on drawn shapes with a text hinge. The repair call is gone, so the writer's drawn task stays.
  */
 const OBJECTIVE_KEPT: Record<string, number[]> = { "y2-maths-halves-quarters": [3] };
+/**
+ * TEACH-247 part n (register diagrams-02): drawings the lab could not show because their labels
+ * clashed now find clear spots and draw (y8 s3's family tree, y11 and y11-r2 s3's apparatus, y11-r2 s9's
+ * worked-example drawing). The slide keeps
+ * the writer's heading and gains its drawing.
+ */
+const DRAWN_NOW: Record<string, number[]> = {
+  "y8-french-my-family": [2],
+  "y11-chemistry-rates-of-reaction": [2],
+  "y11-chemistry-rates-of-reaction-r2": [2, 8],
+};
 const headingOf = (els: El[]) => {
   const h = els.find((e) => e.name === "Heading");
   return JSON.stringify(h?.doc ?? h?.text ?? null);
@@ -107,6 +118,11 @@ describe.each(LESSONS)("replay %s", (b) => {
       }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
+        return;
+      }
+      if (DRAWN_NOW[b]?.includes(i)) {
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {
