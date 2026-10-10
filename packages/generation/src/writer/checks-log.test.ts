@@ -36,17 +36,31 @@ async function run(b: string, checks: "act" | "log") {
 }
 
 /** Events that mean a check result changed a slide's words or visuals. */
+const ACTING = new Set(["diagram-relaid", "gas8-fallback", "orphan6-drop", "unshown-strip"]);
+/** Logged through the stage's one check gate: acting unless marked `applied: false`. */
+const GATED = new Set([
+  "relayout",
+  "gas8",
+  "unpoint",
+  "figure-sync",
+  "figure-stale",
+  "figure-text",
+  "figure-text-mismatch",
+]);
 const acted = (e: Ev) =>
-  // A restage after a picture that genuinely failed to load still runs (mode reroute), and so do
-  // the relayout and fallback of a diagram the layout could not draw (diagram-relaid).
+  // A restage after a picture that genuinely failed to load still runs (mode reroute).
   ((e.ev === "repair" || e.ev === "repair-rejected") && e.mode === "fit") ||
-  e.ev === "gas8-fallback" ||
-  e.ev === "orphan6-drop" ||
-  e.ev === "unshown-strip" ||
-  (e.ev === "figure-text-mismatch" && e.dropped === true) ||
-  (e.ev === "figure-sync" && e.applied !== false) ||
-  (e.ev === "figure-text" && e.applied !== false) ||
-  (e.ev === "point-guard" && e.how === "point-strip");
+  (e.ev === "point-guard" && e.how === "point-strip") ||
+  (GATED.has(String(e.ev)) && e.applied !== false) ||
+  // a library fallback is acting only when a check (not a fill or draw failure) caused it
+  (e.ev === "lib-fallback" &&
+    !/fill call failed|refused:|did not draw|no shipped model|no build before/.test(
+      String(e.reason),
+    )) ||
+  (ACTING.has(String(e.ev)) &&
+    e.ev !== "lib-fallback" &&
+    e.ev !== "keep-pic" &&
+    !/^r2-spec/.test(String(e.ev)));
 
 const images = (slides: { elements: { type: string }[] }[]) =>
   slides.map((s) => s.elements.filter((e) => e.type === "image").length);
@@ -80,14 +94,17 @@ describe('checks: "log" acts on no check result', () => {
     expect(repairs).toBeGreaterThan(0);
   });
 
-  test("no slide loses a visual it kept when checks act", async () => {
+  test("a slide loses a visual only where acting checks relaid its diagram full width", async () => {
     for (const b of LESSONS) {
-      const act = images((await run(b, "act")).res.slides as never);
-      const log = images((await run(b, "log")).res.slides as never);
-      expect(log.length).toBeGreaterThanOrEqual(act.length);
-      const base = act.reduce((a, n) => a + n, 0);
-      const now = log.reduce((a, n) => a + n, 0);
-      expect(now).toBeGreaterThanOrEqual(base);
+      const a = await run(b, "act");
+      const l = await run(b, "log");
+      const act = images(a.res.slides as never);
+      const log = images(l.res.slides as never);
+      const relaid = new Set(
+        a.events.filter((e) => e.ev === "diagram-relaid" && e.ok).map((e) => Number(e.slide) - 1),
+      );
+      for (let i = 0; i < act.length; i++)
+        if ((log[i] ?? 0) < (act[i] ?? 0)) expect(relaid.has(i), `${b} s${i + 1}`).toBe(true);
     }
   });
 });

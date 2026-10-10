@@ -21,7 +21,7 @@ type El = Record<string, unknown>;
 
 async function run(
   fill: (attempt: number) => unknown,
-  shape: { side?: boolean; points?: boolean } = {},
+  shape: { side?: boolean; points?: boolean; heading?: string; checks?: "act" | "log" } = {},
 ) {
   const brief = JSON.parse(read("brief.json")) as Brief;
   const objectives = (
@@ -33,6 +33,7 @@ async function run(
   // Library models are full slides: big-visual with its lead, no points (unless a test asks).
   if (!shape.side) first.template = "big-visual";
   if (!shape.side && !shape.points) delete first.points;
+  if (shape.heading) first.heading = shape.heading;
   first.figure = {
     kind: "model",
     model: "fractions",
@@ -68,6 +69,7 @@ async function run(
     recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
     drawDiagrams: { callDrawer },
     library: true,
+    ...(shape.checks ? { checks: shape.checks } : {}),
   });
   const slide = res.slides[2]; // title and objectives come first
   const diagram = ((slide?.elements ?? []) as El[]).find((e) => e.name === "Diagram");
@@ -148,6 +150,22 @@ describe("writer stage: library models", () => {
       expect.objectContaining({ ev: "lib-side-slot", model: "fractions" }),
     );
     expect(svgOfDataUrl(String(diagram?.src))).not.toContain("theme-primary");
+  }, 60_000);
+
+  test("checks only logged (TEACH-312 part i): a model the words check rejects is kept, logged", async () => {
+    const m = await loadModel("fractions");
+    const heading = "Find 7/9 of the circle";
+    const acting = await run(() => m?.presets[0]?.params, { heading });
+    expect(acting.events).toContainEqual(expect.objectContaining({ ev: "lib-fallback" }));
+    expect(svgOfDataUrl(String(acting.diagram?.src)) ?? "").not.toContain("theme-primary");
+    const logged = await run(() => m?.presets[0]?.params, { heading, checks: "log" });
+    expect(logged.events.some((e) => e.ev === "lib-fallback")).toBe(false);
+    expect(logged.events).toContainEqual(
+      expect.objectContaining({ ev: "lib-check-logged", reason: expect.stringContaining("7/9") }),
+    );
+    expect(acting.drawerKinds).toContain("fraction-shapes");
+    expect(logged.drawerKinds).not.toContain("fraction-shapes");
+    expect(svgOfDataUrl(String(logged.diagram?.src)) ?? "").toContain("theme-primary");
   }, 60_000);
 
   test("refused params fall back to the drawer for the model's kind", async () => {
