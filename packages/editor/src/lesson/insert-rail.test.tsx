@@ -166,7 +166,8 @@ describe("InsertRail", () => {
     expect(within(info).getByText("Seed lesson")).toBeInTheDocument();
     expect(within(info).getByText(/3 slides/)).toBeInTheDocument();
     fireEvent.click(within(info).getByRole("button", { name: "Edit" }));
-    const subject = screen.getByRole("textbox", { name: "Subject" });
+    // The edit fields are a lazy chunk (preloaded when the popover opens), so they arrive a tick later.
+    const subject = await screen.findByRole("textbox", { name: "Subject" });
     fireEvent.change(subject, { target: { value: "Science" } });
     expect(read().subject).toBe("Science");
   });

@@ -659,6 +659,18 @@ describe("SlideToolbar (rows 5, 6)", () => {
     expect(read().slides[0]?.transition).toBe("push");
   });
 
+  test("row 6: a true/false slide's lazy answer picker paints with the stored answer", async () => {
+    const lesson = seededLesson();
+    const slide = newSlide("true-false", lesson.themeId);
+    lesson.slides = [slide, ...lesson.slides];
+    renderEditor(lesson);
+    fireEvent.click(within(toolbar("Slide")).getByRole("button", { name: "Answer" }));
+    // The picker is its own chunk (off the editor's first paint); it arrives inside the open popover.
+    const picker = await screen.findByRole("combobox", { name: "Correct answer" });
+    const correct = (slide.question as { correct: boolean }).correct;
+    expect(picker).toHaveTextContent(correct ? "True" : "False");
+  });
+
   test("row 6: a multiple-choice slide's options toggle correct; the multi switch works", async () => {
     const lesson = seededLesson();
     lesson.slides = [

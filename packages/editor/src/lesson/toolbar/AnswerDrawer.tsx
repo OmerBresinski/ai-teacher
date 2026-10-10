@@ -6,22 +6,37 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
   Textarea,
 } from "@tj/ui";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useId } from "react";
+import { lazy, Suspense, useId } from "react";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
 import { choiceText } from "../../slide/elements/choice";
 import { useHistory } from "../document-context";
+import type { AnswerSelectProps } from "./AnswerSelect";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
+
+// The pickers (a Radix Select) load on the drawer's first hover, focus or open.
+const loadAnswerSelect = () => import("./AnswerSelect");
+const AnswerSelect = lazy(() => loadAnswerSelect().then((m) => ({ default: m.AnswerSelect })));
+const preloadAnswerSelect = () => void loadAnswerSelect();
+
+const TRUE_FALSE = [
+  { value: "true", label: "True" },
+  { value: "false", label: "False" },
+] as const;
+
+/** `AnswerSelect` behind a fallback of the trigger's own box, so the row never shifts. */
+function LazySelect(props: AnswerSelectProps) {
+  return (
+    <Suspense fallback={<div className={props.className} />}>
+      <AnswerSelect {...props} />
+    </Suspense>
+  );
+}
 
 function moved<T>(list: T[], from: number, to: number): T[] {
   const next = [...list];
@@ -81,31 +96,29 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
     slide.elements.find((e) => e.id === id)?.name?.trim() || `Picture ${i + 1}`;
 
   return (
-    <Popover onOpenChange={(open) => !open && typing.end()}>
+    <Popover onOpenChange={(open) => (open ? preloadAnswerSelect() : typing.end())}>
       <PopoverTrigger asChild>
-        <BarButton data-answer-drawer>Answer</BarButton>
+        <BarButton
+          data-answer-drawer
+          onPointerEnter={preloadAnswerSelect}
+          onFocus={preloadAnswerSelect}
+        >
+          Answer
+        </BarButton>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3" aria-label="Answer">
         <div className="flex flex-col gap-2.5">
           <PanelSection title="Correct answer">
             {question.type === "true-false" ? (
               <PanelRow label="True or false" htmlFor={`${rowId}-tf`}>
-                <Select
+                <LazySelect
+                  id={`${rowId}-tf`}
+                  className="h-8 w-28"
+                  aria-label="Correct answer"
                   value={question.correct ? "true" : "false"}
-                  onValueChange={(v) => set({ ...question, correct: v === "true" })}
-                >
-                  <SelectTrigger
-                    id={`${rowId}-tf`}
-                    className="h-8 w-28"
-                    aria-label="Correct answer"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">True</SelectItem>
-                    <SelectItem value="false">False</SelectItem>
-                  </SelectContent>
-                </Select>
+                  options={TRUE_FALSE}
+                  onChange={(v) => set({ ...question, correct: v === "true" })}
+                />
               </PanelRow>
             ) : null}
 
@@ -193,27 +206,19 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
                     label={optionText(p.leftElementId)}
                     htmlFor={`${rowId}-${p.id}`}
                   >
-                    <Select
+                    <LazySelect
+                      id={`${rowId}-${p.id}`}
+                      className="h-8 w-36"
+                      aria-label={`Match for ${optionText(p.leftElementId)}`}
                       value={p.rightElementId}
-                      onValueChange={(v) =>
+                      options={question.pairs.map((other) => ({
+                        value: other.rightElementId,
+                        label: optionText(other.rightElementId),
+                      }))}
+                      onChange={(v) =>
                         set({ ...question, pairs: repairPairs(question.pairs, p.id, v) })
                       }
-                    >
-                      <SelectTrigger
-                        id={`${rowId}-${p.id}`}
-                        className="h-8 w-36"
-                        aria-label={`Match for ${optionText(p.leftElementId)}`}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {question.pairs.map((other) => (
-                          <SelectItem key={other.rightElementId} value={other.rightElementId}>
-                            {optionText(other.rightElementId)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </PanelRow>
                 ))}
               </div>
@@ -227,27 +232,19 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
                     label={pictureName(p.imageId, i)}
                     htmlFor={`${rowId}-${p.id}`}
                   >
-                    <Select
+                    <LazySelect
+                      id={`${rowId}-${p.id}`}
+                      className="h-8 w-36"
+                      aria-label={`Word for ${pictureName(p.imageId, i)}`}
                       value={p.labelId}
-                      onValueChange={(v) =>
+                      options={question.pairs.map((other) => ({
+                        value: other.labelId,
+                        label: optionText(other.labelId),
+                      }))}
+                      onChange={(v) =>
                         set({ ...question, pairs: repairImagePairs(question.pairs, p.id, v) })
                       }
-                    >
-                      <SelectTrigger
-                        id={`${rowId}-${p.id}`}
-                        className="h-8 w-36"
-                        aria-label={`Word for ${pictureName(p.imageId, i)}`}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {question.pairs.map((other) => (
-                          <SelectItem key={other.labelId} value={other.labelId}>
-                            {optionText(other.labelId)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </PanelRow>
                 ))}
               </div>

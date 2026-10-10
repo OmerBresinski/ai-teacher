@@ -7,6 +7,7 @@ import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { GeneratingShell } from "./GeneratingShell";
+import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./job-sync";
 import { type StageState, stageOf } from "./stage";
 
 /**
@@ -21,11 +22,7 @@ import { type StageState, stageOf } from "./stage";
  * cancels the job through `POST /jobs/:id/cancel`.
  */
 
-/** The worker coalesces persist → progress at this cadence; a burst of events is one refetch. */
-export const REFETCH_DEBOUNCE_MS = 250;
-
-/** How often the generating view re-reads the lesson in case the stream missed the job's end. */
-export const JOB_POLL_MS = 3000;
+export { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./job-sync";
 
 export function GeneratingLesson({
   lesson,
@@ -161,14 +158,4 @@ export function GeneratingLesson({
       exportSlot={exportSlot}
     />
   );
-}
-
-export function lastDocumentUpdatedAt(events: ReturnType<typeof useJobEvents>["events"]) {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i]?.event;
-    if (event?.type === "progress" && event.progress.documentUpdatedAt !== undefined) {
-      return event.progress.documentUpdatedAt;
-    }
-  }
-  return undefined;
 }
