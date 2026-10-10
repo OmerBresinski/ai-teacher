@@ -208,6 +208,33 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
         best = { i, d: r.d, at: r.at, a };
     });
     if (!best) continue;
+    // Register prod-06: a point on the ground (one level line) right under a closed shape standing
+    // on it names that shape: "Wide paws" pointed at the snow under the paw. A tube, a slope or
+    // any other line keeps its label.
+    const onLine = s.shapes[best.i];
+    // The paw is a spot on the bear: a part label, with a leader to it.
+    let onGround = false;
+    const ground =
+      onLine?.type === "line" &&
+      onLine.points.length === 2 &&
+      onLine.points[0]?.[1] === onLine.points[1]?.[1]
+        ? (onLine.points[0]?.[1] ?? 0)
+        : undefined;
+    if (ground !== undefined) {
+      let near: { i: number; d: number; at: Pt } | undefined;
+      s.shapes.forEach((sh, i) => {
+        if (!isClosed(sh) || sh.type === "particles") return;
+        const b = shapeBox(sh);
+        if (Math.abs(b.y1 - ground) > 4 || b.y0 >= ground || l.at[0] < b.x0 || l.at[0] > b.x1)
+          return;
+        const r = shapeDistance(sh, l.at);
+        if (r.d <= 4 && (!near || r.d < near.d)) near = { i, d: r.d, at: r.at };
+      });
+      if (near) {
+        best = { i: near.i, d: near.d, at: near.at, a: area(s.shapes[near.i] as Shape) };
+        onGround = true;
+      }
+    }
     seen.add(key);
     const sh = s.shapes[best.i] as Shape;
     // A particle box's caption already names its state: a label saying it again is dropped (T3
@@ -215,7 +242,7 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
     if (sh.type === "particles" && sh.caption && sameName(sh.caption, l.text)) continue;
     // Near (not on) a small shape names all of it; near a big one (a valley side) names that spot.
     const big = best.a > 0.2 * (s.canvas === "wide" ? 160 : 100) * 100;
-    const part = sh.type !== "particles" && (!isClosed(sh) || best.d === 0 || big);
+    const part = sh.type !== "particles" && (onGround || !isClosed(sh) || best.d === 0 || big);
     const whole = !part ? out.find((o) => o.target === best?.i && !o.part) : undefined;
     if (whole) {
       const joined = `${whole.text} (${l.text})`;
@@ -313,13 +340,61 @@ const leaderStart = (p: Placed, to: Pt): Pt => {
   return to[0] >= box.x1 ? [box.x1 + 3, cy] : [box.x0 - 3, cy];
 };
 
-export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): string {
+/**
+ * Register prod-06: a close-up the drawer set apart from its figure (a body cross-section beside a
+ * bear) carries part labels, but nothing ties it to the figure, so "Thick fur" points at a floating
+ * square. A closed shape with another closed shape inside it (a cut-away's layers) that touches
+ * nothing, names nothing as a whole and is under half the size of the biggest closed shape gets a dashed line from its edge to the
+ * nearest point of that shape: the textbook close-up. Returned as extra shapes to draw.
+ */
+export function insetLinks(s: LabelledDiagram, labels: ResolvedLabel[]): Shape[] {
+  const closed = (sh: Shape) => isClosed(sh) && sh.type !== "particles";
+  const boxes = s.shapes.map(shapeBox);
+  const within = (a: Box, b: Box) => a.x0 >= b.x0 && a.y0 >= b.y0 && a.x1 <= b.x1 && a.y1 <= b.y1;
+  const gap = (a: Box, b: Box) =>
+    Math.hypot(Math.max(0, a.x0 - b.x1, b.x0 - a.x1), Math.max(0, a.y0 - b.y1, b.y0 - a.y1));
+  const area = (b: Box) => (b.x1 - b.x0) * (b.y1 - b.y0);
+  const out: Shape[] = [];
+  s.shapes.forEach((sh, i) => {
+    const bi = boxes[i] as Box;
+    if (!closed(sh)) return;
+    if (s.shapes.some((o, j) => j !== i && closed(o) && within(bi, boxes[j] as Box))) return;
+    const members = new Set(
+      s.shapes.flatMap((_, j) => (j === i || within(boxes[j] as Box, bi) ? [j] : [])),
+    );
+    if ([...members].some((j) => s.shapes[j]?.type === "particles")) return;
+    // A close-up shows layers: a frame with another closed shape inside it (a stopwatch's hands
+    // are lines, and a stopwatch is apparatus of its own, not a close-up).
+    if (![...members].some((j) => j !== i && closed(s.shapes[j] as Shape))) return;
+    const others = s.shapes.flatMap((_, j) => (members.has(j) ? [] : [j]));
+    if (others.some((j) => gap(boxes[j] as Box, bi) < 2)) return;
+    const named = labels.filter((l) => members.has(l.target));
+    if (named.length === 0 || named.some((l) => !l.part)) return;
+    const main = others
+      .filter((j) => closed(s.shapes[j] as Shape))
+      .sort((a, b) => area(boxes[b] as Box) - area(boxes[a] as Box))[0];
+    if (main === undefined || area(boxes[main] as Box) < 2 * area(bi)) return;
+    const c: Pt = [(bi.x0 + bi.x1) / 2, (bi.y0 + bi.y1) / 2];
+    const to = shapeDistance(s.shapes[main] as Shape, c).at;
+    const from: Pt = [
+      Math.max(bi.x0, Math.min(bi.x1, to[0])),
+      Math.max(bi.y0, Math.min(bi.y1, to[1])),
+    ];
+    out.push({ type: "line", points: [from, to], dashed: true } as Shape);
+  });
+  return out;
+}
+
+export function drawLabelled(s0: LabelledDiagram, x: Ctx, w: number, h: number): string {
   const { c } = x;
   // Labels are reading matter: never below the projector body floor.
   const lf = Math.max(MIN_FONT_SIZE.body, x.fs);
   const lh = lf * 1.2;
   const blockH = (k: number) => (k - 1) * lh + lf * 1.1;
-  const labels = resolveLabels(s);
+  const labels = resolveLabels(s0);
+  // Links are drawn after the labels are tied, so no label can name one.
+  const links = insetLinks(s0, labels);
+  const s = links.length ? { ...s0, shapes: [...s0.shapes, ...links] } : s0;
   const W = s.canvas === "wide" ? 160 : 100;
   const H = 100;
   const stroke = `stroke="${c.ink}" stroke-width="2.5" stroke-linejoin="round"`;
