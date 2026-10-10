@@ -1,0 +1,190 @@
+{
+  "_provenance": {
+    "title": "National curriculum in England: music programmes of study",
+    "publisher": "Department for Education",
+    "sourceUrl": "https://www.gov.uk/government/publications/national-curriculum-in-england-music-programmes-of-study/national-curriculum-in-england-music-programmes-of-study",
+    "sourceUpdated": "2021-03-26T09:30:02+00:00",
+    "retrieved": "2026-10-10",
+    "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0.",
+    "scope": "Statutory programme-of-study statements only (the 'Pupils should be taught' lists), verbatim. Non-statutory notes and guidance, aims, purpose of study and appendices are not included."
+  },
+  "statements": [
+    {
+      "id": "england.music.y1-2.key-stage-1.1",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "use their voices expressively and creatively by singing songs and speaking chants and rhymes"
+    },
+    {
+      "id": "england.music.y1-2.key-stage-1.2",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "play tuned and untuned instruments musically"
+    },
+    {
+      "id": "england.music.y1-2.key-stage-1.3",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "listen with concentration and understanding to a range of high-quality live and recorded music"
+    },
+    {
+      "id": "england.music.y1-2.key-stage-1.4",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "experiment with, create, select and combine sounds using the interrelated dimensions of music"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.1",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "play and perform in solo and ensemble contexts, using their voices and playing musical instruments with increasing accuracy, fluency, control and expression"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.2",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "improvise and compose music for a range of purposes using the interrelated dimensions of music"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.3",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "listen with attention to detail and recall sounds with increasing aural memory"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.4",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "use and understand staff and other musical notations"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.5",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "appreciate and understand a wide range of high-quality live and recorded music drawn from different traditions and from great composers and musicians"
+    },
+    {
+      "id": "england.music.y3-6.key-stage-2.6",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "develop an understanding of the history of music"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.1",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "play and perform confidently in a range of solo and ensemble contexts using their voice, playing instruments musically, fluently and with accuracy and expression"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.2",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "improvise and compose; and extend and develop musical ideas by drawing on a range of musical structures, styles, genres and traditions"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.3",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "use staff and other relevant notations appropriately and accurately in a range of musical styles, genres and traditions"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.4",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "identify and use the interrelated dimensions of music expressively and with increasing sophistication, including use of tonalities, different types of scales and other musical devices"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.5",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "listen with increasing discrimination to a wide range of music from great composers and musicians"
+    },
+    {
+      "id": "england.music.y7-9.key-stage-3.6",
+      "country": "england",
+      "subject": "music",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "develop a deepening understanding of the music that they perform and to which they listen, and its history"
+    }
+  ]
+}

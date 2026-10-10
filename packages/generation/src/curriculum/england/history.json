@@ -1,0 +1,234 @@
+{
+  "_provenance": {
+    "title": "National curriculum in England: history programmes of study",
+    "publisher": "Department for Education",
+    "sourceUrl": "https://www.gov.uk/government/publications/national-curriculum-in-england-history-programmes-of-study/national-curriculum-in-england-history-programmes-of-study",
+    "sourceUpdated": "2013-09-11T16:00:00+01:00",
+    "retrieved": "2026-10-10",
+    "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0.",
+    "scope": "Statutory programme-of-study statements only (the 'Pupils should be taught' lists), verbatim. Non-statutory notes and guidance, aims, purpose of study and appendices are not included."
+  },
+  "statements": [
+    {
+      "id": "england.history.y1-2.key-stage-1.1",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "changes within living memory – where appropriate, these should be used to reveal aspects of change in national life"
+    },
+    {
+      "id": "england.history.y1-2.key-stage-1.2",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "events beyond living memory that are significant nationally or globally [for example, the Great Fire of London, the first aeroplane flight or events commemorated through festivals or anniversaries]"
+    },
+    {
+      "id": "england.history.y1-2.key-stage-1.3",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "the lives of significant individuals in the past who have contributed to national and international achievements, some should be used to compare aspects of life in different periods [for example, Elizabeth I and Queen Victoria, Christopher Columbus and Neil Armstrong, William Caxton and Tim Berners-Lee, Pieter Bruegel the Elder and LS Lowry, Rosa Parks and Emily Davison, Mary Seacole and/or Florence Nightingale and Edith Cavell]"
+    },
+    {
+      "id": "england.history.y1-2.key-stage-1.4",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS1",
+      "years": [1, 2],
+      "yearBand": "Key stage 1",
+      "domain": "Key stage 1",
+      "headings": ["Key stage 1"],
+      "text": "significant historical events, people and places in their own locality"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.1",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "changes in Britain from the Stone Age to the Iron Age"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.2",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "the Roman Empire and its impact on Britain"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.3",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "Britain’s settlement by Anglo-Saxons and Scots"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.4",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "the Viking and Anglo-Saxon struggle for the Kingdom of England to the time of Edward the Confessor"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.5",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "a local history study"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.6",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "a study of an aspect or theme in British history that extends pupils’ chronological knowledge beyond 1066"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.7",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "the achievements of the earliest civilizations – an overview of where and when the first civilizations appeared and a depth study of one of the following: Ancient Sumer, The Indus Valley, Ancient Egypt, The Shang Dynasty of Ancient China"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.8",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "Ancient Greece – a study of Greek life and achievements and their influence on the western world"
+    },
+    {
+      "id": "england.history.y3-6.key-stage-2.9",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS2",
+      "years": [3, 6],
+      "yearBand": "Key stage 2",
+      "domain": "Key stage 2",
+      "headings": ["Key stage 2"],
+      "text": "a non-European society that provides contrasts with British history – one study chosen from: early Islamic civilization, including a study of Baghdad c. AD 900; Mayan civilization c. AD 900; Benin (West Africa) c. AD 900-1300"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.1",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the development of Church, state and society in Medieval Britain 1066-1509"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.2",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the development of Church, state and society in Britain 1509-1745"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.3",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "ideas, political power, industry and empire: Britain, 1745-1901"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.4",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "challenges for Britain, Europe and the wider world 1901 to the present day"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.5",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "a local history study"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.6",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the study of an aspect or theme in British history that consolidates and extends pupils’ chronological knowledge from before 1066"
+    },
+    {
+      "id": "england.history.y7-9.key-stage-3.7",
+      "country": "england",
+      "subject": "history",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "at least one study of a significant society or issue in world history and its interconnections with other world developments [for example, Mughal India 1526-1857; China’s Qing dynasty 1644-1911; Changing Russian empires c.1800-1989; USA in the 20th century]"
+    }
+  ]
+}
