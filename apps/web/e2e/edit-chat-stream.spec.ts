@@ -45,7 +45,14 @@ test("ask, stream, result, undo", async ({ signedInPage: { page, paths } }) => {
   await expect(target).toBeVisible();
   const before = await target.innerText();
   // The selection layer sits over the slide: click where the text is, as a teacher does.
-  const box = await target.boundingBox();
+  // `boundingBox()` does not wait: it answers null while the canvas swaps the text node for its
+  // re-fitted one (seen in CI right after `toBeVisible` passed), so wait for the settled box.
+  let settled: Awaited<ReturnType<typeof target.boundingBox>> = null;
+  await expect(async () => {
+    settled = await target.boundingBox();
+    expect(settled, "no text box on the slide").not.toBeNull();
+  }).toPass({ timeout: 5_000 });
+  const box = settled as Awaited<ReturnType<typeof target.boundingBox>>;
   if (!box) throw new Error("no text box on the slide");
   await page.mouse.click(box.x + box.width / 2, box.y + Math.min(12, box.height / 2));
   await pane.getByRole("button", { name: "Shorter", exact: true }).click();

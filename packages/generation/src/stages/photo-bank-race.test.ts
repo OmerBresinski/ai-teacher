@@ -36,6 +36,25 @@ const after = <T>(ms: number, value: T, signal?: AbortSignal) =>
     });
   });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * A generation that answers after `ms`, and a stock search that answers only once that generation
+ * has (plus one turn of the event loop). "Stock lands after generation" then holds however late
+ * the timers fire on a loaded machine; a fixed stock delay could fire first.
+ */
+function generationThenStock(ms: number) {
+  let landed!: () => void;
+  const generated = new Promise<void>((r) => {
+    landed = r;
+  });
+  return {
+    generate: () =>
+      after(ms, madePhoto("/g.png")).then((p) => {
+        landed();
+        return p;
+      }),
+    stock: () => generated.then(() => after(0, stockPhoto("/p.jpg"))),
+  };
+}
 
 function fakeBank(generate: (signal: AbortSignal) => Promise<MadePicture | undefined>) {
   const log = { generated: 0, remembered: [] as string[], rejected: [] as string[] };
@@ -78,7 +97,8 @@ describe("C7: stock races generation after the threshold", () => {
   });
 
   test("generation wins: the stock search is aborted and its answer never remembered", async () => {
-    const { bank, log } = fakeBank((s) => after(10, madePhoto("/g.png"), s));
+    const sides = generationThenStock(10);
+    const { bank, log } = fakeBank(sides.generate);
     let stockSignal: AbortSignal | undefined;
     const out = await findPicture(
       req,
@@ -86,7 +106,7 @@ describe("C7: stock races generation after the threshold", () => {
       (s) => {
         stockSignal = s;
         // A search that ignores its signal still answers late: the answer must be dropped.
-        return after(120, stockPhoto("/p.jpg"));
+        return sides.stock();
       },
       new AbortController().signal,
       async () => true,
@@ -188,11 +208,12 @@ describe("C7: stock races generation after the threshold", () => {
 
   test("generation lands a moment before stock: exactly one is placed, the other removed", async () => {
     // Neither side listens to its signal, so both answers arrive.
-    const { bank, log } = fakeBank(() => after(5, madePhoto("/g.png")));
+    const sides = generationThenStock(5);
+    const { bank, log } = fakeBank(sides.generate);
     const out = await findPicture(
       req,
       bank,
-      () => after(50, stockPhoto("/p.jpg")),
+      sides.stock,
       new AbortController().signal,
       async () => true,
       Date.now,
@@ -228,14 +249,15 @@ describe("C7: stock races generation after the threshold", () => {
     const onUnhandled = (e: unknown) => unhandled.push(e);
     process.on("unhandledRejection", onUnhandled);
     try {
-      const { bank } = fakeBank(() => after(5, madePhoto("/g.png")));
+      const sides = generationThenStock(5);
+      const { bank } = fakeBank(sides.generate);
       bank.reject = async () => {
         throw new BudgetExceeded("usd");
       };
       const out = await findPicture(
         req,
         bank,
-        () => after(50, stockPhoto("/p.jpg")),
+        sides.stock,
         new AbortController().signal,
         async () => true,
         Date.now,
