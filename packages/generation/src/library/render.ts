@@ -253,6 +253,18 @@ export function libraryDom() {
     G.prototype.getBBox = function (this: Element) {
       return bboxOf(this);
     };
+  // happy-dom has no path geometry: its lengths are 0 and every point is (0, 0), so a model that
+  // spaces marks along a path (the heart's blood cells) drew them all at the slide's corner, and
+  // the crop then stretched to that corner (HEART1 D). Measured on the flattened path instead.
+  const P = w.SVGPathElement ?? G;
+  if (P) {
+    P.prototype.getTotalLength = function (this: Element) {
+      return pathWalk(this.getAttribute("d") ?? "").total;
+    };
+    P.prototype.getPointAtLength = function (this: Element, at: number) {
+      return pathWalk(this.getAttribute("d") ?? "").at(at);
+    };
+  }
   env = { win, host: host as unknown as Element };
   return env;
 }
@@ -320,6 +332,38 @@ function parseTransform(t: string | null): M {
 const num = (el: Element, k: string) => Number.parseFloat(el.getAttribute(k) ?? "") || 0;
 
 /** Points along a path's outline: curves and arcs sampled, so a box fits the drawn shape. */
+/** A path's length and the point at a distance along it, on its flattened points (cached by `d`). */
+const walks = new Map<string, { total: number; at: (l: number) => { x: number; y: number } }>();
+export function pathWalk(d: string): {
+  total: number;
+  at: (l: number) => { x: number; y: number };
+} {
+  const hit = walks.get(d);
+  if (hit) return hit;
+  const pts = pathPoints(d);
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1] as [number, number], pts[i] as [number, number]];
+    cum.push((cum[i - 1] as number) + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  const total = cum[cum.length - 1] ?? 0;
+  const at = (l: number) => {
+    if (!pts.length) return { x: 0, y: 0 };
+    const t = Math.max(0, Math.min(total, Number.isFinite(l) ? l : 0));
+    let i = 1;
+    while (i < pts.length - 1 && (cum[i] as number) < t) i++;
+    const a = (pts[i - 1] ?? pts[0]) as [number, number];
+    const b = (pts[i] ?? a) as [number, number];
+    const seg = (cum[i] as number) - (cum[i - 1] ?? 0);
+    const k = seg > 0 ? (t - (cum[i - 1] ?? 0)) / seg : 0;
+    return { x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k };
+  };
+  const out = { total, at };
+  if (walks.size > 500) walks.clear();
+  walks.set(d, out);
+  return out;
+}
+
 function pathPoints(d: string): [number, number][] {
   const out: [number, number][] = [];
   const toks = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g) ?? [];
@@ -827,6 +871,27 @@ export type DrawnWords = {
   x1: number;
   y1: number;
 };
+
+/**
+ * The box a drawn library SVG's marks cover, in its own units (every shape and word the slide
+ * shows, as the crop measures them), and each paper dot's centre. For render-based checks.
+ */
+export function drawnContentBox(svgText: string): {
+  box: Box | undefined;
+  dots: [number, number][];
+} {
+  return withDom(({ host }) => {
+    host.innerHTML = svgText.replace(/<style>[\s\S]*?<\/style>/g, "");
+    const svg = host.querySelector("svg");
+    if (!svg) return { box: undefined, dots: [] };
+    const dots = [...svg.querySelectorAll("circle")]
+      .filter((c) => /var\(--paper\)/.test(c.getAttribute("style") ?? ""))
+      .map((c) => [num(c, "cx"), num(c, "cy")] as [number, number]);
+    const out = { box: drawnBox(svg, null), dots };
+    host.innerHTML = "";
+    return out;
+  });
+}
 
 /**
  * Reads a drawn library SVG back (the string a slide's image element carries): its view box and

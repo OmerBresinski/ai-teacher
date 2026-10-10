@@ -3,11 +3,13 @@ import { modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { grownTextFault, libraryDiagram, placedTypeSize } from "./fill";
 import { endDrawThread } from "./guard";
+import { drawnContentBox, pathWalk } from "./render";
 
 /*
  * HEART1 D: the R1 heart (production, checks only logged) drew at scale 0.51 with its words at
- * 13 pt, because the label floor was switched off with the checks. With the floor back on and
- * checks only logged, a grown size is kept only when its words draw whole and larger.
+ * 13 pt. Its blood cells were all drawn at the slide's corner, so the crop reached it and the heart
+ * drew small. With the floor on and checks only logged, a grown size is kept only when its words
+ * draw whole and larger.
  */
 afterAll(() => endDrawThread());
 const theme = getTheme("splash", "ks2" as never);
@@ -32,10 +34,48 @@ const ask = {
 const filler = async () => ({ showPulse: false });
 
 describe("the library heart at slide size (HEART1 D)", () => {
-  test("without the label floor its words show under 18 pt", async () => {
+  test("it fills its slot, keeping its aspect: at least 0.85 of the slot's width or height", async () => {
+    // The blood cells sat at (0, 0) (happy-dom's paths had no length), so the crop reached the
+    // slide's corner: an empty band under the heading and the drawing at half size (HEART1 D).
     const r = await libraryDiagram(ask, filler);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(placedTypeSize(r.drawing.svg, place).minPt).toBeLessThan(18);
+    if (!r.ok) return;
+    const { box } = drawnContentBox(r.drawing.svg);
+    expect(box).toBeDefined();
+    if (!box) return;
+    const { scale } = placedTypeSize(r.drawing.svg, place);
+    const fill = Math.max(
+      ((box.x1 - box.x0) * scale) / place.w,
+      ((box.y1 - box.y0) * scale) / place.h,
+    );
+    expect(fill).toBeGreaterThanOrEqual(0.85);
+  });
+
+  test("nothing is drawn off its shapes: every blood cell sits on a vessel", async () => {
+    const r = await libraryDiagram(ask, filler);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const { dots } = drawnContentBox(r.drawing.svg);
+    expect(dots.length).toBeGreaterThan(4);
+    const guides = [...r.drawing.svg.matchAll(/<path d="([^"]+)" fill="none" stroke="none"/g)].map(
+      (m) => pathWalk(m[1] as string),
+    );
+    expect(guides.length).toBeGreaterThan(0);
+    const onGuide = ([x, y]: [number, number]) =>
+      guides.some((g) => {
+        for (let l = 0; l <= g.total; l += 2) {
+          const p = g.at(l);
+          if (Math.hypot(p.x - x, p.y - y) < 2) return true;
+        }
+        return false;
+      });
+    for (const d of dots) expect(onGuide(d)).toBe(true);
+  });
+
+  test("without the label floor, drawn to fill its slot, its words reach 18 pt", async () => {
+    const r = await libraryDiagram(ask, filler);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(placedTypeSize(r.drawing.svg, place).minPt).toBeGreaterThanOrEqual(17.95);
   });
 
   test("with the floor and checks only logged, its words never break and never shrink", async () => {
