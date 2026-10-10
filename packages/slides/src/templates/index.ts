@@ -29,7 +29,7 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, calloutTone, MIN_FONT_SIZE, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
@@ -359,8 +359,51 @@ const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
  */
 const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
 
+/** White or near-black, whichever reads better on `fill` (WCAG contrast). */
+function onFill(fill: string): string {
+  const lum = (h: string) => {
+    const [r, g, b] = hex(h).map((v) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+  };
+  const l = lum(fill);
+  return 1.05 / (l + 0.05) >= (l + 0.05) / (lum("#1A1A1A") + 0.05) ? "#FFFFFF" : "#1A1A1A";
+}
+
+/**
+ * One colour per hinge option (UX ruling 203, P8; Chalkie's teal, mustard, pink and black squares),
+ * from the theme's tokens: its accent, its key-words amber and its second accent, then Chalkie's
+ * teal, pink, violet and blue (lifted on a dark ground), then its ink. A candidate too close to one already picked, or to the correct or
+ * incorrect hue the reveal uses, is skipped, so four options show four colours on every theme.
+ */
+export function optionColours(t: Theme): string[] {
+  const far = (a: string, b: string, d: number) =>
+    Math.hypot(...hex(a).map((v, i) => v - (hex(b)[i] ?? 0))) >= d;
+  const marks = [t.colors.correct, t.colors.incorrect];
+  const picked: string[] = [t.colors.accent];
+  // Chalkie's own family (teal, pink, violet, blue), lifted on a dark ground, after the tokens.
+  const lift = (h: string) => (t.dark ? mix(h, "#FFFFFF", 0.6) : h);
+  const more = [
+    calloutTone(t, "key-words").icon,
+    t.colors.accent2,
+    ...["#0E6B78", "#B0306A", "#5B3FA0", "#1F5FAD"].map(lift),
+    t.colors.ink,
+  ];
+  for (const c of more)
+    if (
+      picked.length < 4 &&
+      picked.every((p) => far(c, p, 56)) &&
+      marks.every((m) => far(c, m, 50))
+    )
+      picked.push(c);
+  while (picked.length < 4) picked.push(t.colors.ink);
+  return picked;
+}
+
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
-function disc(c: Ctx, label: string, x: number, y: number, d: number) {
+function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: string) {
   c.els.push({
     id: uid(),
     type: "shape",
@@ -369,14 +412,14 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number) {
     y: Math.round(y),
     w: d,
     h: d,
-    fill: c.t.colors.accent,
+    fill: fill ?? c.t.colors.accent,
     name: "Marker",
     doc: doc(label),
     textStyle: {
       preset: "body",
       fontSize: markerSize(c),
       fontWeight: 700,
-      color: c.t.colors.onAccent,
+      color: fill ? onFill(fill) : c.t.colors.onAccent,
       align: "center",
       valign: "middle",
       padding: 0,
@@ -1986,7 +2029,15 @@ function layoutOnce(
           name: "Option",
         });
         optionIds.push(card.id);
-        disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
+        const tones = optionColours(c.t);
+        disc(
+          c,
+          String.fromCharCode(65 + k),
+          x + pad,
+          yy + g.rowH / 2 - d / 2,
+          d,
+          tones[k % tones.length],
+        );
         const th = measure(c, o, "body", g.iw);
         text(
           c,
