@@ -287,3 +287,38 @@ describe("Present never opens a library model on an empty box", () => {
 });
 
 afterAll(() => endDrawThread());
+
+describe("S10 paid L y2 s6: the counts the words state are drawn", () => {
+  const SHARE_12 = "Share 12 equally\nOne half is 6. One quarter is 3.";
+  test("a bar comparison that never shows 12, 6 or 3 is refused for a sharing slide", async () => {
+    // The recorded fill: compare, set, 12 counters. Set cannot compare, so the model drew bars.
+    const svg = await draw("fractions", {
+      operation: "compare",
+      representation: "set",
+      fractions: [{ value: "1/2" }, { value: "1/4" }],
+      whole: "12 counters",
+      amount: 12,
+      things: "counters",
+      words: true,
+    });
+    expect(drawingWordsMismatch("fractions", svg, SHARE_12)).toContain("12");
+  });
+  test("equal groups that show the counts pass; fraction names alone need no count", async () => {
+    const half = await draw("equal_groups", { groups: 2, size: 6, division: "sharing" });
+    expect(
+      drawingWordsMismatch("equal_groups", half, "Share 12 equally\nOne half is 6."),
+    ).toBeUndefined();
+    const bars = await draw("fractions", {
+      operation: "compare",
+      representation: "bar",
+      fractions: [{ value: "1/2" }, { value: "1/4" }],
+    });
+    expect(
+      drawingWordsMismatch(
+        "fractions",
+        bars,
+        "One half and one quarter\nEqual parts are the same size.",
+      ),
+    ).toBeUndefined();
+  });
+});
