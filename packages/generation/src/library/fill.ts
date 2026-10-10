@@ -280,7 +280,8 @@ export function placedTypeSize(
  * the fractions model's "7" printed over "3/5 of 35 = 21", 0.48 of the "7"). Two words count when the
  * other covers over `share` of the smaller one's box each way: over all 202 presets the most a
  * stacked pair covers is 0.3 ("6" over "six"). The same word at the same place is one word drawn
- * twice (a halo copy), not an overlap.
+ * twice (a halo copy), not an overlap. Words Present never shows together (TEACH-247 part p) are
+ * not either.
  */
 export const OVERLAP_SHARE = 0.4;
 export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, string, number][] {
@@ -291,6 +292,9 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
       const a = words[i];
       const b = words[j];
       if (!a || !b) continue;
+      // Words never on screen together (two builds' passing labels) do not overlap.
+      if (a.shown && b.shown && !a.shown.some((i) => b.shown?.includes(i))) continue;
+      if (a.shown?.length === 0 || b.shown?.length === 0) continue;
       const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
       const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
       if (ox <= 2 || oy <= 2) continue;

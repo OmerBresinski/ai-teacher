@@ -8,8 +8,8 @@ import { kit, loadModel, renderLibraryModel } from "./render";
 import type { J } from "./types";
 
 /*
- * TEACH-247 part i: a library model on a question slide is a still that opens complete except for
- * its answer, which the slide's reveal shows. The editor and exports show the question (the
+ * TEACH-247 part i: a library model on a question slide holds its answer back for the slide's
+ * reveal (part p: its builds up to the question play first). The editor and exports show the question (the
  * drawing's own style hides the answer), as the drawer's question slides do.
  */
 const params = async (id: string, sent: J, preset?: number) => {
@@ -68,7 +68,8 @@ describe("a library model on a question slide", () => {
     const step = await questionStep("bar_model", P);
     expect(step).toBeDefined();
     const d = await renderLibraryModel("bar_model", P, { step });
-    expect(d.builds === 0).toBe(true);
+    // The builds up to the question play first (TEACH-247 part p); the answer is never one.
+    expect(d.builds).toBeGreaterThan(0);
     const s = seen(d.svg);
     expect(s.openMarks).toBeGreaterThan(3);
     expect(hasNumber(s.open, 40)).toBe(true);
@@ -76,12 +77,12 @@ describe("a library model on a question slide", () => {
     expect(hasNumber(s.reveal, 24)).toBe(true);
   });
 
-  test("a slide that is not a question keeps a plain still: no held answer, builds === 0", async () => {
+  test("a slide that is not a question holds no answer back: it plays its builds to the end", async () => {
     const d = await renderLibraryModel(
       "equal_groups",
       await params("equal_groups", { groups: 2, size: 8, division: "sharing" }),
     );
-    expect(d.builds === 0).toBe(true);
+    expect(d.builds).toBeGreaterThan(0);
     expect(hasRevealPart(d.svg)).toBe(false);
   });
 
