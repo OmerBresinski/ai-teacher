@@ -87,6 +87,12 @@ function expectRangedPhoto(got: El, want: El, at: string) {
   expect({ at, inside }).toEqual({ at, inside: true });
 }
 
+/** Slides whose study figure the stage now lays across the slide (FIX-PLAN group C). */
+const ACROSS: Record<string, number[]> = {
+  "y12-psychology-multi-store-model": [4],
+  "y12-psychology-multi-store-model-r2": [4],
+};
+
 describe.each(LESSONS)("replay %s", (b) => {
   test("the stage reproduces the lab's replayed slides", async () => {
     const out = await replayRun(b);
@@ -96,6 +102,13 @@ describe.each(LESSONS)("replay %s", (b) => {
     out.slides.forEach((s, i) => {
       const want = saved[i] as El & { elements: El[] };
       const got = s.elements as unknown as El[];
+      if (ACROSS[b]?.includes(i)) {
+        // FIX-PLAN group C: a flow on a teaching slide is laid across the slide, its points as
+        // key cards under it (ruling 194), where the lab laid it beside the words.
+        expect(got.filter((e) => e.name === "Key card").length).toBeGreaterThan(0);
+        expect(got.find((e) => e.name === "Diagram")?.w).toBe(788);
+        return;
+      }
       if (b === "y1-science-animals-young-r2" && i === 5) {
         // splitOk: the landed single photos, each once, never the reroute's word table
         const photos = got.filter((e) => e.type === "image" && e.name === "Photo");
