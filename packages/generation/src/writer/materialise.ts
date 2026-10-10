@@ -567,7 +567,9 @@ export function visualsOf(
         : {
             key,
             type: "photo",
-            shows: f.shows,
+            // A picture field written without words (an old swap, a malformed reply) asks for
+            // nothing: the director reads an empty `shows` as a miss, never as a crash.
+            shows: str(f.shows),
             mustSee: f.must_see ?? [],
             named: f.subject === "named",
             ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),

@@ -1,3 +1,4 @@
+import { safeErrorWhere } from "@tj/domain";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
@@ -1865,11 +1866,30 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       notesRedone.set(i, notesCall(i + 1));
     }
   };
+  // One slide's tail that throws (a bug, a malformed ask) never fails the lesson: that slide is
+  // kept exactly as it was at editable. A stop (cancel, budget) still ends the run.
+  const settleOrKeep = async (i: number) => {
+    const s0 = plan.slides[i] as S | undefined;
+    const n0 = notes.get(i);
+    const asks0 = asks.get(i) ?? [];
+    const path0 = path.get(i);
+    await nonFatal(
+      () => settleSlide(i),
+      (error) => {
+        if (run.signal?.aborted) throw error;
+        log({ ev: "slide-tail-failed", slide: i + 1, where: safeErrorWhere(error) });
+        if (s0) restore(i, s0, n0, asks0);
+        if (path0) path.set(i, path0);
+        else path.delete(i);
+        notesRedone.delete(i);
+      },
+    );
+  };
   phaseSlides = [...plan.slides];
   await eachBounded(
     Array.from({ length: n }, (_, i) => i),
     TAIL_CONCURRENCY,
-    settleSlide,
+    settleOrKeep,
   );
   phaseSlides = undefined;
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
