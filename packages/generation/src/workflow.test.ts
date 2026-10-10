@@ -79,6 +79,27 @@ describe("runLessonPipeline", () => {
     }
   });
 
+  test("a code fault in a stage logs where it was thrown: the engine's message and the frames", async () => {
+    const { logger, lines } = memoryLogger();
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
+    const deps = recordingDeps(scriptedPipelineAi(), { logger });
+    deps.persist = async () => {
+      const slide = undefined as unknown as { rows: string[] };
+      return slide.rows as never;
+    };
+    try {
+      await runLessonPipeline({ lesson: sampleBriefLesson() }, deps).catch(() => undefined);
+      const failed = lines
+        .map((l) => JSON.parse(l))
+        .find((l) => l.msg === "generation stage failed");
+      expect(failed?.err).toEqual({ type: "TypeError" });
+      expect(failed?.where.message).toMatch(/rows|undefined/);
+      expect(failed?.where.stack.join("\n")).toContain("workflow.test.ts:");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   test("a full run on the fixture script: persists per stage and slide, documents are valid", async () => {
     const ai = scriptedPipelineAi();
     const deps = recordingDeps(ai);
