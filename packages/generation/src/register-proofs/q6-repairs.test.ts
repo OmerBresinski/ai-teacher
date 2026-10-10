@@ -34,12 +34,13 @@ describe("REGISTER checker-04: the objective repair turns a picture task into wo
 });
 
 describe("REGISTER content-05: the 1-20 number table becomes a bullet list (d52 A y8 s6)", () => {
-  test("BUG content-05: table-text replaces the slide's own points", async () => {
+  test("FIXED content-05: no table-text; the writer's own points stay and nothing overflows", async () => {
     const { out, events } = await stageRun("d52_A_y8-french-my-family");
     const ev = eventsOf(events, 6);
-    expect(ev.find((e) => e.ev === "visual-path")?.path).toBe("table-text");
+    expect(ev.find((e) => e.ev === "visual-path")?.path).toBe("unshown");
     const els = (out.slides[5]?.elements ?? []) as J[];
     expect(diagramEls(els).length).toBe(0);
-    expect(JSON.stringify(els)).not.toContain("Il est gentil");
+    expect(JSON.stringify(els)).toContain("Il est gentil");
+    expect(JSON.stringify(els)).not.toContain("Nombre 1");
   }, 60_000);
 });

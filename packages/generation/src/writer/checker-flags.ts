@@ -40,6 +40,7 @@ export const CHECKER_OFF: Required<CheckerFlags> = {
 export const CHECKER_DEFAULTS: Required<CheckerFlags> = {
   ...CHECKER_OFF,
   fallbackOnlyOnFailure: true,
+  fixTableToText: true,
   coverageCountsPictureTasks: true,
   duplicateLogOnly: true,
   pointGuardLogOnly: true,
