@@ -218,8 +218,11 @@ function withDiagramSpecs(b: WriterBundle, schema: J, stage: WriterStage): J {
  * stage may be a diagram as well as a picture, and a hinge takes a figure, so a comparison of
  * structures or a drawn process keeps its layout. Every older output still parses: a picture card
  * and a picture stage keep their shape, and the hinge's figure is nullable. Not in the pinned
- * schema (the lab's bytes); a caller drops it with `tileVisuals: false`.
+ * schema (the lab's bytes). Off by default (`TILE_VISUALS_DEFAULT`) until the writer's menu names
+ * it; a caller turns it on with `tileVisuals: true`.
  */
+export const TILE_VISUALS_DEFAULT = false;
+
 function withTileVisuals(schema: J): J {
   const defs = schema.$defs as Record<string, J>;
   const VIS: J = { anyOf: [REF("picture"), REF("diagram-side")] };
@@ -258,7 +261,7 @@ export function writerSchema(
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
-  if (opts.tileVisuals !== false) withTileVisuals(s);
+  if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);

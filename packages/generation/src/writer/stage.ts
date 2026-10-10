@@ -236,8 +236,8 @@ export type WriterRun = {
    */
   activities?: boolean;
   /**
-   * Tile visuals (TEACH-75 part d, default on): compare cards and sequence stages may be drawn,
-   * and a hinge takes a figure. `false` gives the writer the schema without them.
+   * Tile visuals (TEACH-75 part d): compare cards and sequence stages may be drawn, and a hinge
+   * takes a figure. Absent: `TILE_VISUALS_DEFAULT` (off, master's schema byte for byte).
    */
   tileVisuals?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
@@ -483,7 +483,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const libbed = libSchema(
     writerSchema(stageKey, brief.slides, P, {
       objectives: run.objectives.length,
-      ...(run.tileVisuals === false ? { tileVisuals: false } : {}),
+      ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
     }),
     models.map((m) => m.id),
   );
