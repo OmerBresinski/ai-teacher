@@ -28,13 +28,48 @@ function boxLines(x: Ctx, b: Box, label: string, f: number): string[] | undefine
 function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
   // FIX-TYPE: a box label steps down no further than the stage's bodySmall (`x.minFs`).
   // When no size at or over it fits, the old steps keep the drawing rather than drop it.
-  const tries = [x.fs, x.fs * 0.88, x.fs * 0.76];
-  for (const f of [
-    ...tries.map((v) => Math.max(sub(v, 1), 16, x.minFs)),
-    ...tries.map((v) => Math.max(sub(v, 1), 16)),
-  ])
+  for (const f of boxLadder(x))
     if (labels.every((l, i) => boxes[i] && boxLines(x, boxes[i] as Box, l, f))) return f;
   return Math.max(16, x.fs * 0.76);
+}
+
+/**
+ * The box text sizes to try, largest first: three steps from the label size held at the stage's
+ * bodySmall (`x.minFs`), then the same steps below it (16 at least) rather than no drawing.
+ */
+function boxLadder(x: Ctx): number[] {
+  const steps = [x.fs, x.fs * 0.88, x.fs * 0.76];
+  return [
+    ...steps.map((v) => Math.max(sub(v, 1), 16, x.minFs)),
+    ...steps.map((v) => Math.max(sub(v, 1), 16)),
+  ];
+}
+
+/** A cycle arrow's stroke width (ring and loop). */
+const CYCLE_ARROW_W = 3;
+
+/**
+ * A cycle arrow from (x1, y1) to its tip (x2, y2): a quadratic through `via` (the ring's bow) or a
+ * straight line, the shaft stopping `back` short of the tip so the head covers its end.
+ */
+function cycleArrow(
+  c: Ctx["c"],
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  via: [number, number] | undefined,
+  back: number,
+  head: number,
+): string {
+  const [fx, fy] = via ?? [x1, y1];
+  const tl = Math.hypot(x2 - fx, y2 - fy) || 1;
+  const ex = x2 - ((x2 - fx) / tl) * back;
+  const ey = y2 - ((y2 - fy) / tl) * back;
+  const d = via
+    ? `M${n(x1)},${n(y1)} Q${n(fx)},${n(fy)} ${n(ex)},${n(ey)}`
+    : `M${n(x1)},${n(y1)} L${n(ex)},${n(ey)}`;
+  return `<path d="${d}" fill="none" stroke="${c.ink}" stroke-width="${CYCLE_ARROW_W}" stroke-linecap="round"/>${arrowHead(x2, y2, fx, fy, head, c.ink)}`;
 }
 
 function box(x: Ctx, b: Box, label: string, fs: number): string {
@@ -693,13 +728,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
     const [x1, y1] = edge(b, qx, qy, 6);
     const [x2, y2] = edge(next, qx, qy, 6);
     const head = fs * 0.75;
-    const tl = Math.hypot(x2 - qx, y2 - qy) || 1;
-    const ex = x2 - ((x2 - qx) / tl) * head * 0.8;
-    const ey = y2 - ((y2 - qy) / tl) * head * 0.8;
-    out.push(
-      `<path d="M${n(x1)},${n(y1)} Q${n(qx)},${n(qy)} ${n(ex)},${n(ey)}" fill="none" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>`,
-      arrowHead(x2, y2, qx, qy, head, c.ink),
-    );
+    out.push(cycleArrow(c, x1, y1, x2, y2, [qx, qy], head * 0.8, head));
     x.arrows?.push({
       tip: [x2, y2],
       target: {
@@ -808,14 +837,9 @@ function cycleLoop(f: Flow, x: Ctx, w: number, h: number): string | undefined {
   const inset = 4;
   const colW = (w - 2 * inset - (cols - 1) * gapX) / cols;
   if (!(colW > fs * 3)) return undefined;
-  // boxSize's steps: the stage floor first, then (as the ring does) below it, down to the ring's
-  // own 16 floor, rather than no drawing.
-  const steps = [x.fs, x.fs * 0.88, x.fs * 0.76];
-  const tries = [
-    ...steps.map((v) => Math.max(sub(v, 1), 16, x.minFs)),
-    ...steps.map((v) => Math.max(sub(v, 1), 16)),
-    16,
-  ];
+  // The ring's ladder, then the ring's own 16 floor, rather than no drawing.
+  const tries = [...boxLadder(x), 16];
+
   for (const bf of tries) {
     const lines = f.steps.map((s) => wrap(s.label, x, colW - bf * 0.9, 3, bf, WEIGHT.name));
     const spill = lines.some(
@@ -851,13 +875,7 @@ function cycleLoop(f: Flow, x: Ctx, w: number, h: number): string | undefined {
       const at = out.length;
       const [x1, y1] = edge(b, next.cx, next.cy, 6);
       const [x2, y2] = edge(next, b.cx, b.cy, 6);
-      const tl = Math.hypot(x2 - x1, y2 - y1) || 1;
-      const ex = x2 - ((x2 - x1) / tl) * head * 0.8;
-      const ey = y2 - ((y2 - y1) / tl) * head * 0.8;
-      out.push(
-        `<path d="M${n(x1)},${n(y1)} L${n(ex)},${n(ey)}" fill="none" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>`,
-        arrowHead(x2, y2, x1, y1, head, c.ink),
-      );
+      out.push(cycleArrow(c, x1, y1, x2, y2, undefined, head * 0.8, head));
       x.arrows?.push({ tip: [x2, y2], target: rectOf(next) });
       out.splice(at, out.length - at, part(Math.min(i + 1, k - 1), out.slice(at).join("")));
     });

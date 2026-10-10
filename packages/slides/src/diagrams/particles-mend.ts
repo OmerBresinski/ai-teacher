@@ -49,10 +49,11 @@ export function mendParticles(spec: unknown, stretch: number): unknown {
   if (Array.isArray(s.panels)) {
     const panels = s.panels.map((p) => (p && typeof p === "object" ? { ...(p as Rec) } : p));
     const scale = (field: string, cap: number, floor: number) => {
-      const vals = panels
-        .map((p) => (p as Rec | undefined)?.[field])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-      const top = Math.max(0, ...vals);
+      let top = 0;
+      for (const p of panels) {
+        const v = (p as Rec | undefined)?.[field];
+        if (typeof v === "number" && Number.isFinite(v) && v > top) top = v;
+      }
       if (top <= cap) return false;
       for (const p of panels) {
         const v = (p as Rec | undefined)?.[field];

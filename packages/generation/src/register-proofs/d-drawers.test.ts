@@ -155,4 +155,49 @@ describe("REGISTER diagrams-13: cycle link labels run off both edges (d52 T5 y6 
       expect(inBox).toBe(true);
     }
   });
+
+  // The loop's arrows are straight (L); the ring's are bowed (Q).
+  const bowed = (svg: string) => (svg.match(/ Q[\d.]/g) ?? []).length;
+  const straight = (svg: string) => (svg.match(/<path d="M[\d.,]+ L[\d.,]+"/g) ?? []).length;
+  const links = (nodes: string[], label?: string) =>
+    nodes.map((_, i) => ({ from: i, to: (i + 1) % nodes.length, ...(label ? { label } : {}) }));
+  const nodes = fig.nodes as string[];
+
+  test("FIXED diagrams-13: an odd count draws the loop with the odd box between two columns and the shared word once, under it", () => {
+    const three = {
+      ...fig,
+      nodes: nodes.slice(0, 3),
+      links: links(nodes.slice(0, 3), "blood vessels"),
+    };
+    expect(diagramFaults(three, splash, { w: 493, h: 190 })).toEqual([]);
+    const svg = renderDiagram(three, splash, { w: 493, h: 190 }) ?? "";
+    expect(straight(svg)).toBe(3);
+    expect(bowed(svg)).toBe(0);
+    expect(svg.match(/blood vessels/g)).toHaveLength(1);
+  });
+
+  test("FIXED diagrams-13: with no arrow words the tight cycle is a loop with nothing between the rows", () => {
+    const bare = { ...fig, links: links(nodes) };
+    const svg = renderDiagram(bare, splash, { w: 493, h: 143 }) ?? "";
+    expect(straight(svg)).toBe(4);
+    expect(bowed(svg)).toBe(0);
+    expect(svg).not.toContain("blood vessels");
+  });
+
+  test("FIXED diagrams-13: arrow words that differ are not placed by the loop; the ring is drawn", () => {
+    const words = ["arteries", "veins", "arteries", "veins"];
+    const mixed = { ...fig, links: links(nodes).map((l, i) => ({ ...l, label: words[i] })) };
+    const svg = renderDiagram(mixed, splash, { w: 493, h: 143 }) ?? "";
+    expect(bowed(svg)).toBe(4);
+    expect(straight(svg)).toBe(0);
+  });
+
+  test("FIXED diagrams-13: a ring that holds its words is still drawn as the ring, each arrow with its words", () => {
+    const studio = getTheme("studio", "KS3-5" as never);
+    expect(diagramFaults(fig, studio, { w: 1100, h: 560 })).toEqual([]);
+    const svg = renderDiagram(fig, studio, { w: 1100, h: 560 }) ?? "";
+    expect(bowed(svg)).toBe(4);
+    expect(straight(svg)).toBe(0);
+    expect(svg.match(/blood vessels/g)).toHaveLength(4);
+  });
 });
