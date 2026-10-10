@@ -872,7 +872,10 @@ export function drawLabelled(s0: LabelledDiagram, x: Ctx, w: number, h: number):
       const was = judge(L);
       const now = judge(M);
       const total = (b: Map<string, number>) => [...b.values()].reduce((a, v) => a + v, 0);
-      if (total(now) < total(was) && [...now].every(([kd, v]) => v <= (was.get(kd) ?? 0))) L = M;
+      // Nor may the drawing shrink much to make room: regrown margins can take it down to 60 %.
+      const kept = M.k >= L.k * 0.9;
+      if (kept && total(now) < total(was) && [...now].every(([kd, v]) => v <= (was.get(kd) ?? 0)))
+        L = M;
     }
   }
   return paint(L, x);

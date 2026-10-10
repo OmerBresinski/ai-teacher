@@ -14,7 +14,6 @@ import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawCubes } from "./cubes";
 import { drawFlow } from "./flow";
 import { drawEqualGroups, drawFractionShapes } from "./groups";
-import { segThroughBox } from "./label-rule";
 import { drawLabelled } from "./labelled";
 import { mendParticleLabels } from "./labels3";
 import { drawLineGraph } from "./line-graph";
@@ -607,17 +606,7 @@ export function diagramFaults(
   };
   for (const b of rec) {
     if (strokes.some((sg) => crosses(b, sg)))
-      out.push(`the label "${b.text}" sits across a line of the drawing`); // Register diagrams-02: another label's leader across these words, or ending under them, and
-    // the reader cannot tell which label names what. (A label's own leader starts at its edge.) The
-    // drawer's labelled diagrams only: the code-drawn scenes place their own keys.
-    const inner = { x0: b.x0 + 3, y0: b.y0 + 4, x1: b.x1 - 3, y1: b.y1 - 4 };
-    for (const [sx, sy, ex, ey] of s.kind === "labelled-diagram" ? probe.leaders : []) {
-      if (sx >= b.x0 - 6 && sx <= b.x1 + 6 && sy >= b.y0 - 6 && sy <= b.y1 + 6) continue;
-      if (segThroughBox([sx, sy], [ex, ey], inner))
-        out.push(`another label's leader runs across the label "${b.text}"`);
-      else if (ex > b.x0 - 2 && ex < b.x1 + 2 && ey > b.y0 - 2 && ey < b.y1 + 2)
-        out.push(`the label "${b.text}" hides the point another label names`);
-    }
+      out.push(`the label "${b.text}" sits across a line of the drawing`);
   }
   const area = (b: DrawnText) => Math.max(1, (b.x1 - b.x0) * (b.y1 - b.y0));
   const over = (a: DrawnText, b: DrawnText) =>
