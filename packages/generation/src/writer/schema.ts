@@ -346,6 +346,28 @@ function withBannerText(schema: J, stage: WriterStage): J {
 }
 
 /**
+ * Full-bleed hook (UX ruling 203, Chalkie layout parity P5; TEACH-75 part l): the photo across
+ * the whole slide under a dark scrim, the heading and 1-2 short paragraphs (about 40 words) centred
+ * in white. Added to the slide menu as one more layout; every older output still parses. Off by
+ * default (`HOOK_DEFAULT`) until the writer's menu names it; a caller turns it on with `hook: true`.
+ */
+export const HOOK_DEFAULT = false;
+
+function withHook(schema: J): J {
+  const defs = schema.$defs as Record<string, J>;
+  defs.hook = obj({
+    template: { type: "string", enum: ["hook"] },
+    heading: S(),
+    lead: S(),
+    picture: REF("picture"),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("hook")] };
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
  * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
@@ -363,6 +385,7 @@ export function writerSchema(
     callouts?: boolean;
     cardsGrid?: boolean;
     bannerText?: boolean;
+    hook?: boolean;
   } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
@@ -371,6 +394,7 @@ export function writerSchema(
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
   if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
+  if (opts.hook ?? HOOK_DEFAULT) withHook(s);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
