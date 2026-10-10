@@ -688,12 +688,24 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     // Ruling 197: a table longer than its slot holds packs into 4 columns and continues on the
     // next slide; one that fits as written is left alone.
+    // A candidate fits when it lays out (as the deck will) with its table drawn and nothing over.
     const slot = slotOf(String(s.template ?? ""));
-    const tc = continueTable(
-      s,
-      (t, first) =>
-        !layoutSlotProbe(drawable(t), first ? slot : "full", base.stage, base.theme).length,
-    );
+    const tc = continueTable(s, (sl, _first, asWritten) => {
+      const t = sl.figure as S;
+      // As written: the slot check the writer's spec meets when it is drawn.
+      if (asWritten) return !layoutSlotProbe(drawable(t), slot, base.stage, base.theme).length;
+      const m = materialise(sl, {
+        ...base,
+        index: idx,
+        plan,
+        visual: () => ({ status: "diagram", spec: drawable(t) }),
+      });
+      return (
+        !m.over.length &&
+        !m.diagram?.length &&
+        m.slide.elements.some((e) => e.type === "image" && e.name === "Diagram")
+      );
+    });
     if (tc) {
       s = tc.first;
       tableRest.set(idx, tc.rest);

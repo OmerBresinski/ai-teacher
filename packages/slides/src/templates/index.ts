@@ -1128,15 +1128,16 @@ function bigRect(c: Ctx, input: TemplateInput) {
 /** The slide's foot: the lowest a strip of text or cards may reach on the 960 x 540 grid. */
 const FOOT = 540 - 16;
 const PLOT = /graph|chart|profile|plot|axes/;
+/** The smallest type a board slide shows (the drawer's TYPE_FLOOR). */
+const TYPE_FLOOR_PT = 18;
 /** Kinds that read along a line and gain from the slide's width. */
 const WIDE = new Set(["flow", "timeline", "table"]);
 
 /**
  * UX ruling 194: a full-width diagram carries the slide's points in a strip of key cards under it.
  * Up to 4 cards share a row (more take two rows); a card is the point's label, if any, over its
- * words, on a washed card with an accent edge, the same card the lead + points column sets.
- * Measured at body size, then at the stage's small size when the strip would take over a third of
- * the band. Returns the strip's height and its draw.
+ * words, on a washed card with an accent edge, the same card the lead + points column sets, at
+ * body size. Returns the strip's height and its draw.
  */
 function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: number) => void } {
   const n = points.length;
@@ -1194,7 +1195,8 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
     return { h, draw };
   };
   const body = lay("body");
-  return body.h <= G.band.h / 3 || c.fullSize ? body : lay("small");
+  // The cards keep body size: they never read smaller than the points they replace.
+  return lay("body");
 }
 
 /** The label size a spec shows at in `rect` (the panel's inset taken off); undefined when it does not draw. */
@@ -1213,16 +1215,26 @@ function drawnSize(
     fs: c.s.small,
   });
   if (!r.ok) return undefined;
-  // The drawing is zoomed to fill its box: the label size on the slide is fs times that zoom.
+  // The drawing is zoomed to fill its box: each text on the slide is its font size times that
+  // zoom. The smallest text in the drawing is the one that counts.
   const el = r.element as { w?: number; h?: number; src?: string };
-  const src = (el.src ?? "")
-    .slice(0, 4000)
-    .replace(/%20/g, " ")
-    .replace(/%22/g, '"')
-    .replace(/%3D/gi, "=");
-  const vb = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(src);
+  return { fs: shownMinFont(el) ?? r.fs };
+}
+
+/** The smallest font size an SVG image element shows on the slide (its font sizes times its zoom). */
+export function shownMinFont(el: { w?: number; h?: number; src?: string }): number | undefined {
+  let svg = el.src ?? "";
+  try {
+    const body = svg.slice(svg.indexOf(",") + 1);
+    svg = /;base64,/.test(svg.slice(0, 60)) ? atob(body) : decodeURIComponent(body);
+  } catch {
+    return undefined;
+  }
+  const vb = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
   const zoom = vb ? Math.min(Number(el.w) / Number(vb[1]), Number(el.h) / Number(vb[2])) : 1;
-  return { fs: r.fs * (Number.isFinite(zoom) && zoom > 0 ? zoom : 1) };
+  const sizes = [...svg.matchAll(/font-size(?:="|:\s*)([\d.]+)/g)].map((m) => Number(m[1]));
+  if (!sizes.length || !Number.isFinite(zoom) || zoom <= 0) return undefined;
+  return Math.min(...sizes) * zoom;
 }
 
 /**
@@ -1251,7 +1263,9 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
     // Type floor and room: labels no smaller than beside the words. A drawing whose size is set by
     // its height (particles, a labelled drawing, a cycle, a graph) only comes across the slide when
     // it does not draw beside the words; wide kinds (a flow, a timeline, a table) gain from width.
-    if (!big || (side && (big.fs < side.fs || !WIDE.has(kind)))) return false;
+    // Type floor: every label shown at 18 pt or more, and the cards at body size, also 18 or more.
+    if (!big || big.fs < TYPE_FLOOR_PT || d.s.body < TYPE_FLOOR_PT) return false;
+    if (side && (big.fs < side.fs || !WIDE.has(kind))) return false;
     // Not drawn beside the words: across the slide replaces the squashed band under the words
     // (register diagrams-05), never a figure the slide would otherwise lose to a fallback.
     if (!side && !WIDE.has(kind)) {

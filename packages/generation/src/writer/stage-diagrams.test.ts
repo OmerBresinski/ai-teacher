@@ -18,8 +18,6 @@ const read = (b: string, f: string) => readFileSync(join(DIR, b, f), "utf8");
 type El = Record<string, unknown>;
 
 /** Slides (0-based) whose lab drawing was the G3 pile bug, with the rings the writer's spec asks for. */
-/** Slides whose study figure is laid across the slide (FIX-PLAN group C), so drawn at a new size. */
-const ACROSS: Record<string, number[]> = { "y12-psychology-multi-store-model": [4] };
 const G3_FIXED: Record<string, Record<number, number>> = {
   "y2-maths-halves-quarters": { 5: 2, 7: 4 },
 };
@@ -71,14 +69,11 @@ for (const b of [
       // because "Find the number in one ring" in the alt matched the pile rule. They are drawn
       // again as the writer's spec asked (two rings, "?" in each), not as the lab's wrong pile.
       const rings = G3_FIXED[b] ?? {};
-      // FIX-PLAN group C: a study figure laid across the slide is drawn again at its new size.
-      const fixed = new Set([...Object.keys(rings).map(Number), ...(ACROSS[b] ?? [])]);
+      const fixed = new Set(Object.keys(rings).map(Number));
       const lab = savedSlides(b).flatMap((s, i) => (fixed.has(i) ? [] : svgs(s.elements)));
       const ours = out.slides.flatMap((s) => svgs(s.elements as El[]));
       const missing = lab.filter((svg) => !ours.includes(svg));
-      for (const i of ACROSS[b] ?? [])
-        expect(svgs((out.slides[i]?.elements ?? []) as El[]).length, `slide ${i}`).toBe(1);
-      for (const i of Object.keys(rings).map(Number)) {
+      for (const i of fixed) {
         const svg = svgs((out.slides[i]?.elements ?? []) as El[]).join("");
         expect(svg.match(/>\?</g)?.length, `slide ${i}`).toBe(rings[i]);
       }

@@ -9,8 +9,13 @@ import { fixture, type J } from "./harness";
 /* Group B (writer-form caps) and ruling 197 (long tables pack and continue). */
 
 const theme = getTheme("studio", "ks3" as never);
-const fitsIn = (template: string) => (t: J, first: boolean) =>
-  !layoutSlotProbe(drawable(t), first ? slotOf(template) : "full", "ks3", theme).length;
+const fitsIn = (template: string) => (sl: J, first: boolean, asWritten?: boolean) =>
+  !layoutSlotProbe(
+    drawable(sl.figure as J),
+    asWritten || first ? slotOf(String(sl.template ?? template)) : "full",
+    "ks3",
+    theme,
+  ).length;
 const FR =
   "un deux trois quatre cinq six sept huit neuf dix onze douze treize quatorze quinze seize dix-sept dix-huit dix-neuf vingt".split(
     " ",
@@ -73,6 +78,12 @@ describe("REGISTER content-01 / diagrams-10: a 1-20 table the alt promises is sh
       const shown = tables.flatMap((t) => t.rows.flat());
       for (const w of FR) expect(shown).toContain(w);
       expect(shown).toContain("dix-sept");
+      // Reading order: down the left column, then the right, slide after slide (1, 2, 3, ...).
+      const order = tables
+        .flatMap((t) => [...t.rows.map((x) => x[0]), ...t.rows.map((x) => x[2])])
+        .filter(Boolean)
+        .map(Number);
+      expect(order).toEqual(order.slice().sort((a, b) => a - b));
       expect(String((r?.rest[0] as J | undefined)?.heading)).toMatch(/\(continued\)$/);
     });
   }

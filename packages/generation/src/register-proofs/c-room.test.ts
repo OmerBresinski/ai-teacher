@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { layoutTemplate } from "@tj/slides/templates";
+import { layoutTemplate, shownMinFont } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
-import { replayRun } from "../writer/replay-fixture";
 import { fixture, type J } from "./harness";
 
 /* Group C (slot room): study figures squeezed into small slots (FIX-PLAN, UX ruling 194). */
@@ -10,19 +9,52 @@ const els = (s: { elements: unknown[] }) => s.elements as J[];
 const diagram = (s: { elements: unknown[] }) => els(s).find((e) => e.name === "Diagram");
 
 describe("REGISTER diagrams-05: study figures squeezed into small slots", () => {
-  test("FIXED diagrams-05: a teaching slide's flow is laid across the slide, its points as key cards (y12 multi-store r2 s5, recorded)", async () => {
-    const out = await replayRun("y12-psychology-multi-store-model-r2");
-    const s = out.slides[4] as unknown as { elements: unknown[] };
-    // Shipped: the flow sat in the 348x284 side slot beside three points.
-    // FIXED: the drawing takes the slide's width; the three points are key cards under it.
-    expect(Number(diagram(s)?.w)).toBe(788);
-    expect(els(s).filter((e) => e.name === "Key card")).toHaveLength(3);
-    // Shipped band under the words (pr440-paid-2 s8) was 97 points high; across the slide is taller.
+  test("FIXED diagrams-05: a teaching flow that reads larger across the slide goes across, its points as body-size key cards", () => {
     const shipped = fixture<{ elements: J[] }>("diagrams-05").elements.find(
       (e) => e.name === "Diagram",
     );
+    // Shipped (pr440-paid-2 s8): the drawing was a 788x97 band under three points.
     expect(Number(shipped?.h)).toBeLessThan(100);
-    expect(Number(diagram(s)?.h)).toBeGreaterThan(1.2 * Number(shipped?.h));
+    for (const nodes of [
+      ["Light", "Leaf", "Glucose", "Growth"],
+      ["Evaporation", "Condensation", "Precipitation", "Collection", "Run-off", "Rivers"],
+    ]) {
+      const spec = {
+        kind: "flow",
+        alt: "x",
+        nodes,
+        links: nodes.slice(1).map((_, i) => ({ from: i, to: i + 1 })),
+      };
+      const input = (template: string) =>
+        ({
+          template,
+          heading: "How it moves",
+          lead: "Each stage leads to the next.",
+          points: [
+            "The first stage starts it.",
+            "Each step needs the last.",
+            "The end feeds back.",
+          ],
+          figure: { diagram: spec },
+        }) as never;
+      const across = layoutTemplate(input("big-diagram"), getTheme("studio"), "ks3").slide;
+      const beside = layoutTemplate(input("diagram-text"), getTheme("studio"), "ks3").slide;
+      const d = diagram(across) as J;
+      expect(Number(d.w)).toBe(788);
+      expect(Number(d.h)).toBeGreaterThan(1.2 * Number(shipped?.h));
+      // Type floor: the drawing's smallest text is 18 pt or more and no smaller than beside the
+      // words; the cards are at the points' body size.
+      const min = shownMinFont(d as never) ?? 0;
+      expect(min).toBeGreaterThanOrEqual(18);
+      const side = diagram(beside);
+      if (side) expect(min).toBeGreaterThanOrEqual(shownMinFont(side as never) ?? 0);
+      const cardText = els(across).filter((e) => e.name === "Point");
+      const pointText = els(beside).filter((e) => e.name === "Point");
+      expect(els(across).filter((e) => e.name === "Key card")).toHaveLength(3);
+      expect(cardText.map((e) => (e.style as J)?.fontSize)).toEqual(
+        pointText.map((e) => (e.style as J)?.fontSize),
+      );
+    }
   });
 
   test("a full-width layout that would set the labels smaller keeps the slide diagram + text (type-floor check)", () => {

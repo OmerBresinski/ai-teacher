@@ -381,8 +381,11 @@ export function toInput(
       const f = fig(template === "big-picture" ? "picture" : "diagram");
       // A library model's slide: heading, the model, and the one-line lead as its takeaway under it
       // (a model drawn as the slide body keeps it too: the drawing fits above it).
+      // A long table's slide moved across the slide (table-pack.ts, `cardsUnder`) carries its
+      // points as key cards (ruling 194); other big visuals' points are read in the notes.
+      const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
       return f
-        ? { template, heading, lead, figure: f }
+        ? { template, heading, lead, figure: f, ...(cards.length ? { points: cards } : {}) }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {
