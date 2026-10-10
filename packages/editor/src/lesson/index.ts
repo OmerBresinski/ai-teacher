@@ -6,6 +6,7 @@ export { impactPreview, impactSentence, slidesReferencing } from "./impact-previ
 export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 export { MobileSlideList } from "./MobileSlideList";
 export {
+  FILMSTRIP_HEIGHT,
   FILMSTRIP_THUMB_WIDTH,
   NAVIGATOR_MODE_KEY,
   type NavigatorMode,

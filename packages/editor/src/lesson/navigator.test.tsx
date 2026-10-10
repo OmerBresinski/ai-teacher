@@ -19,7 +19,7 @@ const abc = (lesson: { slides: { id: string }[] }) => {
 };
 
 describe("Navigator", () => {
-  test("the filmstrip shows 96px thumbs and folds to dots, remembered on this browser", () => {
+  test("the filmstrip shows 128px thumbs and folds to dots, remembered on this browser", () => {
     const previous = localStorage.getItem("tj:filmstrip-dots");
     localStorage.removeItem("tj:filmstrip-dots");
     try {
@@ -27,7 +27,7 @@ describe("Navigator", () => {
       const nav = () => container.querySelector<HTMLElement>("[data-navigator]");
       const thumb = () => container.querySelector<HTMLElement>("[data-navigator-thumb]");
       expect(nav()).toHaveAttribute("data-navigator-mode", "strip");
-      expect(thumb()?.style.width).toBe("96px");
+      expect(thumb()?.style.width).toBe("128px");
       fireEvent.click(screen.getByRole("button", { name: "Collapse slide strip" }));
       expect(nav()).toHaveAttribute("data-navigator-mode", "dots");
       expect(thumb()).toBeNull();
@@ -110,13 +110,13 @@ describe("Navigator", () => {
     const { a, b, c } = abc(read());
     const first = rows()[0];
     if (!first) throw new Error("no row");
-    // Filmstrip columns are 106px wide (96 + 10); the insertion index is the column boundary
+    // Filmstrip columns are 138px wide (128 + 10); the insertion index is the column boundary
     // nearest the pointer.
     fireEvent.pointerDown(first, pointer(20, 10));
     fireEvent.pointerMove(first, pointer(70, 10));
-    fireEvent.pointerMove(first, pointer(12 + 3 * 106, 10));
+    fireEvent.pointerMove(first, pointer(12 + 3 * 138, 10));
     expect(container.querySelector("[data-drop-indicator]")).not.toBeNull();
-    fireEvent.pointerUp(first, pointer(12 + 3 * 106, 10));
+    fireEvent.pointerUp(first, pointer(12 + 3 * 138, 10));
     expect(ids(read())).toEqual([b, c, a]);
     expect(container.querySelector("[data-drop-indicator]")).toBeNull();
   });

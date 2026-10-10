@@ -3,6 +3,7 @@ import type { JobEvent } from "@tj/domain/jobs";
 import { renderTheme, SlideScaler, SlideView } from "@tj/editor";
 import {
   clearShift,
+  FILMSTRIP_HEIGHT,
   FILMSTRIP_THUMB_WIDTH,
   paneMode,
   readFilmstripDots,
@@ -368,8 +369,9 @@ export function GeneratingShell({
             tabIndex={lesson.slides.length === 0 ? 0 : -1}
             className={cn(
               "flex shrink-0 items-center overflow-x-auto overflow-y-hidden border-border border-t bg-background pr-20 pl-3 outline-none focus-visible:shadow-focus [scrollbar-width:thin]",
-              dots ? "h-9 justify-center" : "h-[88px]",
+              dots && "h-9 justify-center",
             )}
+            style={dots ? undefined : { height: FILMSTRIP_HEIGHT }}
           >
             <ul className={cn("flex items-center", dots ? "gap-1.5" : "gap-2.5")}>
               {lesson.slides.map((slide, i) => (

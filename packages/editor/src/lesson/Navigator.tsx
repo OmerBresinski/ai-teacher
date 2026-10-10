@@ -51,10 +51,15 @@ const FULL = { thumbW: 168, thumbH: 94, gap: 8, numW: 28 };
 const COMPACT = { thumbW: 60, thumbH: 33.75, gap: 6, numW: 22 };
 /** Air between the slide number's right edge and the thumbnail, inside `numW`. */
 const NUM_GAP = 10;
-/** The bottom filmstrip (ruling 186): 96x54 thumbs in a row, the number under each. */
-const STRIP = { thumbW: 96, thumbH: 54, gap: 10, numW: 0 };
+/** The bottom filmstrip (ruling 186): 128x72 thumbs in a row (exact 16:9), the number under each. */
+const STRIP = { thumbW: 128, thumbH: 72, gap: 10, numW: 0 };
 /** The filmstrip's thumb width, shared with the generating screen so nothing moves at Ready. */
 export const FILMSTRIP_THUMB_WIDTH = STRIP.thumbW;
+/**
+ * The filmstrip's height: the thumb plus 34px for the row's top padding, the gap, the number under
+ * it and the air below. Shared with the generating screen so the strip keeps its height at Ready.
+ */
+export const FILMSTRIP_HEIGHT = STRIP.thumbH + 34;
 type Geometry = typeof FULL;
 const STRIP_DOTS_KEY = "tj:filmstrip-dots";
 
@@ -626,8 +631,9 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
         aria-label="Slide strip"
         className={cn(
           "relative flex shrink-0 items-center gap-1 border-border border-t bg-background pr-20 pl-2",
-          dots ? "h-9" : "h-[88px]",
+          dots && "h-9",
         )}
+        style={dots ? undefined : { height: FILMSTRIP_HEIGHT }}
       >
         {dots ? (
           <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
