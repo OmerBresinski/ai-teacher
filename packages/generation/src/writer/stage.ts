@@ -207,6 +207,15 @@ export type WriterRun = {
    */
   libraryLabelFloor?: boolean;
   /**
+   * What the post-write checks do (TEACH-312 part i, Greg 10 Oct). "act" (default): today's
+   * repair round, relayout, figure checks, strips and library fallbacks. "log": every check is
+   * still computed and logged ("checks", "repair-skipped" per slide), but nothing acts on a
+   * result: no repair call, revert, check-driven relayout, rewrite, strip or visual drop, and a
+   * library model or writer spec falls back only when it cannot be drawn at all. Answer hiding
+   * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act.
+   */
+  checks?: "act" | "log";
+  /**
    * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
    * schema's model enum hold only models for the lesson's year and its subject (or general
    * ones); an empty list leaves out the Models block, the model kind line and the schema branch.
@@ -310,6 +319,16 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
 export const PUPIL_WORDING_DEADLINE_MS = 8_000;
 
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
+  /** The checks act on their results ("act", the default) or are only logged (part i). */
+  const act = run.checks !== "log";
+  /**
+   * A check found something to act on: logs it (with `applied: false` when the checks only log)
+   * and says whether to act. Every check-driven change in this stage goes through here.
+   */
+  const actOn = (e: Record<string, unknown>): boolean => {
+    log(act ? e : { ...e, applied: false });
+    return act;
+  };
   const { brief } = run;
   const P = writerBundle(run.bundle);
   const repairSchemaFor = (k: string) =>
@@ -571,6 +590,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
               ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
               ...(run.libraryLabelFloor ? { labelFloor: true } : {}),
+              ...(act ? {} : { logOnly: true }),
             },
             async (req) =>
               (
@@ -638,6 +658,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           {
             callDrawer,
             drawerSystem: writerDrawerSystem,
+            fitActs: act,
             theme: base.theme,
             probe: layoutSlotProbe,
             log: (e) => log({ ...e, slide: i + 1 }),
@@ -719,9 +740,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     };
     if (figOpts.fromSpec || figOpts.specRepair) {
       const f = figureTextFix(s, figOpts);
+      let apply = act;
       for (const c of f.changes)
-        log({ ev: "figure-text", slide: idx + 1, key: c.key, kind: c.kind, action: c.action });
-      s = f.slide as S;
+        apply = actOn({
+          ev: "figure-text",
+          slide: idx + 1,
+          key: c.key,
+          kind: c.kind,
+          action: c.action,
+        });
+      if (apply) s = f.slide as S;
     }
     // An activity: the writer's fields to the template's, repaired to the stage's capacity.
     if (isWriterActivity(s.template)) {
@@ -1032,11 +1060,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
     // otherwise.
     const sync = syncFigure(plan.slides[i] as S | undefined, slideNoEmDash(next0));
-    if (sync.action === "redrawn" || sync.action === "drop")
-      log({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why });
+    const synced =
+      sync.action === "redrawn" || sync.action === "drop"
+        ? actOn({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why })
+        : true;
     const next = splitTable(
       i,
-      sync.action === "drop" ? asWords(sync.slide as S) : (sync.slide as S),
+      !synced
+        ? slideNoEmDash(next0)
+        : sync.action === "drop"
+          ? asWords(sync.slide as S)
+          : (sync.slide as S),
     );
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));
@@ -1059,8 +1093,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       const was = pairs.get(a.key);
       // a drawing whose numbers the new words no longer say is never carried
       const v0 = was ? oldState.get(was.key) : undefined;
-      const stale = v0?.status === "diagram" ? figureTextMismatch(v0.spec, next as S) : undefined;
-      if (stale) log({ ev: "figure-stale", slide: i + 1, key: a.key, why: stale });
+      const stale0 = v0?.status === "diagram" ? figureTextMismatch(v0.spec, next as S) : undefined;
+      const stale =
+        stale0 && actOn({ ev: "figure-stale", slide: i + 1, key: a.key, why: stale0 })
+          ? stale0
+          : undefined;
       if (was && !stale) {
         if (was.key !== a.key)
           carried.set(`${i}:${a.key}`, oldCarried.get(was.key) ?? { key: was.key, ask: was });
@@ -1072,7 +1109,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // A new or changed writer spec is drawn by code at once (no drawer call after editable).
       if (a.type === "diagram" && a.spec !== undefined && run.drawDiagrams) {
         const ask = diagramAsk(a, next);
-        const r = acceptWriterSpec(a.spec, ask, base.theme, layoutSlotProbe);
+        const r = acceptWriterSpec(a.spec, ask, base.theme, layoutSlotProbe, {
+          fitActs: act,
+          log: (e) => log({ ...e, slide: i + 1 }),
+        });
         if (r.spec)
           drawnDiagrams.set(`${i}:${a.key}`, {
             status: "diagram",
@@ -1118,6 +1158,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // fallbackOnlyOnFailure: a diagram that drew but did not fit beside the slide's words is a fit
   // problem, not a drawing failure. Before any reword or fallback the slide is laid out full width
   // (big-visual; its points are read in the notes), and kept when the diagram then fits.
+  // With the checks only logging, the fit fault is logged ("relayout") and the slide stays.
   if (flags.fallbackOnlyOnFailure) {
     for (const c of failing) {
       const i = c.slide - 1;
@@ -1126,6 +1167,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         continue;
       const d = (asks.get(i) ?? []).find((a) => a.type === "diagram");
       if (!d || visualState(i)(d.key).status !== "diagram") continue;
+      // Checks only logging: the relayout runs only when it is what lets the diagram show (the
+      // layout could not draw it beside the words); a diagram already on the slide stays as laid.
+      const shownNow = (laid.get(i)?.slide.elements ?? []).some(
+        (e) => e.type === "image" && e.name === "Diagram",
+      );
+      if (!act && shownNow) {
+        log({ ev: "relayout-skipped", slide: i + 1, faults: c.faults.slice(0, 2) });
+        continue;
+      }
       const n0 = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
       swapSlide(i, { ...s0, template: "big-visual" });
@@ -1137,10 +1187,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         relaid.set(i, plan.slides[i]);
         path.set(i, "diagram-big");
       }
+      if (!act)
+        log({
+          ev: left.length ? "relayout-skipped" : "relayout-kept-visual",
+          slide: i + 1,
+          faults: c.faults.slice(0, 2),
+        });
       log({
         ev: "diagram-relaid",
         slide: i + 1,
         ok: !left.length,
+        ...(act ? {} : { keptVisual: !left.length }),
         ...(left.length ? { why: left.slice(0, 2) } : {}),
       });
     }
@@ -1237,7 +1294,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
-      log({ ev: "repair", slide: i + 1, ok: false });
+      log({ ev: "repair", slide: i + 1, mode, ok: false });
       return false;
     }
     const before = plan.slides[i] as S;
@@ -1304,11 +1361,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
-  phaseSlides = [...plan.slides];
-  await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
-    await fitLoop(c);
-  });
-  phaseSlides = undefined;
+  if (act) {
+    phaseSlides = [...plan.slides];
+    await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
+      await fitLoop(c);
+    });
+    phaseSlides = undefined;
+  } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
@@ -1317,6 +1376,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const gasAll = gasHits.flatMap((x) => x.volumes);
   for (const h of gasHits) {
     if (!repairable(plan.slides[h.slide] as S, h.slide)) continue;
+    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) continue;
     swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
     const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
     log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
@@ -1329,7 +1389,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (a.type !== "diagram" || v.status !== "diagram") continue;
       const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
       if (!why) continue;
-      log({ ev: "figure-text-mismatch", slide: i + 1, key: a.key, why, dropped: true });
+      if (!actOn({ ev: "figure-text-mismatch", slide: i + 1, key: a.key, why, dropped: act }))
+        continue;
       override.set(`${i}:${a.key}`, { status: "failed" });
       relay(i);
     }
@@ -1446,6 +1507,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!dAsk || path.has(i)) return;
     const st = visualState(i)(dAsk.key).status;
     if (st === "pending") return;
+    // A diagram the layout could not place did not draw: it falls back whatever the checks do.
     if (!laid.get(i)?.diagram?.length && st === "diagram") {
       path.set(i, "diagram");
       return;
@@ -1506,6 +1568,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const unpoint = (i: number) => {
     if (!dangles(i)) return;
+    if (!actOn({ ev: "unpoint", slide: i + 1 })) return;
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
@@ -1562,6 +1625,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                 const r = await drawWriterDiagram(diagramAsk(a, now), {
                   callDrawer: run.drawDiagrams.callDrawer,
                   drawerSystem: writerDrawerSystem,
+                  fitActs: act,
                   theme: base.theme,
                   probe: layoutSlotProbe,
                   log: (e) => log({ ...e, slide: i + 1 }),
@@ -1679,7 +1743,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!removed.length) return;
     // Intended under D48: the slide ships with its pointing line, which may dangle; logged so a
     // run counts every one.
-    if (flags.pointGuardLogOnly)
+    if (flags.pointGuardLogOnly || !act)
       return void log({
         ev: "point-guard",
         slide: i + 1,

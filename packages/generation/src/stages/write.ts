@@ -11,10 +11,11 @@ import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
+import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
-import { writerBundleOf } from "./objectives-first";
+import { isWriterStamp, writerBundleOf } from "./objectives-first";
 import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
 import { createProgressiveDeck } from "./progressive";
 
@@ -91,13 +92,51 @@ export function writerBrief(lesson: Lesson): Brief {
   };
 }
 
+/**
+ * The slides an earlier attempt of this job finished (`done`, ADR 0037), by id. A retry keeps each
+ * exactly as saved: the teacher has seen it, may be editing it, and its picture is placed.
+ */
+export function finishedSlides(lesson: Lesson): Map<string, Slide> {
+  const states = lesson.generation?.slideStates ?? {};
+  return new Map(lesson.slides.filter((s) => states[s.id] === "done").map((s) => [s.id, s]));
+}
+
+/** True when an earlier attempt saved the whole editable deck: a retry finishes from it. */
+export function hasEditableDeck(lesson: Lesson): boolean {
+  const g = lesson.generation;
+  // The stamp counts only at the writer's own checkpoint: a row that moved on (or was re-planned,
+  // which clears `generation`) never skips the writer on a stale field.
+  if (g?.stage !== "planned" || g.editableAt === undefined || lesson.slides.length === 0)
+    return false;
+  if (!isWriterStamp(g.promptVersions.planned)) return false;
+  return finishedSlides(lesson).size === lesson.slides.length;
+}
+
+/**
+ * `slides` with every finished slide put back as saved: in place of the writer's slide with its
+ * id, or at its saved position when this run's deck has no such slide.
+ */
+function keepFinished<T extends { id: string }>(
+  slides: T[],
+  finished: Map<string, Slide>,
+  saved: Slide[],
+): T[] {
+  const out = slides.map((s) => (finished.get(s.id) as unknown as T | undefined) ?? s);
+  saved.forEach((slide, i) => {
+    if (finished.has(slide.id) && !out.some((s) => s.id === slide.id))
+      out.splice(Math.min(i, out.length), 0, slide as unknown as T);
+  });
+  return out;
+}
+
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const lesson = state.lesson;
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
   const toLesson = (
-    slides: { id: string; notes: string }[],
+    slides: { id: string; notes?: string }[],
     stage: "generated" | "planned",
     slideStates?: Record<string, SlideGenerationState>,
+    editableAt?: string,
   ) =>
     ({
       ...lesson,
@@ -115,11 +154,57 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         },
         usage: deps.budget.totals(),
         ...(slideStates ? { slideStates } : {}),
+        ...(editableAt ? { editableAt } : {}),
       },
     }) as Lesson;
   /** Every slide of `slides` in one state. */
   const allIn = (slides: { id: string }[], state: SlideGenerationState) =>
     Object.fromEntries(slides.map((s) => [s.id, state]));
+
+  // A retry (pg-boss runs the job again after a throw) never visibly undoes work (TEACH-312 part
+  // j). An earlier attempt that saved the editable deck is finished from it: no second writer
+  // call, no slide back to `writing`, every word and placed picture as the teacher saw them.
+  if (hasEditableDeck(lesson)) {
+    // What the writer does after editable, minus anything that changes a slide: its pictures were
+    // settled before editable (rule (a)), so no slot is open; the speaker notes are written here.
+    const slides = await notesForSavedSlides({
+      slides: lesson.slides as unknown as { id: string; notes?: string; elements: unknown[] }[],
+      brief: writerBrief(lesson),
+      objectives,
+      bundle: writerBundleOf(lesson),
+      services: aiWriterServices(deps),
+      warn: (e) =>
+        deps.logger.warn({ stage: "generate", ...e }, "resumed deck shipped without speaker notes"),
+    });
+    deps.logger.info(
+      {
+        stage: "generate",
+        slides: slides.length,
+        pictures: slides
+          .flatMap((s) => s.elements)
+          .filter((e) => (e as { type?: string }).type === "image").length,
+        withNotes: slides.filter((s) => (s.notes ?? "").trim() !== "").length,
+      },
+      "writer resumed from the editable deck",
+    );
+    const done = toLesson(slides, "generated", allIn(slides, "done"));
+    const { updatedAt } = await deps.persist(done);
+    await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
+    return { ...state, lesson: done };
+  }
+  // An earlier attempt that stopped mid-stream kept the slides it finished. The writer is one
+  // streamed call and cannot start part-way, so this run writes off-screen (no streamed saves) and
+  // the finished slides replace its copies of them in every save.
+  const finished = finishedSlides(lesson);
+  const offScreen = finished.size > 0;
+  if (offScreen)
+    deps.logger.info(
+      { stage: "generate", kept: finished.size },
+      "writer resumed off-screen, finished slides kept",
+    );
+  const finishedIndex = (i: number) => finished.has(`s${i + 1}`);
+  const kept = <T extends { id: string }>(slides: T[]) =>
+    offScreen ? keepFinished(slides, finished, lesson.slides) : slides;
   // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
   // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
   const images = deps.images as DirectedPlacer | undefined;
@@ -187,16 +272,19 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // call on the small model (TEACH-247).
       drawDiagrams: { callDrawer: (req) => services.chat({ ...req, model: SMALL_MODEL }) },
       // The diagram library is on (TEACH-247 part m, Greg 10 Oct): the menu is filtered by year
-      // and subject and ranked by the objectives; a model gets the slide body, labels grow to the
-      // 18 pt floor, optional panels stay off, and overlapping or split labels fall back. Asking
-      // slides hold the answer back (roleAsk). Each switch turns one piece off.
+      // and subject and ranked by the objectives; a model gets the slide body and optional panels
+      // stay off. Asking slides hold the answer back (roleAsk). Each switch turns one piece off.
+      // Checks only log (Greg, 10 Oct: "turn off the ENTIRE check system... logging what it would
+      // have done"): no repair, no check-driven word change, and a model is kept as drawn rather
+      // than falling back for overlapping or split labels (TEACH-312 part i).
+      checks: "log",
       library: true,
       libraryMenuFilter: true,
       libraryMenuRank: true,
       libraryModelBody: true,
       libraryPanelsOff: true,
-      libraryLabelOverlap: true,
-      libraryLabelFloor: true,
+      libraryLabelOverlap: false,
+      libraryLabelFloor: false,
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       // Ruling 189 (ADR 0037): a slide's words are done once the writer has moved past it, so it
@@ -208,11 +296,12 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           for (const [j, earlier] of latest)
             if (j < i && !closed.has(j)) {
               closed.add(j);
-              progressive.patch(j, earlier, "done");
+              if (!offScreen) progressive.patch(j, earlier, "done");
             }
           newest = i;
         }
-        progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+        // Off-screen (a resumed run): nothing streams onto the slides the teacher already has.
+        if (!offScreen) progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
       },
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
@@ -220,6 +309,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // C5: a lesson's picture sets share one look, from the writer's picture style.
       onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
       onAsks: (i, asks, slide) => {
+        // A finished slide keeps its placed picture: no new search for the copy this run discards.
+        if (finishedIndex(i)) return;
         for (const a of asks) if (a.type === "photo") pictures?.start(i, a, slide);
       },
       beforeEditable: async () => {
@@ -241,8 +332,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
         await progressive.close();
         editableSaved = true;
+        const deck = kept(credited(slides));
         const { updatedAt } = await deps.persist(
-          toLesson(credited(slides), "planned", allIn(slides, "done")),
+          toLesson(deck, "planned", allIn(deck, "done"), deps.now().toISOString()),
         );
         await deps.onProgress(70, "Slides written", "generate", updatedAt);
       },
@@ -255,26 +347,36 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
     // Slides still `writing` are rolled back to the plan: the stream showed them, the lesson never
     // ships them. Its cost is saved, so a retry's budget counts it.
-    const streamed = !editableSaved && progressive.patches().size > 0;
+    const streamed = !editableSaved && (offScreen || progressive.patches().size > 0);
     if (error instanceof WriterIncompleteError || streamed) {
-      // Slides whose words were done stay (ADR 0037: they are the teacher's); the rest go back
-      // to the plan, and no slide stays `writing` once the job has stopped. A writer that ran
-      // out of length (K3) shipped no valid deck, so its streamed slides go back to the plan too
-      // (a slide the teacher edited is still kept by the merge).
+      // Slides whose words were done stay (ADR 0037: they are the teacher's) and stay `done`, so
+      // a retry keeps them as they are (TEACH-312 part j); the rest go back to the plan, and no
+      // slide stays `writing` once the job has stopped. A writer that ran out of length (K3)
+      // shipped no valid deck, so this run's streamed slides go back to the plan too (a slide the
+      // teacher edited is still kept by the merge); an earlier attempt's finished slides stay.
       if (error instanceof WriterIncompleteError) closed.clear();
       const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
-      const kept = Array.from({ length: count }, (_, i) =>
-        closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : lesson.slides[i],
-      ).filter((slide): slide is Slide => slide !== undefined);
+      const keep = Array.from({ length: count }, (_, i) => {
+        const saved = lesson.slides[i];
+        if (saved && finished.has(saved.id)) return saved;
+        return closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : saved;
+      }).filter((slide): slide is Slide => slide !== undefined);
+      const closedIds = new Set([...closed].map((i) => latest.get(i)?.id));
+      const states = Object.fromEntries(
+        keep
+          .filter((s) => finished.has(s.id) || closedIds.has(s.id))
+          .map((s) => [s.id, "done" as const]),
+      );
       const { slideStates: _states, ...generation } = lesson.generation ?? {};
       await deps.persist({
         ...lesson,
-        slides: kept,
+        slides: keep,
         ...(lesson.generation
           ? {
               generation: {
                 ...(generation as typeof lesson.generation),
                 usage: deps.budget.totals(),
+                ...(Object.keys(states).length ? { slideStates: states } : {}),
               },
             }
           : {}),
@@ -288,7 +390,24 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
     throw error;
   }
-  const done = toLesson(credited(out.slides), "generated", allIn(out.slides, "done"));
+  // The finished slides kept from an earlier attempt were saved before any notes were written:
+  // they get theirs from one notes call over the deck as it ships.
+  const deck = offScreen
+    ? await notesForSavedSlides({
+        slides: kept(credited(out.slides)),
+        brief: writerBrief(lesson),
+        objectives,
+        bundle: writerBundleOf(lesson),
+        services: aiWriterServices(deps),
+        only: new Set(finished.keys()),
+        warn: (e) =>
+          deps.logger.warn(
+            { stage: "generate", ...e },
+            "kept slides shipped without speaker notes",
+          ),
+      })
+    : credited(out.slides);
+  const done = toLesson(deck, "generated", allIn(deck, "done"));
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
   return { ...state, lesson: done };

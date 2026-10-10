@@ -139,6 +139,23 @@ describe("R2: spec round trip per kind (writer spec -> code draws, no call)", ()
     expect(r.spec).toBeUndefined();
     expect(r.fault.length).toBeGreaterThan(0);
   });
+  test("checks only logged (TEACH-312 part i): a spec that parses is drawn though it does not fit", () => {
+    const spec = samplesOf("flow")[0] as J;
+    const tight = () => ["the labels overflow the slot"];
+    expect(acceptWriterSpec(spec, ask("flow", "side"), studio, tight).spec).toBeUndefined();
+    const ev: J[] = [];
+    const r = acceptWriterSpec(spec, ask("flow", "side"), studio, tight, {
+      fitActs: false,
+      log: (e) => ev.push(e),
+    });
+    expect(r.spec).toBeDefined();
+    expect(ev.map((e) => e.ev)).toEqual(["r2-spec-fit-logged"]);
+    // A spec that does not parse is still refused.
+    const bad = { ...spec, links: [{ from: 0, to: 9, label: null }] };
+    expect(acceptWriterSpec(bad, ask("flow", "full"), studio, tight, { fitActs: false }).spec).toBe(
+      undefined,
+    );
+  });
   test("a freeform figure keeps the drawer path", () => {
     expect(writerSpecOf({ kind: "labelled-diagram", shows: "x", labels: ["a"] })).toBeUndefined();
     expect(writerSpecOf({ kind: "flow", shows: "x", labels: ["a", "b"] })).toBeUndefined();

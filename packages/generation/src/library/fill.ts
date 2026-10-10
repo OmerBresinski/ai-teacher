@@ -229,6 +229,12 @@ export type LibraryAsk = {
   /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
   panelsOff?: boolean;
   /**
+   * Checks only logged (the writer's checks "log", TEACH-312 part i): a drawn model never falls
+   * back for what a check reads (capability, label floor, words mismatch, overlap, type floor);
+   * each is logged as "lib-check-logged". Only a model that cannot be filled or drawn falls back.
+   */
+  logOnly?: boolean;
+  /**
    * The box the drawing is placed in on the 960 x 540 slide (flag `libraryModelBody`): a drawing
    * whose smallest words would show under the drawer's `TYPE_FLOOR` there falls back
    * (diagrams-06). Absent: no type-floor gate (today's behaviour).
@@ -280,7 +286,8 @@ export function placedTypeSize(
  * the fractions model's "7" printed over "3/5 of 35 = 21", 0.48 of the "7"). Two words count when the
  * other covers over `share` of the smaller one's box each way: over all 202 presets the most a
  * stacked pair covers is 0.3 ("6" over "six"). The same word at the same place is one word drawn
- * twice (a halo copy), not an overlap.
+ * twice (a halo copy), not an overlap. Words Present never shows together (TEACH-247 part p) are
+ * not either.
  */
 export const OVERLAP_SHARE = 0.4;
 export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, string, number][] {
@@ -291,6 +298,9 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
       const a = words[i];
       const b = words[j];
       if (!a || !b) continue;
+      // Words never on screen together (two builds' passing labels) do not overlap.
+      if (a.shown && b.shown && !a.shown.some((i) => b.shown?.includes(i))) continue;
+      if (a.shown?.length === 0 || b.shown?.length === 0) continue;
       const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
       const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
       if (ox <= 2 || oy <= 2) continue;
@@ -343,6 +353,13 @@ export async function libraryDiagram(
     log({ ev: "lib-fallback", key: ask.key, model: ask.model, to: fallbackKind, reason });
     return { ok: false, fallbackKind, reason };
   };
+  /** A check's verdict: a fallback, or with `logOnly` a log line and the drawing kept. */
+  const checkFault = (reason: string | undefined): LibraryResult | undefined => {
+    if (!reason) return undefined;
+    if (!ask.logOnly) return fallback(reason);
+    log({ ev: "lib-check-logged", key: ask.key, model: ask.model, reason });
+    return undefined;
+  };
   const m = await nonFatal(
     () => loadModel(ask.model),
     () => undefined,
@@ -392,7 +409,8 @@ export async function libraryDiagram(
         .join("; ")}`,
     );
   const cannot = capabilityRefusals(ask.model, ask.intent);
-  if (cannot.length) return fallback(cannot.map((r) => r.reason).join("; "));
+  const cf = checkFault(cannot.map((r) => r.reason).join("; "));
+  if (cf) return cf;
   let step: number | undefined;
   if (ask.question) {
     step = await questionStep(ask.model, params);
@@ -437,13 +455,16 @@ export async function libraryDiagram(
         () => grownTextFault(baseSvg, grownSvg),
         (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
       );
-      if (fault) return fallback(`at the label floor ${fault}`);
+      const f = checkFault(fault && `at the label floor ${fault}`);
+      if (f) return f;
     }
     const off = full.offSlide.filter((w) => !offBefore.has(w));
-    if (off.length)
-      return fallback(
-        `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`,
-      );
+    const f = checkFault(
+      off.length
+        ? `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`
+        : undefined,
+    );
+    if (f) return f;
   }
   const drawnFull = full;
   // Only the words that describe the drawing: the slide's heading and the model's caption.
@@ -452,7 +473,8 @@ export async function libraryDiagram(
       ? [ask.heading, ask.caption].filter(Boolean).join("\n")
       : ask.words;
   const mismatch = drawingWordsMismatch(ask.model, drawnFull.svg, about);
-  if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
+  const mf = checkFault(mismatch && `it disagrees with the slide: ${mismatch}`);
+  if (mf) return mf;
   const drawn =
     step === undefined
       ? drawnFull
@@ -472,14 +494,17 @@ export async function libraryDiagram(
       () => overlappingWords(drawn.svg),
       () => undefined,
     );
-    if (!o) return fallback("its words could not be read for overlaps");
-    if (o.length)
-      return fallback(
-        `its words overlap: ${o
-          .slice(0, 2)
-          .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
-          .join(", ")}`,
-      );
+    const of = checkFault(
+      !o
+        ? "its words could not be read for overlaps"
+        : o.length
+          ? `its words overlap: ${o
+              .slice(0, 2)
+              .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
+              .join(", ")}`
+          : undefined,
+    );
+    if (of) return of;
   }
   // The type floor (flag `libraryModelBody`): words under 18 pt where the drawing is placed.
   if (ask.place) {
@@ -487,12 +512,15 @@ export async function libraryDiagram(
       () => placedTypeSize(drawn.svg, ask.place as { w: number; h: number }),
       () => undefined,
     );
-    if (!t) return fallback("its words could not be measured for the type floor");
-    log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
-    if (t.minPt < TYPE_FLOOR - 0.01)
-      return fallback(
-        `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`,
-      );
+    if (t) log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
+    const tf = checkFault(
+      !t
+        ? "its words could not be measured for the type floor"
+        : t.minPt < TYPE_FLOOR - 0.01
+          ? `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`
+          : undefined,
+    );
+    if (tf) return tf;
   }
   log({
     ev: "lib-drawn",

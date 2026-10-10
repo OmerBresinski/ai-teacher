@@ -12,10 +12,11 @@
  * time (`document`, `getComputedStyle`) are set only for its duration.
  */
 
-import { REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
+import { buildCount, PASSING_HIDDEN, REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
 import { hasAdvances, svgFontFamily, textWidth } from "@tj/slides/diagrams";
 import { FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { type Element, Window } from "happy-dom";
+import { type Box, SKIP_TAGS, tagBuilds, wrapClassed } from "./builds";
 import { MODEL_LOADERS } from "./models";
 import { KIT_TOKENS as TOKENS } from "./tokens.gen";
 import type { J, LibModel } from "./types";
@@ -531,8 +532,6 @@ function bboxOf(el: Element): { x: number; y: number; width: number; height: num
     : { x: 0, y: 0, width: 0, height: 0 };
 }
 
-const SKIP = "defs,clipPath,clippath,mask,marker,pattern,symbol,style,title,desc";
-const SKIP_TAGS = SKIP.toLowerCase().split(",");
 /** The drawn area: every visible mark's box, ignoring full-slide grounds and the foot. */
 function drawnBox(svg: Element, foot: Element | null) {
   let [x0, y0, x1, y1] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, -1e9, -1e9];
@@ -708,7 +707,7 @@ const PAD = 18;
 export async function renderLibraryModel(
   id: string,
   params: J,
-  opts: { step?: number; typeScale?: number; font?: string } = {},
+  opts: { step?: number; typeScale?: number; maxBytes?: number; font?: string } = {},
 ): Promise<LibraryDrawing> {
   const model = await loadModel(id);
   if (!model) throw new Error(`no library model ${id}`);
@@ -745,52 +744,58 @@ export async function renderLibraryModel(
           }
         const root = svg.firstElementChild;
         const foot = (root?.children[2] as Element | undefined) ?? null;
-        const box = drawnBox(svg, foot);
+        const finished = drawnBox(svg, foot);
         const offSlide = wordsOffSlide(svg, foot);
-        const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
-        const x0 = Math.max(0, box ? box.x0 - PAD : 0);
-        const x1 = Math.min(W, box ? box.x1 + PAD : W);
-        const y1 = Math.min(FOOT, box ? box.y1 + PAD : FOOT);
-        const w = Math.round(x1 - x0);
-        const h = Math.round(y1 - y0);
-        if (w < 40 || h < 40) throw new Error(`${id} drew nothing to show`);
-        const out = svg.cloneNode(true) as Element;
-        const oroot = out.firstElementChild;
-        oroot?.children[2]?.remove();
-        for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
-        // The answer: every mark first shown after the question's build.
-        if (q !== undefined)
-          for (const el of [...out.querySelectorAll("[data-s]")])
-            if (Number(el.getAttribute("data-s")) > q) el.setAttribute("data-reveal", "1");
-        // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
-        // Present would open on a blank box. Every surface shows the drawing as it ends (on a
-        // question slide, without its answer until the reveal).
-        for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
-        for (const el of [...out.querySelectorAll("[data-h]")]) el.removeAttribute("data-h");
-        // Builds left on hidden marks only make Present wait on nothing.
-        out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-        out.setAttribute("class", "slide tk theme-primary");
-        if (ts !== 1) out.setAttribute("data-fs-scale", String(ts));
-        if (font !== "lexend") out.setAttribute("data-font", font);
-        out.setAttribute("viewBox", `${Math.round(x0)} ${Math.round(y0)} ${w} ${h}`);
-        out.setAttribute("width", String(w));
-        out.setAttribute("height", String(h));
-        out.removeAttribute("aria-label");
-        // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
-        // editor, thumbnails and exports show the question, as the drawer's question slides do.
-        const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
-        const scaled = ts !== 1 ? `<style>${fsOverride(ts)}</style>` : "";
-        const style = `<style><![CDATA[${SVG_CSS}${fontCss(font)}]]></style>${scaled}${hold}`;
-        const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
-        const open = /<svg\b[^>]*>/.exec(html);
-        if (!open) throw new Error(`${id} did not serialise`);
-        const at = open.index + open[0].length;
-        const text = html.slice(0, at) + style + html.slice(at);
-        const bytes = Buffer.byteLength(text);
-        if (bytes > MAX_SVG_BYTES)
-          throw new Error(`${id} drew ${bytes} bytes, over the slide's limit`);
-        let builds = 0;
-        for (const m of text.matchAll(/ data-s="(\d+)"/g)) builds = Math.max(builds, Number(m[1]));
+        const max = opts.maxBytes ?? MAX_SVG_BYTES;
+        const pristine = svg.cloneNode(true) as Element;
+        // Present plays the model's builds (TEACH-247 part p); every other surface shows the end.
+        // The frame holds every mark a build shows, including those gone by the end.
+        const draw = (target: Element, still: boolean) => {
+          const tfoot = (target.firstElementChild?.children[2] as Element | undefined) ?? null;
+          const frames = finished
+            ? tagBuilds(target, tfoot, finished, q, { measure: drawnBox, still })
+            : 0;
+          const box = frames ? drawnBox(target, tfoot) : finished;
+          const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
+          const x0 = Math.max(0, box ? box.x0 - PAD : 0);
+          const x1 = Math.min(W, box ? box.x1 + PAD : W);
+          const y1 = Math.min(FOOT, box ? box.y1 + PAD : FOOT);
+          const w = Math.round(x1 - x0);
+          const h = Math.round(y1 - y0);
+          if (w < 40 || h < 40) throw new Error(`${id} drew nothing to show`);
+          const out = target.cloneNode(true) as Element;
+          out.firstElementChild?.children[2]?.remove();
+          for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
+          wrapClassed(out);
+          out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          // The frame count, for a last frame that only takes marks away (`buildCount`).
+          if (frames) out.setAttribute("data-builds", String(frames));
+          out.setAttribute("class", "slide tk theme-primary");
+          if (ts !== 1) out.setAttribute("data-fs-scale", String(ts));
+          if (font !== "lexend") out.setAttribute("data-font", font);
+          out.setAttribute("viewBox", `${Math.round(x0)} ${Math.round(y0)} ${w} ${h}`);
+          out.setAttribute("width", String(w));
+          out.setAttribute("height", String(h));
+          out.removeAttribute("aria-label");
+          // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
+          // editor, thumbnails and exports show the question, as the drawer's question slides do.
+          const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
+          const passing = out.querySelector("[data-f]") ? `<style>${PASSING_HIDDEN}</style>` : "";
+          const scaled = ts !== 1 ? `<style>${fsOverride(ts)}</style>` : "";
+          const style = `<style><![CDATA[${SVG_CSS}${fontCss(font)}]]></style>${scaled}${hold}${passing}`;
+          const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
+          const open = /<svg\b[^>]*>/.exec(html);
+          if (!open) throw new Error(`${id} did not serialise`);
+          const at = open.index + open[0].length;
+          const text = html.slice(0, at) + style + html.slice(at);
+          return { text, bytes: Buffer.byteLength(text), w, h, frames };
+        };
+        let drawn = draw(svg, false);
+        // A drawing that fits as a still but not with its builds is kept as the still.
+        if (drawn.bytes > max && drawn.frames) drawn = draw(pristine, true);
+        const { text, bytes, w, h } = drawn;
+        if (bytes > max) throw new Error(`${id} drew ${bytes} bytes, over the slide's limit`);
+        const builds = buildCount(text);
         return {
           src: `${SVG_URL}${encodeURIComponent(text)}`,
           svg: text,
@@ -811,6 +816,11 @@ export async function renderLibraryModel(
 /** One run of words in a drawn SVG: its type size and box in view-box units, after transforms. */
 export type DrawnWords = {
   words: string;
+  /**
+   * The frames the words show in, when they do not show in every one (TEACH-247 part p): Present's
+   * builds 0..n, then n + 1 for the answer revealed.
+   */
+  shown?: number[];
   fs: number;
   x0: number;
   y0: number;
@@ -843,6 +853,28 @@ export function inspectDrawnSvg(svgText: string): {
       const svg = host.querySelector("svg");
       const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
       const words: DrawnWords[] = [];
+      const n = buildCount(svgText);
+      const all = Array.from({ length: n + 2 }, (_, i) => i);
+      const nums = (v: string | null) => (v ?? "").split(" ").filter(Boolean).map(Number);
+      /** The frames a mark shows in (kept on every frame: undefined). */
+      const shownIn = (el: Element): number[] | undefined => {
+        let on = all;
+        for (let e: Element | null = el; e && e !== svg; e = e.parentElement) {
+          const at = (i: number) => Math.min(i, n);
+          const s = Number(e.getAttribute("data-s") ?? 0);
+          const f = e.hasAttribute("data-f") ? nums(e.getAttribute("data-f")) : undefined;
+          const x = nums(e.getAttribute("data-x"));
+          on = on.filter(
+            (i) =>
+              at(i) >= s &&
+              (!f || f.includes(at(i))) &&
+              !x.includes(at(i)) &&
+              !(e?.hasAttribute("data-reveal") && i <= n) &&
+              !(e?.hasAttribute("data-qn") && i > n),
+          );
+        }
+        return on.length === all.length ? undefined : on;
+      };
       for (const el of svg ? [...svg.querySelectorAll("text")] : []) {
         let mm: M = ID;
         for (let e: Element | null = el as unknown as Element; e && e !== svg; e = e.parentElement)
@@ -857,8 +889,10 @@ export function inspectDrawnSvg(svgText: string): {
         const xs = t.map((p) => p[0] as number);
         const ys = t.map((p) => p[1] as number);
         const scale = Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1;
+        const shown = shownIn(el as unknown as Element);
         words.push({
           words: w,
+          ...(shown ? { shown } : {}),
           fs: typeOf(el as unknown as Element).fs * scale,
           x0: Math.min(...xs),
           y0: Math.min(...ys),

@@ -160,6 +160,8 @@ export async function replayRun(
     checker?: CheckerFlags;
     /** The saved writer text changed before the run (a test's edited slide). */
     text?: (text: string) => string;
+    /** The writer's checks act (default) or are only logged (TEACH-312 part i). */
+    checks?: WriterRun["checks"];
   } = {},
 ) {
   const saved = JSON.parse(read(b, "brief.json")) as Brief;
@@ -194,6 +196,7 @@ export async function replayRun(
     held: recordedHeld(b),
     // A replay reproduces its recorded run: every flag off unless the caller turns one on.
     checker: { ...CHECKER_OFF, ...o.checker },
+    ...(o.checks ? { checks: o.checks } : {}),
     ...(o.hooks ?? {}),
     ...(split
       ? {}
