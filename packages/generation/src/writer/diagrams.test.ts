@@ -6,6 +6,7 @@ import { DIAGRAM_SAMPLES, MEANING_SAMPLES, openaiSchemaFaults } from "@tj/slides
 import { getTheme } from "@tj/slides/themes";
 import { BudgetExceeded } from "../types";
 import pinnedDefs from "./bundles/base4/diagram-defs.gen.json" with { type: "json" };
+import { writerCaps } from "./contract";
 import {
   acceptWriterSpec,
   type DrawerCall,
@@ -355,10 +356,12 @@ describe("the writer's pinned diagram defs are the drawer's own schema (TEACH-11
       for (const [name, def] of Object.entries(defs[st] ?? {})) {
         const m = /^dg-(.+)-(side|full)$/.exec(name);
         if (!m) continue;
+        // The pinned file is the lab's evidence; the caps code lifts (writerCaps) are compared lifted.
+        const lift = (d: J) => writerCaps(d, m[1] as string, st, m[2] as "side" | "full");
         expect(
-          r2Def(m[1] as (typeof R2_KINDS)[number], st, m[2] as "side" | "full"),
+          lift(r2Def(m[1] as (typeof R2_KINDS)[number], st, m[2] as "side" | "full") as J),
           `${st} ${name}`,
-        ).toEqual(def as J);
+        ).toEqual(lift(def as J));
         n += 1;
       }
     expect(n).toBeGreaterThan(80);

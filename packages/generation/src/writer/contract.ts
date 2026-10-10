@@ -1,4 +1,4 @@
-import { diagramJsonSchema, LIMIT_TEXT } from "@tj/slides/diagrams";
+import { diagramJsonSchema, LIMIT_TEXT, SLOT_LIMITS } from "@tj/slides/diagrams";
 
 /*
  * The writer's contract with the drawer and the brief, in code (TEACH-110 part k, rootcause
@@ -105,6 +105,32 @@ export function freeformLabels(): J {
     maxItems: max,
     items: { type: "string", description: `at most ${len} characters` },
   };
+}
+
+/**
+ * The writer's array caps as code holds them (register content-01, content-02, diagrams-10). A
+ * table's `rows` carry no `maxItems`: constrained decoding closed a capped array mid-list (a 1-20
+ * table stopped at 15, its last cell a stray word), so the writer writes every row and code packs
+ * and continues a long table (ruling 197, `table-pack.ts`); the slot's count stays as words.
+ * Fraction shapes are capped at what the slot now holds (the measured slot table). `def` is one
+ * `dg-<kind>-<slot>` def; returns a new def, or the same one for any other kind.
+ */
+export function writerCaps(
+  def: J,
+  kind: string,
+  stage: "KS1" | "KS2" | "KS3-5",
+  slot: "side" | "full",
+): J {
+  const lim = SLOT_LIMITS.limits[stage][slot][kind];
+  const field = kind === "table" ? "rows" : kind === "fraction-shapes" ? "shapes" : undefined;
+  const props = def.properties as Record<string, J> | undefined;
+  if (!lim || !field || !props?.[field]) return def;
+  const list: J = { ...props[field] };
+  if (kind === "table") {
+    delete list.maxItems;
+    list.description = `about ${lim.items} rows fit in this slot; write every row the table needs, a longer table continues on the next slide`;
+  } else list.maxItems = lim.items;
+  return { ...def, properties: { ...props, [field]: list } };
 }
 
 /** `flow[].teaches`: only the approved objectives' numbers (`1..n`). */

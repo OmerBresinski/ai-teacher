@@ -235,6 +235,9 @@ for (const [kind, [field, noun]] of Object.entries(MAIN)) {
     min: 1,
     max: 12,
     cmin: kind === "fraction-shapes" ? 1 : kind === "number-line" ? 3 : 10,
+    // A shape's name is measured at 4 shapes, the most the writer asked before the cap rose to 6
+    // (register diagrams-10), so 4 named shapes keep the room they had.
+    ...(kind === "fraction-shapes" ? { charsAt: 4 } : {}),
     spec: (k, c) => ({
       ...base,
       [field]: Array.from({ length: k }, (_, i) =>
