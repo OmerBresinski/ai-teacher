@@ -235,6 +235,9 @@ for (const [kind, [field, noun]] of Object.entries(MAIN)) {
     min: 1,
     max: 12,
     cmin: kind === "fraction-shapes" ? 1 : kind === "number-line" ? 3 : 10,
+    // A shape's name is measured at 4 shapes, the most the writer asked before the cap rose to 6
+    // (register diagrams-10), so 4 named shapes keep the room they had.
+    ...(kind === "fraction-shapes" ? { charsAt: 4 } : {}),
     spec: (k, c) => ({
       ...base,
       [field]: Array.from({ length: k }, (_, i) =>
@@ -258,7 +261,8 @@ function draws(spec: unknown, g: Group, slot: Slot): boolean {
               template: SLOT_LAYOUT[slot],
               heading: "Heading",
               lead: LEAD,
-              points: ["One point", "Another point"],
+              // A big diagram's slot is measured without points (with them it carries key cards).
+              ...(slot === "full" ? {} : { points: ["One point", "Another point"] }),
               figure: { diagram: drawn },
             } as never,
             getTheme(th),
@@ -291,7 +295,7 @@ function box(template: string, g: Group) {
           template,
           heading: "Heading",
           lead: LEAD,
-          points: ["One", "Two"],
+          ...(template === "big-diagram" ? {} : { points: ["One", "Two"] }),
           questions: ["Q1", "Q2"],
           formula: "a = b",
           figure: { diagram: spec },

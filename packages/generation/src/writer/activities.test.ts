@@ -563,18 +563,19 @@ describe("the writer stage on a fake model", () => {
    * bf4e7b49 (before activities), Standard (9-12 slides): activities off must send exactly these.
    */
   // Repinned for TEACH-110 part k: the contract lines (contract.ts) and the teaches enum.
+  // Schema repinned for TEACH-110 part m: table rows capped at 32, fraction shapes up to 6 (writerCaps).
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
-      "675aa7a2d7b7fd539acdac1fda02855c1dfc340944eee8c20e8a3220e8b8048c",
+      "6c2aef8e7bb0b37d3629f418f4da12d9d0953ae3aaab4e2117417514bbae0d4c",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
-      "2770aa00349752b41ab055c9ae7aa40732ce6866027c615ffbb4a20f46f22e91",
+      "12f84564cb1219e3a826034d77c76b298a42a0a4576ab944535df3bfda4c40c1",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
-      "de2c774b27d484f7ee834c7744d558346ad861dad7c3f4861074249b941ab9c6",
+      "32ef0397c356a16045d5a9490d7a999884d1f0a3a4dcd959e18748ba14c38ea6",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");

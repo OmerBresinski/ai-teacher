@@ -80,7 +80,7 @@ export const LIMITS = {
   /** Equal groups of counters. */
   groups: { totalMax: 40, groupsMin: 2, groupsMax: 10 },
   /** Fraction shapes: shapes cut into equal parts. */
-  fractions: { shapes: 4, partsMax: 12, nameChars: 12 },
+  fractions: { shapes: 6, partsMax: 12, nameChars: 12 },
   /** Particle panels. */
   particles: {
     panels: 3,

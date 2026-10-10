@@ -1,0 +1,94 @@
+{
+  "id": "s7",
+  "kind": "diagram",
+  "elements": [
+    {
+      "type": "text",
+      "name": "Heading",
+      "x": 64,
+      "y": 46,
+      "w": 832,
+      "h": 55,
+      "text": "Cacti: surviving with little water"
+    },
+    {
+      "type": "text",
+      "name": "Lead",
+      "x": 64,
+      "y": 160,
+      "w": 832,
+      "h": 34,
+      "text": "An adaptation can help collect, store or save water."
+    },
+    {
+      "type": "shape",
+      "name": "Bullet",
+      "x": 66,
+      "y": 227,
+      "w": 9,
+      "h": 9
+    },
+    {
+      "type": "text",
+      "name": "Point",
+      "x": 89,
+      "y": 214,
+      "w": 807,
+      "h": 35,
+      "text": "Spines instead of broad leaves reduce water loss."
+    },
+    {
+      "type": "shape",
+      "name": "Bullet",
+      "x": 66,
+      "y": 276,
+      "w": 9,
+      "h": 9
+    },
+    {
+      "type": "text",
+      "name": "Point",
+      "x": 89,
+      "y": 263,
+      "w": 807,
+      "h": 35,
+      "text": "Thick stems store water for dry periods."
+    },
+    {
+      "type": "shape",
+      "name": "Bullet",
+      "x": 66,
+      "y": 325,
+      "w": 9,
+      "h": 9
+    },
+    {
+      "type": "text",
+      "name": "Point",
+      "x": 89,
+      "y": 312,
+      "w": 807,
+      "h": 35,
+      "text": "Widespread shallow roots absorb brief rainfall."
+    },
+    {
+      "type": "shape",
+      "name": "Panel",
+      "x": 64,
+      "y": 363,
+      "w": 832,
+      "h": 141
+    },
+    {
+      "type": "image",
+      "name": "Diagram",
+      "x": 86,
+      "y": 385,
+      "w": 788,
+      "h": 97,
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg%…",
+      "alt": "A cactus with spines and a thick stem stands above a soil cutaway, with widespread shallow roots just beneath the surface."
+    }
+  ],
+  "source": "t-unlock/.data/teacher-path/pr440-paid-2/recording/ks3-y7-science-adaptations-signed-in/lesson.json slides[7]"
+}

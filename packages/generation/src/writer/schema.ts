@@ -1,5 +1,5 @@
 import { type WriterBundle, writerBundle } from "./bundle";
-import { freeformLabels, teachesSchema } from "./contract";
+import { freeformLabels, teachesSchema, writerCaps } from "./contract";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -228,6 +228,10 @@ export function writerSchema(
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
   const defs = s.$defs as Record<string, J>;
+  for (const [name, def] of Object.entries(defs)) {
+    const m = /^dg-(.+)-(side|full)$/.exec(name);
+    if (m) defs[name] = writerCaps(def, m[1] as string, stage, m[2] as "side" | "full");
+  }
   const free = defs["diagram-freeform"];
   if (free)
     defs["diagram-freeform"] = {

@@ -9,7 +9,7 @@ import {
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
-import { firstTeaching, slideRole } from "./role";
+import { asks, firstTeaching, slideRole } from "./role";
 
 /*
  * The writer's slides laid out on `@tj/slides` templates (TEACH-110 part a), ported from the
@@ -139,6 +139,28 @@ export function normalise(s: S): S {
   if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
   return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
 }
+
+/**
+ * Study figures (FIX-PLAN group C, register diagrams-05): kinds pupils read part by part. On a
+ * teaching slide they are laid across the slide, the points as key cards under them (ruling 194);
+ * the template keeps diagram + text when the drawing would be smaller across the slide.
+ */
+const STUDY_KINDS = new Set([
+  "flow",
+  "cycle",
+  "timeline",
+  "line-graph",
+  "labelled-diagram",
+  "particles",
+]);
+export function studyFigure(f: Figure | undefined): boolean {
+  if (!f || !("diagram" in f)) return false;
+  const d = f.diagram as { kind?: unknown; rows?: unknown };
+  const kind = String(d?.kind ?? "");
+  return STUDY_KINDS.has(kind) || (kind === "table" && Array.isArray(d.rows) && d.rows.length >= 3);
+}
+/** A slide that teaches (teach or worked), not one that asks pupils. */
+const teaches = (s: S) => !asks(slideRole(s, { index: 0 }));
 
 /** The pictures and diagrams a slide holds, with stable keys. */
 function figures(s: S): { key: string; f: Pic | Dia }[] {
@@ -342,6 +364,9 @@ export function toInput(
     case "picture-text":
     case "diagram-text": {
       const f = fig(template === "picture-text" ? "picture" : "diagram");
+      const points = pts(s.points);
+      if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
+        return { template: "big-diagram", heading, lead, points, figure: f };
       // A picture or diagram that could not be made: the words stand alone, never an empty panel.
       return {
         template: f ? template : "explain",
@@ -356,8 +381,11 @@ export function toInput(
       const f = fig(template === "big-picture" ? "picture" : "diagram");
       // A library model's slide: heading, the model, and the one-line lead as its takeaway under it
       // (a model drawn as the slide body keeps it too: the drawing fits above it).
+      // A long table's slide moved across the slide (table-pack.ts, `cardsUnder`) carries its
+      // points as key cards (ruling 194); other big visuals' points are read in the notes.
+      const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
       return f
-        ? { template, heading, lead, figure: f }
+        ? { template, heading, lead, figure: f, ...(cards.length ? { points: cards } : {}) }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {

@@ -35,6 +35,7 @@ import {
   QUESTION_TEMPLATES,
   questionSafe,
   withBuildCounts,
+  writerSpecOf,
 } from "./diagrams";
 import {
   asPicture,
@@ -129,6 +130,7 @@ import {
   writerMaxTokens,
 } from "./services";
 import { slideStates } from "./slide-states";
+import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -662,6 +664,49 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * closes in the writer's stream (C1), in slide order, and at the end for any slide the stream
    * did not open: the final parse stays the source of truth.
    */
+  /** Ruling 197: the continuation slides of a table too long for its slide, by slide. */
+  const tableRest = new Map<number, S[]>();
+  /** The first part's table (specKey) each continuation belongs to, so a rewrite can't leave it stale. */
+  const tableFirst = new Map<number, string>();
+  /**
+   * Ruling 197: a table longer than its slot holds packs into 4 columns and continues on the next
+   * slide; one that fits as written is left alone. Run on every slide the stage opens or rewrites:
+   * a rewrite that keeps the first part's table keeps its continuations, any other drops or
+   * recomputes them.
+   */
+  const splitTable = (idx: number, s: S): S => {
+    if (tableFirst.get(idx) === specKey(s.figure)) return s;
+    const slot = slotOf(String(s.template ?? ""));
+    // A candidate fits when it lays out (as the deck will) with its table drawn and nothing over.
+    const tc = continueTable(s, (sl, first, asWritten) => {
+      const t = sl.figure as S;
+      // The slot check the writer's spec meets when it is drawn (the slide's own part only).
+      const probe = (at: "side" | "full") =>
+        !layoutSlotProbe(drawable(t), at, base.stage, base.theme).length;
+      if (asWritten) return probe(slot);
+      if (first && !probe(slotOf(String(sl.template ?? "")))) return false;
+      const m = materialise(sl, {
+        ...base,
+        index: idx,
+        plan,
+        visual: () => ({ status: "diagram", spec: drawable(t) }),
+      });
+      return (
+        !m.over.length &&
+        !m.diagram?.length &&
+        m.slide.elements.some((e) => e.type === "image" && e.name === "Diagram")
+      );
+    });
+    if (!tc) {
+      tableRest.delete(idx);
+      tableFirst.delete(idx);
+      return s;
+    }
+    tableRest.set(idx, tc.rest);
+    tableFirst.set(idx, specKey(tc.first.figure));
+    log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
+    return tc.first;
+  };
   const openSlide = (idx: number, raw: S) => {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
@@ -682,6 +727,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       else if (a.fixes.length) log({ ev: "activity-fixed", slide: idx + 1, fixes: a.fixes });
       s = a.slide;
     }
+    s = splitTable(idx, s);
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
@@ -840,14 +886,27 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {
     const slides: WriterSlide[] = [];
+    /** Plan slide number (1-based) to its number in the deck, once continuations sit between. */
+    const at = new Map<number, number>();
     for (let i = 0; i < Math.max(n, 2); i++) {
       const own = slideAt(i);
       if (!own) continue;
       slides.push(own);
+      at.set(i + 1, slides.length);
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
+      for (const [k, t] of (tableRest.get(i) ?? []).entries()) {
+        const m = materialise(t, {
+          ...base,
+          index: i,
+          plan,
+          visual: () => ({ status: "diagram", spec: drawable(t.figure as S) }),
+        });
+        slides.push({ id: `s${i + 1}t${k + 1}`, ...withBuildCounts(m.slide), notes: "" });
+      }
     }
-    return slides;
+    // A continuation moves the slides after it: "slide 7" in notes or on a slide follows them.
+    return renumberSlideRefs(slides, at);
   };
   if (run.beforeEditable) {
     await run.beforeEditable();
@@ -972,7 +1031,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const sync = syncFigure(plan.slides[i] as S | undefined, slideNoEmDash(next0));
     if (sync.action === "redrawn" || sync.action === "drop")
       log({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why });
-    const next = sync.action === "drop" ? asWords(sync.slide as S) : (sync.slide as S);
+    const next = splitTable(
+      i,
+      sync.action === "drop" ? asWords(sync.slide as S) : (sync.slide as S),
+    );
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));
     const oldState = new Map(oldAsks.map((a) => [a.key, visualState(i)(a.key)]));

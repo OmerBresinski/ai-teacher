@@ -1125,6 +1125,166 @@ function bigRect(c: Ctx, input: TemplateInput) {
   return { x: G.margin + Math.round((G.width - pw) / 2), y: G.band.y, w: pw, h: G.band.h - lh };
 }
 
+/** The slide's foot: the lowest a strip of text or cards may reach on the 960 x 540 grid. */
+const FOOT = 540 - 16;
+const PLOT = /graph|chart|profile|plot|axes/;
+/** The smallest type a board slide shows (the drawer's TYPE_FLOOR). */
+const TYPE_FLOOR_PT = 18;
+/** Kinds that read along a line and gain from the slide's width. */
+const WIDE = new Set(["flow", "timeline", "table"]);
+
+/**
+ * UX ruling 194: a full-width diagram carries the slide's points in a strip of key cards under it.
+ * Up to 4 cards share a row (more take two rows); a card is the point's label, if any, over its
+ * words, on a washed card with an accent edge, the same card the lead + points column sets, at
+ * body size. Returns the strip's height and its draw.
+ */
+function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: number) => void } {
+  const n = points.length;
+  const cols = n <= 4 ? n : Math.ceil(n / 2);
+  const gap = 12;
+  const w = Math.floor((G.width - (cols - 1) * gap) / cols);
+  const bar = 5;
+  // The cards keep body size: they never read smaller than the points they replace.
+  const role = "body";
+  const size = c.s[role];
+  const pad = Math.round(size * 0.6);
+  const iw = w - 2 * pad - bar;
+  const cards = points.map((p) => {
+    const label = pointLabel(p);
+    const lh = label ? measure(c, label, "lead", iw, 700) + 4 : 0;
+    return { p, label, lh, h: 2 * pad + lh + measure(c, pointText(p), role, iw) };
+  });
+  const rows: (typeof cards)[] = [];
+  for (let k = 0; k < cards.length; k += cols) rows.push(cards.slice(k, k + cols));
+  const heights = rows.map((r) => Math.max(...r.map((x) => x.h)));
+  const h = heights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+  const draw = (y0: number) => {
+    let y = y0;
+    rows.forEach((r, ri) => {
+      const rh = heights[ri] ?? 0;
+      r.forEach((card, k) => {
+        const x = G.margin + k * (w + gap);
+        box(c, { x, y, w, h: rh }, wash(c.t), {
+          name: "Key card",
+          radius: Math.min(c.t.radius, 12),
+        });
+        box(c, { x, y, w: bar, h: rh }, c.t.colors.accent, {
+          name: "Key edge",
+          shape: "rect",
+          radius: 0,
+        });
+        if (card.label)
+          text(
+            c,
+            card.label,
+            "lead",
+            { x: x + bar + pad, y: y + pad, w: iw },
+            { color: c.t.colors.accent, weight: 700, name: "Key label" },
+          );
+        text(
+          c,
+          pointText(card.p),
+          role,
+          { x: x + bar + pad, y: y + pad + card.lh, w: iw },
+          { color: c.t.colors.ink, name: "Point" },
+        );
+      });
+      y += rh + gap;
+    });
+  };
+  return { h, draw };
+}
+
+/** The label size a spec shows at in `rect` (the panel's inset taken off); undefined when it does not draw. */
+function drawnSize(
+  c: Ctx,
+  f: Figure | undefined,
+  rect: { x: number; y: number; w: number; h: number },
+) {
+  if (!f || !("diagram" in f) || diagramFailed(f.diagram)) return undefined;
+  const i = G.inset;
+  const r = drawDiagram(f.diagram, c.t, {
+    x: rect.x + i,
+    y: rect.y + i,
+    w: rect.w - 2 * i,
+    h: rect.h - 2 * i,
+    fs: c.s.small,
+  });
+  if (!r.ok) return undefined;
+  // The drawing is zoomed to fill its box: each text on the slide is its font size times that
+  // zoom. The smallest text in the drawing is the one that counts.
+  const el = r.element as { w?: number; h?: number; src?: string };
+  return { fs: shownMinFont(el) ?? r.fs };
+}
+
+/** The smallest font size an SVG image element shows on the slide (its font sizes times its zoom). */
+export function shownMinFont(el: { w?: number; h?: number; src?: string }): number | undefined {
+  let svg = el.src ?? "";
+  try {
+    const body = svg.slice(svg.indexOf(",") + 1);
+    svg = /;base64,/.test(svg.slice(0, 60)) ? atob(body) : decodeURIComponent(body);
+  } catch {
+    return undefined;
+  }
+  const vb = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
+  const zoom = vb ? Math.min(Number(el.w) / Number(vb[1]), Number(el.h) / Number(vb[2])) : 1;
+  const sizes = [...svg.matchAll(/font-size(?:="|:\s*)([\d.]+)/g)].map((m) => Number(m[1]));
+  if (!sizes.length || !Number.isFinite(zoom) || zoom <= 0) return undefined;
+  return Math.min(...sizes) * zoom;
+}
+
+/**
+ * A big diagram with the slide's points (rulings 194, and the study-figure slot): the drawing
+ * across the slide, the lead as its caption, the points as key cards at the foot. Type-floor check:
+ * a spec must draw at least as large here as it does beside the words, or this layout is refused
+ * (false) and the caller lays the slide as diagram + text. Nothing is added to `c` when refused.
+ */
+function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): boolean {
+  const f = input.figure;
+  if (!f || "photo" in f) return false;
+  const d: Ctx = { ...c, els: [], over: [], fails: [] };
+  heading(d, input.heading);
+  const strip = keyCardStrip(d, points);
+  const lead = input.lead;
+  const lh = lead ? measure(d, lead, "body", G.width) + 8 : 0;
+  const top = FOOT - strip.h;
+  const h = top - 12 - lh - G.band.y;
+  if (h < 160) return false;
+  const kind = "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
+  const pw = PLOT.test(kind) ? Math.min(G.width, Math.round(h * 1.7)) : G.width;
+  const rect = { x: G.margin + Math.round((G.width - pw) / 2), y: G.band.y, w: pw, h };
+  if ("diagram" in f) {
+    const big = drawnSize(d, f, rect);
+    const side = drawnSize(d, f, { x: G.panel.x, y: G.band.y, w: G.panel.w, h: G.band.h });
+    // Type floor and room: labels no smaller than beside the words. A drawing whose size is set by
+    // its height (particles, a labelled drawing, a cycle, a graph) only comes across the slide when
+    // it does not draw beside the words; wide kinds (a flow, a timeline, a table) gain from width.
+    // Type floor: every label shown at 18 pt or more, and the cards at body size, also 18 or more.
+    if (!big || big.fs < TYPE_FLOOR_PT || d.s.body < TYPE_FLOOR_PT) return false;
+    if (side && (big.fs < side.fs || !WIDE.has(kind))) return false;
+    // Not drawn beside the words: across the slide replaces the squashed band under the words
+    // (register diagrams-05), never a figure the slide would otherwise lose to a fallback.
+    if (!side && !WIDE.has(kind)) {
+      const below = belowRect(d, input);
+      if (below.h < 140 || !figureDraws(d, f, below, [])) return false;
+    }
+  }
+  if (!figurePanel(d, f, rect)) return false;
+  if (lead)
+    text(
+      d,
+      lead,
+      "body",
+      { x: G.margin, y: G.band.y + h + 8, w: G.width },
+      { color: d.t.colors.muted, name: "Caption" },
+    );
+  strip.draw(top);
+  c.els.push(...d.els);
+  c.over.push(...d.over);
+  return true;
+}
+
 function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const f = input.figure;
   let out = input;
@@ -1269,6 +1429,17 @@ function layoutOnce(
     fullSize: opts.fullSize ?? false,
     ...(headingCap ? { headingCap } : {}),
   };
+  // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
+  // drawing would not be larger there than beside the words, the slide is laid diagram + text.
+  if (input.template === "big-diagram" && input.points?.length) {
+    if (!bigWithCards(c, input, input.points))
+      return layoutOnce({ ...input, template: "diagram-text" }, theme, stage, opts, headingCap);
+    // The strip sits on the slide's foot, so the body is not moved down under a taller heading.
+    return {
+      result: { slide: { kind: KIND["big-diagram"], elements: c.els }, over: c.over },
+      bodyFromHeading: true,
+    };
+  }
   input = withoutFailedFigures(c, input);
   const tpl = input.template;
   let background: Slide["background"];
