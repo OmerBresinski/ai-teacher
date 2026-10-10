@@ -41,7 +41,9 @@ describe("eachBounded", () => {
  * seven recorded repair answers. Only the model is replaced: each recorded answer is returned after
  * a delay, so the order the stage makes its calls in is visible.
  */
-const FIXTURE = "y1-science-animals-young";
+// y5: its replay still has two slides that fail the fit (y1 lost one when two picture cards
+// stopped overflowing, ruling 203 P10), so the repairs can run side by side.
+const FIXTURE = "y5-maths-fractions-of-amounts";
 type Call = { name: string; user: string; start: number; end: number };
 
 function timedServices(redo: (n: number) => unknown, deck?: () => unknown) {
