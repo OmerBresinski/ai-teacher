@@ -337,6 +337,31 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
 }
 
 /** The label floor's draws after the first, and the most the type may grow (flag `libraryLabelFloor`). */
+/**
+ * With checks only logged, why a grown drawing is too big to keep, or undefined. Growing the type
+ * is how a drawing reads at slide size, not a check: a size that will not draw, whose words split
+ * mid-word or are cut short (HEART1 D: the R1 heart's key split "Oxygen-ric / h"), or whose
+ * smallest words come out no larger (some models fit their words to their room) is too big.
+ */
+function floorTooBig(
+  grown: { svg: string } | string,
+  baseSvg: string,
+  place: { w: number; h: number },
+  minPt: number,
+): string | undefined {
+  if (typeof grown === "string") return `it did not draw at the label floor: ${grown}`;
+  const broken = nonFatalSync(
+    () => grownTextFault(baseSvg, grown.svg),
+    (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
+  );
+  if (broken) return broken;
+  const pt = nonFatalSync(
+    () => placedTypeSize(grown.svg, place).minPt,
+    () => 0,
+  );
+  return (pt ?? 0) <= minPt + 0.01 ? "its smallest words came out no larger" : undefined;
+}
+
 const LABEL_FLOOR_TRIES = 3;
 export const LABEL_FLOOR_MAX = 2;
 
@@ -451,39 +476,18 @@ export async function libraryDiagram(
         () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
         (e) => String(e).slice(0, 160),
       );
-      // Growing the type is how the drawing reads at slide size, not a check. A size that will not
-      // draw, or whose words split mid-word or are cut short, is too big: the drawing keeps the
-      // largest size that drew cleanly (HEART1 D: the R1 heart's key split "Oxygen-ric / h").
+      // Two strategies. Checks on: a grown size is drawn and the checks below fall back. Checks only
+      // logged: a size `floorTooBig` rejects is backed off from, keeping the largest clean size.
       if (!ask.logOnly && typeof grown === "string")
         return fallback(`it did not draw at the label floor: ${grown}`);
-      const broken = !ask.logOnly
-        ? undefined
-        : typeof grown === "string"
-          ? `it did not draw at the label floor: ${grown}`
-          : nonFatalSync(
-              () => grownTextFault(baseSvg, grown.svg),
-              (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
-            );
-      // ...and so is one whose smallest words show no larger: some models fit their words to the
-      // room they have, so bigger type can come out smaller (the heart at 1.1 to 1.2).
-      const notLarger =
-        ask.logOnly &&
-        typeof grown !== "string" &&
-        !broken &&
-        (nonFatalSync(
-          () => placedTypeSize(grown.svg, place).minPt,
-          () => 0,
-        ) ?? 0) <=
-          t.minPt + 0.01
-          ? "its smallest words came out no larger"
-          : undefined;
-      if (typeof grown === "string" || broken || notLarger) {
+      const why = ask.logOnly ? floorTooBig(grown, baseSvg, place, t.minPt) : undefined;
+      if (why || typeof grown === "string") {
         log({
           ev: "lib-label-floor-too-big",
           key: ask.key,
           model: ask.model,
           typeScale: ts,
-          reason: broken ?? notLarger,
+          reason: why,
         });
         tooBig = ts;
         continue;

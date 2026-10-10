@@ -331,7 +331,6 @@ function parseTransform(t: string | null): M {
 }
 const num = (el: Element, k: string) => Number.parseFloat(el.getAttribute(k) ?? "") || 0;
 
-/** Points along a path's outline: curves and arcs sampled, so a box fits the drawn shape. */
 /** A path's length and the point at a distance along it, on its flattened points (cached by `d`). */
 const walks = new Map<string, { total: number; at: (l: number) => { x: number; y: number } }>();
 export function pathWalk(d: string): {
@@ -364,6 +363,7 @@ export function pathWalk(d: string): {
   return out;
 }
 
+/** Points along a path's outline: curves and arcs sampled, so a box fits the drawn shape. */
 function pathPoints(d: string): [number, number][] {
   const out: [number, number][] = [];
   const toks = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g) ?? [];
