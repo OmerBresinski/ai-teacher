@@ -104,8 +104,8 @@ const report: unknown[] = [];
 
 describe("roleAsk: a library model on a slide that asks keeps its answer back", () => {
   for (const c of CASES) {
-    test(`${c.id}: off (today) ${c.asks ? "draws the answer" : "no reveal"}`, async () => {
-      const { svg, events } = await run(c, undefined);
+    test(`${c.id}: off ${c.asks ? "draws the answer" : "no reveal"}`, async () => {
+      const { svg, events } = await run(c, false);
       expect(events).toContainEqual(
         expect.objectContaining({
           ev: "diagram-done",

@@ -4,14 +4,14 @@
 
 type S = Record<string, unknown>;
 
-/** The production default: no role is stamped until the gate is turned on. */
-export const ROLE_STAMP_DEFAULT = false;
+/** The production default: every written slide's role is logged (TEACH-312 part e). */
+export const ROLE_STAMP_DEFAULT = true;
 /**
  * roleAsk (the slide-role contract, step 2): the drawer's ask and the library fill hide a
- * drawing's answer when the slide's role asks, not only on the four question templates. Default
- * off until its evidence is in.
+ * drawing's answer when the slide's role asks, not only on the four question templates. On by
+ * default since TEACH-312 part e, on the replay evidence recorded there.
  */
-export const ROLE_ASK_DEFAULT = false;
+export const ROLE_ASK_DEFAULT = true;
 
 export type SlideRole =
   | "teach"
