@@ -101,5 +101,6 @@ export function labelRule(
     if (!strokes.some((sg) => near(end, sg)) && !parts.some((pts) => inside(end, pts)))
       out.push("leader ends on nothing drawn");
   }
-  return [...new Set(out)];
+  // Every occurrence, so a caller can count them (two crossings are worse than one).
+  return out;
 }

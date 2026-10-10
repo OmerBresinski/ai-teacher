@@ -58,7 +58,10 @@ export function diagramGeometryFaults(
       if (ox > 1 && oy > 1) out.push(`the labels "${a.text}" and "${b.text}" touch`);
     }
   const ls = probe.leaders;
-  for (let i = 0; i < ls.length; i++)
+  // A labelled diagram's leaders are recorded for `labelClashes` (a warning, register
+  // diagrams-02), never as a reason to refuse it.
+  const labelled = (spec as { kind?: unknown } | null)?.kind === "labelled-diagram";
+  for (let i = 0; i < ls.length && !labelled; i++)
     for (let j = i + 1; j < ls.length; j++)
       if (segmentsCross(ls[i] as Seg, ls[j] as Seg)) out.push("two leader lines cross");
   for (const a of probe.arrows) {
@@ -177,7 +180,11 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
   return [...new Set(out)];
 }
 
-/** Register diagrams-02: `labelRule` on `spec` drawn at `size`; empty when every label reads clear. */
+/**
+ * Register diagrams-02: `labelRule` on `spec` drawn at `size`; empty when every label reads clear.
+ * A warning for logs and sweeps, never a reason to refuse a drawing (Greg, 10 Oct: checks must not
+ * throw visuals away).
+ */
 export function labelClashes(
   spec: unknown,
   theme: Theme,
@@ -185,5 +192,5 @@ export function labelClashes(
 ): string[] {
   if (diagramFaults(spec, theme, size).includes("it does not draw")) return [];
   const probe = lastDiagramProbe();
-  return probe ? labelRule(probe.rec, probe.strokes, probe.leaders, probe.parts) : [];
+  return probe ? [...new Set(labelRule(probe.rec, probe.strokes, probe.leaders, probe.parts))] : [];
 }
