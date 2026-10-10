@@ -6,6 +6,7 @@ import {
   drawnTexts,
   fractionsNamed,
   quantities,
+  statedCounts,
   wordValue,
 } from "./consistency";
 import { capabilityRefusals, checkParams, fillSchema, libraryDiagram } from "./fill";
@@ -342,5 +343,22 @@ describe("S10 paid L y2 s9: an equivalence draws the finer parts with the coarse
       expect(cuts(svg), JSON.stringify(fractions)).toBe(3);
       expect(drawingWordsMismatch("fractions", svg, "Two quarters make one half")).toBeUndefined();
     }
+  });
+});
+
+describe("stated counts: numbers that name things are not counts", () => {
+  const vs = (s: string) => statedCounts(s).map((q) => q.v);
+  test("labels, ordinals and years are left out", () => {
+    expect(vs("Year 3: Step 2 of Part 1")).toEqual([]);
+    expect(vs("Question 4 on page 12")).toEqual([]);
+    expect(vs("The 2nd and 3rd groups")).toEqual([]);
+    expect(vs("The second group has the fourth counter")).toEqual([]);
+    expect(vs("Rivers in 1900 and 2024")).toEqual([]);
+  });
+  test("counts tied to objects and amounts stay", () => {
+    expect(vs("Share 12 equally. One half is 6. One quarter is 3.")).toEqual([12, 6, 3]);
+    expect(vs("Year 5: share 20 sweets between 4 children")).toEqual([20, 4]);
+    expect(vs("Step 1: 1,200 people")).toEqual([1200]);
+    expect(vs("Two fifths of 35")).toEqual([35]);
   });
 });

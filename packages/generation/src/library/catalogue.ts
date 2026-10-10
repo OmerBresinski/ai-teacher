@@ -161,7 +161,7 @@ export async function catalogue(
     if (!m?.meta.years.some((y) => want.includes(y))) continue;
     if (filter) {
       if (year && !m.meta.years.includes(year)) continue;
-      const own = (m.meta as { subjects?: string[] }).subjects ?? [];
+      const own = m.meta.subjects ?? [];
       if (subjects && !GENERAL_MODELS.includes(id) && !own.some((x) => subjects.includes(x)))
         continue;
     }

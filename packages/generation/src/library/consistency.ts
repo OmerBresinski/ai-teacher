@@ -171,17 +171,33 @@ export function fractionsNamed(text: string): { n: number; d: number }[] {
   return out;
 }
 
+/** A label word and the number it names ("Year 3", "Step 2", "Part 1b", "Question 4"). */
+const LABEL_NUMBER =
+  /\b(?:year|yr|step|part|stage|phase|question|q|level|lesson|unit|page|chapter|section|task|activity|table|figure|fig|slide|key stage|ks|round|week|day|term|grade|class|room|box|card|team|group|exercise|example|no\.)\s*\d+[a-z]?\b/gi;
+/** Ordinal words, which order things rather than count them ("the second group"). */
+const ORDINAL_WORDS =
+  /\b(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|(?:thir|four|fif|six|seven|eigh|nine)teenth|(?:twen|thir|for|fif)tieth)\b/gi;
 /**
  * The whole-number counts some words state, fraction names taken out first: "Share 12 equally. One
  * half is 6." gives 12 and 6 (never the 1 of "one half"). Numbers under 2 are not counts.
  */
 export function statedCounts(text: string): Q[] {
   const bare = text
+    // Numbers that name rather than count: "Year 3", "Step 2", "Part 1", ordinals ("2nd", "third"),
+    // and years ("in 1900"). They are not amounts a drawing has to show.
+    .replace(LABEL_NUMBER, " ")
+    .replace(/(?<![\d.,])\d+\s*(?:st|nd|rd|th)\b/gi, " ")
+    .replace(
+      /(?<![\d.,£$€])\b(?:1[0-9]{3}|20[0-9]{2})\b(?![.,]\d|\s*(?:p|mm|cm|km|m|kg|g|ml|l|%)\b)/g,
+      " ",
+    )
     .replace(/(?<![\d.])\d+\s*\/\s*\d+(?![\d.])/g, " ")
     .replace(/[\u00BC-\u00BE\u2150-\u215E]/g, " ")
     .replace(FRACTION_WORDS, (m, lead: string | undefined, d: string) =>
       lead || d.toLowerCase().startsWith("hal") ? " " : m,
-    );
+    )
+    // after the fraction names, so "two fifths" and "a third" are read as fractions first
+    .replace(ORDINAL_WORDS, " ");
   const out: Q[] = [];
   for (const q of quantities(bare)) if (q.v >= 2 && !out.some((o) => same(o, q))) out.push(q);
   return out;
