@@ -67,6 +67,9 @@ export function recolourSlide(slide: Slide, from: Theme, to: Theme): Slide {
     if (next && !map.has(k)) map.set(k, next);
   }
   const walk = (node: unknown, key?: string): unknown => {
+    // A drawing's stored source (TEACH-97 part h) is words and values, never colours on the slide:
+    // a label that happens to read like a palette hex stays as written.
+    if (key === "diagram") return node;
     if (typeof node === "string") {
       return key === "text" ? node : (map.get(node.toLowerCase()) ?? node);
     }

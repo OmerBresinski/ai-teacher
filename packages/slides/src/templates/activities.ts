@@ -169,6 +169,7 @@ function picture(c: Ctx, item: ActivityCard, r: Rect): SlideElement | undefined 
       src: f.drawn.src,
       alt: f.drawn.alt ?? item.text,
       fit: "contain",
+      ...(f.drawn.source ? { diagram: f.drawn.source } : {}),
     } as ImageElement);
   } else if (f && "diagram" in f) kit.figurePanel(c, f, r);
   else {

@@ -13,6 +13,7 @@
  * budget or abort error from the call, which stops the job as every other call's does.
  */
 
+import type { DiagramSource } from "@tj/domain/documents";
 import { TYPE_FLOOR } from "@tj/slides/diagrams";
 import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
@@ -234,8 +235,17 @@ export type LibraryAsk = {
    */
   place?: { w: number; h: number };
 };
+/** A library drawing's source as the image element stores it (`ImageElement.diagram`). */
+export type LibrarySource = Extract<DiagramSource, { kind: "library" }>;
 export type LibraryResult =
-  | { ok: true; drawing: LibraryDrawing; params: J; attempts: number }
+  | {
+      ok: true;
+      drawing: LibraryDrawing;
+      params: J;
+      attempts: number;
+      /** What it was drawn from, for the slide's image element (TEACH-97 part h). */
+      source: LibrarySource;
+    }
   /** The drawer kind to fall back to, and why the model was not drawn. */
   | { ok: false; fallbackKind: string; reason: string };
 
@@ -487,5 +497,12 @@ export async function libraryDiagram(
     drawing: { ...drawn, alt: ask.alt || drawn.alt },
     params,
     attempts,
+    source: {
+      kind: "library",
+      model: ask.model,
+      params: params as Record<string, unknown>,
+      ...(step === undefined ? {} : { step }),
+      ...(typeScale !== 1 ? { typeScale } : {}),
+    },
   };
 }

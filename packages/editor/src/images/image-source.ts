@@ -29,6 +29,28 @@ export function imageFields(source: ImageSource): ImageFields {
   return fields;
 }
 
+/**
+ * The patch a picked image writes over an image it replaces: same id, same frame. A new picture
+ * starts untouched: the old crop, focal point and transform go with the old bitmap (TEACH-153); a
+ * plain upload over a searched image clears the old provenance, and over a drawn diagram the
+ * source it was drawn from (TEACH-97 part h), so the old diagram is never redrawn over it. Either
+ * flavour flips the element to teacher-authored (Images Decision 4).
+ */
+export function replacementFields(source: ImageSource): Partial<ImageElement> {
+  return {
+    alt: undefined,
+    credit: undefined,
+    creditUrl: undefined,
+    crop: undefined,
+    focal: undefined,
+    imageTransform: undefined,
+    source: undefined,
+    diagram: undefined,
+    authoredBy: "teacher",
+    ...imageFields(source),
+  };
+}
+
 /** A file from disk, the clipboard or a drop: downscaled to a data URL. Rejects when unreadable. */
 export async function sourceFromFile(file: File): Promise<ImageSource> {
   const { src, w, h } = await fileToDataUrl(file);
