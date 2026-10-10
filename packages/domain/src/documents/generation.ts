@@ -40,6 +40,12 @@ export type Generation = {
    * settled and its checks have run. Absent on lessons generated before it.
    */
   slideStates?: Record<string, SlideGenerationState>;
+  /**
+   * ISO 8601 UTC: when the writer laid out the whole deck (editable) for this checkpoint. A retry of
+   * the job finishes from that deck instead of writing it again, so a retry never visibly undoes
+   * work (TEACH-312 part j). Absent until then, and on lessons generated before it.
+   */
+  editableAt?: string;
 };
 
 export const SLIDE_GENERATION_STATES = ["writing", "done"] as const;
@@ -68,4 +74,5 @@ export const GenerationSchema = z.strictObject({
   usage: GenerationUsageSchema,
   findings: z.array(FindingSchema),
   slideStates: z.record(z.string(), z.enum(SLIDE_GENERATION_STATES)).optional(),
+  editableAt: z.iso.datetime().optional(),
 });
