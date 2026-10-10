@@ -14,6 +14,7 @@ import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawCubes } from "./cubes";
 import { drawFlow } from "./flow";
 import { drawEqualGroups, drawFractionShapes } from "./groups";
+import { segThroughBox } from "./label-rule";
 import { drawLabelled } from "./labelled";
 import { mendParticleLabels } from "./labels3";
 import { drawLineGraph } from "./line-graph";
@@ -246,6 +247,7 @@ function body(
     arrows?: Ctx["arrows"];
     axes?: Ctx["axes"];
     leaders?: Ctx["leaders"];
+    parts?: Ctx["parts"];
   },
   fs?: number,
 ): string {
@@ -288,6 +290,7 @@ function body(
         arrows: probe.arrows,
         axes: probe.axes,
         leaders: probe.leaders,
+        parts: probe.parts,
       }
     : x;
   // Modern looks: the drawing keeps an inset from its zone's left and right edges, so no label,
@@ -301,6 +304,7 @@ function body(
         strokes: probe.strokes.length,
         arrows: probe.arrows?.length ?? 0,
         leaders: probe.leaders?.length ?? 0,
+        parts: probe.parts?.length ?? 0,
       }
     : undefined;
   const inner = (() => {
@@ -362,6 +366,7 @@ function body(
       l[0] += inset;
       l[2] += inset;
     }
+    for (const pts of probe.parts?.slice(marks.parts) ?? []) for (const q of pts) q[0] += inset;
   }
   const fin = finished(laddered(inner), x.c, mix, x.dark);
   const drawn = inset ? `<g transform="translate(${n(inset)},0)">${fin}</g>` : fin;
@@ -556,6 +561,7 @@ export type DiagramProbe = {
   arrows: NonNullable<Ctx["arrows"]>;
   axes: NonNullable<Ctx["axes"]>;
   leaders: NonNullable<Ctx["leaders"]>;
+  parts: NonNullable<Ctx["parts"]>;
 };
 const diagramProbe = (h: number): DiagramProbe => ({
   rec: [],
@@ -565,6 +571,7 @@ const diagramProbe = (h: number): DiagramProbe => ({
   arrows: [],
   axes: [],
   leaders: [],
+  parts: [],
 });
 let lastProbe: DiagramProbe | undefined;
 /** The probe of the last `diagramFaults` call (the geometry checks read arrows and axes from it). */
@@ -600,7 +607,17 @@ export function diagramFaults(
   };
   for (const b of rec) {
     if (strokes.some((sg) => crosses(b, sg)))
-      out.push(`the label "${b.text}" sits across a line of the drawing`);
+      out.push(`the label "${b.text}" sits across a line of the drawing`); // Register diagrams-02: another label's leader across these words, or ending under them, and
+    // the reader cannot tell which label names what. (A label's own leader starts at its edge.) The
+    // drawer's labelled diagrams only: the code-drawn scenes place their own keys.
+    const inner = { x0: b.x0 + 3, y0: b.y0 + 4, x1: b.x1 - 3, y1: b.y1 - 4 };
+    for (const [sx, sy, ex, ey] of s.kind === "labelled-diagram" ? probe.leaders : []) {
+      if (sx >= b.x0 - 6 && sx <= b.x1 + 6 && sy >= b.y0 - 6 && sy <= b.y1 + 6) continue;
+      if (segThroughBox([sx, sy], [ex, ey], inner))
+        out.push(`another label's leader runs across the label "${b.text}"`);
+      else if (ex > b.x0 - 2 && ex < b.x1 + 2 && ey > b.y0 - 2 && ey < b.y1 + 2)
+        out.push(`the label "${b.text}" hides the point another label names`);
+    }
   }
   const area = (b: DrawnText) => Math.max(1, (b.x1 - b.x0) * (b.y1 - b.y0));
   const over = (a: DrawnText, b: DrawnText) =>

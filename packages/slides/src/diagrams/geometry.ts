@@ -14,6 +14,7 @@ import type {
 } from "@tj/domain/documents";
 import { pathSegments, samplePath } from "../path";
 import { diagramElement, diagramFaults, lastDiagramProbe } from "./index";
+import { labelRule, segmentsCross } from "./label-rule";
 import { TYPE_FLOOR } from "./style";
 
 /** The least room between a label and the drawing's left or right edge, in points. */
@@ -79,14 +80,7 @@ export function diagramGeometryFaults(
 
 type Seg = [number, number, number, number];
 
-/** Two segments cross at a point inside both (touching ends do not count). */
-export function segmentsCross([ax, ay, bx, by]: Seg, [cx, cy, dx, dy]: Seg): boolean {
-  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
-  if (Math.abs(d) < 1e-9) return false;
-  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
-  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
-  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98;
-}
+export { segmentsCross };
 
 /** How large the slide shows the drawing against its own units: the image width over the viewBox. */
 export function renderedScale(spec: unknown, theme: Theme, size: { w: number; h: number }): number {
@@ -181,4 +175,15 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
       }
     }
   return [...new Set(out)];
+}
+
+/** Register diagrams-02: `labelRule` on `spec` drawn at `size`; empty when every label reads clear. */
+export function labelClashes(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number; fs?: number },
+): string[] {
+  if (diagramFaults(spec, theme, size).includes("it does not draw")) return [];
+  const probe = lastDiagramProbe();
+  return probe ? labelRule(probe.rec, probe.strokes, probe.leaders, probe.parts) : [];
 }

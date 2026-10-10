@@ -57,6 +57,8 @@ export type Ctx = {
   arrows?: { tip: [number, number]; target: { x0: number; y0: number; x1: number; y1: number } }[];
   /** With `rec`: every leader line drawn from a label to its point (the crossing check). */
   leaders?: [number, number, number, number][];
+  /** With `rec`: the outline of each closed part a leader may end on (a labelled diagram's shapes). */
+  parts?: [number, number][][];
   /** With `rec`: each value axis's top and the largest value drawn against it. */
   axes?: { name: string; max: number; data: number }[];
 };
