@@ -91,13 +91,46 @@ export function writerBrief(lesson: Lesson): Brief {
   };
 }
 
+/**
+ * The slides an earlier attempt of this job finished (`done`, ADR 0037), by id. A retry keeps each
+ * exactly as saved: the teacher has seen it, may be editing it, and its picture is placed.
+ */
+export function finishedSlides(lesson: Lesson): Map<string, Slide> {
+  const states = lesson.generation?.slideStates ?? {};
+  return new Map(lesson.slides.filter((s) => states[s.id] === "done").map((s) => [s.id, s]));
+}
+
+/** True when an earlier attempt saved the whole editable deck: a retry finishes from it. */
+export function hasEditableDeck(lesson: Lesson): boolean {
+  if (lesson.generation?.editableAt === undefined || lesson.slides.length === 0) return false;
+  return finishedSlides(lesson).size === lesson.slides.length;
+}
+
+/**
+ * `slides` with every finished slide put back as saved: in place of the writer's slide with its
+ * id, or at its saved position when this run's deck has no such slide.
+ */
+function keepFinished<T extends { id: string }>(
+  slides: T[],
+  finished: Map<string, Slide>,
+  saved: Slide[],
+): T[] {
+  const out = slides.map((s) => (finished.get(s.id) as unknown as T | undefined) ?? s);
+  saved.forEach((slide, i) => {
+    if (finished.has(slide.id) && !out.some((s) => s.id === slide.id))
+      out.splice(Math.min(i, out.length), 0, slide as unknown as T);
+  });
+  return out;
+}
+
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const lesson = state.lesson;
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
   const toLesson = (
-    slides: { id: string; notes: string }[],
+    slides: { id: string; notes?: string }[],
     stage: "generated" | "planned",
     slideStates?: Record<string, SlideGenerationState>,
+    editableAt?: string,
   ) =>
     ({
       ...lesson,
@@ -115,11 +148,39 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         },
         usage: deps.budget.totals(),
         ...(slideStates ? { slideStates } : {}),
+        ...(editableAt ? { editableAt } : {}),
       },
     }) as Lesson;
   /** Every slide of `slides` in one state. */
   const allIn = (slides: { id: string }[], state: SlideGenerationState) =>
     Object.fromEntries(slides.map((s) => [s.id, state]));
+
+  // A retry (pg-boss runs the job again after a throw) never visibly undoes work (TEACH-312 part
+  // j). An earlier attempt that saved the editable deck is finished from it: no second writer
+  // call, no slide back to `writing`, every word and placed picture as the teacher saw them.
+  if (hasEditableDeck(lesson)) {
+    deps.logger.info(
+      { stage: "generate", slides: lesson.slides.length },
+      "writer resumed from the editable deck",
+    );
+    const done = toLesson(lesson.slides, "generated", allIn(lesson.slides, "done"));
+    const { updatedAt } = await deps.persist(done);
+    await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
+    return { ...state, lesson: done };
+  }
+  // An earlier attempt that stopped mid-stream kept the slides it finished. The writer is one
+  // streamed call and cannot start part-way, so this run writes off-screen (no streamed saves) and
+  // the finished slides replace its copies of them in every save.
+  const finished = finishedSlides(lesson);
+  const offScreen = finished.size > 0;
+  if (offScreen)
+    deps.logger.info(
+      { stage: "generate", kept: finished.size },
+      "writer resumed off-screen, finished slides kept",
+    );
+  const finishedIndex = (i: number) => finished.has(`s${i + 1}`);
+  const kept = <T extends { id: string }>(slides: T[]) =>
+    offScreen ? keepFinished(slides, finished, lesson.slides) : slides;
   // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
   // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
   const images = deps.images as DirectedPlacer | undefined;
@@ -211,11 +272,12 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           for (const [j, earlier] of latest)
             if (j < i && !closed.has(j)) {
               closed.add(j);
-              progressive.patch(j, earlier, "done");
+              if (!offScreen) progressive.patch(j, earlier, "done");
             }
           newest = i;
         }
-        progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+        // Off-screen (a resumed run): nothing streams onto the slides the teacher already has.
+        if (!offScreen) progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
       },
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
@@ -223,6 +285,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // C5: a lesson's picture sets share one look, from the writer's picture style.
       onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
       onAsks: (i, asks, slide) => {
+        // A finished slide keeps its placed picture: no new search for the copy this run discards.
+        if (finishedIndex(i)) return;
         for (const a of asks) if (a.type === "photo") pictures?.start(i, a, slide);
       },
       beforeEditable: async () => {
@@ -244,8 +308,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
         await progressive.close();
         editableSaved = true;
+        const deck = kept(credited(slides));
         const { updatedAt } = await deps.persist(
-          toLesson(credited(slides), "planned", allIn(slides, "done")),
+          toLesson(deck, "planned", allIn(deck, "done"), deps.now().toISOString()),
         );
         await deps.onProgress(70, "Slides written", "generate", updatedAt);
       },
@@ -258,26 +323,36 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
     // Slides still `writing` are rolled back to the plan: the stream showed them, the lesson never
     // ships them. Its cost is saved, so a retry's budget counts it.
-    const streamed = !editableSaved && progressive.patches().size > 0;
+    const streamed = !editableSaved && (offScreen || progressive.patches().size > 0);
     if (error instanceof WriterIncompleteError || streamed) {
-      // Slides whose words were done stay (ADR 0037: they are the teacher's); the rest go back
-      // to the plan, and no slide stays `writing` once the job has stopped. A writer that ran
-      // out of length (K3) shipped no valid deck, so its streamed slides go back to the plan too
-      // (a slide the teacher edited is still kept by the merge).
+      // Slides whose words were done stay (ADR 0037: they are the teacher's) and stay `done`, so
+      // a retry keeps them as they are (TEACH-312 part j); the rest go back to the plan, and no
+      // slide stays `writing` once the job has stopped. A writer that ran out of length (K3)
+      // shipped no valid deck, so this run's streamed slides go back to the plan too (a slide the
+      // teacher edited is still kept by the merge); an earlier attempt's finished slides stay.
       if (error instanceof WriterIncompleteError) closed.clear();
       const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
-      const kept = Array.from({ length: count }, (_, i) =>
-        closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : lesson.slides[i],
-      ).filter((slide): slide is Slide => slide !== undefined);
+      const keep = Array.from({ length: count }, (_, i) => {
+        const saved = lesson.slides[i];
+        if (saved && finished.has(saved.id)) return saved;
+        return closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : saved;
+      }).filter((slide): slide is Slide => slide !== undefined);
+      const closedIds = new Set([...closed].map((i) => latest.get(i)?.id));
+      const states = Object.fromEntries(
+        keep
+          .filter((s) => finished.has(s.id) || closedIds.has(s.id))
+          .map((s) => [s.id, "done" as const]),
+      );
       const { slideStates: _states, ...generation } = lesson.generation ?? {};
       await deps.persist({
         ...lesson,
-        slides: kept,
+        slides: keep,
         ...(lesson.generation
           ? {
               generation: {
                 ...(generation as typeof lesson.generation),
                 usage: deps.budget.totals(),
+                ...(Object.keys(states).length ? { slideStates: states } : {}),
               },
             }
           : {}),
@@ -291,7 +366,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
     throw error;
   }
-  const done = toLesson(credited(out.slides), "generated", allIn(out.slides, "done"));
+  const deck = kept(credited(out.slides));
+  const done = toLesson(deck, "generated", allIn(deck, "done"));
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
   return { ...state, lesson: done };
