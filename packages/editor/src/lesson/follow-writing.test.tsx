@@ -122,6 +122,10 @@ describe("the editor follows the slide being written", () => {
   });
 
   test("the teacher is busy while typing, selecting or with a picker open", () => {
+    // Start from a quiet page: earlier tests may leave a portal, a focus or a selection behind.
+    document.body.replaceChildren();
+    document.getSelection()?.removeAllRanges();
+    (document.activeElement as HTMLElement | null)?.blur?.();
     expect(teacherBusy()).toBe(false);
     const input = document.createElement("input");
     document.body.append(input);
