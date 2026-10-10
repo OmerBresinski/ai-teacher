@@ -1,6 +1,6 @@
 // A written slide's role in the lesson (the slide-role contract, step 1: roleStamp). One pure rule
-// set replaces the separate "is this slide asking?" tests; nothing reads it yet, the stage only
-// logs it behind `roleStamp`.
+// set replaces the separate "is this slide asking?" tests. The stage logs it (`roleStamp`) and
+// reads it to hold answers back on asking slides (`roleAsk`).
 
 type S = Record<string, unknown>;
 
