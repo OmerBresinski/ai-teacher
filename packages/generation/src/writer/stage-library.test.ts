@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { buildCount, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { endDrawThread } from "../library/guard";
 import { inspectDrawnSvg, loadModel } from "../library/render";
 import type { DrawerCall } from "./diagrams";
@@ -79,7 +79,7 @@ const FLOOR_PX = 24 * (1440 / 1280) * 0.75;
 const report: unknown[] = [];
 
 describe("writer stage: library models", () => {
-  test("filled params draw the model in the diagram slot, as a still (TEACH-247 part i)", async () => {
+  test("filled params draw the model in the diagram slot, with its builds (TEACH-247 part p)", async () => {
     const m = await loadModel("fractions");
     const { fills, diagram, events } = await run(() => m?.presets[0]?.params);
     expect(fills.length).toBe(1);
@@ -91,8 +91,9 @@ describe("writer stage: library models", () => {
     expect(svg).toContain("font-family:'Nunito Variable'");
     expect(svg).not.toContain("@font-face");
     expect(diagram?.alt).toBe("A circle cut into two equal parts with one part shaded.");
-    // A library model opens complete in Present: no builds from an empty frame.
-    expect(Number(diagram?.builds ?? 0)).toBe(0);
+    // Present plays the model's builds: the slide's element carries their count.
+    expect(Number(diagram?.builds ?? 0)).toBeGreaterThan(0);
+    expect(Number(diagram?.builds)).toBe(buildCount(svg));
     expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
   }, 60_000);
 

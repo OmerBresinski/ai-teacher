@@ -274,16 +274,17 @@ describe("params out of bounds are refused, never clamped", () => {
 });
 
 describe("Present never opens a library model on an empty box", () => {
-  test("every drawing is a still: builds === 0", async () => {
+  test("a drawing plays builds from an opening frame that is not empty (TEACH-247 part p)", async () => {
     const m = await loadModel("fractions");
     const r = await renderLibraryModel(
       "fractions",
       (await kit()).withDefaults(m?.params ?? { properties: {} }, {}),
     );
-    expect(r.builds === 0).toBe(true);
-    expect(buildCount(svgOfDataUrl(r.src) ?? "") === 0).toBe(true);
-    const eg = await draw("equal_groups", { groups: 2, size: 6, division: "sharing" });
-    expect(buildCount(eg) === 0).toBe(true);
+    expect(r.builds).toBeGreaterThan(0);
+    expect(buildCount(svgOfDataUrl(r.src) ?? "")).toBe(r.builds);
+    // The opening frame: every mark without a build (the whole pizza and its label).
+    const opening = r.svg.replace(/<g data-s="\d+">[\s\S]*?<\/g>/g, "");
+    expect(opening).toContain("<text");
   });
 });
 

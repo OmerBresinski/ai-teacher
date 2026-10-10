@@ -12,7 +12,7 @@
  * time (`document`, `getComputedStyle`) are set only for its duration.
  */
 
-import { REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
+import { buildCount, PASSING_HIDDEN, REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
 import { hasAdvances, svgFontFamily, textWidth } from "@tj/slides/diagrams";
 import { FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { type Element, Window } from "happy-dom";
@@ -700,6 +700,148 @@ function wordsOffSlide(svg: Element, foot: Element | null): string[] {
 const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const PAD = 18;
 
+/* ------------------------------------------------------------------ builds in Present */
+
+/**
+ * Runs `f` with the drawing as the kit shows it at build `k` (kit/build.js `apply`: a mark with
+ * `data-s` shows from its build, one with `data-h` leaves at its build). A mark the last frame
+ * hides stays hidden: it is not in the stored drawing, so no frame of it may count on it. A mark
+ * the question restores (`data-qn`) counts as the question shows it.
+ */
+/** A mark's `data-c` ranges that hide it ("a-z:off": from build a until build z). */
+function offRanges(el: Element): [number, number][] {
+  return (el.getAttribute("data-c") ?? "").split(",").flatMap((part) => {
+    const m = /^(\d+)-(\d+):off$/.exec(part.trim());
+    return m ? [[Number(m[1]), Number(m[2])] as [number, number]] : [];
+  });
+}
+
+function atKitStep<T>(svg: Element, k: number, f: () => T): T {
+  const els = [...svg.querySelectorAll("[data-s],[data-h],[data-c]")];
+  const was = els.map((e) => e.classList.contains("off"));
+  for (const [i, e] of els.entries()) {
+    const s = e.getAttribute("data-s");
+    const h = e.hasAttribute("data-qn") ? null : e.getAttribute("data-h");
+    const off =
+      (s !== null && k < Number(s)) ||
+      (h !== null && k >= Number(h)) ||
+      offRanges(e).some(([a, z]) => k >= a && k < z);
+    // Off at the end for another reason (a class range, a live mark): off in every frame.
+    e.classList.toggle("off", (Boolean(was[i]) && h === null) || off);
+  }
+  try {
+    return f();
+  } finally {
+    for (const [i, e] of els.entries()) e.classList.toggle("off", Boolean(was[i]));
+  }
+}
+
+/** How many words are visible: texts with letters, outside the foot and hidden marks. */
+function visibleWords(svg: Element, foot: Element | null): number {
+  let n = 0;
+  const walk = (el: Element) => {
+    const tag = el.tagName.toLowerCase();
+    if (SKIP_TAGS.includes(tag) || el === foot) return;
+    if (el.classList.contains("off") || el.classList.contains("live")) return;
+    if (tag === "text") {
+      if ((el.textContent ?? "").trim()) n += 1;
+      return;
+    }
+    for (const c of el.children) walk(c);
+  };
+  for (const c of svg.children) walk(c);
+  return n;
+}
+
+/**
+ * A model's opening frame in Present must show the picture, not a blank box (the kit plays its
+ * builds from an empty stage). It is the earliest kit build whose visible marks already span
+ * OPEN_SPAN of the finished drawing's width or height and carry at least one word; the builds
+ * before it are shown from the start. Returns `last` when no earlier build qualifies: the model
+ * is then a still.
+ */
+export const OPEN_SPAN = 0.6;
+type Box = { x0: number; y0: number; x1: number; y1: number };
+function openingStep(svg: Element, foot: Element | null, last: number, full: Box): number {
+  const fw = full.x1 - full.x0;
+  const fh = full.y1 - full.y0;
+  for (let k = 0; k < last; k++) {
+    const ok = atKitStep(svg, k, () => {
+      const b = drawnBox(svg, foot);
+      if (!b || visibleWords(svg, foot) < 1) return false;
+      return (b.x1 - b.x0) / fw >= OPEN_SPAN || (b.y1 - b.y0) / fh >= OPEN_SPAN;
+    });
+    if (ok) return k;
+  }
+  return last;
+}
+
+/**
+ * Tags the mounted drawing (at its last build) with the frames Present plays (TEACH-247 part p).
+ * Frame 0 is the opening frame; each later frame is a kit build that adds or removes a mark, up to
+ * the last build before the answer (`q`, a question slide) or the finished drawing. A kit build
+ * that changes no mark (a caption or a recolour only) is not a frame, so no Next shows nothing.
+ * A mark that stays gets `data-s` = the frame it arrives in (none when it is there from the
+ * start); one first shown after `q` is the answer (`data-reveal`). A mark that comes and goes
+ * before the end (`data-h`, "One pizza" before the cut) gets `data-f` = the frames it shows in,
+ * and is hidden on every other surface. A mark the kit hides for a while and brings back (a
+ * `data-c` "a-z:off" range) gets `data-x` = the frames it is away in. A ghost (a trail the kit shows once it stops playing)
+ * arrives with the finished drawing. Returns how many frames follow the opening one.
+ */
+function tagBuilds(svg: Element, foot: Element | null, box: Box, q: number | undefined): number {
+  const last = q ?? Number.POSITIVE_INFINITY;
+  const els = [...svg.querySelectorAll("[data-s],[data-h]")];
+  const sOf = (el: Element) => Number(el.getAttribute("data-s") ?? 0);
+  const off = (el: Element) => el.classList.contains("off");
+  const passing = els.filter((el) => off(el) && el.hasAttribute("data-h"));
+  // The kit's last change: the finished drawing.
+  const end = Math.max(
+    0,
+    ...els.map(sOf),
+    ...passing.map((el) => Number(el.getAttribute("data-h"))),
+  );
+  if (q === undefined)
+    for (const el of [...svg.querySelectorAll(".ghost")]) el.setAttribute("data-s", String(end));
+  const top = Math.min(last, end);
+  const opening = openingStep(svg, foot, top, box);
+  const kept = [...svg.querySelectorAll("[data-s],[data-h]")].filter((el) => !off(el));
+  // Marks the kit hides for a while and brings back (a list that takes the stage for one build).
+  const away = [...svg.querySelectorAll("[data-c]")].filter(
+    (el) => !off(el) && offRanges(el).length,
+  );
+  const changes = new Set<number>();
+  for (const el of kept) changes.add(sOf(el));
+  for (const el of away) for (const [a, z] of offRanges(el)) changes.add(a).add(z);
+  for (const el of passing) changes.add(sOf(el)).add(Number(el.getAttribute("data-h")));
+  const frames = [opening, ...[...changes].filter((k) => k > opening && k <= top)].sort(
+    (a, b) => a - b,
+  );
+  for (const el of kept) {
+    const s = sOf(el);
+    el.removeAttribute("data-s");
+    el.removeAttribute("data-h");
+    if (s > last) el.setAttribute("data-reveal", "1");
+    else if (s > opening) el.setAttribute("data-s", String(frames.findIndex((k) => k >= s)));
+  }
+  for (const el of away) {
+    const hid = frames.flatMap((k, i) =>
+      offRanges(el).some(([a, z]) => k >= a && k < z) ? [i] : [],
+    );
+    if (hid.length) el.setAttribute("data-x", hid.join(" "));
+  }
+  for (const el of passing) {
+    const s = sOf(el);
+    const h = Number(el.getAttribute("data-h"));
+    const on = frames.flatMap((k, i) => (k >= s && k < h ? [i] : []));
+    el.removeAttribute("data-s");
+    el.removeAttribute("data-h");
+    if (!on.length) continue;
+    el.classList.remove("off");
+    el.setAttribute("data-f", on.join(" "));
+  }
+  return frames.length - 1;
+}
+
 /**
  * Draws model `id` with checked params at its last build. With `step` (a question slide's last
  * build before the answer) the marks after it are the answer, hidden until the slide's reveal. Throws when the model is unknown, the kit throws, nothing is drawn or
@@ -745,8 +887,12 @@ export async function renderLibraryModel(
           }
         const root = svg.firstElementChild;
         const foot = (root?.children[2] as Element | undefined) ?? null;
-        const box = drawnBox(svg, foot);
+        const finished = drawnBox(svg, foot);
         const offSlide = wordsOffSlide(svg, foot);
+        // Present plays the model's builds (TEACH-247 part p); every other surface shows the end.
+        // The frame holds every mark a build shows, including those gone by the end.
+        const frames = finished ? tagBuilds(svg, foot, finished, q) : 0;
+        const box = frames ? drawnBox(svg, foot) : finished;
         const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
         const x0 = Math.max(0, box ? box.x0 - PAD : 0);
         const x1 = Math.min(W, box ? box.x1 + PAD : W);
@@ -758,17 +904,24 @@ export async function renderLibraryModel(
         const oroot = out.firstElementChild;
         oroot?.children[2]?.remove();
         for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
-        // The answer: every mark first shown after the question's build.
-        if (q !== undefined)
-          for (const el of [...out.querySelectorAll("[data-s]")])
-            if (Number(el.getAttribute("data-s")) > q) el.setAttribute("data-reveal", "1");
-        // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
-        // Present would open on a blank box. Every surface shows the drawing as it ends (on a
-        // question slide, without its answer until the reveal).
-        for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
-        for (const el of [...out.querySelectorAll("[data-h]")]) el.removeAttribute("data-h");
-        // Builds left on hidden marks only make Present wait on nothing.
+        // Present hides a later build, the answer or what it replaces by its attribute; a kit class on the same mark
+        // (`.slide .soft`) would outrank that rule and show it early. Such a mark goes inside a
+        // plain group that carries the attribute instead.
+        for (const el of [...out.querySelectorAll("[data-s],[data-reveal],[data-qn]")]) {
+          if (!el.getAttribute("class")?.trim() || !el.parentNode) continue;
+          const g = el.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "g");
+          for (const a of ["data-s", "data-reveal", "data-qn"]) {
+            const v = el.getAttribute(a);
+            if (v === null) continue;
+            g.setAttribute(a, v);
+            el.removeAttribute(a);
+          }
+          el.parentNode.insertBefore(g, el);
+          g.appendChild(el);
+        }
         out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        // The frame count, for a last frame that only takes marks away (`buildCount`).
+        if (frames) out.setAttribute("data-builds", String(frames));
         out.setAttribute("class", "slide tk theme-primary");
         if (ts !== 1) out.setAttribute("data-fs-scale", String(ts));
         if (font !== "lexend") out.setAttribute("data-font", font);
@@ -779,8 +932,9 @@ export async function renderLibraryModel(
         // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
         // editor, thumbnails and exports show the question, as the drawer's question slides do.
         const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
+        const passing = out.querySelector("[data-f]") ? `<style>${PASSING_HIDDEN}</style>` : "";
         const scaled = ts !== 1 ? `<style>${fsOverride(ts)}</style>` : "";
-        const style = `<style><![CDATA[${SVG_CSS}${fontCss(font)}]]></style>${scaled}${hold}`;
+        const style = `<style><![CDATA[${SVG_CSS}${fontCss(font)}]]></style>${scaled}${hold}${passing}`;
         const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
         const open = /<svg\b[^>]*>/.exec(html);
         if (!open) throw new Error(`${id} did not serialise`);
@@ -789,8 +943,7 @@ export async function renderLibraryModel(
         const bytes = Buffer.byteLength(text);
         if (bytes > MAX_SVG_BYTES)
           throw new Error(`${id} drew ${bytes} bytes, over the slide's limit`);
-        let builds = 0;
-        for (const m of text.matchAll(/ data-s="(\d+)"/g)) builds = Math.max(builds, Number(m[1]));
+        const builds = buildCount(text);
         return {
           src: `${SVG_URL}${encodeURIComponent(text)}`,
           svg: text,
@@ -811,6 +964,11 @@ export async function renderLibraryModel(
 /** One run of words in a drawn SVG: its type size and box in view-box units, after transforms. */
 export type DrawnWords = {
   words: string;
+  /**
+   * The frames the words show in, when they do not show in every one (TEACH-247 part p): Present's
+   * builds 0..n, then n + 1 for the answer revealed.
+   */
+  shown?: number[];
   fs: number;
   x0: number;
   y0: number;
@@ -843,6 +1001,28 @@ export function inspectDrawnSvg(svgText: string): {
       const svg = host.querySelector("svg");
       const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
       const words: DrawnWords[] = [];
+      const n = buildCount(svgText);
+      const all = Array.from({ length: n + 2 }, (_, i) => i);
+      const nums = (v: string | null) => (v ?? "").split(" ").filter(Boolean).map(Number);
+      /** The frames a mark shows in (kept on every frame: undefined). */
+      const shownIn = (el: Element): number[] | undefined => {
+        let on = all;
+        for (let e: Element | null = el; e && e !== svg; e = e.parentElement) {
+          const at = (i: number) => Math.min(i, n);
+          const s = Number(e.getAttribute("data-s") ?? 0);
+          const f = e.hasAttribute("data-f") ? nums(e.getAttribute("data-f")) : undefined;
+          const x = nums(e.getAttribute("data-x"));
+          on = on.filter(
+            (i) =>
+              at(i) >= s &&
+              (!f || f.includes(at(i))) &&
+              !x.includes(at(i)) &&
+              !(e?.hasAttribute("data-reveal") && i <= n) &&
+              !(e?.hasAttribute("data-qn") && i > n),
+          );
+        }
+        return on.length === all.length ? undefined : on;
+      };
       for (const el of svg ? [...svg.querySelectorAll("text")] : []) {
         let mm: M = ID;
         for (let e: Element | null = el as unknown as Element; e && e !== svg; e = e.parentElement)
@@ -857,8 +1037,10 @@ export function inspectDrawnSvg(svgText: string): {
         const xs = t.map((p) => p[0] as number);
         const ys = t.map((p) => p[1] as number);
         const scale = Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1;
+        const shown = shownIn(el as unknown as Element);
         words.push({
           words: w,
+          ...(shown ? { shown } : {}),
           fs: typeOf(el as unknown as Element).fs * scale,
           x0: Math.min(...xs),
           y0: Math.min(...ys),
