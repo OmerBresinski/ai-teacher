@@ -25,6 +25,8 @@ describe("theme font", () => {
     expect(d.svg).not.toContain("base64");
     expect(d.svg).toContain("font-family:'Nunito Variable', Verdana, sans-serif");
     expect(d.svg).toContain('data-font="nunito"');
+    // Digits render at the widths they were measured at, never a face's tabular figures.
+    expect(d.svg).toContain(".slide.tk text,.slide.tk tspan{font-variant-numeric:normal}");
     expect(d.bytes).toBeLessThan(30_000);
   });
 

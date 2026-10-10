@@ -78,7 +78,9 @@ export function fontKeyOf(stack?: string): FontKey {
  */
 export function fontCss(key: FontKey): string {
   const f = svgFontFamily(FONT_STACKS[key]);
-  return `.slide.tk{--f-head:${f};--f-label:${f}}.slide text{font-family:${f}}`;
+  // Digits are set at the default widths the advance tables hold: a face with tabular figures
+  // (Public Sans) would otherwise widen "12" past its measure ("AD 122Hadrian's", "=20").
+  return `.slide.tk{--f-head:${f};--f-label:${f}}.slide text{font-family:${f}}.slide.tk text,.slide.tk tspan{font-variant-numeric:normal}`;
 }
 /** The face words are measured in while a drawing is made or read back. */
 let FONT: FontKey = "lexend";
