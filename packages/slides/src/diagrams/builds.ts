@@ -36,12 +36,29 @@ export function answerPart(svg: string): string {
   return `<g data-ans="1">${svg}</g>`;
 }
 
-/** How many builds a tagged SVG has after its opening frame (0 when it has none). */
+/**
+ * How many builds a tagged SVG has after its opening frame (0 when it has none). A library model
+ * declares it on its root (`data-builds`): its last frame may only take marks away.
+ */
 export function buildCount(svg: string): number {
   let max = 0;
   for (const m of svg.matchAll(/ data-s="(\d+)"/g)) max = Math.max(max, Number(m[1]));
+  const declared = / data-builds="(\d+)"/.exec(svg);
+  if (declared) max = Number(declared[1]);
+  for (const m of svg.matchAll(/ data-f="([\d ]+)"/g))
+    for (const k of (m[1] ?? "").split(" ")) max = Math.max(max, Number(k) || 0);
   return max;
 }
+
+/**
+ * A library model's passing marks (TEACH-247 part p): a mark shown only in some of Present's
+ * frames (`data-f="1 2"`, a label the next build takes away) is hidden by the drawing's own style,
+ * so every other surface shows the finished drawing, and shown by `svgAtBuild` in its frames. A
+ * mark away for some frames (`data-x="2"`) is in the finished drawing and hidden in those frames.
+ * No `!important`: the rules outrank the kit's own (`.slide .soft`, `.slide [data-c].quiet`) by
+ * specificity, as REVEAL_HIDDEN's doubled attribute does, so any SVG renderer applies them.
+ */
+export const PASSING_HIDDEN = ".slide [data-f][data-f]{opacity:0}";
 
 /** Whether a tagged SVG has an answer part. */
 export const hasAnswerPart = (svg: string): boolean => / data-ans="1"/.test(svg);
@@ -108,6 +125,8 @@ export function svgAtBuild(
   // the doubled attribute outranks the drawing's own REVEAL_HIDDEN rule
   if (reveal && opts.answer)
     rules.push(`[data-reveal="1"][data-reveal]{opacity:1}`, `[data-qn="1"]{opacity:0}`);
+  if (/ data-f="/.test(svg)) rules.push(`.slide [data-f~="${at}"][data-f][data-f]{opacity:1}`);
+  if (/ data-x="/.test(svg)) rules.push(`.slide [data-x~="${at}"][data-x][data-x]{opacity:0}`);
   if (opts.motion && at > 0)
     rules.push(
       `@keyframes tj-build{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`,
