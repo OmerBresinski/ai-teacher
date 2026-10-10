@@ -1,5 +1,5 @@
 import { fallbackThemeFor, type Lesson, type LessonFacts, type Slide } from "@tj/domain/documents";
-import { isThemeId } from "@tj/slides";
+import { isThemeId, liveThemeId } from "@tj/slides";
 import { callStructured } from "../call";
 import { curriculumBlock, curriculumFor } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
@@ -172,7 +172,7 @@ export async function writerObjectivesCall(
  * catalogue; else Splash up to Key Stage 2 and Studio from Key Stage 3 (`fallbackThemeFor`).
  */
 export function plannedThemeId(lesson: Lesson, plannerTheme: string | undefined): string {
-  if (lesson.themeChosen) return lesson.themeId;
+  if (lesson.themeChosen) return liveThemeId(lesson.themeId);
   if (plannerTheme && isThemeId(plannerTheme)) return plannerTheme;
   return fallbackThemeFor(lesson.ageBand);
 }
@@ -297,6 +297,9 @@ export async function runObjectivesStep(
       );
       if (issues.length === 0) {
         objectives = call.output.objectives;
+        // Ruling 202: the same planner theme rule as the writer's call, once its prompt asks.
+        const theme = (call.output as { theme?: unknown }).theme;
+        plannerTheme = typeof theme === "string" ? theme : undefined;
         const written = call.output.retrieval;
         retrieval = written && written.length > 0 ? written : undefined;
         model = call.modelId;
