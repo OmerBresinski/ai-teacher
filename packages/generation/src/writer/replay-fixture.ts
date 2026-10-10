@@ -94,8 +94,11 @@ export function recordedVisuals(b: string) {
       into.set(key, { status: "photo", photo });
     }
   for (const d0 of jsonl(b, "diagrams.jsonl")) {
-    // The lab's replay drew a reused unshared pile again from its words (pileSpec), as the live
-    // stage does in drawWriterDiagram; the recorded spec predates the row rule (5ad4ed59).
+    // The lab's replay drew a reused unshared pile again from its words (pileSpec); the recorded
+    // spec predates the row rule (5ad4ed59). Only a spec already recorded as a pile (pile: true,
+    // one group) gets here, so the words only choose its row or loose layout, never whether it
+    // piles. The recorded entry has no request words, so its alt is the only text there is; the
+    // live stage passes only `shows`.
     const s0 = d0.spec as { pile?: unknown; alt?: unknown };
     const d = s0?.pile === true ? { ...d0, spec: pileSpec(s0, String(s0.alt ?? "")) ?? s0 } : d0;
     // A diagram that could not be shown and was asked again as a picture of the same thing: the
