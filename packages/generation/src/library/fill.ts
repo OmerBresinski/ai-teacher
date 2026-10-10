@@ -229,6 +229,12 @@ export type LibraryAsk = {
   /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
   panelsOff?: boolean;
   /**
+   * Checks only logged (the writer's checks "log", TEACH-312 part i): a drawn model never falls
+   * back for what a check reads (capability, label floor, words mismatch, overlap, type floor);
+   * each is logged as "lib-check-logged". Only a model that cannot be filled or drawn falls back.
+   */
+  logOnly?: boolean;
+  /**
    * The box the drawing is placed in on the 960 x 540 slide (flag `libraryModelBody`): a drawing
    * whose smallest words would show under the drawer's `TYPE_FLOOR` there falls back
    * (diagrams-06). Absent: no type-floor gate (today's behaviour).
@@ -343,6 +349,12 @@ export async function libraryDiagram(
     log({ ev: "lib-fallback", key: ask.key, model: ask.model, to: fallbackKind, reason });
     return { ok: false, fallbackKind, reason };
   };
+  /** A check's verdict: a fallback, or with `logOnly` a log line and the drawing kept. */
+  const checkFault = (reason: string): LibraryResult | undefined => {
+    if (!ask.logOnly) return fallback(reason);
+    log({ ev: "lib-check-logged", key: ask.key, model: ask.model, reason });
+    return undefined;
+  };
   const m = await nonFatal(
     () => loadModel(ask.model),
     () => undefined,
@@ -392,7 +404,10 @@ export async function libraryDiagram(
         .join("; ")}`,
     );
   const cannot = capabilityRefusals(ask.model, ask.intent);
-  if (cannot.length) return fallback(cannot.map((r) => r.reason).join("; "));
+  if (cannot.length) {
+    const f = checkFault(cannot.map((r) => r.reason).join("; "));
+    if (f) return f;
+  }
   let step: number | undefined;
   if (ask.question) {
     step = await questionStep(ask.model, params);
@@ -437,13 +452,16 @@ export async function libraryDiagram(
         () => grownTextFault(baseSvg, grownSvg),
         (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
       );
-      if (fault) return fallback(`at the label floor ${fault}`);
+      const f = fault ? checkFault(`at the label floor ${fault}`) : undefined;
+      if (f) return f;
     }
     const off = full.offSlide.filter((w) => !offBefore.has(w));
-    if (off.length)
-      return fallback(
-        `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`,
-      );
+    const f = off.length
+      ? checkFault(
+          `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`,
+        )
+      : undefined;
+    if (f) return f;
   }
   const drawnFull = full;
   // Only the words that describe the drawing: the slide's heading and the model's caption.
@@ -452,7 +470,8 @@ export async function libraryDiagram(
       ? [ask.heading, ask.caption].filter(Boolean).join("\n")
       : ask.words;
   const mismatch = drawingWordsMismatch(ask.model, drawnFull.svg, about);
-  if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
+  const mf = mismatch ? checkFault(`it disagrees with the slide: ${mismatch}`) : undefined;
+  if (mf) return mf;
   const drawn =
     step === undefined
       ? drawnFull
@@ -472,14 +491,17 @@ export async function libraryDiagram(
       () => overlappingWords(drawn.svg),
       () => undefined,
     );
-    if (!o) return fallback("its words could not be read for overlaps");
-    if (o.length)
-      return fallback(
-        `its words overlap: ${o
-          .slice(0, 2)
-          .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
-          .join(", ")}`,
-      );
+    const of = !o
+      ? checkFault("its words could not be read for overlaps")
+      : o.length
+        ? checkFault(
+            `its words overlap: ${o
+              .slice(0, 2)
+              .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
+              .join(", ")}`,
+          )
+        : undefined;
+    if (of) return of;
   }
   // The type floor (flag `libraryModelBody`): words under 18 pt where the drawing is placed.
   if (ask.place) {
@@ -487,12 +509,15 @@ export async function libraryDiagram(
       () => placedTypeSize(drawn.svg, ask.place as { w: number; h: number }),
       () => undefined,
     );
-    if (!t) return fallback("its words could not be measured for the type floor");
-    log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
-    if (t.minPt < TYPE_FLOOR - 0.01)
-      return fallback(
-        `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`,
-      );
+    if (t) log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
+    const tf = !t
+      ? checkFault("its words could not be measured for the type floor")
+      : t.minPt < TYPE_FLOOR - 0.01
+        ? checkFault(
+            `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`,
+          )
+        : undefined;
+    if (tf) return tf;
   }
   log({
     ev: "lib-drawn",
