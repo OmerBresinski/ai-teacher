@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { layoutTemplate, modelBody } from "@tj/slides/templates";
+import { layoutTemplate, modelBody, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { libraryDiagram, placedTypeSize } from "./fill";
 import { drawLibraryModel, endDrawThread } from "./guard";
@@ -7,7 +7,7 @@ import { drawLibraryModel, endDrawThread } from "./guard";
 /*
  * Library turn-on step 1 (diagrams-06, flag `libraryModelBody`): the D52 Alib y6 heart drew
  * 1241 x 658 into a 515 x 273 box (scale 0.415), so its 30 px labels showed at 12.5 pt. A model
- * drawn as the slide body sits about 900 x 424 under the heading; a type-floor gate falls back
+ * drawn as the slide body sits under the heading and above the slide's own line (never dropped); a type-floor gate falls back
  * when its smallest words would show under 18 pt where it is placed.
  */
 afterAll(() => endDrawThread());
@@ -46,30 +46,47 @@ describe("model body and type floor (diagrams-06)", () => {
     expect((await libraryDiagram(heart, filler)).ok).toBe(true);
   });
 
-  test("a body drawing fills the slide under the heading with no caption", async () => {
+  test("a body drawing keeps the slide's own line under it and fits above it", async () => {
     const d = await drawLibraryModel("heart_circulation", { showPulse: false });
+    const LEAD = "Trace both routes, starting at the heart.";
+    const theme = getTheme("splash", "ks2" as never);
     const lay = (body: boolean) =>
       layoutTemplate(
         {
           template: "big-diagram",
           heading: "Follow the blood",
-          ...(body ? {} : { lead: "Trace both routes, starting at the heart." }),
+          lead: LEAD,
           figure: {
             drawn: { src: d.src, aspect: d.aspect, bare: true, ...(body ? { body } : {}) },
           },
         } as never,
-        getTheme("splash", "ks2" as never),
+        theme,
         "ks2" as never,
-      ).slide.elements as { name?: string; x: number; y: number; w: number; h: number }[];
+      ).slide.elements as {
+        name?: string;
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        doc?: unknown;
+      }[];
     const before = lay(false).find((e) => e.name === "Diagram");
     const after = lay(true);
     const img = after.find((e) => e.name === "Diagram");
-    expect(after.some((e) => e.name === "Caption")).toBe(false);
+    const cap = after.find((e) => e.name === "Caption");
+    // The point is never dropped: it is on the slide, under the drawing, inside the slide.
+    expect(JSON.stringify(cap?.doc)).toContain(LEAD);
+    expect((img?.y ?? 0) + (img?.h ?? 0)).toBeLessThanOrEqual(cap?.y ?? 0);
+    expect((cap?.y ?? 0) + (cap?.h ?? 0)).toBeLessThanOrEqual(540);
     expect(img && before && img.w * img.h).toBeGreaterThan(
-      1.8 * (before?.w ?? 0) * (before?.h ?? 0),
+      1.4 * (before?.w ?? 0) * (before?.h ?? 0),
     );
     expect(img?.x).toBeGreaterThanOrEqual(30);
     expect((img?.x ?? 0) + (img?.w ?? 0)).toBeLessThanOrEqual(930);
-    expect((img?.y ?? 0) + (img?.h ?? 0)).toBeLessThanOrEqual(532);
+    // The gate's box is the box the layout uses.
+    const r = modelBodyRect("Follow the blood", LEAD, theme, "ks2" as never);
+    expect(r.h).toBeLessThan(BODY.h);
+    expect(img?.h).toBeLessThanOrEqual(r.h);
+    expect(img?.w).toBeLessThanOrEqual(r.w);
   });
 });

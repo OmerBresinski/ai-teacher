@@ -110,11 +110,9 @@ export const isModel = (f: unknown): boolean =>
  * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
  * output that still carries them, read in the notes rather than dropped. The stage logs it.
  */
-export function modelPoints(s: S | undefined, withLead = false): string[] {
+export function modelPoints(s: S | undefined): string[] {
   if (!s || s.template !== "big-visual" || !isModel(s.figure)) return [];
-  // A model drawn as the slide body (`libraryModelBody`) shows no lead either.
-  const lead = withLead && typeof s.lead === "string" && s.lead.trim() ? [s.lead.trim()] : [];
-  return [...lead, ...pts(s.points)].map((p) =>
+  return pts(s.points).map((p) =>
     typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
   );
 }
@@ -340,11 +338,10 @@ export function toInput(
     case "big-picture":
     case "big-diagram": {
       const f = fig(template === "big-picture" ? "picture" : "diagram");
-      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it;
-      // a model drawn as the slide body (`libraryModelBody`) has its lead read in the notes.
-      const body = !!f && "drawn" in f && f.drawn.body === true;
+      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it
+      // (a model drawn as the slide body keeps it too: the drawing fits above it).
       return f
-        ? { template, heading, ...(body ? {} : { lead }), figure: f }
+        ? { template, heading, lead, figure: f }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {
