@@ -9,6 +9,7 @@
  * No chrome: no eyebrow, no kind tag, no page count (ruling 159).
  */
 import type {
+  DiagramSource,
   ImageElement,
   PhotoSource,
   QuestionData,
@@ -108,6 +109,8 @@ export type Figure =
          * 18 pt floor (diagrams-06). Set by the generation flag `libraryModelBody`.
          */
         body?: boolean;
+        /** What it was drawn from (TEACH-97 part h), copied onto the image element. */
+        source?: DiagramSource;
       };
     };
 export type TemplateId =
@@ -679,6 +682,7 @@ function figurePanel(
       src: f.drawn.src,
       alt: f.drawn.alt ?? "",
       fit: "contain",
+      ...(f.drawn.source ? { diagram: f.drawn.source } : {}),
     } as ImageElement);
     return true;
   }

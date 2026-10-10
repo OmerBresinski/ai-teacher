@@ -510,6 +510,8 @@ export function diagramElement(
     src: svgDataUrl(svg),
     alt: s.alt,
     fit: "contain",
+    // What it was drawn from (TEACH-97 part h): the settings panel redraws it from this.
+    diagram: { kind: "drawer", spec: s as Record<string, unknown> },
   } as ImageElement;
 }
 

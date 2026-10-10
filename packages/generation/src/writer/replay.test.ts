@@ -61,7 +61,8 @@ const headingOf = (els: El[]) => {
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
 const stable = (e: El) => {
-  const { id: _i, source: _s, style: _t, period: _p, ...rest } = e;
+  // `diagram` (TEACH-97 part h): what a drawing was drawn from; the lab's elements predate it.
+  const { id: _i, source: _s, style: _t, period: _p, diagram: _d, ...rest } = e;
   // A list marker's numeral is laid at master's badge sizes (TEACH-110 part a), not the lab's.
   if (rest.name === "Marker" && rest.textStyle) {
     const { fontSize: _f, ...ts } = rest.textStyle as El;

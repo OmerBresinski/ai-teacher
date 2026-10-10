@@ -223,7 +223,29 @@ export type ImageElement = ElementBase & {
    * `data-s` groups; every other surface shows the last build.
    */
   builds?: number;
+  /**
+   * What a drawn diagram or a library model was drawn from (TEACH-97 part h), so the settings
+   * panel can redraw it in place. Absent on photos, on teacher pictures and on diagrams saved
+   * before it; cleared when a teacher replaces the picture.
+   */
+  diagram?: DiagramSource;
 };
+
+/**
+ * The source of a drawn diagram (TEACH-97 part h). `drawer`: the validated `DiagramSpec` of
+ * `@tj/slides` (opaque here; `@tj/domain` depends on nothing internal). `library`: a
+ * diagram-library model id, its checked params, the question slide's held-back `step` and the
+ * label `typeScale` it was drawn at. Specs, never drawings: the SVG stays in `src`.
+ */
+export type DiagramSource =
+  | { kind: "drawer"; spec: Record<string, unknown> }
+  | {
+      kind: "library";
+      model: string;
+      params: Record<string, unknown>;
+      step?: number;
+      typeScale?: number;
+    };
 
 export type ImageTransform = {
   /** Degrees, -45..45, applied with a cover zoom so no empty corners show. */
@@ -477,6 +499,17 @@ export const PhotoSourceSchema = z.strictObject({
   evidence: PhotoEvidenceSchema.optional(),
 });
 
+export const DiagramSourceSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("drawer"), spec: z.record(z.string(), z.unknown()) }),
+  z.object({
+    kind: z.literal("library"),
+    model: z.string().min(1),
+    params: z.record(z.string(), z.unknown()),
+    step: z.number().int().min(0).optional(),
+    typeScale: z.number().positive().optional(),
+  }),
+]);
+
 const ImageElementSchema = z.object({
   ...elementBase,
   type: z.literal("image"),
@@ -502,6 +535,7 @@ const ImageElementSchema = z.object({
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
   source: PhotoSourceSchema.optional(),
   builds: z.number().int().min(0).max(32).optional(),
+  diagram: DiagramSourceSchema.optional(),
 });
 
 const ShapeElementSchema = z.object({

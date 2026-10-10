@@ -53,7 +53,7 @@ describe("ImageElement.diagram (TEACH-97 part h)", () => {
     const el = image();
     const back = roundTrip(el);
     expect(back).toEqual(el);
-    expect("diagram" in back).toBe(false);
+    expect(Object.hasOwn(back ?? {}, "diagram")).toBe(false);
     const old = lesson();
     expect(parseLesson(JSON.parse(JSON.stringify(old)))).toEqual(old);
   });
