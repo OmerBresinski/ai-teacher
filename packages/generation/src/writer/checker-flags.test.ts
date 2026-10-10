@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import { coverage, type FlowEntry, isPictureTask } from "./notes";
-import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
+import { recordedVisuals, replayRun, replayServices, withUnshowable } from "./replay-fixture";
 
 /*
  * The checker's flags (CHECKER-AUDIT, 9 Oct 2026), each alone against the pinned writer outputs
@@ -47,7 +47,8 @@ describe("CHECKER_DEFAULTS, every shipped flag on together", () => {
   test("y8: s3's unshown family tree leaves no pointer while s4's widened table is relaid full width", async () => {
     // The recorded s4 table with every cell three words wider: it misses the side panel, fits full width.
     const b = "y8-french-my-family";
-    const rec = recordedVisuals(b);
+    // s3's family tree swapped for a drawing that cannot be shown (the recorded one now draws).
+    const rec = withUnshowable(b, 2);
     const visual = (i: number, key: string, a: Parameters<typeof rec>[2]) => {
       const v = rec(i, key, a);
       if (i !== 3 || v.status !== "diagram") return v;
@@ -90,7 +91,9 @@ describe("fallbackOnlyOnFailure", () => {
     );
   });
   test("y11 s3: a drawing with a real readability fault still takes the fallback chain", async () => {
-    const on = await run("y11-chemistry-rates-of-reaction", { fallbackOnlyOnFailure: true });
+    // s3's apparatus now draws; a drawing that genuinely cannot be shown takes its place.
+    const b = "y11-chemistry-rates-of-reaction";
+    const on = await run(b, { fallbackOnlyOnFailure: true }, withUnshowable(b, 2));
     expect(on.events).toContainEqual(
       expect.objectContaining({ ev: "diagram-relaid", slide: 3, ok: false }),
     );
@@ -148,8 +151,10 @@ describe("duplicateLogOnly", () => {
 describe("pointGuardLogOnly", () => {
   test("y8 s3: an unshown visual's pointing line goes either way; pointGuard has nothing left", async () => {
     // SIMPLIFY S3: the unshown path strips its own pointing words before pointGuard runs.
-    const off = await run("y8-french-my-family", {});
-    const on = await run("y8-french-my-family", { pointGuardLogOnly: true });
+    // s3's family tree now draws; a drawing that cannot be shown takes its place.
+    const b = "y8-french-my-family";
+    const off = await run(b, {}, withUnshowable(b, 2));
+    const on = await run(b, { pointGuardLogOnly: true }, withUnshowable(b, 2));
     const words = (r: Awaited<ReturnType<typeof run>>) => JSON.stringify(r.res.plan.slides[2]);
     expect(words(off)).not.toContain("Point and say");
     expect(words(on)).not.toContain("Point and say");
