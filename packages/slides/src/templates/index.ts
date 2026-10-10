@@ -1139,52 +1139,76 @@ export function layoutTemplate(
   stage: Stage,
   opts: LayoutOptions = {},
 ): TemplateResult {
-  const first = layoutOnce(input, theme, stage, opts);
-  const head = first.slide.elements.find((e) => e.name === "Heading") as TextElement | undefined;
-  const full = Number(head?.style?.fontSize);
-  // The gap the template leaves under a one-line heading at its full size.
-  const gap = G.band.y - (G.headY + Math.ceil(full * LH.heading));
-  const moved = bodyBelowHeading(first, gap);
-  if (moved !== "no room") return moved;
-  // No room under the body: the heading steps down until the body fits below it.
-  for (let size = full - 2; size >= templateScale(theme, stage).body; size -= 2) {
-    const fits = bodyBelowHeading(layoutOnce(input, theme, stage, opts, size), gap);
-    if (fits !== "no room") return fits;
-  }
-  return withoutMark(first);
+  const { result, bodyFromHeading } = layoutOnce(input, theme, stage, opts);
+  if (bodyFromHeading) return result;
+  const fit = headingFit(result, input.heading, theme, stage);
+  if (fit.cap === undefined) return shiftBody(result, fit.shift, fit.holds);
+  // No room to move the body down: lay out once more with the heading at the size that fits.
+  const capped = layoutOnce(input, theme, stage, opts, fit.cap).result;
+  return shiftBody(capped, shiftUnder(capped, fit.gap), true);
+}
+
+/** How far the body must move for `gap` to hold under the laid heading. */
+function shiftUnder(r: TemplateResult, gap: number): number {
+  const head = r.slide.elements.find((e) => e.name === "Heading") as TextElement | undefined;
+  const body = head ? bodyOf(r.slide.elements, head) : [];
+  if (!head || !body.length) return 0;
+  return Math.max(0, Math.ceil(head.y + head.h + gap - Math.min(...body.map((e) => e.y))));
 }
 
 /** The lowest a body may reach when it moves down under a taller heading (slide 540, 28 pt foot). */
 const SAFE_FOOT = 512;
+const SLIDE_H = 540;
 
-const withoutMark = (r: TemplateResult & { measured?: boolean }): TemplateResult => {
-  const { measured: _, ...laid } = r;
-  return laid;
-};
+/** The body: every element under the heading's first line, the heading excluded. */
+const bodyOf = (els: SlideElement[], head: TextElement) =>
+  els.filter(
+    (e) => e !== head && e.y >= G.headY + Math.ceil(Number(head.style?.fontSize) * LH.heading),
+  );
 
 /**
- * The body moved down so `gap` holds under the measured heading, or "no room" when that would
- * carry it past the slide's safe foot. Unchanged when the gap already holds, the body was placed
- * from the heading already, there is no heading, or the body overran the slide before moving.
+ * How far the body moves so the template's one-line gap (at the heading's full size) holds under
+ * the measured heading; when that carries the body past the safe foot, the largest smaller heading
+ * size (`cap`) at which it does not, and the move at that size. The body does not depend on the
+ * heading's size, so the sizes are measured on the heading's words alone, not laid out again.
+ * A body that already overruns the slide is left to fit (`shift` 0).
  */
-function bodyBelowHeading(
-  r: TemplateResult & { measured?: boolean },
-  gap: number,
-): TemplateResult | "no room" {
-  const laid = withoutMark(r);
-  const els = laid.slide.elements;
+function headingFit(
+  r: TemplateResult,
+  words: string,
+  theme: Theme,
+  stage: Stage,
+): { shift: number; holds: boolean; gap: number; cap?: number } {
+  const els = r.slide.elements;
   const head = els.find((e) => e.name === "Heading") as TextElement | undefined;
-  if (!head || r.measured) return laid;
-  const oneLine = Math.ceil(Number(head.style?.fontSize) * LH.heading);
-  const body = els.filter((e) => e !== head && e.y >= G.headY + oneLine);
-  if (!body.length) return laid;
-  const shift = Math.ceil(head.y + head.h + gap - Math.min(...body.map((e) => e.y)));
-  if (shift <= 0) return laid;
+  if (!head) return { shift: 0, holds: true, gap: 0 };
+  const full = Number(head.style?.fontSize);
+  const gap = G.band.y - (G.headY + Math.ceil(full * LH.heading));
+  const body = bodyOf(els, head);
+  if (!body.length) return { shift: 0, holds: true, gap };
+  const top = Math.min(...body.map((e) => e.y));
   const foot = Math.max(...body.map((e) => e.y + e.h));
-  if (foot > SAFE_FOOT) return laid;
-  if (foot + shift > SAFE_FOOT) return "no room";
-  for (const e of body) e.y += shift;
-  return { ...laid, over: laid.over.filter((o) => !/^heading \d+ lines$/.test(o)) };
+  const shiftAt = (h: number) => Math.max(0, Math.ceil(head.y + h + gap - top));
+  const shift = shiftAt(head.h);
+  if (shift === 0 || foot + shift <= SAFE_FOOT) return { shift, holds: true, gap };
+  if (foot > SLIDE_H) return { shift: 0, holds: false, gap };
+  const c: Ctx = { t: atKeyStage(theme, stage), s: templateScale(theme, stage), over: [], els: [] };
+  // The largest size that keeps the body above the safe foot; failing that, above the slide's edge.
+  for (const limit of [SAFE_FOOT, SLIDE_H])
+    for (let size = full - 2; size >= c.s.body; size -= 2) {
+      const h = measure({ ...c, s: { ...c.s, heading: size } }, words, "heading", G.width);
+      if (foot + shiftAt(h) <= limit) return { shift, holds: true, gap, cap: size };
+    }
+  // Even at the floor the body cannot move far enough: the heading stays, the body moves no further.
+  return { shift: 0, holds: false, gap };
+}
+
+/** The body moved down by `shift`; the heading-lines mark goes once the gap holds. */
+function shiftBody(r: TemplateResult, shift: number, holds: boolean): TemplateResult {
+  const head = r.slide.elements.find((e) => e.name === "Heading") as TextElement | undefined;
+  if (!head) return r;
+  if (shift > 0) for (const e of bodyOf(r.slide.elements, head)) e.y += shift;
+  return holds ? { ...r, over: r.over.filter((o) => !/^heading \d+ lines$/.test(o)) } : r;
 }
 
 function layoutOnce(
@@ -1193,7 +1217,7 @@ function layoutOnce(
   stage: Stage,
   opts: LayoutOptions,
   headingCap?: number,
-): TemplateResult & { measured?: boolean } {
+): { result: TemplateResult; bodyFromHeading: boolean } {
   // Master's key stage travels with the theme (`atKeyStage`), not process-wide: the drawer reads it
   // off `c.t`.
   const c: Ctx = {
@@ -1717,7 +1741,7 @@ function layoutOnce(
       break;
     }
   }
-  return {
+  const result: TemplateResult = {
     slide: {
       kind: KIND[tpl],
       elements: c.els,
@@ -1726,8 +1750,8 @@ function layoutOnce(
     },
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
-    ...(c.bodyFromHeading ? { measured: true } : {}),
   };
+  return { result, bodyFromHeading: c.bodyFromHeading ?? false };
 }
 
 /**

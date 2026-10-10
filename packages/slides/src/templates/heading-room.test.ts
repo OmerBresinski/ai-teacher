@@ -45,6 +45,15 @@ describe("body top from the measured heading (ruling 198)", () => {
     expect(two.gap).toBeGreaterThan(two.oneLineGap);
     expect(two.foot).toBe(one.foot);
   });
+  test("a body between the safe foot and the slide's edge steps the heading down until the gap holds", () => {
+    const one = lay("Quick check", qs(8));
+    const two = lay(long, qs(8));
+    expect(one.foot).toBeGreaterThan(512);
+    expect(one.foot).toBeLessThanOrEqual(540);
+    expect(two.size).toBeLessThan(one.size);
+    expect(two.gap).toBeGreaterThanOrEqual(one.oneLineGap);
+    expect(two.foot).toBeLessThanOrEqual(540);
+  });
   test("a body that already overruns the slide is left to fit, not moved further", () => {
     const many = qs(7, " during exercise, and what happens to the breathing rate as well");
     const one = lay("Quick check", many);
