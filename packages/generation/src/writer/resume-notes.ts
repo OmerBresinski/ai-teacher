@@ -41,6 +41,8 @@ export async function notesForSavedSlides<T extends DeckSlide>(o: {
   bundle?: WriterBundleId;
   services: Pick<WriterServices, "chat" | "log">;
   only?: ReadonlySet<string>;
+  /** Called when slides wanted notes and the call wrote none (it failed or came back empty). */
+  warn?: (e: { wanted: number; written: number }) => void;
 }): Promise<T[]> {
   const P = writerBundle(o.bundle);
   const primaries = o.slides.filter((s) => primaryIndex(s.id) !== undefined);
@@ -80,5 +82,7 @@ export async function notesForSavedSlides<T extends DeckSlide>(o: {
     return { ...s, notes: [text, s.notes ?? ""].filter(Boolean).join("\n\n") };
   });
   o.services.log({ ev: "resume-notes", wanted: wanted.length, written });
+  // The lesson still ships (notes are not a reason to fail it), but never silently without them.
+  if (written === 0) o.warn?.({ wanted: wanted.length, written });
   return out;
 }

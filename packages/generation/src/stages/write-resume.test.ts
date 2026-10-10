@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai/testing";
 import type { Lesson, Slide } from "@tj/domain/documents";
+import pino from "pino";
 import { labAi, romansLesson } from "../planner/testing";
 import { initialState, type RecordedDeps, recordingDeps, writerFixture } from "../testing";
 import type { PipelineState } from "../types";
@@ -16,7 +17,7 @@ import { hasEditableDeck, write } from "./write";
  */
 
 const fixture = writerFixture();
-function writerAi(stream = { pieceChars: 120, paceMs: 15 }) {
+function writerAi(stream = { pieceChars: 120, paceMs: 15 }, notes: "ok" | "fail" = "ok") {
   const calls = { lesson: 0 };
   const answers = (call: FakeCall) => {
     const v = call.context?.promptVersion ?? "";
@@ -25,7 +26,7 @@ function writerAi(stream = { pieceChars: 120, paceMs: 15 }) {
       calls.lesson += 1;
       return { text: fixture.main, stream };
     }
-    if (v.endsWith("/notes")) return fixture.notes;
+    if (v.endsWith("/notes")) return notes === "ok" ? fixture.notes : "not json";
     if (v.endsWith("/objectives"))
       return JSON.stringify({
         objectives: [
@@ -135,6 +136,29 @@ describe("a retry after the write stage threw", () => {
       stored.slides.map(({ notes: _n, ...s }) => s),
     );
     expectNotesOnFinished(stored, out.lesson);
+    // The notes call is counted in the lesson's usage like every other call.
+    expect(retry.budget.totals().calls).toBeGreaterThan(0);
+    expect(out.lesson.generation?.usage).toEqual(retry.budget.totals());
+  });
+
+  test("a failed notes call on resume warns and still ships the deck as saved", async () => {
+    const planned = await plannedState();
+    const a0 = recordingDeps(writerAi().ai);
+    const deps0: RecordedDeps = {
+      ...a0,
+      onProgress: async (_p, message) => {
+        if (message === "Slides written") throw new TypeError("x is undefined");
+      },
+    };
+    await expect(write(planned, deps0)).rejects.toBeInstanceOf(TypeError);
+    const stored = storedAfter(a0);
+    const lines: string[] = [];
+    const logger = pino({ level: "warn" }, { write: (m: string) => void lines.push(m) });
+    const retry = recordingDeps(writerAi(undefined, "fail").ai, { logger });
+    const out = await write({ ...planned, lesson: stored }, retry);
+    expect(out.lesson.generation?.stage).toBe("generated");
+    expect(out.lesson.slides).toEqual(stored.slides);
+    expect(lines.some((l) => l.includes("resumed deck shipped without speaker notes"))).toBe(true);
   });
 
   test("mid-stream: keeps the finished slides and writes the rest off-screen", async () => {

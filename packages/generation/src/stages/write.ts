@@ -173,6 +173,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       objectives,
       bundle: writerBundleOf(lesson),
       services: aiWriterServices(deps),
+      warn: (e) =>
+        deps.logger.warn({ stage: "generate", ...e }, "resumed deck shipped without speaker notes"),
     });
     deps.logger.info(
       {
@@ -398,6 +400,11 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         bundle: writerBundleOf(lesson),
         services: aiWriterServices(deps),
         only: new Set(finished.keys()),
+        warn: (e) =>
+          deps.logger.warn(
+            { stage: "generate", ...e },
+            "kept slides shipped without speaker notes",
+          ),
       })
     : credited(out.slides);
   const done = toLesson(deck, "generated", allIn(deck, "done"));
