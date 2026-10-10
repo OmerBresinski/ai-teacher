@@ -1,0 +1,65 @@
+{
+  "source": "d52/A/full/y1-science-animals-young/main.json slides[1]",
+  "slide": {
+    "template": "pair",
+    "heading": "Name the young",
+    "instruction": "Match each picture to its name.",
+    "cards": [
+      {
+        "label": "kitten",
+        "picture": "A small kitten with visible paws and whiskers"
+      },
+      {
+        "label": "puppy",
+        "picture": "A small puppy with visible paws and fur"
+      },
+      {
+        "label": "calf",
+        "picture": "A small calf standing with visible hooves"
+      }
+    ]
+  },
+  "pictures": [
+    {
+      "level": 30,
+      "time": 1791579101819,
+      "pid": 49944,
+      "hostname": "192.168.1.143",
+      "resumed": true,
+      "usagePriorUsd": 0.0014866999999999999,
+      "stage": "generate",
+      "picture": "card.0",
+      "director": "set",
+      "via": "none",
+      "reason": "generation-refused-or-failed",
+      "msg": "writer picture"
+    },
+    {
+      "level": 30,
+      "time": 1791579101819,
+      "pid": 49944,
+      "hostname": "192.168.1.143",
+      "resumed": true,
+      "usagePriorUsd": 0.0014866999999999999,
+      "stage": "generate",
+      "picture": "card.1",
+      "director": "set",
+      "via": "generated",
+      "msg": "writer picture"
+    },
+    {
+      "level": 30,
+      "time": 1791579101819,
+      "pid": 49944,
+      "hostname": "192.168.1.143",
+      "resumed": true,
+      "usagePriorUsd": 0.0014866999999999999,
+      "stage": "generate",
+      "picture": "card.2",
+      "director": "set",
+      "via": "none",
+      "reason": "generation-refused-or-failed",
+      "msg": "writer picture"
+    }
+  ]
+}
