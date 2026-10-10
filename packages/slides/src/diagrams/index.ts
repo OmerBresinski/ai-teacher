@@ -22,6 +22,7 @@ import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { mendParticles } from "./particles-mend";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
+import { LONG_LABEL_STRETCH, parseStretched } from "./stretch";
 import { finished, laddered, look, WEIGHT } from "./style";
 import { type Ctx, context, type DrawnText, esc, mix, n, text, titleCtx, wrap } from "./svg";
 import { drawTable, tableHeight, tableWhole } from "./table";
@@ -95,6 +96,7 @@ export {
 } from "./normalise";
 export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";
+export { LONG_LABEL_STRETCH } from "./stretch";
 export { TYPE_FLOOR } from "./style";
 export { TEMPLATE_SPECS } from "./template-specs";
 
@@ -133,12 +135,6 @@ export function parseDiagram(spec: unknown): DiagramSpec | undefined {
   return longLabels > 0 ? parseLong(spec, r.error.issues).spec : undefined;
 }
 
-/**
- * lab/t3: how far past its limit a label may run when the drawing is checked to fit it (wrapped
- * onto more lines, or the labels a step smaller). The limits stay the writer's contract; this is
- * the room the materialiser gives a label that misses by a few characters before rejecting it.
- */
-export const LONG_LABEL_STRETCH = 1.5;
 /** The smallest label size a long label may shrink to (the renderers' own floor). */
 const LONG_LABEL_MIN_FS = 16;
 let longLabels = 0;
@@ -153,57 +149,13 @@ export function withLongLabels<T>(f: () => T): T {
   }
 }
 
-type Issue = {
-  code: string;
-  path: PropertyKey[];
-  message: string;
-  origin?: string;
-  maximum?: unknown;
-};
-const at = (o: unknown, path: PropertyKey[]): unknown =>
-  path.reduce<unknown>((v, k) => (v as Record<PropertyKey, unknown> | undefined)?.[k], o);
-const put = (o: unknown, path: PropertyKey[], value: unknown) => {
-  const parent = at(o, path.slice(0, -1)) as Record<PropertyKey, unknown> | undefined;
-  const last = path[path.length - 1];
-  if (parent && last !== undefined) parent[last] = value;
-};
-
-/**
- * A spec whose only faults are labels over their limit, by no more than the stretch: parsed with
- * each long label held at its limit, then the whole label put back. Anything else: the reasons.
- */
+/** A spec whose only faults are labels a little over their limit (stretch.ts), or the reasons. */
 function parseLong(
   spec: unknown,
-  issues: readonly Issue[],
+  issues: Parameters<typeof parseStretched>[2],
 ): { spec?: DiagramSpec; reasons: string[] } {
-  const long: { path: PropertyKey[]; text: string }[] = [];
-  const reasons: string[] = [];
-  for (const i of issues) {
-    const value = at(spec, i.path);
-    const max = typeof i.maximum === "number" ? i.maximum : Number(i.maximum);
-    const where = i.path.join(".");
-    if (i.code !== "too_big" || i.origin !== "string" || typeof value !== "string") {
-      reasons.push(`${where}: ${i.message}`);
-      continue;
-    }
-    const text = value.trim();
-    if (text.length > Math.floor(max * LONG_LABEL_STRETCH))
-      reasons.push(
-        `${where}: ${text.length} characters, past ${Math.floor(max * LONG_LABEL_STRETCH)}`,
-      );
-    else long.push({ path: i.path, text });
-  }
-  if (reasons.length > 0 || long.length === 0) return { reasons };
-  const held = structuredClone(spec);
-  for (const l of long) {
-    const max = issues.find((i) => i.path.join(".") === l.path.join("."))?.maximum as number;
-    put(held, l.path, l.text.slice(0, max));
-  }
-  const r = DiagramSpecSchema.safeParse(held);
-  if (!r.success)
-    return { reasons: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
-  for (const l of long) put(r.data, l.path, l.text);
-  return { spec: r.data, reasons: [] };
+  const r = parseStretched(DiagramSpecSchema, spec, issues);
+  return { spec: r.data, reasons: r.reasons };
 }
 
 /**

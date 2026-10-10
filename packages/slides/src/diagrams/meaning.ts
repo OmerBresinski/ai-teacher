@@ -17,6 +17,7 @@ import {
   EqualGroupsSchema,
   FractionShapesSchema,
 } from "./schema";
+import { parseStretched } from "./stretch";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
 const common = {
@@ -606,9 +607,12 @@ export function fromMeaning(spec: unknown): unknown {
   try {
     const kind = (spec as { kind?: unknown })?.kind;
     if (typeof kind !== "string" || !(kind in MEANING_SCHEMAS)) return spec;
-    const r = MEANING_SCHEMAS[kind as keyof typeof MEANING_SCHEMAS].safeParse(spec);
-    if (!r.success) return spec;
-    const m = r.data as never;
+    const schema = MEANING_SCHEMAS[kind as keyof typeof MEANING_SCHEMAS] as z.ZodType;
+    const r = schema.safeParse(spec);
+    // diagrams-12: a label a little over its limit converts too; the drawing then fits it or not.
+    const data = r.success ? r.data : parseStretched(schema, spec, r.error.issues).data;
+    if (data === undefined) return spec;
+    const m = data as never;
     switch (kind) {
       case "particles":
         return particlesFrom(m);
@@ -630,9 +634,14 @@ export function meaningFaults(spec: unknown): string {
   if (!s) return "";
   const r = s.safeParse(spec);
   if (r.success) return "";
-  return r.error.issues
+  // diagrams-12: a label within LONG_LABEL_STRETCH of its limit is not a fault here; the drawer's
+  // long-label parse and the slot check decide whether it wraps to fit (as for the drawer's own
+  // output). Anything else faults as before.
+  const long = parseStretched(s, spec, r.error.issues);
+  if (long.data !== undefined) return "";
+  return long.reasons
     .slice(0, 4)
-    .map((i) => `${i.path.map(String).join(".") || "spec"}: ${i.message}`)
+    .map((x) => (x.startsWith(": ") ? `spec${x}` : x))
     .join("; ");
 }
 

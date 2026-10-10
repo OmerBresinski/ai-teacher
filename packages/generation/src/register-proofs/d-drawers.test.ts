@@ -7,6 +7,7 @@ import {
   withLongLabels,
 } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
+import { acceptWriterSpec } from "../writer/diagrams";
 import type { J } from "./harness";
 
 /*
@@ -75,5 +76,50 @@ describe("REGISTER diagrams-11: the particles drawer faults on its own rules ins
       }),
     ).toBeUndefined();
     expect(Date.now() - t).toBeLessThan(2000);
+  });
+});
+
+describe("REGISTER diagrams-12: a valid writer timeline is rejected for 41-character labels (pr438-writer-2 y10 s3)", () => {
+  // The writer's spec was not recorded; its fault line was ('events.0.text ... <=40 characters').
+  // The first proof wrote the events with `when`; the timeline's field is `date`.
+  const text = "Germany and Austria-Hungary sign alliance";
+  const timeline = (first: string) => ({
+    kind: "timeline",
+    alt: "Alliances form before 1914.",
+    title: null,
+    events: [
+      { date: "1879", text: first },
+      { date: "1882", text: "Italy joins: the Triple Alliance forms" },
+      { date: "1907", text: "Triple Entente completed" },
+    ],
+  });
+  const accept = (spec: J) =>
+    acceptWriterSpec(
+      spec,
+      {
+        key: "diagram",
+        kind: "timeline",
+        shows: "Alliances",
+        labels: [],
+        spec,
+        words: "",
+        yearGroup: "Year 10",
+      },
+      studio,
+    );
+
+  test("FIXED diagrams-12: a 41-character event is accepted whole, and the drawing wraps it", () => {
+    expect(text.length).toBe(41);
+    const r = accept(timeline(text));
+    expect(r.fault).toBe("");
+    const events = (r.spec as { events: { text: string }[] }).events;
+    expect(events[0]?.text).toBe(text);
+    expect(fittedDiagramElement(r.spec, studio, { x: 0, y: 0, w: 788, h: 300 }).ok).toBe(true);
+  });
+
+  test("FIXED diagrams-12: an event past what the drawer wraps (over 60 characters) still faults", () => {
+    const long = "Germany and Austria-Hungary sign a secret defensive alliance treaty";
+    expect(long.length).toBeGreaterThan(60);
+    expect(accept(timeline(long)).fault).toContain("events.0.text");
   });
 });
