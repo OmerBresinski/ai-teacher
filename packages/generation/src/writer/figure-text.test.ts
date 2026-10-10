@@ -145,6 +145,80 @@ describe("figureTextFix", () => {
     );
   });
 
+  test("equal groups: a hidden per-group count is never written into the alt or shows", () => {
+    const s = groups(
+      12,
+      4,
+      "Twelve sweets in three groups of four.",
+      "Twelve sweets in three groups of four, for pupils to find how many in each.",
+    );
+    (s.figure as { unknown: boolean }).unknown = true;
+    const f = figureTextFix(s).slide.figure as { alt: string; shows: string };
+    expect(f.alt).toBe("Twelve sweets in four equal groups; how many in each is not shown.");
+    expect(f.shows).toBe(
+      "Twelve sweets in four equal groups; how many in each is not shown, for pupils to find how many in each.",
+    );
+    for (const t of [f.alt, f.shows]) expect(t).not.toMatch(/\bthree\b|\b3\b|groups of/);
+  });
+
+  test("equal groups: a hidden total is never written, nor a per-group count that gives it", () => {
+    const s = groups(
+      12,
+      4,
+      "Twelve sweets in three groups.",
+      "Twelve sweets in three groups of four.",
+    );
+    (s.figure as { unknown: unknown }).unknown = "total";
+    const f = figureTextFix(s).slide.figure as { alt: string; shows: string };
+    expect(f.alt).toBe("Sweets in four equal groups; how many in all is not shown.");
+    for (const t of [f.alt, f.shows]) expect(t).not.toMatch(/twelve|\b12\b|three|groups of/i);
+  });
+
+  test("equal groups: with no item noun in the words, the rewrite uses a neutral one", () => {
+    const r = figureTextFix(groups(12, 3, "Two equal groups.", "Sharing"));
+    expect((r.slide.figure as { alt: string }).alt).toBe(
+      "Twelve objects in three equal groups of four.",
+    );
+  });
+
+  test("shows: only the contradicting count is corrected, its teaching purpose kept", () => {
+    const r = figureTextFix(
+      groups(
+        12,
+        3,
+        "Twelve counters in two equal groups.",
+        "Twelve counters in two rings, so the teacher can model fair sharing.",
+      ),
+    );
+    expect(r.slide.figure).toMatchObject({
+      alt: "Twelve counters in three equal groups of four.",
+      shows: "Twelve counters in three rings, so the teacher can model fair sharing.",
+    });
+  });
+
+  test("shows: when it cannot be corrected in place, the purpose is kept beside the description", () => {
+    const t = figureTextFix(frenchTable("A number bank for one to twenty."));
+    expect((t.slide.figure as { shows: string }).shows).toBe(
+      "A table of Nombre and Français in six rows, for the numbers 1 to 6 and 11 to 16, for expressing ages.",
+    );
+    const r = figureTextFix(
+      shapesSlide(
+        "A circle, square and rectangle each show one half shaded, then one quarter shaded.",
+        "Halves and quarters in triangles; each pair uses identical whole shapes.",
+      ),
+    );
+    expect((r.slide.figure as { shows: string }).shows).toBe(
+      "A circle, a square and a rectangle, each with one of two equal parts shaded; then a circle with one of four equal parts shaded. Each pair uses identical whole shapes.",
+    );
+  });
+
+  test("shows that agree with the spec are kept when only the alt contradicts it", () => {
+    const shows = "Pupils compare the sizes of the equal parts";
+    const r = figureTextFix(shapesSlide("Halves and quarters in triangles.", shows));
+    expect(r.changes).toHaveLength(1);
+    expect((r.slide.figure as { shows: string }).shows).toBe(shows);
+  });
+
   test("each behaviour runs only under its own flag", () => {
     const s = groups(16, 10, "Sixteen counters in one collection.", "One collection.");
     expect(figureTextFix(s, { specRepair: true }).changes.map((c) => c.action)).toEqual(["groups"]);

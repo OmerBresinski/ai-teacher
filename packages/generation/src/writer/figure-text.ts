@@ -86,7 +86,7 @@ function partsOf(spec: J): Part[] {
   }));
 }
 
-function fractionShapesMiss(spec: J, words: string): string | undefined {
+function fractionShapesMiss(spec: J, words: string, strict = false): string | undefined {
   const parts = partsOf(spec);
   if (!parts.length) return undefined;
   // A shape shows 1/d when cut into d parts, or when its shaded share is 1/d (two quarters: a half).
@@ -105,7 +105,7 @@ function fractionShapesMiss(spec: J, words: string): string | undefined {
       .filter((n) => n > 0);
     for (const m of named) if (!kinds.includes(m)) return `names a ${m} the figure does not draw`;
     if (!fr.size) continue;
-    const spread = DISTRIBUTIVE.test(s);
+    const spread = strict || DISTRIBUTIVE.test(s);
     // A count spreads over every fraction only when the words say so ("each of three shapes");
     // "halves of three shapes and a quarter of a circle" needs three of one of them.
     const short = (n: number, d: number) => countOf(d) < n;
@@ -238,26 +238,129 @@ function equalGroupsMiss(spec: J, words: string): string | undefined {
   return undefined;
 }
 
+/** The counts a question slide keeps from pupils: `unknown` hides the per-group count ("?"). */
+type Hidden = { per: boolean; total: boolean };
+function hiddenOf(spec: J): Hidden {
+  const u = spec.unknown;
+  return { per: u === true || u === "each", total: u === "total" };
+}
+
+/** The writer's own noun for what is drawn ("sweets"), else a neutral one. */
+function itemNoun(spec: J): string {
+  for (const t of [str(spec.items), str(spec.alt), str(spec.shows)]) {
+    const m = t.toLowerCase().match(new RegExp(`\\b(${ITEMS})\\b`));
+    if (m) return m[1] as string;
+  }
+  return "objects";
+}
+
 function equalGroupsWords(spec: J): string {
   const total = Number(spec.total);
   const groups = Number(spec.groups);
-  if (groups === 1) return `${cap(say(total))} counters in one group.`;
+  const hide = hiddenOf(spec);
+  const noun = itemNoun(spec);
+  // A hidden total is never stated, nor a per-group count that would give it away.
+  const lead = hide.total ? cap(noun) : `${cap(say(total))} ${noun}`;
+  if (groups === 1) return `${lead} in one group${hide.total ? "; how many is not shown" : ""}.`;
   const each = total / groups;
-  return Number.isInteger(each)
-    ? `${cap(say(total))} counters in ${say(groups)} equal groups of ${say(each)}.`
-    : `${cap(say(total))} counters across ${say(groups)} groups.`;
+  if (!Number.isInteger(each)) return `${lead} across ${say(groups)} groups.`;
+  if (hide.total) return `${lead} in ${say(groups)} equal groups; how many in all is not shown.`;
+  if (hide.per) return `${lead} in ${say(groups)} equal groups; how many in each is not shown.`;
+  return `${lead} in ${say(groups)} equal groups of ${say(each)}.`;
+}
+
+/** True when the words state a count the figure hides. */
+function equalGroupsLeaks(spec: J, words: string): boolean {
+  const hide = hiddenOf(spec);
+  const total = Number(spec.total);
+  const groups = Number(spec.groups);
+  const c = groupClaims(words);
+  if (hide.per && c.per.has(total / groups)) return true;
+  if (hide.total && (c.totals.has(total) || c.per.size > 0)) return true;
+  return false;
+}
+
+/**
+ * The shows with only its contradicting counts replaced by the spec's, so its teaching purpose
+ * stays; undefined when a count to correct is hidden or the result still misses.
+ */
+function equalGroupsCorrect(spec: J, shows: string): string | undefined {
+  const total = Number(spec.total);
+  const groups = Number(spec.groups);
+  const each = total / groups;
+  if (!Number.isInteger(each)) return undefined;
+  const hide = hiddenOf(spec);
+  let unsafe = false;
+  // Same plurality only, so "two groups" never becomes "one groups".
+  const swap = (want: number, hidden: boolean) => (m: string, w: string) => {
+    const had = num(w.toLowerCase());
+    if (had === want) return m;
+    if (hidden || (had === 1) !== (want === 1)) unsafe = true;
+    const word = /^\d+$/.test(w) ? String(want) : say(want);
+    return m.replace(w, /^[A-Z]/.test(w) ? cap(word) : word);
+  };
+  const ci = (re: RegExp) => new RegExp(re.source, "gi");
+  let out = shows.replace(ci(GROUPS), swap(groups, false));
+  out = out.replace(ci(PER_GROUP), swap(each, hide.per || hide.total));
+  out = out.replace(ci(EACH), swap(each, hide.per || hide.total));
+  // A total that matched as a per-group count ("groups of 4 counters") is already right.
+  const per = new Set([...groupClaims(out).per]);
+  out = out.replace(ci(TOTAL), (m: string, w: string) =>
+    per.has(num(w.toLowerCase())) ? m : swap(total, hide.total)(m, w),
+  );
+  if (unsafe || equalGroupsMiss(spec, out) || equalGroupsLeaks(spec, out)) return undefined;
+  return out;
 }
 
 // ── the slide ──
 
-const KINDS: Record<
-  string,
-  { miss: (s: J, w: string) => string | undefined; words: (s: J) => string }
-> = {
+type Kind = {
+  /** `strict` reads every list as spread over each fraction, for keeping a part unrewritten. */
+  miss: (s: J, w: string, strict?: boolean) => string | undefined;
+  words: (s: J) => string;
+  /** Words that state a count the figure hides from pupils. */
+  leaks?: (s: J, w: string) => boolean;
+  /** The text with only its contradicting part corrected, when that can be done safely. */
+  correct?: (s: J, w: string) => string | undefined;
+};
+const KINDS: Record<string, Kind> = {
   "fraction-shapes": { miss: fractionShapesMiss, words: fractionShapesWords },
   table: { miss: tableMiss, words: tableWords },
-  "equal-groups": { miss: equalGroupsMiss, words: equalGroupsWords },
+  "equal-groups": {
+    miss: equalGroupsMiss,
+    words: equalGroupsWords,
+    leaks: equalGroupsLeaks,
+    correct: equalGroupsCorrect,
+  },
 };
+
+// Where a teaching purpose starts inside a clause ("... for expressing ages").
+const PURPOSE =
+  /(?:,\s*|\s+)(?=(?:so that|so|for|ready for|to help|to show|to compare|to practise|to practice|to model|to check)\s)/i;
+
+/**
+ * A shows that contradicts its spec, mended: its own counts corrected when the kind can do that
+ * safely, else the clean clauses kept (the teaching purpose) beside the description from the spec.
+ */
+function mendShows(kind: Kind, spec: J, shows: string, text: string): string {
+  const fixed = kind.correct?.(spec, shows);
+  if (fixed) return fixed;
+  const ok = (t: string) => !kind.miss(spec, t, true) && !kind.leaks?.(spec, t);
+  const kept: string[] = [];
+  let purpose = "";
+  for (const part of shows.split(/(?<=[.;!?])\s+/)) {
+    const body = part.replace(/[.;!?]+$/, "").trim();
+    if (!body) continue;
+    if (ok(body)) kept.push(`${cap(body)}.`);
+    else if (!purpose) {
+      const at = body.search(PURPOSE);
+      const tail = at > 0 ? body.slice(at).replace(/^,?\s*/, "") : "";
+      if (tail && ok(tail) && !/\d/.test(tail)) purpose = tail;
+    }
+  }
+  const lead = purpose ? `${text.replace(/\.$/, "")}, ${purpose}.` : text;
+  return [lead, ...kept].join(" ");
+}
 
 export type FigureTextChange = {
   key: string;
@@ -290,8 +393,17 @@ export function figureTextFixOne(
   if (!opts.fromSpec) return undefined;
   const why = kind.miss(spec, words);
   if (!why) return undefined;
+  // Only the contradicting part is rewritten: the alt becomes the literal description, and the
+  // shows keeps its teaching purpose with only the contradiction corrected.
   const text = kind.words(spec);
-  return { spec: { ...spec, alt: text, shows: text }, action: "words", why };
+  const alt = str(spec.alt);
+  const shows = str(spec.shows);
+  const out: J = { ...spec };
+  // A part is kept only if it passes on the strict reading, so nothing kept is less true than
+  // the rewrite it replaces.
+  if (!alt || kind.miss(spec, alt, true)) out.alt = text;
+  if (shows && kind.miss(spec, shows, true)) out.shows = mendShows(kind, spec, shows, text);
+  return { spec: out, action: "words", why };
 }
 
 /** Every figure on a slide checked against its own words; unchanged when they all agree. */
