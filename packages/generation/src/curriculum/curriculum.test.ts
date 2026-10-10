@@ -6,11 +6,14 @@ import { ENGLAND, INDIA, setLocale } from "../writer/locale";
 import {
   CURRICULUM,
   CURRICULUM_FILES,
+  CURRICULUM_OTHER_CAP,
   CurriculumFileSchema,
   curriculumBlock,
   curriculumFor,
   curriculumSubject,
   curriculumYear,
+  curriculumYears,
+  SUBJECT_ALIASES,
 } from "./index";
 
 const Y6_ANIMALS = [
@@ -91,12 +94,58 @@ describe("curriculumFor", () => {
       topic: "The heart and circulatory system",
     });
     expect(r.subject).toBe("science");
-    expect(r.year).toBe(6);
-    expect(r.matchedDomains[0]).toBe("Animals including humans");
+    expect(r.years).toEqual([6, 6]);
+    expect(r.matchedDomains).toEqual(["Animals including humans"]);
     expect(r.statements.slice(0, 3).map((s) => s.text)).toEqual(Y6_ANIMALS);
-    // All of the year's statements, not a topic subset: Year 6 plus upper KS2 working scientifically.
-    expect(r.statements.length).toBe(15 + 6);
+    // The matched domain whole, then the capped rest: not the year's 21 statements.
+    expect(r.statements.length).toBe(3 + CURRICULUM_OTHER_CAP);
     expect(new Set(r.statements.map((s) => s.id)).size).toBe(r.statements.length);
+  });
+
+  test("Year 4 rivers: the geography domains naming rivers first, the rest capped", () => {
+    const r = curriculumFor({
+      country: "england",
+      subject: "Geography",
+      yearGroup: "Year 4",
+      topic: "Rivers",
+    });
+    expect(r.matchedDomains).toEqual(["Locational knowledge", "Human and physical geography"]);
+    expect(r.statements[0]?.domain).toBe("Locational knowledge");
+    expect(r.statements.some((s) => /rivers/.test(s.text))).toBe(true);
+    const all = curriculumFor({ country: "england", subject: "Geography", yearGroup: "Year 4" });
+    expect(r.statements.length).toBeLessThanOrEqual(all.statements.length);
+    const matched = r.statements.filter((s) => r.matchedDomains.includes(s.domain)).length;
+    expect(r.statements.length - matched).toBeLessThanOrEqual(CURRICULUM_OTHER_CAP);
+  });
+
+  test("Year 4 fractions: the fractions domain whole, then at most the cap of the year's rest", () => {
+    const r = curriculumFor({
+      country: "england",
+      subject: "maths",
+      yearGroup: "Year 4",
+      topic: "Fractions",
+    });
+    const domain = "Number - fractions (including decimals)";
+    expect(r.matchedDomains).toEqual([domain]);
+    const inDomain = CURRICULUM.filter(
+      (s) => s.subject === "mathematics" && s.years[0] === 4 && s.domain === domain,
+    );
+    expect(r.statements.slice(0, inDomain.length)).toEqual(inDomain);
+    expect(r.statements.length).toBe(inDomain.length + CURRICULUM_OTHER_CAP);
+    const all = curriculumFor({ country: "england", subject: "maths", yearGroup: "Year 4" });
+    expect(r.statements.length).toBeLessThan(all.statements.length);
+  });
+
+  test("a key stage 4 topic matched only in statement text stays short", () => {
+    const all = curriculumFor({ country: "england", subject: "maths", yearGroup: "Year 11" });
+    const r = curriculumFor({
+      country: "england",
+      subject: "maths",
+      yearGroup: "Year 11",
+      topic: "Fractions",
+    });
+    expect(r.statements.length).toBeLessThan(all.statements.length / 2);
+    expect(r.statements[0]?.text).toMatch(/fraction/);
   });
 
   test("a heading match ranks above a statement-text match; no topic keeps source order", () => {
@@ -106,7 +155,7 @@ describe("curriculumFor", () => {
       yearGroup: "Y6",
       topic: "Light",
     });
-    expect(light.matchedDomains[0]).toBe("Light");
+    expect(light.matchedDomains).toEqual(["Light"]);
     const plain = curriculumFor({ country: "england", subject: "science", yearGroup: "6" });
     expect(plain.matchedDomains).toEqual([]);
     expect(plain.statements[0]?.domain).toBe("Working scientifically");
@@ -118,7 +167,20 @@ describe("curriculumFor", () => {
     expect(curriculumFor(q).matchedDomains[0]).toBe("Number - fractions (including decimals)");
   });
 
-  test("no data: another country, an unknown subject, Reception, Year 12", () => {
+  test("a key stage or a year range gets every year's statements in it", () => {
+    const ks2 = curriculumFor({ country: "england", subject: "geography", yearGroup: "KS2" });
+    expect(ks2.years).toEqual([3, 6]);
+    expect(ks2.statements.length).toBe(10);
+    const y56 = curriculumFor({ country: "england", subject: "science", yearGroup: "Years 5-6" });
+    expect(y56.years).toEqual([5, 6]);
+    const y5 = curriculumFor({ country: "england", subject: "science", yearGroup: "Year 5" });
+    const y6 = curriculumFor({ country: "england", subject: "science", yearGroup: "Year 6" });
+    expect(new Set(y56.statements.map((s) => s.id))).toEqual(
+      new Set([...y5.statements, ...y6.statements].map((s) => s.id)),
+    );
+  });
+
+  test("no data: another country, an unknown subject, Reception, EYFS, Year 12", () => {
     const none = { statements: [], matchedDomains: [] };
     expect(curriculumFor({ country: "india", subject: "science", yearGroup: "Year 6" })).toEqual(
       none,
@@ -130,14 +192,65 @@ describe("curriculumFor", () => {
     expect(curriculumFor({ country: "england", subject: "science", yearGroup: "Year 12" })).toEqual(
       none,
     );
+    for (const yearGroup of ["EYFS", "Nursery", "", "Key Stage 5"]) {
+      expect(curriculumFor({ country: "england", subject: "science", yearGroup })).toEqual(none);
+    }
   });
 
-  test("subject aliases and year parsing", () => {
-    expect(curriculumSubject("PE")).toBe("physical education");
-    expect(curriculumSubject("French")).toBe("languages");
+  test("every subject alias resolves to a subject with data", () => {
+    const aliases: Record<string, string> = {
+      maths: "mathematics",
+      math: "mathematics",
+      biology: "science",
+      chemistry: "science",
+      physics: "science",
+      art: "art and design",
+      dt: "design and technology",
+      "d&t": "design and technology",
+      "design technology": "design and technology",
+      pe: "physical education",
+      "p.e.": "physical education",
+      mfl: "languages",
+      "modern foreign languages": "languages",
+      "foreign languages": "languages",
+      french: "languages",
+      spanish: "languages",
+      german: "languages",
+      "english language": "English",
+      "english literature": "English",
+    };
+    expect(Object.keys(aliases).sort()).toEqual(Object.keys(SUBJECT_ALIASES).sort());
+    for (const [alias, subject] of Object.entries(aliases)) {
+      expect(curriculumSubject(alias)).toBe(subject);
+      expect(curriculumSubject(alias.toUpperCase())).toBe(subject);
+    }
+    expect(curriculumSubject("English Language")).toBe("English");
+    expect(
+      curriculumFor({ country: "england", subject: "English Literature", yearGroup: "Year 10" })
+        .statements.length,
+    ).toBe(38);
     expect(curriculumSubject("english")).toBe("English");
+    expect(curriculumSubject("RE")).toBeUndefined();
+  });
+
+  test("year group parsing: single years, ranges, key stages; Reception and EYFS read as none", () => {
+    expect(curriculumYears("Year 10")).toEqual([10, 10]);
+    expect(curriculumYears("Y3")).toEqual([3, 3]);
+    expect(curriculumYears("6")).toEqual([6, 6]);
+    expect(curriculumYears("Years 5-6")).toEqual([5, 6]);
+    expect(curriculumYears("Year 5/6")).toEqual([5, 6]);
+    expect(curriculumYears("Y5/6")).toEqual([5, 6]);
+    expect(curriculumYears("Years 5 to 6")).toEqual([5, 6]);
+    expect(curriculumYears("KS1")).toEqual([1, 2]);
+    expect(curriculumYears("KS2")).toEqual([3, 6]);
+    expect(curriculumYears("Key Stage 2")).toEqual([3, 6]);
+    expect(curriculumYears("key stage 3")).toEqual([7, 9]);
+    expect(curriculumYears("KS4")).toEqual([10, 11]);
+    for (const none of ["Reception", "EYFS", "Nursery", "Year 12", "Years 6-5", "Year 0", ""]) {
+      expect(curriculumYears(none)).toBeUndefined();
+    }
     expect(curriculumYear("Year 10")).toBe(10);
-    expect(curriculumYear("Y3")).toBe(3);
+    expect(curriculumYear("Years 5-6")).toBeUndefined();
     expect(curriculumYear("Reception")).toBeUndefined();
   });
 });

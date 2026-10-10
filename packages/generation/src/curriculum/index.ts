@@ -75,8 +75,8 @@ export const CURRICULUM: readonly CurriculumStatement[] = Object.values(CURRICUL
   (f) => (f as CurriculumFile).statements,
 );
 
-/** Names a teacher or brief may use for a subject, to the data's subject name. */
-const SUBJECT_ALIASES: Readonly<Record<string, string>> = {
+/** Names a teacher or brief may use for a subject, to the data's subject name, normalised. */
+export const SUBJECT_ALIASES: Readonly<Record<string, string>> = {
   maths: "mathematics",
   math: "mathematics",
   biology: "science",
@@ -94,8 +94,8 @@ const SUBJECT_ALIASES: Readonly<Record<string, string>> = {
   french: "languages",
   spanish: "languages",
   german: "languages",
-  "english language": "English",
-  "english literature": "English",
+  "english language": "english",
+  "english literature": "english",
 };
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -104,14 +104,43 @@ const SUBJECTS = new Map(CURRICULUM.map((s) => [norm(s.subject), s.subject]));
 /** The data's subject name for `subject`, or undefined when the curriculum has no such subject. */
 export function curriculumSubject(subject: string): string | undefined {
   const key = norm(subject);
-  return SUBJECTS.get(key) ?? SUBJECTS.get(SUBJECT_ALIASES[key] ?? "") ?? undefined;
+  return SUBJECTS.get(key) ?? SUBJECTS.get(norm(SUBJECT_ALIASES[key] ?? "")) ?? undefined;
 }
 
-/** The year number in "Year 6", "Y6", "year 10" or "6"; undefined for Reception or none. */
+/** The years each key stage covers. */
+const KEY_STAGE_YEARS: Readonly<Record<string, readonly [number, number]>> = {
+  "1": [1, 2],
+  "2": [3, 6],
+  "3": [7, 9],
+  "4": [10, 11],
+};
+
+/**
+ * The first and last year in a year group: "Year 6", "Y6", "6" -> [6, 6]; "Years 5-6",
+ * "Year 5/6", "Y5/6" -> [5, 6]; "KS2", "Key Stage 2" -> [3, 6]. Undefined for Reception, EYFS,
+ * Nursery, anything outside years 1 to 11, or text it cannot read.
+ */
+export function curriculumYears(yearGroup: string): [number, number] | undefined {
+  const g = norm(yearGroup);
+  const ks = /^(?:ks|key stage)\s*([1-4])$/.exec(g);
+  if (ks) {
+    const r = KEY_STAGE_YEARS[ks[1] as string] as readonly [number, number];
+    return [r[0], r[1]];
+  }
+  const m =
+    /^(?:y(?:ears?|rs?)?\s*)?(\d{1,2})(?:\s*(?:-|\/|to|and|&|\u2013)\s*(?:y(?:ear)?\s*)?(\d{1,2}))?$/.exec(
+      g,
+    );
+  if (!m) return undefined;
+  const lo = Number(m[1]);
+  const hi = m[2] === undefined ? lo : Number(m[2]);
+  return lo >= 1 && hi <= 11 && lo <= hi ? [lo, hi] : undefined;
+}
+
+/** The year number of a single year group ("Year 6", "Y6", "6"); undefined for a range or none. */
 export function curriculumYear(yearGroup: string): number | undefined {
-  const m = /^\s*(?:y(?:ear)?\s*)?(\d{1,2})\s*$/i.exec(yearGroup);
-  const n = m ? Number(m[1]) : Number.NaN;
-  return n >= 1 && n <= 11 ? n : undefined;
+  const r = curriculumYears(yearGroup);
+  return r && r[0] === r[1] ? r[0] : undefined;
 }
 
 const STOP = new Set(
@@ -141,27 +170,37 @@ export type CurriculumQuery = {
 };
 
 export type CurriculumLookup = {
-  /** The data's subject name and the year looked up; undefined when there is no data. */
+  /** The data's subject name and the years looked up; undefined when there is no data. */
   subject?: string;
-  year?: number;
-  /** Every statutory statement for that year, the topic's matching domains first. */
+  years?: [number, number];
+  /**
+   * Without a topic, every statutory statement for those years, in source order. With one, the
+   * matched domains' statements in full, best first, then at most `CURRICULUM_OTHER_CAP` others.
+   */
   statements: CurriculumStatement[];
   /** The domain headings the topic matched, best first (empty without a topic or a match). */
   matchedDomains: string[];
 };
 
+/** With a topic, how many statements outside the matched domains still go to the prompt. */
+export const CURRICULUM_OTHER_CAP = 8;
+/** A domain matched only through a statement's text goes in whole when it has at most this many. */
+export const CURRICULUM_WHOLE_DOMAIN_MAX = 12;
+
 /**
- * The statutory statements for one subject and year, all of them (code never narrows to the
- * topic: the model picks the unit). With a topic, the domains whose heading shares a keyword
- * with it come first, then the domains whose statements do, best first; the rest keep source
- * order. Deterministic: a keyword match, no model call.
+ * The statutory statements for one subject and year group. Without a topic, all of them in
+ * source order. With a topic, the domains whose heading shares a keyword with it come first, then
+ * the domains whose statements do, best first, each in full; after them at most
+ * `CURRICULUM_OTHER_CAP` statements from the other domains, in source order, so the objectives
+ * prompt never gets a whole key stage's list. Deterministic: a keyword match, no model call.
  */
 export function curriculumFor(q: CurriculumQuery): CurriculumLookup {
   const subject = norm(q.country) === "england" ? curriculumSubject(q.subject) : undefined;
-  const year = curriculumYear(q.yearGroup);
-  if (!subject || year === undefined) return { statements: [], matchedDomains: [] };
+  const years = curriculumYears(q.yearGroup);
+  if (!subject || years === undefined) return { statements: [], matchedDomains: [] };
+  const [lo, hi] = years;
   const rows = CURRICULUM.filter(
-    (s) => s.subject === subject && s.years[0] <= year && year <= s.years[1],
+    (s) => s.subject === subject && s.years[0] <= hi && lo <= s.years[1],
   );
   const groups = new Map<string, CurriculumStatement[]>();
   for (const s of rows) {
@@ -169,18 +208,33 @@ export function curriculumFor(q: CurriculumQuery): CurriculumLookup {
     groups.set(key, [...(groups.get(key) ?? []), s]);
   }
   const topic = words(q.topic ?? "");
+  if (topic.size === 0) return { subject, years, statements: rows, matchedDomains: [] };
+  // A domain whose heading shares a topic keyword goes in whole, best first. With none, the
+  // domains holding a statement whose text shares one, best statement first: whole when the
+  // domain is short, else only the matching statements (a KS4 domain can run to dozens of rows).
   const scored = [...groups.values()].map((g, order) => {
-    const head = g[0] as CurriculumStatement;
-    const heading = overlap(topic, words(head.domain));
-    const text = overlap(topic, words(g.map((s) => s.text).join(" ")));
-    return { g, order, domain: head.domain, score: heading * 100 + text };
+    const head = overlap(topic, words((g[0] as CurriculumStatement).domain));
+    const hits = g.filter((s) => overlap(topic, words(s.text)) > 0);
+    const best = Math.max(0, ...g.map((s) => overlap(topic, words(s.text))));
+    return { g, order, head, hits, best };
   });
-  const ranked = [...scored].sort((a, b) => b.score - a.score || a.order - b.order);
+  const byOrder = (x: number, y: number, a: number, b: number) => y - x || a - b;
+  const heads = scored.filter((r) => r.head > 0);
+  const matched =
+    heads.length > 0
+      ? heads.sort((a, b) => byOrder(a.head, b.head, a.order, b.order)).map((r) => r.g)
+      : scored
+          .filter((r) => r.best > 0)
+          .sort((a, b) => byOrder(a.best, b.best, a.order, b.order))
+          .map((r) => (r.g.length <= CURRICULUM_WHOLE_DOMAIN_MAX ? r.g : r.hits));
+  const picked = matched.flat();
+  const ids = new Set(picked.map((s) => s.id));
+  const others = rows.filter((s) => !ids.has(s.id)).slice(0, CURRICULUM_OTHER_CAP);
   return {
     subject,
-    year,
-    statements: ranked.flatMap((r) => r.g),
-    matchedDomains: ranked.filter((r) => r.score > 0).map((r) => r.domain),
+    years,
+    statements: [...picked, ...others],
+    matchedDomains: [...new Set(picked.map((s) => s.domain))],
   };
 }
 

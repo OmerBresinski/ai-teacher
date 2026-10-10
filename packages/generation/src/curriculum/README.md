@@ -48,15 +48,18 @@ Headings are kept as the source writes them, including its inconsistencies: Year
 
 ```ts
 curriculumFor({ country, subject, yearGroup, topic }): {
-  subject?, year?, statements, matchedDomains
+  subject?, years?, statements, matchedDomains
 }
+curriculumYears(yearGroup) // "Year 6" [6, 6]; "Years 5-6", "Year 5/6" [5, 6]; "KS2" [3, 6]; Reception, EYFS undefined
 curriculumBlock(lookup, yearGroup): string // the {{curriculum}} block, "" when there is no data
 ```
 
-`curriculumFor` returns every statement for that year and subject (code does not narrow to the
-topic; the model picks the unit). With a topic, the domains whose heading shares a keyword come
-first, then those whose statements do; the rest keep source order. It is a keyword match, with no
-model call. `curriculum.test.ts` validates every row and pins the counts per subject and key
+`curriculumFor` without a topic returns every statement for those years, in source order. With a
+topic it returns the domains whose heading shares a keyword with it, whole, best first; with no
+heading match, the domains holding a statement whose text does (whole when at most 12 rows, else
+only those statements). After them come at most `CURRICULUM_OTHER_CAP` (8) other statements, so
+the objectives prompt never gets a whole key stage's list. It is a keyword match, with no model
+call. `curriculum.test.ts` validates every row and pins the counts per subject and key
 stage, so a rebuild that changes the data shows up there.
 
 ## Rebuilding
