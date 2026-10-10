@@ -1,6 +1,6 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
-import { safeError } from "@tj/domain";
+import { safeError, safeErrorWhere } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
@@ -173,7 +173,10 @@ function stageStep<S extends StepName>(
         return next;
       } catch (error) {
         requestContext.setRaw(FAILURE_KEY, error);
-        deps.logger.error({ stage, err: safeError(error) }, "generation stage failed");
+        deps.logger.error(
+          { stage, err: safeError(error), where: safeErrorWhere(error) },
+          "generation stage failed",
+        );
         const failure = new Error("Pipeline stage failed.");
         delete failure.stack;
         throw failure;
