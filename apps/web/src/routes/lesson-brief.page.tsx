@@ -49,12 +49,6 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
-/**
- * The longest the plan screen waits for Plan to finish reading once the objectives are ready.
- * Plan's animation normally hands over in a second or two; if it never does (its chunk failed to
- * load after a deploy, or the animation stalled), the page moves on anyway.
- */
-export const REVEAL_MAX_MS = 4000;
 // The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
 const SignInSheet = lazy(() =>
   import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
@@ -134,24 +128,10 @@ function LessonIntake({
     client,
   );
   const create = useMutation(libraryMutations.createLesson(client));
-  // The planning stage: whether this tab watched the job run (then Plan finishes reading before the
-  // page moves on), and the objectives it is waiting to hand over.
+  // Whether this tab watched the plan job run (then the page leaves the planning stage with a view
+  // transition rather than landing on the objectives directly).
   const watched = useRef(false);
   if (jobId) watched.current = true;
-  const [reveal, setReveal] = useState<string[] | null>(null);
-  // Leaves the planning stage once: from Plan's hand-over or, failing that, the timer below.
-  const finishReveal = () =>
-    leaveStage(() => {
-      setReveal(null);
-      if (lesson) land(lesson);
-    });
-  const finishRef = useRef(finishReveal);
-  finishRef.current = finishReveal;
-  useEffect(() => {
-    if (!reveal) return;
-    const timer = setTimeout(() => finishRef.current(), REVEAL_MAX_MS);
-    return () => clearTimeout(timer);
-  }, [reveal]);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -184,15 +164,12 @@ function LessonIntake({
     }
     if (initialized.current || jobId || !meta.isSuccess || lesson.generation?.stage !== "planned")
       return;
-    const ready = (lesson.facts?.objectives ?? []).map(({ text }) => text);
     initialized.current = true;
-    if (watched.current) {
-      // Plan lowers the brief with a nod before the page moves on (onDone below).
-      if (ready.length) setReveal(ready);
-      else leaveStage(() => land(lesson));
-      return;
-    }
-    land(lesson);
+    // The plan's state moves the page on, once (`initialized` above), never Plan's animation: a
+    // tab that watched the job run leaves the planning stage with a view transition, and Plan
+    // greets the objectives step with a nod there.
+    if (watched.current) leaveStage(() => land(lesson));
+    else land(lesson);
   }, [lesson, jobId, meta.isSuccess, navigate]);
 
   function land(lesson: Lesson) {
@@ -343,7 +320,7 @@ function LessonIntake({
       setBusy(false);
     }
   }
-  const planning = (!!lessonId && (!!jobId || !initialized.current)) || !!reveal;
+  const planning = !!lessonId && (!!jobId || !initialized.current);
   const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
   const loadingError = document.isError || meta.isError;
   const title = planning
@@ -360,16 +337,7 @@ function LessonIntake({
       title={title}
       working={planning && !failed}
       layout={planning ? "plan" : "column"}
-      planning={
-        planning && !failed
-          ? {
-              objectives: reveal,
-              onDone: () => {
-                if (reveal) finishReveal();
-              },
-            }
-          : undefined
-      }
+      planning={planning && !failed}
     >
       {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
@@ -401,9 +369,7 @@ function LessonIntake({
                 ? "Planning stopped. You can try again with the same brief."
                 : loadingError
                   ? "We couldn’t load your plan."
-                  : reveal
-                    ? `Your ${reveal.length} learning objectives are ready.`
-                    : "Finding the key ideas and checking the facts."}
+                  : "Finding the key ideas and checking the facts."}
           </p>
           {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button

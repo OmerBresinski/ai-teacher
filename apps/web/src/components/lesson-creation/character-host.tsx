@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadGsap } from "@/lib/gsap";
 import { type CharacterCapture, PERSONA_SPEED } from "./character-origin";
 import type { HandoverRig } from "./motion/handover-rig.js";
@@ -31,13 +31,6 @@ const REST: Partial<Record<CharacterStage, [number, number]>> = {
 };
 const TYPING_QUIET_MS = 2500;
 
-/** The planning stage: Plan enters with its own entrance, then reads the brief until it is planned. */
-export type PlanningCard = {
-  /** Set when the objectives are saved: Plan finishes the beat in hand, then `onDone`. */
-  objectives: string[] | null;
-  onDone?: () => void;
-};
-
 /** React owns lifetime; the original rig owns articulated hands and their actual props. */
 export function CharacterHost({
   stage,
@@ -50,12 +43,14 @@ export function CharacterHost({
   captureRef?: Ref<CharacterCapture>;
   initialStage?: CharacterStage;
   slidesPhase?: "making" | "stacking";
-  /** The planning stage: Plan reads the brief centre stage until the objectives are saved. */
-  planning?: PlanningCard;
+  /**
+   * The planning stage: Plan enters with its own entrance, then reads the brief centre stage for as
+   * long as the page stays on it. The page leaves on the plan's state, never on this animation.
+   */
+  planning?: boolean;
 }) {
   const planningRef = useRef(planning);
   planningRef.current = planning;
-  const planState = useRef({ entering: false, finishing: false, pending: false, playing: false });
   const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
   const rigModule = useRef<RigModule | null>(null);
   useEffect(() => {
@@ -106,7 +101,7 @@ export function CharacterHost({
       context.revert();
     };
   }, [initialStage, gsap]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: finishPlanning reads refs only.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `planning` is read through its ref.
   useEffect(() => {
     const actor = rig.current;
     if (!actor || !gsap) return;
@@ -164,25 +159,18 @@ export function CharacterHost({
         },
       });
     };
-    const plan = planningRef.current;
-    if (stage === "planning" && plan) {
-      const state = planState.current;
-      Object.assign(state, { entering: false, finishing: false, pending: false, playing: false });
+    if (stage === "planning" && planningRef.current) {
       // Reading the brief: three lines, then the next page (its check-through) or a look up with a
-      // nod, in turn, without rests (it is reading). When the objectives land it finishes the line,
-      // lowers the sheet with a nod (18) and the page moves on. Beats 14-18 are in work-beats.
+      // nod, in turn, without rests (it is reading), until the page leaves the planning stage.
+      // Beats 14-17 are in work-beats.
       const next = readingOrder();
       const loop = (beat: number) => {
-        if (cancelled || state.finishing) return;
-        state.playing = true;
+        if (cancelled) return;
         actor.play(beat, {
           speed: 1,
           reset: beat === READING.pickUp,
           onComplete: () => {
-            state.playing = false;
-            if (cancelled) return;
-            if (state.pending) return finishPlanning(state);
-            loop(next(beat));
+            if (!cancelled) loop(next(beat));
           },
         });
       };
@@ -191,20 +179,16 @@ export function CharacterHost({
       if (!actor.reduced && element.current) {
         const stageEl = element.current;
         const box = actor.restBox(0);
-        state.entering = true;
+        let entering = true;
         actor.present(0, false);
         const entered = () => {
-          if (!state.entering) return;
+          if (!entering) return;
+          entering = false;
           actor.present(0, true);
-          state.entering = false;
-          // Ready before it has even picked the brief up: straight on, nothing to lower.
-          if (state.pending) {
-            state.finishing = true;
-            planningRef.current?.onDone?.();
-          } else afterRest(() => loop(READING.pickUp), 0.4);
+          if (!cancelled) afterRest(() => loop(READING.pickUp), 0.4);
         };
         // The entrance chunk can fail to load (a deploy replaced it under an open tab) or throw:
-        // Plan then simply stands there, and the page still moves on when the plan is ready.
+        // Plan then simply stands there and reads.
         void import("./motion/entrances/index.js")
           .then(({ playEntrance }) => {
             if (cancelled || !box) return actor.present(0, true);
@@ -247,23 +231,5 @@ export function CharacterHost({
       media.removeEventListener("change", changed);
     };
   }, [stage, gsap]);
-  function finishPlanning(state: { finishing: boolean }) {
-    if (state.finishing) return;
-    state.finishing = true;
-    const actor = rig.current;
-    const done = () => planningRef.current?.onDone?.();
-    // Lowers the sheet with a nod, then the page moves on (without motion: straight on).
-    if (!actor || actor.reduced) return done();
-    actor.play(READING.lower, { speed: 1, reset: false, onComplete: done });
-  }
-  // The objectives landed: Plan finishes the entrance or the beat in hand, then the page moves on.
-  const objectives = planning?.objectives ?? null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: finishPlanning reads refs only.
-  useLayoutEffect(() => {
-    if (!objectives || stage !== "planning" || !planningRef.current) return;
-    const state = planState.current;
-    state.pending = true;
-    if (!state.entering && !state.playing) finishPlanning(state);
-  }, [objectives, stage]);
   return <div ref={element} className="handover-stage" aria-hidden="true" />;
 }

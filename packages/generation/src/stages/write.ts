@@ -132,8 +132,15 @@ function keepFinished<T extends { id: string }>(
 
 /**
  * The lesson's title once the writer has written the title slide: its heading, while the title is
- * still the one the lesson was created with (the brief's topic, cut). A teacher's own title is
- * never replaced, and an empty heading keeps the title as it is.
+ * still the one the lesson was created with (the brief's topic, cut). An empty heading keeps the
+ * title as it is. A teacher who typed exactly the brief's topic as the title cannot be told apart
+ * from the default and gets the heading.
+ *
+ * `lesson` is the job's copy from when Generate began, so this is only the job's proposal. The
+ * decision against a title the teacher types meanwhile is made at write time: `persist` is
+ * `putDocumentAsJob` with the job's previous copy as `base`, a three-way merge onto the row read
+ * at that moment and written only if the row is unchanged since (`updated_at`), so the stored
+ * title wins whenever it differs from `base` (ADR 0037; `packages/db/src/documents.test.ts`).
  */
 export function writtenTitle(lesson: Lesson, heading: string | undefined): string {
   const topic = lesson.brief?.topic;

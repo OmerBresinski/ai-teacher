@@ -47,7 +47,7 @@ mock.module("@/components/turnstile", () => ({
     return stubTurnstile ? turnstile : real;
   },
 }));
-const { LessonBriefPage, REVEAL_MAX_MS } = await import("./lesson-brief.page");
+const { LessonBriefPage } = await import("./lesson-brief.page");
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -231,7 +231,7 @@ describe("real lesson intake", () => {
     expect(post().skipPlanning).toBe(false);
   });
 
-  it("moves on to the objectives when Plan never hands over (its chunk failed after a deploy)", async () => {
+  it("the plan job ending moves the page to the objectives, without waiting on Plan's animation", async () => {
     const { artefacts: _artefacts, ...lesson } = generatedLesson();
     const generation = lesson.generation;
     if (!generation) throw new Error("fixture without generation");
@@ -253,7 +253,7 @@ describe("real lesson intake", () => {
     await screen.findByRole("heading", { name: "Planning your lesson" });
     await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
     // The job ends: the lock is released and the stream says so. CharacterHost is mocked to
-    // nothing here, so Plan's hand-over (`onDone`) never comes, exactly as when its chunk 404s.
+    // nothing here, so no animation ever finishes: the plan's state alone moves the page on.
     row.generatingJobId = null;
     FakeEventSource.latest.open();
     FakeEventSource.latest.emit(
@@ -261,13 +261,9 @@ describe("real lesson intake", () => {
       { type: "completed", jobId, workspaceId: crypto.randomUUID(), at: new Date().toISOString() },
       "1",
     );
-    await screen.findByText(/learning objectives are ready/);
-    await screen.findByRole(
-      "heading",
-      { name: "Learning objectives" },
-      { timeout: REVEAL_MAX_MS + 2000 },
-    );
-  }, 15_000);
+    await screen.findByRole("heading", { name: "Learning objectives" }, { timeout: 2000 });
+    expect(screen.queryByRole("heading", { name: "Planning your lesson" })).toBeNull();
+  });
 
   it("asks no theme question on the objectives step (ruling 116)", async () => {
     openPlanned();

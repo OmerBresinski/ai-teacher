@@ -5,8 +5,8 @@ export const READING = { pickUp: 14, line: 15, page: 16, lookUp: 17, lower: 18 }
 
 /**
  * The beat after `beat` while Plan reads the brief: three lines, then the next page or (every third
- * page) a look up with a nod, in turn. Lowering the brief (`READING.lower`) is never chosen here: it
- * plays once, when the objectives are saved.
+ * page) a look up with a nod, in turn. Lowering the brief (`READING.lower`) is never chosen: the page
+ * leaves the planning stage on the plan's state, without waiting for Plan to put the brief down.
  */
 export function readingOrder() {
   let lines = 0,
