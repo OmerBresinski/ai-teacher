@@ -12,27 +12,27 @@ import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./i
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
 /** A wide photo whose subject sits in a thin band, so it can fill the strip. */
 const wide: Figure = {
-  photo: "https://x.test/body.jpg",
+  photo: "https://x.test/river.jpg",
   aspect: 1.5,
-  alt: "The circulatory system",
-  subjects: [{ name: "body", x: 0.3, y: 0.4, w: 0.4, h: 0.2 }],
+  alt: "A river in a valley",
+  subjects: [{ name: "river", x: 0.3, y: 0.4, w: 0.4, h: 0.2 }],
 };
 const WORDS: Record<"ks1" | "ks2", Pick<TemplateInput, "heading" | "lead" | "points">> = {
   ks2: {
-    heading: "The body's transport network",
-    lead: "The circulatory system is your body's delivery service, reaching every living cell.",
+    heading: "How a river shapes the land",
+    lead: "Over thousands of years, flowing water wears away rock and carries it downstream.",
     points: [
-      { label: "The heart", text: "the muscular pump that powers it all." },
-      { label: "Blood vessels", text: "the pipes carrying blood everywhere." },
-      { label: "Blood", text: "carries oxygen, food and waste." },
+      { label: "Erosion", text: "water wears away the banks and bed." },
+      { label: "Transport", text: "the river carries stones and sand." },
+      { label: "Deposition", text: "slow water drops what it carries." },
     ],
   },
   ks1: {
-    heading: "Baby animals",
-    lead: "Baby animals need food and care to grow.",
+    heading: "Our school garden",
+    lead: "We grow flowers and vegetables in our garden.",
     points: [
-      { label: "Food", text: "milk from mum." },
-      { label: "Care", text: "a safe home." },
+      { label: "Water", text: "every dry day." },
+      { label: "Weeds", text: "pulled out by hand." },
     ],
   },
 };
@@ -100,7 +100,7 @@ describe("banner text", () => {
   test("a photo that would be cut blind goes beside the words; a failed one leaves the words", () => {
     const theme = THEMES[0];
     if (!theme) throw new Error("no theme");
-    const portrait: Figure = { photo: "https://x.test/p.jpg", aspect: 0.75, alt: "A pupil" };
+    const portrait: Figure = { photo: "https://x.test/p.jpg", aspect: 0.75, alt: "A tall tree" };
     expect(bannerOk({ template: "banner-text", heading: "h", figure: portrait })).toBe(false);
     const side = layoutTemplate(
       { template: "banner-text", ...words("ks2"), figure: portrait },

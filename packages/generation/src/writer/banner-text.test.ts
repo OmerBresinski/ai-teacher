@@ -18,14 +18,14 @@ type J = Record<string, unknown>;
 
 const banner: S = {
   template: "banner-text",
-  heading: "The body's transport network",
-  lead: "The circulatory system is your body's delivery service.",
+  heading: "How a river shapes the land",
+  lead: "Flowing water wears away rock and carries it downstream.",
   points: [
-    { label: "The heart", text: "the pump." },
-    { label: "Blood vessels", text: "the pipes." },
-    "Blood carries oxygen.",
+    { label: "Erosion", text: "wearing away." },
+    { label: "Transport", text: "carrying along." },
+    "Deposition drops it.",
   ],
-  picture: { shows: "the human circulatory system", must_see: ["heart"], subject: "generic" },
+  picture: { shows: "a river winding through a valley", must_see: ["river"], subject: "generic" },
   at: "top",
 };
 
@@ -81,9 +81,9 @@ describe("banner text on the writer's layout", () => {
       status: "photo",
       photo: {
         src: "https://x.test/b.jpg",
-        alt: "body",
+        alt: "river",
         aspect: 1.5,
-        subjects: [{ name: "heart", x: 0.4, y: 0.4, w: 0.2, h: 0.2 }],
+        subjects: [{ name: "river", x: 0.4, y: 0.4, w: 0.2, h: 0.2 }],
       },
     }));
     const strip = r.slide.elements.find((e) => e.name === "Banner");
