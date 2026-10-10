@@ -187,16 +187,19 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // call on the small model (TEACH-247).
       drawDiagrams: { callDrawer: (req) => services.chat({ ...req, model: SMALL_MODEL }) },
       // The diagram library is on (TEACH-247 part m, Greg 10 Oct): the menu is filtered by year
-      // and subject and ranked by the objectives; a model gets the slide body, labels grow to the
-      // 18 pt floor, optional panels stay off, and overlapping or split labels fall back. Asking
-      // slides hold the answer back (roleAsk). Each switch turns one piece off.
+      // and subject and ranked by the objectives; a model gets the slide body and optional panels
+      // stay off. Asking slides hold the answer back (roleAsk). Each switch turns one piece off.
+      // Checks only log (Greg, 10 Oct: "turn off the ENTIRE check system... logging what it would
+      // have done"): no repair, no check-driven word change, and a model is kept as drawn rather
+      // than falling back for overlapping or split labels (TEACH-312 part i).
+      checks: "log",
       library: true,
       libraryMenuFilter: true,
       libraryMenuRank: true,
       libraryModelBody: true,
       libraryPanelsOff: true,
-      libraryLabelOverlap: true,
-      libraryLabelFloor: true,
+      libraryLabelOverlap: false,
+      libraryLabelFloor: false,
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       // Ruling 189 (ADR 0037): a slide's words are done once the writer has moved past it, so it
