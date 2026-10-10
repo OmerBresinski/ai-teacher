@@ -28,18 +28,7 @@ export function useSaveWithConflictToast(
   const { mutateAsync: save } = useMutation(libraryMutations.autosaveDocument(queryClient));
   return useCallback(
     async (document: LibraryDocument) => {
-      try {
-        await save(document);
-      } catch (error) {
-        if (
-          error instanceof ApiError &&
-          error.status === 409 &&
-          error.reason === "stale" &&
-          onStale
-        ) {
-          const merged = await onStale();
-          if (merged) return save(merged);
-        }
+      const refuse = (error: unknown): never => {
         if (error instanceof ApiError && error.status === 409) {
           const stale = error.reason === "stale";
           toast(error.message, {
@@ -57,6 +46,29 @@ export function useSaveWithConflictToast(
           throw new SaveRefusedError(error.message, { cause: error });
         }
         throw error;
+      };
+      try {
+        await save(document);
+      } catch (error) {
+        if (
+          error instanceof ApiError &&
+          error.status === 409 &&
+          error.reason === "stale" &&
+          onStale
+        ) {
+          const merged = await onStale();
+          // The merged copy gets one more save; if that is refused too (the job wrote again in
+          // between), it takes the same toast path as the first refusal rather than failing silently.
+          if (merged) {
+            try {
+              await save(merged);
+              return;
+            } catch (retryError) {
+              refuse(retryError);
+            }
+          }
+        }
+        refuse(error);
       }
     },
     [save, queryClient, documentId, onStale],

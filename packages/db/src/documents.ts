@@ -447,6 +447,19 @@ async function replaceBody(
 }
 
 /**
+ * A lesson a job is filling that already has a `done` slide (ADR 0037): the teacher's write is
+ * taken under the job's lock. The one test `putDocument` makes before and after its update.
+ */
+function isSharedLesson(row: DocumentRow): boolean {
+  return (
+    row.generatingJobId !== null &&
+    row.kind === "lesson" &&
+    "slides" in row.body &&
+    hasEditableSlides(row.body)
+  );
+}
+
+/**
  * Replace a document's body with optimistic concurrency (ADR 0024 §4) under the generating lock
  * (§18): one `UPDATE … WHERE id AND updated_at = :expected AND generating_job_id IS NULL`. When no
  * row matches, the current row is read to say why: `missing`, `generating` or `conflict`.
@@ -463,8 +476,7 @@ export async function putDocument(
   // ADR 0037: a lesson a job is filling takes the teacher's write once it has a `done` slide. The
   // slides the job still writes, and its `generation`, are kept as stored; the job holds the lock.
   const held = current.generatingJobId as JobId | null;
-  const sharing =
-    held !== null && current.kind === "lesson" && hasEditableSlides(current.body as Lesson);
+  const sharing = held !== null && isSharedLesson(current);
   const written = sharing
     ? keepWritingSlides(
         parseDocumentBody("lesson", current.body) as Lesson,
@@ -484,10 +496,7 @@ export async function putDocument(
   if (row) return { status: "ok", row };
   const after = await getDocument(ws, id);
   if (after === null) return { status: "missing" };
-  if (
-    after.generatingJobId !== null &&
-    !(after.kind === "lesson" && hasEditableSlides(after.body as Lesson))
-  ) {
+  if (after.generatingJobId !== null && !isSharedLesson(after)) {
     return { status: "generating", jobId: after.generatingJobId as JobId };
   }
   return { status: "conflict", row: after };

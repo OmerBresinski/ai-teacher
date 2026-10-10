@@ -296,15 +296,6 @@ export const libraryCache = {
     return generation?.jobId === jobId && generation.completedAt ? "completed" : "stopped";
   },
   /**
-   * The finished document, in one step (TEACH-251): the generating view calls this at the job's
-   * terminal event. Any debounced body refetch still in flight is cancelled, the row is read once,
-   * and the body and its row state are written in a single notification batch, so the page sees
-   * the released lock and the finished body in the same render. Two refetches side by side could
-   * land the row state first and mount the editor on the last debounced copy; the fit migration
-   * then stamped that copy and the body refetch replaced it with the stored `fitVersion: 0`
-   * lesson — un-tidied, and never re-fitted because the one run had been spent.
-   */
-  /**
    * The row of a lesson that is still filling, read without touching the editor's working copy
    * (ADR 0037): the follower merges the body into the open editor itself. The row state is written
    * only when it is newer than the cached one, so an autosave that landed meanwhile keeps its token.
@@ -328,6 +319,15 @@ export const libraryCache = {
     )
       queryClient.setQueryData(key, meta);
   },
+  /**
+   * The finished document, in one step (TEACH-251): the generating view calls this at the job's
+   * terminal event. Any debounced body refetch still in flight is cancelled, the row is read once,
+   * and the body and its row state are written in a single notification batch, so the page sees
+   * the released lock and the finished body in the same render. Two refetches side by side could
+   * land the row state first and mount the editor on the last debounced copy; the fit migration
+   * then stamped that copy and the body refetch replaced it with the stored `fitVersion: 0`
+   * lesson — un-tidied, and never re-fitted because the one run had been spent.
+   */
   handOverDocument: async (queryClient: QueryClient, id: string): Promise<void> => {
     await queryClient.cancelQueries({ queryKey: queryKeys.libraryDocument(id) });
     const document = await fetchDocument(queryClient, id);
