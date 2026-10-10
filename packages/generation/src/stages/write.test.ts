@@ -53,6 +53,17 @@ describe("the writer's key stage", () => {
     expect(writerBrief(year12()).keyStage).toBe("ks5");
     expect(writerBrief(year12()).year).toBe(12);
   });
+
+  test("ruling 201: the exit ticket is on the slides unless a worksheet was queued", () => {
+    const withWorksheet = (worksheet: boolean | undefined): Lesson => {
+      const lesson = year12();
+      return { ...lesson, brief: { topic: "Memory", durationMin: 60, worksheet } };
+    };
+    expect(writerBrief(withWorksheet(true)).exitTicketOnSlides).toBe(false);
+    expect(writerBrief(withWorksheet(false)).exitTicketOnSlides).toBe(true);
+    // A lesson confirmed before the field existed had no worksheet queued with it.
+    expect(writerBrief(withWorksheet(undefined)).exitTicketOnSlides).toBe(true);
+  });
 });
 
 describe("a Year 12 lesson's requests", () => {

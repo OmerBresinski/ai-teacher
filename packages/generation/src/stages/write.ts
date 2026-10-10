@@ -93,9 +93,9 @@ export function writerBrief(lesson: Lesson): Brief {
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
     language: lesson.language ?? "en-GB",
     durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
-    // The writer reads the flag through its user turn (rulings 141, 148); the API never sets it,
-    // so the exit ticket stays on the worksheet.
-    exitTicketOnSlides: false,
+    // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
+    // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
+    exitTicketOnSlides: b?.worksheet !== true,
     tier: "standard",
     slides: slideRange(b),
   };
