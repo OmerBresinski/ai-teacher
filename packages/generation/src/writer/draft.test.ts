@@ -131,6 +131,32 @@ describe("peekPartial", () => {
     30_000,
   );
 
+  test("a literal backslash before u is text, a cut escape is dropped", () => {
+    // JSON text `"\\u00` is a literal backslash then "u00": kept whole.
+    expect(peekPartial('{"a":"x\\\\u00')?.value).toEqual({ a: "x\\u00" });
+    // JSON text `"\u00` is a cut escape: dropped, the rest kept.
+    expect(peekPartial('{"a":"x\\u00')?.value).toEqual({ a: "x" });
+    // Three backslashes: a literal backslash, then a cut escape.
+    expect(peekPartial('{"a":"x\\\\\\u00')?.value).toEqual({ a: "x\\" });
+    // A literal backslash then "ud83d" is text, not half a surrogate pair.
+    expect(peekPartial('{"a":"x\\\\ud83d')?.value).toEqual({ a: "x\\ud83d" });
+  });
+
+  test("a slide with no template is peeked at most once per throttle", () => {
+    let clock = 0;
+    const p = new PartialJson(() => {});
+    const d = new SlideDrafts(() => {}, { ms: 200, now: () => clock });
+    p.push('{"design":{},"flow":[],"slides":[{"heading":"');
+    for (let i = 0; i < 1000; i++) {
+      p.push("word ");
+      d.update(p);
+      clock += 1;
+    }
+    // 256 characters unthrottled (about 50 deltas), then one peek per 200 ms of the 1 s.
+    expect(d.stats.peeks).toBeLessThan(60);
+    expect(d.stats.drafts).toBe(0);
+  });
+
   test("junk never throws", () => {
     for (const junk of ["", "}", "]]", '{"a":}', '{"a" "b"}', "[1,,", "nul", '"\\', "{{{"])
       expect(() => peekPartial(junk)).not.toThrow();

@@ -19,10 +19,23 @@ type Frame = {
 /** A cut JSON text closed as far as it goes, and the path of the string it cut (if any). */
 export type Peeked = { value: unknown; open?: Path };
 
-/** A trailing escape that is not whole yet: a lone `\`, or `\u` with fewer than four hex digits. */
-const CUT_ESCAPE = /\\u[0-9a-fA-F]{0,3}$/;
-/** A trailing high-surrogate escape whose low half has not arrived. */
-const HIGH_ESCAPE = /\\u[dD][89abAB][0-9a-fA-F]{2}$/;
+/** A trailing `\u` with fewer than four hex digits, after a run of backslashes. */
+const CUT_ESCAPE = /(\\+)u[0-9a-fA-F]{0,3}$/;
+/** A trailing high-surrogate escape whose low half has not arrived, after a run of backslashes. */
+const HIGH_ESCAPE = /(\\+)u[dD][89abAB][0-9a-fA-F]{2}$/;
+/** Peeks before a slide's template closes are unthrottled only within this many characters. */
+const TEMPLATE_CHARS = 256;
+
+/**
+ * Cuts a trailing escape `re` matches, only when it is one: an odd run of backslashes before the
+ * `u` (an even run is literal backslashes followed by the letter u and digits, e.g. LaTeX text).
+ */
+const cutEscape = (body: string, re: RegExp): string => {
+  const m = re.exec(body);
+  const run = m?.[1]?.length ?? 0;
+  if (!m || run % 2 === 0) return body;
+  return body.slice(0, body.length - m[0].length + run - 1);
+};
 
 const pathOf = (stack: Frame[]): Path =>
   stack.slice(0, -1).map((f) => (f.kind === "obj" ? (f.key as string) : f.index));
@@ -116,7 +129,7 @@ export function peekPartial(text: string): Peeked | undefined {
     } else {
       let body = text.slice(strStart);
       if (esc) body = body.slice(0, -1);
-      body = body.replace(CUT_ESCAPE, "").replace(HIGH_ESCAPE, "");
+      body = cutEscape(cutEscape(body, CUT_ESCAPE), HIGH_ESCAPE);
       const last = body.charCodeAt(body.length - 1);
       if (last >= 0xd800 && last <= 0xdbff) body = body.slice(0, -1);
       cut = `${text.slice(0, strStart)}${body}"`;
@@ -166,6 +179,8 @@ export class SlideDrafts {
   private slide = -1;
   private last = "";
   private at = Number.NEGATIVE_INFINITY;
+  /** When the open slide was last peeked before its template closed. */
+  private peekAt = Number.NEGATIVE_INFINITY;
   private ms: number;
   private now: () => number;
   /** Drafts handed over, and the time spent peeking (for the overhead report). */
@@ -198,10 +213,17 @@ export class SlideDrafts {
     if (fresh) {
       this.slide = open.index;
       this.last = "";
+      this.peekAt = Number.NEGATIVE_INFINITY;
     }
     const now = this.now();
     // A slide whose template has been sent waits out the throttle before its next draft.
     if (this.last && now - this.at < this.ms) return;
+    // No template yet: it is the schema's first key, so past its few characters (malformed output)
+    // peeks wait out the same throttle rather than re-reading the whole slide on every delta.
+    if (!this.last && p.text.length - open.start > TEMPLATE_CHARS) {
+      if (now - this.peekAt < this.ms) return;
+      this.peekAt = now;
+    }
     this.stats.peeks++;
     const peeked = peekPartial(p.text.slice(open.start));
     this.stats.ms += performance.now() - t0;
