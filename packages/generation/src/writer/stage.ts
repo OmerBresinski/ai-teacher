@@ -241,6 +241,11 @@ export type WriterRun = {
    * takes a figure. Absent: `TILE_VISUALS_DEFAULT` (off, master's schema byte for byte).
    */
   tileVisuals?: boolean;
+  /**
+   * Typed callouts (TEACH-75 part e, ruling 203): a support point may be `{kind, text}`. Absent:
+   * `CALLOUTS_DEFAULT` (off, master's schema byte for byte).
+   */
+  callouts?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -495,6 +500,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     writerSchema(stageKey, brief.slides, P, {
       objectives: run.objectives.length,
       ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
+      ...(run.callouts !== undefined ? { callouts: run.callouts } : {}),
     }),
     models.map((m) => m.id),
   );
