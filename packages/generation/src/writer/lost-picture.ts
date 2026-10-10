@@ -82,9 +82,43 @@ export function otherVisual(s: Slide, key: string): boolean {
   return ["figure", "diagram", "picture", "tiles", "table"].some((f) => f !== key && set(s[f]));
 }
 
+// layout-04 (e2e-speed-1 y1 s8): "Three golden retrievers ...: a small puppy, an older puppy and an
+// adult dog" was split into "small puppy", "older puppy", "adult dog", and three unrelated dogs came
+// back. Subjects that are stages of one thing keep the thing the request names before its colon.
+const STAGE =
+  /\b(small|smaller|older|young|younger|adult|grown|baby|newborn|mature|before|after|stage|first|last)\b/;
+const NUMBER = /^\s*(two|three|four|five|six|seven|eight|\d+)\s+/i;
+const HOW =
+  /\s+(shown|arranged|side by side|in a row|left to right|from left|at the same|growing)\b.*$/i;
+
+/** The one thing a staged set shows ("golden retriever"), or undefined for a set of different things. */
+export function sharedSubject(shows: string, subjects: string[]): string | undefined {
+  const colon = shows.indexOf(":");
+  if (colon < 0 || subjects.filter((x) => STAGE.test(x)).length < 2) return undefined;
+  const head = shows
+    .slice(0, colon)
+    .replace(HOW, "")
+    .replace(NUMBER, "")
+    .replace(/^\s*(a|an|the|one)\s+/i, "")
+    .trim()
+    .toLowerCase();
+  const kept = head.split(/\s+/).filter((w) => w && !JUNK.test(w));
+  if (!kept.length || kept.length > 3 || kept.length !== head.split(/\s+/).length) return undefined;
+  return kept.join(" ").replace(/(?<=[^s])s$/, "");
+}
+
 /** The slide with its lost picture asked again as one picture per subject (the rest as tiles). */
 export function splitSlide(s: Slide, key: string, subjects: string[]): Slide {
-  const pic = (x: string) => ({ shows: x, must_see: [x], subject: "generic" });
+  const shows = String((s[key] as { shows?: unknown } | undefined)?.shows ?? "");
+  const one = sharedSubject(shows, subjects);
+  const pic = (x: string) =>
+    one
+      ? {
+          shows: `${one}, ${x}: the same ${one} at each stage, plain background`,
+          must_see: [x, one],
+          subject: "generic",
+        }
+      : { shows: x, must_see: [x], subject: "generic" };
   const [first, ...rest] = subjects;
   return { ...s, [key]: pic(first as string), tiles: rest.map(pic) };
 }

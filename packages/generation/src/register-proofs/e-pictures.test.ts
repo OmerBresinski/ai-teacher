@@ -66,16 +66,23 @@ describe("REGISTER layout-03: a picture-matching task ships with no pictures (d5
 });
 
 describe("REGISTER layout-04: one animal growing shown as three different dogs (e2e-speed-1 y1 s8)", () => {
-  test("BUG layout-04: the lost growth picture is split into three unrelated single asks", () => {
+  test("FIXED layout-04: the lost growth picture is split into tiles that all ask for the same golden retriever", () => {
     const s = fixture("layout-04").slide as J;
     const shows = (s.picture as { shows: string }).shows;
     expect(shows).toContain("golden retrievers");
     const subjects = compoundSubjects(shows);
     const split = splitSlide(s, "picture", subjects) as J;
-    const asks = [split.picture, ...(split.tiles as J[])] as { shows: string }[];
-    // BAD OUTCOME (fix PR inverts: one 3-panel image of the same animal, cut into tiles).
+    const asks = [split.picture, ...(split.tiles as J[])] as {
+      shows: string;
+      must_see: string[];
+    }[];
     expect(asks.length).toBe(3);
-    expect(asks.every((a) => !a.shows.includes("retriever"))).toBe(true);
+    expect(asks.every((a) => a.shows.includes("golden retriever"))).toBe(true);
+    expect(asks.every((a) => a.must_see.includes("golden retriever"))).toBe(true);
+    // A set of different animals keeps its separate single asks.
+    const six = (fixture("checker-06").slide as J).picture as { shows: string };
+    const tiles = splitSlide({ picture: six }, "picture", compoundSubjects(six.shows)) as J;
+    expect((tiles.picture as { shows: string }).shows).toBe("cow");
   });
 });
 
