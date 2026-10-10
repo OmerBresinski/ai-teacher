@@ -107,7 +107,7 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { stripPointTasks } from "./point-guard";
-import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideAsks, slideRoles } from "./role";
+import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
 import {
@@ -191,8 +191,8 @@ export type WriterRun = {
   roleStamp?: boolean;
   /**
    * roleAsk (the slide-role contract, step 2): a diagram or library model keeps its answer back
-   * when the slide's role asks (role.ts `slideAsks`), not only on the question templates. Absent:
-   * `ROLE_ASK_DEFAULT` (off).
+   * when the slide's role asks (role.ts `slideHidesAnswer`; a discussion hides nothing), not only
+   * on the question templates. Absent: `ROLE_ASK_DEFAULT` (off).
    */
   roleAsk?: boolean;
   /**
@@ -389,7 +389,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
-    roleAsk ? slideAsks(s) : QUESTION_TEMPLATES.has(String(s.template ?? ""));
+    roleAsk ? slideHidesAnswer(s) : QUESTION_TEMPLATES.has(String(s.template ?? ""));
   /** A diagram ask as the drawer reads it, sized to the slide's slot. */
   const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
     const slot = slotOf(String(s.template ?? ""));

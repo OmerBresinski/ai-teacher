@@ -5,10 +5,11 @@ import { replayRun, replayServices } from "./replay-fixture";
 import {
   asks,
   firstTeaching,
+  hidesAnswer,
   ROLE_ASK_DEFAULT,
   ROLE_STAMP_DEFAULT,
   type SlideRole,
-  slideAsks,
+  slideHidesAnswer,
   slideRole,
   slideRoles,
   visualTask,
@@ -19,15 +20,24 @@ const at = (template: string, more: Record<string, unknown> = {}, index = 5, fir
 
 describe("roleAsk", () => {
   test("is off by default", () => expect(ROLE_ASK_DEFAULT).toBe(false));
-  test("slideAsks: a visual task and a question set ask; teaching and worked slides do not", () => {
-    expect(slideAsks({ template: "big-visual", lead: "Find how many are in one group." })).toBe(
-      true,
-    );
-    expect(slideAsks({ template: "question-set", questions: ["1 + 1"] })).toBe(true);
-    expect(slideAsks({ template: "big-visual", heading: "Which number tells us to divide?" })).toBe(
-      false,
-    );
-    expect(slideAsks({ template: "steps" })).toBe(false);
+  test("slideHidesAnswer: a visual task and a question set hide; teaching and worked slides do not", () => {
+    expect(
+      slideHidesAnswer({ template: "big-visual", lead: "Find how many are in one group." }),
+    ).toBe(true);
+    expect(slideHidesAnswer({ template: "question-set", questions: ["1 + 1"] })).toBe(true);
+    expect(
+      slideHidesAnswer({ template: "big-visual", heading: "Which number tells us to divide?" }),
+    ).toBe(false);
+    expect(slideHidesAnswer({ template: "steps" })).toBe(false);
+  });
+  test("a discussion asks but hides nothing; an activity hides its answer (contract)", () => {
+    expect(asks("discuss")).toBe(true);
+    expect(hidesAnswer("discuss")).toBe(false);
+    expect(slideHidesAnswer({ template: "discussion", prompt: "Is it fair?" })).toBe(false);
+    expect(hidesAnswer("activity")).toBe(true);
+    expect(slideHidesAnswer({ template: "label" })).toBe(true);
+    expect(hidesAnswer("teach")).toBe(false);
+    expect(hidesAnswer("worked")).toBe(false);
   });
 });
 
@@ -95,6 +105,34 @@ describe("slideRole: one rule each, in order", () => {
         points: ["Find one half and one quarter of 12.", "Two equal groups: one half is 6."],
       }),
     ).toBe("teach");
+  });
+  test("an ask verb after a colon or semicolon is not a new sentence", () => {
+    expect(at("visual-text", { points: ["Steps: write the numerator first."] })).toBe("teach");
+    expect(at("visual-text", { lead: "Remember: name the parts." })).toBe("teach");
+    expect(at("visual-text", { lead: "Share equally; count one group." })).toBe("teach");
+  });
+  test("a question word without a question mark does not make a task", () => {
+    expect(at("big-visual", { lead: "Which is why plants need light." })).toBe("teach");
+    expect(at("big-visual", { lead: "What happens next depends on the light." })).toBe("teach");
+    expect(at("big-visual", { lead: "Which shaded part is one half?" })).toBe("task");
+  });
+  test("a result in words, or by makes, gives, equals or are, keeps the slide teaching", () => {
+    for (const result of [
+      "Half of 12 makes 6.",
+      "The answer is six.",
+      "Sharing gives 3 in each group.",
+      "Half of 12 equals six.",
+      "There are 4 in each group.",
+    ])
+      expect(at("visual-text", { points: ["Count one group.", result] })).toBe("teach");
+    // An instruction to make or give is not a result.
+    expect(at("big-visual", { lead: "Make 2 equal groups. Count one group." })).toBe("task");
+    // "equal groups" is not "equals".
+    expect(
+      at("big-visual", { lead: "Draw two equal groups. Find how many are in one group." }),
+    ).toBe("task");
+    // "is one" is not read as a result ("is one of"), so the task stands.
+    expect(at("big-visual", { lead: "Name the part that is one half." })).toBe("task");
   });
   test("match is advice on a visual slide, not an ask", () =>
     expect(

@@ -66,17 +66,28 @@ const VISUAL_TEMPLATES = new Set([
 
 /**
  * A sentence that sets pupils a task without a question mark ("Find how many are in one group.",
- * "Write half or quarter for A, B and C."): it opens with an ask verb (LIBRARY-PATH s4.1). A slide
- * that also gives a result on any line ("Find one part: 24 ÷ 4 = 6 m.", "Count one group: half of 12
- * is 6.") is worked or taught, not a task: on the D52 replay that guard keeps 8 teaching slides
- * from being treated as asks and hiding their content. "Match" is not an ask verb here: on a
- * visual slide it is advice ("Match the French noun, not the person speaking."); a matching task
- * has its own layout (pair).
+ * "Write half or quarter for A, B and C."): it opens, at the start of the line or after a full stop,
+ * with an imperative ask verb (LIBRARY-PATH s4.1). Words after a colon or semicolon are not a new
+ * sentence ("Steps: write the numerator first." teaches), and question words are left to the
+ * question mark ("Which is why plants need light." teaches). A slide that also gives a result on
+ * any line ("Find one part: 24 ÷ 4 = 6 m.", "Count one group: half of 12 is 6.") is worked or
+ * taught, not a task: on the D52 replay that guard keeps 8 teaching slides from being treated as
+ * asks and hiding their content. "Match" is not an ask verb here: on a visual slide it is advice
+ * ("Match the French noun, not the person speaking."); a matching task has its own layout (pair).
  */
 const ASK_OPENER =
-  /(?:^|[.!:;]\s+)(?:find|work out|name|write|label|which|what|how many|calculate|sort|count|predict)\b/i;
-/** A line that gives a result: an equals sign or "is" before a number ("half of 12 is 6"). */
-const GIVES_RESULT = /=|\bis\s+\d/i;
+  /(?:^|[.!]\s+)(?:find|work out|name|write|label|calculate|sort|count|predict)\b/i;
+/** Number words a result may be given in ("the answer is six"); "one" is left out ("is one of"). */
+const NUMBER_WORD =
+  "zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred";
+/**
+ * A line that gives a result: an equals sign, "equals" or "equal to" a number, or "is", "are", "makes" or "gives"
+ * before a number or number word ("half of 12 is 6", "makes 6", "the answer is six").
+ */
+const GIVES_RESULT = new RegExp(
+  `=|\\bequals\\b|\\bequal to\\s+(?:\\d|(?:${NUMBER_WORD})\\b)|\\b(?:is|are|makes|gives)\\s+(?:\\d|(?:${NUMBER_WORD})\\b)`,
+  "i",
+);
 
 /**
  * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
@@ -127,14 +138,22 @@ export function slideRole(s: S, ctx: RoleContext): SlideRole {
   return ctx.firstTeaching !== undefined && ctx.index > ctx.firstTeaching ? "check" : "retrieval";
 }
 
-/** The slide asks pupils something (discuss asks but hides nothing). */
+/** The slide asks pupils something: every role but teach and worked (discuss included). */
 export const asks = (r: SlideRole) => r !== "teach" && r !== "worked";
 
 /**
- * The slide asks by its own fields (roleAsk). Its place in the deck only splits a question set
- * into retrieval or check, and both ask, so no deck context is needed.
+ * The slide's drawing keeps its answer back for the reveal: it asks and is not a discussion (the
+ * slide-role contract: "discuss asks but hides nothing"). An activity hides its answer, so a label
+ * task's diagram does not show the names pupils are to write.
  */
-export const slideAsks = (s: S): boolean => asks(slideRole(s, { index: 0 }));
+export const hidesAnswer = (r: SlideRole) => asks(r) && r !== "discuss";
+
+/**
+ * The slide's drawing keeps its answer back, by the slide's own fields (roleAsk). Its place in the
+ * deck only splits a question set into retrieval or check, and both hide, so no deck context is
+ * needed.
+ */
+export const slideHidesAnswer = (s: S): boolean => hidesAnswer(slideRole(s, { index: 0 }));
 
 /** The index of the first teaching slide (teach or worked) at or after `from`. */
 export function firstTeaching(slides: (S | undefined)[], from = 2): number | undefined {
