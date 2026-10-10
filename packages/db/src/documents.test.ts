@@ -297,6 +297,46 @@ describeDb("documents repository", () => {
       expect(stored.generation?.slideStates).toEqual({ [a]: "done", [b]: "done" });
     });
 
+    // TEACH-189 part b: the writer's final save proposes the title slide's heading as the lesson
+    // title; the write compares it against the title stored at that moment, not the job's copy.
+    const titleRace = async (teacherTitle?: string) => {
+      const jobId = newId<JobId>();
+      const fixture = { ...lessonFixture(), title: "Year 6 Science. Topic: The heart." };
+      const row = await createDocument(wsA, "lesson", fixture, { generatingJobId: jobId });
+      // The teacher can type once a slide is done (ADR 0037): the first is, the rest still write.
+      const [a, ...rest] = fixture.slides.map((s) => s.id) as [string, ...string[]];
+      const writing = Object.fromEntries(rest.map((id) => [id, "writing" as const]));
+      const first: Lesson = {
+        ...(row.body as Lesson),
+        generation: states({ [a]: "done", ...writing }, jobId),
+      };
+      const w1 = await putDocumentAsJob(wsA, row.id, first, jobId);
+      if (w1.status !== "ok") throw new Error(w1.status);
+      if (teacherTitle) {
+        // The teacher renames the lesson while it is still being written.
+        const renamed = { ...(w1.row.body as Lesson), title: teacherTitle };
+        const put = await putDocument(wsA, row.id, renamed, w1.row.updatedAt);
+        if (put.status !== "ok") throw new Error(put.status);
+      }
+      // The job's copy never saw the rename and proposes the heading.
+      const done: Lesson = { ...first, title: "The heart" };
+      const w2 = await putDocumentAsJob(wsA, row.id, done, jobId, { base: w1.jobBody });
+      if (w2.status !== "ok") throw new Error(w2.status);
+      return { body: w2.row.body as Lesson, column: w2.row.title };
+    };
+
+    test("the writer's title replaces the brief's title when nobody renamed the lesson", async () => {
+      const { body, column } = await titleRace();
+      expect(body.title).toBe("The heart");
+      expect(column).toBe("The heart");
+    });
+
+    test("a title the teacher types while the lesson is written is never overwritten", async () => {
+      const { body, column } = await titleRace("Our hearts");
+      expect(body.title).toBe("Our hearts");
+      expect(column).toBe("Our hearts");
+    });
+
     test("a retried job seeded with resumeBase keeps a teacher's edit to a done slide", async () => {
       const jobId = newId<JobId>();
       const fixture = lessonFixture();

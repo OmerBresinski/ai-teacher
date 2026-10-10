@@ -7,7 +7,7 @@ import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { readLastClass } from "@/lib/brief-memory";
 import { installFakeApi } from "@/test/fake-api";
-import { installFakeEventSource } from "@/test/fake-event-source";
+import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 
 const { fakeApi, restore } = installFakeApi();
 const originalEventSource = globalThis.EventSource;
@@ -229,6 +229,40 @@ describe("real lesson intake", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().yearGroup).toBe("Year 6");
     expect(post().skipPlanning).toBe(false);
+  });
+
+  it("the plan job ending moves the page to the objectives, without waiting on Plan's animation", async () => {
+    const { artefacts: _artefacts, ...lesson } = generatedLesson();
+    const generation = lesson.generation;
+    if (!generation) throw new Error("fixture without generation");
+    const jobId = crypto.randomUUID();
+    const row = fakeApi.insertLesson(
+      {
+        ...lesson,
+        yearGroup: "Year 5",
+        brief: { topic: "The water cycle", slideCount: 8 },
+        facts: lessonFacts(),
+        generation: { ...generation, stage: "planned" },
+        plan: { revision: 1, state: "proposed", jobId },
+      } as Lesson,
+      jobId,
+    );
+    installFakeEventSource();
+    search = { lesson: row.id };
+    show();
+    await screen.findByRole("heading", { name: "Planning your lesson" });
+    await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
+    // The job ends: the lock is released and the stream says so. CharacterHost is mocked to
+    // nothing here, so no animation ever finishes: the plan's state alone moves the page on.
+    row.generatingJobId = null;
+    FakeEventSource.latest.open();
+    FakeEventSource.latest.emit(
+      "completed",
+      { type: "completed", jobId, workspaceId: crypto.randomUUID(), at: new Date().toISOString() },
+      "1",
+    );
+    await screen.findByRole("heading", { name: "Learning objectives" }, { timeout: 2000 });
+    expect(screen.queryByRole("heading", { name: "Planning your lesson" })).toBeNull();
   });
 
   it("asks no theme question on the objectives step (ruling 116)", async () => {

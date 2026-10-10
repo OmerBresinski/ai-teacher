@@ -12,7 +12,7 @@ import fixture from "../writer/fixtures/activities/y1-animals.json" with { type:
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
 import { writerObjectivesCall } from "./objectives";
-import { stageOf, writerBrief } from "./write";
+import { stageOf, writerBrief, writtenTitle } from "./write";
 
 /*
  * Sixth-form lessons carry `ageBand: "post16"` (`deriveAgeBand`, Years 12–13). The writer used
@@ -117,5 +117,45 @@ describe("a Year 12 lesson's requests", () => {
     const user = bodies[0]?.messages[1]?.content ?? "";
     expect(user).toContain("Year group: Year 12 (ks5)");
     expect(user).not.toContain("(ks3)");
+  });
+});
+
+describe("the lesson's title after the writer", () => {
+  const brief = "Year 6 Science. Topic: The heart and circulatory system. 60-minute lesson.";
+  const created = (): Lesson => {
+    const lesson = sampleBriefLesson({ yearGroup: "Year 6" });
+    return { ...lesson, title: brief, brief: { ...lesson.brief, topic: brief } } as Lesson;
+  };
+
+  test("a title still from the brief becomes the title slide's heading", () => {
+    expect(writtenTitle(created(), "The heart and circulatory system")).toBe(
+      "The heart and circulatory system",
+    );
+  });
+
+  test("a long brief cut to the title limit still counts as the brief's title", () => {
+    const long = `${"Photosynthesis in green plants and why it matters ".repeat(3)}`;
+    const lesson = created();
+    const withLong = {
+      ...lesson,
+      title: long.trim().slice(0, 80),
+      brief: { ...lesson.brief, topic: long },
+    } as Lesson;
+    expect(writtenTitle(withLong, "Photosynthesis")).toBe("Photosynthesis");
+  });
+
+  test("a title the teacher changed is kept", () => {
+    const lesson = { ...created(), title: "Our hearts" };
+    expect(writtenTitle(lesson, "The heart and circulatory system")).toBe("Our hearts");
+  });
+
+  test("an empty or missing heading keeps the title", () => {
+    expect(writtenTitle(created(), "  ")).toBe(brief);
+    expect(writtenTitle(created(), undefined)).toBe(brief);
+  });
+
+  test("the heading is trimmed, its whitespace collapsed and cut to the title limit", () => {
+    expect(writtenTitle(created(), "  The   heart\n")).toBe("The heart");
+    expect(writtenTitle(created(), "x".repeat(120))).toHaveLength(80);
   });
 });
