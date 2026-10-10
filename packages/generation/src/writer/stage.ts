@@ -71,6 +71,7 @@ import {
 } from "./fixes";
 import { gasFaults, rescaleGas } from "./gas";
 import {
+  carryPairs,
   judgeRepair,
   POINTING_WORDS,
   repairable,
@@ -892,15 +893,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     plan.slides[i] = next;
     const newAsks = visualsOf(next, i, { ...base, plan });
     asks.set(i, newAsks);
+    // Pictures carry by slot first, then one-to-one by request (layout-01).
+    const pairs = carryPairs(
+      oldAsks,
+      newAsks,
+      (b, a) =>
+        sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
+        // the same request is not the same drawing: a spec that changed is drawn again
+        (b.type !== "diagram" ||
+          a.type !== "diagram" ||
+          specKey((b as { spec?: unknown }).spec) === specKey((a as { spec?: unknown }).spec)),
+    );
     for (const a of newAsks) {
-      const was = oldAsks.find(
-        (b) =>
-          sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
-          // the same request is not the same drawing: a spec that changed is drawn again
-          (b.type !== "diagram" ||
-            a.type !== "diagram" ||
-            specKey((b as { spec?: unknown }).spec) === specKey(a.spec)),
-      );
+      const was = pairs.get(a.key);
       // a drawing whose numbers the new words no longer say is never carried
       const v0 = was ? oldState.get(was.key) : undefined;
       const stale = v0?.status === "diagram" ? figureTextMismatch(v0.spec, next as S) : undefined;

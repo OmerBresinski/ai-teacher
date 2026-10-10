@@ -1,0 +1,75 @@
+{
+  "source": "base4f-p123-1/T/y1-science-animals-young/main.json slides[3]",
+  "slide": {
+    "template": "practice",
+    "heading": "Make the matches",
+    "questions": [
+      "Match the cow to its young. Name both.",
+      "Match the sheep to its young. Name both.",
+      "Match the dog to its young. Name both."
+    ],
+    "instruction": "Point to each pair and say the names.",
+    "picture": {
+      "shows": "Six separate animal photographs: cow, sheep and dog across the top; puppy, calf and lamb across the bottom, with no connecting lines",
+      "must_see": ["adult cow", "adult sheep", "adult dog", "small puppy below cow position"],
+      "subject": "generic"
+    }
+  },
+  "log": [
+    {
+      "ms": 189650,
+      "ev": "lost-picture",
+      "slide": 6,
+      "try": "split",
+      "ok": false
+    },
+    {
+      "ms": 194044,
+      "ev": "repair",
+      "slide": 6,
+      "mode": "reroute",
+      "usd": 0.00030354000000000004,
+      "ok": true,
+      "fix": "diagram",
+      "reverted": true,
+      "now": ["dangling: \"Point\" asks pupils to point or look with no picture on the slide"]
+    },
+    {
+      "ms": 194047,
+      "ev": "restage-fallback",
+      "slide": 6,
+      "mode": "reroute",
+      "how": "figure-dropped"
+    },
+    {
+      "ms": 194047,
+      "ev": "visual-path",
+      "slide": 6,
+      "path": "picture-figure-dropped"
+    },
+    {
+      "ms": 198869,
+      "ev": "repair-rejected",
+      "slide": 6,
+      "mode": "stand-alone",
+      "fix": "diagram",
+      "why": ["lost 7 of 17 words (match, its, name, point, each)"],
+      "faults": [
+        "dangling: \"Point\" asks pupils to point or look with no picture on the slide; no visual can be made for it, so the words must stand alone"
+      ]
+    },
+    {
+      "ms": 198871,
+      "ev": "point-guard",
+      "slide": 6,
+      "removed": ["Point to each pair and say the names."]
+    },
+    {
+      "ms": 198871,
+      "ev": "stand-alone",
+      "slide": 6,
+      "fault": "dangling: \"Point\" asks pupils to point or look with no picture on the slide",
+      "how": "point-strip"
+    }
+  ]
+}

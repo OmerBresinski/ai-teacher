@@ -1,0 +1,61 @@
+{
+  "source": "d52/A/full/y8-french-my-family main.json slides[1], lesson.json slides[3]",
+  "slide": {
+    "template": "compare",
+    "heading": "Présenter quelqu’un — introduce someone",
+    "columns": [
+      {
+        "label": "Mon père",
+        "text": "Voici mon père. Il s’appelle Marc.",
+        "picture": {
+          "shows": "An adult father smiling",
+          "must_see": ["adult man", "friendly smile"],
+          "subject": "generic"
+        }
+      },
+      {
+        "label": "Ma mère",
+        "text": "Voici ma mère. Elle s’appelle Nadia.",
+        "picture": {
+          "shows": "An adult mother smiling",
+          "must_see": ["adult woman", "friendly smile"],
+          "subject": "generic"
+        }
+      }
+    ]
+  },
+  "shippedImages": [
+    {
+      "src": "/files/6c688bdc-d201-4d8d-be55-ee5fe72c774b/images/01a12272-9a96-7386-bf77-c74aa00c2ddf.jpg",
+      "request": "An adult father smiling. adult man. friendly smile",
+      "alt": "Professional indoor portrait of a smiling adult man in a casual plaid shirt, creating a warm and approachable atmosphere."
+    },
+    {
+      "src": "/files/6c688bdc-d201-4d8d-be55-ee5fe72c774b/images/01a12272-9a96-7386-bf77-c74aa00c2ddf.jpg",
+      "request": "An adult father smiling. adult man. friendly smile",
+      "alt": "Professional indoor portrait of a smiling adult man in a casual plaid shirt, creating a warm and approachable atmosphere."
+    }
+  ],
+  "log": [
+    {
+      "t": 1791579325733,
+      "ev": "repair-rejected",
+      "slide": 4,
+      "mode": "fit",
+      "fix": "layout",
+      "why": [
+        "lost the picture \"An adult father smiling\"",
+        "lost the picture \"An adult mother smiling\""
+      ]
+    },
+    {
+      "t": 1791579334152,
+      "ev": "repair",
+      "slide": 4,
+      "mode": "fit",
+      "ok": true,
+      "fix": "notes",
+      "reverted": true
+    }
+  ]
+}

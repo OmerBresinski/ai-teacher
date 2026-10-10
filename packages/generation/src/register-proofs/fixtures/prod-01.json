@@ -1,0 +1,35 @@
+{
+  "id": "s1",
+  "kind": "title",
+  "elements": [
+    {
+      "type": "text",
+      "name": "Title",
+      "x": 64,
+      "y": 61,
+      "w": 344,
+      "h": 297,
+      "text": "Surviving the Arctic and the desert TPFIRST"
+    },
+    {
+      "type": "text",
+      "name": "Subtitle",
+      "x": 64,
+      "y": 378,
+      "w": 344,
+      "h": 101,
+      "text": "Recall: What keeps you warm? Why might you sink into soft snow?"
+    },
+    {
+      "type": "image",
+      "name": "Photo",
+      "x": 452,
+      "y": 48,
+      "w": 444,
+      "h": 444,
+      "src": "data:image/svg+xml;utf8,%3Csvg xmlns='ht…",
+      "alt": "a split view of a snowy Arctic landscape and a sandy desert landscape"
+    }
+  ],
+  "source": "t-unlock/.data/teacher-path/pr440-paid-4/recording/ks3-y7-science-adaptations-signed-in/lesson.json slides[0]"
+}
