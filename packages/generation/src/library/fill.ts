@@ -12,11 +12,13 @@
  * Any failure returns the drawer kind to fall back to, never an empty slot. Never throws, except a
  * budget or abort error from the call, which stops the job as every other call's does.
  */
+
+import { TYPE_FLOOR } from "@tj/slides/diagrams";
 import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
 import { drawingWordsMismatch } from "./consistency";
 import { drawLibraryModel } from "./guard";
-import { boundsRefusals, kit, type LibraryDrawing, loadModel } from "./render";
+import { boundsRefusals, inspectDrawnSvg, kit, type LibraryDrawing, loadModel } from "./render";
 import type { J, LibRefusal } from "./types";
 
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
@@ -163,11 +165,37 @@ export type LibraryAsk = {
   yearGroup: string;
   lesson: string;
   question?: boolean;
+  /**
+   * The box the drawing is placed in on the 960 x 540 slide (flag `libraryModelBody`): a drawing
+   * whose smallest words would show under the drawer's `TYPE_FLOOR` there falls back
+   * (diagrams-06). Absent: no type-floor gate (today's behaviour).
+   */
+  place?: { w: number; h: number };
 };
 export type LibraryResult =
   | { ok: true; drawing: LibraryDrawing; params: J; attempts: number }
   /** The drawer kind to fall back to, and why the model was not drawn. */
   | { ok: false; fallbackKind: string; reason: string };
+
+/**
+ * The smallest type a drawn library SVG shows at, in points on the 960 x 540 slide, once it is
+ * contained in `place` (its view box scaled to fit, as the slide's image element does).
+ */
+export function placedTypeSize(
+  svg: string,
+  place: { w: number; h: number },
+): { scale: number; minPt: number; word?: string } {
+  const { viewBox, words } = inspectDrawnSvg(svg);
+  const [, , vw, vh] = viewBox;
+  const scale = vw > 0 && vh > 0 ? Math.min(place.w / vw, place.h / vh) : 0;
+  let min: { fs: number; words: string } | undefined;
+  for (const w of words) if (!min || w.fs < min.fs) min = w;
+  return {
+    scale,
+    minPt: min ? min.fs * scale : Number.POSITIVE_INFINITY,
+    ...(min ? { word: min.words } : {}),
+  };
+}
 
 const tokens = (t: string, v: Record<string, string>) =>
   t.replace(/\{\{(\w+)\}\}/g, (m, k: string) => v[k] ?? m);
@@ -259,6 +287,19 @@ export async function libraryDiagram(
           (e) => String(e).slice(0, 160),
         );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);
+  // The type floor (flag `libraryModelBody`): words under 18 pt where the drawing is placed.
+  if (ask.place) {
+    const t = nonFatalSync(
+      () => placedTypeSize(drawn.svg, ask.place as { w: number; h: number }),
+      () => undefined,
+    );
+    if (!t) return fallback("its words could not be measured for the type floor");
+    log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
+    if (t.minPt < TYPE_FLOOR - 0.01)
+      return fallback(
+        `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`,
+      );
+  }
   log({
     ev: "lib-drawn",
     key: ask.key,

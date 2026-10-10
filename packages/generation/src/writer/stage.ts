@@ -1,6 +1,6 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
-import { listAnswers } from "@tj/slides/templates";
+import { listAnswers, modelBody } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
@@ -175,6 +175,12 @@ export type WriterRun = {
    */
   library?: boolean;
   /**
+   * Library turn-on, step 1 (diagrams-06; default off): a drawn model takes the slide body under
+   * the heading (`modelBody`, about 900 x 424), its lead read in the notes, and a model whose
+   * smallest words would show there under the 18 pt floor falls back to the drawer.
+   */
+  libraryModelBody?: boolean;
+  /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
@@ -252,6 +258,9 @@ export type WriterOutput = {
   writer: { usd: number; ms: number; firstTokenMs?: number; finishReason?: string | null };
   summary: { textOnlyTeach: number; dangling: { slide: number; fault: string }[] };
 };
+
+/** Where a model drawn as the slide body sits under a one-line heading (`libraryModelBody`). */
+const MODEL_PLACE = (({ w, h }) => ({ w, h }))(modelBody(100));
 
 /**
  * The writer's system text for the brief's stage: the pinned text with the contract lines that
@@ -417,7 +426,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const m = laid.get(i) ?? (i === 0 ? title : undefined);
     if (!m) return undefined;
     const own = notes.get(i)?.notes ?? "";
-    const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
+    // A model drawn as the slide body shows no lead: it is read in the notes too.
+    const body = [...drawnDiagrams.entries()].some(
+      ([k, v]) =>
+        k.startsWith(`${i}:`) &&
+        v.status === "diagram" &&
+        (v.spec as { drawn?: { body?: boolean } } | undefined)?.drawn?.body === true,
+    );
+    const moved = modelPoints(plan.slides[i] as S | undefined, body).filter(
+      (p) => p && !own.includes(p),
+    );
     const fitted =
       relaid.has(i) && relaid.get(i) === plan.slides[i]
         ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
@@ -496,6 +514,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               yearGroup: brief.yearGroup,
               lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
               question,
+              ...(run.libraryModelBody ? { place: MODEL_PLACE } : {}),
             },
             async (req) =>
               (
@@ -515,7 +534,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             const { src, aspect, alt } = r.drawing;
             drawnDiagrams.set(`${i}:${a.key}`, {
               status: "diagram",
-              spec: { drawn: { src, aspect, alt, bare: true } },
+              spec: {
+                drawn: {
+                  src,
+                  aspect,
+                  alt,
+                  bare: true,
+                  ...(run.libraryModelBody ? { body: true } : {}),
+                },
+              },
             });
             log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
             relay(i);
