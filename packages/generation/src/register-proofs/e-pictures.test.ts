@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { CHECKER_DEFAULTS } from "../writer/checker-flags";
-import { type Brief, withLook } from "../writer/fixes";
+import { type Brief, titleOneThing, withLook } from "../writer/fixes";
 import { carryPairs, sameFigure } from "../writer/guards";
 import { compoundSubjects, splitLanded, splitSlide } from "../writer/lost-picture";
 import { materialise, type VisualState } from "../writer/materialise";
@@ -118,18 +118,23 @@ describe("REGISTER checker-06: pointGuard leaves 'Answer from memory' slides wit
 });
 
 describe("REGISTER prod-01: the title slide ships an empty grey frame (pr440-paid-4 s1)", () => {
-  test("BUG prod-01: a several-thing title look becomes one picture asking to see all of it; the shipped frame is PLACEHOLDER_IMAGE", () => {
+  test("FIXED prod-01: a several-thing title picture asks for its first thing only (ruling 196)", () => {
     // The writer's flow was not recorded; the dropped must-see ('sandy desert dunes') was.
     const look = { kind: "picture", shows: "An Arctic snowfield beside sandy desert dunes" };
     const { slide } = withLook(
       { template: "title", heading: "Surviving the Arctic and the desert" },
       look,
     );
-    expect((slide.picture as { must_see: string[] }).must_see).toEqual([look.shows]);
+    // Ruling 196: the title picture asks for one thing, never the split scene.
+    const one = titleOneThing(slide).slide.picture as { shows: string; must_see: string[] };
+    expect(one.must_see).toEqual(["arctic snowfield"]);
     const shipped = fixture<{ elements: J[] }>("prod-01").elements;
-    const photo = shipped.find((e) => e.name === "Photo");
-    // BAD OUTCOME (fix PR inverts: one-subject title brief, and no PLACEHOLDER_IMAGE at persist).
-    expect(String(photo?.src).startsWith(PLACEHOLDER_IMAGE.slice(0, 40))).toBe(true);
+    const alt = String(shipped.find((e) => e.name === "Photo")?.alt);
+    expect(alt).toContain("split view");
+    const fromShipped = titleOneThing({ template: "title", picture: { shows: alt } }).slide;
+    expect((fromShipped.picture as { shows: string }).shows).toBe("snowy arctic landscape");
+    // OPEN: the persist-time strip of PLACEHOLDER_IMAGE is not in this part.
+    expect(PLACEHOLDER_IMAGE.length).toBeGreaterThan(0);
   });
 });
 

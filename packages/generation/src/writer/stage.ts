@@ -65,6 +65,7 @@ import {
   repairTerms,
   roomLine,
   shuffleHinge,
+  titleOneThing,
   withCorrectLetter,
   withLook,
   writerIncomplete,
@@ -615,6 +616,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       s = added.slide;
     } else if (look && look.kind !== "none" && !asksVisual(s))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
+    const one = titleOneThing(s);
+    if (one.how) {
+      log({
+        ev: "title-one-thing",
+        slide: idx + 1,
+        shows: (one.slide.picture as { shows: string }).shows,
+      });
+      s = one.slide;
+    }
     plan.slides[idx] = s;
     asks.set(idx, visualsOf(s, idx, { ...base, plan }));
     run.onAsks?.(idx, asks.get(idx) ?? [], {
