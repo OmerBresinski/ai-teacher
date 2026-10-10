@@ -41,6 +41,39 @@ export function readabilityFaults(
   theme: Theme,
   size: { w: number; h: number; fs?: number },
 ): string[] {
+  // A slide is laid out many times (dry runs, the size probe, relays) with the same figure in the
+  // same room, and a labelled diagram's clash search is the costly part of each read. The faults
+  // are a pure function of spec, theme and size, so each read is kept (a bounded memo).
+  let key: string | undefined;
+  try {
+    key = `${themeKey(theme)}|${size.w}x${size.h}@${size.fs ?? ""}|${JSON.stringify(spec)}`;
+  } catch {}
+  const hit = key === undefined ? undefined : FAULTS.get(key);
+  if (hit) return [...hit];
+  const faults = readFaults(spec, theme, size);
+  if (key !== undefined) {
+    if (FAULTS.size >= 2000) FAULTS.clear();
+    FAULTS.set(key, faults);
+  }
+  return [...faults];
+}
+
+const FAULTS = new Map<string, string[]>();
+const THEME_KEYS = new WeakMap<Theme, string>();
+function themeKey(theme: Theme): string {
+  let k = THEME_KEYS.get(theme);
+  if (k === undefined) {
+    k = JSON.stringify(theme);
+    THEME_KEYS.set(theme, k);
+  }
+  return k;
+}
+
+function readFaults(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number; fs?: number },
+): string[] {
   // r3-diag: read as drawDiagram draws it (labels a little over their limit stretched).
   return withLongLabels(() => {
     if (!parseDiagram(spec)) return ["it does not draw"];
