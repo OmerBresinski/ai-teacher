@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { lesson } from "./fixtures.test-helpers";
 import { parseLesson } from "./lesson";
-import { type ImageElement, type Slide, SlideSchema } from "./slide";
+import {
+  DIAGRAM_MODEL_MAX,
+  DIAGRAM_PARAMS_MAX,
+  DIAGRAM_SPEC_MAX,
+  type ImageElement,
+  type Slide,
+  SlideSchema,
+} from "./slide";
 
 /*
  * TEACH-97 part h: a drawn diagram or a library model keeps what it was drawn from on its image
@@ -58,17 +65,41 @@ describe("ImageElement.diagram (TEACH-97 part h)", () => {
     expect(parseLesson(JSON.parse(JSON.stringify(old)))).toEqual(old);
   });
 
-  test("an unknown kind or a library entry without a model is refused", () => {
+  test("a source that does not parse is dropped, and the slide still loads", () => {
     const bad = [
       { kind: "photo", spec: {} },
       { kind: "library", params: {} },
       { kind: "drawer" },
       { kind: "library", model: "clock", params: {}, step: -1 },
+      { kind: "drawer", spec: { kind: "flow", labels: ["x".repeat(DIAGRAM_SPEC_MAX)] } },
+      { kind: "library", model: "clock", params: { items: "x".repeat(DIAGRAM_PARAMS_MAX) } },
+      { kind: "library", model: "m".repeat(DIAGRAM_MODEL_MAX + 1), params: {} },
     ];
-    for (const diagram of bad)
-      expect(
-        SlideSchema.safeParse(slideWith(image({ diagram } as unknown as Partial<ImageElement>)))
-          .success,
-      ).toBe(false);
+    for (const diagram of bad) {
+      const el = image({ diagram } as unknown as Partial<ImageElement>);
+      const r = SlideSchema.safeParse(slideWith(el));
+      expect(r.success).toBe(true);
+      const back = r.data?.elements[0] as ImageElement;
+      expect(back.diagram).toBeUndefined();
+      expect(back.src).toBe(el.src);
+      const { diagram: _d, ...rest } = el;
+      expect(JSON.parse(JSON.stringify(back))).toEqual(rest);
+    }
+  });
+
+  test("a drawer source keeps its settled label size and long-label mode", () => {
+    const el = image({
+      diagram: { kind: "drawer", spec: { kind: "flow" }, fs: 18, longLabels: true },
+    });
+    expect(roundTrip(el)).toEqual(el);
+  });
+
+  test("the largest real sources fit well inside the bounds", () => {
+    const spec = {
+      kind: "labelled-diagram",
+      labels: Array.from({ length: 12 }, () => "x".repeat(100)),
+    };
+    const el = image({ diagram: { kind: "drawer", spec } });
+    expect(roundTrip(el)).toEqual(el);
   });
 });

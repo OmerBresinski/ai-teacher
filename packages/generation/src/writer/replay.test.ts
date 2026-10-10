@@ -132,6 +132,12 @@ describe.each(LESSONS)("replay %s", (b) => {
           at: `s${i + 1} #${k}`,
           by: "ai",
         });
+        // The writer -> materialise hop keeps what each drawing was drawn from (TEACH-97 part h).
+        if (el.type === "image" && el.name === "Diagram")
+          expect({ at: `s${i + 1} #${k}`, kind: (el.diagram as El | undefined)?.kind }).toEqual({
+            at: `s${i + 1} #${k}`,
+            kind: expect.stringMatching(/^(drawer|library)$/),
+          });
         const { authoredBy: _by, ...e } = el;
         if (b === "y11-chemistry-rates-of-reaction" && i === 8 && w.name !== "Heading") {
           expect({ at: `s${i + 1} #${k}`, el: stable({ ...e, y: Number(e.y) - 49 }) }).toEqual({
@@ -151,4 +157,17 @@ describe.each(LESSONS)("replay %s", (b) => {
       }
     });
   });
+});
+
+test("replayed writer outputs end with a diagram source on their drawings (TEACH-97 part h)", async () => {
+  const kinds: string[] = [];
+  for (const b of LESSONS) {
+    const out = await replayRun(b);
+    for (const s of out.slides)
+      for (const e of s.elements as unknown as El[])
+        if (e.type === "image" && e.name === "Diagram")
+          kinds.push(String((e.diagram as El | undefined)?.kind));
+  }
+  expect(kinds.length).toBeGreaterThan(3);
+  expect(kinds.filter((k) => k !== "drawer" && k !== "library")).toEqual([]);
 });

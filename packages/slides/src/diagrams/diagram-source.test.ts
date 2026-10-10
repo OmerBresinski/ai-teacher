@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { DiagramSource, ImageElement } from "@tj/domain/documents";
 import { activityFixtures } from "../templates/activity-fixtures";
 import { layoutTemplate, type TemplateInput } from "../templates/index";
-import { getTheme } from "../themes";
-import { diagramElement, fittedDiagramElement } from "./index";
+import { getTheme, THEMES } from "../themes";
+import { drawDiagram } from "./draw";
+import { diagramElement, fittedDiagramElement, redrawDiagram } from "./index";
 import { DIAGRAM_SAMPLES } from "./samples";
 
 /*
@@ -89,5 +90,53 @@ describe("a drawn figure's source reaches its image element (TEACH-97 part h)", 
     );
     expect(els.length).toBe(1);
     expect("diagram" in (els[0] as object)).toBe(false);
+  });
+});
+
+describe("redrawDiagram gives back the stored drawing, byte for byte (TEACH-97 part h)", () => {
+  type Drawer = Extract<DiagramSource, { kind: "drawer" }>;
+  const again = (el: ImageElement, rect = RECT) =>
+    redrawDiagram(JSON.parse(JSON.stringify(el.diagram)) as Drawer, theme, rect, () => el.id);
+
+  test("every sample settled by the fit ladder (drawDiagram, label size stepped down)", () => {
+    let settled = 0;
+    for (const [name, spec] of Object.entries(DIAGRAM_SAMPLES)) {
+      for (const rect of [RECT, { x: 600, y: 140, w: 300, h: 220 }]) {
+        const r = drawDiagram(spec, theme, rect, () => "d1");
+        if (!r.ok) continue;
+        const d = r.element.diagram as Drawer;
+        if (d.fs !== undefined) settled++;
+        expect(again(r.element, rect)?.src, name).toBe(r.element.src);
+      }
+    }
+    expect(settled).toBeGreaterThan(5);
+  });
+
+  test("a long-label drawing stores its mode and size and redraws the same", () => {
+    const spec = {
+      kind: "particles",
+      alt: "a drawing",
+      title: "From solid to liquid to gas",
+      show: "states",
+      states: ["solid", "liquid", "gas"],
+      notes: [
+        "Close, regular; vibrate in place",
+        "Close, irregular; move past",
+        "Far apart; move freely",
+      ],
+      arrows: ["Melting", "Boiling"],
+    };
+    const zone = { x: 664, y: 120, w: 560, h: 520 };
+    const t = THEMES[0] ?? theme;
+    const r = fittedDiagramElement(spec, t, zone, () => "d1");
+    expect(r.ok && r.stretched).toBe(true);
+    if (!r.ok) return;
+    const d = r.element.diagram as Drawer;
+    expect(d.longLabels).toBe(true);
+    expect(d.fs).toBe(r.fs);
+    const back = redrawDiagram(JSON.parse(JSON.stringify(d)) as Drawer, t, zone, () => "d1");
+    expect(back?.src).toBe(r.element.src);
+    // Without the stored mode it would not even parse.
+    expect(diagramElement(d.spec, t, zone)).toBeUndefined();
   });
 });

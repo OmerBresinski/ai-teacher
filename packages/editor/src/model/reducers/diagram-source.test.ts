@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { ImageElement, Lesson } from "@tj/domain/documents";
 import { LessonSchema } from "@tj/domain/documents";
 import { replacementFields } from "../../images/image-source";
+import { recolourSlide } from "../../layout/retheme";
 import { newLesson } from "../factories";
+import { THEMES } from "../themes";
 import * as r from "./index";
 
 /*
@@ -71,5 +73,18 @@ describe("ImageElement.diagram through editor edits (TEACH-97 part h)", () => {
     expect(replaced.src).toBe("/files/photo.jpg");
     expect("diagram" in replaced).toBe(false);
     expect(replaced.authoredBy).toBe("teacher");
+  });
+
+  test("a theme switch never rewrites the stored source, even a value that reads like a palette colour", () => {
+    const [from, to] = THEMES;
+    if (!from || !to) throw new Error("two themes needed");
+    const hex = from.colors.muted;
+    const el: ImageElement = {
+      ...diagram,
+      diagram: { kind: "drawer", spec: { kind: "table", rows: [[hex, "Rain"]], colour: hex } },
+    };
+    const slide = { ...newLesson().slides[0], elements: [el] } as Lesson["slides"][number];
+    const out = recolourSlide(slide, from, to).elements[0] as ImageElement;
+    expect(out.diagram).toEqual(el.diagram);
   });
 });

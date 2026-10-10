@@ -238,7 +238,14 @@ export type ImageElement = ElementBase & {
  * label `typeScale` it was drawn at. Specs, never drawings: the SVG stays in `src`.
  */
 export type DiagramSource =
-  | { kind: "drawer"; spec: Record<string, unknown> }
+  | {
+      kind: "drawer";
+      spec: Record<string, unknown>;
+      /** The label size the fit settled on (`rect.fs`), when it set one. */
+      fs?: number;
+      /** Drawn with labels over their strict limit (`withLongLabels`). */
+      longLabels?: true;
+    }
   | {
       kind: "library";
       model: string;
@@ -499,12 +506,33 @@ export const PhotoSourceSchema = z.strictObject({
   evidence: PhotoEvidenceSchema.optional(),
 });
 
+/**
+ * Size bounds on a stored diagram source (TEACH-97 part h), in characters of compact JSON. The
+ * largest drawer spec in the replay fixtures is 1,497 and in the D52 run outputs 795; the largest
+ * library params (every preset of the 14 models, defaults filled) are 935 (`timeline`); the
+ * longest model id is 20. Each bound is about ten times that, so a real spec never meets it and an
+ * imported lesson cannot carry megabytes in a field nothing shows.
+ */
+export const DIAGRAM_SPEC_MAX = 16_384;
+export const DIAGRAM_PARAMS_MAX = 16_384;
+export const DIAGRAM_MODEL_MAX = 64;
+
+const boundedJson = (max: number) =>
+  z
+    .record(z.string(), z.unknown())
+    .refine((v) => JSON.stringify(v).length <= max, `over ${max} characters`);
+
 export const DiagramSourceSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("drawer"), spec: z.record(z.string(), z.unknown()) }),
+  z.object({
+    kind: z.literal("drawer"),
+    spec: boundedJson(DIAGRAM_SPEC_MAX),
+    fs: z.number().positive().max(200).optional(),
+    longLabels: z.literal(true).optional(),
+  }),
   z.object({
     kind: z.literal("library"),
-    model: z.string().min(1),
-    params: z.record(z.string(), z.unknown()),
+    model: z.string().min(1).max(DIAGRAM_MODEL_MAX),
+    params: boundedJson(DIAGRAM_PARAMS_MAX),
     step: z.number().int().min(0).optional(),
     typeScale: z.number().positive().optional(),
   }),
@@ -535,7 +563,9 @@ const ImageElementSchema = z.object({
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
   source: PhotoSourceSchema.optional(),
   builds: z.number().int().min(0).max(32).optional(),
-  diagram: DiagramSourceSchema.optional(),
+  // A source that does not parse (oversize, unknown kind) is dropped, never the slide: the drawing
+  // in `src` still shows, and only the settings panel goes without it.
+  diagram: DiagramSourceSchema.optional().catch(undefined),
 });
 
 const ShapeElementSchema = z.object({
