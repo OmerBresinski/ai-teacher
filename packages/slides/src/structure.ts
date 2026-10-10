@@ -1355,30 +1355,14 @@ function coveringPanel(slide: Slide, t: Theme): SlideElement | undefined {
 }
 
 /**
- * A slide that stays one slide (a generated set: it is never continued, so no Tidy will move its
- * panel later) whose answers panel would cover its questions: the answers leave the face of the
- * slide for the speaker notes (prod-17). A panel that clears the questions keeps its reveal.
+ * A finished set slide whose answers panel would cover its questions, as two slides: the questions
+ * without the panel, then "<heading>: answers" with each answer by its question's number (prod-17,
+ * Greg 10 Oct). A panel that clears the questions keeps its reveal, and the slide comes back alone.
+ * Generation's coded sets are materialised one slide each, so Repair applies this to the finished
+ * deck (`withAnswersSlides`, `@tj/generation`).
  */
-export function answersOffQuestions(slide: Slide, t: Theme): Slide {
-  const panel = coveringPanel(slide, t);
-  return panel ? answersToNotes(slide, panel) : slide;
-}
-
-/** The slide without its answers panel, the panel's answers added to the speaker notes. */
-function answersToNotes(slide: Slide, panel: SlideElement): Slide {
-  const answers = docText((panel as ShapeElement).doc ?? docFromText(""))
-    .replace(/\s+/g, " ")
-    .trim();
-  const notes = slide.notes?.trim() ?? "";
-  const carried =
-    !answers || notes.includes(answers)
-      ? notes
-      : [notes, `Answers: ${answers}`].filter(Boolean).join("\n\n");
-  return {
-    ...slide,
-    elements: slide.elements.filter((e) => e !== panel),
-    ...(carried ? { notes: carried } : {}),
-  };
+export function answersOnOwnSlide(slide: Slide, t: Theme, ids: Ids = uid): Slide[] {
+  return answersClear([slide], t, ids, true);
 }
 
 /**

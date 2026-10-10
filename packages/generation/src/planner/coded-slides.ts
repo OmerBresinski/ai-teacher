@@ -1,5 +1,6 @@
 import type {
   FactQuestion,
+  Lesson,
   LessonFacts,
   Misconception,
   OutlineEntry,
@@ -10,7 +11,7 @@ import type {
 import { asksForUnlistedOptions } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
-  answersOffQuestions,
+  answersOnOwnSlide,
   fitSlide,
   getTheme,
   HEADING_NAME,
@@ -24,6 +25,7 @@ import {
   THEMES,
   textPartsOf,
 } from "@tj/slides";
+import { renumberSlideRefs } from "../writer/table-pack";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -457,10 +459,7 @@ export function exitLines<T extends Line>(lines: readonly T[]): T[] {
  * of the list's box, which gives it the room. Nothing else moves.
  */
 export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
-  if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) {
-    // A generated set is one slide: a panel that would cover its questions goes to the notes.
-    return themeId === undefined ? slide : answersOffQuestions(slide, getTheme(themeId));
-  }
+  if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) return slide;
   const parts = setParts(slide);
   if (!parts) return slide;
   const { body, foot } = parts;
@@ -494,4 +493,26 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
       return e;
     }),
   };
+}
+
+/**
+ * The finished deck with an answers slide straight after every set whose answers panel would
+ * cover its questions (prod-17, Greg 10 Oct): "<heading>: answers", each answer by its question's
+ * number. Generate writes one slide per outline entry, so this runs once at the end of Repair,
+ * after everything that indexes slides by entry. Slide numbers said in words move with the slides
+ * they name (`renumberSlideRefs`). A deck with nothing to move comes back as it was.
+ */
+export function withAnswersSlides<L extends Pick<Lesson, "themeId" | "slides">>(
+  lesson: L,
+  ids?: () => string,
+): L {
+  const theme = getTheme(lesson.themeId);
+  const at = new Map<number, number>();
+  const slides: Slide[] = [];
+  lesson.slides.forEach((slide, i) => {
+    at.set(i + 1, slides.length + 1);
+    slides.push(...answersOnOwnSlide(slide, theme, ids));
+  });
+  if (slides.length === lesson.slides.length) return lesson;
+  return { ...lesson, slides: renumberSlideRefs(slides, at) };
 }
