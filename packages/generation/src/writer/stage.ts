@@ -256,6 +256,12 @@ export type WriterRun = {
   /** keepPic: a photo match6 dropped from an ask slide, for a slide that ends with no visual. */
   held?: (index: number, key: string) => VisualState | undefined;
   /**
+   * The diagram kind the picture director chose to draw a failed photo ask as (its `code` route):
+   * lostPic draws it with the drawer first, then asks the picture again (which then keeps the
+   * picture route). Absent: no director drawing.
+   */
+  drawAs?: (index: number, key: string) => string | undefined;
+  /**
    * A slide as soon as it is laid out while the deck is still being made (TEACH-110 part h, C2):
    * each slide the writer's stream closes, and again when its diagram is drawn. Read-only: the
    * editable deck (`onEditable`) supersedes every one of them.
@@ -1601,6 +1607,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // splitOk holds, and then only its landed pictures ship).
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
+    // Greg, 10 Oct ("a visual should never be lost"): a picture the director chose to draw.
+    const drawKind = run.drawDiagrams ? run.drawAs?.(i, lost.key) : undefined;
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
     // tiles or a table that did land.
     const others = (asks.get(i) ?? [])
@@ -1608,71 +1616,96 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       .map((a) => visualState(i)(a.key).status);
     const how0 = !heldPhotoFills(s0, others)
       ? undefined
-      : await lostPictureFallback(s0, lost.key, lost.shows, async (next, kind) => {
-          const oldAsks = asks.get(i) ?? [];
-          swapSlide(i, next);
-          const all = asks.get(i) ?? [];
-          const now = plan.slides[i] as S;
-          if (kind === "split")
-            await run.placeMore?.(
-              i,
-              all.filter((a) => a.type === "photo"),
-              { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
-            );
-          if (kind === "library" && run.drawDiagrams)
-            for (const a of all)
-              if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
-                const r = await drawWriterDiagram(diagramAsk(a, now), {
-                  callDrawer: run.drawDiagrams.callDrawer,
-                  drawerSystem: writerDrawerSystem,
-                  fitActs: act,
-                  theme: base.theme,
-                  probe: layoutSlotProbe,
-                  log: (e) => log({ ...e, slide: i + 1 }),
-                });
-                if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
-              }
-          const got = all.every((a) => {
-            const st = visualState(i)(a.key).status;
-            return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
-          });
-          // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
-          // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
-          // the same photo placed twice (one bank image for two tiles) counts, and ships, once
-          const srcs = new Set<string>();
-          const landed = all.filter((a) => {
-            const v = visualState(i)(a.key);
-            if (a.type !== "photo" || v.status !== "photo") return false;
-            const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
-            if (srcs.has(src)) return false;
-            srcs.add(src);
-            return true;
-          });
-          const ok =
-            kind === "split"
-              ? all.length > 0 && splitLanded(landed.length, all.length)
-              : got && all.length > 0;
-          log({
-            ev: "lost-picture",
-            slide: i + 1,
-            try: kind,
-            ok,
-            ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
-          });
-          if (ok && landed.length < all.length) {
-            const shows = new Set(landed.map((a) => a.shows));
-            swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
-          }
-          if (ok) {
-            relay(i);
-            return true;
-          }
-          restore(i, s0, n0, oldAsks);
-          return false;
-        });
+      : await lostPictureFallback(
+          s0,
+          lost.key,
+          lost.shows,
+          async (next, kind) => {
+            const oldAsks = asks.get(i) ?? [];
+            swapSlide(i, next);
+            const all = asks.get(i) ?? [];
+            const now = plan.slides[i] as S;
+            if (kind === "split")
+              await run.placeMore?.(
+                i,
+                all.filter((a) => a.type === "photo"),
+                { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+              );
+            if (kind === "library" && run.drawDiagrams)
+              for (const a of all)
+                if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
+                  const r = await drawWriterDiagram(diagramAsk(a, now), {
+                    callDrawer: run.drawDiagrams.callDrawer,
+                    drawerSystem: writerDrawerSystem,
+                    fitActs: act,
+                    theme: base.theme,
+                    probe: layoutSlotProbe,
+                    log: (e) => log({ ...e, slide: i + 1 }),
+                  });
+                  if (r.spec)
+                    drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+                }
+            const got = all.every((a) => {
+              const st = visualState(i)(a.key).status;
+              return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
+            });
+            // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
+            // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
+            // the same photo placed twice (one bank image for two tiles) counts, and ships, once
+            const srcs = new Set<string>();
+            const landed = all.filter((a) => {
+              const v = visualState(i)(a.key);
+              if (a.type !== "photo" || v.status !== "photo") return false;
+              const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
+              if (srcs.has(src)) return false;
+              srcs.add(src);
+              return true;
+            });
+            const ok =
+              kind === "split"
+                ? all.length > 0 && splitLanded(landed.length, all.length)
+                : got && all.length > 0;
+            log({
+              ev: "lost-picture",
+              slide: i + 1,
+              try: kind,
+              ok,
+              ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
+            });
+            if (ok && landed.length < all.length) {
+              const shows = new Set(landed.map((a) => a.shows));
+              swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
+            }
+            if (ok) {
+              relay(i);
+              return true;
+            }
+            restore(i, s0, n0, oldAsks);
+            return false;
+          },
+          drawKind ? { kind: drawKind, labels: lost.mustSee } : undefined,
+        );
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;
+    }
+    // The drawer could not draw the director's drawing (or the slide had another visual): the
+    // same ask goes back to the picture path, which now keeps the picture route (stock, then
+    // generation) instead of the director's drawing.
+    if (run.drawAs?.(i, lost.key) && run.placeMore) {
+      const now = plan.slides[i] as S;
+      await run.placeMore(i, [lost], {
+        heading: String(now.heading ?? ""),
+        text: wordsOf(now),
+        point: pointOf(now),
+      });
+      const ok = visualState(i)(lost.key).status === "photo";
+      log({ ev: "lost-picture", slide: i + 1, try: "picture", ok });
+      if (ok) {
+        relay(i);
+        path.set(i, "picture-placed");
+        return;
+      }
     }
     // A reroute that asks for the picture that could not be shown again is rejected.
     const same = (after: S) =>

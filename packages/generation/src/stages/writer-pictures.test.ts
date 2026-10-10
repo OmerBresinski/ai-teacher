@@ -883,3 +883,95 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(directed).toBe(1);
   });
 });
+
+// Greg, 10 Oct: "a visual should never be lost." The director's code route ("a drawing shows the
+// idea better than a photograph") used to plan none and ship the slide text-only.
+describe("writer pictures: a director code route is drawn or kept as a picture, never none", () => {
+  const heart = ask({
+    shows: "A cross-section of the human heart showing its four chambers",
+    mustSee: ["left atrium", "right ventricle"],
+    named: false,
+  });
+  const heartSlide = {
+    heading: "Inside the heart",
+    text: "The heart has four chambers.",
+    point: "",
+  };
+  const codeAnswer = () => direction({ route: "code", pictures: [], diagram: "labelled-diagram" });
+  const spyBank = () => {
+    const made: string[] = [];
+    return {
+      made,
+      bank: {
+        lookup: async () => undefined,
+        remember: async () => undefined,
+        generate: async (req: { text: string }) => {
+          made.push(req.text);
+          return undefined;
+        },
+      },
+    };
+  };
+
+  test("with a drawer, the ask is handed to it with the director's kind; nothing is spent", async () => {
+    const { bank, made } = spyBank();
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => codeAnswer(),
+      bank,
+      draws: true,
+    });
+    pictures.start(3, heart, heartSlide);
+    await pictures.settle(1_000);
+    expect(pictures.drawAs(3, "picture")).toBe("labelled-diagram");
+    expect(made).toEqual([]);
+  });
+
+  test("asked again after the drawer could not draw it, it keeps the picture route", async () => {
+    const { bank, made } = spyBank();
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => codeAnswer(),
+      bank,
+      draws: true,
+    });
+    pictures.start(3, heart, heartSlide);
+    await pictures.settle(1_000);
+    pictures.start(3, heart, heartSlide);
+    await pictures.settleSlide(3, 1_000);
+    expect(made).toEqual([
+      "A cross-section of the human heart showing its four chambers. left atrium. right ventricle",
+    ]);
+    expect(pictures.drawAs(3, "picture")).toBeUndefined();
+  });
+
+  test("with no drawer, or for a slot the stage never redraws, it goes straight to the picture route", async () => {
+    for (const [draws, a, index] of [
+      [false, heart, 3],
+      [true, { ...heart, fixedShape: true }, 3],
+      [true, { ...heart, key: "card.1" }, 3],
+      [true, heart, 1],
+    ] as const) {
+      const { bank, made } = spyBank();
+      const pictures = createWriterPictures({
+        lesson: sampleBriefLesson(),
+        country: "UK",
+        images: images({}),
+        deps: recordingDeps(createFakeAi({ script: [] })),
+        direct: async () => codeAnswer(),
+        bank,
+        draws,
+      });
+      pictures.start(index, a, heartSlide);
+      await pictures.settle(1_000);
+      expect(made.length).toBe(1);
+      expect(pictures.drawAs(index, a.key)).toBeUndefined();
+    }
+  });
+});

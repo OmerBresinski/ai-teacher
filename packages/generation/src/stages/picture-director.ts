@@ -191,6 +191,8 @@ export interface DirectedPicture {
 export type PicturePlan =
   | { kind: "none" }
   | { kind: "draw"; request: BankRequest }
+  /** The director chose a drawing (route `code`) of a kind the caller's drawer draws. */
+  | { kind: "drawing"; diagram: string }
   | {
       kind: "photo";
       request: BankRequest;
@@ -339,6 +341,32 @@ interface Ask {
   named: string | null;
   aspect?: number;
   look?: LessonLook;
+  /** What the writer's picture must show (its `must_see`), for a picture planned from the ask. */
+  mustShow?: string[];
+}
+
+/**
+ * Greg, 10 Oct: "a visual should never be lost." The director's answer when code keeps the
+ * writer's own picture: its words as the picture, a named thing on the real ladder (Commons, never
+ * generated, ruling 163), anything else stock first, then generated.
+ */
+function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirection {
+  const text = ask.text.replace(/\s+/g, " ").trim();
+  return {
+    route: ask.named ? "commons" : "library-or-generate",
+    pictures: [
+      {
+        shows: text,
+        mustShow: ask.mustShow ?? [],
+        queries: uniq([plainSubject(text), ...anchorQueries(text)]),
+        imagePrompt: text,
+      },
+    ],
+    count: null,
+    diagram: null,
+    named: ask.named ? (d?.named ?? "object") : null,
+    period: d?.period ?? null,
+  };
 }
 
 /** An imagined scene: a story, play or novel, or a character in one. No photograph shows it. */
@@ -357,17 +385,31 @@ export function stockFirstRoute(route: PictureDirection["route"], text: string):
   return route === "library-or-generate" && !IMAGINED.test(text);
 }
 
-/** The slot's plan from the director's answer; none when there is no usable answer. */
-export function planPicture(d: PictureDirection | undefined, ask: Ask): PicturePlan {
-  if (!d || d.route === "none") return { kind: "none" };
+/**
+ * The slot's plan from the director's answer. Only the director's own `none` plans no picture: a
+ * failed call or an answer with no usable picture keeps the writer's ask as the picture, and a
+ * drawing the bank cannot draw goes to the caller's drawer (`draws`) or, with none, keeps the
+ * ask's picture too (Greg, 10 Oct: a visual is never lost).
+ */
+export function planPicture(
+  d: PictureDirection | undefined,
+  ask: Ask,
+  opts: { draws?: boolean } = {},
+): PicturePlan {
+  // An ask with no words has nothing to keep (and askDirection would plan it again forever).
+  const keep = (): PicturePlan =>
+    ask.text.trim() ? planPicture(askDirection(ask, d), ask) : { kind: "none" };
+  if (d?.route === "none") return { kind: "none" };
+  if (!d) return keep();
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };
   const counted = countOk(d.count) ? d.count : undefined;
   // FIX1: a photo framed as a count only when there is something to count. A pair (an adult and
   // its young) is a picture of what it shows; framed as "exactly two animals" it lost the cow.
   const countedPhoto = counted && counted.total >= COUNT_PHOTO_MIN ? counted : undefined;
   if (d.route === "code") {
-    // Only a plain array is drawn; a diagram kind the bank cannot draw leaves the text layout.
-    if (!counted || counted.empty > 0) return { kind: "none" };
+    // Only a plain array is drawn by the bank; any other drawing is the drawer's, else a picture.
+    if (!counted || counted.empty > 0)
+      return opts.draws ? { kind: "drawing", diagram: d.diagram ?? "labelled-diagram" } : keep();
     const { total, groups, perGroup, arrangement } = counted;
     const draw: CountArray = { total, groups, perGroup, arrangement };
     return { kind: "draw", request: { ...base, text: ask.text, route: "generic", draw } };
@@ -396,7 +438,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
     }))
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
-  if (!first) return { kind: "none" };
+  if (!first) return keep();
   // A historical scene with no named kind is read as an event (an illustration under `strict`).
   const kind = d.named ?? (depicts ? "event" : "object");
   const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
@@ -483,6 +525,11 @@ export async function findDirected(args: {
   direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
   /** How the slot ended: the director's route, the ladder's step, and why it is empty when it is. */
   onOutcome?: (o: PictureOutcome) => void;
+  /**
+   * The caller draws a drawing the director chooses (the writer stage's drawer): a `code` route
+   * the bank cannot draw ends here as `director-code` with its kind. Absent, it is kept as a picture.
+   */
+  draws?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -498,12 +545,17 @@ export async function findDirected(args: {
     aspect: b.aspect ?? 1.6,
     ...(args.look ? { style: args.look.style } : {}),
   });
-  const plan = planPicture(direction, {
-    text: ask.subject,
-    named: ask.named ?? null,
-    ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
-    ...(args.look ? { look: args.look } : {}),
-  });
+  const plan = planPicture(
+    direction,
+    {
+      text: ask.subject,
+      named: ask.named ?? null,
+      ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
+      ...(args.look ? { look: args.look } : {}),
+      ...(b.mustShow?.length ? { mustShow: b.mustShow } : {}),
+    },
+    { draws: args.draws === true },
+  );
   const log = (extra: Record<string, unknown>) =>
     deps.logger.info(
       {
@@ -520,6 +572,17 @@ export async function findDirected(args: {
       director: direction?.route ?? "failed",
       via: "none",
       reason: direction ? "director-none" : "director-failed",
+    });
+    return undefined;
+  }
+  // The caller's drawer draws it (with the ask's words); nothing is searched or generated here.
+  if (plan.kind === "drawing") {
+    log({ plan: "drawing", diagram: plan.diagram });
+    args.onOutcome?.({
+      director: "code",
+      via: "drawer",
+      reason: "director-code",
+      diagram: plan.diagram,
     });
     return undefined;
   }
@@ -625,8 +688,11 @@ export interface PictureOutcome {
   via: string;
   route?: string;
   period?: string;
+  /** The drawing's kind when the director chose one for the caller's drawer (`director-code`). */
+  diagram?: string;
   /** Why the slot is empty: the director gave nothing, a real thing missed with no fallback, or generation was refused (cap, judge, or error). */
   reason?:
+    | "director-code"
     | "director-none"
     | "director-failed"
     | "real-miss-no-fallback"
@@ -704,6 +770,8 @@ export async function placeWriterPicture(args: {
   /** C7 race threshold; absent, `WRITER_STOCK_RACE_MS`. */
   raceMs?: number;
   onOutcome?: (o: PictureOutcome) => void;
+  /** The stage draws a drawing the director chooses (`findDirected`'s `draws`). */
+  draws?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
@@ -773,6 +841,7 @@ export async function placeWriterPicture(args: {
         ...(args.look ? { look: args.look } : {}),
         ...(args.direct ? { direct: args.direct } : {}),
         ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
+        ...(args.draws ? { draws: true } : {}),
       });
     },
     (error) => {
@@ -847,6 +916,11 @@ export interface WriterPictures {
   settleSlide(index: number, deadlineMs?: number): Promise<void>;
   /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
   vetoed(index: number, key: string): string | undefined;
+  /**
+   * The diagram kind the director chose to draw this ask as (`draws`), for the stage's drawer;
+   * undefined otherwise. Asked again (`start`), the ask keeps the picture route instead.
+   */
+  drawAs(index: number, key: string): string | undefined;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
   /**
@@ -893,6 +967,7 @@ export function splitSubjects(ask: WriterPhotoAsk): string[] | undefined {
 }
 
 const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
+  "director-code": "The picture director chose a drawing for this slide.",
   "director-none": "The picture director chose no picture for this slide.",
   "director-failed": "The picture director could not be reached.",
   "real-miss-no-fallback": "No real photograph of this was found, and none is generated for it.",
@@ -922,10 +997,19 @@ export function createWriterPictures(opts: {
   look?: LessonLook;
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
+  /**
+   * The stage draws what the director chooses to draw (its drawer and lostPic's library step):
+   * such an ask ends failed with `drawAs` set. Absent, or for a slot the stage never redraws (a
+   * set panel, a fixed shape, an activity card, the title and objectives slides, or an ask asked
+   * again), the director's drawing is kept as a picture of the ask: stock, then generation.
+   */
+  draws?: boolean;
 }): WriterPictures {
   type Slot = {
     state: WriterPictureState;
     miss?: WriterPictureMiss;
+    /** The director's drawing kind, when the stage is to draw this ask (`drawAs`). */
+    draw?: string;
     done: Promise<void>;
     /** Cancels this slot's own placement (`forget`: its slide was opened again). */
     stop: AbortController;
@@ -1028,8 +1112,14 @@ export function createWriterPictures(opts: {
     ask: WriterPhotoAsk,
     slide: SlideForPicture,
     real = realOnly(ask, [ask.shows]),
+    redraw = opts.draws === true &&
+      index >= 2 &&
+      !ask.set &&
+      !ask.fixedShape &&
+      !/^card\./.test(ask.key),
   ) => {
     let reason: PictureOutcome["reason"];
+    let diagram: string | undefined;
     return placeWriterPicture({
       ask: {
         key: ask.key,
@@ -1051,13 +1141,16 @@ export function createWriterPictures(opts: {
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {
         reason = o.reason;
+        diagram = o.diagram;
         opts.onOutcome?.(ask.key, o);
       },
+      ...(redraw ? { draws: true } : {}),
     }).then((photo) => {
       if (slot.state.status !== "pending") return;
       if (!photo) {
         slot.state = { status: "failed" };
         slot.miss = reason ?? "generation-refused-or-failed";
+        if (reason === "director-code") slot.draw = diagram;
         return;
       }
       if (real && photo.source?.provider === "generated") {
@@ -1347,7 +1440,16 @@ export function createWriterPictures(opts: {
         slots.set(k, slot);
         return;
       }
-      slot.done = place(slot, index, ask, slide);
+      // An ask the director sent to the drawer, asked again (the drawer could not draw it): the
+      // picture route this time, so it ends with a picture or a real miss, never none.
+      slot.done = place(
+        slot,
+        index,
+        ask,
+        slide,
+        undefined,
+        prev?.miss === "director-code" ? false : undefined,
+      );
       slots.set(k, slot);
     },
     state(index, key) {
@@ -1420,6 +1522,10 @@ export function createWriterPictures(opts: {
       const slot = slots.get(id(index, key));
       // match6 is not a veto: the reroute is not told (as the evidence ran).
       return slot?.miss && slot.miss !== "match6" ? MISS_LINE[slot.miss] : undefined;
+    },
+    drawAs(index, key) {
+      const slot = slots.get(id(index, key));
+      return slot?.miss === "director-code" ? slot.draw : undefined;
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
