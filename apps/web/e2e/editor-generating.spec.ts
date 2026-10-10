@@ -102,13 +102,13 @@ test.describe("generating lesson", () => {
     // the canvas at the editor's height, folded to dots when the teacher keeps it so, so nothing
     // reflows at Ready.
     await expect(page.locator("[data-insert-rail-placeholder]")).toHaveCSS("width", "48px");
-    await expect(rail).toHaveCSS("height", "88px");
+    await expect(rail).toHaveCSS("height", "106px");
     await page.evaluate(() => localStorage.setItem("tj:filmstrip-dots", "1"));
     await page.reload();
     await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("height", "36px");
     await page.evaluate(() => localStorage.removeItem("tj:filmstrip-dots"));
     await page.reload();
-    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("height", "88px");
+    await expect(page.getByRole("navigation", { name: "Slides" })).toHaveCSS("height", "106px");
 
     // The live dot is still under reduced motion.
     await page.emulateMedia({ reducedMotion: "reduce" });

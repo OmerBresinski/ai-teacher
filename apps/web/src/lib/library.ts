@@ -204,7 +204,13 @@ async function putDocument(
       const invalidations = [
         queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocumentMeta(document.id) }),
       ];
-      if (error.reason === "stale") {
+      // A lesson that is still filling (ADR 0037) keeps its working copy: the editor folds the
+      // job's newer row into it and saves again, so a refetch would only throw the teacher's
+      // typing away.
+      const filling = !!queryClient.getQueryData<DocumentMeta>(
+        queryKeys.libraryDocumentMeta(document.id),
+      )?.generatingJobId;
+      if (error.reason === "stale" && !filling) {
         invalidations.push(
           queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocument(document.id) }),
         );
@@ -288,6 +294,30 @@ export const libraryCache = {
     if (document.generatingJobId === jobId) return "running";
     const generation = (document.body as Partial<Lesson>).generation;
     return generation?.jobId === jobId && generation.completedAt ? "completed" : "stopped";
+  },
+  /**
+   * The row of a lesson that is still filling, read without touching the editor's working copy
+   * (ADR 0037): the follower merges the body into the open editor itself. The row state is written
+   * only when it is newer than the cached one, so an autosave that landed meanwhile keeps its token.
+   */
+  readFilling: async (
+    queryClient: QueryClient,
+    id: string,
+  ): Promise<{ body: Lesson; meta: DocumentMeta } | null> => {
+    const document = await fetchDocument(queryClient, id);
+    assertCurrentSession(queryClient);
+    if (document === null || document.deletedAt !== null || document.kind !== "lesson") return null;
+    return { body: document.body as Lesson, meta: metaOf(document) };
+  },
+  setMetaIfNewer: (queryClient: QueryClient, id: string, meta: DocumentMeta) => {
+    const key = queryKeys.libraryDocumentMeta(id);
+    const cached = queryClient.getQueryData<DocumentMeta>(key);
+    if (
+      !cached ||
+      cached.updatedAt <= meta.updatedAt ||
+      cached.generatingJobId !== meta.generatingJobId
+    )
+      queryClient.setQueryData(key, meta);
   },
   /**
    * The finished document, in one step (TEACH-251): the generating view calls this at the job's

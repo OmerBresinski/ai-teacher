@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
 import { ExportControl } from "@tj/editor/export";
 import {
   displayInTheme,
@@ -20,6 +21,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  FillingFollower,
+  type FillingFollowerHandle,
+  opensFillingEditor,
+  StopFillingButton,
+} from "@/components/generating-lesson/FillingFollower";
 import { stageOf } from "@/components/generating-lesson/stage";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
 import { sessionBoundary } from "@/lib/session-boundary";
@@ -155,7 +162,13 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       void navigate({ to: "/lessons/new", search: { lesson: lessonId }, replace: true });
     }
   }, [data, lessonId, navigate]);
-  const saveDocument = useSaveWithConflictToast(lessonId);
+  // ADR 0037: while the lesson fills, a stale save folds the job's row in and saves again.
+  const followerRef = useRef<FillingFollowerHandle | null>(null);
+  const onStale = useCallback(
+    async () => (followerRef.current ? followerRef.current.pull() : undefined),
+    [],
+  );
+  const saveDocument = useSaveWithConflictToast(lessonId, onStale);
   // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
   // The theme the lesson opened with is not a choice (it may be the automatic default).
   const openedTheme = useRef<string | undefined>(undefined);
@@ -191,6 +204,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // A job that failed or was cancelled releases the lock, yet the page stays on the generating
   // view for it (the outcome, the partial slides, Back to library) until the teacher leaves.
   const [stoppedJobId, setStoppedJobId] = useState<string | null>(null);
+  const [unlocked, setUnlocked] = useState<{ jobId: string; base: Lesson } | null>(null);
   // The slide the teacher was looking at in the generating view (TEACH-252), so the editor opens
   // on it at Ready; `null` while the canvas followed the newest, which opens on the first slide.
   const [viewedSlideId, setViewedSlideId] = useState<string | null>(null);
@@ -359,12 +373,31 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   );
 
   const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
+  // ADR 0037, UX ruling 189: once a slide's words are done the editor opens while the lesson
+  // keeps filling. The first done slide latches it for this job; slides still being written are
+  // read-only inside it, and the follower folds each newer row into the open document.
+  const fillingJobId = meta?.generatingJobId ?? null;
+  if (
+    fillingJobId &&
+    unlocked?.jobId !== fillingJobId &&
+    opensFillingEditor({
+      anonymous,
+      stopped: !!stoppedJobId,
+      proposed: data.plan?.state === "proposed",
+      editableSlides: hasEditableSlides(data),
+    })
+  ) {
+    setUnlocked({ jobId: fillingJobId, base: data });
+  }
+  const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
+  const editorOpen = !generatingJobId || filling;
+  const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
   const companionSlot = showStory ? (
     <div ref={setDestination} className="creation-generation-anchor" />
   ) : undefined;
   const shownLesson = displayInTheme(data, pickedTheme);
-  const content = generatingJobId ? (
+  const content = !editorOpen ? (
     <Suspense fallback={<RoutePendingPage />}>
       <GeneratingThemeDialog
         open={themeOpen}
@@ -424,11 +457,31 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onRegenerate={proposals.onRegenerate}
         onPromptEdit={onPromptEdit}
         busySlideIds={proposals.busySlideIds}
+        writingSlideIds={writing}
         proposalsBusy={proposals.busy}
         images={images}
-        exportSlot={exportControl}
+        exportSlot={
+          filling && unlocked ? (
+            <>
+              <StopFillingButton jobId={unlocked.jobId} />
+              {exportControl}
+            </>
+          ) : (
+            exportControl
+          )
+        }
         worksheetsSlot={worksheetsMenuEntry}
       />
+      {filling && unlocked ? (
+        <FillingFollower
+          lessonId={lessonId}
+          jobId={unlocked.jobId}
+          base={unlocked.base}
+          editorRef={editorRef}
+          followerRef={followerRef}
+          onStopped={setStoppedJobId}
+        />
+      ) : null}
     </>
   );
   const paused = stage.terminal === "failed" || stage.terminal === "cancelled";

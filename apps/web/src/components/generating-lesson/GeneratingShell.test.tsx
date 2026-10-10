@@ -247,7 +247,7 @@ describe("GeneratingShell", () => {
     expect(nav().dataset.navigatorMode).toBe("strip");
     expect(nav().previousElementSibling?.hasAttribute("data-canvas")).toBe(true);
     const thumb = document.querySelector("[data-generating-thumb] > *") as HTMLElement | null;
-    expect(thumb?.style.width).toBe("96px");
+    expect(thumb?.style.width).toBe("128px");
     cleanup();
     window.localStorage.setItem("tj:filmstrip-dots", "1");
     try {

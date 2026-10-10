@@ -337,6 +337,8 @@ function buildApp({
   if (testMail && testRoutesEnabled(env)) {
     app.use("/__test/seed-library", csrf);
     app.use("/__test/seed-library", guard);
+    app.use("/__test/job-write", csrf);
+    app.use("/__test/job-write", guard);
     app.route("/", testRoutes(testMail, db.unsafeDb));
     logger.warn("test routes enabled (NODE_ENV=test, ENABLE_TEST_ROUTES=1): /__test/*");
   }

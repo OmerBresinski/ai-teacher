@@ -20,6 +20,7 @@ export * from "./create-lesson";
 export * from "./figure";
 export * from "./generated-from";
 export * from "./generation";
+export * from "./generation-merge";
 export * from "./identifier-guard";
 export * from "./lesson";
 export * from "./lesson-facts";

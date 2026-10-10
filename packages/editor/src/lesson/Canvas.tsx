@@ -61,6 +61,8 @@ export const GUTTER = 40;
 const STAGE_ID = "slide-stage";
 
 export type CanvasProps = {
+  /** The generating job is still writing this slide (ADR 0037): no toolbar, slide actions or tabs. */
+  readOnly?: boolean;
   slide: Slide;
   theme: Theme;
   onFocusChange: (focused: boolean) => void;
@@ -112,6 +114,7 @@ export function Canvas({
   clearRight = 0,
   bubble = true,
   fitInset = 0,
+  readOnly = false,
 }: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
@@ -480,55 +483,60 @@ export function Canvas({
         </div>
       </div>
 
-      {/* A click on the slide's floating controls must not blur the canvas — that would disable
-          `useCanvasKeys` until the canvas is clicked again. Suppressing the mousedown's default
-          focus-steal keeps focus where it was; the buttons carry their own roles and keys. */}
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: not a control — it only stops the default focus-steal for the buttons inside it */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: same */}
-      <div
-        onMouseDown={(e) => {
-          if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
-        }}
-      >
-        {/* Wrapped so the pill can measure the toolbar's own floating box. */}
-        <div ref={toolbar}>
-          <ContextualToolbar
-            slide={slide}
-            theme={theme}
-            stageRef={stage}
-            scale={scale}
-            mobileActions={
-              mobile ? (
-                <>
-                  <SlideActions inline slide={slide} stageRef={stage} scale={scale} />
-                  <SlideTabs
-                    inline
-                    slide={slide}
-                    stageRef={stage}
-                    stageId={STAGE_ID}
-                    scale={scale}
-                  />
-                </>
-              ) : undefined
-            }
-          />
-        </div>
-        {!mobile ? (
-          <>
-            <SlideActions
-              slide={slide}
-              stageRef={stage}
-              toolbarRef={toolbar}
-              tabsRef={tabs}
-              scale={scale}
-            />
-            {/* Wrapped so the pill can measure the tabs' own floating box. */}
-            <div ref={tabs}>
-              <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />
+      {/* A slide the generating job is still writing has no floating controls (ADR 0037). */}
+      {readOnly ? null : (
+        <>
+          {/* A click on the slide's floating controls must not blur the canvas — that would disable
+              `useCanvasKeys` until the canvas is clicked again. Suppressing the mousedown's default
+              focus-steal keeps focus where it was; the buttons carry their own roles and keys. */}
+          {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: not a control — it only stops the default focus-steal for the buttons inside it */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: same */}
+          <div
+            onMouseDown={(e) => {
+              if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
+            }}
+          >
+            {/* Wrapped so the pill can measure the toolbar's own floating box. */}
+            <div ref={toolbar}>
+              <ContextualToolbar
+                slide={slide}
+                theme={theme}
+                stageRef={stage}
+                scale={scale}
+                mobileActions={
+                  mobile ? (
+                    <>
+                      <SlideActions inline slide={slide} stageRef={stage} scale={scale} />
+                      <SlideTabs
+                        inline
+                        slide={slide}
+                        stageRef={stage}
+                        stageId={STAGE_ID}
+                        scale={scale}
+                      />
+                    </>
+                  ) : undefined
+                }
+              />
             </div>
-          </>
-        ) : null}
-      </div>
+            {!mobile ? (
+              <>
+                <SlideActions
+                  slide={slide}
+                  stageRef={stage}
+                  toolbarRef={toolbar}
+                  tabsRef={tabs}
+                  scale={scale}
+                />
+                {/* Wrapped so the pill can measure the tabs' own floating box. */}
+                <div ref={tabs}>
+                  <SlideTabs slide={slide} stageRef={stage} stageId={STAGE_ID} scale={scale} />
+                </div>
+              </>
+            ) : null}
+          </div>
+        </>
+      )}
       <CanvasFooter clearRight={clearRight} bubble={bubble} scale={scale} steps={steps} />
       <ElementContextMenu
         slide={slide}
