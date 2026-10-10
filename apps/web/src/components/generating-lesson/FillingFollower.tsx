@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
-import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./GeneratingLesson";
+import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./job-sync";
 
 /**
  * Whether the editor opens while the lesson still fills (ADR 0037). Never for a guest: a guest's

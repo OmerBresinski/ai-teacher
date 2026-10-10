@@ -21,6 +21,13 @@ export {
   specRuleFinding,
 } from "./call";
 export {
+  type CurriculumLookup,
+  type CurriculumQuery,
+  type CurriculumStatement,
+  curriculumBlock,
+  curriculumFor,
+} from "./curriculum";
+export {
   EDIT_FAST_EFFORT,
   EDIT_FAST_MODEL_ID,
   EDIT_INSTRUCTION_MAX,

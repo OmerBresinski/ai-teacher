@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ConfiguredAi } from "@tj/ai";
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
-import { createFakeAi, type FakeCall, type FakeScriptEntry } from "@tj/ai/testing";
+import { createFakeAi, type FakeCall, type FakeReply, type FakeScriptEntry } from "@tj/ai/testing";
 import { FIXTURES, scriptedWorksheetAi } from "@tj/generation/testing";
 import type { Env } from "./env";
 
@@ -125,7 +127,74 @@ function pipelineAnswer(
   return JSON.stringify({});
 }
 
-export function createPerJobFakeAi(env: Pick<Env, "AI_FAKE_DELAY_MS">): ConfiguredAi {
+/** The writer planner's calls carry `lesson-writer.v1/<name>` (`aiWriterServices`). */
+const WRITER_PREFIX = "lesson-writer.v1/";
+/** About three tokens a piece: the size of a streamed model delta. */
+const REPLAY_PIECE_CHARS = 12;
+
+/**
+ * A recorded writer run (live writing P0, TEACH-202 part d): a replay fixture folder
+ * (`packages/generation/src/writer/fixtures/replay/<lesson>`) whose `main.json` holds the writer's
+ * text, its time to first token and its whole time, plus the run's objectives and notes.
+ */
+export type WriterReplay = {
+  main: { text: string; ms: number; firstTokenMs?: number; finishReason?: string | null };
+  objectives: string[];
+  notes: unknown;
+};
+
+export function loadWriterReplay(dir: string): WriterReplay {
+  const read = (f: string) => readFileSync(join(dir, f), "utf8");
+  const main = JSON.parse(read("main.json")) as WriterReplay["main"];
+  const objectives = (
+    JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
+  ).objectives.map((o) => o.teacher);
+  let notes: unknown = null;
+  try {
+    const text = read("notes.json").trim();
+    notes = text ? JSON.parse(text) : null;
+  } catch {
+    notes = null;
+  }
+  return { main, objectives, notes };
+}
+
+/**
+ * The replay's answer to a writer-planner call, or `undefined` for any other call. The writer's
+ * own call streams the recorded text at the recorded pace: nothing for `firstTokenMs`, then pieces
+ * of about three tokens spread over the rest of the recorded time, so the local stack sees the
+ * stream a real lesson made. The objectives and notes calls get the run's own answers; any other
+ * writer call (pupil wording, a drawer, a repair) gets `{}`, which the stage survives.
+ */
+export function writerReplayAnswer(call: FakeCall, replay: WriterReplay): FakeReply | undefined {
+  const version = call.context?.promptVersion ?? "";
+  if (!version.startsWith(WRITER_PREFIX)) return undefined;
+  const name = version.slice(WRITER_PREFIX.length);
+  if (name === "lesson") {
+    const { text, ms, firstTokenMs = 0 } = replay.main;
+    const pieces = Math.max(1, Math.ceil(text.length / REPLAY_PIECE_CHARS));
+    const finish = replay.main.finishReason;
+    return {
+      text,
+      ...(finish === "length" || finish === "stop" ? { finishReason: finish } : {}),
+      stream: {
+        pieceChars: REPLAY_PIECE_CHARS,
+        paceMs: Math.max(1, Math.round(Math.max(0, ms - firstTokenMs) / pieces)),
+        firstMs: firstTokenMs,
+      },
+    };
+  }
+  if (name === "objectives") return { text: JSON.stringify({ objectives: replay.objectives }) };
+  if (name === "notes" && replay.notes) return { text: JSON.stringify(replay.notes) };
+  return { text: "{}" };
+}
+
+export function createPerJobFakeAi(
+  env: Pick<Env, "AI_FAKE_DELAY_MS"> & Partial<Pick<Env, "AI_FAKE_WRITER_REPLAY">>,
+): ConfiguredAi {
+  const replay = env.AI_FAKE_WRITER_REPLAY
+    ? loadWriterReplay(env.AI_FAKE_WRITER_REPLAY)
+    : undefined;
   const byJob = new Map<string, ConfiguredAi>();
   const selectedOutlineByJob = new Map<string, readonly number[]>();
   const delay = env.AI_FAKE_DELAY_MS;
@@ -145,6 +214,8 @@ export function createPerJobFakeAi(env: Pick<Env, "AI_FAKE_DELAY_MS">): Configur
             scriptedWorksheetAi({ repairs: 1, ...(delay > 0 ? { pace: delay } : {}) })
           : createFakeAi({
               fallback: async (call) => {
+                const replayed = replay && writerReplayAnswer(call, replay);
+                if (replayed) return replayed;
                 if (delay > 0) await sleep(delay);
                 return pipelineAnswer(call, selectedOutlineByJob);
               },

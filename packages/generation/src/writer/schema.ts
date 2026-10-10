@@ -214,19 +214,54 @@ function withDiagramSpecs(b: WriterBundle, schema: J, stage: WriterStage): J {
 }
 
 /**
+ * Tile visuals (TEACH-75 part d, LAYOUT-AUDIT finding 4): a compare card's visual and a sequence
+ * stage may be a diagram as well as a picture, and a hinge takes a figure, so a comparison of
+ * structures or a drawn process keeps its layout. Every older output still parses: a picture card
+ * and a picture stage keep their shape, and the hinge's figure is nullable. Not in the pinned
+ * schema (the lab's bytes). Off by default (`TILE_VISUALS_DEFAULT`) until the writer's menu names
+ * it; a caller turns it on with `tileVisuals: true`.
+ */
+export const TILE_VISUALS_DEFAULT = false;
+
+function withTileVisuals(schema: J): J {
+  const defs = schema.$defs as Record<string, J>;
+  const VIS: J = { anyOf: [REF("picture"), REF("diagram-side")] };
+  const def = (n: string) => defs[n] as J;
+  const setProps = (n: string, f: (p: J) => J) => {
+    const props = f({ ...(def(n).properties as J) });
+    defs[n] = { ...def(n), properties: props, required: Object.keys(props) };
+  };
+  setProps("compare", (p) => {
+    const cols = p.columns as J;
+    const card = cols.items as J;
+    const props = { ...(card.properties as J), picture: NUL(VIS) };
+    return { ...p, columns: { ...cols, items: { ...card, properties: props } } };
+  });
+  setProps("picture-sequence", (p) => {
+    const seq = p.sequence as J;
+    const drawn = obj({ caption: S(), diagram: REF("diagram-side") });
+    return { ...p, sequence: { ...seq, items: { anyOf: [seq.items, drawn] } } };
+  });
+  setProps("hinge", (p) => ({ ...p, figure: REF("figure") }));
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
- * `objectives` count, `flow[].teaches` held to `1..objectives`. `pinned` gives the lab's pinned
+ * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
+ * (`withTileVisuals`). `pinned` gives the lab's pinned
  * schema with no contract (the evidence pins compare against it).
  */
 export function writerSchema(
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
-  opts: { objectives?: number; pinned?: boolean } = {},
+  opts: { objectives?: number; pinned?: boolean; tileVisuals?: boolean } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
+  if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
