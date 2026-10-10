@@ -164,7 +164,7 @@ describe("the lesson look", () => {
     const theme = getTheme("splash");
     const slide = materialiseSlide(
       { kind: "starter", heading: "Do now", items: ["What is sediment?"], factRefs: [] },
-      "chalk",
+      "splash",
       META,
       counter(),
     );
@@ -176,7 +176,7 @@ describe("one heading size across a deck (P19-14)", () => {
   const meta = { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" };
   const headingSize = (spec: Parameters<typeof materialiseSlide>[0]) =>
     (
-      materialiseSlide(spec, "chalk", meta).elements.find((e) => e.name === HEADING_NAME) as
+      materialiseSlide(spec, "studio", meta).elements.find((e) => e.name === HEADING_NAME) as
         | TextElement
         | undefined
     )?.style.fontSize;

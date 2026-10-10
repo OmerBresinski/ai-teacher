@@ -9,13 +9,12 @@
  */
 
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
-import { FIT_VERSION } from "../model/themes";
-
 /**
  * `renderedHeights` and `measureInputsOf` moved to `@tj/slides` (`lint.ts`) with the linter, so
  * the headless fit check (`fitsPlanned`) and the editor draw the same slide; re-exported here.
  */
 import { liveThemeId } from "@tj/slides";
+import { FIT_VERSION } from "../model/themes";
 
 export { measureInputsOf, renderedHeights } from "@tj/slides";
 

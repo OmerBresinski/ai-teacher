@@ -107,7 +107,7 @@ describe("hexColor", () => {
 
 describe("fontFaceFor", () => {
   it("maps every theme font stack to a real family name", () => {
-    expect(fontFaceFor(theme.fonts.body)).toBe("Lexend");
+    expect(fontFaceFor(theme.fonts.body)).toBe("Nunito");
     expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");

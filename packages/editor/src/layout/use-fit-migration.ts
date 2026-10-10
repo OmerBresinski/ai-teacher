@@ -1,4 +1,5 @@
 import type { Id, Lesson, Theme } from "@tj/domain/documents";
+import { liveThemeId } from "@tj/slides";
 import { useEffect, useRef } from "react";
 import * as reducers from "../model/reducers";
 import { renderTheme } from "../model/themes";
@@ -9,7 +10,6 @@ import {
   measureInputsOf,
   planFitMigration,
 } from "./fit-plan";
-import { liveThemeId } from "@tj/slides";
 import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer, whenFontsReady } from "./measure";
 import type { MeasureInput, Measurer } from "./reflow";

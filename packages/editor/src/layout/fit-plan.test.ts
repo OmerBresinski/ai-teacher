@@ -6,6 +6,7 @@ import {
   fitMigrationMessage,
   fitVersionOf,
   isFitStale,
+  isRetiredTheme,
   planFitMigration,
   renderedHeights,
 } from "./fit-plan";
@@ -157,5 +158,15 @@ describe("fitMigrationMessage", () => {
     const message = fitMigrationMessage(3);
     expect(message).not.toMatch(/[!—]|just|really|actually/i);
     expect(message.split(".").filter((s) => s.trim()).length).toBe(1);
+  });
+});
+
+describe("a lesson stored in a retired theme (UX ruling 202)", () => {
+  test("is fit-stale at the current version, so it is re-fitted in the theme it renders in", () => {
+    const at = { fitVersion: FIT_VERSION, slides: [] };
+    expect(isRetiredTheme({ themeId: "chalk" })).toBe(true);
+    expect(isFitStale({ ...at, themeId: "chalk" })).toBe(true);
+    expect(isFitStale({ ...at, themeId: "splash" })).toBe(false);
+    expect(planFitMigration({ ...at, themeId: "chalk" }, () => false).needed).toBe(true);
   });
 });

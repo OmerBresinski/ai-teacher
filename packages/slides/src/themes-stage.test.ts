@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
-  DEFAULT_THEME_ID,
   atKeyStage,
   BODY_SMALL,
+  DEFAULT_THEME_ID,
   displayBodyStop,
   fontFloor,
   getTheme,

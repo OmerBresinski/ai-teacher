@@ -356,7 +356,7 @@ describe("lessonFromBrief", () => {
       version: 1,
       id,
       title: "Fractions of amounts",
-      themeId: "chalk",
+      themeId: "splash",
       slides: [],
       createdAt: "2026-09-06T10:00:00.000Z",
       updatedAt: "2026-09-06T10:00:00.000Z",
