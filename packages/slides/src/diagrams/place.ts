@@ -13,6 +13,16 @@ export type Dir = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 const ALL: Dir[] = ["n", "e", "s", "w", "ne", "se", "sw", "nw"];
 
+/**
+ * A filled area as `addArea` stored it: its own copy of the points, with the y span worked out
+ * once. The copy is private, so changing the caller's array later cannot leave the span stale.
+ */
+export type Area = {
+  readonly pts: readonly (readonly [number, number])[];
+  readonly lo: number;
+  readonly hi: number;
+};
+
 /** What a template has drawn so far: lines, filled areas, and the labels already set. */
 export type Scene = {
   segs: Seg[];
@@ -20,7 +30,7 @@ export type Scene = {
   labels: Box[];
   leaders: Seg[];
   /** Filled shapes a label may not sit on (ground, water): it goes outside, on a leader. */
-  areas: [number, number][][];
+  areas: Area[];
   /** Labels with no clear room by their point: numbered there, named in a key (`drawKey`). */
   key: string[];
 };
@@ -66,38 +76,44 @@ export function drawKey(x: Ctx, sc: Scene, w: number, h: number): string {
   return "";
 }
 
-/** Each area's vertical extent, so a point above or below it skips the ray cast. */
-const polyYSpan = new WeakMap<[number, number][], [number, number]>();
-
-function ySpan(poly: [number, number][]): [number, number] {
-  let span = polyYSpan.get(poly);
-  if (!span) {
-    span = [Math.min(...poly.map((p) => p[1])), Math.max(...poly.map((p) => p[1]))];
-    polyYSpan.set(poly, span);
+/**
+ * Adds a filled area as a label obstacle. The points are copied, and the copy's y span is computed
+ * here, once. (Freezing the caller's arrays instead made every ray cast about ten times slower.)
+ */
+export function addArea(sc: Scene, pts: readonly (readonly [number, number])[]) {
+  const own = pts.map(([px, py]) => [px, py] as const);
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const p of own) {
+    lo = Math.min(lo, p[1]);
+    hi = Math.max(hi, p[1]);
   }
-  return span;
+  sc.areas.push(Object.freeze({ pts: own, lo, hi }));
 }
 
-function inPoly(poly: [number, number][], px: number, py: number): boolean {
-  const span = ySpan(poly);
+function inPoly({ pts: poly, lo, hi }: Area, px: number, py: number): boolean {
   // No edge straddles a horizontal line outside the area's y span, so the ray crosses nothing.
-  if (py < span[0] || py >= span[1]) return false;
+  if (py < lo || py >= hi) return false;
   let c = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i] as [number, number];
-    const [xj, yj] = poly[j] as [number, number];
+    const [xi, yi] = poly[i] as readonly [number, number];
+    const [xj, yj] = poly[j] as readonly [number, number];
     if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
   }
   return c;
 }
 
-function onArea(poly: [number, number][], b: Box): boolean {
-  // A box wholly above or below the area has no sample point and no vertex on it.
-  const [lo, hi] = ySpan(poly);
+function onArea(area: Area, b: Box): boolean {
+  // The early exit below is only sound for a box with y0 <= y1 (and the samples assume x0 <= x1).
+  if (!(b.x0 <= b.x1 && b.y0 <= b.y1))
+    throw new Error(`onArea: box not normalised ${JSON.stringify(b)}`);
+  const { pts: poly, lo, hi } = area;
+  // A box wholly above or below the area has no sample point and no vertex on it, so skip the
+  // fifteen ray casts.
   if (b.y1 + 1e-6 < lo || b.y0 - 1e-6 > hi) return false;
   for (let i = 0; i <= 4; i++)
     for (let j = 0; j <= 2; j++)
-      if (inPoly(poly, b.x0 + ((b.x1 - b.x0) * i) / 4, b.y0 + ((b.y1 - b.y0) * j) / 2)) return true;
+      if (inPoly(area, b.x0 + ((b.x1 - b.x0) * i) / 4, b.y0 + ((b.y1 - b.y0) * j) / 2)) return true;
   return poly.some(([px, py]) => px > b.x0 && px < b.x1 && py > b.y0 && py < b.y1);
 }
 
@@ -118,7 +134,8 @@ export const overlaps = (a: Box, b: Box, pad = 0) =>
 function segHitsBox(s: Seg, b: Box): boolean {
   const [ax, ay, bx, by] = s;
   // Every sample lies within the segment's own bounds: when those miss the box, none can hit it.
-  // (The margin covers the sampling's rounding, so the answer is the loop's own.)
+  // (The margin covers the sampling's rounding, so the answer is the loop's own. A box with
+  // x0 > x1 or y0 > y1 holds no point, so both this and the loop answer false for it.)
   const e = 1e-6;
   if (Math.max(ax, bx) + e <= b.x0 || Math.min(ax, bx) - e >= b.x1) return false;
   if (Math.max(ay, by) + e <= b.y0 || Math.min(ay, by) - e >= b.y1) return false;
