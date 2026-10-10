@@ -913,6 +913,19 @@ const CONTRACT = [
       "Pause before each scripted fake answer when `AI_FAKE_SCRIPT` is set, so a browser test can watch slides arrive one by one. Ignored otherwise.",
   },
   {
+    name: "AI_FAKE_WRITER_REPLAY",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "Test only (live writing, TEACH-202 part d): a writer replay fixture folder the scripted fake streams at its recorded pace for the writer planner. Refused at boot unless `AI_FAKE_SCRIPT=pipeline`, which is itself refused when NODE_ENV=production; never set it on Railway.",
+  },
+  {
     name: "MASTRA_TELEMETRY_DISABLED",
     services: ["api", "worker"],
     scope: "config",
