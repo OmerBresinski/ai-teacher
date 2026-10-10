@@ -601,7 +601,8 @@ describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", 
       deps: recordingDeps(cowAi()),
       direct: async () => {
         calls += 1;
-        return calls === 1 ? direction({ route: "none", pictures: [] }) : cowDirection();
+        // Round one never answers (it ends failed at the deadline); round two is the cow.
+        return calls === 1 ? new Promise<PictureDirection | undefined>(() => {}) : cowDirection();
       },
     });
     const one = ask({ shows: "A cow", mustSee: ["cow"], named: false });
