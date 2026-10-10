@@ -75,6 +75,34 @@ describe("slideRole: one rule each, in order", () => {
         lead: "Share into two equal groups. One group has 6: one half of 12 is 6.",
       }),
     ).toBe("teach"));
+  test("an ask verb on a slide that gives a result on another line still teaches (d52)", () => {
+    expect(
+      at("visual-text", {
+        points: [
+          "Share 12 counters equally into two groups.",
+          "Put one counter in each group. Keep going.",
+          "Count one group: half of 12 is 6.",
+        ],
+      }),
+    ).toBe("teach");
+    expect(
+      at("visual-text", {
+        points: ["Count beats for 30 seconds.", "Example: 36 × 2 = 72 beats per minute."],
+      }),
+    ).toBe("teach");
+    expect(
+      at("visual-text", {
+        points: ["Find one half and one quarter of 12.", "Two equal groups: one half is 6."],
+      }),
+    ).toBe("teach");
+  });
+  test("match is advice on a visual slide, not an ask", () =>
+    expect(
+      at("visual-text", {
+        lead: "All three mean “my”. Match the French noun, not the person speaking.",
+        points: ["mon: masculine singular", "ma: feminine singular", "mes: plural"],
+      }),
+    ).toBe("teach"));
   test("a question as the heading alone does not make a task", () =>
     expect(
       at("visual-text", { heading: "Why do polar bears have thick fur?", lead: "Fur traps heat." }),
@@ -170,9 +198,10 @@ describe("roleStamp on the replay fixtures", () => {
       expect(Math.min(...slides)).toBe(3);
       for (const e of lines) counts[String(e.role)] = (counts[String(e.role)] ?? 0) + 1;
     }
-    // roleAsk: 8 replay slides whose lead or point opens with an ask verb ("Your turn: Find one half
-    // of 10. Count one group.") moved from teach to task (step 1 counted teach 52, task 3).
-    expect(counts).toEqual({ teach: 44, practice: 32, hinge: 12, check: 5, worked: 15, task: 11 });
+    // roleAsk: 7 replay slides whose lead or point opens with an ask verb ("Your turn: Find one half
+    // of 10. Count one group.") moved from teach to task (step 1 counted teach 52, task 3); the y8
+    // French "Match the French noun" advice slide stays teach.
+    expect(counts).toEqual({ teach: 45, practice: 32, hinge: 12, check: 5, worked: 15, task: 10 });
   }, 60_000);
 
   test("y2 halves: the picture asking which half is a task", async () => {

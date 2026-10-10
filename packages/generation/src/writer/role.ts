@@ -66,16 +66,23 @@ const VISUAL_TEMPLATES = new Set([
 
 /**
  * A sentence that sets pupils a task without a question mark ("Find how many are in one group.",
- * "Write half or quarter for A, B and C."): it opens with an ask verb (LIBRARY-PATH s4.1). A line
- * that also gives a result ("Find one part: 24 ÷ 4 = 6 m.") is a worked step, not a task.
+ * "Write half or quarter for A, B and C."): it opens with an ask verb (LIBRARY-PATH s4.1). A slide
+ * that also gives a result on any line ("Find one part: 24 ÷ 4 = 6 m.", "Count one group: half of 12
+ * is 6.") is worked or taught, not a task: on the D52 replay that guard keeps 8 teaching slides
+ * from being treated as asks and hiding their content. "Match" is not an ask verb here: on a
+ * visual slide it is advice ("Match the French noun, not the person speaking."); a matching task
+ * has its own layout (pair).
  */
 const ASK_OPENER =
-  /(?:^|[.!:;]\s+)(?:find|work out|name|write|label|which|what|how many|calculate|sort|match|count|predict)\b/i;
+  /(?:^|[.!:;]\s+)(?:find|work out|name|write|label|which|what|how many|calculate|sort|count|predict)\b/i;
+/** A line that gives a result: an equals sign or "is" before a number ("half of 12 is 6"). */
+const GIVES_RESULT = /=|\bis\s+\d/i;
 
 /**
  * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
  * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?"),
- * or a lead or point sentence that opens with an ask verb ("Find how many are in one group.").
+ * or a lead or point sentence that opens with an ask verb ("Find how many are in one group.") on a
+ * slide that gives no result.
  * A question used as the heading alone ("Why do polar bears have thick fur?") is not a task.
  */
 export function visualTask(s: S): boolean {
@@ -88,10 +95,9 @@ export function visualTask(s: S): boolean {
     s.lead,
     ...pts.map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p)),
   ];
-  return lines.some(
-    (l) =>
-      typeof l === "string" && (l.includes("?") || (ASK_OPENER.test(l.trim()) && !l.includes("="))),
-  );
+  const words = lines.filter((l): l is string => typeof l === "string");
+  if (words.some((l) => l.includes("?"))) return true;
+  return !words.some((l) => GIVES_RESULT.test(l)) && words.some((l) => ASK_OPENER.test(l.trim()));
 }
 
 /** The role a slide has by its own fields, before its place in the deck is known. */
