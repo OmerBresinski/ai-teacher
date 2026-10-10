@@ -391,3 +391,65 @@ describe("a budget or abort error stops the job (never a restage)", () => {
     ).rejects.toBe(abort);
   });
 });
+
+describe("S10 paid L y2 s7: a drawer fallback on an asking slide keeps the answer back", () => {
+  // The recorded run: the library fill was refused (16 > 12), the drawer's first spec (groups 0)
+  // failed its schema and its retry drew two groups of 8, the half the task asks for, titled with
+  // the slide's heading.
+  const shows =
+    "Show exactly 16 ungrouped counters in a loose arrangement, with the total 16 displayed. Pupils draw their own two equal groups to find one half, then four equal groups to find one quarter. Do not draw groups, shade counters or show either answer.";
+  const outs = [
+    {
+      kind: "equal-groups",
+      alt: "16 ungrouped counters.",
+      title: "Now share 16",
+      total: 16,
+      groups: 0,
+      layout: "rows",
+      show_count: "none",
+      unknown: false,
+    },
+    {
+      kind: "equal-groups",
+      alt: "16 counters shown without group boundaries.",
+      title: "Now share 16",
+      total: 16,
+      groups: 2,
+      layout: "rows",
+      show_count: "none",
+      unknown: false,
+    },
+  ];
+  const run = (question: boolean) => {
+    let n = 0;
+    const callDrawer: DrawerCall = async () => ({ out: outs[Math.min(n++, outs.length - 1)] });
+    return drawWriterDiagram(
+      {
+        key: "diagram",
+        kind: "equal-groups",
+        shows,
+        labels: [],
+        words: "Now share 16\nFind one half and one quarter. Draw equal groups.",
+        yearGroup: "Year 2",
+        stage: "ks1",
+        slot: { placement: "across the slide", w: 0, h: 0, name: "full" },
+        question,
+      },
+      { callDrawer, drawerSystem: "", theme: studio },
+    );
+  };
+  test("the retry's two groups of 8 are drawn as one pile of 16, never the half", async () => {
+    const r = await run(true);
+    expect(r.via).toBe("drawer");
+    const s = r.spec as J;
+    expect(s.groups).toBe(1);
+    expect(s.total).toBe(16);
+    expect(s.pile).toBe(true);
+  });
+  test("the drawing does not repeat the slide's heading", async () => {
+    const s = (await run(true)).spec as J;
+    expect(s.title ?? null).toBeNull();
+    const t = (await run(false)).spec as J;
+    expect(t.title ?? null).toBeNull();
+  });
+});

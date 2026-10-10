@@ -56,11 +56,12 @@ function counter(x: Ctx, cx: number, cy: number, r: number, fill: string): strin
 /**
  * BAKEOFF base4f (unshared): an equal-groups request whose words say the counters are not shared
  * yet ("Fourteen unshared counters in a single ring, ready for pupils to ... share") is drawn as one
- * pile, so a question slide does not show its own answer (base4-4 y2 "Find half of 14").
+ * pile, so a question slide does not show its own answer (base4-4 y2 "Find half of 14"; S10 paid
+ * L y2 s7 "16 ungrouped counters ... Pupils draw their own two equal groups").
  * parseDiagram reads a `pile: true` spec (one group) as drawn.
  */
 export const UNSHARED =
-  /\b(unshared|not (yet )?shared|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?(a single|one) (ring|pile|group)|all together|together in one)/i;
+  /\b(unshared|ungrouped|not (yet )?(shared|grouped)|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?(a single|one) (ring|pile|group)|all together|together in one|(in )?a loose (arrangement|pile|group)|(do not|don't|without) (draw(ing)?|show(ing)?) (the |any )?(equal )?groups|pupils (draw|make) their own)/i;
 const ROW_WORDS = /\b(in (a|one) (row|line)|one row|a row of|in a line|lined up)\b/i;
 /**
  * The pile spec (one ring, every counter, no count) for a request that asks for unshared counters.
