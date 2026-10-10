@@ -1433,8 +1433,12 @@ function layoutOnce(
   // drawing would not be larger there than beside the words, the slide is laid diagram + text.
   if (input.template === "big-diagram" && input.points?.length) {
     if (!bigWithCards(c, input, input.points))
-      return layoutTemplate({ ...input, template: "diagram-text" }, theme, stage, opts);
-    return { slide: { kind: KIND["big-diagram"], elements: c.els }, over: c.over };
+      return layoutOnce({ ...input, template: "diagram-text" }, theme, stage, opts, headingCap);
+    // The strip sits on the slide's foot, so the body is not moved down under a taller heading.
+    return {
+      result: { slide: { kind: KIND["big-diagram"], elements: c.els }, over: c.over },
+      bodyFromHeading: true,
+    };
   }
   input = withoutFailedFigures(c, input);
   const tpl = input.template;
