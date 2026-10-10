@@ -128,11 +128,10 @@ function LessonIntake({
     client,
   );
   const create = useMutation(libraryMutations.createLesson(client));
-  // The planning stage: whether this tab watched the job run (then Plan finishes reading before the
-  // page moves on), and the objectives it is waiting to hand over.
+  // Whether this tab watched the plan job run (then the page leaves the planning stage with a view
+  // transition rather than landing on the objectives directly).
   const watched = useRef(false);
   if (jobId) watched.current = true;
-  const [reveal, setReveal] = useState<string[] | null>(null);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -165,15 +164,12 @@ function LessonIntake({
     }
     if (initialized.current || jobId || !meta.isSuccess || lesson.generation?.stage !== "planned")
       return;
-    const ready = (lesson.facts?.objectives ?? []).map(({ text }) => text);
     initialized.current = true;
-    if (watched.current) {
-      // Plan lowers the brief with a nod before the page moves on (onDone below).
-      if (ready.length) setReveal(ready);
-      else leaveStage(() => land(lesson));
-      return;
-    }
-    land(lesson);
+    // The plan's state moves the page on, once (`initialized` above), never Plan's animation: a
+    // tab that watched the job run leaves the planning stage with a view transition, and Plan
+    // greets the objectives step with a nod there.
+    if (watched.current) leaveStage(() => land(lesson));
+    else land(lesson);
   }, [lesson, jobId, meta.isSuccess, navigate]);
 
   function land(lesson: Lesson) {
@@ -324,7 +320,7 @@ function LessonIntake({
       setBusy(false);
     }
   }
-  const planning = (!!lessonId && (!!jobId || !initialized.current)) || !!reveal;
+  const planning = !!lessonId && (!!jobId || !initialized.current);
   const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
   const loadingError = document.isError || meta.isError;
   const title = planning
@@ -341,18 +337,7 @@ function LessonIntake({
       title={title}
       working={planning && !failed}
       layout={planning ? "plan" : "column"}
-      planning={
-        planning && !failed
-          ? {
-              objectives: reveal,
-              onDone: () =>
-                leaveStage(() => {
-                  setReveal(null);
-                  if (lesson) land(lesson);
-                }),
-            }
-          : undefined
-      }
+      planning={planning && !failed}
     >
       {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
@@ -384,9 +369,7 @@ function LessonIntake({
                 ? "Planning stopped. You can try again with the same brief."
                 : loadingError
                   ? "We couldn’t load your plan."
-                  : reveal
-                    ? `Your ${reveal.length} learning objectives are ready.`
-                    : "Finding the key ideas and checking the facts."}
+                  : "Finding the key ideas and checking the facts."}
           </p>
           {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button

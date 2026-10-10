@@ -7,7 +7,11 @@ import { env, slotPlaceholdersEnabled } from "@/env";
 import { sessionBoundary } from "@/lib/session-boundary";
 import { sessionRouter, startSessionRuntime } from "@/lib/session-runtime";
 import { startSpeedInsights } from "@/lib/speed-insights";
+import { installStaleDeployReload } from "@/lib/stale-deploy";
 
+// Before anything lazy loads: a tab left open across a deploy reloads once onto the new build.
+const stopStaleDeployReload = installStaleDeployReload();
+import.meta.hot?.dispose(stopStaleDeployReload);
 setSlotPlaceholders(slotPlaceholdersEnabled(env));
 const stopSessionRuntime = startSessionRuntime();
 import.meta.hot?.dispose(stopSessionRuntime);
