@@ -1,10 +1,10 @@
 import {
   asksForUnlistedOptions,
   checkLesson,
-  DEFAULT_SLIDE_COUNT,
   type Finding,
   type Lesson,
   type LessonFacts,
+  plannerSlideCount,
   type Worksheet,
 } from "@tj/domain/documents";
 import { callStructured, specRuleFinding } from "../call";
@@ -204,7 +204,7 @@ export async function planFromObjectives(
   options: PlannerOptions = {},
 ): Promise<PlannedState> {
   const t0 = Date.now();
-  const slideCount = state.lesson.brief?.slideCount ?? DEFAULT_SLIDE_COUNT;
+  const slideCount = plannerSlideCount(state.lesson.brief);
   // 1–2. The objectives step: one call (a second when the check fails the first set), then the
   //      title and objectives slides together. Two failed checks block the run here: no facts
   //      call is paid for, the report names the issues, the caller reads them.

@@ -1,3 +1,4 @@
+import type { SlideTier } from "@tj/domain/documents";
 import { Button } from "@tj/ui";
 import { FileText, Paperclip, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -69,7 +70,7 @@ export function DevFirstExperiencePage() {
     files: [],
   });
   const [objectives, setObjectives] = useState(OBJECTIVES);
-  const [slideCount, setSlideCount] = useState("8");
+  const [slideTier, setSlideTier] = useState<SlideTier>("standard");
   const [duration, setDuration] = useState("60");
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "sheet-1", recipe: "knowledge-check", minutes: "10" },
@@ -176,9 +177,9 @@ export function DevFirstExperiencePage() {
             brief={brief}
             objectives={objectives}
             onChange={setObjectives}
-            slideCount={slideCount}
+            slideTier={slideTier}
             duration={duration}
-            onSlideCount={setSlideCount}
+            onSlideTier={setSlideTier}
             onDuration={setDuration}
             onBack={() => go("brief")}
             onGenerate={() => go("worksheet")}
