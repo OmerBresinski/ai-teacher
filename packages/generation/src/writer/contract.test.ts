@@ -17,7 +17,7 @@ import { type Brief, fillTemplate, fixedFallback } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import prod from "./fixtures/prod-01a12146/drawer-faults.json" with { type: "json" };
 import { codeObjectives, codeTitle, materialise } from "./materialise";
-import { coverage, repairObjectives } from "./notes";
+import { coverage } from "./notes";
 import { replayRun, replayServices, savedSlides } from "./replay-fixture";
 import { writerSchema } from "./schema";
 import { writerSystem } from "./stage";
@@ -170,41 +170,6 @@ describe("every objective has a slide", () => {
   test("coverage by the written templates reports the miss the old summary metric hid", () => {
     expect(coverage(flow, 2, () => undefined).missing).toEqual([]);
     expect(coverage(flow, 2, (k) => tpl[k - 1]).missing).toEqual([2]);
-  });
-
-  test("the repair is told what each missing objective lacks, is held to its numbers, and a partial fix is kept", async () => {
-    const plan = { flow, slides: tpl.map((template) => ({ template })) };
-    let seen: { user: string; schema: J } | undefined;
-    const res = await repairObjectives({
-      plan,
-      objectives: ["one", "two", "three"],
-      context: "ctx",
-      system: "sys",
-      schema: {
-        properties: { changes: { items: { properties: { n: {}, teaches: {}, slide: {} } } } },
-      },
-      chat: async (r) => {
-        seen = { user: r.user, schema: r.schema as J };
-        return {
-          out: { changes: [{ n: 6, teaches: [2], slide: { template: "question-set" } }] },
-          usd: 0,
-          ms: 1,
-        };
-      },
-      log: () => {},
-      onUsd: () => {},
-    });
-    expect(seen?.user).toContain("Missing objectives: 2, 3");
-    expect(seen?.user).toContain(
-      "- 2: no hinge, question-set, practice, exit-ticket or discussion slide checks it",
-    );
-    expect(seen?.user).toContain("- 3: no slide teaches it; no hinge");
-    const t = (
-      (seen as { schema: J }).schema as { properties: { changes: { items: { properties: J } } } }
-    ).properties.changes.items.properties.teaches as J;
-    expect((t.items as J).enum).toEqual([1, 2, 3]);
-    expect(res.repaired).toBe(true);
-    expect(res.after?.missing).toEqual([3]);
   });
 });
 

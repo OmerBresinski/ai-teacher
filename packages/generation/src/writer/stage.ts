@@ -99,9 +99,7 @@ import {
   lessonNotes,
   notesOnlyLine,
   notesText,
-  objectiveRepairSchema,
   renderedLines,
-  repairObjectives,
   type SlideNotes,
 } from "./notes";
 import { PartialJson } from "./partial";
@@ -126,8 +124,8 @@ import { slideStates } from "./slide-states";
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
  * writer call with the teacher's approved objectives as givens, K3 on its output, the seeded
- * hinge shuffle, the flow's `look_at` honoured, code checks on each laid-out slide, the objective
- * coverage repair, one bounded fit repair (measure and retry), and one notes call on the final
+ * hinge shuffle, the flow's `look_at` honoured, code checks on each laid-out slide, objective
+ * coverage logged, one bounded fit repair (measure and retry), and one notes call on the final
  * slides as shown.
  *
  * Pictures and diagrams are not made here (parts d and TEACH-251/237 make them): every slot
@@ -943,7 +941,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
-  // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {
     states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
@@ -1001,25 +998,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     relay(i);
   };
-  if (plan.flow?.some((f) => Array.isArray(f.teaches)) && run.objectives.length > 0) {
-    const res = await repairObjectives({
-      plan: { flow: plan.flow, slides: plan.slides as S[] },
-      objectives: run.objectives,
-      context: user,
-      system: P.objectiveRepair,
-      schema: objectiveRepairSchema(repairSchemaFor(stageKey)),
-      chat,
-      log,
-      onUsd: () => {},
-      rules: coverageRules,
-    });
-    if (res.repaired) {
-      plan.flow = res.plan.flow as Plan["flow"];
-      for (let i = 2; i < n; i++)
-        if (res.plan.slides[i] !== plan.slides[i]) swapSlide(i, res.plan.slides[i] as S);
-      checks = check();
-    }
-  }
+  // An objective the coverage rule reads as untaught or unchecked is never repaired by a model
+  // call (SIMPLIFY S3): on the replay every gap was a picture or matching task the rule did not
+  // count, and the recorded repair swapped a three-photo growth task for one adult chicken. The
+  // gap is logged once, at the end (`coverage-unmet`).
 
   // ── one bounded repair: failing slides only, one call each ──
   // Dangling and unanswerable are reported, never a repair trigger: the ask / ask_without pair is
@@ -1618,7 +1600,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const dangling = checks.flatMap((c) =>
     c.faults.filter((f) => VISUAL_DANGLING.test(f)).map((f) => ({ slide: c.slide, fault: f })),
   );
-  // Coverage by the written slides' templates, as the objective repair judges it (the summary
+  // Coverage by the written slides' templates and the checker's rules (the summary
   // used to classify by `does` alone and read 0 while an objective was unchecked).
   const unmet = plan.flow
     ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string, {

@@ -23,10 +23,11 @@ describe("REGISTER checker-01: a flow that drew is dropped for missing its side 
 
 describe("REGISTER checker-04: the objective repair turns a picture task into words (b4-ex-1 y2, d52 A y1)", () => {
   test.each([["b4-ex-1_y2-maths-halves-quarters"], ["d52_A_y1-science-animals-young"]])(
-    "BUG checker-04 %s: an objective_repair call is made",
+    "FIXED checker-04 %s: no objective_repair call is made; the gap is logged",
     async (run) => {
-      const { chats } = await stageRun(run);
-      expect(chats).toContain("objective_repair");
+      const { chats, events } = await stageRun(run);
+      expect(chats).not.toContain("objective_repair");
+      expect(events.some((e) => e.ev === "coverage-unmet")).toBe(true);
     },
     60_000,
   );

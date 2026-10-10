@@ -48,3 +48,23 @@ describe("a diagram that cannot be shown keeps the writer's slide", () => {
     expect(written.template).not.toBe("explain");
   });
 });
+describe("the objective repair call is gone", () => {
+  test("y2 with every checker flag off still makes no objective_repair call", async () => {
+    const events: Ev[] = [];
+    const calls: string[] = [];
+    const base = replayServices("y2-maths-halves-quarters");
+    await replayRun("y2-maths-halves-quarters", {
+      services: {
+        ...base,
+        log: (e) => events.push(e as Ev),
+        chat: (r) => {
+          calls.push(r.name);
+          return base.chat(r);
+        },
+      },
+    });
+    expect(calls).not.toContain("objective_repair");
+    // The gap the old rule sees (objective 1, checked only by a picture task) is logged.
+    expect(events.find((e) => e.ev === "coverage-unmet")).toMatchObject({ missing: [1] });
+  });
+});

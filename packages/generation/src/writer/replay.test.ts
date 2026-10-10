@@ -48,6 +48,11 @@ const UNSHOWN: Record<string, number[]> = {
   "y12-psychology-multi-store-model": [3, 6],
   "y12-psychology-multi-store-model-r2": [3],
 };
+/**
+ * SIMPLIFY S3: the original y2 run's objective repair replaced slide 4's "Which shaded part is one
+ * half?" on drawn shapes with a text hinge. The repair call is gone, so the writer's drawn task stays.
+ */
+const OBJECTIVE_KEPT: Record<string, number[]> = { "y2-maths-halves-quarters": [3] };
 const headingOf = (els: El[]) => {
   const h = els.find((e) => e.name === "Heading");
   return JSON.stringify(h?.doc ?? h?.text ?? null);
@@ -95,6 +100,10 @@ describe.each(LESSONS)("replay %s", (b) => {
         // the matching table, never a partial split of single photos
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
+        return;
+      }
+      if (OBJECTIVE_KEPT[b]?.includes(i)) {
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {

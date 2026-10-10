@@ -182,12 +182,11 @@ describe("objective coverage", () => {
       [],
     );
     expect(isPictureTask(p.slideOf(4))).toBe(true);
-    // The objective repair no longer fires, so the picture task is not replaced by a text hinge.
+    // No objective repair call is made either way (SIMPLIFY S3), so the picture task stays.
     const off = await run("y2-maths-halves-quarters", {});
     const on = await run("y2-maths-halves-quarters", { coverageCountsPictureTasks: true });
-    expect(off.calls).toContain("objective_repair");
-    expect(on.calls).not.toContain("objective_repair");
-    expect([off.images[3], on.images[3]]).toEqual([0, 1]);
+    expect([...off.calls, ...on.calls]).not.toContain("objective_repair");
+    expect([off.images[3], on.images[3]]).toEqual([1, 1]);
   });
   test("an imperative teaching line is not a task; a question or a task field is", () => {
     const pic = { template: "visual-text", heading: "Equivalent fractions" };
