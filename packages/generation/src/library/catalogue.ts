@@ -129,6 +129,11 @@ export function libSchema(base: J, ids: string[], w = WRITER_WORDS): J {
   return s;
 }
 
-type MetaEntry = { answerKeys: string[]; cannot: { what: string; when: string[] }[] };
+type MetaEntry = {
+  answerKeys?: string[];
+  cannot?: { what: string; when: string[] }[];
+  /** Panels or steps beyond the slide's idea: off unless the intent names them (`libraryPanelsOff`). */
+  optionalPanels?: { param: string; what: string; when: string[] }[];
+};
 /** Per-model data the code reads after the fill (lab ab/lib-meta.json; not prompt text). */
 export const LIB_META = (libMeta as { models: Record<string, MetaEntry> }).models;

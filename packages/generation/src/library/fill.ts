@@ -88,10 +88,29 @@ export function fillSchema(params: J, id?: string): J {
   return s;
 }
 
-/** schemaCheck on what the filler sent, then validate() on it with the model's defaults. */
+/**
+ * The optional panels (lib-meta `optionalPanels`) to switch off: each the fill left unset whose
+ * `when` patterns the writer's intent does not match (diagrams-07: the heart's pulse panel).
+ */
+export function panelsOff(id: string, own: J, intent: string): J {
+  const off: J = {};
+  for (const p of LIB_META[id]?.optionalPanels ?? [])
+    if (
+      (own[p.param] === undefined || own[p.param] === null) &&
+      !p.when.some((w) => new RegExp(w, "i").test(intent))
+    )
+      off[p.param] = false;
+  return off;
+}
+
+/**
+ * schemaCheck on what the filler sent, then validate() on it with the model's defaults. With
+ * `intent` (flag `libraryPanelsOff`), optional panels the intent does not name are off first.
+ */
 export async function checkParams(
   id: string,
   out: unknown,
+  intent?: string,
 ): Promise<{ params?: J; refusals: LibRefusal[]; warnings: string[] }> {
   const m = await loadModel(id);
   if (!m) return { refusals: [{ path: "model", reason: `no model ${id}` }], warnings: [] };
@@ -106,7 +125,10 @@ export async function checkParams(
   // never clamped: a clamp would draw a different number from the one the slide asked for.
   const bounds = boundsRefusals(fillSchema(m.params), own);
   if (bounds.length) return { refusals: bounds, warnings: [] };
-  const params = k.withDefaults(m.params, own);
+  const params = k.withDefaults(
+    m.params,
+    intent === undefined ? own : { ...own, ...panelsOff(id, own, intent) },
+  );
   const missing = missingDrawingParams(id, own, params);
   if (missing.length) return { refusals: missing, warnings: [] };
   return nonFatalSync(
@@ -165,6 +187,8 @@ export type LibraryAsk = {
   yearGroup: string;
   lesson: string;
   question?: boolean;
+  /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
+  panelsOff?: boolean;
   /**
    * The box the drawing is placed in on the 960 x 540 slide (flag `libraryModelBody`): a drawing
    * whose smallest words would show under the drawer's `TYPE_FLOOR` there falls back
@@ -246,7 +270,7 @@ export async function libraryDiagram(
       },
     );
     if (callFault) return fallback(`the fill call failed: ${callFault}`);
-    const c = await checkParams(ask.model, last);
+    const c = await checkParams(ask.model, last, ask.panelsOff ? ask.intent : undefined);
     log({ ev: "lib-fill", key: ask.key, model: ask.model, attempt, ok: !!c.params });
     if (c.params) params = c.params;
     else refusals = c.refusals;

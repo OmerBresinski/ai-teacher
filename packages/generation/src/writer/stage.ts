@@ -181,6 +181,11 @@ export type WriterRun = {
    */
   libraryModelBody?: boolean;
   /**
+   * Library turn-on, step 2 (diagrams-07; default off): a model's optional panels (lib-meta
+   * `optionalPanels`, the heart's pulse first) are off unless the writer's intent names them.
+   */
+  libraryPanelsOff?: boolean;
+  /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
@@ -515,6 +520,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
               question,
               ...(run.libraryModelBody ? { place: MODEL_PLACE } : {}),
+              ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
             },
             async (req) =>
               (
