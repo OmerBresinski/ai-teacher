@@ -414,7 +414,9 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
   /* --- 2. Push down ---------------------------------------------- */
   const order = [...slots].sort((a, b) => a.y0 - b.y0 || a.index - b.index);
   const placed: Slot[] = [];
+  const riders = ridersOf(slots);
   for (const slot of order) {
+    if (riders.has(slot)) continue;
     if (slot.frozen) {
       placed.push(slot);
       continue;
@@ -453,9 +455,42 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
     slot.y = top > slot.y0 + EPS ? snapDown(top) : slot.y0;
     placed.push(slot);
   }
+  // A marker goes wherever its text went, keeping the offset the layout gave it.
+  for (const [rider, host] of riders) rider.y = rider.y0 + (host.y - host.y0);
 
   return slots;
 }
+
+/**
+ * List markers: a small shape (a number disc, a bullet) standing just left of a text box, its top
+ * within its own height of the text's top. It sits in a column no text shares, so the push-down
+ * never moves it; it rides with its text instead, or a grown item above leaves the markers below
+ * it where they were laid while their words move down (layout-07). Each marker rides the nearest
+ * text to its right.
+ */
+function ridersOf(slots: Slot[]): Map<Slot, Slot> {
+  const riders = new Map<Slot, Slot>();
+  const texts = slots.filter((s) => s.el.type === "text" || s.el.type === "gap-text");
+  for (const slot of slots) {
+    const el = slot.el;
+    if (el.type !== "shape" || slot.frozen || el.name === ANSWERS_NAME) continue;
+    if (el.w > MARKER_MAX || el.h > MARKER_MAX) continue;
+    let best: { host: Slot; gap: number } | undefined;
+    for (const text of texts) {
+      if (text.frozen) continue;
+      const gap = text.el.x - (el.x + el.w);
+      if (gap < -EPS || gap > MARKER_GAP) continue;
+      if (Math.abs(slot.y0 - text.y0) > el.h + EPS) continue;
+      if (!best || gap < best.gap) best = { host: text, gap };
+    }
+    if (best) riders.set(slot, best.host);
+  }
+  return riders;
+}
+
+/** The largest shape read as a list marker, and how far left of its text it may stand. */
+const MARKER_MAX = 48;
+const MARKER_GAP = 32;
 
 /* ------------------------------------------------------------------ */
 /* reflowSlide                                                         */
