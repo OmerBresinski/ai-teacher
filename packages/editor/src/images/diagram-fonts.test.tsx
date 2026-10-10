@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { act, cleanup, render } from "@testing-library/react";
 import type { ImageElement, Lesson, SlideElement } from "@tj/domain/documents";
 import { builtSvgDataUrl, svgOfDataUrl } from "@tj/slides/diagram-builds";
@@ -8,8 +8,9 @@ import { getTheme } from "../model/themes";
 import { ImageView } from "../slide/elements/ImageView";
 import {
   diagramFontsNow,
-  diagramFontsSettled,
+  diagramImagesReady,
   type FontSource,
+  prepareDiagramFonts,
   setDiagramFontSource,
   withDiagramFonts,
 } from "./diagram-fonts";
@@ -37,6 +38,7 @@ function fakeSource(): FontSource & { fetched: string[] } {
 
 afterEach(() => {
   cleanup();
+  setSystemTime();
   setDiagramFontSource(undefined);
 });
 
@@ -63,14 +65,62 @@ describe("withDiagramFonts", () => {
     expect(diagramFontsNow("/files/abc.png")).toBe("/files/abc.png");
   });
 
-  test("a failed fetch leaves the drawing as it was, and never throws", async () => {
+  test("a failed fetch leaves the drawing as it was, never throws, and is retried after a pause", async () => {
+    let calls = 0;
+    let offline = true;
     setDiagramFontSource({
       rules: fakeSource().rules,
-      fetchBase64: async () => {
-        throw new Error("offline");
+      fetchBase64: async (url) => {
+        calls += 1;
+        if (offline) throw new Error("offline");
+        return btoa(url);
       },
     });
+    setSystemTime(new Date("2026-10-10T12:00:00Z"));
     expect(await withDiagramFonts(SRC)).toBe(SRC);
+    // Inside the back-off: settled on the fallback, no second fetch.
+    expect(diagramFontsNow(SRC)).toBe(SRC);
+    expect(await withDiagramFonts(SRC)).toBe(SRC);
+    expect(calls).toBe(1);
+    offline = false;
+    setSystemTime(new Date("2026-10-10T12:00:06Z"));
+    expect(svgOfDataUrl(await withDiagramFonts(SRC))).toContain("@font-face");
+    expect(calls).toBe(2);
+  });
+});
+
+describe("capture before anything mounts", () => {
+  test("prepareDiagramFonts fetches what the slides need, so the first render is fonted", async () => {
+    const source = fakeSource();
+    setDiagramFontSource(source);
+    const group = { type: "group", children: [{ type: "image", src: SRC }] };
+    await prepareDiagramFonts([{ elements: [group] }]);
+    expect(source.fetched).toEqual(["/n-latin.woff2"]);
+    const { container } = render(
+      <ImageView
+        element={{ id: "d1", type: "image", x: 0, y: 0, w: 200, h: 100, src: SRC, fit: "contain" }}
+        theme={getTheme("splash")}
+        mode="capture"
+        slideId="s1"
+        hidden={false}
+        ghost={false}
+        revealAnswer={false}
+      />,
+    );
+    // No act, no wait: the very first commit already carries the theme face.
+    expect(svgOfDataUrl(container.querySelector("img")?.getAttribute("src") ?? "")).toContain(
+      `font-family:"Nunito Variable"`,
+    );
+  });
+
+  test("diagramImagesReady starts the fetches itself from the DOM", async () => {
+    const source = fakeSource();
+    setDiagramFontSource(source);
+    const root = document.createElement("div");
+    root.innerHTML = `<img src="${SRC}">`;
+    await diagramImagesReady(root, 2);
+    expect(source.fetched).toEqual(["/n-latin.woff2"]);
+    expect(svgOfDataUrl(diagramFontsNow(SRC) ?? "")).toContain("@font-face");
   });
 });
 
@@ -101,7 +151,7 @@ describe("ImageView sets a drawn diagram's words in its own face", () => {
         />,
       );
       await act(async () => {
-        await diagramFontsSettled();
+        await diagramImagesReady(container);
       });
       const src = container.querySelector("img")?.getAttribute("src") ?? "";
       expect(svgOfDataUrl(src)).toContain("@font-face");

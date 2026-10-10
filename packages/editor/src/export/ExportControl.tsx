@@ -23,6 +23,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import { type ReactNode, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { prepareDiagramFonts } from "../images/diagram-fonts";
 import { Segmented } from "../kit/Segmented";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
@@ -216,6 +217,8 @@ export function ExportControl({
     const { captureSlidePng, pngFilename } = await exportLoaders.png();
     const jobs: Staged[] = indices.map((index) => ({ kind: "slide", index }));
     const total = jobs.length;
+    // Every diagram's fonts up front, before any slide is staged (`diagram-fonts.ts`).
+    await prepareDiagramFonts(indices.flatMap((i) => deck.slides[i] ?? []));
     let failed = 0;
     let slidesDone = 0;
     for (let n = 0; n < total; n += 1) {

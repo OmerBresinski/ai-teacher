@@ -123,19 +123,32 @@ const pageSource = (): FontSource => {
 /* ------------------------------------------------------------------ */
 
 let source: FontSource = pageSource();
-/** Fetched faces by file URL; a failed fetch is remembered as `null` so it is not retried. */
-let loaded = new Map<string, EmbeddedFace | null>();
+/**
+ * Font data, once per woff2 file (keyed by its URL, which names the family, subset and weight
+ * range). This is the only large cache: each face is held once, however many drawings use it.
+ */
+let loaded = new Map<string, EmbeddedFace>();
 let loading = new Map<string, Promise<void>>();
-/** Fonted data URLs by source; bounded, oldest out first. */
+/** Files whose last fetch failed, with when: retried on the next use after `RETRY_MS`. */
+let failed = new Map<string, number>();
+const RETRY_MS = 5_000;
+/**
+ * Fonted data URLs by source, a small LRU bounded by size (keys and values, in characters), so a
+ * re-render or a Present build step does not rebuild the string. Evicted entries are rebuilt on
+ * demand from `loaded` (about 0.2 ms).
+ */
 let fonted = new Map<string, string>();
-const FONTED_MAX = 200;
+let fontedSize = 0;
+const FONTED_MAX_CHARS = 4_000_000;
 
 /** Tests swap in a fake source; `undefined` goes back to the page's stylesheets. Clears caches. */
 export function setDiagramFontSource(next: FontSource | undefined): void {
   source = next ?? pageSource();
   loaded = new Map();
   loading = new Map();
+  failed = new Map();
   fonted = new Map();
+  fontedSize = 0;
 }
 
 const SVG_PREFIX = "data:image/svg+xml";
@@ -148,49 +161,78 @@ function needed(svg: string): FaceRule[] {
   }
 }
 
+/** A failed file inside its back-off counts as settled (the drawing shows its fallback). */
+const coolingDown = (url: string) => {
+  const at = failed.get(url);
+  return at !== undefined && Date.now() - at < RETRY_MS;
+};
+
 function load(rule: FaceRule): Promise<void> {
-  const known = loading.get(rule.url);
-  if (known) return known;
   const { url, ...face } = rule;
+  if (loaded.has(url) || coolingDown(url)) return Promise.resolve();
+  const known = loading.get(url);
+  if (known) return known;
   const p = source
     .fetchBase64(url)
     .then((woff2Base64) => {
       loaded.set(url, { ...face, woff2Base64 });
+      failed.delete(url);
     })
     .catch(() => {
-      loaded.set(url, null);
+      failed.set(url, Date.now());
+    })
+    .finally(() => {
+      loading.delete(url);
     });
   loading.set(url, p);
   return p;
 }
 
+function remember(src: string, out: string): void {
+  const size = src.length + out.length;
+  if (size > FONTED_MAX_CHARS) return;
+  while (fontedSize + size > FONTED_MAX_CHARS && fonted.size) {
+    const [k, v] = fonted.entries().next().value as [string, string];
+    fonted.delete(k);
+    fontedSize -= k.length + v.length;
+  }
+  fonted.set(src, out);
+  fontedSize += size;
+}
+
 /**
- * `src` with its fonts embedded, when every face it needs has been fetched; `src` itself when it is
- * not a drawn SVG or needs nothing; `undefined` while a face is still to fetch.
+ * `src` with its fonts embedded, when every face it needs has been fetched (or has just failed and
+ * is backing off); `src` itself when it is not a drawn SVG or needs nothing; `undefined` while a
+ * face is still to fetch.
  */
 export function diagramFontsNow(src: string): string | undefined {
   if (!src.startsWith(SVG_PREFIX)) return src;
   const hit = fonted.get(src);
-  if (hit !== undefined) return hit;
+  if (hit !== undefined) {
+    // most recently used goes last
+    fonted.delete(src);
+    fonted.set(src, hit);
+    return hit;
+  }
   const svg = svgOfDataUrl(src);
   if (!svg) return src;
   const rules = needed(svg);
-  if (rules.some((r) => !loaded.has(r.url))) return undefined;
+  if (rules.some((r) => !loaded.has(r.url) && !coolingDown(r.url))) return undefined;
   const faces = rules.flatMap((r) => {
     const f = loaded.get(r.url);
     return f ? [{ ...f, family: r.family }] : [];
   });
+  // A drawing still waiting on a failed face is not cached, so it picks the face up on retry.
+  const complete = faces.length === rules.length;
   const out = faces.length ? builtSvgDataUrl(svgWithFonts(svg, faces)) : src;
-  if (fonted.size >= FONTED_MAX) fonted.delete(fonted.keys().next().value as string);
-  fonted.set(src, out);
+  if (complete) remember(src, out);
   return out;
 }
 
 /** `src` with its fonts embedded once they are fetched; never rejects, `src` on any failure. */
 export async function withDiagramFonts(src: string): Promise<string> {
   try {
-    const now = diagramFontsNow(src);
-    if (now !== undefined) return now;
+    if (!src.startsWith(SVG_PREFIX)) return src;
     const svg = svgOfDataUrl(src);
     if (!svg) return src;
     await Promise.all(needed(svg).map(load));
@@ -200,9 +242,54 @@ export async function withDiagramFonts(src: string): Promise<string> {
   }
 }
 
-/** Resolves once every face fetch started so far has finished (print and capture wait on it). */
-export async function diagramFontsSettled(): Promise<void> {
-  await Promise.all(loading.values());
+/** Every drawn diagram's `src` in `elements`, group children included. */
+function diagramSrcs(elements: readonly unknown[], out: string[]): string[] {
+  for (const el of elements) {
+    if (!el || typeof el !== "object") continue;
+    const e = el as { type?: unknown; src?: unknown; children?: unknown };
+    if (e.type === "image" && typeof e.src === "string" && e.src.startsWith(SVG_PREFIX))
+      out.push(e.src);
+    if (Array.isArray(e.children)) diagramSrcs(e.children, out);
+  }
+  return out;
+}
+
+/**
+ * Starts and awaits the font fetches every drawn diagram on `slides` needs, before anything is
+ * mounted: after it resolves, `ImageView` renders those diagrams fonted on its first render. Print,
+ * PNG and PDF capture call it with the slides they are about to capture. Never rejects.
+ */
+export async function prepareDiagramFonts(
+  slides: readonly { elements: readonly unknown[] }[],
+): Promise<void> {
+  const srcs = new Set(slides.flatMap((s) => diagramSrcs(s.elements, [])));
+  await Promise.all(Array.from(srcs, withDiagramFonts));
+}
+
+const frame = () =>
+  new Promise<void>((resolve) =>
+    typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame(() => resolve())
+      : setTimeout(resolve, 16),
+  );
+
+/**
+ * Every drawn diagram `<img>` under `root` showing its fonted source. Starts the fetches itself
+ * from the srcs in the DOM (so it does not depend on `ImageView`'s effect having run), then waits a
+ * few frames for React to commit the fonted src. Never rejects; gives up after `maxFrames`.
+ */
+export async function diagramImagesReady(root: ParentNode, maxFrames = 30): Promise<void> {
+  const imgs = () =>
+    Array.from(root.querySelectorAll<HTMLImageElement>(`img[src^="${SVG_PREFIX}"]`));
+  await Promise.all(imgs().map((img) => withDiagramFonts(img.getAttribute("src") ?? "")));
+  for (let i = 0; i < maxFrames; i++) {
+    const pending = imgs().some((img) => {
+      const src = img.getAttribute("src") ?? "";
+      return diagramFontsNow(src) !== src;
+    });
+    if (!pending) return;
+    await frame();
+  }
 }
 
 /**
