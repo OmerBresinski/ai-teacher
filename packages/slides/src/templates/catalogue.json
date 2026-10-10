@@ -837,7 +837,7 @@
               "counts": {
                 "columns": 2
               },
-              "maxCharsPerItem": 30
+              "maxCharsPerItem": 86
             },
             {
               "label": "3 columns with pictures",
@@ -876,7 +876,7 @@
               "counts": {
                 "columns": 2
               },
-              "maxCharsPerItem": 32
+              "maxCharsPerItem": 90
             },
             {
               "label": "3 columns with pictures",
@@ -915,7 +915,7 @@
               "counts": {
                 "columns": 2
               },
-              "maxCharsPerItem": 80
+              "maxCharsPerItem": 148
             },
             {
               "label": "3 columns with pictures",

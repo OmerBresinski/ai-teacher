@@ -1689,16 +1689,26 @@ function layoutOnce(
         c.bodyFromHeading = true;
         const bottom = G.band.y + G.band.h + 32;
         const iw = colW - 2 * pad;
+        // Chalkie's picture cards (ruling 203, P10): the label is its own bold caps line.
+        const caps = (col: { label: string }) => col.label.toLocaleUpperCase("en-GB");
         const wordsH = () =>
           Math.max(
             ...cols.map(
               (col) =>
-                measure(c, col.label, "lead", iw, 700) +
+                measure(c, caps(col), "lead", iw, 700) +
                 (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
             ),
             0,
           );
-        const full = Math.round(iw * 0.75);
+        // The picture band (ruling 203, P10): 4:3 at the card's width, but never taller than three
+        // columns' band unless the crop would pass the compare range's widest (1.78). Two wide
+        // cards had a 4:3 band so tall it left less room for words than three cards did.
+        const iw3 = Math.floor((G.width - gap * 2) / 3) - 2 * pad;
+        const widest = PICTURE_RANGES.compare[1];
+        const full = Math.min(
+          Math.round(iw * 0.75),
+          Math.max(Math.round(iw3 * 0.75), Math.round(iw / widest)),
+        );
         // Round 2: on the fit ladder. Words too long for the full 4:3 band set one step down first.
         let words = wordsH();
         if (bottom - top - 2 * pad - 8 - words < Math.floor(full * 0.96)) {
@@ -1746,7 +1756,7 @@ function layoutOnce(
             else if (col.figure) figurePanel(c, col.figure, band, true);
             const lab = text(
               c,
-              col.label,
+              caps(col),
               "lead",
               { x: x + pad, y: band.y + band.h + 8, w: iw },
               { color: c.t.colors.accent, weight: 700, name: "Label" },
