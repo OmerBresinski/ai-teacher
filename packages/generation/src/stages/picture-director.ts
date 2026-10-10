@@ -19,7 +19,7 @@ import {
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
-import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
+import { isFatal, nonFatal, nonFatalSync, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   judgeMadeDirected,
@@ -1234,14 +1234,14 @@ export function createWriterPictures(opts: {
       .then(() => {
         if (slot.state.status !== "photo") return;
         // Best effort: a failing re-lay never rejects (the deck is laid again before editable).
-        try {
-          opts.onPlaced?.(index, ask.key);
-        } catch (e) {
-          opts.deps.logger.warn(
-            { stage: "generate", picture: id(index, ask.key), err: String(e).slice(0, 200) },
-            "writer picture re-lay failed",
-          );
-        }
+        nonFatalSync(
+          () => opts.onPlaced?.(index, ask.key),
+          (e) =>
+            opts.deps.logger.warn(
+              { stage: "generate", picture: id(index, ask.key), err: String(e).slice(0, 200) },
+              "writer picture re-lay failed",
+            ),
+        );
       });
   };
 
