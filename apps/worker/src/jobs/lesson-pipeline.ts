@@ -3,6 +3,7 @@ import {
   clearGenerating,
   forWorkspace,
   getDocument,
+  listWorksheetsOfLesson,
   putDocumentAsJob,
   type WorkspaceDb,
 } from "@tj/db";
@@ -131,6 +132,27 @@ function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["
   };
 }
 
+/** How long the write stage waits for the lesson page's worksheet request to create its job. */
+export const WORKSHEET_WAIT_MS = 20_000;
+
+/**
+ * Ruling 201: true once a worksheet row (made with its job by `POST /lessons/:id/worksheet`)
+ * exists for the lesson. The request comes from the lesson page after the confirm, so this polls
+ * for up to `waitMs`; none by then (or a cancelled job) is false.
+ */
+export async function waitForWorksheet(
+  list: () => Promise<readonly unknown[]>,
+  signal: AbortSignal,
+  { waitMs = WORKSHEET_WAIT_MS, stepMs = 1000 }: { waitMs?: number; stepMs?: number } = {},
+): Promise<boolean> {
+  const until = Date.now() + waitMs;
+  for (;;) {
+    if ((await list()).length > 0) return true;
+    if (signal.aborted || Date.now() >= until) return false;
+    await new Promise((resolve) => setTimeout(resolve, stepMs));
+  }
+}
+
 export async function runLessonJob<K extends LessonPipelineJob>(
   ctx: JobContext<K, WorkerDeps>,
   spec: LessonJobSpec,
@@ -171,6 +193,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
+      worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
       images: imagePlacer(deps, workspaceId),
       ...pictureMaker(deps, workspaceId, logger),
     };
