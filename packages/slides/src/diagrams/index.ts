@@ -246,6 +246,7 @@ function body(
     arrows?: Ctx["arrows"];
     axes?: Ctx["axes"];
     leaders?: Ctx["leaders"];
+    parts?: Ctx["parts"];
   },
   fs?: number,
 ): string {
@@ -288,6 +289,7 @@ function body(
         arrows: probe.arrows,
         axes: probe.axes,
         leaders: probe.leaders,
+        parts: probe.parts,
       }
     : x;
   // Modern looks: the drawing keeps an inset from its zone's left and right edges, so no label,
@@ -301,6 +303,7 @@ function body(
         strokes: probe.strokes.length,
         arrows: probe.arrows?.length ?? 0,
         leaders: probe.leaders?.length ?? 0,
+        parts: probe.parts?.length ?? 0,
       }
     : undefined;
   const inner = (() => {
@@ -362,6 +365,7 @@ function body(
       l[0] += inset;
       l[2] += inset;
     }
+    for (const pts of probe.parts?.slice(marks.parts) ?? []) for (const q of pts) q[0] += inset;
   }
   const fin = finished(laddered(inner), x.c, mix, x.dark);
   const drawn = inset ? `<g transform="translate(${n(inset)},0)">${fin}</g>` : fin;
@@ -556,6 +560,7 @@ export type DiagramProbe = {
   arrows: NonNullable<Ctx["arrows"]>;
   axes: NonNullable<Ctx["axes"]>;
   leaders: NonNullable<Ctx["leaders"]>;
+  parts: NonNullable<Ctx["parts"]>;
 };
 const diagramProbe = (h: number): DiagramProbe => ({
   rec: [],
@@ -565,6 +570,7 @@ const diagramProbe = (h: number): DiagramProbe => ({
   arrows: [],
   axes: [],
   leaders: [],
+  parts: [],
 });
 let lastProbe: DiagramProbe | undefined;
 /** The probe of the last `diagramFaults` call (the geometry checks read arrows and axes from it). */

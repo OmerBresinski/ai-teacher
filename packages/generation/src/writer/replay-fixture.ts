@@ -203,3 +203,29 @@ export async function replayRun(
 export const savedSlides = (b: string) =>
   (JSON.parse(read(b, "lesson.json")) as { slides: (El & { elements: El[]; notes?: string })[] })
     .slides;
+
+/**
+ * TEACH-247 part n: a table at its limits (8 rows by 5 columns of 4-word cells) parses but cannot be
+ * shown readably in any slot at the 18 pt floor. Tests of the cannot-be-shown path swap it in for
+ * one slide's recorded drawing, since y8 s3's family tree and y11 s3's apparatus now draw.
+ */
+export const UNSHOWABLE_TABLE = {
+  kind: "table",
+  alt: "A table too big to show on a slide.",
+  header: ["First column", "Second column", "Third column", "Fourth column", "Fifth column"],
+  rows: Array.from({ length: 8 }, () =>
+    Array.from({ length: 5 }, () => "Longest words here fill it"),
+  ),
+};
+
+/** The recorded visuals with slide `slideIndex`'s drawing (0-based) swapped for `UNSHOWABLE_TABLE`. */
+export function withUnshowable(
+  b: string,
+  slideIndex: number,
+  inner: (i: number, key: string, a: VisualAsk) => VisualState = recordedVisuals(b),
+) {
+  return (i: number, key: string, a: VisualAsk): VisualState => {
+    const v = inner(i, key, a);
+    return i === slideIndex && v.status === "diagram" ? { ...v, spec: UNSHOWABLE_TABLE } : v;
+  };
+}

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { THEMES } from "@tj/slides";
+import { drawDiagram } from "@tj/slides/diagrams";
+import { atKeyStage } from "@tj/slides/themes";
 import { CHECKER_DEFAULTS } from "./checker-flags";
-import { replayRun, replayServices } from "./replay-fixture";
+import { replayRun, replayServices, UNSHOWABLE_TABLE, withUnshowable } from "./replay-fixture";
 
 /*
  * SIMPLIFY S3 (TEACH-312 part f): the writer stage's repairs that made slides worse are gone.
@@ -13,12 +16,13 @@ import { replayRun, replayServices } from "./replay-fixture";
  * Recorded writer outputs (fixtures/replay), recorded answers, no model call.
  */
 type Ev = Record<string, unknown>;
-async function run(b: string) {
+async function run(b: string, visual?: ReturnType<typeof withUnshowable>) {
   const events: Ev[] = [];
   const calls: { name: string; user: string }[] = [];
   const base = replayServices(b);
   const res = await replayRun(b, {
     checker: CHECKER_DEFAULTS,
+    ...(visual ? { visual } : {}),
     services: {
       ...base,
       log: (e) => events.push(e as Ev),
@@ -40,7 +44,9 @@ describe("a diagram that cannot be shown keeps the writer's slide", () => {
     ["y12-psychology-multi-store-model-r2", 4],
     ["y8-french-my-family", 3],
   ])("%s s%d: no words-rewrite or figure-dropped, no stand-alone call", async (b, slide) => {
-    const r = await run(b);
+    // y8 s3's family tree now draws (TEACH-247 part n): a drawing that cannot be shown takes its
+    // place, so the slide still takes the cannot-be-shown path.
+    const r = await run(b, b === "y8-french-my-family" ? withUnshowable(b, slide - 1) : undefined);
     expect(r.pathOf(slide)).toBe("unshown");
     expect(r.events.some((e) => e.ev === "restage-fallback" && e.slide === slide)).toBe(false);
     // The slide is the writer's own (same heading), not a restaged rewrite.
@@ -119,5 +125,24 @@ describe("an unshown visual never leaves its slide pointing at it", () => {
     });
     expect(dangling(res, 4)).toEqual([]);
     expect(JSON.stringify(res.slides[3]?.elements)).not.toContain("Point to the rehearsal arrow");
+  });
+});
+
+describe("UNSHOWABLE_TABLE", () => {
+  // The cannot-be-shown tests swap it in (TEACH-247 part n); a future table-fit change must not
+  // quietly turn them into drawn-slide tests.
+  test("draws in no slot, on no theme, at no key stage", () => {
+    const drawn: string[] = [];
+    for (const theme of THEMES)
+      for (const ks of ["ks1", "ks2", "ks3", "ks4"] as const)
+        for (const z of [
+          { w: 348, h: 284 },
+          { w: 403, h: 336 },
+          { w: 788, h: 235 },
+          { w: 860, h: 380 },
+        ])
+          if (drawDiagram(UNSHOWABLE_TABLE, atKeyStage(theme, ks), { x: 0, y: 0, ...z }).ok)
+            drawn.push(`${theme.id} ${ks} ${z.w}x${z.h}`);
+    expect(drawn).toEqual([]);
   });
 });

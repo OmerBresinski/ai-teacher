@@ -7,6 +7,7 @@
  * one label. Particle boxes draw solids, liquids and gases the way a science textbook does.
  */
 import { MIN_FONT_SIZE } from "../themes";
+import { labelRule, segThroughBox } from "./label-rule";
 import type { LabelledDiagram } from "./schema";
 import { WEIGHT } from "./style";
 import { arrow, type Ctx, n, text, textWidth, toneFill, wrap } from "./svg";
@@ -207,6 +208,33 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
         best = { i, d: r.d, at: r.at, a };
     });
     if (!best) continue;
+    // Register prod-06: a point on the ground (one level line) right under a closed shape standing
+    // on it names that shape: "Wide paws" pointed at the snow under the paw. A tube, a slope or
+    // any other line keeps its label.
+    const onLine = s.shapes[best.i];
+    // The paw is a spot on the bear: a part label, with a leader to it.
+    let onGround = false;
+    const ground =
+      onLine?.type === "line" &&
+      onLine.points.length === 2 &&
+      onLine.points[0]?.[1] === onLine.points[1]?.[1]
+        ? (onLine.points[0]?.[1] ?? 0)
+        : undefined;
+    if (ground !== undefined) {
+      let near: { i: number; d: number; at: Pt } | undefined;
+      s.shapes.forEach((sh, i) => {
+        if (!isClosed(sh) || sh.type === "particles") return;
+        const b = shapeBox(sh);
+        if (Math.abs(b.y1 - ground) > 4 || b.y0 >= ground || l.at[0] < b.x0 || l.at[0] > b.x1)
+          return;
+        const r = shapeDistance(sh, l.at);
+        if (r.d <= 4 && (!near || r.d < near.d)) near = { i, d: r.d, at: r.at };
+      });
+      if (near) {
+        best = { i: near.i, d: near.d, at: near.at, a: area(s.shapes[near.i] as Shape) };
+        onGround = true;
+      }
+    }
     seen.add(key);
     const sh = s.shapes[best.i] as Shape;
     // A particle box's caption already names its state: a label saying it again is dropped (T3
@@ -214,7 +242,7 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
     if (sh.type === "particles" && sh.caption && sameName(sh.caption, l.text)) continue;
     // Near (not on) a small shape names all of it; near a big one (a valley side) names that spot.
     const big = best.a > 0.2 * (s.canvas === "wide" ? 160 : 100) * 100;
-    const part = sh.type !== "particles" && (!isClosed(sh) || best.d === 0 || big);
+    const part = sh.type !== "particles" && (onGround || !isClosed(sh) || best.d === 0 || big);
     const whole = !part ? out.find((o) => o.target === best?.i && !o.part) : undefined;
     if (whole) {
       const joined = `${whole.text} (${l.text})`;
@@ -293,6 +321,15 @@ const segHitsBox = (a: Pt, b: Pt, bx: Box) => {
   return false;
 };
 
+/** Two segments cross at a point inside both (touching ends do not count). */
+const segsCross = ([[ax, ay], [bx, by]]: [Pt, Pt], [[cx, cy], [dx, dy]]: [Pt, Pt]) => {
+  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+  if (Math.abs(d) < 1e-9) return false;
+  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
+  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98;
+};
+
 /** Where a leader leaves a label's box, toward `to`. */
 const leaderStart = (p: Placed, to: Pt): Pt => {
   const { box } = p;
@@ -303,13 +340,61 @@ const leaderStart = (p: Placed, to: Pt): Pt => {
   return to[0] >= box.x1 ? [box.x1 + 3, cy] : [box.x0 - 3, cy];
 };
 
-export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): string {
+/**
+ * Register prod-06: a close-up the drawer set apart from its figure (a body cross-section beside a
+ * bear) carries part labels, but nothing ties it to the figure, so "Thick fur" points at a floating
+ * square. A closed shape with another closed shape inside it (a cut-away's layers) that touches
+ * nothing, names nothing as a whole and is under half the size of the biggest closed shape gets a dashed line from its edge to the
+ * nearest point of that shape: the textbook close-up. Returned as extra shapes to draw.
+ */
+export function insetLinks(s: LabelledDiagram, labels: ResolvedLabel[]): Shape[] {
+  const closed = (sh: Shape) => isClosed(sh) && sh.type !== "particles";
+  const boxes = s.shapes.map(shapeBox);
+  const within = (a: Box, b: Box) => a.x0 >= b.x0 && a.y0 >= b.y0 && a.x1 <= b.x1 && a.y1 <= b.y1;
+  const gap = (a: Box, b: Box) =>
+    Math.hypot(Math.max(0, a.x0 - b.x1, b.x0 - a.x1), Math.max(0, a.y0 - b.y1, b.y0 - a.y1));
+  const area = (b: Box) => (b.x1 - b.x0) * (b.y1 - b.y0);
+  const out: Shape[] = [];
+  s.shapes.forEach((sh, i) => {
+    const bi = boxes[i] as Box;
+    if (!closed(sh)) return;
+    if (s.shapes.some((o, j) => j !== i && closed(o) && within(bi, boxes[j] as Box))) return;
+    const members = new Set(
+      s.shapes.flatMap((_, j) => (j === i || within(boxes[j] as Box, bi) ? [j] : [])),
+    );
+    if ([...members].some((j) => s.shapes[j]?.type === "particles")) return;
+    // A close-up shows layers: a frame with another closed shape inside it (a stopwatch's hands
+    // are lines, and a stopwatch is apparatus of its own, not a close-up).
+    if (![...members].some((j) => j !== i && closed(s.shapes[j] as Shape))) return;
+    const others = s.shapes.flatMap((_, j) => (members.has(j) ? [] : [j]));
+    if (others.some((j) => gap(boxes[j] as Box, bi) < 2)) return;
+    const named = labels.filter((l) => members.has(l.target));
+    if (named.length === 0 || named.some((l) => !l.part)) return;
+    const main = others
+      .filter((j) => closed(s.shapes[j] as Shape))
+      .sort((a, b) => area(boxes[b] as Box) - area(boxes[a] as Box))[0];
+    if (main === undefined || area(boxes[main] as Box) < 2 * area(bi)) return;
+    const c: Pt = [(bi.x0 + bi.x1) / 2, (bi.y0 + bi.y1) / 2];
+    const to = shapeDistance(s.shapes[main] as Shape, c).at;
+    const from: Pt = [
+      Math.max(bi.x0, Math.min(bi.x1, to[0])),
+      Math.max(bi.y0, Math.min(bi.y1, to[1])),
+    ];
+    out.push({ type: "line", points: [from, to], dashed: true } as Shape);
+  });
+  return out;
+}
+
+export function drawLabelled(s0: LabelledDiagram, x: Ctx, w: number, h: number): string {
   const { c } = x;
   // Labels are reading matter: never below the projector body floor.
   const lf = Math.max(MIN_FONT_SIZE.body, x.fs);
   const lh = lf * 1.2;
   const blockH = (k: number) => (k - 1) * lh + lf * 1.1;
-  const labels = resolveLabels(s);
+  const labels = resolveLabels(s0);
+  // Links are drawn after the labels are tied, so no label can name one.
+  const links = insetLinks(s0, labels);
+  const s = links.length ? { ...s0, shapes: [...s0.shapes, ...links] } : s0;
   const W = s.canvas === "wide" ? 160 : 100;
   const H = 100;
   const stroke = `stroke="${c.ink}" stroke-width="2.5" stroke-linejoin="round"`;
@@ -332,7 +417,7 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
   const cw = content.x1 - content.x0;
   const ch = content.y1 - content.y0;
 
-  const layout = (m: { l: number; r: number; t: number; b: number }) => {
+  const layout = (m: { l: number; r: number; t: number; b: number }, mend = false) => {
     const k = Math.max(0.1, Math.min((w - m.l - m.r) / cw, (h - m.t - m.b) / ch));
     const ox = m.l + (w - m.l - m.r - cw * k) / 2 - content.x0 * k;
     const oy = m.t + (h - m.t - m.b - ch * k) / 2 - content.y0 * k;
@@ -371,6 +456,53 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     const shapePx = boxes.map(px);
     const sides = ["top", "bottom", "right", "left"] as const;
     const gridCells = gridOf(s.shapes);
+    // Register diagrams-02: what keeps a reader from telling which label names what. A label on
+    // another, a line of the drawing or a leader across it, two leaders crossing, or a label set
+    // over another label's point (its leader would end under the words). Checked where the label
+    // is drawn (moved back inside the drawing), less the small margin `diagramFaults` allows.
+    const points = labels.map((q) =>
+      q.part && s.shapes[q.target]?.type !== "particles"
+        ? ([X(q.at[0]), Y(q.at[1])] as Pt)
+        : undefined,
+    );
+    const drawnAt = (b: Box): Box => {
+      const dx = Math.max(0, -b.x0) - Math.max(0, b.x1 - w);
+      const dy = Math.max(0, -b.y0) - Math.max(0, b.y1 - h);
+      return { x0: b.x0 + dx, x1: b.x1 + dx, y0: b.y0 + dy, y1: b.y1 + dy };
+    };
+    const inner = (b: Box): Box => ({ x0: b.x0 + 3, y0: b.y0 + 4, x1: b.x1 - 3, y1: b.y1 - 4 });
+    const leaderOf = (p: Placed, b: Box): [Pt, Pt] | undefined =>
+      p.to ? [leaderStart({ ...p, box: b }, p.to), p.to] : undefined;
+    // By kind: labels on labels, leaders across labels, leaders crossing, lines across, points under.
+    const clashCount = (
+      p: Placed,
+      others: Placed[] = [...placed, ...captions],
+      kinds = [0, 0, 0, 0, 0],
+    ): number => {
+      const b = drawnAt(p.box);
+      const mine = leaderOf(p, b);
+      let k = 0;
+      const hit = (i: number) => {
+        kinds[i] = (kinds[i] ?? 0) + 1;
+        k++;
+      };
+      for (const q of others) {
+        const qb = drawnAt(q.box);
+        const theirs = leaderOf(q, qb);
+        const ox = Math.min(b.x1, qb.x1) - Math.max(b.x0, qb.x0);
+        if (ox > 1 && Math.min(b.y1, qb.y1) - Math.max(b.y0, qb.y0) > 1) hit(0);
+        if (mine && segThroughBox(mine[0], mine[1], inner(qb))) hit(1);
+        if (theirs && segThroughBox(theirs[0], theirs[1], inner(b))) hit(1);
+        if (mine && theirs && segsCross(mine, theirs)) hit(2);
+      }
+      for (const sh of s.shapes)
+        for (const [a, c] of segsOf(sh, X, Y)) if (segThroughBox(a, c, inner(b))) hit(3);
+      for (const pt of points) {
+        if (!pt || (p.to && pt[0] === p.to[0] && pt[1] === p.to[1])) continue;
+        if (pt[0] > b.x0 - 2 && pt[0] < b.x1 + 2 && pt[1] > b.y0 - 2 && pt[1] < b.y1 + 2) hit(4);
+      }
+      return k;
+    };
     for (const l of labels) {
       // A particle box's description goes in the slot under its caption, in its column.
       if (s.shapes[l.target]?.type === "particles") {
@@ -405,95 +537,134 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       const contains = (b: Box) =>
         b.x0 <= tp.x0 + 0.5 && b.y0 <= tp.y0 + 0.5 && b.x1 >= tp.x1 - 0.5 && b.y1 >= tp.y1 - 0.5;
       let best: { p: Placed; cost: number } | undefined;
-      for (const side of sides) {
+      // One spot for the label: on `side` of the reference `r`, pushed out `j` lines and slid
+      // `lat` steps along that side (register diagrams-02: a free spot beside a crowded one).
+      // The words as set on each side (wrapped to that side's width), once per side.
+      const sets = new Map<string, { lines: string[]; bw: number; bh: number }>();
+      const setFor = (side: (typeof sides)[number]) => {
+        const had = sets.get(side);
+        if (had) return had;
         const vertical = side === "top" || side === "bottom";
         const maxW = vertical
           ? Math.max((t.x1 - t.x0) * (l.part ? 0.9 : 1.15), lf * 5)
           : Math.max(lf * 5, Math.min(w * 0.4, lf * 9));
         const lines = wrap(l.text, x, maxW, 3, lf, 600);
         const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, 600)));
-        const bh = blockH(lines.length);
+        const set = { lines, bw, bh: blockH(lines.length) };
+        sets.set(side, set);
+        return set;
+      };
+      const candidate = (
+        side: (typeof sides)[number],
+        ri: number,
+        r: Box,
+        j: number,
+        lat: number,
+        priced = true,
+      ): { p: Placed; cost: number } => {
+        const vertical = side === "top" || side === "bottom";
+        const { lines, bw, bh } = setFor(side);
         const g = l.part ? lf * 0.6 : lf * 0.3;
-        // Two anchors per side: against the shape's edge, or (a part label) right by its point.
-        const refs: Box[] = [t];
-        if (to) refs.push({ x0: to[0], y0: to[1], x1: to[0], y1: to[1] });
-        for (const [ri, r] of refs.entries()) {
-          for (let j = 0; j < 3; j++) {
-            const push = j * lh;
-            const cx = to && vertical ? to[0] : (r.x0 + r.x1) / 2;
-            const cy = to && !vertical ? to[1] : (r.y0 + r.y1) / 2;
-            const box: Box =
-              side === "top"
+        const push = j * lh;
+        const cx = (to && vertical ? to[0] : (r.x0 + r.x1) / 2) + (vertical ? lat * bw * 0.6 : 0);
+        const cy = (to && !vertical ? to[1] : (r.y0 + r.y1) / 2) + (vertical ? 0 : lat * lh);
+        const box: Box =
+          side === "top"
+            ? {
+                x0: cx - bw / 2,
+                x1: cx + bw / 2,
+                y1: r.y0 - g - push,
+                y0: r.y0 - g - push - bh,
+              }
+            : side === "bottom"
+              ? {
+                  x0: cx - bw / 2,
+                  x1: cx + bw / 2,
+                  y0: r.y1 + g + push,
+                  y1: r.y1 + g + push + bh,
+                }
+              : side === "left"
                 ? {
-                    x0: cx - bw / 2,
-                    x1: cx + bw / 2,
-                    y1: r.y0 - g - push,
-                    y0: r.y0 - g - push - bh,
+                    x1: r.x0 - g - push,
+                    x0: r.x0 - g - push - bw,
+                    y0: cy - bh / 2,
+                    y1: cy + bh / 2,
                   }
-                : side === "bottom"
-                  ? {
-                      x0: cx - bw / 2,
-                      x1: cx + bw / 2,
-                      y0: r.y1 + g + push,
-                      y1: r.y1 + g + push + bh,
-                    }
-                  : side === "left"
-                    ? {
-                        x1: r.x0 - g - push,
-                        x0: r.x0 - g - push - bw,
-                        y0: cy - bh / 2,
-                        y1: cy + bh / 2,
-                      }
-                    : {
-                        x0: r.x1 + g + push,
-                        x1: r.x1 + g + push + bw,
-                        y0: cy - bh / 2,
-                        y1: cy + bh / 2,
-                      };
-            const p: Placed = {
-              lines,
-              box,
-              anchor: vertical ? "middle" : side === "left" ? "end" : "start",
-              to,
-              side,
-              weight: s.shapes[l.target]?.type === "particles" ? 400 : 600,
-            };
-            let cost = (side === l.side ? 0 : 400) + j * 60 + ri * 30;
-            for (const q of [...placed, ...captions]) {
-              cost += overlap(box, q.box) * 50;
-              if (to && segHitsBox(leaderStart(p, to), to, q.box)) cost += 3000;
-              if (q.to && segHitsBox(leaderStart(q, q.to), q.to, box)) cost += 3000;
-            }
-            // r3-diag: a label crossed by another shape's line (a tube, a bench, a balance's
-            // edge) reads as clutter and is a fault (y11 r2 s10): priced high, so a pushed-out
-            // spot with a leader wins.
-            // Checked where the label will be drawn: a box past the drawing's edge is moved back
-            // inside it (clampIn), which can set it onto a line running to the edge (y11 r2 s10).
-            const cdx = Math.max(0, -box.x0) - Math.max(0, box.x1 - w);
-            const cdy = Math.max(0, -box.y0) - Math.max(0, box.y1 - h);
-            const cb: Box = {
-              x0: box.x0 + cdx - 2,
-              y0: box.y0 + cdy - 2,
-              x1: box.x1 + cdx + 2,
-              y1: box.y1 + cdy + 6,
-            };
-            for (const sh of s.shapes) {
-              for (const [a, b] of segsOf(sh, X, Y)) if (segHitsBox(a, b, cb)) cost += 100_000;
-            }
-            shapePx.forEach((b, i) => {
-              if (i === l.target || contains(b)) return;
-              const sh = s.shapes[i] as Shape;
-              cost += overlap(box, b) * (isClosed(sh) ? 2 : 0.5);
-            });
-            if (to) {
-              const [sx, sy] = leaderStart(p, to);
-              cost += Math.hypot(sx - to[0], sy - to[1]) * 3;
-            }
-            // Words over the shape they name hide it: allowed, but only when nothing else fits.
-            if (to) cost += overlap(box, tp) * 1.5;
-            if (!best || cost < best.cost) best = { p, cost };
-          }
+                : {
+                    x0: r.x1 + g + push,
+                    x1: r.x1 + g + push + bw,
+                    y0: cy - bh / 2,
+                    y1: cy + bh / 2,
+                  };
+        const p: Placed = {
+          lines,
+          box,
+          anchor: vertical ? "middle" : side === "left" ? "end" : "start",
+          to,
+          side,
+          weight: s.shapes[l.target]?.type === "particles" ? 400 : 600,
+        };
+        let cost = (side === l.side ? 0 : 400) + j * 60 + ri * 30 + Math.abs(lat) * 60;
+        if (!priced) return { p, cost };
+        for (const q of [...placed, ...captions]) {
+          cost += overlap(box, q.box) * 50;
+          if (to && segHitsBox(leaderStart(p, to), to, q.box)) cost += 3000;
+          if (q.to && segHitsBox(leaderStart(q, q.to), q.to, box)) cost += 3000;
         }
+        // r3-diag: a label crossed by another shape's line (a tube, a bench, a balance's
+        // edge) reads as clutter and is a fault (y11 r2 s10): priced high, so a pushed-out
+        // spot with a leader wins.
+        // Checked where the label will be drawn: a box past the drawing's edge is moved back
+        // inside it (clampIn), which can set it onto a line running to the edge (y11 r2 s10).
+        const cdx = Math.max(0, -box.x0) - Math.max(0, box.x1 - w);
+        const cdy = Math.max(0, -box.y0) - Math.max(0, box.y1 - h);
+        const cb: Box = {
+          x0: box.x0 + cdx - 2,
+          y0: box.y0 + cdy - 2,
+          x1: box.x1 + cdx + 2,
+          y1: box.y1 + cdy + 6,
+        };
+        for (const sh of s.shapes) {
+          for (const [a, b] of segsOf(sh, X, Y)) if (segHitsBox(a, b, cb)) cost += 100_000;
+        }
+        shapePx.forEach((b, i) => {
+          if (i === l.target || contains(b)) return;
+          const sh = s.shapes[i] as Shape;
+          cost += overlap(box, b) * (isClosed(sh) ? 2 : 0.5);
+        });
+        if (to) {
+          const [sx, sy] = leaderStart(p, to);
+          cost += Math.hypot(sx - to[0], sy - to[1]) * 3;
+        }
+        // Words over the shape they name hide it: allowed, but only when nothing else fits.
+        if (to) cost += overlap(box, tp) * 1.5;
+        return { p, cost };
+      };
+      // Two anchors per side: against the shape's edge, or (a part label) right by its point.
+      const refs: Box[] = [t];
+      if (to) refs.push({ x0: to[0], y0: to[1], x1: to[0], y1: to[1] });
+      for (const side of sides)
+        for (const [ri, r] of refs.entries())
+          for (let j = 0; j < 3; j++) {
+            const c = candidate(side, ri, r, j, 0);
+            if (!best || c.cost < best.cost) best = c;
+          }
+      // Register diagrams-02: the cheapest spot still sets the label on another, across a line or
+      // a leader, or over another label's point. Then more spots are tried, further out and slid
+      // along each side, and the one with fewest such clashes (then the cheapest) is kept.
+      const clashes0 = best ? clashCount(best.p) : 0;
+      if (mend && best && clashes0 > 0) {
+        let alt: { c: { p: Placed; cost: number }; k: number } | undefined;
+        for (const side of sides)
+          for (const [ri, r] of refs.entries())
+            for (let j = 0; j < 5; j++)
+              for (const lat of [0, -1, 1, -2, 2]) {
+                const k = clashCount(candidate(side, ri, r, j, lat, false).p);
+                if (alt && k > alt.k) continue;
+                const c = candidate(side, ri, r, j, lat);
+                if (!alt || k < alt.k || c.cost < alt.c.cost) alt = { c, k };
+              }
+        if (alt && alt.k < clashes0) best = alt.c;
       }
       if (best) placed.push(best.p);
     }
@@ -509,7 +680,11 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       t: Y(content.y0) - drawn.y0,
       b: drawn.y1 - Y(content.y1),
     };
-    return { k, X, Y, placed, captions, need };
+    // Every clash left in the layout (each pair counted from both labels).
+    const kinds = [0, 0, 0, 0, 0];
+    for (const p of placed) clashCount(p, [...placed.filter((q) => q !== p), ...captions], kinds);
+    const clashes = kinds.reduce((a, b) => a + b, 0);
+    return { k, X, Y, placed, captions, need, clashes, kinds };
   };
 
   // Particle boxes whose words sit in their columns under them may give those words more of the
@@ -519,147 +694,191 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
   const wordsUnder =
     s.shapes.some((sh) => sh.type === "particles" && sh.caption) ||
     labels.some((l) => s.shapes[l.target]?.type === "particles");
-  // Fit: margins grow to what the labels need, a few rounds, never shrinking back.
-  const m = { l: 4, r: 4, t: 4, b: 4 };
-  let L = layout(m);
-  for (let i = 0; i < 5; i++) {
-    const next = {
-      l: Math.max(m.l, L.need.l + 2),
-      r: Math.max(m.r, L.need.r + 2),
-      t: Math.max(m.t, L.need.t + 2),
-      b: Math.max(m.b, L.need.b + 2),
-    };
-    // The drawing keeps at least 60% of the box each way: labels past that sit over it on their
-    // halos. Unbounded, each round's smaller drawing crowded the labels out further, and a
-    // six-label cross-section shrank to a speck (diagram bench, y8 runoff).
-    const cap = (a: number, b: number, room: number): [number, number] =>
-      a + b <= room ? [a, b] : [(a * room) / (a + b), (b * room) / (a + b)];
-    [next.l, next.r] = cap(next.l, next.r, 0.4 * w);
-    [next.t, next.b] = cap(next.t, next.b, (wordsUnder ? 0.6 : 0.4) * h);
-    if (next.l === m.l && next.r === m.r && next.t === m.t && next.b === m.b) break;
-    Object.assign(m, next);
-    L = layout(m);
-  }
-  const { k, X, Y, placed, captions } = L;
-
-  if (x.strokes) {
-    const seg = (a: Pt, b: Pt) => x.strokes?.push([X(a[0]), Y(a[1]), X(b[0]), Y(b[1])]);
-    const ring = (pts: Pt[], closed: boolean) =>
-      pts.forEach((p, i) => {
-        const q = pts[i + 1] ?? (closed ? pts[0] : undefined);
-        if (q) seg(p, q);
-      });
-    const oval = (cx: number, cy: number, rx: number, ry: number) =>
-      ring(
-        Array.from(
-          { length: 16 },
-          (_, i): Pt => [
-            cx + rx * Math.cos((i * Math.PI) / 8),
-            cy + ry * Math.sin((i * Math.PI) / 8),
-          ],
-        ),
-        true,
-      );
-    const box = (bx: number, by: number, bw: number, bh: number) =>
-      ring(
-        [
-          [bx, by],
-          [bx + bw, by],
-          [bx + bw, by + bh],
-          [bx, by + bh],
-        ],
-        true,
-      );
-    for (const sh of s.shapes) {
-      if (sh.type === "polygon") ring(sh.points, true);
-      else if (sh.type === "line") ring(sh.points, false);
-      else if (sh.type === "arrow") seg(sh.from, sh.to);
-      else if (sh.type === "circle") oval(sh.cx, sh.cy, sh.r, sh.r);
-      else if (sh.type === "ellipse") oval(sh.cx, sh.cy, sh.rx, sh.ry);
-      else box(sh.x, sh.y, sh.w, sh.h);
+  // Fit: margins grow to what the labels need, a few rounds, never shrinking back. With `mend`,
+  // each round tries more spots for a label that would clash (register diagrams-02), so the
+  // margins grow to the spots that read clear.
+  const fitLabels = (mend: boolean) => {
+    const m = { l: 4, r: 4, t: 4, b: 4 };
+    let L = layout(m, mend);
+    for (let i = 0; i < 5; i++) {
+      const next = {
+        l: Math.max(m.l, L.need.l + 2),
+        r: Math.max(m.r, L.need.r + 2),
+        t: Math.max(m.t, L.need.t + 2),
+        b: Math.max(m.b, L.need.b + 2),
+      };
+      // The drawing keeps at least 60% of the box each way: labels past that sit over it on their
+      // halos. Unbounded, each round's smaller drawing crowded the labels out further, and a
+      // six-label cross-section shrank to a speck (diagram bench, y8 runoff).
+      const cap = (a: number, b: number, room: number): [number, number] =>
+        a + b <= room ? [a, b] : [(a * room) / (a + b), (b * room) / (a + b)];
+      [next.l, next.r] = cap(next.l, next.r, 0.4 * w);
+      [next.t, next.b] = cap(next.t, next.b, (wordsUnder ? 0.6 : 0.4) * h);
+      if (next.l === m.l && next.r === m.r && next.t === m.t && next.b === m.b) break;
+      Object.assign(m, next);
+      L = layout(m, mend);
     }
-  }
-  const out: string[] = [];
-  for (const sh of s.shapes) {
-    switch (sh.type) {
-      case "circle":
-        out.push(
-          `<circle cx="${n(X(sh.cx))}" cy="${n(Y(sh.cy))}" r="${n(sh.r * k)}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+    return L;
+  };
+  let L = fitLabels(false);
+  const L0 = L;
+  // Draws a layout into `x` (a scratch context with its own records when scoring one).
+  const paint = (L: typeof L0, x: Ctx): string => {
+    const { k, X, Y, placed, captions } = L;
+
+    if (x.strokes) {
+      const seg = (a: Pt, b: Pt) => x.strokes?.push([X(a[0]), Y(a[1]), X(b[0]), Y(b[1])]);
+      const ring = (pts: Pt[], closed: boolean) => {
+        pts.forEach((p, i) => {
+          const q = pts[i + 1] ?? (closed ? pts[0] : undefined);
+          if (q) seg(p, q);
+        });
+        if (closed) x.parts?.push(pts.map(([u, v]): Pt => [X(u), Y(v)]));
+      };
+      const oval = (cx: number, cy: number, rx: number, ry: number) =>
+        ring(
+          Array.from(
+            { length: 16 },
+            (_, i): Pt => [
+              cx + rx * Math.cos((i * Math.PI) / 8),
+              cy + ry * Math.sin((i * Math.PI) / 8),
+            ],
+          ),
+          true,
         );
-        break;
-      case "ellipse":
-        out.push(
-          `<ellipse cx="${n(X(sh.cx))}" cy="${n(Y(sh.cy))}" rx="${n(sh.rx * k)}" ry="${n(sh.ry * k)}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+      const box = (bx: number, by: number, bw: number, bh: number) =>
+        ring(
+          [
+            [bx, by],
+            [bx + bw, by],
+            [bx + bw, by + bh],
+            [bx, by + bh],
+          ],
+          true,
         );
-        break;
-      case "rect":
-        out.push(
-          `<rect x="${n(X(sh.x))}" y="${n(Y(sh.y))}" width="${n(sh.w * k)}" height="${n(sh.h * k)}"${sh.rounded ? ` rx="${n(Math.min(sh.w, sh.h) * k * 0.2)}"` : ""} fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
-        );
-        break;
-      case "polygon":
-        out.push(
-          `<polygon points="${sh.points.map(([u, v]) => `${n(X(u))},${n(Y(v))}`).join(" ")}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
-        );
-        break;
-      case "line":
-        out.push(
-          `<polyline points="${sh.points.map(([u, v]) => `${n(X(u))},${n(Y(v))}`).join(" ")}" fill="none" ${stroke}${sh.dashed ? ` stroke-dasharray="${n(x.fs * 0.5)} ${n(x.fs * 0.35)}"` : ""} stroke-linecap="round"/>`,
-        );
-        break;
-      case "arrow":
-        out.push(
-          arrow(X(sh.from[0]), Y(sh.from[1]), X(sh.to[0]), Y(sh.to[1]), c.ink, 3, x.fs * 0.8),
-        );
-        break;
-      case "particles": {
-        const { r, at } = particleCentres(sh);
-        out.push(
-          // A beaker: three sides open at the top, an outline on the ground (rulings 160, 162).
-          `<path d="M${n(X(sh.x))},${n(Y(sh.y))} L${n(X(sh.x))},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y))}" fill="none" stroke="${c.muted}" stroke-width="2" stroke-linejoin="round"/>`,
-        );
-        for (const [u, v] of at) {
-          out.push(
-            `<circle cx="${n(X(u))}" cy="${n(Y(v))}" r="${n(r * k * 0.94)}" fill="${c.accent}" stroke="${c.ink}" stroke-width="1.5"/>`,
-          );
-        }
-        break;
+      for (const sh of s.shapes) {
+        if (sh.type === "polygon") ring(sh.points, true);
+        else if (sh.type === "line") ring(sh.points, false);
+        else if (sh.type === "arrow") seg(sh.from, sh.to);
+        else if (sh.type === "circle") oval(sh.cx, sh.cy, sh.r, sh.r);
+        else if (sh.type === "ellipse") oval(sh.cx, sh.cy, sh.rx, sh.ry);
+        else box(sh.x, sh.y, sh.w, sh.h);
       }
     }
-  }
+    const out: string[] = [];
+    for (const sh of s.shapes) {
+      switch (sh.type) {
+        case "circle":
+          out.push(
+            `<circle cx="${n(X(sh.cx))}" cy="${n(Y(sh.cy))}" r="${n(sh.r * k)}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+          );
+          break;
+        case "ellipse":
+          out.push(
+            `<ellipse cx="${n(X(sh.cx))}" cy="${n(Y(sh.cy))}" rx="${n(sh.rx * k)}" ry="${n(sh.ry * k)}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+          );
+          break;
+        case "rect":
+          out.push(
+            `<rect x="${n(X(sh.x))}" y="${n(Y(sh.y))}" width="${n(sh.w * k)}" height="${n(sh.h * k)}"${sh.rounded ? ` rx="${n(Math.min(sh.w, sh.h) * k * 0.2)}"` : ""} fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+          );
+          break;
+        case "polygon":
+          out.push(
+            `<polygon points="${sh.points.map(([u, v]) => `${n(X(u))},${n(Y(v))}`).join(" ")}" fill="${toneFill(c, sh.fill)}" ${stroke}/>`,
+          );
+          break;
+        case "line":
+          out.push(
+            `<polyline points="${sh.points.map(([u, v]) => `${n(X(u))},${n(Y(v))}`).join(" ")}" fill="none" ${stroke}${sh.dashed ? ` stroke-dasharray="${n(x.fs * 0.5)} ${n(x.fs * 0.35)}"` : ""} stroke-linecap="round"/>`,
+          );
+          break;
+        case "arrow":
+          out.push(
+            arrow(X(sh.from[0]), Y(sh.from[1]), X(sh.to[0]), Y(sh.to[1]), c.ink, 3, x.fs * 0.8),
+          );
+          break;
+        case "particles": {
+          const { r, at } = particleCentres(sh);
+          out.push(
+            // A beaker: three sides open at the top, an outline on the ground (rulings 160, 162).
+            `<path d="M${n(X(sh.x))},${n(Y(sh.y))} L${n(X(sh.x))},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y))}" fill="none" stroke="${c.muted}" stroke-width="2" stroke-linejoin="round"/>`,
+          );
+          for (const [u, v] of at) {
+            out.push(
+              `<circle cx="${n(X(u))}" cy="${n(Y(v))}" r="${n(r * k * 0.94)}" fill="${c.accent}" stroke="${c.ink}" stroke-width="1.5"/>`,
+            );
+          }
+          break;
+        }
+      }
+    }
 
-  // Labels last, over everything, each on a ground-coloured halo; kept inside the drawing.
-  const clampIn = (p: Placed) => {
-    const dx = Math.max(0, -p.box.x0) - Math.max(0, p.box.x1 - w);
-    const dy = Math.max(0, -p.box.y0) - Math.max(0, p.box.y1 - h);
-    p.box = { x0: p.box.x0 + dx, x1: p.box.x1 + dx, y0: p.box.y0 + dy, y1: p.box.y1 + dy };
-  };
-  const tx = (p: Placed) =>
-    p.anchor === "middle" ? (p.box.x0 + p.box.x1) / 2 : p.anchor === "end" ? p.box.x1 : p.box.x0;
-  for (const p of captions) {
-    clampIn(p);
-    out.push(text(x, tx(p), p.box.y0, p.lines, { v: "top", fs: lf, weight: 700, halo: c.bg }));
-  }
-  for (const p of placed) {
-    clampIn(p);
-    if (p.to) {
-      const [sx, sy] = leaderStart(p, p.to);
+    // Labels last, over everything, each on a ground-coloured halo; kept inside the drawing.
+    const clampIn = (p: Placed) => {
+      const dx = Math.max(0, -p.box.x0) - Math.max(0, p.box.x1 - w);
+      const dy = Math.max(0, -p.box.y0) - Math.max(0, p.box.y1 - h);
+      p.box = { x0: p.box.x0 + dx, x1: p.box.x1 + dx, y0: p.box.y0 + dy, y1: p.box.y1 + dy };
+    };
+    const tx = (p: Placed) =>
+      p.anchor === "middle" ? (p.box.x0 + p.box.x1) / 2 : p.anchor === "end" ? p.box.x1 : p.box.x0;
+    for (const p of captions) {
+      clampIn(p);
+      out.push(text(x, tx(p), p.box.y0, p.lines, { v: "top", fs: lf, weight: 700, halo: c.bg }));
+    }
+    for (const p of placed) {
+      clampIn(p);
+      if (p.to) {
+        const [sx, sy] = leaderStart(p, p.to);
+        x.leaders?.push([sx, sy, p.to[0], p.to[1]]);
+        out.push(
+          `<line x1="${n(sx)}" y1="${n(sy)}" x2="${n(p.to[0])}" y2="${n(p.to[1])}" stroke="${c.ink}" stroke-width="2" stroke-linecap="round"/>`,
+          `<circle cx="${n(p.to[0])}" cy="${n(p.to[1])}" r="${n(Math.max(3.5, lf * 0.16))}" fill="${c.ink}" stroke="${c.bg}" stroke-width="1.5"/>`,
+        );
+      }
       out.push(
-        `<line x1="${n(sx)}" y1="${n(sy)}" x2="${n(p.to[0])}" y2="${n(p.to[1])}" stroke="${c.ink}" stroke-width="2" stroke-linecap="round"/>`,
-        `<circle cx="${n(p.to[0])}" cy="${n(p.to[1])}" r="${n(Math.max(3.5, lf * 0.16))}" fill="${c.ink}" stroke="${c.bg}" stroke-width="1.5"/>`,
+        text(x, tx(p), p.box.y0, p.lines, {
+          v: "top",
+          fs: lf,
+          weight: p.weight ?? 600,
+          anchor: p.anchor,
+          halo: c.bg,
+        }),
       );
     }
-    out.push(
-      text(x, tx(p), p.box.y0, p.lines, {
-        v: "top",
-        fs: lf,
-        weight: p.weight ?? 600,
-        anchor: p.anchor,
-        halo: c.bg,
-      }),
-    );
+    return out.join("");
+  };
+  // Register diagrams-02: a layout with labels on each other, across lines or leaders, or over a
+  // point is laid out again with more spots to try (margins regrown), and kept when it clashes
+  // less. A layout with no clash is drawn exactly as before.
+  if (L.clashes > 0) {
+    const M = fitLabels(true);
+    // Kept only when it is better and no kind of clash grows: a changed drawing never trades one
+    // clash for another.
+    // Judged by the same rule the checks use (`labelRule`), on each layout as it would be drawn.
+    const judge = (Q: typeof L0) => {
+      const r = { rec: [], strokes: [], leaders: [], parts: [] } as Required<
+        Pick<Ctx, "rec" | "strokes" | "leaders" | "parts">
+      >;
+      paint(Q, { ...x, ...r });
+      const by = new Map<string, number>();
+      for (const f of labelRule(r.rec, r.strokes, r.leaders, r.parts)) {
+        const kind = f.split(":")[0] ?? f;
+        by.set(kind, (by.get(kind) ?? 0) + 1);
+      }
+      return by;
+    };
+    if (M.clashes < L.clashes) {
+      const was = judge(L);
+      const now = judge(M);
+      const total = (b: Map<string, number>) => [...b.values()].reduce((a, v) => a + v, 0);
+      // Nor may the drawing shrink much to make room: regrown margins can take it down to 60 %.
+      const kept = M.k >= L.k * 0.9;
+      if (kept && total(now) < total(was) && [...now].every(([kd, v]) => v <= (was.get(kd) ?? 0)))
+        L = M;
+    }
   }
-  return out.join("");
+  return paint(L, x);
 }
 
 /** r3-diag: a shape's straight edges in drawing points (lines, arrows, polygons, rects). */

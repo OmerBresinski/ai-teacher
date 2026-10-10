@@ -14,6 +14,7 @@ import type {
 } from "@tj/domain/documents";
 import { pathSegments, samplePath } from "../path";
 import { diagramElement, diagramFaults, lastDiagramProbe } from "./index";
+import { labelRule, segmentsCross } from "./label-rule";
 import { TYPE_FLOOR } from "./style";
 
 /** The least room between a label and the drawing's left or right edge, in points. */
@@ -57,7 +58,10 @@ export function diagramGeometryFaults(
       if (ox > 1 && oy > 1) out.push(`the labels "${a.text}" and "${b.text}" touch`);
     }
   const ls = probe.leaders;
-  for (let i = 0; i < ls.length; i++)
+  // A labelled diagram's leaders are recorded for `labelClashes` (a warning, register
+  // diagrams-02), never as a reason to refuse it.
+  const labelled = (spec as { kind?: unknown } | null)?.kind === "labelled-diagram";
+  for (let i = 0; i < ls.length && !labelled; i++)
     for (let j = i + 1; j < ls.length; j++)
       if (segmentsCross(ls[i] as Seg, ls[j] as Seg)) out.push("two leader lines cross");
   for (const a of probe.arrows) {
@@ -79,14 +83,7 @@ export function diagramGeometryFaults(
 
 type Seg = [number, number, number, number];
 
-/** Two segments cross at a point inside both (touching ends do not count). */
-export function segmentsCross([ax, ay, bx, by]: Seg, [cx, cy, dx, dy]: Seg): boolean {
-  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
-  if (Math.abs(d) < 1e-9) return false;
-  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
-  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
-  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98;
-}
+export { segmentsCross };
 
 /** How large the slide shows the drawing against its own units: the image width over the viewBox. */
 export function renderedScale(spec: unknown, theme: Theme, size: { w: number; h: number }): number {
@@ -181,4 +178,19 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
       }
     }
   return [...new Set(out)];
+}
+
+/**
+ * Register diagrams-02: `labelRule` on `spec` drawn at `size`; empty when every label reads clear.
+ * A warning for logs and sweeps, never a reason to refuse a drawing (Greg, 10 Oct: checks must not
+ * throw visuals away).
+ */
+export function labelClashes(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number; fs?: number },
+): string[] {
+  if (diagramFaults(spec, theme, size).includes("it does not draw")) return [];
+  const probe = lastDiagramProbe();
+  return probe ? [...new Set(labelRule(probe.rec, probe.strokes, probe.leaders, probe.parts))] : [];
 }
