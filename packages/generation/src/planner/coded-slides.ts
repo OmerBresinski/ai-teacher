@@ -11,7 +11,6 @@ import type {
 import { asksForUnlistedOptions } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
-  answersOnOwnSlide,
   fitSlide,
   getTheme,
   HEADING_NAME,
@@ -22,6 +21,7 @@ import {
   SAFE_BOTTOM,
   type SlideSpec,
   SPACE,
+  syncAnswersSlide,
   THEMES,
   textPartsOf,
 } from "@tj/slides";
@@ -497,44 +497,25 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
 
 /**
  * The finished lesson with an answers slide straight after every set whose answers panel would
- * cover its questions (prod-17, UX ruling 200): "<heading>: answers", each answer by its
- * question's number. Stored slides pair with `facts.outline` by position (proposals, illustrate,
- * evaluate, edits), and the objectives-first lesson has no deck layer apart from what it stores, so
- * the answers slide gets its own outline entry: a copy of its check's, at the same position. It
- * carries the check's answer notes; slide numbers said in words move with the slides they name
- * (`renumberSlideRefs`). A lesson with nothing to move comes back as it was.
+ * cover its questions (prod-17, UX ruling 200), each with its own outline entry so slide i still
+ * pairs with outline entry i (`syncAnswersSlide`, `@tj/slides`). The objectives-first lesson has
+ * no deck layer apart from what it stores, unlike the writer's `deck()`. Slide numbers said in
+ * words move with the slides they name. A second run changes nothing.
  */
 export function withAnswersSlides<L extends Pick<Lesson, "themeId" | "slides" | "facts">>(
   lesson: L,
   ids?: () => string,
 ): L {
   const theme = getTheme(lesson.themeId);
-  const plan = lesson.facts?.outline;
   const at = new Map<number, number>();
-  const slides: Slide[] = [];
-  const outline: OutlineEntry[] = [];
+  let out = lesson;
+  let shift = 0;
   lesson.slides.forEach((slide, i) => {
-    at.set(i + 1, slides.length + 1);
-    const [own, ...answers] = answersOnOwnSlide(slide, theme, ids);
-    slides.push(own as Slide);
-    const entry = plan?.[i];
-    if (entry) outline.push(entry);
-    for (const page of answers) {
-      const { diagram: _diagram, ...rest } = page;
-      slides.push({ ...rest, notes: answersNote(slide) });
-      if (entry) outline.push({ ...entry });
-    }
+    at.set(i + 1, i + 1 + shift);
+    const synced = syncAnswersSlide(out, slide.id, theme, ids);
+    out = synced.deck;
+    shift += Math.max(0, synced.inserted);
   });
-  if (slides.length === lesson.slides.length) return lesson;
-  const facts =
-    lesson.facts && plan && outline.length === slides.length
-      ? { facts: { ...lesson.facts, outline } }
-      : {};
-  return { ...lesson, ...facts, slides: renumberSlideRefs(slides, at) };
-}
-
-/** The presenter's note on an answers slide: the check's own answer notes, or what it answers. */
-function answersNote(check: Slide): string {
-  const notes = check.notes?.trim() ?? "";
-  return notes || "The answers to the check on the slide before.";
+  if (out === lesson) return lesson;
+  return { ...out, slides: renumberSlideRefs(out.slides, at) };
 }

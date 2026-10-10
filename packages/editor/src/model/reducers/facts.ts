@@ -20,6 +20,8 @@ import type {
   WorkedExample,
   Worksheet,
 } from "@tj/domain/documents";
+import { syncAnswersSlide } from "@tj/slides";
+import { renderTheme } from "../themes";
 import { edit, type WithId } from "./core";
 
 /**
@@ -259,6 +261,29 @@ function replaceElement(elements: SlideElement[], id: Id, next: SlideElement): b
  * ids it named are gone). Block proposals are ignored here — see `applyBlockProposals`.
  */
 export const applyProposals = (lesson: Lesson, proposals: readonly Proposal[]): Lesson =>
+  withAnswersSlidesOf(applyProposalsOnly(lesson, proposals), proposals);
+
+/**
+ * Every slide a whole-slide proposal regenerated, its answers slide brought up to date (UX ruling
+ * 200, `syncAnswersSlide`): added when the new questions' answers would cover them, dropped when
+ * they now fit, so an answers slide never outlives the questions it answers.
+ */
+function withAnswersSlidesOf(lesson: Lesson, proposals: readonly Proposal[]): Lesson {
+  const regenerated = new Set(
+    proposals.flatMap((p) =>
+      p.target.slideId !== undefined && p.target.elementId === undefined && p.element
+        ? [p.target.slideId]
+        : [],
+    ),
+  );
+  if (regenerated.size === 0) return lesson;
+  const theme = renderTheme(lesson);
+  let out = lesson;
+  for (const id of regenerated) out = syncAnswersSlide(out, id, theme).deck;
+  return out;
+}
+
+const applyProposalsOnly = (lesson: Lesson, proposals: readonly Proposal[]): Lesson =>
   edit(lesson, (draft) => {
     const wholeSlides = new Map<Id, Proposal[]>();
     for (const proposal of proposals) {

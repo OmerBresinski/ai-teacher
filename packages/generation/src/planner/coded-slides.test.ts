@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
-import { materialiseSlide, measureHeadless, SAFE_BOTTOM, THEMES, textPartsOf } from "@tj/slides";
+import { LessonFactsSchema } from "@tj/domain/documents";
+import {
+  getTheme,
+  materialiseSlide,
+  measureHeadless,
+  SAFE_BOTTOM,
+  syncAnswersSlide,
+  THEMES,
+  textPartsOf,
+} from "@tj/slides";
+import { assignFactIds } from "../specs";
+import { FIXTURES } from "../testing";
 import {
   codedSetSpec,
   EXIT_QUIZ_MAX,
@@ -437,24 +448,89 @@ describe("a quick check whose answers would cover its questions gets an answers 
     expect(next.notes).toBe("Recap slide 1, then slide 3.");
   });
 
-  test("slide i still pairs with outline entry i after the answers slide goes in", () => {
-    const check = { kind: "instructions", factRefs: ["q1"] } as unknown as OutlineEntry;
-    const next = { kind: "content", factRefs: ["k1"] } as unknown as OutlineEntry;
-    const lesson = {
-      themeId: "studio",
-      facts: { outline: [check, next] } as unknown as LessonFacts,
-      slides: [withNotes(checkSlide("studio"), "Answers: 1. a"), after("")],
-    };
+  /** The fixture plan's facts, schema-valid, with a slide per outline entry; covering checks at `at`. */
+  const SETS = new Set(["starter", "instructions", "exit-ticket"]);
+  const planned = (count: number) => {
+    const facts = LessonFactsSchema.parse(
+      assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60),
+    );
+    const at = facts.outline.flatMap((e, i) => (SETS.has(e.kind) ? [i] : [])).slice(0, count);
+    const slides = facts.outline.map((e, i) =>
+      at.includes(i)
+        ? { ...check("studio"), id: `slide-${i}`, notes: `Answers for ${e.id}` }
+        : ({
+            ...after(i === facts.outline.length - 1 ? "Back to slide 1." : ""),
+            id: `slide-${i}`,
+          } as Slide),
+    );
+    return { themeId: "studio", facts, slides, at };
+  };
+  const pairs = (l: { slides: Slide[]; facts?: LessonFacts }) =>
+    l.slides.map((s, i) => [s.id, l.facts?.outline[i]?.id]);
+
+  test("answers slides get schema-valid entries, and every other slide keeps its own (two checks)", () => {
+    const lesson = planned(2);
+    const [c1 = 0, c2 = 0] = lesson.at;
+    expect(lesson.at).toHaveLength(2);
     const out = withAnswersSlides(lesson);
-    const outline = out.facts?.outline ?? [];
-    expect(out.slides).toHaveLength(3);
-    expect(outline).toHaveLength(3);
-    // The answers slide pairs with a copy of its check's entry; the slide after keeps its own.
-    expect(outline[1]).toEqual(check);
-    expect(outline[2]).toBe(next);
-    // The presenter's note on the answers slide carries the check's answers.
-    expect(out.slides[1]?.notes).toContain("Answers: 1. a");
-    expect(out.slides[1]?.diagram).toBeUndefined();
+    expect(out.slides).toHaveLength(lesson.slides.length + 2);
+    const facts = LessonFactsSchema.parse(out.facts);
+    expect(facts.outline).toHaveLength(out.slides.length);
+    const before = new Map(pairs(lesson) as [string, string][]);
+    for (const [slideId, entryId] of pairs(out) as [string, string][]) {
+      const entry = facts.outline.find((e) => e.id === entryId);
+      if (entry?.answersTo) continue;
+      expect(entryId).toBe(before.get(slideId) as string);
+    }
+    const answers = facts.outline.filter((e) => e.answersTo);
+    expect(answers.map((e) => e.answersTo)).toEqual([
+      lesson.facts.outline[c1]?.id,
+      lesson.facts.outline[c2]?.id,
+    ]);
+    expect(out.slides[c1 + 1]?.notes).toBe(`Answers for ${lesson.facts.outline[c1]?.id}`);
+    expect(out.slides[c1 + 1]?.diagram).toBeUndefined();
+  });
+
+  test("a second run changes nothing", () => {
+    const once = withAnswersSlides(planned(1));
+    expect(withAnswersSlides(once)).toBe(once);
+  });
+
+  test("a regenerated check brings its answers slide up to date", () => {
+    const lesson = planned(1);
+    const c = lesson.at[0] ?? 0;
+    const once = withAnswersSlides(lesson);
+    const theme = getTheme("studio");
+    // The new questions' answers fit under them: the answers slide and its entry go.
+    const short = withAnswersReveal(
+      materialiseSlide(
+        {
+          kind: "instructions",
+          factRefs: [],
+          heading: "Quick check",
+          steps: ["One?", "Two?"],
+          footnote: "Answers: 1 Yes  ·  2 No",
+        },
+        "studio",
+        meta,
+      ),
+      "studio",
+    );
+    const fits = {
+      ...once,
+      slides: once.slides.map((s, i) => (i === c ? { ...short, id: s.id } : s)),
+    };
+    const dropped = syncAnswersSlide(fits, `slide-${c}`, theme).deck;
+    expect(dropped.slides).toHaveLength(once.slides.length - 1);
+    expect(LessonFactsSchema.parse(dropped.facts).outline.some((e) => e.answersTo)).toBe(false);
+    // Long answers again: exactly one answers slide comes back.
+    const again = {
+      ...dropped,
+      slides: dropped.slides.map((s, i) => (i === c ? { ...check("studio"), id: s.id } : s)),
+    };
+    const back = syncAnswersSlide(again, `slide-${c}`, theme).deck;
+    expect(back.slides).toHaveLength(once.slides.length);
+    expect(LessonFactsSchema.parse(back.facts).outline.filter((e) => e.answersTo)).toHaveLength(1);
   });
 
   test("a deck with no covering panel comes back as it was", () => {
