@@ -16,7 +16,14 @@
  * Neither route is part of `AppType` (they never reach the RPC client types).
  */
 import { zValidator } from "@hono/zod-validator";
-import { forWorkspace, type ScopableDb, seedDocuments } from "@tj/db";
+import {
+  clearGenerating,
+  forWorkspace,
+  putDocumentAsJob,
+  type ScopableDb,
+  seedDocuments,
+} from "@tj/db";
+import type { JobId } from "@tj/domain";
 import { DocumentKindSchema, DocumentParseError } from "@tj/domain/documents";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -60,45 +67,72 @@ const seedBody = z.object({
 });
 
 export function testRoutes(mail: CaptureMailSender, unsafeDb: ScopableDb) {
-  return new Hono<AppEnv>()
-    .get(
-      "/__test/last-magic-link",
-      zValidator("query", lastMagicLinkQuery, validationHook),
-      (c) => {
-        const { email } = c.req.valid("query");
-        const message = mail.lastFor(email);
-        const url = message ? extractFirstUrl(message.text) : undefined;
-        if (!message || !url) {
-          return errorResponse(
-            c,
-            404,
-            "not_found",
-            "No magic link has been sent to that address.",
-            false,
-          );
-        }
-        return c.json({ email: message.to, url }, 200);
-      },
-    )
-    .post(
-      "/__test/seed-library",
-      documentBodyLimit(),
-      requireJsonBody(),
-      zValidator("json", seedBody, validationHook),
-      async (c) => {
-        const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
-        const { documents } = c.req.valid("json");
-        const result = await seedDocuments(ws, documents).catch((error: unknown) => {
-          if (error instanceof DocumentParseError) {
-            throw new HTTPException(422, { message: error.message });
+  return (
+    new Hono<AppEnv>()
+      .get(
+        "/__test/last-magic-link",
+        zValidator("query", lastMagicLinkQuery, validationHook),
+        (c) => {
+          const { email } = c.req.valid("query");
+          const message = mail.lastFor(email);
+          const url = message ? extractFirstUrl(message.text) : undefined;
+          if (!message || !url) {
+            return errorResponse(
+              c,
+              404,
+              "not_found",
+              "No magic link has been sent to that address.",
+              false,
+            );
           }
-          throw error;
-        });
-        c.get("logger")?.info(
-          { workspaceId: ws.workspaceId, inserted: result.inserted.length },
-          "test seed inserted documents",
-        );
-        return c.json({ ids: Object.fromEntries(result.ids) }, 201);
-      },
-    );
+          return c.json({ email: message.to, url }, 200);
+        },
+      )
+      .post(
+        "/__test/seed-library",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator("json", seedBody, validationHook),
+        async (c) => {
+          const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
+          const { documents } = c.req.valid("json");
+          const result = await seedDocuments(ws, documents).catch((error: unknown) => {
+            if (error instanceof DocumentParseError) {
+              throw new HTTPException(422, { message: error.message });
+            }
+            throw error;
+          });
+          c.get("logger")?.info(
+            { workspaceId: ws.workspaceId, inserted: result.inserted.length },
+            "test seed inserted documents",
+          );
+          return c.json({ ids: Object.fromEntries(result.ids) }, 201);
+        },
+      )
+      // ADR 0037: a generating job's write, as the worker makes it (`putDocumentAsJob` with its
+      // previous copy as the merge base), then optionally its lock release. Lets the e2e play the
+      // job's side while the teacher edits, without a real worker or model.
+      .post(
+        "/__test/job-write",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator("json", jobWriteBody, validationHook),
+        async (c) => {
+          const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
+          const { id, jobId, body, base, release } = c.req.valid("json");
+          const result = await putDocumentAsJob(ws, id, body, jobId as JobId, { base });
+          if (result.status !== "ok") return c.json({ status: result.status }, 409);
+          if (release) await clearGenerating(ws, id, jobId as JobId);
+          return c.json({ status: "ok", updatedAt: result.row.updatedAt.toISOString() }, 200);
+        },
+      )
+  );
 }
+
+const jobWriteBody = z.object({
+  id: z.uuid(),
+  jobId: z.uuid(),
+  body: z.unknown(),
+  base: z.unknown().optional(),
+  release: z.boolean().optional(),
+});

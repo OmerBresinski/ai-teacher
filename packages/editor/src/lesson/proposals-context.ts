@@ -64,6 +64,11 @@ export type ProposalsApi = {
   /** A cascade or regenerate is in flight. */
   busy: boolean;
   /**
+   * Slides the generating job is still writing (ADR 0037, UX ruling 189): selectable, read-only,
+   * marked "Writing" in the filmstrip and on the canvas.
+   */
+  writingSlideIds?: ReadonlySet<Id>;
+  /**
    * Fact ids the worksheet's blocks derive from; `addFact` never mints one of these again. `null`
    * while the lesson has a worksheet the app has not fetched yet — adding facts waits for it.
    */

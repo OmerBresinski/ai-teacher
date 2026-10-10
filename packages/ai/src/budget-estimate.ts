@@ -94,3 +94,22 @@ export function estimatePreparedCall(modelId: string, params: PreparedCall): Tok
     cacheWriteInputTokens: inputTokens,
   };
 }
+
+/**
+ * What a call that ended with no usage is settled at (ADR 0025 §15): the UTF-8 bytes of the
+ * prompt's text parts as input tokens (the same upper-biased byte estimate as above, without the
+ * protocol headroom), no output, no images. A provider that bills a failed request bills the input
+ * it read, never output it did not return; image tokens are left out because their reservation is
+ * a ceiling (36,001 for an unreadable header) and booking it per failed photo pick is what starved
+ * the lesson (register layout-05).
+ */
+export function failedCallFloor(params: PreparedCall): TokenUsage {
+  let bytes = 0;
+  for (const message of params.prompt) {
+    if (message.role === "system") bytes += encoder.encode(message.content).byteLength;
+    else if (message.role === "user")
+      for (const part of message.content)
+        if (part.type === "text") bytes += encoder.encode(part.text).byteLength;
+  }
+  return { inputTokens: bytes, outputTokens: 0 };
+}

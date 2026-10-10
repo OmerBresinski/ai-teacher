@@ -124,7 +124,9 @@ test("retryable provider faults are one reserved dispatch, not hidden SDK transp
   const d = deps(ai);
   await expect(call(d)).rejects.toBe(error);
   expect(calls).toBe(1);
-  expect(d.budget.totals()).toMatchObject({ calls: 0, uncertain: { calls: 1 } });
+  // A provider HTTP error settles at the prompt's text input, not the whole estimate (ADR 0025 §15).
+  expect(d.budget.totals()).toMatchObject({ calls: 1, outputTokens: 0 });
+  expect(d.budget.totals()).not.toHaveProperty("uncertain");
 });
 
 describe("provider failures that are not permanent are retried once", () => {
