@@ -10,6 +10,7 @@ import type {
 import { asksForUnlistedOptions } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
+  answersOffQuestions,
   fitSlide,
   getTheme,
   HEADING_NAME,
@@ -456,7 +457,10 @@ export function exitLines<T extends Line>(lines: readonly T[]): T[] {
  * of the list's box, which gives it the room. Nothing else moves.
  */
 export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
-  if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) return slide;
+  if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) {
+    // A generated set is one slide: a panel that would cover its questions goes to the notes.
+    return themeId === undefined ? slide : answersOffQuestions(slide, getTheme(themeId));
+  }
   const parts = setParts(slide);
   if (!parts) return slide;
   const { body, foot } = parts;

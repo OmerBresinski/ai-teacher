@@ -390,3 +390,36 @@ describe("the exit ticket: at most three, on one slide (TEACH-172, ruling 108)",
     });
   }
 });
+
+describe("a coded quick check never reveals its answers over its questions (prod-17)", () => {
+  const answers = [
+    "carbon dioxide + water → glucose + oxygen",
+    "Light energy",
+    "The atoms are rearranged to make glucose and oxygen; they are not created or destroyed.",
+    "Chlorophyll absorbs and transfers light energy to the reactions that use carbon dioxide and water to make glucose and oxygen.",
+  ];
+  const steps = [
+    "State the word equation for photosynthesis.",
+    "In a lettuce leaf, what does chlorophyll absorb?",
+    "What happens to the atoms of carbon dioxide and water in photosynthesis?",
+    "Explain how chlorophyll helps a leaf make glucose.",
+  ];
+  test.each(THEMES.map((t) => [t.id]))("the panel goes to the notes on %s", (themeId) => {
+    const made = materialiseSlide(
+      {
+        kind: "instructions",
+        factRefs: [],
+        heading: "Quick check",
+        steps,
+        footnote: `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`,
+      },
+      themeId,
+      { promptVersion: "prod-17", model: "test", at: "2026-10-10T10:00:00.000Z" },
+    );
+    const slide = withAnswersReveal(made, themeId);
+    const list = slide.elements.find((e) => e.type === "text" && !e.name && !e.revealStep);
+    const panel = slide.elements.find((e) => e.name === "Answers");
+    if (panel && list) expect(panel.y).toBeGreaterThanOrEqual(list.y + list.h);
+    else for (const a of answers) expect(slide.notes ?? "").toContain(a);
+  });
+});
