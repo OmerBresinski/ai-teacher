@@ -479,8 +479,11 @@ export { DEFAULT_THEME_ID } from "@tj/domain/documents";
  */
 export type CalloutTone = { fill: string; line: string; ink: string; icon: string };
 
-/** The three tones a theme gives its callouts, one per kind. */
-export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
+/**
+ * The tones a theme gives its callouts: one per ruling 84 kind, plus Remember (blue) and Fun fact
+ * (lilac) for the typed key card (UX ruling 203, P1), tuned per theme the same way.
+ */
+export type CalloutToneSet = Record<CalloutKind | "remember" | "fun-fact", CalloutTone>;
 
 /**
  * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the ten
@@ -500,51 +503,81 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     "watch-out": { fill: "#F7DFD8", line: "#DBA99C", ink: "#5A1D12", icon: "#A83A2E" },
     example: { fill: "#DCEBD8", line: "#A7C7A2", ink: "#1F4A2C", icon: "#2F6B44" },
     "key-words": { fill: "#F7E5B9", line: "#D8B86A", ink: "#4E3604", icon: "#8A5800" },
+
+    remember: { fill: "#DBDFDE", line: "#A2B8CF", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#E6DBDD", line: "#C1ACCD", ink: "#301C4C", icon: "#6B3FA8" },
   },
   playground: {
     "watch-out": { fill: "#FFDFD8", line: "#F0AA9C", ink: "#661A10", icon: "#A6321F" },
     example: { fill: "#DAF3E2", line: "#9BD7B2", ink: "#154D2D", icon: "#256840" },
     "key-words": { fill: "#FFE9B8", line: "#F0C35C", ink: "#553700", icon: "#855000" },
+
+    remember: { fill: "#E0E1D4", line: "#A5BAC8", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#EADCD3", line: "#C4ADC6", ink: "#301C4C", icon: "#6B3FA8" },
   },
   crayon: {
     "watch-out": { fill: "#FFDCD6", line: "#EFA095", ink: "#621812", icon: "#A31F2E" },
     example: { fill: "#D9F1DD", line: "#97D1A4", ink: "#134A26", icon: "#1F6B35" },
     "key-words": { fill: "#FFEBA8", line: "#EDC04E", ink: "#513500", icon: "#805000" },
+
+    remember: { fill: "#E0E7ED", line: "#A5BED9", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#EAE2EC", line: "#C4B1D7", ink: "#301C4C", icon: "#6B3FA8" },
   },
   splash: {
     "watch-out": { fill: "#FDE1DC", line: "#EDADA1", ink: "#5E1B12", icon: "#A33424" },
     example: { fill: "#D6F0E4", line: "#94CFB5", ink: "#11452E", icon: "#1B6A47" },
     "key-words": { fill: "#FFEDBE", line: "#EAC25E", ink: "#4F3600", icon: "#7E5600" },
+
+    remember: { fill: "#D0E3F1", line: "#9BBBDC", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#DBDEF0", line: "#B9AEDA", ink: "#301C4C", icon: "#6B3FA8" },
   },
   treehouse: {
     "watch-out": { fill: "#F9DDD5", line: "#DFA597", ink: "#5A1D12", icon: "#A0382A" },
     example: { fill: "#D7EDE8", line: "#9CCBBE", ink: "#124239", icon: "#1E6655" },
     "key-words": { fill: "#F8E6B5", line: "#D9B863", ink: "#4C3605", icon: "#7E5A0A" },
+
+    remember: { fill: "#D4E2E1", line: "#9DBAD2", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#DEDDE1", line: "#BBADD0", ink: "#301C4C", icon: "#6B3FA8" },
   },
   studio: {
     "watch-out": { fill: "#F8E0DE", line: "#DCA9A5", ink: "#561C19", icon: "#A03A33" },
     example: { fill: "#DAEDE3", line: "#A2CDB6", ink: "#13432C", icon: "#1D6B48" },
     "key-words": { fill: "#F5E7C4", line: "#D5BC78", ink: "#47370C", icon: "#7A580A" },
+
+    remember: { fill: "#D9E3F0", line: "#A1BBDC", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#E3DFEF", line: "#BFAFDA", ink: "#301C4C", icon: "#6B3FA8" },
   },
   "reading-room": {
     "watch-out": { fill: "#EFDCD7", line: "#CDA79E", ink: "#54211A", icon: "#9A3B2E" },
     example: { fill: "#DEE7DA", line: "#ABC0A6", ink: "#23412C", icon: "#2F6B44" },
     "key-words": { fill: "#EEE2C3", line: "#CBB47A", ink: "#48370E", icon: "#7C5810" },
+
+    remember: { fill: "#D6DBDE", line: "#9FB5CF", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#E1D6DD", line: "#BDA9CD", ink: "#301C4C", icon: "#6B3FA8" },
   },
   "exam-hall": {
     "watch-out": { fill: "#F5DFDE", line: "#D6A9A6", ink: "#571C19", icon: "#9A3B2E" },
     example: { fill: "#DCEAE2", line: "#A5C7B4", ink: "#15422C", icon: "#1F6B4A" },
     "key-words": { fill: "#F1E5C6", line: "#CFBA80", ink: "#48370E", icon: "#78580C" },
+
+    remember: { fill: "#E0E9F4", line: "#A5BFDE", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#EAE4F3", line: "#C4B2DC", ink: "#301C4C", icon: "#6B3FA8" },
   },
   "night-lab": {
     "watch-out": { fill: "#3A282D", line: "#5A3F46", ink: "#F8CBC6", icon: "#F08A7A" },
     example: { fill: "#1D3630", line: "#2F5148", ink: "#B0E5CE", icon: "#86C7A8" },
     "key-words": { fill: "#3A3222", line: "#5A4A2C", ink: "#FAD38E", icon: "#F2B551" },
+
+    remember: { fill: "#162A42", line: "#193A63", ink: "#D2DFEF", icon: "#9AB7DA" },
+    "fun-fact": { fill: "#2C2141", line: "#3F2A61", ink: "#E1D9EE", icon: "#BCA9D8" },
   },
   beacon: {
     "watch-out": { fill: "#FFE1DE", line: "#A31212", ink: "#3D0707", icon: "#A31212" },
     example: { fill: "#DFF3E6", line: "#0B6B3A", ink: "#062E1A", icon: "#0B6B3A" },
     "key-words": { fill: "#FFEDB8", line: "#7A5200", ink: "#3A2600", icon: "#7A5200" },
+
+    remember: { fill: "#E0E7E8", line: "#1F5FAD", ink: "#0E2B4E", icon: "#1F5FAD" },
+    "fun-fact": { fill: "#EAE2E8", line: "#6B3FA8", ink: "#301C4C", icon: "#6B3FA8" },
   },
 };
 

@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { POINT_KIND_ICONS, POINT_KIND_LABELS, POINT_KINDS, pointTone } from "../callout";
 import { THEMES } from "../themes";
+import { OLD_LESSON_INPUTS, OLD_LESSON_STAGES } from "./fixtures/old-lesson-inputs";
+import MASTER from "./fixtures/old-lesson-master.json";
 import { layoutTemplate, type Stage, type TemplateInput, type TemplatePoint } from "./index";
+import { typedLast } from "./key-card";
 
 /*
  * UX ruling 203, P1 (TEACH-75 part e): a support point may be typed as a callout. It is the key
@@ -57,38 +61,41 @@ const hosts = (kind: (typeof POINT_KINDS)[number], n: number): TemplateInput[] =
 };
 
 describe("typed callout card", () => {
-  test("each type fits on every theme at 2, 3 and 4 items, with its tone, icon and label, last", () => {
-    for (const theme of THEMES)
-      for (const kind of POINT_KINDS)
-        for (const n of [2, 3, 4])
-          for (const input of hosts(kind, n)) {
-            const r = layoutTemplate(input, theme, "ks2");
-            // Capacity is the key card's: at 4 items beside a figure the typed card is over only
-            // where the same labelled key card already was (the measured catalogue's limit).
-            const asKey = {
-              ...input,
-              points: input.points?.map((p) =>
-                typeof p === "string" ? p : { label: POINT_KIND_LABELS[kind], text: p.text },
-              ),
-            };
-            const allowed = n === 4 && layoutTemplate(asKey, theme, "ks2").over.length > 0;
-            if (!allowed)
-              expect({ over: r.over, theme: theme.id, kind, n, t: input.template }).toMatchObject({
-                over: [],
-              });
-            const e = r.slide.elements as El[];
-            const card = e.find((x) => x.name === "Key card");
-            const tone = pointTone(theme, kind);
-            expect(card?.fill).toBe(tone.fill);
-            expect(card?.stroke).toBe(tone.line);
-            expect(e.find((x) => x.name === "Callout icon")?.icon).toBe(POINT_KIND_ICONS[kind]);
-            expect(textOf(e.find((x) => x.name === "Key label"))).toBe(POINT_KIND_LABELS[kind]);
-            // Under the text: the card is the lowest body block.
-            const points = e.filter((x) => x.name === "Point" || x.name === "Bullet");
-            for (const p of points)
-              if (p !== undefined && textOf(p) !== "The heart pumps blood; it does not make it.")
-                expect((p.y ?? 0) < (card?.y ?? 0)).toBe(true);
-          }
+  test("each type fits on every theme and stage at 2, 3 and 4 items, with its tone, icon and label, last", () => {
+    for (const stage of OLD_LESSON_STAGES)
+      for (const theme of THEMES)
+        for (const kind of POINT_KINDS)
+          for (const n of [2, 3, 4])
+            for (const input of hosts(kind, n)) {
+              const r = layoutTemplate(input, theme, stage);
+              // Capacity is the key card's: at 4 items beside a figure the typed card is over only
+              // where the same labelled key card already was (the measured catalogue's limit).
+              const asKey = {
+                ...input,
+                points: input.points?.map((p) =>
+                  typeof p === "string" ? p : { label: POINT_KIND_LABELS[kind], text: p.text },
+                ),
+              };
+              const allowed = n === 4 && layoutTemplate(asKey, theme, stage).over.length > 0;
+              if (!allowed)
+                expect({ over: r.over, theme: theme.id, kind, n, t: input.template }).toMatchObject(
+                  {
+                    over: [],
+                  },
+                );
+              const e = r.slide.elements as El[];
+              const card = e.find((x) => x.name === "Key card");
+              const tone = pointTone(theme, kind);
+              expect(card?.fill).toBe(tone.fill);
+              expect(card?.stroke).toBe(tone.line);
+              expect(e.find((x) => x.name === "Callout icon")?.icon).toBe(POINT_KIND_ICONS[kind]);
+              expect(textOf(e.find((x) => x.name === "Key label"))).toBe(POINT_KIND_LABELS[kind]);
+              // Under the text: the card is the lowest body block.
+              const points = e.filter((x) => x.name === "Point" || x.name === "Bullet");
+              for (const p of points)
+                if (p !== undefined && textOf(p) !== "The heart pumps blood; it does not make it.")
+                  expect((p.y ?? 0) < (card?.y ?? 0)).toBe(true);
+            }
   });
 
   test("a full-width diagram's key card strip takes the type too (ruling 194)", () => {
@@ -183,5 +190,41 @@ describe("typed callout card", () => {
           );
           expect(Array.isArray(r.slide.elements)).toBe(true);
         }
+  });
+
+  test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
+    const want = MASTER as Record<string, string>;
+    let n = 0;
+    for (const stage of OLD_LESSON_STAGES)
+      for (const theme of THEMES)
+        OLD_LESSON_INPUTS.forEach((input, i) => {
+          const key = `${stage}/${theme.id}/${i}-${input.template}`;
+          const j = JSON.stringify(layoutTemplate(input, theme, stage), (k, v) =>
+            k === "id" ? undefined : v,
+          );
+          expect({ key, hash: createHash("sha1").update(j).digest("hex") }).toEqual({
+            key,
+            hash: want[key] as string,
+          });
+          n++;
+        });
+    expect(n).toBe(Object.keys(want).length);
+  });
+
+  test("the first typed point goes under the text; a later one stays, labelled with its type", () => {
+    expect(
+      typedLast([
+        { kind: "remember", text: "a" },
+        "b",
+        { kind: "watch-out", text: "c" },
+        { kind: "fun-fact", text: "d", label: "Wow" },
+      ]),
+    ).toEqual([
+      "b",
+      { label: "Watch out", text: "c" },
+      { label: "Wow", text: "d" },
+      { kind: "remember", text: "a" },
+    ]);
+    expect(typedLast(["a", "b"])).toEqual(["a", "b"]);
   });
 });

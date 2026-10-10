@@ -21,14 +21,9 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import {
-  isPointKind,
-  POINT_KIND_ICONS,
-  POINT_KIND_LABELS,
-  type PointKind,
-  pointTone,
-} from "../callout";
+import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../callout";
 import { drawDiagram } from "../diagrams";
+import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../callout";
 
@@ -250,51 +245,6 @@ export const mix = (a: string, b: string, k: number) =>
     .map((v) => v.toString(16).padStart(2, "0"))
     .join("")}`;
 const wash = (t: Theme) => mix(t.colors.accent, t.colors.background, 0.1);
-
-/**
- * A key card's colours and icon (ruling 203, P1): an untyped card keeps the wash, the accent edge
- * and label and the ink body; a typed card takes its type's tone, a hairline and an icon the
- * height of its label line before the label.
- */
-function cardLook(c: Ctx, p: TemplatePoint) {
-  const kind = pointKind(p);
-  if (!kind) {
-    return {
-      fill: wash(c.t),
-      edge: c.t.colors.accent,
-      label: c.t.colors.accent,
-      body: c.t.colors.ink,
-      icon: 0,
-    };
-  }
-  const tone = pointTone(c.t, kind);
-  const icon = Math.round(c.s.lead * LH.lead);
-  return { fill: tone.fill, edge: tone.icon, label: tone.ink, body: tone.ink, icon, tone, kind };
-}
-
-/** The typed card's hairline and icon, drawn after its card and edge; nothing for an untyped card. */
-function cardMarks(
-  c: Ctx,
-  look: ReturnType<typeof cardLook>,
-  card: ShapeElement,
-  at: { x: number; y: number },
-) {
-  if (!look.tone || !look.kind) return;
-  card.stroke = look.tone.line;
-  card.strokeWidth = 1.5;
-  c.els.push({
-    id: uid(),
-    type: "icon",
-    x: at.x,
-    y: Math.round(at.y),
-    w: look.icon,
-    h: look.icon,
-    icon: POINT_KIND_ICONS[look.kind],
-    color: look.tone.icon,
-    strokeWidth: 2.25,
-    name: "Callout icon",
-  } as SlideElement);
-}
 
 /** Inline `**bold**` and a leading `Label:` become bold runs. */
 function runs(text: string, boldLabel = false) {
@@ -919,19 +869,8 @@ function leadAndPoints(
   what: string,
   top?: number,
 ) {
-  let points = given;
-  // A typed card sits under the text (ruling 203, P1): at most one, after the other points.
-  const typed = points.findIndex((p) => pointKind(p));
-  if (typed >= 0) {
-    const rest = points
-      .filter((_, k) => k !== typed)
-      .map((p) =>
-        typeof p !== "string" && p.kind
-          ? { text: p.text, ...(p.label ? { label: p.label } : {}) }
-          : p,
-      );
-    points = [...rest, points[typed] as TemplatePoint];
-  }
+  // A typed card sits under the text (ruling 203, P1; `typedLast`).
+  const points = typedLast(given);
   const labelled = points.filter((p) => pointLabel(p)).length;
   const cards = labelled >= 1 && labelled <= 2;
   ladder(
@@ -947,48 +886,13 @@ function leadAndPoints(
         });
       }
       const pad = Math.round(c.s.body * 0.7);
-      const bar = 5;
-      const iw = w - 2 * pad - bar;
       const d = Math.round(c.s.body * 0.36);
       const indent = Math.round(c.s.body * 1.0);
       for (const p of points) {
         const label = pointLabel(p);
         if (cards && label) {
-          const body = pointText(p);
-          const look = cardLook(c, p);
-          const lx = look.icon ? look.icon + 8 : 0;
-          const lh = measure(c, label, "lead", iw - lx, 700);
-          const bh = measure(c, body, "body", iw);
-          const h = 2 * pad + lh + 4 + bh;
-          blocks.push({
-            h,
-            draw: (y) => {
-              const card = box(c, { x, y, w, h }, look.fill, {
-                name: "Key card",
-                radius: Math.min(c.t.radius, 12),
-              });
-              box(c, { x, y, w: bar, h }, look.edge, {
-                name: "Key edge",
-                shape: "rect",
-                radius: 0,
-              });
-              cardMarks(c, look, card, { x: x + bar + pad, y: y + pad });
-              const l = text(
-                c,
-                label,
-                "lead",
-                { x: x + bar + pad + lx, y: y + pad, w: iw - lx },
-                { color: look.label, weight: 700, name: "Key label" },
-              );
-              text(
-                c,
-                body,
-                "body",
-                { x: x + bar + pad, y: l.y + l.h + 4, w: iw },
-                { color: look.body, name: "Point" },
-              );
-            },
-          });
+          const h = keyCardHeight(c, p, w, pad, "body");
+          blocks.push({ h, draw: (y) => drawKeyCard(c, p, { x, y, w, h }, pad, "body") });
           continue;
         }
         const words = label ? `${label}: ${pointText(p)}` : pointText(p);
@@ -1256,19 +1160,12 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
   const cols = n <= 4 ? n : Math.ceil(n / 2);
   const gap = 12;
   const w = Math.floor((G.width - (cols - 1) * gap) / cols);
-  const bar = 5;
   // The cards keep body size: they never read smaller than the points they replace.
   const role = "body";
   const size = c.s[role];
   const pad = Math.round(size * 0.6);
-  const iw = w - 2 * pad - bar;
-  const cards = points.map((p) => {
-    const label = pointLabel(p);
-    const look = cardLook(c, p);
-    const lx = look.icon ? look.icon + 8 : 0;
-    const lh = label ? measure(c, label, "lead", iw - lx, 700) + 4 : 0;
-    return { p, label, look, lx, lh, h: 2 * pad + lh + measure(c, pointText(p), role, iw) };
-  });
+  const cards = points.map((p) => ({ p, h: keyCardHeight(c, p, w + 0, pad, role) }));
+
   const rows: (typeof cards)[] = [];
   for (let k = 0; k < cards.length; k += cols) rows.push(cards.slice(k, k + cols));
   const heights = rows.map((r) => Math.max(...r.map((x) => x.h)));
@@ -1279,32 +1176,7 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
       const rh = heights[ri] ?? 0;
       r.forEach((card, k) => {
         const x = G.margin + k * (w + gap);
-        const look = card.look;
-        const el = box(c, { x, y, w, h: rh }, look.fill, {
-          name: "Key card",
-          radius: Math.min(c.t.radius, 12),
-        });
-        box(c, { x, y, w: bar, h: rh }, look.edge, {
-          name: "Key edge",
-          shape: "rect",
-          radius: 0,
-        });
-        cardMarks(c, look, el, { x: x + bar + pad, y: y + pad });
-        if (card.label)
-          text(
-            c,
-            card.label,
-            "lead",
-            { x: x + bar + pad + card.lx, y: y + pad, w: iw - card.lx },
-            { color: look.label, weight: 700, name: "Key label" },
-          );
-        text(
-          c,
-          pointText(card.p),
-          role,
-          { x: x + bar + pad, y: y + pad + card.lh, w: iw },
-          { color: look.body, name: "Point" },
-        );
+        drawKeyCard(c, card.p, { x, y, w, h: rh }, pad, role);
       });
       y += rh + gap;
     });

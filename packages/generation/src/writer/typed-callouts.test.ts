@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { type Plan, toInput } from "./materialise";
@@ -23,6 +24,23 @@ describe("typed callouts in the writer schema", () => {
       JSON.stringify(writerSchema("KS2" as never, SLIDES, undefined, { callouts: false })),
     );
     expect(JSON.stringify(writerSchema("KS2" as never, SLIDES))).not.toBe(JSON.stringify(on));
+  });
+
+  test("off by default: the schema hashes to master's (ae15ea9a) at every stage", () => {
+    // Pinned from master, not from this code: the default production schema is unchanged. Note
+    // `toInput` reads `{kind}` whatever the flag; off only keeps the field out of the model's schema.
+    const MASTER: Record<string, string> = {
+      KS1: "72261a17d2fedb36e0b1e60a15fc532c6830d8b6",
+      KS2: "7ae811703c84bf7905a254d8918bf10eed3d42b9",
+      "KS3-5": "04108708d68931af60385c452d8424ef8282869c",
+    };
+    for (const [stage, hash] of Object.entries(MASTER))
+      expect({
+        stage,
+        hash: createHash("sha1")
+          .update(JSON.stringify(writerSchema(stage as never, SLIDES)))
+          .digest("hex"),
+      }).toEqual({ stage, hash });
   });
 
   test("on: plain, labelled and typed points all validate; a bad type does not", () => {

@@ -28,7 +28,7 @@ import { SAFE_BOTTOM } from "./metrics";
 import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
-import { type CalloutTone, calloutTone, fontFloor } from "./themes";
+import { type CalloutTone, calloutTone, calloutTones, fontFloor } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): Chalkie's labelled card under the body, refined to
@@ -436,9 +436,8 @@ export function placeCallout(
  * one support point as a callout: Remember, Watch out (a misconception), Key point, Example or
  * Fun fact. The card is the key card the lead + points column and ruling 194's strip already set,
  * tinted per type with an icon at the head of its label row. The three kinds ruling 84 already
- * tunes per theme keep those tones (watch-out, example, and key-words for a key point); Remember
- * (blue) and Fun fact (lilac) are washed from one fixed hue on the theme's ground the same way,
- * so every type has one family on every theme. A point with no type is the key card as before.
+ * tunes per theme keep those tones and icons (watch-out, example, and key-words for a key point);
+ * Remember (blue) and Fun fact (lilac) have their own rows in `CALLOUT_TONES`. A point with no type is the key card as before.
  */
 export const POINT_KINDS = ["remember", "watch-out", "key-point", "example", "fun-fact"] as const;
 export type PointKind = (typeof POINT_KINDS)[number];
@@ -454,45 +453,20 @@ export const POINT_KIND_LABELS: Record<PointKind, string> = {
   "fun-fact": "Fun fact",
 };
 
-/** The drawn icon per type (lucide names from the editor's icon set). */
+/**
+ * The drawn icon per type: ruling 84's icons for the kinds it shares (`CALLOUT_ICONS`), so a card
+ * looks the same whichever path draws it, plus a brain for Remember and sparkles for Fun fact.
+ */
 export const POINT_KIND_ICONS: Record<PointKind, string> = {
   remember: "brain",
-  "watch-out": "triangle-alert",
-  "key-point": "key",
-  example: "search",
+  "watch-out": CALLOUT_ICONS["watch-out"],
+  "key-point": CALLOUT_ICONS["key-words"],
+  example: CALLOUT_ICONS.example,
   "fun-fact": "sparkles",
 };
 
-/** The fixed hue Remember and Fun fact are washed from. */
-const WASHED_HUES: Record<"remember" | "fun-fact", string> = {
-  remember: "#1F5FAD",
-  "fun-fact": "#6B3FA8",
-};
-
-const rgb = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
-const over = (a: string, b: string, k: number) =>
-  `#${rgb(a)
-    .map((v, i) => Math.round(v * k + (rgb(b)[i] ?? 0) * (1 - k)))
-    .map((v) => v.toString(16).padStart(2, "0"))
-    .join("")}`;
-
 /** The tone a typed card takes on theme `t`. */
 export function pointTone(t: Theme, kind: PointKind): CalloutTone {
-  if (kind === "watch-out" || kind === "example") return calloutTone(t, kind);
-  if (kind === "key-point") return calloutTone(t, "key-words");
-  const hue = WASHED_HUES[kind];
-  const ground = t.colors.background;
-  return t.dark
-    ? {
-        fill: over(hue, ground, 0.28),
-        line: over(hue, ground, 0.5),
-        ink: over(hue, "#FFFFFF", 0.2),
-        icon: over(hue, "#FFFFFF", 0.45),
-      }
-    : {
-        fill: over(hue, ground, 0.14),
-        line: over(hue, ground, 0.4),
-        ink: over(hue, "#000000", 0.45),
-        icon: hue,
-      };
+  const set = calloutTones(t);
+  return kind === "key-point" ? set["key-words"] : set[kind];
 }
