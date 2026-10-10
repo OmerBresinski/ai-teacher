@@ -51,7 +51,14 @@ export interface FakeReply {
    * A streamed call only: hand the text over in pieces of this many characters, `paceMs` apart
    * (a model writing over time). Absent: one piece at once.
    */
-  stream?: { pieceChars: number; paceMs: number } | undefined;
+  stream?:
+    | {
+        pieceChars: number;
+        paceMs: number;
+        /** Wait this long before the first piece (a model's time to first token). */
+        firstMs?: number | undefined;
+      }
+    | undefined;
 }
 
 /** A function entry may be async, so a test can hold a call open (concurrency, cancellation). */
@@ -218,6 +225,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 call.providerOptions,
                 call.abortSignal,
               );
+              if (stream?.firstMs) await new Promise((r) => setTimeout(r, stream.firstMs));
               controller.enqueue({ type: "text-start", id: "fake-text" });
               if (stream && stream.pieceChars > 0) {
                 for (let at = 0; at < text.length; at += stream.pieceChars) {
