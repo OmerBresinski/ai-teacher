@@ -17,6 +17,11 @@ const DIR = join(import.meta.dir, "fixtures/replay");
 const read = (b: string, f: string) => readFileSync(join(DIR, b, f), "utf8");
 type El = Record<string, unknown>;
 
+/** Slides (0-based) whose lab drawing was the G3 pile bug, with the rings the writer's spec asks for. */
+const G3_FIXED: Record<string, Record<number, number>> = {
+  "y2-maths-halves-quarters": { 5: 2, 7: 4 },
+};
+
 for (const b of [
   "y1-science-animals-young",
   "y2-maths-halves-quarters",
@@ -60,9 +65,18 @@ for (const b of [
         els
           .filter((e) => e.name === "Diagram" && typeof e.src === "string")
           .map((e) => stripBuilds(svgOfDataUrl(String(e.src)) ?? ""));
-      const lab = savedSlides(b).flatMap((s) => svgs(s.elements));
+      // G3 (FAULT-ORIGINS): the lab drew these slides' two hidden-count rings as one unshared pile,
+      // because "Find the number in one ring" in the alt matched the pile rule. They are drawn
+      // again as the writer's spec asked (two rings, "?" in each), not as the lab's wrong pile.
+      const rings = G3_FIXED[b] ?? {};
+      const fixed = new Set(Object.keys(rings).map(Number));
+      const lab = savedSlides(b).flatMap((s, i) => (fixed.has(i) ? [] : svgs(s.elements)));
       const ours = out.slides.flatMap((s) => svgs(s.elements as El[]));
       const missing = lab.filter((svg) => !ours.includes(svg));
+      for (const i of fixed) {
+        const svg = svgs((out.slides[i]?.elements ?? []) as El[]).join("");
+        expect(svg.match(/>\?</g)?.length, `slide ${i}`).toBe(rings[i]);
+      }
       if (missing.length)
         console.log(
           b,
