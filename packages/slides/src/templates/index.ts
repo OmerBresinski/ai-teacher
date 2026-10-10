@@ -33,6 +33,7 @@ import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
+import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export type { ActivityCard, ActivityId, GridCard };
@@ -138,6 +139,7 @@ export type TemplateId =
   | "exit-ticket"
   | "equation-hero"
   | "cards-grid"
+  | "banner-text"
   | ActivityId;
 
 export type TemplateInput = {
@@ -166,6 +168,8 @@ export type TemplateInput = {
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
   formula?: string;
   figure?: Figure;
+  /** Banner text (ruling 203): the picture strip across the top (the default) or the bottom. */
+  at?: "top" | "bottom";
   /** Hinge, choose, odd one out: the correct option or card, 1-based in the order given. */
   correct?: number;
   /** Hinge, choose, odd one out: the one-line reason shown with the revealed answer. */
@@ -1175,6 +1179,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "exit-ticket": "exit-ticket",
   "equation-hero": "worked-example",
   "cards-grid": "content",
+  "banner-text": "image-text",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -1608,6 +1613,9 @@ function layoutOnce(
     };
   }
   input = withoutFailedFigures(c, input);
+  // Ruling 203 (P4): a photo that cannot fill the banner strip without a blind cut goes beside the
+  // words instead; a banner whose picture failed is the words alone. Never an empty strip.
+  if (input.template === "banner-text" && !bannerOk(input)) input = asSidePanel(input);
   const tpl = input.template;
   let background: Slide["background"];
   const raw = input.points ?? [];
@@ -2211,6 +2219,9 @@ function layoutOnce(
       break;
     case "cards-grid":
       layoutCardsGrid(c, input);
+      break;
+    case "banner-text":
+      layoutBanner(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

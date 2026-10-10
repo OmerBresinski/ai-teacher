@@ -259,6 +259,11 @@ export type WriterRun = {
    * `CARDS_GRID_DEFAULT` (off, master's schema byte for byte).
    */
   cardsGrid?: boolean;
+  /**
+   * Banner text (ruling 203, P4): the menu offers a picture strip over or under the words. Absent:
+   * `BANNER_TEXT_DEFAULT` (off, master's schema byte for byte).
+   */
+  bannerText?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -522,6 +527,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
       ...(run.callouts !== undefined ? { callouts: run.callouts } : {}),
       ...(run.cardsGrid !== undefined ? { cardsGrid: run.cardsGrid } : {}),
+      ...(run.bannerText !== undefined ? { bannerText: run.bannerText } : {}),
     }),
     models.map((m) => m.id),
   );
