@@ -19,21 +19,21 @@ export class UnestimableCallError extends Error {
 const count = (value: number | undefined): value is number =>
   Number.isSafeInteger(value) && (value ?? -1) >= 0;
 
+/** A provider HTTP error: the request was refused, so at most its input was billed. */
+const isProviderHttpError = (error: unknown) =>
+  APICallError.isInstance(error) && !!error.statusCode;
+
 /**
- * A call with no output, no usage and no abort settles at its prompt's text input (ADR 0025 §15).
- * A throw counts only as a provider HTTP error: a parse failure may follow billed output.
+ * A call with no output and no usage settles at its prompt's text input (ADR 0025 §15), unless it
+ * was aborted: an aborted call may still be billed for output, so it stays uncertain.
  */
-function settleFailed(
-  budget: Budget,
-  reservation: BudgetReservation,
-  params: PreparedCall,
-  thrown?: { error: unknown },
-) {
-  const { error } = thrown ?? {};
-  const billedOnlyInput = !thrown || (APICallError.isInstance(error) && !!error.statusCode);
-  if (params.abortSignal?.aborted || !billedOnlyInput) budget.markUncertain(reservation);
+function settleAtFloor(budget: Budget, reservation: BudgetReservation, params: PreparedCall) {
+  if (params.abortSignal?.aborted) budget.markUncertain(reservation);
   else budget.settle(reservation, failedCallFloor(params));
 }
+
+/** Stream parts that carry no model output. */
+const FRAMING = new Set(["stream-start", "response-metadata", "raw"]);
 
 /**
  * How long a streamed call may wait with no read pending before its reservation is marked
@@ -86,7 +86,8 @@ export function withGenerationBudget(
           result = await doStream();
         } catch (error) {
           // Nothing was streamed: a provider HTTP error settles at the floor.
-          settleFailed(budget, reservation, params, { error });
+          if (isProviderHttpError(error)) settleAtFloor(budget, reservation, params);
+          else uncertain();
           release();
           throw error;
         }
@@ -105,6 +106,8 @@ export function withGenerationBudget(
           (idle as { unref?: () => void }).unref?.();
         };
         startIdle();
+        // Any part beyond the stream's framing may have been billed as output.
+        let produced = false;
         return {
           ...result,
           stream: new ReadableStream({
@@ -134,8 +137,14 @@ export function withGenerationBudget(
                     cachedInputTokens: count(input.cacheRead) ? input.cacheRead : 0,
                     cacheWriteInputTokens: count(input.cacheWrite) ? input.cacheWrite : 0,
                   });
+                } else if (!produced && part.finishReason.unified === "error") {
+                  settleAtFloor(budget, reservation, params);
+                  settled = true;
                 } else uncertain();
-              } else if (part.type === "error") uncertain();
+              } else if (!FRAMING.has(part.type)) {
+                produced = true;
+                if (part.type === "error") uncertain();
+              }
               controller.enqueue(part);
               if (settled) {
                 stopIdle();
@@ -170,14 +179,16 @@ export function withGenerationBudget(
               cacheWriteInputTokens: count(input.cacheWrite) ? input.cacheWrite : 0,
             };
             budget.settle(reservation, usage);
-          } else if (result.content.length === 0) settleFailed(budget, reservation, params);
+          } else if (result.content.length === 0 && result.finishReason.unified === "error")
+            settleAtFloor(budget, reservation, params);
           else {
             // Output came back without usage: its tokens were billed but are unknown.
             uncertain();
           }
           return result;
         } catch (error) {
-          settleFailed(budget, reservation, params, { error });
+          if (isProviderHttpError(error)) settleAtFloor(budget, reservation, params);
+          else uncertain();
           throw error;
         } finally {
           params.abortSignal?.removeEventListener("abort", uncertain);

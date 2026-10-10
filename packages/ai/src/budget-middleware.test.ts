@@ -12,7 +12,7 @@ import {
 } from "./budget-estimate";
 import { BudgetReservationError, withGenerationBudget } from "./budget-middleware";
 import { costUsd } from "./prices";
-import { createFakeAi } from "./testing";
+import { createFakeAi, nullUsageErrorReply } from "./testing";
 
 const id = "us.openai.gpt-5.6-terra";
 const params: PreparedCall = {
@@ -130,29 +130,47 @@ describe("provider admission boundary", () => {
 
     test("finishReason error with empty content and null usage settles at the text floor", async () => {
       const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
-      const value = reply();
       const model = withGenerationBudget(
-        new MockLanguageModelV4({
-          doGenerate: async () => ({
-            ...value,
-            content: [],
-            finishReason: { unified: "error" as const, raw: "error" },
-            usage: {
-              inputTokens: {
-                total: undefined,
-                noCache: undefined,
-                cacheRead: undefined,
-                cacheWrite: undefined,
-              },
-              outputTokens: { total: undefined, text: undefined, reasoning: undefined },
-            },
-          }),
-        }),
+        new MockLanguageModelV4({ doGenerate: async () => nullUsageErrorReply() }),
         id,
         budget,
       );
       await model.doGenerate(params);
       expect(budget.totals()).toEqual(floor);
+    });
+
+    test("a stream finishing with finishReason error, no content and no usage settles at the floor", async () => {
+      const { finishReason, usage } = nullUsageErrorReply();
+      const streamed = async (parts: unknown[], abort?: AbortController) => {
+        const budget = createBudget({ capUsd: 1, capTokens: 100_000 });
+        const model = withGenerationBudget(
+          new MockLanguageModelV4({
+            doStream: async () => {
+              abort?.abort();
+              return {
+                stream: new ReadableStream({
+                  start(controller) {
+                    for (const part of parts) controller.enqueue(part);
+                    controller.close();
+                  },
+                }) as never,
+              };
+            },
+          }),
+          id,
+          budget,
+        );
+        const { stream } = await model.doStream({ ...params, abortSignal: abort?.signal });
+        for await (const _ of stream as unknown as AsyncIterable<unknown>);
+        return budget.totals();
+      };
+      const finish = { type: "finish", finishReason, usage };
+      expect(await streamed([{ type: "stream-start", warnings: [] }, finish])).toEqual(floor);
+      const uncertain = { calls: 0, uncertain: { calls: 1 } };
+      // Text came back first, or the call was aborted: output may have been billed.
+      const text = { type: "text-delta", id: "t", delta: "x" };
+      expect(await streamed([text, finish])).toMatchObject(uncertain);
+      expect(await streamed([finish], new AbortController())).toMatchObject(uncertain);
     });
 
     test("a provider HTTP error settles at the text floor, generated or streamed", async () => {

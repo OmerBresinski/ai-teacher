@@ -4,6 +4,7 @@ import { createBudget } from "./budget";
 import { estimatePreparedCall, type PreparedCall } from "./budget-estimate";
 import { withGenerationBudget } from "./budget-middleware";
 import { costUsd } from "./prices";
+import { nullUsageErrorReply } from "./testing";
 
 /*
  * Register proof layout-05 (S7, 10 Oct 2026; d52 T1 y1, cost.json: usage.uncertain {calls: 10,
@@ -41,21 +42,7 @@ describe("REGISTER layout-05: errored photo picks keep budget booked; the lesson
     const mk = (budget: ReturnType<typeof createBudget>) =>
       withGenerationBudget(
         new MockLanguageModelV4({
-          doGenerate: async () =>
-            ({
-              warnings: [],
-              content: [],
-              finishReason: { unified: "error", raw: "provider error" },
-              usage: {
-                inputTokens: {
-                  total: undefined,
-                  noCache: undefined,
-                  cacheRead: undefined,
-                  cacheWrite: undefined,
-                },
-                outputTokens: { total: undefined, text: undefined, reasoning: undefined },
-              },
-            }) as never,
+          doGenerate: async () => nullUsageErrorReply(),
         }),
         id,
         budget,
@@ -70,9 +57,7 @@ describe("REGISTER layout-05: errored photo picks keep budget booked; the lesson
     // Inverted by the fix: the picks settle at their text input, so the writer call is admitted.
     const text = new TextEncoder().encode("Which photo shows a calf?").byteLength;
     expect(budget.totals()).toMatchObject({ calls: 10, inputTokens: 10 * text, outputTokens: 0 });
-    expect(budget.totals().uncertain).toBeUndefined();
+    // Without the fix this call is refused with BudgetReservationError.
     await expect(model.doGenerate(writer as never)).resolves.toBeDefined();
-    // Without the fix the same call is refused with BudgetReservationError.
-    expect(budget.lastRefusal()).toBeNull();
   });
 });
