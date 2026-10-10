@@ -121,6 +121,20 @@ describe("library models play their builds in Present", () => {
     doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
     // No answer mark is a build, and no build sits inside the answer.
     expect(doc.querySelectorAll("[data-reveal][data-s], [data-reveal] [data-s]").length).toBe(0);
+    // Revealed, the drawing shows only its own marks, all inside its view box.
+    const {
+      viewBox: [vx, vy, vw, vh],
+      words,
+    } = inspectDrawnSvg(d.svg);
+    const revealed = words.filter((w) => !w.shown || w.shown.includes(d.builds + 1));
+    expect(revealed.some((w) => /\b24\b/.test(w.words))).toBe(true);
+    for (const w of revealed) {
+      expect(w.x0).toBeGreaterThanOrEqual(vx - 1);
+      expect(w.y0).toBeGreaterThanOrEqual(vy - 1);
+      expect(w.x1).toBeLessThanOrEqual(vx + vw + 1);
+      expect(w.y1).toBeLessThanOrEqual(vy + vh + 1);
+    }
+    expect(revealed.some((w) => w.words.trim() === "20")).toBe(false);
     const last = frame(d.svg, d.builds);
     expect(last.words.some((w) => /\b24\b/.test(w))).toBe(false);
     expect(last.words.some((w) => /\b40\b/.test(w))).toBe(true);
