@@ -20,18 +20,18 @@
   "devDependencies": {
     "@tj/config": "workspace:*",
     "@types/bun": "1.4.2",
-    "mastra": "1.31.3",
+    "mastra": "1.32.1",
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@mastra/core": "1.71.0",
+    "@mastra/core": "1.74.0",
     "@tj/ai": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/slides": "workspace:*",
-    "ai": "7.0.114",
+    "ai": "7.0.128",
     "happy-dom": "20.14.5",
-    "pino": "10.3.1",
+    "pino": "10.4.0",
     "zod": "4.6.5"
   }
 }
