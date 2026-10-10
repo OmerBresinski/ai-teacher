@@ -93,7 +93,8 @@ const GIVES_RESULT = new RegExp(
  * A picture or diagram slide that gives pupils a task: a questions, instruction, ask or prompt field
  * with words in it, or a question mark in its lead or a point ("Which shaded part is one half?"),
  * or a lead or point sentence that opens with an ask verb ("Find how many are in one group.") on a
- * slide that gives no result.
+ * slide that gives no result. A slide with any point that teaches is a teaching slide whatever its
+ * lead asks (a rhetorical hook).
  * A question used as the heading alone ("Why do polar bears have thick fur?") is not a task.
  */
 export function visualTask(s: S): boolean {
@@ -102,11 +103,16 @@ export function visualTask(s: S): boolean {
     typeof v === "string" ? v.trim() !== "" : Array.isArray(v) && v.some(said);
   if (["questions", "instruction", "ask", "prompt"].some((k) => said(s[k]))) return true;
   const pts = Array.isArray(s.points) ? s.points : [];
-  const lines = [
-    s.lead,
-    ...pts.map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p)),
-  ];
-  const words = lines.filter((l): l is string => typeof l === "string");
+  const points = pts
+    .map((p) => (p && typeof p === "object" ? (p as { text?: unknown }).text : p))
+    .filter((l): l is string => typeof l === "string" && l.trim() !== "");
+  const asking = (l: string) => l.includes("?") || ASK_OPENER.test(l.trim());
+  // A question in a point is the slide's task. Otherwise a visual template teaches by default
+  // (TEACH-247 part q): a slide that also teaches in its points is a teaching slide, and a "?" or
+  // ask verb in its lead is a hook ("Which way does the blood go next?"), never its task.
+  if (points.some((l) => l.includes("?"))) return true;
+  if (points.some((l) => !asking(l))) return false;
+  const words = [s.lead, ...points].filter((l): l is string => typeof l === "string");
   if (words.some((l) => l.includes("?"))) return true;
   return !words.some((l) => GIVES_RESULT.test(l)) && words.some((l) => ASK_OPENER.test(l.trim()));
 }

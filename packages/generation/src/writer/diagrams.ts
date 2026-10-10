@@ -403,7 +403,10 @@ export function noHeadingTitle<T>(spec: T, words: string): T {
   if (!s || typeof s !== "object" || typeof s.title !== "string") return spec;
   const heading = norm(words.split("\n")[0] ?? "");
   if (!heading || norm(s.title) !== heading) return spec;
-  return { ...s, title: null } as T;
+  // The key goes: a diagram's title is optional, never null, so `title: null` does not parse and
+  // the layout refused a drawing the drawer had drawn (TEACH-247 part q).
+  const { title: _t, ...rest } = s;
+  return rest as T;
 }
 
 /** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
@@ -512,11 +515,23 @@ export async function drawWriterDiagram(
   deps: DrawDeps,
 ): Promise<DrawnWriterDiagram> {
   let ask = ask0;
-  const done = (spec: unknown, via: "code" | "drawer"): DrawnWriterDiagram => ({
-    spec: noHeadingTitle(ask0.question ? questionSafe(spec) : spec, ask0.words),
-    via,
-    fault: "",
-  });
+  /**
+   * The spec as it is stored, checked with the layout's own parse (TEACH-247 part q): `ok` covers
+   * the final shape, not the one before the heading title and the answer came out. A final shape
+   * that does not parse falls back to the same spec with its title kept; one that still does not
+   * (a question-safe spec) is a fault, never a spec the layout refuses after `ok: true`.
+   */
+  const parses = (o: unknown) =>
+    !diagramFaultOf(mendSpec(o), (m) => withLongLabels(() => parseDiagram(m)));
+  const done = (spec: unknown, via: "code" | "drawer"): DrawnWriterDiagram => {
+    const safe = ask0.question ? questionSafe(spec) : spec;
+    const final = noHeadingTitle(safe, ask0.words);
+    if (parses(final)) return { spec: final, via, fault: "" };
+    const fault = diagramFaultOf(mendSpec(final), (m) => withLongLabels(() => parseDiagram(m)));
+    deps.log?.({ ev: "diagram-final-fault", key: ask0.key, via, fault: fault.slice(0, 200) });
+    if (final !== safe && parses(safe)) return { spec: safe, via, fault: "" };
+    return { via: "none", fault: `the drawing as stored does not draw: ${fault}` };
+  };
   return nonFatal(
     async (): Promise<DrawnWriterDiagram> => {
       // unshared (BAKEOFF base4f): counters the writer asked for not shared yet are one pile (or
