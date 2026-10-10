@@ -200,6 +200,10 @@ export type Ctx = {
   fails?: string[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
+  /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
+  headingCap?: number;
+  /** The body was placed from the measured heading bottom already, so it is not moved again. */
+  bodyFromHeading?: boolean;
 };
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
@@ -374,7 +378,7 @@ function wordsFit(c: Ctx, text: string, role: Role, w: number, size: number, wei
 function heading(c: Ctx, value: string) {
   // A word too long for the line steps the heading down (never split mid-word).
   const full = c.s.heading;
-  let size = full;
+  let size = Math.min(full, c.headingCap ?? full);
   while (size > c.s.body && !wordsFit(c, value, "heading", G.width, size)) size -= 2;
   c.s = { ...c.s, heading: size };
   const el = text(
@@ -1164,12 +1168,96 @@ export type LayoutOptions = {
   fullSize?: boolean;
 };
 
+/**
+ * Ruling 198 (Greg, 10 Oct 2026): a title that wraps to two lines moves the content down, and the
+ * title shrinks only if there is no room. Every template lays its body in the band from y 160, which
+ * leaves the one-line gap under a one-line heading; this keeps that gap under the measured heading.
+ */
 export function layoutTemplate(
   input: TemplateInput,
   theme: Theme,
   stage: Stage,
   opts: LayoutOptions = {},
 ): TemplateResult {
+  const { result, bodyFromHeading } = layoutOnce(input, theme, stage, opts);
+  if (bodyFromHeading) return result;
+  const fit = headingFit(result, input.heading, theme, stage);
+  if (fit.cap === undefined) return shiftBody(result, fit.shift, fit.holds);
+  // No room to move the body down: lay out once more with the heading at the size that fits.
+  const capped = layoutOnce(input, theme, stage, opts, fit.cap).result;
+  return shiftBody(capped, shiftUnder(capped, fit.gap), true);
+}
+
+/** How far the body must move for `gap` to hold under the laid heading. */
+function shiftUnder(r: TemplateResult, gap: number): number {
+  const head = r.slide.elements.find((e) => e.name === "Heading") as TextElement | undefined;
+  const body = head ? bodyOf(r.slide.elements, head) : [];
+  if (!head || !body.length) return 0;
+  return Math.max(0, Math.ceil(head.y + head.h + gap - Math.min(...body.map((e) => e.y))));
+}
+
+/** The lowest a body may reach when it moves down under a taller heading (slide 540, 28 pt foot). */
+const SAFE_FOOT = 512;
+const SLIDE_H = 540;
+
+/** The body: every element under the heading's first line, the heading excluded. */
+const bodyOf = (els: SlideElement[], head: TextElement) =>
+  els.filter(
+    (e) => e !== head && e.y >= G.headY + Math.ceil(Number(head.style?.fontSize) * LH.heading),
+  );
+
+/**
+ * How far the body moves so the template's one-line gap (at the heading's full size) holds under
+ * the measured heading; when that carries the body past the safe foot, the largest smaller heading
+ * size (`cap`) at which it does not, and the move at that size. The body does not depend on the
+ * heading's size, so the sizes are measured on the heading's words alone, not laid out again.
+ * A body that already overruns the slide is left to fit (`shift` 0).
+ */
+function headingFit(
+  r: TemplateResult,
+  words: string,
+  theme: Theme,
+  stage: Stage,
+): { shift: number; holds: boolean; gap: number; cap?: number } {
+  const els = r.slide.elements;
+  const head = els.find((e) => e.name === "Heading") as TextElement | undefined;
+  if (!head) return { shift: 0, holds: true, gap: 0 };
+  const full = Number(head.style?.fontSize);
+  const gap = G.band.y - (G.headY + Math.ceil(full * LH.heading));
+  const body = bodyOf(els, head);
+  if (!body.length) return { shift: 0, holds: true, gap };
+  const top = Math.min(...body.map((e) => e.y));
+  const foot = Math.max(...body.map((e) => e.y + e.h));
+  const shiftAt = (h: number) => Math.max(0, Math.ceil(head.y + h + gap - top));
+  const shift = shiftAt(head.h);
+  if (shift === 0 || foot + shift <= SAFE_FOOT) return { shift, holds: true, gap };
+  if (foot > SLIDE_H) return { shift: 0, holds: false, gap };
+  const c: Ctx = { t: atKeyStage(theme, stage), s: templateScale(theme, stage), over: [], els: [] };
+  // The largest size that keeps the body above the safe foot; failing that, above the slide's edge.
+  for (const limit of [SAFE_FOOT, SLIDE_H])
+    for (let size = full - 2; size >= c.s.body; size -= 2) {
+      const h = measure({ ...c, s: { ...c.s, heading: size } }, words, "heading", G.width);
+      if (foot + shiftAt(h) <= limit) return { shift, holds: true, gap, cap: size };
+    }
+  // Even at the floor the body cannot move far enough: the heading stays, the body moves no further.
+  return { shift: 0, holds: false, gap };
+}
+
+/** The body moved down by `shift`; the heading-lines mark goes once the gap holds. */
+function shiftBody(r: TemplateResult, shift: number, holds: boolean): TemplateResult {
+  const head = r.slide.elements.find((e) => e.name === "Heading") as TextElement | undefined;
+  if (!head) return r;
+  if (shift > 0) for (const e of bodyOf(r.slide.elements, head)) e.y += shift;
+  return holds ? { ...r, over: r.over.filter((o) => !/^heading \d+ lines$/.test(o)) } : r;
+}
+
+function layoutOnce(
+  input: TemplateInput,
+  theme: Theme,
+  stage: Stage,
+  opts: LayoutOptions,
+  headingCap?: number,
+): { result: TemplateResult; bodyFromHeading: boolean } {
   // Master's key stage travels with the theme (`atKeyStage`), not process-wide: the drawer reads it
   // off `c.t`.
   const c: Ctx = {
@@ -1179,6 +1267,7 @@ export function layoutTemplate(
     els: [],
     fails: [],
     fullSize: opts.fullSize ?? false,
+    ...(headingCap ? { headingCap } : {}),
   };
   input = withoutFailedFigures(c, input);
   const tpl = input.template;
@@ -1379,6 +1468,7 @@ export function layoutTemplate(
         // for the full 4:3 band are a fault (the band shrinks only to keep the card on the slide).
         const pad = 10;
         const top = Math.max(G.band.y - 48, Math.round(head.y + head.h + 12));
+        c.bodyFromHeading = true;
         const bottom = G.band.y + G.band.h + 32;
         const iw = colW - 2 * pad;
         const wordsH = () =>
@@ -1708,7 +1798,7 @@ export function layoutTemplate(
       break;
     }
   }
-  return {
+  const result: TemplateResult = {
     slide: {
       kind: KIND[tpl],
       elements: c.els,
@@ -1718,6 +1808,7 @@ export function layoutTemplate(
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
   };
+  return { result, bodyFromHeading: c.bodyFromHeading ?? false };
 }
 
 /**
