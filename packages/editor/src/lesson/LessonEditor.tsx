@@ -65,6 +65,7 @@ import {
   resolveActiveSlide,
   useEditorSessionState,
 } from "./use-editor-session";
+import { useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
 
@@ -483,6 +484,14 @@ export function LessonEditor({
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
+  const follow = useFollowWriting({
+    slides: lesson?.slides,
+    writingSlideIds,
+    activeSlideId: session.state.activeSlideId,
+    setActiveSlide: session.actions.setActiveSlide,
+    startFollowing: initialSlideId === undefined,
+    canvasFocused,
+  });
 
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */
   const insert = useCallback(
@@ -626,6 +635,9 @@ export function LessonEditor({
                                     {slide && writingSlideIds?.has(slide.id) ? (
                                       <WritingOverlay />
                                     ) : null}
+                                    {follow.target && !follow.following ? (
+                                      <FollowWritingChip onFollow={follow.resume} />
+                                    ) : null}
                                     {/* Always wrapped, so the canvas never remounts when a slide's state turns. */}
                                     <div
                                       className="contents"
@@ -711,6 +723,24 @@ export function LessonEditor({
         </EditorSessionProvider>
       </HistoryProvider>
     </LessonProvider>
+  );
+}
+
+/**
+ * Live writing P1 (TEACH-202 part e): the teacher left the slide being written; one click follows
+ * it again. The shell's "Newest slide" (TEACH-252) in the editor's words.
+ */
+function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
+  return (
+    <button
+      type="button"
+      data-follow-writing
+      onClick={onFollow}
+      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      <span aria-hidden className="block size-2 animate-pulse rounded-full bg-primary" />
+      Follow writing
+    </button>
   );
 }
 

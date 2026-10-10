@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { isOpenPhotoSlot } from "@tj/slides";
+import { isOpenPhotoSlot, PHOTO_NAME } from "@tj/slides";
 import {
   builtSvgDataUrl,
   hasAnswerPart,
@@ -104,6 +104,23 @@ function Picture({
   const shown = useResolvedImageSrc(src);
   // A drawn diagram's words in the face it was measured in (an <img> cannot reach web fonts).
   const resolved = useDiagramFonts(built === src ? shown : built);
+  // Live writing P2 (TEACH-202 part e): a slide's photograph fades in over 200 ms once its bitmap
+  // has loaded in the editor, so a placed picture replaces its placeholder without a pop.
+  const reducedMotion = useReducedMotion();
+  const fade = mode === "edit" && element.name === PHOTO_NAME && !reducedMotion;
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const img = ref.current;
+    if (!img) return;
+    const loaded = () => setLoadedSrc(src);
+    if (img.complete) loaded();
+    img.addEventListener("load", loaded);
+    img.addEventListener("error", loaded);
+    return () => {
+      img.removeEventListener("load", loaded);
+      img.removeEventListener("error", loaded);
+    };
+  }, [src]);
   useEffect(() => {
     const img = ref.current;
     if (!img) return;
@@ -154,6 +171,9 @@ function Picture({
             transform: style.img.transform,
             objectFit: renderedFit(element),
             objectPosition: style.img.objectPosition,
+            ...(fade
+              ? { opacity: loadedSrc === src ? 1 : 0, transition: "opacity 200ms ease-out" }
+              : {}),
           }}
         />
       </div>

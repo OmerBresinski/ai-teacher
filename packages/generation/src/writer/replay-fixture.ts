@@ -153,7 +153,14 @@ export async function replayRun(
     stream?: (text: string) => string[];
     hooks?: Pick<
       WriterRun,
-      "onAsks" | "onSlide" | "onEditable" | "onReopen" | "roleStamp" | "onDraft" | "draft"
+      | "onAsks"
+      | "onSlide"
+      | "onEditable"
+      | "onReopen"
+      | "roleStamp"
+      | "onDraft"
+      | "draft"
+      | "bindPictureLanded"
     >;
     /** Called when the streamed text has all been handed over, before the writer call returns. */
     onStreamEnd?: () => void;
