@@ -8,6 +8,7 @@ import {
   svgOfDataUrl,
 } from "@tj/slides/diagram-builds";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDiagramFonts } from "../../images/diagram-fonts";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import { useReducedMotion } from "../../present/use-fullscreen";
@@ -101,7 +102,8 @@ function Picture({
   // reveal at all (then nothing would ever show it).
   const built = useBuiltSrc(element, diagramBuild, diagramAnswer ?? (!question || revealAnswer));
   const shown = useResolvedImageSrc(src);
-  const resolved = built === src ? shown : built;
+  // A drawn diagram's words in the face it was measured in (an <img> cannot reach web fonts).
+  const resolved = useDiagramFonts(built === src ? shown : built);
   useEffect(() => {
     const img = ref.current;
     if (!img) return;

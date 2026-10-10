@@ -3,6 +3,7 @@
  * Shared by the print route (before `window.print()`) and, from E2, the PNG capture loop: fonts
  * *and* every image, then one more frame so the browser has painted what was measured.
  */
+import { diagramFontsSettled } from "../images/diagram-fonts";
 
 /** Set on `<html>` once the print route has painted, so a headless renderer can wait on it. */
 export const CAPTURE_READY_ATTR = "data-capture-ready";
@@ -15,6 +16,10 @@ export async function waitForSlidePaint(root: ParentNode = document): Promise<vo
       /* Font loading API unavailable: carry on, the fallback face still paints. */
     }
   }
+  // A drawn diagram swaps to its fonted source once its faces are fetched (`diagram-fonts.ts`):
+  // wait for those, then a frame for React to commit the new src, before reading the images.
+  await diagramFontsSettled();
+  await nextFrame();
   const images = Array.from(root.querySelectorAll("img"));
   // A slide's own background is a CSS `background-image` (`SlideBackground`), invisible to the
   // `<img>` query; it announces its URL on `data-background-image` so it can be preloaded here.
@@ -41,7 +46,10 @@ export async function waitForSlidePaint(root: ParentNode = document): Promise<vo
     }),
   ]);
   // One more frame so the browser has actually painted what we just measured.
-  await new Promise<void>((resolve) =>
+  await nextFrame();
+}
+
+const nextFrame = () =>
+  new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
-}

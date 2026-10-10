@@ -120,6 +120,8 @@ export function svgAtBuild(
   return `${svg.slice(0, end)}<style>${rules.join("")}</style>${svg.slice(end)}`;
 }
 
+export { type EmbeddedFace, neededFaces, svgFontFamilies, svgWithFonts } from "./embed-fonts";
+
 const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 
 /** The SVG inside a drawn diagram's data URL, or undefined for any other source. */

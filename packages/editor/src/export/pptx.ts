@@ -54,6 +54,7 @@ import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { withDiagramFonts } from "../images/diagram-fonts";
 import { resolveImageSrc } from "../images/resolve-src";
 import { normaliseAngle } from "../model/geometry";
 import { choiceText } from "../slide/elements/choice";
@@ -1184,7 +1185,9 @@ async function drawImage(
   // One that cannot be drawn is a visible gap and a warning, never an embedded SVG.
   const svg = element.src.startsWith("data:image/svg+xml");
   const data = svg
-    ? await ctx.rasteriseSvg(element.src, element.w, element.h).catch(() => undefined)
+    ? await ctx
+        .rasteriseSvg(await withDiagramFonts(element.src), element.w, element.h)
+        .catch(() => undefined)
     : await toDataUrl(element.src, ctx.imageOrigin);
   if (svg && !data)
     ctx.warn(`A diagram could not be drawn as a picture: ${element.alt ?? element.id}`);
