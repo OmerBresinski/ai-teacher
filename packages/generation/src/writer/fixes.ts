@@ -1,5 +1,6 @@
 import { writerBundle } from "./bundle";
 import fitData from "./fit-table.gen.json" with { type: "json" };
+import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
 
@@ -299,6 +300,27 @@ export function withLook(
     return { slide: { ...s, template: "visual-text", figure: pic }, how: "explain-to-visual-text" };
   const field = FIGURE_FIELD[tpl];
   return field ? { slide: { ...s, [field]: pic }, how: `${field}-from-look` } : { slide: s };
+}
+
+/**
+ * Ruling 196 (prod-01: "a split view of a snowy Arctic landscape and a sandy desert landscape" was
+ * dropped and left an empty frame): the title picture shows one thing, the first its request names.
+ */
+export function titleOneThing(s: S): { slide: S; how?: string } {
+  const pic = s.picture as { shows?: unknown } | null | undefined;
+  if (s.template !== "title" || !pic || typeof pic.shows !== "string") return { slide: s };
+  const shows = pic.shows
+    .replace(/\bsplit (view|scene|image) of\b/i, "")
+    .replace(/^.*?\b(photographs?|photos?|pictures?|images?) of\s+/i, "");
+  const one = compoundSubjects(shows)[0]?.replace(/^(a|an|the)\s+/i, "");
+  // only the thing the request leads with ("a family portrait with two children, their parents
+  // and ..." is one portrait, not "their parents")
+  const lead = (shows.split(/,|\band\b|\bbeside\b/i)[0] ?? "").toLowerCase();
+  if (!one || !lead.includes(one)) return { slide: s };
+  return {
+    slide: { ...s, picture: { ...pic, shows: one, must_see: [one] } },
+    how: "title-one-thing",
+  };
 }
 
 /** The room a slide has, in the writer's units, for a stand-alone or reroute call. */

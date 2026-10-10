@@ -1,0 +1,35 @@
+{
+  "id": "s1",
+  "kind": "title",
+  "elements": [
+    {
+      "type": "text",
+      "name": "Title",
+      "x": 64,
+      "y": 78,
+      "w": 344,
+      "h": 297,
+      "text": "Surviving the Arctic and the desert TPFIRST"
+    },
+    {
+      "type": "text",
+      "name": "Subtitle",
+      "x": 64,
+      "y": 395,
+      "w": 344,
+      "h": 68,
+      "text": "Recall: how does a thick coat help you on a cold day?"
+    },
+    {
+      "type": "image",
+      "name": "Photo",
+      "x": 452,
+      "y": 48,
+      "w": 444,
+      "h": 444,
+      "src": "/files/01a1223a-99cd-7082-9417-ecdcee776c4d/images/01a1223b-4a4a-70e7-9d1a-8bf83e899c64.jpg",
+      "alt": "Smiling woman in white coat poses with a small snowman on snowy tracks."
+    }
+  ],
+  "source": "t-teacherpath/.data/teacher-path/pr438-writer-2/recording/ks3-y7-science-adaptations-signed-in/lesson.json slides[0]"
+}

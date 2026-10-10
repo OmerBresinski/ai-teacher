@@ -1,0 +1,27 @@
+{
+  "source": "e2e-speed-1/T/y1-science-animals-young/main.json slides[5]",
+  "slide": {
+    "template": "question-set",
+    "heading": "Describe what changes",
+    "questions": [
+      "What young animal can you see?",
+      "How does its size change?",
+      "How does it look more like its parent?"
+    ],
+    "instruction": "Say: “As it grows, it…”",
+    "picture": {
+      "shows": "Three golden retrievers shown left to right at the same scale: a small puppy, an older puppy and an adult dog",
+      "must_see": ["small puppy", "older puppy", "adult dog", "longer adult legs"],
+      "subject": "generic"
+    }
+  },
+  "log": [
+    {
+      "t": 1791556649756,
+      "ev": "lost-picture",
+      "slide": 8,
+      "try": "split",
+      "ok": true
+    }
+  ]
+}

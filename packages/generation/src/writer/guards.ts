@@ -79,6 +79,35 @@ export const sameFigure = (
   (a.shows.trim().toLowerCase() === b.shows.trim().toLowerCase() ||
     overlap(a.shows, b.shows) >= 0.5);
 
+/**
+ * Which old ask each new ask carries its picture or drawing from, one-to-one (layout-01, d52 A y8
+ * s4: "An adult mother smiling" matched "An adult father smiling" first and was given his photo).
+ * Pairs are taken closest request first (its own slot breaks a tie), and an old ask is given to at
+ * most one new ask.
+ */
+export function carryPairs<A extends { key: string; type: string; shows: string }>(
+  oldAsks: A[],
+  newAsks: A[],
+  same: (old: A, now: A) => boolean,
+): Map<string, A> {
+  const out = new Map<string, A>();
+  const used = new Set<string>();
+  // the closest request wins; its own slot breaks a tie
+  const score = (b: A, a: A) =>
+    (b.shows.trim().toLowerCase() === a.shows.trim().toLowerCase()
+      ? 2
+      : overlap(b.shows, a.shows)) + (b.key === a.key ? 0.01 : 0);
+  const pairs = newAsks
+    .flatMap((a) => oldAsks.filter((b) => same(b, a)).map((b) => ({ a, b, s: score(b, a) })))
+    .sort((x, y) => y.s - x.s);
+  for (const { a, b } of pairs)
+    if (!out.has(a.key) && !used.has(b.key)) {
+      out.set(a.key, b);
+      used.add(b.key);
+    }
+  return out;
+}
+
 const ENDS = /([.?!:;…]|[.?!]["'”’)\]])\s*$/;
 const CONTINUES = /^\s*([a-z]|(and|but|or|so|because|while|which|who)\b)/;
 

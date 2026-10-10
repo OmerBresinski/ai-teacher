@@ -65,12 +65,14 @@ import {
   repairTerms,
   roomLine,
   shuffleHinge,
+  titleOneThing,
   withCorrectLetter,
   withLook,
   writerIncomplete,
 } from "./fixes";
 import { gasFaults, rescaleGas } from "./gas";
 import {
+  carryPairs,
   judgeRepair,
   POINTING_WORDS,
   repairable,
@@ -79,7 +81,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { localise } from "./locale";
-import { lostPictureFallback } from "./lost-picture";
+import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
@@ -681,6 +683,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       s = added.slide;
     } else if (look && look.kind !== "none" && !asksVisual(s))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
+    const one = titleOneThing(s);
+    if (one.how) {
+      log({
+        ev: "title-one-thing",
+        slide: idx + 1,
+        shows: (one.slide.picture as { shows: string }).shows,
+      });
+      s = one.slide;
+    }
     plan.slides[idx] = s;
     asks.set(idx, visualsOf(s, idx, { ...base, plan }));
     run.onAsks?.(idx, asks.get(idx) ?? [], {
@@ -959,15 +970,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     plan.slides[i] = next;
     const newAsks = visualsOf(next, i, { ...base, plan });
     asks.set(i, newAsks);
+    // Pictures carry by slot first, then one-to-one by request (layout-01).
+    const pairs = carryPairs(
+      oldAsks,
+      newAsks,
+      (b, a) =>
+        sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
+        // the same request is not the same drawing: a spec that changed is drawn again
+        (b.type !== "diagram" ||
+          a.type !== "diagram" ||
+          specKey((b as { spec?: unknown }).spec) === specKey((a as { spec?: unknown }).spec)),
+    );
     for (const a of newAsks) {
-      const was = oldAsks.find(
-        (b) =>
-          sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }) &&
-          // the same request is not the same drawing: a spec that changed is drawn again
-          (b.type !== "diagram" ||
-            a.type !== "diagram" ||
-            specKey((b as { spec?: unknown }).spec) === specKey(a.spec)),
-      );
+      const was = pairs.get(a.key);
       // a drawing whose numbers the new words no longer say is never carried
       const v0 = was ? oldState.get(was.key) : undefined;
       const stale = v0?.status === "diagram" ? figureTextMismatch(v0.spec, next as S) : undefined;
@@ -1417,12 +1432,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (path.has(i) || i < 2) return;
     const lost = (asks.get(i) ?? []).find(
       (a): a is Extract<VisualAsk, { type: "photo" }> =>
-        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+        a.type === "photo" &&
+        !a.set &&
+        !a.fixedShape &&
+        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
+        // slide is never split or redrawn
+        !/^card\.\d+$/.test(a.key) &&
+        visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
-    // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
-    // ported: a partial split never ships).
+    // before any rewrite; the slide is restored unless every new visual lands (a split: unless
+    // splitOk holds, and then only its landed pictures ship).
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
@@ -1459,8 +1480,33 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             const st = visualState(i)(a.key).status;
             return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
           });
-          const ok = got && all.length > 0;
-          log({ ev: "lost-picture", slide: i + 1, try: kind, ok });
+          // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
+          // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
+          // the same photo placed twice (one bank image for two tiles) counts, and ships, once
+          const srcs = new Set<string>();
+          const landed = all.filter((a) => {
+            const v = visualState(i)(a.key);
+            if (a.type !== "photo" || v.status !== "photo") return false;
+            const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
+            if (srcs.has(src)) return false;
+            srcs.add(src);
+            return true;
+          });
+          const ok =
+            kind === "split"
+              ? all.length > 0 && splitLanded(landed.length, all.length)
+              : got && all.length > 0;
+          log({
+            ev: "lost-picture",
+            slide: i + 1,
+            try: kind,
+            ok,
+            ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
+          });
+          if (ok && landed.length < all.length) {
+            const shows = new Set(landed.map((a) => a.shows));
+            swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
+          }
           if (ok) {
             relay(i);
             return true;
@@ -1556,7 +1602,28 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (left) restore(i, s, n0, oldAsks);
     log({ ev: "point-guard", slide: i + 1, removed, how: left ? "left" : "point-strip" });
   };
+  // Ruling 195: a matching task's card pictures that failed are asked once more before the slide
+  // settles; any still missing turn the task into a plain question (materialise).
+  const cardRetry = async (i: number) => {
+    const failed = (asks.get(i) ?? []).filter(
+      (a) =>
+        a.type === "photo" &&
+        /^card\.\d+$/.test(a.key) &&
+        visualState(i)(a.key).status === "failed",
+    );
+    const s = plan.slides[i] as S | undefined;
+    if (!failed.length || !s || s.template !== "pair" || !run.placeMore) return;
+    await run.placeMore(i, failed, {
+      heading: String(s.heading ?? ""),
+      text: wordsOf(s),
+      point: pointOf(s),
+    });
+    const still = failed.filter((a) => visualState(i)(a.key).status === "failed").length;
+    log({ ev: "card-retry", slide: i + 1, asked: failed.length, still });
+    relay(i);
+  };
   const settleSlide = async (i: number) => {
+    await cardRetry(i);
     await fallback(i);
     const beforeLost = plan.slides[i] as S | undefined;
     const asksBeforeLost = asks.get(i) ?? [];

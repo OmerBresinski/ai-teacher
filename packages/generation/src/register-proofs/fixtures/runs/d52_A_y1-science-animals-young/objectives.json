@@ -1,0 +1,18 @@
+{
+  "objectives": [
+    {
+      "teacher": "Match a cat, dog, cow, sheep and chicken to their young: kitten, puppy, calf, lamb and chick.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Describe how a kitten, puppy, calf and lamb look like their parents, while a chick has fluffy down rather than a chicken’s feathers.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Put pictures of a chick, a young chicken and an adult chicken in order to show how it grows.",
+      "pupil": ""
+    }
+  ],
+  "ran": "production lesson.plan job (writer planner)",
+  "ageBand": "ks1"
+}
