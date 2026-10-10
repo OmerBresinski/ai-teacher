@@ -27,21 +27,6 @@ export const DEFAULT_SLIDE_COUNT: SlideCount = 10;
 export const SLIDE_TIERS = ["quick", "standard", "detailed"] as const;
 export type SlideTier = (typeof SLIDE_TIERS)[number];
 export const DEFAULT_SLIDE_TIER: SlideTier = "standard";
-export const SLIDE_TIER_RANGES: Record<SlideTier, { min: number; max: number }> = {
-  quick: { min: 6, max: 8 },
-  standard: { min: 9, max: 12 },
-  detailed: { min: 13, max: 20 },
-};
-/**
- * The exact count the outline planners (objectives-first, facts) build for a tier: always inside
- * the tier's range, so the writer is never asked for slides the outline did not plan.
- */
-export const PLANNER_COUNT_OF_TIER: Record<SlideTier, number> = {
-  quick: 8,
-  standard: 10,
-  detailed: 16,
-};
-/** How hard the lesson is pitched relative to the year group (ruling 74). */
 export const BRIEF_LEVELS = ["easier", "standard", "harder"] as const;
 export type BriefLevel = (typeof BRIEF_LEVELS)[number];
 
@@ -76,31 +61,3 @@ export const BriefSchema = z.strictObject({
     })
     .optional(),
 });
-
-type DeckLength = { slideTier?: SlideTier | undefined; slideCount?: number | undefined };
-
-/**
- * The tier a brief stands for: its `slideTier`, else the tier its exact count falls in (a lesson
- * made before tiers), else Standard.
- */
-export function slideTierOf(brief: DeckLength | undefined): SlideTier {
-  if (brief?.slideTier) return brief.slideTier;
-  const n = brief?.slideCount;
-  if (n === undefined) return DEFAULT_SLIDE_TIER;
-  return n <= SLIDE_TIER_RANGES.quick.max
-    ? "quick"
-    : n <= SLIDE_TIER_RANGES.standard.max
-      ? "standard"
-      : "detailed";
-}
-
-/**
- * The exact count an outline planner builds: a tier's planner count (inside its range), else an
- * older lesson's own count, else the Standard tier's.
- */
-export function plannerSlideCount(brief: DeckLength | undefined): number {
-  if (brief?.slideTier) return PLANNER_COUNT_OF_TIER[brief.slideTier];
-  const n = brief?.slideCount;
-  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n)) return n;
-  return PLANNER_COUNT_OF_TIER[DEFAULT_SLIDE_TIER];
-}

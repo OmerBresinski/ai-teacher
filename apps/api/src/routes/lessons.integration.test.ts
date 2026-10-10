@@ -365,7 +365,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       topic: "Phonics warm-up",
       durationMin: 45,
       classContext: { sizeBand: "25to30" },
-      slideCount: 10,
+      slideTier: "standard",
     });
   });
 

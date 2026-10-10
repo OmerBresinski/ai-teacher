@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import {
-  type Brief,
-  BriefSchema,
-  MAX_CLARIFYING_QUESTIONS,
-  plannerSlideCount,
-  slideTierOf,
-} from "./brief";
+import { type Brief, BriefSchema, MAX_CLARIFYING_QUESTIONS } from "./brief";
 import { GUARD_MESSAGE } from "./identifier-guard";
+import { plannerSlideCount, slideTierOf } from "./slide-tiers";
 
 const minimal = (): Brief => ({ topic: "Fractions of amounts", durationMin: 60 });
 
