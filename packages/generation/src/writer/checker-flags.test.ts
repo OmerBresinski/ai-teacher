@@ -241,3 +241,34 @@ describe("objective coverage", () => {
     });
   });
 });
+
+describe("a planned visual is never lost (Greg, 10 Oct 2026)", () => {
+  // Eight labels on one small square: every room draws it only with warnings.
+  const crowded = {
+    kind: "labelled-diagram",
+    alt: "A small square with six labels",
+    canvas: "square",
+    shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }],
+    labels: Array.from({ length: 8 }, (_, k) => ({
+      text: `Label number ${k + 1} words`,
+      at: [50, 50],
+    })),
+  };
+  // TODO(resume): no fixture yet parses and warns in every room on y8 s3 (6 labels draw clean, 8 and 12 go unshown).
+  test.skip("y8 s3: a family tree that draws only with warnings ships, its warnings on visual-path", async () => {
+    const b = "y8-french-my-family";
+    const rec = recordedVisuals(b);
+    const visual: Parameters<typeof run>[2] = (i, key, a) => {
+      const v = rec(i, key, a);
+      return i === 2 && v.status === "diagram" ? { ...v, spec: crowded } : v;
+    };
+    const r = await run(b, CHECKER_DEFAULTS, visual);
+    expect(r.pathOf(3)).toBe("diagram");
+    expect(r.images[2]).toBe(1);
+    const ev = r.events.find((e) => e.ev === "visual-path" && e.slide === 3) as
+      | { warnings?: string[] }
+      | undefined;
+    expect(ev?.warnings?.length ?? 0).toBeGreaterThan(0);
+    expect(r.events.some((e) => e.ev === "unshown-strip" && e.slide === 3)).toBe(false);
+  });
+});

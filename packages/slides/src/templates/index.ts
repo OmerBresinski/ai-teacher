@@ -186,6 +186,11 @@ export type TemplateResult = {
   over: string[];
   /** Round 2: why a diagram on this slide could not draw (drawDiagram's reasons); the slide was laid out without it. */
   diagram?: string[];
+  /**
+   * The faults of a diagram that shipped with warnings (`LayoutOptions.diagramWarnings`): a planned
+   * visual is never lost to a crowded label, it ships with its faults logged.
+   */
+  diagramWarnings?: string[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -203,6 +208,8 @@ export type Ctx = {
   fails?: string[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
+  /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
+  warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
   headingCap?: number;
   /** The body was placed from the measured heading bottom already, so it is not moved again. */
@@ -649,6 +656,9 @@ function tilePanel(
   });
   return any;
 }
+/** The warnings of a diagram element drawn under `diagramWarnings`, read when the result is built. */
+const WARNED = new WeakMap<object, string[]>();
+
 function figurePanel(
   c: Ctx,
   f: Figure | undefined,
@@ -719,10 +729,13 @@ function figurePanel(
     // A drawing that only draws with warnings (TEACH-247 part n) is a miss for this panel, as
     // before: the layout tries its other rooms (full width, a continued table) and the writer
     // stage decides what ships. drawDiagram itself never refuses it.
-    if (!r.ok || r.warnings) {
+    // Under `diagramWarnings` (the writer's second pass, when every room missed) it fills the room
+    // and its warnings ride on the element to the result.
+    if (!r.ok || (r.warnings && !c.warnOk)) {
       c.fails?.push(...(r.ok ? (r.warnings ?? []) : r.reasons));
       return undefined;
     }
+    if (r.warnings) WARNED.set(r.element, r.warnings);
     return { el: r.element, ...(r.fs < c.s.small ? { note: `diagram labels ${r.fs}pt` } : {}) };
   };
   const d = draw();
@@ -1218,7 +1231,7 @@ function drawnSize(
     h: rect.h - 2 * i,
     fs: c.s.small,
   });
-  if (!r.ok || r.warnings) return undefined;
+  if (!r.ok || (r.warnings && !c.warnOk)) return undefined;
   // The drawing is zoomed to fill its box: each text on the slide is its font size times that
   // zoom. The smallest text in the drawing is the one that counts.
   const el = r.element as { w?: number; h?: number; src?: string };
@@ -1333,6 +1346,12 @@ export type LayoutOptions = {
    * measured this way (fit-first: the model plans to fit at full size; the ladder is a net).
    */
   fullSize?: boolean;
+  /**
+   * Greg: a planned visual is never lost. A drawing that draws only with warnings (a crowded label)
+   * fills its room instead of missing it, and its faults come back as `diagramWarnings`. The writer
+   * lays out with this only after a strict layout dropped the diagram.
+   */
+  diagramWarnings?: boolean;
 };
 
 /**
@@ -1434,6 +1453,7 @@ function layoutOnce(
     els: [],
     fails: [],
     fullSize: opts.fullSize ?? false,
+    ...(opts.diagramWarnings ? { warnOk: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1986,6 +2006,8 @@ function layoutOnce(
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
   };
+  const warned = [...new Set(c.els.flatMap((e) => WARNED.get(e) ?? []))];
+  if (warned.length) result.diagramWarnings = warned;
   return { result, bodyFromHeading: c.bodyFromHeading ?? false };
 }
 

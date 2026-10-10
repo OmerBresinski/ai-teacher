@@ -78,11 +78,18 @@ export type MaterialiseCtx = {
   index: number;
   plan: Plan;
   visual: (key: string) => VisualState;
+  /**
+   * Greg: a planned visual is never lost. The stage's last resort before a diagram goes unshown: a
+   * drawing that draws only with warnings fills its room and its faults come back as `diagramWarnings`.
+   */
+  diagramWarnings?: boolean;
 };
 export type Materialised = {
   slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
   over: string[];
   diagram?: string[];
+  /** The faults of a diagram that shipped with warnings because no room drew it cleanly. */
+  diagramWarnings?: string[];
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -636,6 +643,13 @@ export function whatIs(word: string, language = false): string | undefined {
 /** Lay one slide out from its JSON and the visuals' current states. */
 export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
   let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
+  // Greg: a planned visual is never lost. When no room drew the diagram cleanly and the stage has
+  // nothing better (`ctx.diagramWarnings`), the least-bad drawing ships with its warnings (logged on
+  // visual-path) rather than leaving the slide without it.
+  if (r.diagram?.length && ctx.diagramWarnings) {
+    const warned = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage, { diagramWarnings: true });
+    if (!warned.diagram?.length && warned.diagramWarnings?.length) r = warned;
+  }
   // A diagram the layout dropped is missing: the slide is laid out again with its `ask_without` lines.
   if (r.diagram?.length) {
     const why = r.diagram;
@@ -645,7 +659,12 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     r = { ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage), diagram: why };
   }
   const slide = { ...r.slide, kind: kindByRole(s, ctx, r.slide.kind) };
-  return aiAuthored({ slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) });
+  return aiAuthored({
+    slide,
+    over: r.over,
+    ...(r.diagram ? { diagram: r.diagram } : {}),
+    ...(r.diagramWarnings ? { diagramWarnings: r.diagramWarnings } : {}),
+  });
 }
 
 /**

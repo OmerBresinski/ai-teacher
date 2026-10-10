@@ -394,10 +394,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const a = (asks.get(i) ?? []).find((x) => x.key === key);
     return a && run.visual ? run.visual(i, key, a) : ({ status: "pending" } as VisualState);
   };
-  const relay = (i: number) => {
+  // Slides whose diagram ships with warnings (no room drew it cleanly): every later relay keeps it.
+  const warned = new Set<number>();
+  const relay = (i: number, diagramWarnings = warned.has(i)) => {
     const s = plan.slides[i];
     if (!s) return;
-    const lay = () => materialise(s, { ...base, index: i, plan, visual: visualState(i) });
+    const lay = () =>
+      materialise(s, {
+        ...base,
+        index: i,
+        plan,
+        visual: visualState(i),
+        ...(diagramWarnings ? { diagramWarnings } : {}),
+      });
     // A drawn diagram carries its builds (Present shows its parts one per Next).
     if (!run.drawDiagrams) return void laid.set(i, lay());
     const m = withBuilds(lay);
@@ -1542,6 +1551,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }
       restore(i, s, n0, oldAsks);
     }
+    // Greg (10 Oct 2026): a planned visual is never lost. A drawing that draws in no room cleanly
+    // but does draw with warnings ships the least-bad layout, its warnings logged on visual-path.
+    if (st === "diagram") {
+      relay(i, true);
+      if (laid.get(i)?.diagramWarnings?.length && !laid.get(i)?.diagram?.length) {
+        warned.add(i);
+        path.set(i, "diagram");
+        return;
+      }
+      relay(i);
+    }
     // A table is words already: one that cannot draw keeps its data, as text lines on the slide
     // (flag off) or, by default, in the speaker notes beside the writer's own slide.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
@@ -1892,7 +1912,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
-  for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
+  for (const [i, p] of path) {
+    const warnings = laid.get(i)?.diagramWarnings;
+    log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
+  }
 
   // ── notes: the deck-wide call, with each changed slide's own note in its place ──
   const got = await deckNotes;
