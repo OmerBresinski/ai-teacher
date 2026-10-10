@@ -62,11 +62,23 @@ function counter(x: Ctx, cx: number, cy: number, r: number, fill: string): strin
 export const UNSHARED =
   /\b(unshared|not (yet )?shared|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?(a single|one) (ring|pile|group)|all together|together in one)/i;
 const ROW_WORDS = /\b(in (a|one) (row|line)|one row|a row of|in a line|lined up)\b/i;
-/** The pile spec (one ring, every counter, no count) for a request that asks for unshared counters. */
+/**
+ * The pile spec (one ring, every counter, no count) for a request that asks for unshared counters.
+ * `words` is what the slide asks to show (`shows`), never `alt`: alt describes the answer's form.
+ */
 export function pileSpec(spec: unknown, words: string): EqualGroups | undefined {
-  const s = spec as { kind?: unknown; total?: unknown; alt?: unknown };
+  const s = spec as {
+    kind?: unknown;
+    total?: unknown;
+    groups?: unknown;
+    unknown?: unknown;
+    alt?: unknown;
+  };
   if (s?.kind !== "equal-groups" || typeof s.total !== "number" || !Number.isInteger(s.total))
     return;
+  // G3: the spec's own fields decide. Groups to show with their counts hidden is a shared picture
+  // ("Find the number in one ring"), never a pile, whatever the words say.
+  if (s.unknown === true && typeof s.groups === "number" && s.groups >= 2) return;
   if (s.total < 2 || s.total > 40 || !UNSHARED.test(words)) return;
   return {
     kind: "equal-groups",
