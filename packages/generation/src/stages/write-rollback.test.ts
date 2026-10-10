@@ -49,3 +49,32 @@ describe("a failure while the writer streams", () => {
     expect(last?.generation?.stage).toBe("planned");
   });
 });
+
+describe("the lesson's title after a full write", () => {
+  const run = async (title?: string) => {
+    const ai = () => labAi({ extra: answers, route: writerRoute });
+    const planned = await checkedWriterObjectives(
+      initialState(romansLesson()),
+      recordingDeps(ai()),
+    );
+    const lesson = title ? { ...planned.lesson, title } : planned.lesson;
+    const deps = recordingDeps(ai());
+    const out = await write({ ...planned, lesson }, deps);
+    const heading = JSON.parse(fixture.main).title?.heading as string;
+    return { before: planned.lesson, out, last: deps.persisted.at(-1)?.lesson, heading };
+  };
+
+  test("a title still from the brief becomes the title slide's heading", async () => {
+    const { before, last, out, heading } = await run();
+    expect(before.title).toBe(before.brief?.topic.trim().slice(0, 80) ?? "");
+    expect(heading).toBeTruthy();
+    expect(heading).not.toBe(before.title);
+    expect(last?.title).toBe(heading.trim());
+    expect(out.lesson.title).toBe(heading.trim());
+  });
+
+  test("a title the teacher changed is kept", async () => {
+    const { last } = await run("Our Romans lesson");
+    expect(last?.title).toBe("Our Romans lesson");
+  });
+});

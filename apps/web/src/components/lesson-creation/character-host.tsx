@@ -193,22 +193,24 @@ export function CharacterHost({
         const box = actor.restBox(0);
         state.entering = true;
         actor.present(0, false);
-        void import("./motion/entrances/index.js").then(({ playEntrance }) => {
-          if (cancelled || !box) return actor.present(0, true);
-          entry = playEntrance("plan", {
-            stage: stageEl,
-            box,
-            onEnd: () => {
-              actor.present(0, true);
-              state.entering = false;
-              // Ready before it has even picked the brief up: straight on, nothing to lower.
-              if (state.pending) {
-                state.finishing = true;
-                planningRef.current?.onDone?.();
-              } else afterRest(() => loop(READING.pickUp), 0.4);
-            },
-          });
-        });
+        const entered = () => {
+          if (!state.entering) return;
+          actor.present(0, true);
+          state.entering = false;
+          // Ready before it has even picked the brief up: straight on, nothing to lower.
+          if (state.pending) {
+            state.finishing = true;
+            planningRef.current?.onDone?.();
+          } else afterRest(() => loop(READING.pickUp), 0.4);
+        };
+        // The entrance chunk can fail to load (a deploy replaced it under an open tab) or throw:
+        // Plan then simply stands there, and the page still moves on when the plan is ready.
+        void import("./motion/entrances/index.js")
+          .then(({ playEntrance }) => {
+            if (cancelled || !box) return actor.present(0, true);
+            entry = playEntrance("plan", { stage: stageEl, box, onEnd: entered });
+          })
+          .catch(entered);
       }
       return () => {
         cancelled = true;

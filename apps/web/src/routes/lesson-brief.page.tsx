@@ -49,6 +49,12 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
+/**
+ * The longest the plan screen waits for Plan to finish reading once the objectives are ready.
+ * Plan's animation normally hands over in a second or two; if it never does (its chunk failed to
+ * load after a deploy, or the animation stalled), the page moves on anyway.
+ */
+export const REVEAL_MAX_MS = 4000;
 // The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
 const SignInSheet = lazy(() =>
   import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
@@ -133,6 +139,19 @@ function LessonIntake({
   const watched = useRef(false);
   if (jobId) watched.current = true;
   const [reveal, setReveal] = useState<string[] | null>(null);
+  // Leaves the planning stage once: from Plan's hand-over or, failing that, the timer below.
+  const finishReveal = () =>
+    leaveStage(() => {
+      setReveal(null);
+      if (lesson) land(lesson);
+    });
+  const finishRef = useRef(finishReveal);
+  finishRef.current = finishReveal;
+  useEffect(() => {
+    if (!reveal) return;
+    const timer = setTimeout(() => finishRef.current(), REVEAL_MAX_MS);
+    return () => clearTimeout(timer);
+  }, [reveal]);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -345,11 +364,9 @@ function LessonIntake({
         planning && !failed
           ? {
               objectives: reveal,
-              onDone: () =>
-                leaveStage(() => {
-                  setReveal(null);
-                  if (lesson) land(lesson);
-                }),
+              onDone: () => {
+                if (reveal) finishReveal();
+              },
             }
           : undefined
       }

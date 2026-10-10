@@ -1,6 +1,7 @@
 import {
   type AgeBand,
   deriveAgeBand,
+  LESSON_TITLE_MAX,
   type Lesson,
   type Slide,
   type SlideGenerationState,
@@ -127,6 +128,18 @@ function keepFinished<T extends { id: string }>(
       out.splice(Math.min(i, out.length), 0, slide as unknown as T);
   });
   return out;
+}
+
+/**
+ * The lesson's title once the writer has written the title slide: its heading, while the title is
+ * still the one the lesson was created with (the brief's topic, cut). A teacher's own title is
+ * never replaced, and an empty heading keeps the title as it is.
+ */
+export function writtenTitle(lesson: Lesson, heading: string | undefined): string {
+  const topic = lesson.brief?.topic;
+  const fromBrief = topic !== undefined && lesson.title === topic.trim().slice(0, LESSON_TITLE_MAX);
+  const next = heading?.replace(/\s+/g, " ").trim().slice(0, LESSON_TITLE_MAX);
+  return fromBrief && next ? next : lesson.title;
 }
 
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
@@ -407,7 +420,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           ),
       })
     : credited(out.slides);
-  const done = toLesson(deck, "generated", allIn(deck, "done"));
+  const done = {
+    ...toLesson(deck, "generated", allIn(deck, "done")),
+    title: writtenTitle(lesson, out.title),
+  };
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
   return { ...state, lesson: done };

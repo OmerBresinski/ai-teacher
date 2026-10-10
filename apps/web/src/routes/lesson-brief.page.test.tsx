@@ -7,7 +7,7 @@ import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { readLastClass } from "@/lib/brief-memory";
 import { installFakeApi } from "@/test/fake-api";
-import { installFakeEventSource } from "@/test/fake-event-source";
+import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 
 const { fakeApi, restore } = installFakeApi();
 const originalEventSource = globalThis.EventSource;
@@ -47,7 +47,7 @@ mock.module("@/components/turnstile", () => ({
     return stubTurnstile ? turnstile : real;
   },
 }));
-const { LessonBriefPage } = await import("./lesson-brief.page");
+const { LessonBriefPage, REVEAL_MAX_MS } = await import("./lesson-brief.page");
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -230,6 +230,44 @@ describe("real lesson intake", () => {
     expect(post().yearGroup).toBe("Year 6");
     expect(post().skipPlanning).toBe(false);
   });
+
+  it("moves on to the objectives when Plan never hands over (its chunk failed after a deploy)", async () => {
+    const { artefacts: _artefacts, ...lesson } = generatedLesson();
+    const generation = lesson.generation;
+    if (!generation) throw new Error("fixture without generation");
+    const jobId = crypto.randomUUID();
+    const row = fakeApi.insertLesson(
+      {
+        ...lesson,
+        yearGroup: "Year 5",
+        brief: { topic: "The water cycle", slideCount: 8 },
+        facts: lessonFacts(),
+        generation: { ...generation, stage: "planned" },
+        plan: { revision: 1, state: "proposed", jobId },
+      } as Lesson,
+      jobId,
+    );
+    installFakeEventSource();
+    search = { lesson: row.id };
+    show();
+    await screen.findByRole("heading", { name: "Planning your lesson" });
+    await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
+    // The job ends: the lock is released and the stream says so. CharacterHost is mocked to
+    // nothing here, so Plan's hand-over (`onDone`) never comes, exactly as when its chunk 404s.
+    row.generatingJobId = null;
+    FakeEventSource.latest.open();
+    FakeEventSource.latest.emit(
+      "completed",
+      { type: "completed", jobId, workspaceId: crypto.randomUUID(), at: new Date().toISOString() },
+      "1",
+    );
+    await screen.findByText(/learning objectives are ready/);
+    await screen.findByRole(
+      "heading",
+      { name: "Learning objectives" },
+      { timeout: REVEAL_MAX_MS + 2000 },
+    );
+  }, 15_000);
 
   it("asks no theme question on the objectives step (ruling 116)", async () => {
     openPlanned();
