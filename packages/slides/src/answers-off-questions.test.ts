@@ -3,14 +3,14 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { materialiseSlide } from "./materialise";
 import { ANSWERS_NAME } from "./reflow";
 import type { SlideSpec } from "./specs";
-import { answersOffQuestions } from "./structure";
+import { answersOnOwnSlide } from "./structure";
 import { getTheme, THEMES } from "./themes";
 
 /*
  * prod-17: the production photosynthesis lesson's quick check (one generated slide, so no page can
  * be added) kept its answers panel as a reveal over questions 3 and 4. When the panel cannot clear
- * the questions on the one slide, the answers leave the face of the slide for the speaker notes (`answersOffQuestions`, which
- * generation's coded sets go through in `withAnswersReveal`).
+ * the questions on the one slide, the answers go on a slide of their own straight after, "Quick check: answers" (UX ruling,
+ * Greg 10 Oct; `answersOnOwnSlide`, which generation's Repair applies to the finished deck).
  */
 
 const ANSWERS = [
@@ -44,19 +44,31 @@ function questionsFoot(slide: Slide): number {
   );
 }
 
-describe("a quick check's answers never cover its questions on one slide", () => {
-  it.each(THEMES.map((t) => [t.id, t]))("long answers on %s", (_id, theme: Theme) => {
-    const slide = answersOffQuestions(materialiseSlide(spec(ANSWERS), theme.id, meta), theme);
-    const panel = slide.elements.find((e) => e.name === ANSWERS_NAME);
-    if (panel) expect(panel.y).toBeGreaterThanOrEqual(questionsFoot(slide));
-    else for (const a of ANSWERS) expect(slide.notes ?? "").toContain(a);
-  });
+describe("a quick check's answers never cover its questions", () => {
+  it.each(THEMES.map((t) => [t.id, t]))(
+    "long answers on %s get their own slide",
+    (_id, theme: Theme) => {
+      const pages = answersOnOwnSlide(materialiseSlide(spec(ANSWERS), theme.id, meta), theme);
+      expect(pages).toHaveLength(2);
+      const [questions, answers] = pages as [Slide, Slide];
+      expect(questions.elements.some((e) => e.name === ANSWERS_NAME)).toBe(false);
+      const words = JSON.stringify(answers.elements);
+      expect(words).toContain("Quick check: answers");
+      for (const [i, a] of ANSWERS.entries()) {
+        expect(words).toContain(`"${i + 1} "`);
+        expect(words).toContain(a);
+      }
+      expect(answers.elements.every((e) => !e.revealStep)).toBe(true);
+      expect(questionsFoot(questions)).toBeGreaterThan(0);
+    },
+  );
 
   it("short answers that clear the questions keep their reveal on the slide", () => {
-    const slide = answersOffQuestions(
+    const pages = answersOnOwnSlide(
       materialiseSlide(spec(["Yes", "Light", "Kept", "It absorbs light"]), "studio", meta),
       getTheme("studio"),
     );
-    expect(slide.elements.some((e) => (e.revealStep ?? 0) >= 1)).toBe(true);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.elements.some((e) => (e.revealStep ?? 0) >= 1)).toBe(true);
   });
 });

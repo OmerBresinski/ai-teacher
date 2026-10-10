@@ -26,6 +26,7 @@ import {
   isCodeBuilt,
   isRetrievalStarter,
   withAnswersReveal,
+  withAnswersSlides,
   withShuffledOptions,
 } from "../planner/coded-slides";
 import {
@@ -509,6 +510,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   // Audit A3: every set printed in code from a fact Repair patched is printed again from the
   // patched facts, with the same seed as Generate, so the quizzes never contradict the facts.
   if (lab) lesson = reprintPatchedSets(lesson, outcomes, deps);
+  // Last, once nothing indexes slides by outline entry: a set whose answers would cover its
+  // questions gets its answers slide straight after (prod-17).
+  lesson = withAnswersSlides(lesson, deps.ids);
 
   throwIfAborted(deps.signal);
   const schema = checkLesson(lesson, worksheet);

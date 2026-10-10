@@ -15,6 +15,7 @@ import {
   sameQuestion,
   seededOrder,
   withAnswersReveal,
+  withAnswersSlides,
   withShuffledOptions,
 } from "./coded-slides";
 
@@ -391,7 +392,7 @@ describe("the exit ticket: at most three, on one slide (TEACH-172, ruling 108)",
   }
 });
 
-describe("a coded quick check never reveals its answers over its questions (prod-17)", () => {
+describe("a quick check whose answers would cover its questions gets an answers slide (prod-17)", () => {
   const answers = [
     "carbon dioxide + water → glucose + oxygen",
     "Light energy",
@@ -404,22 +405,38 @@ describe("a coded quick check never reveals its answers over its questions (prod
     "What happens to the atoms of carbon dioxide and water in photosynthesis?",
     "Explain how chlorophyll helps a leaf make glucose.",
   ];
-  test.each(THEMES.map((t) => [t.id]))("the panel goes to the notes on %s", (themeId) => {
-    const made = materialiseSlide(
-      {
-        kind: "instructions",
-        factRefs: [],
-        heading: "Quick check",
-        steps,
-        footnote: `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`,
-      },
+  const meta = { promptVersion: "prod-17", model: "test", at: "2026-10-10T10:00:00.000Z" };
+  const check = (themeId: string) =>
+    withAnswersReveal(
+      materialiseSlide(
+        {
+          kind: "instructions",
+          factRefs: [],
+          heading: "Quick check",
+          steps,
+          footnote: `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`,
+        },
+        themeId,
+        meta,
+      ),
       themeId,
-      { promptVersion: "prod-17", model: "test", at: "2026-10-10T10:00:00.000Z" },
     );
-    const slide = withAnswersReveal(made, themeId);
-    const list = slide.elements.find((e) => e.type === "text" && !e.name && !e.revealStep);
-    const panel = slide.elements.find((e) => e.name === "Answers");
-    if (panel && list) expect(panel.y).toBeGreaterThanOrEqual(list.y + list.h);
-    else for (const a of answers) expect(slide.notes ?? "").toContain(a);
+  const after = (notes: string): Slide =>
+    ({ ...check("studio"), id: "after", notes, elements: [] }) as Slide;
+
+  test.each(THEMES.map((t) => [t.id]))("on %s the answers follow on their own slide", (themeId) => {
+    const lesson = { themeId, slides: [check(themeId), after("Recap slide 1, then slide 2.")] };
+    const out = withAnswersSlides(lesson);
+    expect(out.slides).toHaveLength(3);
+    const [questions, own, next] = out.slides as [Slide, Slide, Slide];
+    expect(questions.elements.some((e) => e.name === "Answers")).toBe(false);
+    expect(JSON.stringify(own.elements)).toContain("Quick check: answers");
+    // A slide number said in words follows the slide it named.
+    expect(next.notes).toBe("Recap slide 1, then slide 3.");
+  });
+
+  test("a deck with no covering panel comes back as it was", () => {
+    const lesson = { themeId: "studio", slides: [after("slide 1")] };
+    expect(withAnswersSlides(lesson)).toBe(lesson);
   });
 });
