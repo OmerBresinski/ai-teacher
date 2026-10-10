@@ -397,6 +397,8 @@ export function activityFaults(
   const out: string[] = [];
   const cards = (Array.isArray(s.cards) ? s.cards : []) as { text: string; group?: number }[];
   const q = laid.question;
+  // Ruling 195: a pair whose card pictures failed is laid as plain questions, with nothing to reveal.
+  if (!q && id === "pair" && !laid.elements.some((e) => e.type === "image")) return [];
   if (!q) return ["activity: no answer to reveal"];
   const els = laid.elements;
   const byId = new Map(els.map((e) => [e.id, e]));

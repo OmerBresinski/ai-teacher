@@ -1519,7 +1519,28 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (left) restore(i, s, n0, oldAsks);
     log({ ev: "point-guard", slide: i + 1, removed, how: left ? "left" : "point-strip" });
   };
+  // Ruling 195: a matching task's card pictures that failed are asked once more before the slide
+  // settles; any still missing turn the task into a plain question (materialise).
+  const cardRetry = async (i: number) => {
+    const failed = (asks.get(i) ?? []).filter(
+      (a) =>
+        a.type === "photo" &&
+        /^card\.\d+$/.test(a.key) &&
+        visualState(i)(a.key).status === "failed",
+    );
+    const s = plan.slides[i] as S | undefined;
+    if (!failed.length || !s || s.template !== "pair" || !run.placeMore) return;
+    await run.placeMore(i, failed, {
+      heading: String(s.heading ?? ""),
+      text: wordsOf(s),
+      point: pointOf(s),
+    });
+    const still = failed.filter((a) => visualState(i)(a.key).status === "failed").length;
+    log({ ev: "card-retry", slide: i + 1, asked: failed.length, still });
+    relay(i);
+  };
   const settleSlide = async (i: number) => {
+    await cardRetry(i);
     await fallback(i);
     const beforeLost = plan.slides[i] as S | undefined;
     const asksBeforeLost = asks.get(i) ?? [];

@@ -23,7 +23,14 @@ import { checkSlide } from "./checks";
 import { type Brief, promptStage } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { repairable } from "./guards";
-import { materialise, type Plan, type VisualState, visualsOf, wordsOf } from "./materialise";
+import {
+  materialise,
+  type Plan,
+  type VisualState,
+  visualsOf,
+  whatIs,
+  wordsOf,
+} from "./materialise";
 import { type WriterStage, writerSchema } from "./schema";
 import type { ChatReq, WriterReq, WriterServices } from "./services";
 import { runWriter, writerSystem } from "./stage";
@@ -487,7 +494,7 @@ describe("checks on the laid-out slide", () => {
   });
 
   test("a failed picture becomes a word card; a 'look at' line over word cards is dangling", () => {
-    for (const id of WRITER_ACTIVITIES) {
+    for (const id of WRITER_ACTIVITIES.filter((x) => x !== "pair")) {
       const { s, m } = laid(id, { lead: "Look at the pictures." }, () => ({ status: "failed" }));
       expect(m.slide.elements.some((e) => e.type === "image")).toBe(false);
       expect(m.slide.question).toBeDefined();
@@ -504,9 +511,12 @@ describe("checks on the laid-out slide", () => {
       });
       expect(check.faults.some((f) => f.startsWith("dangling:"))).toBe(true);
     }
-    // A pair of word cards is a word-to-word matching question.
+    // Ruling 195: a pair that lost its pictures is plain questions, never word-to-word matching.
     const pair = laid("pair", {}, () => ({ status: "failed" }));
-    expect(pair.m.slide.question?.type).toBe("matching");
+    expect(pair.m.slide.question).toBeUndefined();
+    const words = pair.m.slide.elements.map(elementText).join(" ");
+    for (const c of pair.s.cards as { text: string }[]) expect(words).toContain(whatIs(c.text));
+    expect(activityFaults(pair.s, pair.m.slide)).toEqual([]);
   });
 });
 

@@ -32,20 +32,20 @@ describe("REGISTER layout-01: the mother shown with the father's photo after a r
     const same = (b: { type: string; shows: string }, a: { type: string; shows: string }) =>
       sameFigure(b, a);
     const kept = carryPairs([father, mother] as never[], [father, mother] as never[], same);
-    expect((kept.get("col.1") as unknown as { shows: string }).shows).toBe(mother?.shows);
+    expect((kept.get("col.1") as unknown as { shows: string }).shows).toBe(String(mother?.shows));
     const swapped = [
       { ...mother, key: "col.0" },
       { ...father, key: "col.1" },
     ];
     const moved = carryPairs([father, mother] as never[], swapped as never[], same);
-    expect((moved.get("col.0") as unknown as { shows: string }).shows).toBe(mother?.shows);
-    expect((moved.get("col.1") as unknown as { shows: string }).shows).toBe(father?.shows);
+    expect((moved.get("col.0") as unknown as { shows: string }).shows).toBe(String(mother?.shows));
+    expect((moved.get("col.1") as unknown as { shows: string }).shows).toBe(String(father?.shows));
   });
 });
 
 describe("REGISTER layout-03: a picture-matching task ships with no pictures (d52 A y1 s4)", () => {
   const run = "d52_A_y1-science-animals-young";
-  test("BUG layout-03: with card.0 and card.2 failed, the pair slide has no image at all (card.1 landed)", () => {
+  test("FIXED layout-03: with card.0 and card.2 failed, the pair becomes a plain question (ruling 195)", () => {
     const brief = JSON.parse(runFile(run, "brief.json")) as Brief;
     const s = writerSlides(run)[1] as J;
     expect(String(s.instruction)).toContain("Match each picture");
@@ -61,9 +61,11 @@ describe("REGISTER layout-03: a picture-matching task ships with no pictures (d5
       plan: { slides: [] },
       visual,
     });
-    // BAD OUTCOME (fix PR inverts: retry the card from stock, or re-template the task).
-    expect(m.slide.kind).toBe("image-match");
-    expect(m.slide.elements.filter((e) => e.type === "image").length).toBe(0);
+    // Ruling 195: still missing after the retry, the task becomes a plain question.
+    expect(m.slide.kind).not.toBe("image-match");
+    const text = JSON.stringify(m.slide.elements);
+    expect(text).toContain("What is a kitten?");
+    expect(text).not.toContain("Match each picture");
   });
 });
 

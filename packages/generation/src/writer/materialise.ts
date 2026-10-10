@@ -309,6 +309,20 @@ export function toInput(
     return isPic(f) || isDia(f) ? figureNow(k, f, ctx, mark) : undefined;
   };
   const lead = s.lead == null ? undefined : str(s.lead);
+  // Ruling 195 (layout-03, d52 A y1 s4): a matching task whose card pictures are still missing
+  // after their one retry becomes a plain question; it never matches a word to the same word.
+  if (
+    template === "pair" &&
+    // the writer's own cards: a failed picture is already resolved away from `s`
+    (Array.isArray((raw0 as S).cards) ? ((raw0 as S).cards as S[]) : []).some(
+      (c, n) => c?.picture != null && ctx.visual(`card.${n}`).status === "failed",
+    )
+  )
+    return {
+      template: "question-set",
+      heading,
+      questions: (s.cards as S[]).map((c) => whatIs(str(c?.text ?? c?.label))),
+    };
   switch (template) {
     case "title":
       return { template, heading, lead, figure: fig("picture") };
@@ -543,6 +557,13 @@ export function aiAuthored<T extends { slide: { elements: unknown[] } }>(m: T): 
 }
 
 /** Lay one slide out from its JSON and the visuals' current states. */
+/** A plain recall question about one card's word: "What is a kitten?", "What does “ma mère” mean?" */
+export function whatIs(word: string): string {
+  const w = word.trim().replace(/[.?!]+$/, "");
+  if (/^[a-z]+$/.test(w)) return `What is ${/^[aeiou]/.test(w) ? "an" : "a"} ${w}?`;
+  return `What does “${w}” mean?`;
+}
+
 export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
   let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
   // A diagram the layout dropped is missing: the slide is laid out again with its `ask_without` lines.
