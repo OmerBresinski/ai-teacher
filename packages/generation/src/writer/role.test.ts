@@ -238,8 +238,9 @@ describe("roleStamp on the replay fixtures", () => {
     }
     // roleAsk: 7 replay slides whose lead or point opens with an ask verb ("Your turn: Find one half
     // of 10. Count one group.") moved from teach to task (step 1 counted teach 52, task 3); the y8
-    // French "Match the French noun" advice slide stays teach.
-    expect(counts).toEqual({ teach: 45, practice: 32, hinge: 12, check: 5, worked: 15, task: 10 });
+    // French "Match the French noun" advice slide stays teach. TEACH-247 part q: the two y12
+    // visual-text slides headed "Worked example: …" moved from teach to worked.
+    expect(counts).toEqual({ teach: 43, practice: 32, hinge: 12, check: 5, worked: 17, task: 10 });
   }, 60_000);
 
   test("y2 halves: the picture asking which half is a task", async () => {

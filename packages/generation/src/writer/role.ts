@@ -54,6 +54,12 @@ const ACTIVITY_TEMPLATES = new Set([
 ]);
 /** A worked example: the steps shown, or an equation worked through. */
 const WORKED_TEMPLATES = new Set(["steps", "equation-hero"]);
+/**
+ * A picture or diagram slide headed as a worked example ("Worked example: supplying a leg") shows
+ * the working, whatever "Which way next?" its lines ask on the way (TEACH-247 part q: a library
+ * model on such a slide was held to a question and fell back). "Your turn" is the pupils' task.
+ */
+const WORKED_HEADING = /^\s*(?:worked example|example\s*\d*\s*:)(?![^:]*:\s*your turn)/i;
 /** Picture and diagram templates, whose words may set pupils a task (#441 isPictureTask). */
 const VISUAL_TEMPLATES = new Set([
   "visual-text",
@@ -122,6 +128,7 @@ function ownRole(s: S): SlideRole | "question-set" {
   if (t === "discussion") return "discuss";
   if (ACTIVITY_TEMPLATES.has(t)) return "activity";
   if (WORKED_TEMPLATES.has(t)) return "worked";
+  if (VISUAL_TEMPLATES.has(t) && WORKED_HEADING.test(String(s.heading ?? ""))) return "worked";
   if (visualTask(s)) return "task";
   return "teach";
 }

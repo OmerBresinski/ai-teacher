@@ -403,7 +403,10 @@ export function noHeadingTitle<T>(spec: T, words: string): T {
   if (!s || typeof s !== "object" || typeof s.title !== "string") return spec;
   const heading = norm(words.split("\n")[0] ?? "");
   if (!heading || norm(s.title) !== heading) return spec;
-  return { ...s, title: null } as T;
+  // The key goes: a diagram's title is optional, never null, so `title: null` does not parse and
+  // the layout refused a drawing the drawer had drawn (TEACH-247 part q).
+  const { title: _t, ...rest } = s;
+  return rest as T;
 }
 
 /** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
