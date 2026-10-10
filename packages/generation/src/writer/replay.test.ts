@@ -20,8 +20,8 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  *
  * One documented difference: r2 y1 slide 6 "Find the pairs". The lab replay kept a split of 5 of
  * its 8 single pictures (splitOk), replacing the matching table the original run shipped. splitOk
- * is not ported: a split ships only when every picture lands, so the slide is the reroute's
- * adults / young word table, as the original run shipped it.
+ * is ported (TEACH-251 part c), but two of the five tiles carry the same bank image, which ships
+ * once: the slide shows 4 distinct photos where the lab showed 5.
  */
 
 const DIR = join(import.meta.dir, "fixtures/replay");
@@ -62,9 +62,11 @@ describe.each(LESSONS)("replay %s", (b) => {
       const want = saved[i] as El & { elements: El[] };
       const got = s.elements as unknown as El[];
       if (b === "y1-science-animals-young-r2" && i === 5) {
-        // the matching table, never a partial split of single photos
-        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
-        expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
+        // splitOk: the landed single photos, each once, never the reroute's word table
+        const photos = got.filter((e) => e.type === "image" && e.name === "Photo");
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(false);
+        expect(new Set(photos.map((e) => e.src)).size).toBe(4);
+        expect(photos).toHaveLength(4);
         return;
       }
       expect({ i, kind: s.kind, background: s.background }).toEqual({

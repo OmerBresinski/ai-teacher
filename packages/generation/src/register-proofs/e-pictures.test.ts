@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
+import { CHECKER_DEFAULTS } from "../writer/checker-flags";
 import { type Brief, withLook } from "../writer/fixes";
 import { carryPairs, sameFigure } from "../writer/guards";
 import { compoundSubjects, splitLanded, splitSlide } from "../writer/lost-picture";
 import { materialise, type VisualState } from "../writer/materialise";
 import { stripPointTasks } from "../writer/point-guard";
-import { fixture, type J, runFile, theme, writerSlides } from "./harness";
+import { replayRun, replayServices } from "../writer/replay-fixture";
+import { eventsOf, fixture, type J, runFile, theme, writerSlides } from "./harness";
 
 /*
  * Group E: picture selection and carry-over. Root cause: picture slots are matched and re-asked
@@ -87,12 +89,28 @@ describe("REGISTER layout-04: one animal growing shown as three different dogs (
 });
 
 describe("REGISTER checker-06: pointGuard leaves 'Answer from memory' slides with nothing to look at (base4f-p123-1 y1 s6)", () => {
-  test("BUG checker-06: 2 of 6 split tiles landing is not kept, and the pointing task is stripped", () => {
+  test("FIXED checker-06 (splitOk): a split whose distinct pictures reach half ships them (replay y1-r2 s6, 5 of 8 landed)", async () => {
+    const events: J[] = [];
+    const base = replayServices("y1-science-animals-young-r2");
+    const out = await replayRun("y1-science-animals-young-r2", {
+      services: { ...base, log: (e) => events.push(e as J) },
+      checker: CHECKER_DEFAULTS,
+    });
+    const s6 = eventsOf(events, 6);
+    expect(s6.find((e) => e.ev === "lost-picture")).toMatchObject({ try: "split", ok: true });
+    expect(s6.some((e) => e.ev === "point-guard")).toBe(false);
+    const photos = ((out.slides[5] as unknown as { elements?: J[] })?.elements ?? []).filter(
+      (e) => e.type === "image" && e.name === "Photo",
+    ) as unknown as { src: string }[];
+    // the bank gave two tiles one image: it ships once
+    expect(photos.length).toBe(4);
+    expect(new Set(photos.map((p) => p.src)).size).toBe(4);
+  });
+  test("BUG checker-06 (still open): 2 of 6 tiles is under half, so the pointing task is stripped", () => {
     const s = fixture("checker-06").slide as J;
-    // master: a partial split never ships (stage.ts:1250); splitOk would need 2+ and half.
     expect(splitLanded(2, 6)).toBe(false);
     const { removed } = stripPointTasks(s);
-    // BAD OUTCOME (fix PR inverts: keep the split or rebuild as a picture-card match).
+    // OPEN: splitOk needs half the set; this slide still goes to pointGuard (see TEACH-251 part c).
     expect(removed).toContain("Point to each pair and say the names.");
   });
 });

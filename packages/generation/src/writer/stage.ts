@@ -80,7 +80,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { localise } from "./locale";
-import { lostPictureFallback } from "./lost-picture";
+import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
@@ -1359,8 +1359,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     if (!lost) return;
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
-    // before any rewrite; the slide is restored unless every new visual lands (splitOk is not
-    // ported: a partial split never ships).
+    // before any rewrite; the slide is restored unless every new visual lands (a split: unless
+    // splitOk holds, and then only its landed pictures ship).
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     // Only a slide whose lost picture was its one visual (keepPic's rule): never over a figure,
@@ -1397,8 +1397,33 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             const st = visualState(i)(a.key).status;
             return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
           });
-          const ok = got && all.length > 0;
-          log({ ev: "lost-picture", slide: i + 1, try: kind, ok });
+          // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
+          // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
+          // the same photo placed twice (one bank image for two tiles) counts, and ships, once
+          const srcs = new Set<string>();
+          const landed = all.filter((a) => {
+            const v = visualState(i)(a.key);
+            if (a.type !== "photo" || v.status !== "photo") return false;
+            const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
+            if (srcs.has(src)) return false;
+            srcs.add(src);
+            return true;
+          });
+          const ok =
+            kind === "split"
+              ? all.length > 0 && splitLanded(landed.length, all.length)
+              : got && all.length > 0;
+          log({
+            ev: "lost-picture",
+            slide: i + 1,
+            try: kind,
+            ok,
+            ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
+          });
+          if (ok && landed.length < all.length) {
+            const shows = new Set(landed.map((a) => a.shows));
+            swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
+          }
           if (ok) {
             relay(i);
             return true;

@@ -123,6 +123,19 @@ export function splitSlide(s: Slide, key: string, subjects: string[]): Slide {
   return { ...s, [key]: pic(first as string), tiles: rest.map(pic) };
 }
 
+/**
+ * splitOk (D48b): the split slide with only the single pictures that landed, the first in the
+ * picture's own field and the rest as tiles (`landed` holds their requests).
+ */
+export function keepLanded(s: Slide, key: string, landed: (shows: string) => boolean): Slide {
+  const pics = [s[key], ...((s.tiles as unknown[]) ?? [])].filter(
+    (p): p is { shows: string } =>
+      !!p && typeof p === "object" && landed(String((p as { shows?: unknown }).shows ?? "")),
+  );
+  const [first, ...rest] = pics;
+  return first ? { ...s, [key]: first, tiles: rest } : s;
+}
+
 /** The slide with its lost picture replaced by a library diagram of the same thing. */
 export function librarySlide(s: Slide, key: string, kind: string, shows: string): Slide {
   const { [key]: _lost, ...rest } = s;
