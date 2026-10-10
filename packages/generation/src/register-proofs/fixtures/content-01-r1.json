@@ -1,0 +1,34 @@
+{
+  "source": "d53/A/r1/y8-french-my-family/main.json slides[1] (log slide 4)",
+  "slide": {
+    "template": "big-visual",
+    "heading": "L’âge — Age",
+    "lead": "Il / Elle a… ans = He / She is… years old.\nLis les nombres à voix haute. Read the numbers aloud.",
+    "figure": {
+      "kind": "table",
+      "shows": "A reference table of French numbers from 1 to 20",
+      "alt": "French number words from one to twenty, arranged in two sets of ten.",
+      "title": null,
+      "header": ["Nombre", "En français", "Nombre", "En français"],
+      "rows": [
+        ["1", "un", "11", "onze"],
+        ["2", "deux", "12", "douze"],
+        ["3", "trois", "13", "treize"],
+        ["4", "quatre", "14", "quatorze"],
+        ["5", "cinq", "15", "quinze blanche"]
+      ]
+    }
+  },
+  "flow": [
+    {
+      "slide": 2,
+      "does": "Share the lesson objectives",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "teaches": []
+    }
+  ],
+  "objectives": null
+}

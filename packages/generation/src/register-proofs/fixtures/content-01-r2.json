@@ -1,0 +1,45 @@
+{
+  "source": "d53/A/r2/y8-french-my-family/main.json slides[3] (log slide 6)",
+  "slide": {
+    "template": "visual-text",
+    "heading": "Quel âge a-t-il ?",
+    "lead": "Il a douze ans. = He is twelve.\nElle a douze ans. = She is twelve.",
+    "points": [
+      {
+        "label": "Age",
+        "text": "Use a… ans, not est… ans."
+      },
+      {
+        "label": "Description",
+        "text": "Use est: Il est gentil. = He is kind."
+      }
+    ],
+    "figure": {
+      "kind": "table",
+      "shows": "French numbers from one to twenty in two pairs of columns",
+      "alt": "French numbers one to twenty, from un to vingt.",
+      "title": null,
+      "header": ["Number", "Français", "Number", "Français"],
+      "rows": [
+        ["1", "un", "11", "onze"],
+        ["2", "deux", "12", "douze"],
+        ["3", "trois", "13", "treize"],
+        ["4", "quatre", "14", "quatorze"],
+        ["5", "cinq", "15", "quinze"],
+        ["6", "six", "16", "seize soirées"]
+      ]
+    }
+  },
+  "flow": [
+    {
+      "slide": 4,
+      "does": "Model introducing a family member",
+      "look_at": {
+        "kind": "picture",
+        "shows": "A mother being introduced"
+      },
+      "teaches": [1]
+    }
+  ],
+  "objectives": null
+}

@@ -1,0 +1,45 @@
+{
+  "source": "d53/A/r3/y8-french-my-family/main.json slides[3] (log slide 6)",
+  "slide": {
+    "template": "visual-text",
+    "heading": "Dire l’âge — say the age",
+    "lead": "Il a douze ans. — He is twelve.\nElle a quinze ans. — She is fifteen.",
+    "points": [
+      {
+        "label": "Age",
+        "text": "Use a… ans, not est… ans."
+      },
+      {
+        "label": "Correction",
+        "text": "Il est douze ans. ✗ → Il a douze ans. ✓"
+      }
+    ],
+    "figure": {
+      "kind": "table",
+      "shows": "A reference table of French numbers from one to twenty",
+      "alt": "French spellings for the numbers one to twenty.",
+      "title": null,
+      "header": ["Number", "French", "Number", "French"],
+      "rows": [
+        ["1", "un", "11", "onze"],
+        ["2", "deux", "12", "douze"],
+        ["3", "trois", "13", "treize"],
+        ["4", "quatre", "14", "quatorze"],
+        ["5", "cinq", "15", "quinze"],
+        ["6", "six", "16", "seize toute"]
+      ]
+    }
+  },
+  "flow": [
+    {
+      "slide": 4,
+      "does": "Model introducing a family member",
+      "look_at": {
+        "kind": "picture",
+        "shows": "A father being introduced"
+      },
+      "teaches": [1]
+    }
+  ],
+  "objectives": null
+}

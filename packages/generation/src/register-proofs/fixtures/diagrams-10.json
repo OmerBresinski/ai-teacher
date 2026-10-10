@@ -1,0 +1,22 @@
+{
+  "source": "d52/T8/wo/y8-french-my-family/main.json slides[1] (log slide 4)",
+  "slide": {
+    "template": "big-visual",
+    "heading": "Quel âge ? — How old?",
+    "lead": "Il/Elle a … ans. = He/She is … years old.\nRead the numbers aloud.",
+    "figure": {
+      "kind": "table",
+      "shows": "The French spellings of numbers from one to twenty",
+      "alt": "A reference table gives every number from one to twenty in French.",
+      "title": null,
+      "header": ["Number", "Français", "Number", "Français"],
+      "rows": [
+        ["1", "un", "11", "onze"],
+        ["2", "deux", "12", "douze"],
+        ["3", "trois", "13", "treize"],
+        ["4", "quatre", "14", "quatorze"],
+        ["5", "cinq", "15", "quinze"]
+      ]
+    }
+  }
+}

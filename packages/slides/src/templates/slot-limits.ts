@@ -258,7 +258,8 @@ function draws(spec: unknown, g: Group, slot: Slot): boolean {
               template: SLOT_LAYOUT[slot],
               heading: "Heading",
               lead: LEAD,
-              points: ["One point", "Another point"],
+              // A big diagram's slot is measured without points (with them it carries key cards).
+              ...(slot === "full" ? {} : { points: ["One point", "Another point"] }),
               figure: { diagram: drawn },
             } as never,
             getTheme(th),
@@ -291,7 +292,7 @@ function box(template: string, g: Group) {
           template,
           heading: "Heading",
           lead: LEAD,
-          points: ["One", "Two"],
+          ...(template === "big-diagram" ? {} : { points: ["One", "Two"] }),
           questions: ["Q1", "Q2"],
           formula: "a = b",
           figure: { diagram: spec },

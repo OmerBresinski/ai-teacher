@@ -587,7 +587,8 @@ export const layoutSlotProbe: SlotProbe = (spec, slot, stage, theme) => {
       template: slot === "full" ? "big-diagram" : "diagram-text",
       heading: "Heading",
       lead: "What this shows.",
-      points: ["One point", "Another point"],
+      // A big visual has no points (with points it would carry key cards, ruling 194).
+      ...(slot === "full" ? {} : { points: ["One point", "Another point"] }),
       figure: { diagram: fromMeaning(spec) },
     } as never,
     atKeyStage(theme, stage),

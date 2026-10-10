@@ -35,6 +35,7 @@ import {
   QUESTION_TEMPLATES,
   questionSafe,
   withBuildCounts,
+  writerSpecOf,
 } from "./diagrams";
 import {
   asPicture,
@@ -129,6 +130,7 @@ import {
   writerMaxTokens,
 } from "./services";
 import { slideStates } from "./slide-states";
+import { continueTable, drawable } from "./table-pack";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -662,6 +664,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * closes in the writer's stream (C1), in slide order, and at the end for any slide the stream
    * did not open: the final parse stays the source of truth.
    */
+  /** Ruling 197: the continuation slides of a table too long for its slide, by slide. */
+  const tableRest = new Map<number, S[]>();
   const openSlide = (idx: number, raw: S) => {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
@@ -682,6 +686,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       else if (a.fixes.length) log({ ev: "activity-fixed", slide: idx + 1, fixes: a.fixes });
       s = a.slide;
     }
+    // Ruling 197: a table longer than its slot holds packs into 4 columns and continues on the
+    // next slide; one that fits as written is left alone.
+    const slot = slotOf(String(s.template ?? ""));
+    const tc = continueTable(
+      s,
+      (t, first) =>
+        !layoutSlotProbe(drawable(t), first ? slot : "full", base.stage, base.theme).length,
+    );
+    if (tc) {
+      s = tc.first;
+      tableRest.set(idx, tc.rest);
+      log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
+    } else tableRest.delete(idx);
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
@@ -846,6 +863,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       slides.push(own);
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
+      for (const [k, t] of (tableRest.get(i) ?? []).entries()) {
+        const m = materialise(t, {
+          ...base,
+          index: i,
+          plan,
+          visual: () => ({ status: "diagram", spec: drawable(t.figure as S) }),
+        });
+        slides.push({ id: `s${i + 1}t${k + 1}`, ...m.slide, notes: "" });
+      }
     }
     return slides;
   };
