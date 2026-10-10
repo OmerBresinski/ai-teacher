@@ -1,6 +1,6 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
-import { listAnswers } from "@tj/slides/templates";
+import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
@@ -176,6 +176,41 @@ export type WriterRun = {
    * by code, and a model that cannot be drawn falls back to the drawer. Needs `drawDiagrams`.
    */
   library?: boolean;
+  /**
+   * Library turn-on, step 1 (diagrams-06; default off): a drawn model takes the slide body under
+   * the heading and above its lead (`modelBodyRect`, up to 900 x 424; the slide's own line is
+   * never dropped), and a model whose smallest words would show there under the 18 pt floor falls
+   * back to the drawer.
+   */
+  libraryModelBody?: boolean;
+  /**
+   * Library turn-on, step 2 (diagrams-07; default off): a model's optional panels (lib-meta
+   * `optionalPanels`, the heart's pulse first) are off unless the writer's intent names them.
+   */
+  libraryPanelsOff?: boolean;
+  /**
+   * Library turn-on, step 3 (diagrams-09; default off): a drawn model whose words print over one
+   * another (read back from the still) falls back to the drawer.
+   */
+  libraryLabelOverlap?: boolean;
+  /**
+   * Library turn-on, label floor (default off; with `libraryModelBody`): a model's type grows until
+   * its smallest words show at 18 pt where the slide places it; then the overlap check runs, and
+   * words that collide or leave the model fall back to the drawer.
+   */
+  libraryLabelFloor?: boolean;
+  /**
+   * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
+   * schema's model enum hold only models for the lesson's year and its subject (or general
+   * ones); an empty list leaves out the Models block, the model kind line and the schema branch.
+   */
+  libraryMenuFilter?: boolean;
+  /**
+   * Library turn-on, step 5 (default off; with `libraryMenuFilter`): the kept models are ordered
+   * by a deterministic word match of their teaches line against the lesson's objectives. Never
+   * drops a model, only reorders.
+   */
+  libraryMenuRank?: boolean;
   /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
@@ -374,7 +409,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const models =
     run.library && run.drawDiagrams
       ? await nonFatal(
-          () => catalogue(stageKey),
+          () =>
+            catalogue(
+              stageKey,
+              run.libraryMenuFilter
+                ? {
+                    yearGroup: brief.yearGroup,
+                    subject: brief.subject,
+                    ...(run.libraryMenuRank ? { objectives: run.objectives } : {}),
+                  }
+                : undefined,
+            ),
           (e) => {
             log({ ev: "lib-catalogue-failed", err: String(e).slice(0, 200) });
             return [];
@@ -498,6 +543,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               yearGroup: brief.yearGroup,
               lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
               question,
+              // The drawing is measured where the slide puts it: under the heading, above the lead.
+              ...(run.libraryModelBody
+                ? {
+                    place: modelBodyRect(
+                      typeof s.heading === "string" ? s.heading : "",
+                      typeof s.lead === "string" ? s.lead : undefined,
+                      base.theme,
+                      base.stage as never,
+                    ),
+                  }
+                : {}),
+              ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
+              ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
+              ...(run.libraryLabelFloor ? { labelFloor: true } : {}),
             },
             async (req) =>
               (
@@ -517,7 +576,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             const { src, aspect, alt } = r.drawing;
             drawnDiagrams.set(`${i}:${a.key}`, {
               status: "diagram",
-              spec: { drawn: { src, aspect, alt, bare: true } },
+              spec: {
+                drawn: {
+                  src,
+                  aspect,
+                  alt,
+                  bare: true,
+                  ...(run.libraryModelBody ? { body: true } : {}),
+                },
+              },
             });
             log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
             relay(i);

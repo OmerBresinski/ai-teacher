@@ -6,6 +6,7 @@ import {
   drawnTexts,
   fractionsNamed,
   quantities,
+  statedCounts,
   wordValue,
 } from "./consistency";
 import { capabilityRefusals, checkParams, fillSchema, libraryDiagram } from "./fill";
@@ -287,3 +288,77 @@ describe("Present never opens a library model on an empty box", () => {
 });
 
 afterAll(() => endDrawThread());
+
+describe("S10 paid L y2 s6: the counts the words state are drawn", () => {
+  const SHARE_12 = "Share 12 equally\nOne half is 6. One quarter is 3.";
+  test("a bar comparison that never shows 12, 6 or 3 is refused for a sharing slide", async () => {
+    // The recorded fill: compare, set, 12 counters. Set cannot compare, so the model drew bars.
+    const svg = await draw("fractions", {
+      operation: "compare",
+      representation: "set",
+      fractions: [{ value: "1/2" }, { value: "1/4" }],
+      whole: "12 counters",
+      amount: 12,
+      things: "counters",
+      words: true,
+    });
+    expect(drawingWordsMismatch("fractions", svg, SHARE_12)).toContain("12");
+  });
+  test("equal groups that show the counts pass; fraction names alone need no count", async () => {
+    const half = await draw("equal_groups", { groups: 2, size: 6, division: "sharing" });
+    expect(
+      drawingWordsMismatch("equal_groups", half, "Share 12 equally\nOne half is 6."),
+    ).toBeUndefined();
+    const bars = await draw("fractions", {
+      operation: "compare",
+      representation: "bar",
+      fractions: [{ value: "1/2" }, { value: "1/4" }],
+    });
+    expect(
+      drawingWordsMismatch(
+        "fractions",
+        bars,
+        "One half and one quarter\nEqual parts are the same size.",
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("S10 paid L y2 s9: an equivalence draws the finer parts with the coarser marked", () => {
+  /** The distinct cut lines across a bar (vertical paths) in a drawn SVG. */
+  const cuts = (svg: string) =>
+    new Set([...svg.matchAll(/<path d="M([\d.]+) [\d.]+ V[\d.]+"/g)].map((m) => m[1])).size;
+  test("2/4 = 1/2 (finer first, as the fill sent it) shows all three quarter cuts", async () => {
+    for (const fractions of [
+      [{ value: "2/4" }, { value: "1/2" }],
+      [{ value: "1/2" }, { value: "2/4" }],
+    ]) {
+      const c = await checkParams("fractions", {
+        operation: "equivalent",
+        representation: "bar",
+        fractions,
+      });
+      expect(c.params).toBeDefined();
+      const svg = (await renderLibraryModel("fractions", c.params as J)).svg;
+      expect(cuts(svg), JSON.stringify(fractions)).toBe(3);
+      expect(drawingWordsMismatch("fractions", svg, "Two quarters make one half")).toBeUndefined();
+    }
+  });
+});
+
+describe("stated counts: numbers that name things are not counts", () => {
+  const vs = (s: string) => statedCounts(s).map((q) => q.v);
+  test("labels, ordinals and years are left out", () => {
+    expect(vs("Year 3: Step 2 of Part 1")).toEqual([]);
+    expect(vs("Question 4 on page 12")).toEqual([]);
+    expect(vs("The 2nd and 3rd groups")).toEqual([]);
+    expect(vs("The second group has the fourth counter")).toEqual([]);
+    expect(vs("Rivers in 1900 and 2024")).toEqual([]);
+  });
+  test("counts tied to objects and amounts stay", () => {
+    expect(vs("Share 12 equally. One half is 6. One quarter is 3.")).toEqual([12, 6, 3]);
+    expect(vs("Year 5: share 20 sweets between 4 children")).toEqual([20, 4]);
+    expect(vs("Step 1: 1,200 people")).toEqual([1200]);
+    expect(vs("Two fifths of 35")).toEqual([35]);
+  });
+});

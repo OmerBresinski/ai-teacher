@@ -12,11 +12,20 @@
  * Any failure returns the drawer kind to fall back to, never an empty slot. Never throws, except a
  * budget or abort error from the call, which stops the job as every other call's does.
  */
+
+import { TYPE_FLOOR } from "@tj/slides/diagrams";
 import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
 import { drawingWordsMismatch } from "./consistency";
 import { drawLibraryModel } from "./guard";
-import { boundsRefusals, kit, type LibraryDrawing, loadModel } from "./render";
+import {
+  boundsRefusals,
+  drawnLines,
+  inspectDrawnSvg,
+  kit,
+  type LibraryDrawing,
+  loadModel,
+} from "./render";
 import type { J, LibRefusal } from "./types";
 
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
@@ -68,6 +77,28 @@ export function missingDrawingParams(id: string, own: J, params: J): LibRefusal[
     }));
 }
 
+/**
+ * An equivalence draws the finer partition with the coarser one marked (S10 paid L y2 s9: "2/4 =
+ * 1/2" drawn as halves only). The fractions model cuts the bar for the first fraction, then for
+ * the second, and keeps the first cuts only when the second's parts divide them; sent finer first,
+ * the quarter cuts were hidden when the halves came in. So the coarser fraction goes first whenever
+ * the other's denominator is a multiple of it. Any other params are returned as they are.
+ */
+export function orderedParams(id: string, own: J): J {
+  if (id !== "fractions" || own.operation !== "equivalent" || !Array.isArray(own.fractions))
+    return own;
+  const fr = own.fractions as unknown[];
+  if (fr.length !== 2) return own;
+  const den = (f: unknown) => {
+    const m = /^\s*\d+\s*\/\s*(\d+)\s*$/.exec(String((f as J | null)?.value ?? ""));
+    return m ? Number(m[1]) : undefined;
+  };
+  const a = den(fr[0]);
+  const b = den(fr[1]);
+  if (!a || !b || a <= b || a % b !== 0) return own;
+  return { ...own, fractions: [fr[1], fr[0]] };
+}
+
 /** The model's params schema as the filler sees it: no title or wording overrides, no $schema or x- keys. */
 export function fillSchema(params: J, id?: string): J {
   const strip = (n: unknown): unknown => {
@@ -86,25 +117,48 @@ export function fillSchema(params: J, id?: string): J {
   return s;
 }
 
-/** schemaCheck on what the filler sent, then validate() on it with the model's defaults. */
+/**
+ * The optional panels (lib-meta `optionalPanels`) to switch off: each the fill left unset whose
+ * `when` patterns the writer's intent does not match (diagrams-07: the heart's pulse panel).
+ */
+export function panelsOff(id: string, own: J, intent: string): J {
+  const off: J = {};
+  for (const p of LIB_META[id]?.optionalPanels ?? [])
+    if (
+      (own[p.param] === undefined || own[p.param] === null) &&
+      !p.when.some((w) => new RegExp(w, "i").test(intent))
+    )
+      off[p.param] = false;
+  return off;
+}
+
+/**
+ * schemaCheck on what the filler sent, then validate() on it with the model's defaults. With
+ * `intent` (flag `libraryPanelsOff`), optional panels the intent does not name are off first.
+ */
 export async function checkParams(
   id: string,
   out: unknown,
+  intent?: string,
 ): Promise<{ params?: J; refusals: LibRefusal[]; warnings: string[] }> {
   const m = await loadModel(id);
   if (!m) return { refusals: [{ path: "model", reason: `no model ${id}` }], warnings: [] };
   if (!out || typeof out !== "object" || Array.isArray(out))
     return { refusals: [{ path: "(all)", reason: "no params object" }], warnings: [] };
   const k = await kit();
-  const own = { ...(out as J) };
+  let own = { ...(out as J) };
   for (const key of NOT_FILLED) delete own[key];
+  own = orderedParams(id, own);
   const shape = k.schemaCheck(fillSchema(m.params, id), own);
   if (shape.length) return { refusals: shape, warnings: [] };
   // A value outside the bounds the drawing holds to (or a __proto__ / constructor key) is refused,
   // never clamped: a clamp would draw a different number from the one the slide asked for.
   const bounds = boundsRefusals(fillSchema(m.params), own);
   if (bounds.length) return { refusals: bounds, warnings: [] };
-  const params = k.withDefaults(m.params, own);
+  const params = k.withDefaults(
+    m.params,
+    intent === undefined ? own : { ...own, ...panelsOff(id, own, intent) },
+  );
   const missing = missingDrawingParams(id, own, params);
   if (missing.length) return { refusals: missing, warnings: [] };
   return nonFatalSync(
@@ -163,11 +217,103 @@ export type LibraryAsk = {
   yearGroup: string;
   lesson: string;
   question?: boolean;
+  /** Words printed over words fall back (flag `libraryLabelOverlap`, diagrams-09). */
+  labelOverlap?: boolean;
+  /**
+   * The label floor (flag `libraryLabelFloor`, needs `place`): the kit's type tokens grow until the
+   * smallest words show at `TYPE_FLOOR` where the drawing is placed; the grown drawing must then
+   * keep its words apart and inside the model's stage, or it falls back.
+   */
+  labelFloor?: boolean;
+  /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
+  panelsOff?: boolean;
+  /**
+   * The box the drawing is placed in on the 960 x 540 slide (flag `libraryModelBody`): a drawing
+   * whose smallest words would show under the drawer's `TYPE_FLOOR` there falls back
+   * (diagrams-06). Absent: no type-floor gate (today's behaviour).
+   */
+  place?: { w: number; h: number };
 };
 export type LibraryResult =
   | { ok: true; drawing: LibraryDrawing; params: J; attempts: number }
   /** The drawer kind to fall back to, and why the model was not drawn. */
   | { ok: false; fallbackKind: string; reason: string };
+
+/**
+ * The smallest type a drawn library SVG shows at, in points on the 960 x 540 slide, once it is
+ * contained in `place` (its view box scaled to fit, as the slide's image element does).
+ */
+export function placedTypeSize(
+  svg: string,
+  place: { w: number; h: number },
+): { scale: number; minPt: number; word?: string } {
+  const { viewBox, words } = inspectDrawnSvg(svg);
+  const [, , vw, vh] = viewBox;
+  const scale = vw > 0 && vh > 0 ? Math.min(place.w / vw, place.h / vh) : 0;
+  let min: { fs: number; words: string } | undefined;
+  for (const w of words) if (!min || w.fs < min.fs) min = w;
+  return {
+    scale,
+    minPt: min ? min.fs * scale : Number.POSITIVE_INFINITY,
+    ...(min ? { word: min.words } : {}),
+  };
+}
+
+/**
+ * Pairs of words in a drawn library SVG whose boxes overlap (more than `tol` view-box units each
+ * way), read back with `inspectDrawnSvg` as the drawer's label check reads its own (diagrams-09:
+ * the fractions model's "7" printed over "3/5 of 35 = 21", 0.48 of the "7"). Two words count when the
+ * other covers over `share` of the smaller one's box each way: over all 202 presets the most a
+ * stacked pair covers is 0.3 ("6" over "six"). The same word at the same place is one word drawn
+ * twice (a halo copy), not an overlap.
+ */
+export const OVERLAP_SHARE = 0.4;
+export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, string, number][] {
+  const { words } = inspectDrawnSvg(svg);
+  const out: [string, string, number][] = [];
+  for (let i = 0; i < words.length; i++)
+    for (let j = i + 1; j < words.length; j++) {
+      const a = words[i];
+      const b = words[j];
+      if (!a || !b) continue;
+      const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (ox <= 2 || oy <= 2) continue;
+      // How much of the smaller word's box the other covers, each way (stacked lines graze).
+      const k = Math.min(
+        ox / Math.max(1, Math.min(a.x1 - a.x0, b.x1 - b.x0)),
+        oy / Math.max(1, Math.min(a.y1 - a.y0, b.y1 - b.y0)),
+      );
+      if (a.words === b.words && k > 0.95) continue;
+      if (k > share) out.push([a.words, b.words, Math.round(k * 100) / 100]);
+    }
+  return out;
+}
+
+/**
+ * What went wrong with a drawing's words once its type grew (the label floor), against the same
+ * drawing at the kit's own sizes: a word split across lines or lost ("Oxygen-p" / "oor"), or a
+ * line set less than 0.9 of its type size below the one above (lines on top of one another).
+ * Undefined when neither.
+ */
+export function grownTextFault(baseSvg: string, grownSvg: string): string | undefined {
+  const words = (svg: string) =>
+    drawnLines(svg)
+      .flatMap((t) => t.lines.join(" ").split(/\s+/))
+      .filter(Boolean)
+      .sort()
+      .join(" ");
+  const grown = drawnLines(grownSvg);
+  if (words(baseSvg) !== words(grownSvg)) return "its words split or change across lines";
+  for (const t of grown)
+    if (t.pitch.some((d) => d < 0.9 * t.fs))
+      return `its lines "${t.lines.join(" / ").slice(0, 30)}" sit on top of one another`;
+  return undefined;
+}
+
+/** The label floor's draws after the first, and the most the type may grow (flag `libraryLabelFloor`). */
+const LABEL_FLOOR_TRIES = 3;
+export const LABEL_FLOOR_MAX = 2;
 
 const tokens = (t: string, v: Record<string, string>) =>
   t.replace(/\{\{(\w+)\}\}/g, (m, k: string) => v[k] ?? m);
@@ -218,7 +364,7 @@ export async function libraryDiagram(
       },
     );
     if (callFault) return fallback(`the fill call failed: ${callFault}`);
-    const c = await checkParams(ask.model, last);
+    const c = await checkParams(ask.model, last, ask.panelsOff ? ask.intent : undefined);
     log({ ev: "lib-fill", key: ask.key, model: ask.model, attempt, ok: !!c.params });
     if (c.params) params = c.params;
     else refusals = c.refusals;
@@ -239,26 +385,94 @@ export async function libraryDiagram(
   }
   const p = params;
   // The full drawing (with a question slide's answer) is checked against the slide's words.
-  const full = await nonFatal(
+  let full = await nonFatal(
     () => drawLibraryModel(ask.model, p),
     (e) => String(e).slice(0, 160),
   );
   if (typeof full === "string") return fallback(`it did not draw: ${full}`);
+  // The label floor: grow the type until the smallest words reach the floor where it is placed.
+  let typeScale = 1;
+  if (ask.labelFloor && ask.place) {
+    const place = ask.place;
+    const offBefore = new Set(full.offSlide);
+    const baseSvg = full.svg;
+    for (let i = 0; i < LABEL_FLOOR_TRIES; i++) {
+      const svg = full.svg;
+      const t = nonFatalSync(
+        () => placedTypeSize(svg, place),
+        () => undefined,
+      );
+      if (!t || t.minPt >= TYPE_FLOOR - 0.01) break;
+      typeScale = Math.min(LABEL_FLOOR_MAX, typeScale * (TYPE_FLOOR / t.minPt) * 1.02);
+      const ts = typeScale;
+      const grown = await nonFatal(
+        () => drawLibraryModel(ask.model, p, { typeScale: ts }),
+        (e) => String(e).slice(0, 160),
+      );
+      if (typeof grown === "string")
+        return fallback(`it did not draw at the label floor: ${grown}`);
+      full = grown;
+      if (ts >= LABEL_FLOOR_MAX) break;
+    }
+    log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
+    if (typeScale !== 1) {
+      const grownSvg = full.svg;
+      const fault = nonFatalSync(
+        () => grownTextFault(baseSvg, grownSvg),
+        (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
+      );
+      if (fault) return fallback(`at the label floor ${fault}`);
+    }
+    const off = full.offSlide.filter((w) => !offBefore.has(w));
+    if (off.length)
+      return fallback(
+        `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`,
+      );
+  }
+  const drawnFull = full;
   // Only the words that describe the drawing: the slide's heading and the model's caption.
   const about =
     ask.heading !== undefined || ask.caption !== undefined
       ? [ask.heading, ask.caption].filter(Boolean).join("\n")
       : ask.words;
-  const mismatch = drawingWordsMismatch(ask.model, full.svg, about);
+  const mismatch = drawingWordsMismatch(ask.model, drawnFull.svg, about);
   if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
   const drawn =
     step === undefined
-      ? full
+      ? drawnFull
       : await nonFatal(
-          () => drawLibraryModel(ask.model, p, { step }),
+          () => drawLibraryModel(ask.model, p, { step, ...(typeScale !== 1 ? { typeScale } : {}) }),
           (e) => String(e).slice(0, 160),
         );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);
+  // Words over words (flag `libraryLabelOverlap`): the drawer's text-box reading of the still.
+  if (ask.labelOverlap || ask.labelFloor) {
+    const o = nonFatalSync(
+      () => overlappingWords(drawn.svg),
+      () => undefined,
+    );
+    if (!o) return fallback("its words could not be read for overlaps");
+    if (o.length)
+      return fallback(
+        `its words overlap: ${o
+          .slice(0, 2)
+          .map(([a, b]) => `"${a.slice(0, 20)}" over "${b.slice(0, 20)}"`)
+          .join(", ")}`,
+      );
+  }
+  // The type floor (flag `libraryModelBody`): words under 18 pt where the drawing is placed.
+  if (ask.place) {
+    const t = nonFatalSync(
+      () => placedTypeSize(drawn.svg, ask.place as { w: number; h: number }),
+      () => undefined,
+    );
+    if (!t) return fallback("its words could not be measured for the type floor");
+    log({ ev: "lib-type", key: ask.key, model: ask.model, scale: t.scale, minPt: t.minPt });
+    if (t.minPt < TYPE_FLOOR - 0.01)
+      return fallback(
+        `its words show at ${Math.round(t.minPt * 10) / 10} pt ("${String(t.word).slice(0, 30)}"), under the ${TYPE_FLOOR} pt floor`,
+      );
+  }
   log({
     ev: "lib-drawn",
     key: ask.key,

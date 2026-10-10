@@ -201,8 +201,11 @@ function figureNow(
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
     } as Figure;
   if (v.status === "diagram") {
-    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string; bare?: boolean } })
-      ?.drawn;
+    const d = (
+      v.spec as {
+        drawn?: { src: string; aspect: number; alt?: string; bare?: boolean; body?: boolean };
+      }
+    )?.drawn;
     return (d ? { drawn: d } : { diagram: v.spec }) as Figure;
   }
   if (v.status === "failed") return undefined;
@@ -350,7 +353,8 @@ export function toInput(
     case "big-picture":
     case "big-diagram": {
       const f = fig(template === "big-picture" ? "picture" : "diagram");
-      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it.
+      // A library model's slide: heading, the model, and the one-line lead as its takeaway under it
+      // (a model drawn as the slide body keeps it too: the drawing fits above it).
       return f
         ? { template, heading, lead, figure: f }
         : { template: "explain", heading, lead: lead ?? "" };

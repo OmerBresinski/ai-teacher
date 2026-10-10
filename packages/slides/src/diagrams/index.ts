@@ -45,7 +45,7 @@ export {
   svgOfDataUrl,
   withBuilds,
 } from "./builds";
-export { pileSpec } from "./groups";
+export { pileSpec, UNSHARED_ASK } from "./groups";
 export { mendParticleLabels, particleLabelFaults } from "./labels3";
 export {
   CHARS_PER_WORD,
@@ -93,6 +93,7 @@ export {
 } from "./normalise";
 export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";
+export { TYPE_FLOOR } from "./style";
 export { TEMPLATE_SPECS } from "./template-specs";
 
 /** The modern looks' inset between a drawing and its zone's left and right edges, in points. */

@@ -61,12 +61,24 @@ function counter(x: Ctx, cx: number, cy: number, r: number, fill: string): strin
  */
 export const UNSHARED =
   /\b(unshared|not (yet )?shared|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?(a single|one) (ring|pile|group)|all together|together in one)/i;
+/**
+ * The stricter reading for a drawer's own spec on an asking slide: only words that say the
+ * counters are not grouped yet ("16 ungrouped counters in a loose arrangement ... Pupils draw their
+ * own two equal groups ... Do not draw groups"). "One group" or "all together" alone is not enough,
+ * since a teaching picture can say either about a shared set.
+ */
+export const UNSHARED_ASK =
+  /\b(unshared|ungrouped|not (yet )?(shared|grouped)|before (they are |it is )?shar|ready (for pupils )?to (be )?shar|(in )?a loose (arrangement|pile)|(do not|don't|without) (draw(ing)?|show(ing)?) (the |any )?(equal )?groups|pupils (draw|make) their own (equal )?groups)/i;
 const ROW_WORDS = /\b(in (a|one) (row|line)|one row|a row of|in a line|lined up)\b/i;
 /**
  * The pile spec (one ring, every counter, no count) for a request that asks for unshared counters.
  * `words` is what the slide asks to show (`shows`), never `alt`: alt describes the answer's form.
  */
-export function pileSpec(spec: unknown, words: string): EqualGroups | undefined {
+export function pileSpec(
+  spec: unknown,
+  words: string,
+  unshared: RegExp = UNSHARED,
+): EqualGroups | undefined {
   const s = spec as {
     kind?: unknown;
     total?: unknown;
@@ -79,7 +91,7 @@ export function pileSpec(spec: unknown, words: string): EqualGroups | undefined 
   // G3: the spec's own fields decide. Groups to show with their counts hidden is a shared picture
   // ("Find the number in one ring"), never a pile, whatever the words say.
   if (s.unknown === true && typeof s.groups === "number" && s.groups >= 2) return;
-  if (s.total < 2 || s.total > 40 || !UNSHARED.test(words)) return;
+  if (s.total < 2 || s.total > 40 || !unshared.test(words)) return;
   return {
     kind: "equal-groups",
     alt: typeof s.alt === "string" ? s.alt : `${s.total} counters, not yet shared.`,

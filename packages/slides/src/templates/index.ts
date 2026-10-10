@@ -102,6 +102,12 @@ export type Figure =
         alt?: string;
         /** Brings its own canvas (a diagram-library model, ADR 0035): no wash panel, no inset. */
         bare?: boolean;
+        /**
+         * Takes the slide body under the heading on a big-diagram slide (`MODEL_BODY`, about
+         * 900 x 424 on the 960 x 540 grid) with no caption: a library model's labels stay at the
+         * 18 pt floor (diagrams-06). Set by the generation flag `libraryModelBody`.
+         */
+        body?: boolean;
       };
     };
 export type TemplateId =
@@ -1071,6 +1077,40 @@ function belowRect(c: Ctx, input: TemplateInput) {
 }
 
 /** The big-diagram panel (as its case lays it out): full width, a plot at most 1.7 times as wide as tall. */
+/**
+ * The slide body a library model takes under a heading ending at `top` (`drawn.body`), less
+ * `below` points kept at the foot for the slide's own line (its lead).
+ */
+export const MODEL_BODY = { x: 30, w: 900, gap: 8, foot: 532 } as const;
+export function modelBody(top: number, below = 0): { x: number; y: number; w: number; h: number } {
+  const y = Math.round(Math.max(top, G.headY) + MODEL_BODY.gap);
+  return { x: MODEL_BODY.x, y, w: MODEL_BODY.w, h: Math.round(MODEL_BODY.foot - y - below) };
+}
+function modelBodyIn(c: Ctx, head: { y: number; h: number }, lead: string | undefined) {
+  const below = lead ? measure(c, lead, "body", G.width) + MODEL_BODY.gap : 0;
+  return modelBody(head.y + head.h, below);
+}
+/**
+ * Where a library model drawn as the slide body goes on this slide: under its heading, above its
+ * lead, as the big-diagram layout places it. The type-floor gate measures the drawing in it.
+ */
+export function modelBodyRect(
+  title: string,
+  lead: string | undefined,
+  theme: Theme,
+  stage: Stage,
+): { x: number; y: number; w: number; h: number } {
+  const c: Ctx = {
+    t: atKeyStage(theme, stage),
+    s: templateScale(theme, stage),
+    over: [],
+    els: [],
+    fails: [],
+    fullSize: false,
+  };
+  return modelBodyIn(c, heading(c, title), lead || undefined);
+}
+
 function bigRect(c: Ctx, input: TemplateInput) {
   const line = input.lead;
   const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
@@ -1257,7 +1297,24 @@ export function layoutTemplate(
       break;
     }
     case "big-diagram": {
-      heading(c, input.heading);
+      const head = heading(c, input.heading);
+      // A library model drawn as the slide body: the drawing is the slide under the heading, its
+      // words read in the notes (diagrams-06: the heart at 0.415 set its labels at 12.5 pt).
+      const fb = input.figure;
+      if (fb && "drawn" in fb && fb.drawn.body) {
+        // The slide's own line stays: it is reserved at the foot and the drawing fits what is left.
+        const r = modelBodyIn(c, head, input.lead);
+        figurePanel(c, fb, r);
+        if (input.lead)
+          text(
+            c,
+            input.lead,
+            "body",
+            { x: G.margin, y: r.y + r.h + MODEL_BODY.gap, w: G.width },
+            { color: c.t.colors.muted, name: "Caption" },
+          );
+        break;
+      }
       const line = input.lead;
       const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
       if (line && lh > Math.ceil(c.s.body * LH.body * 2) + 14) c.over.push("caption over 2 lines");
