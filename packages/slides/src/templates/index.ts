@@ -675,6 +675,9 @@ function figurePanel(
     w: G.panel.w,
     h: G.band.h,
   },
+  /** Frameless (TEACH-75 part d review): a diagram in a compare card fills the card's visual
+   * area like a photo, with no wash panel or inset of its own inside the card's border. */
+  bare = false,
 ): boolean {
   if (!f) return false;
   if ("photo" in f && f.tiles?.length)
@@ -682,8 +685,9 @@ function figurePanel(
   if ("drawn" in f) {
     if (!svgDrawsSomething(f.drawn.src)) return false;
     // A library model's own cream canvas is its panel: a wash and inset round it doubled the margin.
-    if (!f.drawn.bare) box(c, rect, wash(c.t));
-    const i = f.drawn.bare ? 0 : G.inset;
+    const noFrame = bare || f.drawn.bare;
+    if (!noFrame) box(c, rect, wash(c.t));
+    const i = noFrame ? 0 : G.inset;
     const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
     const a = f.drawn.aspect || inner.w / inner.h;
     const w = Math.min(inner.w, Math.round(inner.h * a));
@@ -726,7 +730,7 @@ function figurePanel(
   // A diagram the drawer (or the spec call) reports as failed, or one that draws nothing but its
   // title, is no diagram: the caller lays the slide out without the panel (no empty panels ever).
   if (diagramFailed(f.diagram)) return false;
-  const i = G.inset;
+  const i = bare ? 0 : G.inset;
   const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
   // drawDiagram (round 1, DIAGRAMS.md) tries the spec, then each simpler form, from the stage's
   // small size down to its floor, and answers ok only for a drawing with no readability fault.
@@ -747,7 +751,7 @@ function figurePanel(
   };
   const d = draw();
   if (!d || !elementDrawsSomething(d.el)) return false;
-  box(c, rect, wash(c.t));
+  if (!bare) box(c, rect, wash(c.t));
   if (d.note) c.over.push(d.note);
   c.els.push(d.el);
   return true;
@@ -788,10 +792,11 @@ function figureDraws(
   f: Figure | undefined,
   rect?: Parameters<typeof figurePanel>[2],
   fails?: string[],
+  bare = false,
 ) {
   if (!f) return false;
   if ("photo" in f) return true;
-  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect);
+  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect, bare);
 }
 
 /** A column of blocks, centred on the band (or top-aligned at `top`), each measured first. */
@@ -1717,7 +1722,9 @@ function layoutOnce(
           h: bh,
         });
         const lost = cols.flatMap((col, k) =>
-          col.figure && !("photo" in col.figure) && !figureDraws(c, col.figure, bandAt(k), c.fails)
+          col.figure &&
+          !("photo" in col.figure) &&
+          !figureDraws(c, col.figure, bandAt(k), c.fails, true)
             ? [k]
             : [],
         );
@@ -1736,7 +1743,7 @@ function layoutOnce(
             const band = { x: x + pad, y: y + pad, w: iw, h: bh };
             if (col.figure && "photo" in col.figure)
               photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
-            else if (col.figure) figurePanel(c, col.figure, band);
+            else if (col.figure) figurePanel(c, col.figure, band, true);
             const lab = text(
               c,
               col.label,

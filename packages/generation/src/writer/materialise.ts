@@ -461,7 +461,7 @@ export function toInput(
       return {
         template,
         heading,
-        ...(lead && (anyFailed || !cols.some(vis)) ? { lead } : {}),
+        ...(lead && !cols.some(vis) ? { lead } : {}),
         columns: cols.map((c, n) => {
           const p = c.picture;
           const f =

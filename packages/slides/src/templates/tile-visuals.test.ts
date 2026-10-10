@@ -36,6 +36,9 @@ describe("tile visuals fit on every theme", () => {
           for (const d of r.diagram ?? []) faults.push(`${at} diagram: ${d}`);
           if (r.lost) faults.push(`${at} lost ${r.lost}`);
           if (drawn(r) !== n) faults.push(`${at} drew ${drawn(r)} of ${n}`);
+          // A card's diagram is frameless: the card's border is the only frame (review of #475).
+          const panels = r.slide.elements.filter((e) => e.name === "Panel").length;
+          if (input.template === "compare" && panels !== n) faults.push(`${at} ${panels} frames`);
         }
       expect(faults).toEqual([]);
     });
