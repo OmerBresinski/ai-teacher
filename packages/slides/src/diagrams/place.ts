@@ -66,7 +66,22 @@ export function drawKey(x: Ctx, sc: Scene, w: number, h: number): string {
   return "";
 }
 
+/** Each area's vertical extent, so a point above or below it skips the ray cast. */
+const polyYSpan = new WeakMap<[number, number][], [number, number]>();
+
+function ySpan(poly: [number, number][]): [number, number] {
+  let span = polyYSpan.get(poly);
+  if (!span) {
+    span = [Math.min(...poly.map((p) => p[1])), Math.max(...poly.map((p) => p[1]))];
+    polyYSpan.set(poly, span);
+  }
+  return span;
+}
+
 function inPoly(poly: [number, number][], px: number, py: number): boolean {
+  const span = ySpan(poly);
+  // No edge straddles a horizontal line outside the area's y span, so the ray crosses nothing.
+  if (py < span[0] || py >= span[1]) return false;
   let c = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, yi] = poly[i] as [number, number];
@@ -77,6 +92,9 @@ function inPoly(poly: [number, number][], px: number, py: number): boolean {
 }
 
 function onArea(poly: [number, number][], b: Box): boolean {
+  // A box wholly above or below the area has no sample point and no vertex on it.
+  const [lo, hi] = ySpan(poly);
+  if (b.y1 + 1e-6 < lo || b.y0 - 1e-6 > hi) return false;
   for (let i = 0; i <= 4; i++)
     for (let j = 0; j <= 2; j++)
       if (inPoly(poly, b.x0 + ((b.x1 - b.x0) * i) / 4, b.y0 + ((b.y1 - b.y0) * j) / 2)) return true;
@@ -99,6 +117,11 @@ export const overlaps = (a: Box, b: Box, pad = 0) =>
 
 function segHitsBox(s: Seg, b: Box): boolean {
   const [ax, ay, bx, by] = s;
+  // Every sample lies within the segment's own bounds: when those miss the box, none can hit it.
+  // (The margin covers the sampling's rounding, so the answer is the loop's own.)
+  const e = 1e-6;
+  if (Math.max(ax, bx) + e <= b.x0 || Math.min(ax, bx) - e >= b.x1) return false;
+  if (Math.max(ay, by) + e <= b.y0 || Math.min(ay, by) - e >= b.y1) return false;
   for (let t = 0; t <= 1; t += 1 / 48) {
     const px = ax + (bx - ax) * t;
     const py = ay + (by - ay) * t;

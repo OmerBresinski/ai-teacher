@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Display } from "@tj/ui";
 import { type ReactNode, type Ref, useEffect } from "react";
-import { CharacterHost, type CharacterStage, type PlanningCard } from "./character-host";
+import { CharacterHost, type CharacterStage } from "./character-host";
 import type { CharacterCapture } from "./character-origin";
 import "./creation.css";
 
@@ -21,8 +21,8 @@ export function CreationShell({
   working?: boolean;
   /** "plan": the planning stage, Plan centre stage with the step under its feet. */
   layout?: "column" | "plan";
-  /** Plan's reading on the planning stage (see CharacterHost). */
-  planning?: PlanningCard;
+  /** Plan reads the brief on the planning stage (see CharacterHost). */
+  planning?: boolean;
 }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: each new step announces its heading.
   useEffect(() => {
