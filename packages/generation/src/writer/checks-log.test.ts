@@ -36,10 +36,9 @@ async function run(b: string, checks: "act" | "log") {
 }
 
 /** Events that mean a check result changed a slide's words or visuals. */
-const ACTING = new Set(["diagram-relaid", "gas8-fallback", "orphan6-drop", "unshown-strip"]);
+const ACTING = new Set(["gas8-fallback", "orphan6-drop", "unshown-strip"]);
 /** Logged through the stage's one check gate: acting unless marked `applied: false`. */
 const GATED = new Set([
-  "relayout",
   "gas8",
   "unpoint",
   "figure-sync",
@@ -57,10 +56,9 @@ const acted = (e: Ev) =>
     !/fill call failed|refused:|did not draw|no shipped model|no build before/.test(
       String(e.reason),
     )) ||
-  (ACTING.has(String(e.ev)) &&
-    e.ev !== "lib-fallback" &&
-    e.ev !== "keep-pic" &&
-    !/^r2-spec/.test(String(e.ev)));
+  ACTING.has(String(e.ev)) ||
+  // in log mode the relayout acts only when it is what lets the diagram show (keptVisual)
+  (e.ev === "diagram-relaid" && e.ok === true && e.keptVisual !== true);
 
 const images = (slides: { elements: { type: string }[] }[]) =>
   slides.map((s) => s.elements.filter((e) => e.type === "image").length);
@@ -94,17 +92,34 @@ describe('checks: "log" acts on no check result', () => {
     expect(repairs).toBeGreaterThan(0);
   });
 
-  test("a slide loses a visual only where acting checks relaid its diagram full width", async () => {
+  test("no slide loses a visual it kept when checks act", async () => {
     for (const b of LESSONS) {
-      const a = await run(b, "act");
-      const l = await run(b, "log");
-      const act = images(a.res.slides as never);
-      const log = images(l.res.slides as never);
-      const relaid = new Set(
-        a.events.filter((e) => e.ev === "diagram-relaid" && e.ok).map((e) => Number(e.slide) - 1),
-      );
+      const act = images((await run(b, "act")).res.slides as never);
+      const log = images((await run(b, "log")).res.slides as never);
       for (let i = 0; i < act.length; i++)
-        if ((log[i] ?? 0) < (act[i] ?? 0)) expect(relaid.has(i), `${b} s${i + 1}`).toBe(true);
+        expect(log[i] ?? 0, `${b} s${i + 1}`).toBeGreaterThanOrEqual(act[i] ?? 0);
     }
+  });
+
+  test("log mode relays a slide only to let its diagram show; a shown diagram is left as laid", async () => {
+    const kept = await run("y12-psychology-multi-store-model", "log");
+    const keptAt = kept.events.filter((e) => e.ev === "relayout-kept-visual").map((e) => e.slide);
+    expect(keptAt).toEqual(expect.arrayContaining([4, 7]));
+    for (const s of keptAt) {
+      const slide = kept.res.slides[Number(s) - 1] as { elements: { type: string }[] };
+      expect(slide.elements.some((e) => e.type === "image")).toBe(true);
+    }
+    let skipped = 0;
+    for (const b of LESSONS) {
+      const r = await run(b, "log");
+      for (const e of r.events.filter((x) => x.ev === "relayout-skipped")) {
+        skipped += 1;
+        const relaid = r.events.some(
+          (x) => x.ev === "diagram-relaid" && x.slide === e.slide && x.ok === true,
+        );
+        expect(relaid).toBe(false);
+      }
+    }
+    expect(skipped).toBeGreaterThan(0);
   });
 });

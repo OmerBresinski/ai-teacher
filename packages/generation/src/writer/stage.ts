@@ -1165,9 +1165,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       const s0 = plan.slides[i] as S;
       if (s0.template !== "visual-text" || !c.faults.some((f) => f.startsWith("diagram:")))
         continue;
-      if (!actOn({ ev: "relayout", slide: i + 1, faults: c.faults.slice(0, 2) })) continue;
       const d = (asks.get(i) ?? []).find((a) => a.type === "diagram");
       if (!d || visualState(i)(d.key).status !== "diagram") continue;
+      // Checks only logging: the relayout runs only when it is what lets the diagram show (the
+      // layout could not draw it beside the words); a diagram already on the slide stays as laid.
+      const shownNow = (laid.get(i)?.slide.elements ?? []).some(
+        (e) => e.type === "image" && e.name === "Diagram",
+      );
+      if (!act && shownNow) {
+        log({ ev: "relayout-skipped", slide: i + 1, faults: c.faults.slice(0, 2) });
+        continue;
+      }
       const n0 = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
       swapSlide(i, { ...s0, template: "big-visual" });
@@ -1179,10 +1187,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         relaid.set(i, plan.slides[i]);
         path.set(i, "diagram-big");
       }
+      if (!act)
+        log({
+          ev: left.length ? "relayout-skipped" : "relayout-kept-visual",
+          slide: i + 1,
+          faults: c.faults.slice(0, 2),
+        });
       log({
         ev: "diagram-relaid",
         slide: i + 1,
         ok: !left.length,
+        ...(act ? {} : { keptVisual: !left.length }),
         ...(left.length ? { why: left.slice(0, 2) } : {}),
       });
     }
