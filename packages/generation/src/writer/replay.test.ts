@@ -37,6 +37,22 @@ const rolesOf = (b: string) => {
   return slideRoles([undefined, undefined, ...slides]);
 };
 
+/**
+ * SIMPLIFY S3 (TEACH-312 part f): the original runs rewrote these slides into words after their
+ * diagram could not be shown (words-rewrite). The stage now keeps the writer's slide, laid without
+ * its figure, so only the heading is compared (deck index, title = 0).
+ */
+const UNSHOWN: Record<string, number[]> = {
+  "y11-chemistry-rates-of-reaction": [8],
+  "y11-chemistry-rates-of-reaction-r2": [6],
+  "y12-psychology-multi-store-model": [3, 6],
+  "y12-psychology-multi-store-model-r2": [3],
+};
+const headingOf = (els: El[]) => {
+  const h = els.find((e) => e.name === "Heading");
+  return JSON.stringify(h?.doc ?? h?.text ?? null);
+};
+
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
 const stable = (e: El) => {
@@ -79,6 +95,11 @@ describe.each(LESSONS)("replay %s", (b) => {
         // the matching table, never a partial split of single photos
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
+        return;
+      }
+      if (UNSHOWN[b]?.includes(i)) {
+        expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(false);
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
         return;
       }
       const kind =

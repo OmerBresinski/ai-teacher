@@ -1409,9 +1409,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       path.set(i, "table-text");
       return;
     }
-    const words = asWords(s);
-    if (JSON.stringify(words) !== JSON.stringify(s)) swapSlide(i, words);
-    path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
+    // Otherwise the slide stays as the writer wrote it: its lines are laid in their ask_without
+    // form and the figure's slot closes (materialise). SIMPLIFY S3: the stand-alone rewrite into
+    // words and the fixed figure-dropped slide were the same or worse than this on every replay
+    // firing, and the rewrite cost a model call.
+    path.set(i, "unshown");
   };
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;

@@ -80,7 +80,7 @@ describe("fallbackOnlyOnFailure", () => {
   test("y12 s4 and s7: a drawn flow that did not fit beside the words is shown full width, not rewritten", async () => {
     const off = await run("y12-psychology-multi-store-model", {});
     const on = await run("y12-psychology-multi-store-model", { fallbackOnlyOnFailure: true });
-    expect([off.pathOf(4), off.pathOf(7)]).toEqual(["words-rewrite", "words-rewrite"]);
+    expect([off.pathOf(4), off.pathOf(7)]).toEqual(["unshown", "unshown"]);
     expect([off.images[3], off.images[6]]).toEqual([0, 0]);
     expect([on.pathOf(4), on.pathOf(7)]).toEqual(["diagram-big", "diagram-big"]);
     expect([on.images[3], on.images[6]]).toEqual([1, 1]);
