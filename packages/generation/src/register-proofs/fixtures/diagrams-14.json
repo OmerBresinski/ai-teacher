@@ -1,0 +1,21 @@
+{
+  "source": "d52/T5/full/y6-science-heart-circulation/main.json slides[5] (log slide 8)",
+  "slide": {
+    "template": "visual-text",
+    "heading": "Worked example: Sam's pulse",
+    "lead": "Sam counted for a full minute each time.",
+    "points": [
+      "Increase: 112 − 76 = 36 beats per minute.",
+      "His working muscles needed more oxygen.",
+      "His faster heartbeat helped deliver it."
+    ],
+    "figure": {
+      "kind": "table",
+      "shows": "Sam's pulse at rest and immediately after one minute of marching.",
+      "alt": "Sam's pulse was 76 beats per minute at rest and 112 beats per minute after marching.",
+      "title": null,
+      "header": ["When", "Beats per minute"],
+      "rows": [["Rest", "76"], ["Marching", "112"]]
+    }
+  }
+}

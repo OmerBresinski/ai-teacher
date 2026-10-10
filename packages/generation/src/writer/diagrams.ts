@@ -468,9 +468,11 @@ async function drawerCall(
     );
     if (callFault) return { fault: callFault };
     // The drawer's output is mended exactly as the writer's own spec is (arrows on a compare are
-    // left out). Nothing is cut or raised to fit a limit: a spec past one goes back to the drawer
-    // with the limit it broke, and a second miss falls to the restage ladder (a picture of the same
-    // thing, words that stand alone, the figure's parts as points), never drawn with changed data.
+    // left out). A spec past a limit goes back to the drawer with the limit it broke, and a second
+    // miss falls to the restage ladder (a picture of the same thing, words that stand alone, the
+    // figure's parts as points). The one exception is particles (register diagrams-11): the parse
+    // scales counts past 20 together, cuts a note past the long-label stretch at a word and holds a
+    // key to two names (particles-mend.ts), because one miss there used to drop the whole picture.
     const mended = out ? mendSpec(dropNulls(out)) : undefined;
     fault = mended
       ? diagramFaultOf(mended, (o) => withLongLabels(() => parseDiagram(o)))

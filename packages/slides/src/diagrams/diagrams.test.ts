@@ -139,6 +139,48 @@ describe("fallback: an invalid spec draws nothing", () => {
     expect(renderDiagram(DIAGRAM_SAMPLES.table, chalk, { w: 40, h: 30 })).toBeUndefined();
   });
 
+  test("malformed particles specs never throw and come back at once", () => {
+    const t = Date.now();
+    const shapes: unknown[] = [
+      { kind: "particles", alt: "a", show: "compare" },
+      { kind: "particles", alt: "a", show: "compare", panels: "many" },
+      { kind: "particles", alt: "a", show: "compare", panels: { count: 30 } },
+      { kind: "particles", alt: "a", show: "compare", panels: [null, 7, "x"] },
+      {
+        kind: "particles",
+        alt: "a",
+        show: "compare",
+        panels: [{ count: Number.NaN }, { count: 1e308 }],
+      },
+      {
+        kind: "particles",
+        alt: "a",
+        show: "compare",
+        panels: [{ count: -5, extra: Number.NaN }, {}],
+      },
+      {
+        kind: "particles",
+        alt: "a",
+        show: "compare",
+        panels: Array.from({ length: 200_000 }, (_, i) => ({ count: i, extra: i })),
+        notes: Array.from(
+          { length: 50_000 },
+          () => "a note that runs on far past the limit of the box",
+        ),
+        key: Array.from({ length: 50_000 }, () => "particles"),
+      },
+      { kind: "particles", alt: "a", notes: [1, null, { x: 1 }], key: "acid" },
+      { kind: "particles", alt: "a", key: [] },
+      Number.NaN,
+    ];
+    for (const spec of shapes) {
+      expect(() => parseDiagram(spec)).not.toThrow();
+      expect(() => renderDiagram(spec, chalk, SLOT)).not.toThrow();
+      expect(() => diagramElement(spec, chalk, { x: 0, y: 0, ...SLOT })).not.toThrow();
+    }
+    expect(Date.now() - t).toBeLessThan(1_000);
+  });
+
   test("random junk never throws", () => {
     let seed = 7;
     const rnd = () => {
