@@ -473,6 +473,8 @@ export function drawLabelled(s0: LabelledDiagram, x: Ctx, w: number, h: number):
     const inner = (b: Box): Box => ({ x0: b.x0 + 3, y0: b.y0 + 4, x1: b.x1 - 3, y1: b.y1 - 4 });
     const leaderOf = (p: Placed, b: Box): [Pt, Pt] | undefined =>
       p.to ? [leaderStart({ ...p, box: b }, p.to), p.to] : undefined;
+    // Every straight edge in the drawing, once per layout (each candidate spot is tested on them).
+    const shapeSegs = s.shapes.flatMap((sh) => segsOf(sh, X, Y));
     // By kind: labels on labels, leaders across labels, leaders crossing, lines across, points under.
     const clashCount = (
       p: Placed,
@@ -495,8 +497,8 @@ export function drawLabelled(s0: LabelledDiagram, x: Ctx, w: number, h: number):
         if (theirs && segThroughBox(theirs[0], theirs[1], inner(b))) hit(1);
         if (mine && theirs && segsCross(mine, theirs)) hit(2);
       }
-      for (const sh of s.shapes)
-        for (const [a, c] of segsOf(sh, X, Y)) if (segThroughBox(a, c, inner(b))) hit(3);
+      const ib = inner(b);
+      for (const [a, c] of shapeSegs) if (segThroughBox(a, c, ib)) hit(3);
       for (const pt of points) {
         if (!pt || (p.to && pt[0] === p.to[0] && pt[1] === p.to[1])) continue;
         if (pt[0] > b.x0 - 2 && pt[0] < b.x1 + 2 && pt[1] > b.y0 - 2 && pt[1] < b.y1 + 2) hit(4);
