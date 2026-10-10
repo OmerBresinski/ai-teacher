@@ -57,6 +57,9 @@ for (const b of [
         visual: recordedVisuals(b),
         recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
         drawDiagrams: { callDrawer },
+        // The lab run predates figure-text.ts, which redraws its 16-in-10-groups figure.
+        figureTextFromSpec: false,
+        figureSpecRepair: false,
       });
       const svgs = (els: El[]) =>
         els
