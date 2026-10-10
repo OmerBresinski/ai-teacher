@@ -1,12 +1,14 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { BudgetReservationError } from "@tj/ai";
 import { buildCount, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { endDrawThread } from "../library/guard";
 import { inspectDrawnSvg, loadModel } from "../library/render";
+import { BudgetExceeded } from "../types";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
-import type { VisualAsk } from "./materialise";
+import { pictureShows, type VisualAsk } from "./materialise";
 import { recordedVisuals, replayServices } from "./replay-fixture";
 import { runWriter } from "./stage";
 
@@ -227,6 +229,33 @@ describe("writer stage: library models", () => {
     const noIds = (els: unknown) => (els as El[]).map(({ id: _id, ...rest }) => rest);
     expect(noIds(slide?.elements)).toEqual(noIds(atEditable));
   }, 60_000);
+
+  for (const [name, stop] of [
+    ["a budget stop", () => new BudgetExceeded("usd")],
+    ["a budget reservation refusal", () => new BudgetReservationError("usd")],
+    ["an abort", () => Object.assign(new Error("stopped"), { name: "AbortError" })],
+  ] as const)
+    test(`${name} in a slide's tail still ends the run`, async () => {
+      const ran = run(() => ({ representation: 42 }), {
+        model: "no-such-model",
+        noDrawer: true,
+        placeMore: async () => {
+          throw stop();
+        },
+      });
+      await expect(ran).rejects.toBeDefined();
+    }, 60_000);
+
+  test("a writer picture with no shows is searched by its must_see, alt or the slide's words", () => {
+    expect(pictureShows({ shows: "", must_see: ["left ventricle", "aorta"] }, {})).toBe(
+      "left ventricle, aorta",
+    );
+    expect(pictureShows({ shows: "" }, { heading: "The heart" })).toBe("The heart");
+    expect(
+      pictureShows({ shows: "" }, { points: [{ label: "Valves", text: "stop backflow" }] }),
+    ).toBe("Valves: stop backflow");
+    expect(pictureShows({ shows: "" }, {})).toBe("");
+  });
 
   test("refused params fall back to the drawer for the model's kind", async () => {
     const { fills, drawerKinds, diagram } = await run(() => ({ representation: 42 }));

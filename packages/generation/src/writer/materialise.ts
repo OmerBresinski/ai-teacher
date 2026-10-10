@@ -540,6 +540,31 @@ function diagramVisualAsk(key: string, f: S): VisualAsk {
   return { ...base, labels: Array.isArray(f.labels) ? (f.labels as string[]) : [] };
 }
 
+/**
+ * What a writer picture shows, for its search: its own `shows`, else its `must_see`, alt or
+ * caption, else the slide's heading or first point. Empty only when the slide has no words at
+ * all (the director then logs a miss).
+ */
+export function pictureShows(f: Pic | Dia, slide: S): string {
+  const p = f as Record<string, unknown>;
+  const mustSee = Array.isArray(p.must_see) ? (p.must_see as unknown[]).map(str) : [];
+  const point = pts(slide.points)
+    .map((x) => (typeof x === "string" ? x : [x.label, x.text].filter(Boolean).join(": ")))
+    .find((x) => x.trim());
+  for (const v of [
+    p.shows,
+    mustSee.filter((m) => m.trim()).join(", "),
+    p.alt,
+    p.caption,
+    slide.heading,
+    point,
+  ]) {
+    const t = str(v).trim();
+    if (t) return t;
+  }
+  return "";
+}
+
 /** The visuals one finished slide asks for (keys unique within the slide). */
 export function visualsOf(
   raw: S,
@@ -567,9 +592,8 @@ export function visualsOf(
         : {
             key,
             type: "photo",
-            // A picture field written without words (an old swap, a malformed reply) asks for
-            // nothing: the director reads an empty `shows` as a miss, never as a crash.
-            shows: str(f.shows),
+            // A planned picture is never lost to a missing `shows` (an old swap, a terse reply).
+            shows: pictureShows(f, s),
             mustSee: f.must_see ?? [],
             named: f.subject === "named",
             ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),

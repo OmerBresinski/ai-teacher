@@ -1054,6 +1054,9 @@ describe("writer pictures: the kept-picture and retry paths spend under the same
     await pictures.settle(1_000);
     pictures.start(3, heart, slide);
     await expect(pictures.settleSlide(3, 1_000)).rejects.toBeInstanceOf(BudgetExceeded);
+  });
+});
+
 describe("writer pictures: a malformed ask is a miss, never a throw", () => {
   test("an ask with no shows ends failed with a miss line; the director never throws", async () => {
     const generator: Pick<ImageGenerator, "model" | "generate"> = {
