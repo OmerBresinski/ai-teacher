@@ -68,3 +68,56 @@ describe("the objective repair call is gone", () => {
     expect(events.find((e) => e.ev === "coverage-unmet")).toMatchObject({ missing: [1] });
   });
 });
+
+describe("an unshown visual never leaves its slide pointing at it", () => {
+  const b = "y12-psychology-multi-store-model-r2";
+  const editS4 =
+    (figure: (f: Record<string, unknown>) => Record<string, unknown>, lead?: string) =>
+    (text: string) => {
+      const m = JSON.parse(text) as { slides: Record<string, unknown>[] };
+      const s = m.slides[1] as Record<string, unknown>;
+      m.slides[1] = {
+        ...s,
+        ...(lead ? { lead } : {}),
+        figure: figure(s.figure as Record<string, unknown>),
+      };
+      return JSON.stringify(m);
+    };
+  const dangling = (res: Awaited<ReturnType<typeof replayRun>>, slide: number) =>
+    (res.checks.find((c) => c.slide === slide)?.faults ?? []).filter((f) => /^dangling/.test(f));
+  test.each([
+    ["y11-chemistry-rates-of-reaction", 9],
+    ["y11-chemistry-rates-of-reaction-r2", 7],
+    ["y12-psychology-multi-store-model-r2", 4],
+    ["y8-french-my-family", 3],
+  ])("%s s%d ships with no dangling fault", async (lesson, slide) => {
+    const r = await run(lesson);
+    expect(dangling(r.res, slide)).toEqual([]);
+    expect(r.res.summary.dangling.filter((d) => d.slide === slide)).toEqual([]);
+  });
+  test("ask_without null, the lead still says 'Look at the diagram': the pointing sentence goes", async () => {
+    const res = await replayRun(b, {
+      checker: CHECKER_DEFAULTS,
+      text: editS4(
+        (f) => ({ ...f, ask: "Trace each arrow.", ask_without: null }),
+        "Look at the diagram. Atkinson and Shiffrin proposed separate stores in 1968.",
+      ),
+    });
+    expect(dangling(res, 4)).toEqual([]);
+    const lead = JSON.stringify(res.plan.slides[3]);
+    expect(lead).not.toContain("Look at the diagram");
+    expect(lead).toContain("Atkinson and Shiffrin");
+  });
+  test("ask_without still pointing ('Point to the arrow in the diagram'): stripped, nothing dangles", async () => {
+    const res = await replayRun(b, {
+      checker: CHECKER_DEFAULTS,
+      text: editS4((f) => ({
+        ...f,
+        ask: "Trace each arrow.",
+        ask_without: "Point to the rehearsal arrow in the diagram.",
+      })),
+    });
+    expect(dangling(res, 4)).toEqual([]);
+    expect(JSON.stringify(res.slides[3]?.elements)).not.toContain("Point to the rehearsal arrow");
+  });
+});

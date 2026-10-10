@@ -54,7 +54,8 @@ for (const b of runs)
         [
           "repair",
           "repair-rejected",
-          "objective-repair",
+          "coverage-unmet",
+          "unshown-strip",
           "visual-path",
           "summary",
           "point-guard",
