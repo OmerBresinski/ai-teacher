@@ -161,12 +161,92 @@ describe("planPicture", () => {
       perGroup: 6,
       arrangement: "groups",
     });
-    expect(planPicture(dir({ route: "code", pictures: [], diagram: "cycle" }), ask).kind).toBe(
-      "none",
-    );
+    // The director's own "no picture" stays its decision (RESULTS.md lists it).
     expect(planPicture(dir({ route: "none", pictures: [] }), ask).kind).toBe("none");
-    expect(planPicture(undefined, ask).kind).toBe("none");
-    expect(planPicture(dir({ pictures: [pic({ imagePrompt: " " })] }), ask).kind).toBe("none");
+  });
+
+  // Greg, 10 Oct: "a visual should never be lost." A writer ask is a picture the slide needs.
+  describe("a writer's picture ask is never planned as none by code", () => {
+    // The real shapes: the writer's ask as writerAskBrief joins it, and the director's code answer
+    // ("a drawing shows the idea better than a photograph"), which carries no pictures.
+    const heart = {
+      text: "A cross-section of the human heart showing its four chambers. left atrium. right ventricle",
+      named: null,
+      aspect: 1.6,
+      mustShow: ["left atrium", "right ventricle"],
+    };
+    const codeAnswer = dir({ route: "code", pictures: [], diagram: "labelled-diagram" });
+
+    test("a code route with a diagram kind goes to the drawer when the caller draws", () => {
+      expect(planPicture(codeAnswer, heart, { draws: true })).toEqual({
+        kind: "drawing",
+        diagram: "labelled-diagram",
+      });
+      // A count that cannot be drawn (empty spaces) is a drawing of the ask too.
+      const gappy = { things: "eggs", total: 10, groups: 2, perGroup: 6, empty: 2 };
+      expect(
+        planPicture(
+          dir({ route: "code", pictures: [], count: { ...gappy, arrangement: "rows" } }),
+          heart,
+          { draws: true },
+        ).kind,
+      ).toBe("drawing");
+    });
+
+    test("with no drawer, a code route keeps the picture route: stock, then generation", () => {
+      const p = photoPlan(codeAnswer, heart);
+      expect(p.request.route).toBe("generic");
+      expect(p.request.text).toBe(heart.text);
+      expect(p.request.stockFirst).toBe(true);
+      expect(p.request.imagePrompt).toContain("human heart");
+      expect(p.brief.mustShow).toEqual(["left atrium", "right ventricle"]);
+      expect(p.brief.queries?.length).toBeGreaterThan(0);
+    });
+
+    test("a named ask kept as a picture takes the real ladder, never a generated stand-in", () => {
+      const p = photoPlan(codeAnswer, {
+        ...heart,
+        text: "The Golden Hind",
+        named: "Golden Hind" as never,
+      });
+      expect(p.request.route).toBe("real");
+    });
+
+    test("a historical ask kept after a failed call takes the real ladder: nothing is generated", () => {
+      const past = {
+        text: "A Victorian street with horse-drawn carts",
+        named: null,
+        historical: true,
+      };
+      const p = photoPlan(undefined as never, past as never);
+      expect(p.request.route).toBe("real");
+      expect(p.request.realFallback ?? "none").toBe("none");
+      expect(p.request.stockFirst).toBe(false);
+    });
+
+    test("a failed director call or an answer with no usable picture keeps the ask's picture", () => {
+      expect(photoPlan(undefined as never, heart).request.text).toBe(heart.text);
+      expect(photoPlan(dir({ pictures: [pic({ imagePrompt: " " })] }), heart).request.text).toBe(
+        heart.text,
+      );
+      expect(photoPlan(dir({ route: "pexels", pictures: [] }), heart).request.text).toBe(
+        heart.text,
+      );
+    });
+  });
+
+  test("a plain array is still drawn by code, drawer or not", () => {
+    const arr = {
+      things: "counters",
+      total: 24,
+      groups: 4,
+      perGroup: 6,
+      arrangement: "groups" as const,
+      empty: 0,
+    };
+    expect(
+      planPicture(dir({ route: "code", pictures: [], count: arr }), ask, { draws: true }).kind,
+    ).toBe("draw");
   });
 
   test("lengths are clipped: three mustShow items of at most 40 characters, four queries", () => {

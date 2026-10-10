@@ -195,3 +195,44 @@ describe("lostPic never replaces another visual (#423 review)", () => {
     expect(otherVisual({ figure: { shows: "x" } }, "figure")).toBe(false);
   });
 });
+
+describe("a picture the director chose to draw (Greg, 10 Oct: a visual is never lost)", () => {
+  const shows = "A cross-section of the human heart showing its four chambers";
+  test("it is drawn as the director's kind, with the ask's must_see as its labels", async () => {
+    const tried: Record<string, unknown>[] = [];
+    const how = await lostPictureFallback(
+      { heading: "Inside the heart", template: "picture-text", picture: { shows } },
+      "picture",
+      shows,
+      async (next, kind) => {
+        tried.push({ kind, figure: next.figure, picture: next.picture, template: next.template });
+        return true;
+      },
+      { kind: "labelled-diagram", labels: ["left atrium", "right ventricle"] },
+    );
+    expect(how).toBe("library");
+    expect(tried).toEqual([
+      {
+        kind: "library",
+        figure: {
+          kind: "labelled-diagram",
+          shows,
+          alt: shows,
+          title: null,
+          labels: ["left atrium", "right ventricle"],
+        },
+        picture: undefined,
+        template: "visual-text",
+      },
+    ]);
+  });
+
+  test("without the director's kind the heart is not a library shape (the old path)", async () => {
+    let tried = 0;
+    const how = await lostPictureFallback({ picture: { shows } }, "picture", shows, async () => {
+      tried++;
+      return true;
+    });
+    expect({ how, tried }).toEqual({ how: undefined, tried: 0 });
+  });
+});

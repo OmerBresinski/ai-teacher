@@ -136,15 +136,31 @@ export function keepLanded(s: Slide, key: string, landed: (shows: string) => boo
   return first ? { ...s, [key]: first, tiles: rest } : s;
 }
 
-/** The slide with its lost picture replaced by a library diagram of the same thing. */
-export function librarySlide(s: Slide, key: string, kind: string, shows: string): Slide {
+/**
+ * The slide with its lost picture replaced by a library diagram of the same thing. `labels` (the
+ * picture's must_see) are the drawer's labels for a drawing the director chose.
+ */
+export function librarySlide(
+  s: Slide,
+  key: string,
+  kind: string,
+  shows: string,
+  labels: string[] = [],
+): Slide {
   const { [key]: _lost, ...rest } = s;
   const tpl = String(s.template ?? "");
   return {
     ...rest,
     template: /picture/.test(tpl) ? tpl.replace("picture", "visual") : tpl || "visual-text",
-    figure: { kind, shows, alt: shows, title: null },
+    figure: { kind, shows, alt: shows, title: null, ...(labels.length ? { labels } : {}) },
   };
+}
+
+/** A drawing the picture director chose for the lost picture (its `code` route and kind). */
+export interface DirectorDrawing {
+  kind: string;
+  /** The picture's must_see: what the drawing labels. */
+  labels: string[];
 }
 
 /**
@@ -157,10 +173,15 @@ export async function lostPictureFallback(
   key: string,
   shows: string,
   attempt: (next: Slide, how: "split" | "library") => Promise<boolean>,
+  /** The director chose to draw it (Greg, 10 Oct): drawn as its kind first, whatever the words. */
+  drawing?: DirectorDrawing,
 ): Promise<"split" | "library" | undefined> {
   if (otherVisual(s, key)) return undefined;
-  const r = routeLostPicture(shows);
-  if (r.how === "library" && (await attempt(librarySlide(s, key, r.kind, shows), "library")))
+  const r: LostRoute = drawing ? { how: "library", kind: drawing.kind } : routeLostPicture(shows);
+  if (
+    r.how === "library" &&
+    (await attempt(librarySlide(s, key, r.kind, shows, drawing?.labels), "library"))
+  )
     return "library";
   if (r.how === "split" && (await attempt(splitSlide(s, key, r.subjects), "split"))) return "split";
   return undefined;

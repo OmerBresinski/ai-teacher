@@ -238,6 +238,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         batchSystem: PICTURE_DIRECTOR_BATCH_SYSTEM,
         // TEACH-237: the generator, when the worker has one (OPENAI_API_KEY).
         ...(deps.pictureMaker ? { maker: deps.pictureMaker } : {}),
+        // The writer stage draws (drawDiagrams below): a picture the director chooses to draw is
+        // handed to the drawer, then kept as a picture if it cannot be drawn (Greg, 10 Oct).
+        draws: true,
         onOutcome: (key, o) =>
           deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
       })
@@ -345,6 +348,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
               await pictures.settleSlide(i);
             },
             held: (i, key) => pictures.held(i, key),
+            drawAs: (i, key) => pictures.drawAs(i, key),
+            retryable: (i, key) => pictures.retryable(i, key),
           }
         : {}),
       onEditable: async (slides) => {
