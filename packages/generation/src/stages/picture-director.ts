@@ -1201,8 +1201,8 @@ export function createWriterPictures(opts: {
         requestOf(ask),
       );
       // match6 + match6w (BAKEOFF base4f): a several-thing picture ships only when the judge saw
-      // every thing the slide's own words name; on a look, point, match or find slide the dropped
-      // photo is held (keepPic) for a slide that ends with no visual.
+      // every thing the slide's own words name; the dropped photo is held on every slide (keepPic)
+      // for a slide that would otherwise end with no visual.
       const words = `${slide.heading} ${slide.text ?? ""}`;
       const seen = seenOf({
         alt: photo.alt,
