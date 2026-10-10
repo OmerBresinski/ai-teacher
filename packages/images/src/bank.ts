@@ -1,20 +1,28 @@
 /**
  * Generated pictures (TEACH-237, UX ruling 158): the pure parts, shared by the worker and the tests.
  * The generation size per slide zone, the frame and no-text lines code owns on every generation
- * prompt, the image price, and the OpenAI image generator behind a small interface. The library's
- * reuse and embeddings come with TEACH-84 part b.
+ * prompt, the image price, and the OpenAI image generator behind a small interface; and the
+ * library's reuse rule (TEACH-84 part b): the licence filter for what it may keep, cosine over
+ * request embeddings in the same aspect family at the lab's calibrated threshold, and the OpenAI
+ * embedder. No database here: the store lives in `@tj/db` (`bank.ts`).
  */
+import { licenceClass } from "./commons";
+
 /** Ruling 158 (amended 5 Oct): sunburst won realism and UK context at flare's price. */
 export const IMAGE_MODEL = "gpt-image-2.5-sunburst";
 export const IMAGE_QUALITY = "low";
 /** The model's terms version recorded on every generated row, so a terms change retires them. */
 export const IMAGE_TERMS = "openai-2026-10";
+/** The cheapest good OpenAI embedding (TEACH-84: ~$0.000004 a lookup). */
+export const EMBED_MODEL = "text-embedding-3-small";
+export const EMBED_DIMENSIONS = 1536;
 
 /** Standard-tier rates (verified against the provider's price page): per token, USD. */
 const IMAGE_OUT_USD = 30 / 1e6;
 const TEXT_IN_USD = 5 / 1e6;
 /** Image input tokens (a reference picture): priced high (unverified) so guards stay safe. */
 const IMAGE_IN_USD = 10 / 1e6;
+const EMBED_USD = 0.02 / 1e6;
 
 export type AspectFamily = "landscape" | "square" | "portrait";
 export type ImageSize = "1024x1024" | "1536x1024" | "1024x1536" | "2048x1152";
@@ -78,6 +86,101 @@ export function directedImagePrompt(prompt: string, faithful: boolean): string {
   ].join("\n");
 }
 
+export function embedCostUsd(tokens: number): number {
+  return tokens * EMBED_USD;
+}
+
+/** What the library may keep (ruling 139): Pexels, generated, or Commons PD, CC0, CC BY, BY-SA. */
+export function bankLicenceOk(source: { provider: string; licence?: string }): boolean {
+  if (source.provider === "pexels" || source.provider === "generated") return true;
+  if (source.provider === "commons") return licenceClass(source.licence ?? "") !== undefined;
+  return false;
+}
+
+export function cosine(a: readonly number[], b: readonly number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    dot += x * y;
+    na += x * x;
+    nb += y * y;
+  }
+  return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb);
+}
+
+/**
+ * The reuse threshold on cosine between request embeddings (`text-embedding-3-small`). Picked on
+ * the labelled set `calibration/reuse-pairs.json` (`calibration/calibrate.ts`, `result.txt`): with
+ * `numbersAgree` applied, 0.77 reuses 8 of the 10 "same" pairs and none of the 12 "near" or 10
+ * "different" ones (precision 1.00, recall 0.80). Without the number rule, "24 counters in four
+ * groups of six" and "12 counters in three groups of four" score 0.87: no threshold separates them.
+ */
+export const REUSE_THRESHOLD = 0.77;
+
+export type BankCandidate<T> = { similarity: number; family: AspectFamily; row: T };
+
+const UNITS =
+  "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(
+    " ",
+  );
+const TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split(" ");
+
+/** The numbers a request states, digits or words ("Twenty-four" is 24), as a sorted list. */
+export function numbersIn(text: string): number[] {
+  const out: number[] = [];
+  const s = text.toLowerCase();
+  for (const m of s.matchAll(/\d+(?:\.\d+)?/g)) out.push(Number(m[0]));
+  const words = s.match(/[a-z]+/g) ?? [];
+  for (let i = 0; i < words.length; i++) {
+    const tens = TENS.indexOf(words[i] ?? "");
+    if (tens >= 2) {
+      const unit = UNITS.indexOf(words[i + 1] ?? "");
+      const ones = unit > 0 && unit < 10 ? unit : 0;
+      out.push(tens * 10 + ones);
+      if (ones) i += 1;
+      continue;
+    }
+    const unit = UNITS.indexOf(words[i] ?? "");
+    if (unit >= 2) out.push(unit);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/**
+ * Two requests may share a picture only when they state the same numbers: "24 counters in four
+ * groups of six" is not "12 counters in three groups of four", however alike the words read.
+ */
+export function numbersAgree(a: string, b: string): boolean {
+  const x = numbersIn(a);
+  const y = numbersIn(b);
+  return x.length === y.length && x.every((n, i) => n === y[i]);
+}
+
+/** The best stored picture to reuse: same family, at or above the threshold; else undefined. */
+export function pickReuse<T>(
+  candidates: readonly BankCandidate<T>[],
+  family: AspectFamily,
+  threshold = REUSE_THRESHOLD,
+): BankCandidate<T> | undefined {
+  let best: BankCandidate<T> | undefined;
+  for (const c of candidates) {
+    if (c.family !== family || c.similarity < threshold) continue;
+    if (!best || c.similarity > best.similarity) best = c;
+  }
+  return best;
+}
+
+/** The text a request is embedded and stored by: the writer's words, with the name if any. */
+export function requestText(request: { text: string; named?: string | null }): string {
+  const t = request.text.trim().replace(/\s+/g, " ");
+  return request.named && !t.toLowerCase().includes(request.named.toLowerCase())
+    ? `${request.named}: ${t}`
+    : t;
+}
+
 export interface ImageGenerator {
   readonly model: string;
   generate(input: { prompt: string; size: ImageSize; signal?: AbortSignal }): Promise<{
@@ -87,6 +190,14 @@ export interface ImageGenerator {
     costUsd: number;
     ms: number;
   }>;
+}
+
+export interface Embedder {
+  readonly model: string;
+  embed(
+    text: string,
+    signal?: AbortSignal,
+  ): Promise<{ vector: number[]; tokens: number; costUsd: number }>;
 }
 
 type FetchFn = typeof globalThis.fetch;
@@ -127,6 +238,37 @@ export function createOpenAiImageGenerator(opts: {
         costUsd: imageCostUsd(usage),
         ms: Date.now() - t0,
       };
+    },
+  };
+}
+
+/** OpenAI embeddings, cached in-process by text (the same request text never pays twice). */
+export function createOpenAiEmbedder(opts: { apiKey: string; fetch?: FetchFn }): Embedder {
+  const fetchFn = opts.fetch ?? globalThis.fetch;
+  const cache = new Map<string, Promise<{ vector: number[]; tokens: number; costUsd: number }>>();
+  return {
+    model: EMBED_MODEL,
+    embed(text, signal) {
+      const hit = cache.get(text);
+      if (hit) return hit.then((r) => ({ ...r, tokens: 0, costUsd: 0 }));
+      const p = (async () => {
+        const res = await fetchFn("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: EMBED_MODEL, input: text }),
+          signal: signal ?? AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) throw new Error(`embedding failed (${res.status})`);
+        const body = (await res.json()) as {
+          data: { embedding: number[] }[];
+          usage?: { total_tokens?: number };
+        };
+        const tokens = body.usage?.total_tokens ?? 0;
+        return { vector: body.data[0]?.embedding ?? [], tokens, costUsd: embedCostUsd(tokens) };
+      })();
+      cache.set(text, p);
+      p.catch(() => cache.delete(text));
+      return p;
     },
   };
 }

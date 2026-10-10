@@ -3,8 +3,10 @@ import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { type Planner, type ReasoningEffort, writerRoute } from "@tj/generation";
 import {
+  createOpenAiEmbedder,
   createOpenAiImageGenerator,
   createPexelsClient,
+  type Embedder,
   type ImageGenerator,
   limitPexels,
   type PexelsClient,
@@ -50,6 +52,11 @@ export type WorkerDeps = {
    * cap (`IMAGE_GENERATION_DAILY_CAP_USD`) per worker process, shared by every job.
    */
   imageGeneration?: { generator: ImageGenerator; cap: DailyImageCap };
+  /**
+   * The shared picture library's request embedder (TEACH-84 part b), only when
+   * `PICTURE_LIBRARY_REUSE=on` and `OPENAI_API_KEY` is set; absent, nothing is reused or stored.
+   */
+  pictureLibrary?: { embedder: Embedder };
   jobs?: JobsContext;
 };
 
@@ -98,6 +105,11 @@ export function createWorkerDeps(
             cap: createDailyImageCap({ capUsd: env.IMAGE_GENERATION_DAILY_CAP_USD, logger }),
           },
         }
+      : {}),
+    ...(env.PICTURE_LIBRARY_REUSE === "on" &&
+    env.OPENAI_API_KEY &&
+    env.AI_FAKE_SCRIPT !== "pipeline"
+      ? { pictureLibrary: { embedder: createOpenAiEmbedder({ apiKey: env.OPENAI_API_KEY }) } }
       : {}),
     storageKind: storage.kind,
   };

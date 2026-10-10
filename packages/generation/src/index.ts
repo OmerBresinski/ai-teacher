@@ -115,10 +115,11 @@ export {
   WRITER_PLANNED_VERSION,
   type WriterStageName,
 } from "./stages/objectives-first";
-export type {
-  BankRequest,
-  MadePicture,
-  PictureBank,
+export {
+  type BankRequest,
+  findPicture,
+  type MadePicture,
+  type PictureBank,
 } from "./stages/photo-bank";
 export {
   directedSetJudges,
