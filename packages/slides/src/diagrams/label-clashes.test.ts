@@ -28,8 +28,11 @@ const ZONES = [
   { w: 860, h: 380 },
 ];
 
-/** Shipped renders in the sweep below that still carry a label clash (10 Oct 2026). */
-const CLASH_CEILING = 7;
+/**
+ * Shipped renders in the sweep below that still carry a label clash (10 Oct 2026). Drawings that
+ * used to be refused now ship with their warnings, so this counts them too.
+ */
+const CLASH_CEILING = 255;
 
 describe("REGISTER diagrams-02: labels on drawer drawings read clear", () => {
   test("the sweep holds the drawer's replay specs", () => {
@@ -128,5 +131,41 @@ describe("REGISTER prod-06: a drawer's close-up is tied to what it shows", () =>
       const svg = renderDiagram(s, getTheme("studio"), { w: 392, h: 328 }) ?? "";
       expect(svg.match(/stroke-dasharray/g)?.length ?? 0).toBe(0);
     }
+  });
+});
+
+describe("checks never cost a visual (Greg, 10 Oct 2026)", () => {
+  // Six long labels all naming one small square: no placement clears them in a small zone at KS1
+  // sizes. The drawing still ships, and what reads badly comes back as warnings.
+  const crowded = {
+    kind: "labelled-diagram",
+    alt: "A small square with six labels",
+    canvas: "square",
+    shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }],
+    labels: Array.from({ length: 6 }, (_, k) => ({
+      text: `Label number ${k + 1} words`,
+      at: [50, 50],
+    })),
+  };
+  test("a labelled diagram whose labels clash draws, with its faults as warnings", () => {
+    const r = drawDiagram(crowded, atKeyStage(getTheme("studio"), "ks1"), {
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.warnings?.length ?? 0).toBeGreaterThan(0);
+    expect(r.element.src).toContain("svg");
+  });
+  test("a spec that does not parse is still refused", () => {
+    const r = drawDiagram({ kind: "labelled-diagram", shapes: [] }, getTheme("studio"), {
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+    });
+    expect(r.ok).toBe(false);
   });
 });

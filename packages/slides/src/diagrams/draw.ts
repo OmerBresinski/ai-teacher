@@ -26,6 +26,12 @@ export type DrawnDiagram =
       rung: number;
       /** The spec actually drawn (store it with the slide if you keep specs). */
       spec: unknown;
+      /**
+       * What still reads badly (labels touching, a label across a line, ...) when no form and size
+       * read cleanly. A warning to log, never a reason to drop the drawing (Greg, 10 Oct 2026:
+       * checks never cost a visual). Absent when it reads cleanly.
+       */
+      warnings?: string[];
     }
   | { ok: false; reasons: string[] };
 
@@ -49,7 +55,10 @@ export function readabilityFaults(
 /**
  * The diagram for `spec` in `rect`, or why it cannot be drawn readably there. Tries the spec as
  * normalised and then each simpler form, each from the zone's label size (or `rect.fs`) down to
- * the key stage's small-text floor, and takes the first that reads cleanly. Never throws.
+ * the key stage's small-text floor, and takes the first that reads cleanly. When none does, the
+ * attempt with the fewest faults is drawn anyway (the spec as given first, the largest size first)
+ * and its faults come back as `warnings`: only a spec that does not parse or cannot be drawn at
+ * all is refused. Never throws.
  */
 export function drawDiagram(
   spec: unknown,
@@ -65,6 +74,8 @@ export function drawDiagram(
       const base = context(theme, Math.round(rect.w), Math.round(rect.h), rect.fs);
       const floor = base.minFs;
       let last: string[] = [];
+      // The least-bad attempt, drawn when nothing reads cleanly (placement faults are warnings).
+      let least: { form: unknown; fs: number; rung: number; faults: string[] } | undefined;
       // Last rungs: each form without its own title (the slide's heading already names it).
       const forms = simplerDiagrams(spec);
       for (const f of [...forms]) {
@@ -81,11 +92,28 @@ export function drawDiagram(
           const faults = readabilityFaults(form, theme, size);
           if (faults.length) {
             if (fs === base.fs || last.length === 0) last = faults;
+            if (
+              !faults.includes("it does not draw") &&
+              (!least || faults.length < least.faults.length)
+            )
+              least = { form, fs, rung, faults };
             continue;
           }
           const element = diagramElement(form, theme, { ...rect, fs }, ids);
           if (element) return { ok: true, element, fs, rung, spec: form };
         }
+      }
+      if (least) {
+        const element = diagramElement(least.form, theme, { ...rect, fs: least.fs }, ids);
+        if (element)
+          return {
+            ok: true,
+            element,
+            fs: least.fs,
+            rung: least.rung,
+            spec: least.form,
+            warnings: least.faults,
+          };
       }
       return { ok: false, reasons: last.length ? last : ["it does not draw"] };
     });
