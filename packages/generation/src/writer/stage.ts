@@ -38,6 +38,7 @@ import {
   withBuildCounts,
   writerSpecOf,
 } from "./diagrams";
+import { type DraftOptions, type SlideDraft, SlideDrafts } from "./draft";
 import {
   asPicture,
   asTableText,
@@ -277,6 +278,16 @@ export type WriterRun = {
    * editable deck (`onEditable`) supersedes every one of them.
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
+  /**
+   * Live writing P4 (TEACH-202 part c): the slide the stream is writing, before it closes. The
+   * first draft of a slide comes as soon as its template closes, then its fields as they grow (an
+   * open string cut where the stream is), at most one per `draft.ms` (default 200). Read-only and
+   * best effort: drafts never feed the final parse, the laid slides, the checks or the costs, a
+   * throwing callback only stops the drafts, and the slide's `onSlide` supersedes them.
+   */
+  onDraft?: (index: number, draft: SlideDraft) => void;
+  /** The drafts' throttle and clock (tests pass a fake clock). */
+  draft?: DraftOptions;
   /**
    * The final parse opened a slide again from other bytes than the stream did: its earlier asks
    * are void (the caller cancels their pictures); its asks follow through `onAsks`.
@@ -862,6 +873,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     if (ok) nextOpen = idx === 0 ? 2 : idx + 1;
   });
+  // Live writing P4: the open slide's drafts, peeked after each delta (never on a recorded run).
+  const onDraft = run.onDraft;
+  let drafts = onDraft && streaming ? new SlideDrafts(onDraft, run.draft) : undefined;
+  const draftStats = drafts?.stats;
   const main = run.recordedWriter
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
@@ -880,8 +895,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             () => parser.push(delta),
             (e) => stopStream("parser failed", e),
           );
+          if (!drafts || !streaming) return;
+          nonFatalSync(
+            () => drafts?.update(parser),
+            (e) => {
+              drafts = undefined;
+              log({ ev: "drafts-stopped", err: String(e).slice(0, 200) });
+            },
+          );
         },
       );
+  if (draftStats)
+    log({
+      ev: "drafts",
+      n: draftStats.drafts,
+      peeks: draftStats.peeks,
+      ms: +draftStats.ms.toFixed(2),
+    });
   // K3: an incomplete writer output fails the job; it never ships a headings-only deck.
   const incomplete = writerIncomplete({
     finishReason: main.finishReason ?? null,
