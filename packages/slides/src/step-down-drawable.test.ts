@@ -33,3 +33,25 @@ describe("a step down lands on a size the renderer draws", () => {
     }
   }
 });
+
+describe("a step down from a size off the stage's steps (prod-15)", () => {
+  for (const base of THEMES) {
+    for (const stage of STAGES) {
+      const theme = atKeyStage(base, stage);
+      test(`${base.id} at ${stage ?? "no stage"}`, () => {
+        for (const preset of PRESETS) {
+          const top = resolveFontSize(theme, preset);
+          // Every whole size from 16 to a few above the default: the 25 a stored lead carried
+          // after a theme switch is one of them.
+          for (let size = 16; size <= top + 6; size++) {
+            const next = stepDownSize(theme, preset, size);
+            if (next === size) continue;
+            // What the fit measures is what the renderer draws (a size under the floor may rise to
+            // it, which the renderer also draws).
+            expect(resolveFontSize(theme, preset, next)).toBe(next);
+          }
+        }
+      });
+    }
+  }
+});
