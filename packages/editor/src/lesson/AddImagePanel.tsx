@@ -3,7 +3,7 @@ import { IconButton, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { X } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { ImagePicker, type ImageSearchClient } from "../images/ImagePicker";
-import { type ImageSource, imageFields } from "../images/image-source";
+import { type ImageSource, imageFields, replacementFields } from "../images/image-source";
 import { makeImage } from "../model/insert";
 import * as reducers from "../model/reducers";
 import { useHistory, useLesson } from "./document-context";
@@ -45,21 +45,13 @@ export function AddImagePanel({ children, onInsert, images }: AddImagePanelProps
 
   const pick = (source: ImageSource) => {
     if (replacing && slide) {
-      // Same id, same frame. A new picture starts untouched: the old crop, focal point and
-      // transform go with the old bitmap (TEACH-153); a plain upload over a searched image
-      // clears the old provenance; either flavour flips the element to teacher-authored
-      // (Images Decision 4).
-      history.dispatch(reducers.updateElement<ImageElement>, slide.id, replacing, {
-        alt: undefined,
-        credit: undefined,
-        creditUrl: undefined,
-        crop: undefined,
-        focal: undefined,
-        imageTransform: undefined,
-        source: undefined,
-        authoredBy: "teacher",
-        ...imageFields(source),
-      });
+      // Same id, same frame; the old picture's crop, provenance and diagram source go with it.
+      history.dispatch(
+        reducers.updateElement<ImageElement>,
+        slide.id,
+        replacing,
+        replacementFields(source),
+      );
     } else {
       // A new element carries no `authoredBy`, which the pipeline treats as the teacher's.
       onInsert({ ...makeImage(source.src, source.natural), ...imageFields(source) });

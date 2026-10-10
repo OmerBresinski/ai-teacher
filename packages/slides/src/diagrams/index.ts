@@ -6,7 +6,7 @@
  * Never throws and never draws an error: a spec that does not parse, or a renderer that fails,
  * gives `undefined`, and the caller draws nothing.
  */
-import type { ImageElement, Theme } from "@tj/domain/documents";
+import type { DiagramSource, ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
@@ -510,7 +510,36 @@ export function diagramElement(
     src: svgDataUrl(svg),
     alt: s.alt,
     fit: "contain",
+    // What it was drawn from (TEACH-97 part h), with the label size the fit settled on and whether
+    // it parsed only with long labels, so `redrawDiagram` gives back this exact drawing.
+    diagram: {
+      kind: "drawer",
+      spec: s as Record<string, unknown>,
+      ...(rect.fs !== undefined ? { fs: rect.fs } : {}),
+      ...(longLabels > 0 && !DiagramSpecSchema.safeParse(s).success ? { longLabels: true } : {}),
+    },
   } as ImageElement;
+}
+
+/**
+ * A drawer diagram drawn again from its stored source (TEACH-97 part h) in `rect`, in the stored
+ * label size and long-label mode: the same drawing as when it was placed, for the same rect and
+ * theme. `undefined` when the spec no longer draws.
+ */
+export function redrawDiagram(
+  source: Extract<DiagramSource, { kind: "drawer" }>,
+  theme: Theme,
+  rect: { x: number; y: number; w: number; h: number },
+  ids: () => string = uid,
+): ImageElement | undefined {
+  const draw = () =>
+    diagramElement(
+      source.spec,
+      theme,
+      { ...rect, ...(source.fs !== undefined ? { fs: source.fs } : {}) },
+      ids,
+    );
+  return source.longLabels ? withLongLabels(draw) : draw();
 }
 
 /**

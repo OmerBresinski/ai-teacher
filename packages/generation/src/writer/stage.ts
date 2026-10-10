@@ -595,6 +595,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                   alt,
                   bare: true,
                   ...(run.libraryModelBody ? { body: true } : {}),
+                  source: r.source,
                 },
               },
             });

@@ -226,7 +226,7 @@ function figureNow(
   if (v.status === "diagram") {
     const d = (
       v.spec as {
-        drawn?: { src: string; aspect: number; alt?: string; bare?: boolean; body?: boolean };
+        drawn?: Extract<Figure, { drawn: unknown }>["drawn"];
       }
     )?.drawn;
     return (d ? { drawn: d } : { diagram: v.spec }) as Figure;
