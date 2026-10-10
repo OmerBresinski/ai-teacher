@@ -18,7 +18,7 @@ import {
 } from "../prompts/picture-director";
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
-import { asksToSee, namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
+import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
 import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
@@ -394,20 +394,24 @@ export function stockFirstRoute(route: PictureDirection["route"], text: string):
 }
 
 /**
- * The slot's plan from the director's answer. Only the director's own `none` plans no picture: a
- * failed call or an answer with no usable picture keeps the writer's ask as the picture, and a
- * drawing the bank cannot draw goes to the caller's drawer (`draws`) or, with none, keeps the
- * ask's picture too (Greg, 10 Oct: a visual is never lost).
+ * The slot's plan from the director's answer (Greg, 10 Oct: a visual is never lost). A writer ask
+ * is a picture the slide needs, so code never plans none for one that has words: the director's
+ * own `none`, a failed call or an answer with no usable picture keeps the writer's ask as the
+ * picture, and a drawing the bank cannot draw goes to the caller's drawer (`draws`) or, with none,
+ * keeps the ask's picture too. `real` (a history card, ruling 163) puts the picture on the real
+ * ladder: Commons, then stock, never generated.
  */
 export function planPicture(
   d: PictureDirection | undefined,
   ask: Ask,
-  opts: { draws?: boolean } = {},
+  opts: { draws?: boolean; real?: boolean } = {},
 ): PicturePlan {
   // An ask with no words has nothing to keep (and askDirection would plan it again forever).
   const keep = (): PicturePlan =>
-    ask.text.trim() ? planPicture(askDirection(ask, d), ask) : { kind: "none" };
-  if (d?.route === "none") return { kind: "none" };
+    ask.text.trim()
+      ? planPicture(askDirection(ask, d), ask, opts.real ? { real: true } : {})
+      : { kind: "none" };
+  if (d?.route === "none") return keep();
   if (!d) return keep();
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };
   const counted = countOk(d.count) ? d.count : undefined;
@@ -433,7 +437,7 @@ export function planPicture(
     (d.named === "event" ||
       d.named === "person" ||
       (!d.named && DEPICTS.test(`${ask.text} ${d.pictures[0]?.shows ?? ""}`)));
-  const real = d.route === "commons" || depicts;
+  const real = opts.real === true || d.route === "commons" || depicts;
   // The request's year-plus-event anchor leads a Commons search ("hyperinflation 1923" ranks the
   // real 1923 Weimar photo first; the director's own wording did not).
   const dated = real ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
@@ -538,6 +542,8 @@ export async function findDirected(args: {
    * the bank cannot draw ends here as `director-code` with its kind. Absent, it is kept as a picture.
    */
   draws?: boolean;
+  /** Ruling 163 for this slot (a history card): the real ladder only, never generated. */
+  realOnly?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -565,7 +571,7 @@ export async function findDirected(args: {
         isHistoricalSet([ask.subject]) ||
         (/^hist/i.test(lesson.subject ?? "") && DEPICTS.test(ask.subject)),
     },
-    { draws: args.draws === true },
+    { draws: args.draws === true, ...(args.realOnly ? { real: true } : {}) },
   );
   const log = (extra: Record<string, unknown>) =>
     deps.logger.info(
@@ -788,6 +794,8 @@ export async function placeWriterPicture(args: {
   onOutcome?: (o: PictureOutcome) => void;
   /** The stage draws a drawing the director chooses (`findDirected`'s `draws`). */
   draws?: boolean;
+  /** Ruling 163 for this slot (`findDirected`'s `realOnly`). */
+  realOnly?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
@@ -858,6 +866,7 @@ export async function placeWriterPicture(args: {
         ...(args.direct ? { direct: args.direct } : {}),
         ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
         ...(args.draws ? { draws: true } : {}),
+        ...(args.realOnly ? { realOnly: true } : {}),
       });
     },
     (error) => {
@@ -1166,6 +1175,7 @@ export function createWriterPictures(opts: {
         opts.onOutcome?.(ask.key, o);
       },
       ...(redraw ? { draws: true } : {}),
+      ...(real ? { realOnly: true } : {}),
     }).then((photo) => {
       if (slot.state.status !== "pending") return;
       if (!photo) {
@@ -1207,7 +1217,9 @@ export function createWriterPictures(opts: {
       const named = namedUnmatched(unmatchedItems(ask.mustSee, seen), words);
       if (named.length) {
         const k = id(index, ask.key);
-        if (asksToSee(words)) heldPhotos.set(k, slot.state);
+        // Held on every slide (Greg, 10 Oct: a visual is never lost): keepPic ships it only when
+        // the slide would otherwise end with no visual at all.
+        heldPhotos.set(k, slot.state);
         slot.state = { status: "failed" };
         slot.miss = "match6";
         opts.deps.logger.info(
