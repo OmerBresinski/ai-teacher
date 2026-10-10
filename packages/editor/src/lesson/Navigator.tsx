@@ -20,7 +20,7 @@ import {
   IconButton,
 } from "@tj/ui";
 import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSlideLint } from "../layout/use-slide-lint";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
 import * as reducers from "../model/reducers";
@@ -29,6 +29,7 @@ import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
 import { useHistory, useLesson } from "./document-context";
+import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
@@ -203,8 +204,18 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   // Whether keyboard focus is inside the rail. Kept as a ref rather than read off
   // `document.activeElement`: a row that a delete unmounts takes focus to the body without a blur.
   const focusWithin = useRef(false);
+  const markContext = useContext(FollowMarkContext);
+  const followMark = useRef(markContext);
+  followMark.current = markContext;
   useEffect(() => {
     const i = activeId ? indexRef.current.get(activeId) : undefined;
+    // Live writing P1 (TEACH-202 part e): a slide the follow opened scrolls into view only while
+    // the teacher is not busy, and never takes focus.
+    if (activeId && followMark.current?.current === activeId) {
+      if (i !== undefined && !teacherBusy())
+        virtualizerRef.current.scrollToIndex(i, { align: "auto" });
+      return;
+    }
     if (i !== undefined) virtualizerRef.current.scrollToIndex(i, { align: "auto" });
     // Focus follows the tab stop: while the rail holds focus and the open slide changes (arrows,
     // Home/End, a delete, a menu action), the new row takes it. A row the virtualiser has yet to

@@ -111,7 +111,7 @@ function Picture({
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   useEffect(() => {
     const img = ref.current;
-    if (!img) return;
+    if (!img || !fade) return;
     const loaded = () => setLoadedSrc(src);
     if (img.complete) loaded();
     img.addEventListener("load", loaded);
@@ -120,7 +120,7 @@ function Picture({
       img.removeEventListener("load", loaded);
       img.removeEventListener("error", loaded);
     };
-  }, [src]);
+  }, [src, fade]);
   useEffect(() => {
     const img = ref.current;
     if (!img) return;
