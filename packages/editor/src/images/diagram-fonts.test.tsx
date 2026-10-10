@@ -90,6 +90,25 @@ describe("withDiagramFonts", () => {
 });
 
 describe("capture before anything mounts", () => {
+  test("a fetch that never answers times out: capture goes on with the fallback face", async () => {
+    let calls = 0;
+    setDiagramFontSource({
+      rules: fakeSource().rules,
+      fetchBase64: () => {
+        calls += 1;
+        return new Promise<string>(() => {});
+      },
+      timeoutMs: 20,
+    });
+    const root = document.createElement("div");
+    root.innerHTML = `<img src="${SRC}">`;
+    await prepareDiagramFonts([{ elements: [{ type: "image", src: SRC }] }]);
+    await diagramImagesReady(root, 2);
+    // Settled on the fallback (counted as failed, inside its back-off): no second fetch yet.
+    expect(diagramFontsNow(SRC)).toBe(SRC);
+    expect(calls).toBe(1);
+  });
+
   test("prepareDiagramFonts fetches what the slides need, so the first render is fonted", async () => {
     const source = fakeSource();
     setDiagramFontSource(source);

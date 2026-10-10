@@ -25,7 +25,28 @@ export type FaceRule = Omit<EmbeddedFace, "woff2Base64"> & { url: string };
 export type FontSource = {
   rules(): FaceRule[];
   fetchBase64(url: string): Promise<string>;
+  /** How long one fetch may take before it counts as failed; default `FETCH_TIMEOUT_MS`. */
+  timeoutMs?: number;
 };
+
+/** A hung font fetch must never hang print or export: past this, the fallback face is used. */
+const FETCH_TIMEOUT_MS = 4_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("font fetch timed out")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* The page's stylesheets                                              */
@@ -172,8 +193,7 @@ function load(rule: FaceRule): Promise<void> {
   if (loaded.has(url) || coolingDown(url)) return Promise.resolve();
   const known = loading.get(url);
   if (known) return known;
-  const p = source
-    .fetchBase64(url)
+  const p = withTimeout(source.fetchBase64(url), source.timeoutMs ?? FETCH_TIMEOUT_MS)
     .then((woff2Base64) => {
       loaded.set(url, { ...face, woff2Base64 });
       failed.delete(url);
