@@ -204,7 +204,10 @@ function checkExplanationShare(lesson: Lesson): Finding[] {
   const facts = lesson.facts;
   if (!facts) return [];
   // Counted in slides (ruling 82): the outline after the title and objectives slides.
-  const taught = facts.outline.filter((e) => e.kind !== "title" && e.kind !== "objectives");
+  // An answers slide (ruling 200) is part of its check, not a slide taught on its own.
+  const taught = facts.outline.filter(
+    (e) => e.kind !== "title" && e.kind !== "objectives" && !e.answersTo,
+  );
   if (taught.length === 0) return [];
   const explain = taught.filter((entry) => EXPLAIN_KINDS.has(entry.kind)).length;
   const floor = Math.floor((taught.length * EXPLANATION_SHARE_MIN_PERCENT) / 100);

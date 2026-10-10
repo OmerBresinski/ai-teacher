@@ -179,6 +179,8 @@
   border-radius: 0.24em;
   padding: 0 0.16em;
   margin: 0 -0.16em;
+  /* Figures one width, so a number chip ("1", "4") is the same size whatever the digit. */
+  font-variant-numeric: tabular-nums;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }

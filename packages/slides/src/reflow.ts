@@ -81,7 +81,7 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
-import { ladderStops, resolveTextStyle, STEPPABLE } from "./text-style";
+import { ladderStops, resolveFontSize, resolveTextStyle, STEPPABLE } from "./text-style";
 import { fontFloor, type TextRole } from "./themes";
 
 /* ------------------------------------------------------------------ */
@@ -327,12 +327,26 @@ export function stepDownSize(
   role?: TextRole,
 ): number {
   const floor = fontFloor(preset, role);
-  if (size <= floor) return floor;
-  const next = stops(theme).find((s) => s < size - EPS);
-  // Below the smallest stop there is still room above the floor: give up 10%.
-  const target = next ?? Math.round(size * 0.9);
-  return Math.max(floor, Math.round(target));
+  // At or under the floor: up to the floor when the renderer draws it there, else as it is.
+  if (size <= floor) return resolveFontSize(theme, preset, floor, role) === floor ? floor : size;
+  // A theme read at a key stage draws text only on its stage's steps (`resolveFontSize`), so a
+  // size between them is drawn larger than it was measured (prod-15). Walk down until the size the
+  // renderer draws is smaller; none is, and the text stays where it is.
+  let target = size;
+  for (let i = 0; i < MAX_TRIES && target > floor; i++) {
+    const next = stops(theme).find((s) => s < target - EPS);
+    // Below the smallest stop there is still room above the floor: give up 10%.
+    target = Math.max(floor, Math.round(next ?? target * 0.9));
+    const drawn = resolveFontSize(theme, preset, target, role);
+    // The next size the renderer would draw is under the role's floor: no step.
+    if (drawn < floor - EPS) return size;
+    if (drawn < size - EPS) return drawn;
+  }
+  return size;
 }
+
+/** How many candidate sizes a step down tries before it gives up. */
+const MAX_TRIES = 8;
 
 /** Resolved size of an element's text, honouring an in-flight step-down override. */
 function sizeOf(
@@ -414,7 +428,9 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
   /* --- 2. Push down ---------------------------------------------- */
   const order = [...slots].sort((a, b) => a.y0 - b.y0 || a.index - b.index);
   const placed: Slot[] = [];
+  const riders = ridersOf(slots);
   for (const slot of order) {
+    if (riders.has(slot)) continue;
     if (slot.frozen) {
       placed.push(slot);
       continue;
@@ -453,9 +469,42 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
     slot.y = top > slot.y0 + EPS ? snapDown(top) : slot.y0;
     placed.push(slot);
   }
+  // A marker goes wherever its text went, keeping the offset the layout gave it.
+  for (const [rider, host] of riders) rider.y = rider.y0 + (host.y - host.y0);
 
   return slots;
 }
+
+/**
+ * List markers: a small shape (a number disc, a bullet) standing just left of a text box, its top
+ * within its own height of the text's top. It sits in a column no text shares, so the push-down
+ * never moves it; it rides with its text instead, or a grown item above leaves the markers below
+ * it where they were laid while their words move down (layout-07). Each marker rides the nearest
+ * text to its right.
+ */
+function ridersOf(slots: Slot[]): Map<Slot, Slot> {
+  const riders = new Map<Slot, Slot>();
+  const texts = slots.filter((s) => s.el.type === "text" || s.el.type === "gap-text");
+  for (const slot of slots) {
+    const el = slot.el;
+    if (el.type !== "shape" || slot.frozen || el.name === ANSWERS_NAME) continue;
+    if (el.w > MARKER_MAX || el.h > MARKER_MAX) continue;
+    let best: { host: Slot; gap: number } | undefined;
+    for (const text of texts) {
+      if (text.frozen) continue;
+      const gap = text.el.x - (el.x + el.w);
+      if (gap < -EPS || gap > MARKER_GAP) continue;
+      if (Math.abs(slot.y0 - text.y0) > el.h + EPS) continue;
+      if (!best || gap < best.gap) best = { host: text, gap };
+    }
+    if (best) riders.set(slot, best.host);
+  }
+  return riders;
+}
+
+/** The largest shape read as a list marker, and how far left of its text it may stand. */
+const MARKER_MAX = 48;
+const MARKER_GAP = 32;
 
 /* ------------------------------------------------------------------ */
 /* reflowSlide                                                         */

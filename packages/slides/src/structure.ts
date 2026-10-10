@@ -472,11 +472,14 @@ export function answersPanel(
     content: answers.map((a) => ({
       type: "paragraph",
       content: [
+        // The chip holds the number only and the gap after it is plain text, so every number's
+        // chip and gap are drawn alike (a "1" chip with its space inside touched its answer).
         {
           type: "text",
-          text: `${a.n} `,
+          text: String(a.n),
           marks: [{ type: "bold" }, { type: "textStyle", attrs: { color: t.colors.accent } }],
         },
+        { type: "text", text: " " },
         { type: "text", text: a.text },
       ],
     })),
@@ -1297,17 +1300,8 @@ function textNeed(el: TextElement, slide: Slide, t: Theme): number {
 function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): Slide[] {
   if (!paginate) return slides;
   return slides.flatMap((slide) => {
-    const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);
+    const panel = coveringPanel(slide, t);
     if (!panel) return [slide];
-    const fitted = fitSlide(slide, t).slide;
-    const chrome = new Set(chromeOf(slide).map((e) => e.id));
-    const foot = Math.max(
-      0,
-      ...fitted.elements
-        .filter((e) => e.id !== panel.id && !chrome.has(e.id) && !isBackdrop(e) && !e.revealStep)
-        .map((e) => e.y + e.h),
-    );
-    if (panel.y >= foot + SPACE[2]) return [slide];
     const heading = headingOf(slide);
     const top = heading ? snapY(heading.y + heading.h + SPACE[4]) : SAFE.y;
     const { revealStep: _step, reveal: _reveal, ...still } = panel;
@@ -1346,6 +1340,32 @@ function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): S
       { ...answersSlide, elements: named },
     ];
   });
+}
+
+/** The answers panel when, revealed, it would cover the questions above it; else undefined. */
+function coveringPanel(slide: Slide, t: Theme): SlideElement | undefined {
+  const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);
+  if (!panel) return undefined;
+  const fitted = fitSlide(slide, t).slide;
+  const chrome = new Set(chromeOf(slide).map((e) => e.id));
+  const foot = Math.max(
+    0,
+    ...fitted.elements
+      .filter((e) => e.id !== panel.id && !chrome.has(e.id) && !isBackdrop(e) && !e.revealStep)
+      .map((e) => e.y + e.h),
+  );
+  return panel.y >= foot + SPACE[2] ? undefined : panel;
+}
+
+/**
+ * A finished set slide whose answers panel would cover its questions, as two slides: the questions
+ * without the panel, then "<heading>: answers" with each answer by its question's number (prod-17,
+ * Greg 10 Oct). A panel that clears the questions keeps its reveal, and the slide comes back alone.
+ * Generation's coded sets are materialised one slide each, so Repair applies this to the finished
+ * deck (`withAnswersSlides`, `@tj/generation`).
+ */
+export function answersOnOwnSlide(slide: Slide, t: Theme, ids: Ids = uid): Slide[] {
+  return answersClear([slide], t, ids, true);
 }
 
 /**

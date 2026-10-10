@@ -25,7 +25,9 @@ import {
   codedSetSpec,
   isCodeBuilt,
   isRetrievalStarter,
+  planIndexOf,
   withAnswersReveal,
+  withAnswersSlides,
   withShuffledOptions,
 } from "../planner/coded-slides";
 import {
@@ -509,6 +511,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   // Audit A3: every set printed in code from a fact Repair patched is printed again from the
   // patched facts, with the same seed as Generate, so the quizzes never contradict the facts.
   if (lab) lesson = reprintPatchedSets(lesson, outcomes, deps);
+  // Last, after every step of this stage that walks the slides: a set whose answers would cover
+  // its questions gets its answers slide straight after, with a matching outline entry so slide i
+  // still pairs with outline entry i for everything that reads the lesson later (prod-17).
+  lesson = withAnswersSlides(lesson, deps.ids);
 
   throwIfAborted(deps.signal);
   const schema = checkLesson(lesson, worksheet);
@@ -761,7 +767,8 @@ export function reprintPatchedSets(
     const refs = slide.elements.flatMap((e) => e.generatedFrom?.factRefs ?? []);
     if (!refs.some((r) => patched.has(r))) return slide;
     const entry = facts.outline[i];
-    const coded = entry ? codedSetSpec(entry, facts, `${lesson.id}:${i}`) : undefined;
+    const seed = `${lesson.id}:${planIndexOf(facts.outline, i)}`;
+    const coded = entry ? codedSetSpec(entry, facts, seed) : undefined;
     if (!coded) return slide;
     const fresh = materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL, deps), deps.ids);
     return { ...withAnswersReveal(fresh, lesson.themeId), id: slide.id };
