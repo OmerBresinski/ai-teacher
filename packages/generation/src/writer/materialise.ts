@@ -9,6 +9,7 @@ import {
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
+import { firstTeaching, slideRole } from "./role";
 
 /*
  * The writer's slides laid out on `@tj/slides` templates (TEACH-110 part a), ported from the
@@ -553,7 +554,20 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     );
     r = { ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage), diagram: why };
   }
-  return aiAuthored({ slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) });
+  const slide = { ...r.slide, kind: kindByRole(s, ctx, r.slide.kind) };
+  return aiAuthored({ slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) });
+}
+
+/**
+ * A question set is a starter ("Do now") only before the deck's first teaching slide; after it the
+ * slide role is check, laid as open-response questions like practice (prod-11, the slide-role
+ * contract). Every other template keeps its kind.
+ */
+function kindByRole(s: S, ctx: MaterialiseCtx, kind: Slide["kind"]): Slide["kind"] {
+  if (kind !== "starter") return kind;
+  const slides = (ctx.plan.slides ?? []) as (S | undefined)[];
+  const role = slideRole(s, { index: ctx.index, firstTeaching: firstTeaching(slides) });
+  return role === "check" ? "open-response" : kind;
 }
 
 /** The objectives slide from the approved objectives (the writer never writes slide 2). */

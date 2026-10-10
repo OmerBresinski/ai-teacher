@@ -23,10 +23,13 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  * is not ported: a split ships only when every picture lands, so the slide is the reroute's
  * adults / young word table, as the original run shipped it.
  *
- * One deliberate change since the lab replay (TEACH-75 part b):
+ * Two deliberate changes since the lab replay (TEACH-75 part b):
+ *  - a question set after the deck's first teaching slide is a check, laid as open-response, not
+ *    a "Do now" starter (register prod-11);
  *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
  *    (ruling 198, register layout-06).
  */
+const TEACHING_KINDS = new Set(["content", "image-text", "diagram", "worked-example"]);
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
@@ -71,9 +74,11 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
         return;
       }
+      const taught = saved.slice(2, i).some((x) => TEACHING_KINDS.has(String((x as El).kind)));
+      const kind = want.kind === "starter" && taught ? "open-response" : want.kind;
       expect({ i, kind: s.kind, background: s.background }).toEqual({
         i,
-        kind: want.kind as never,
+        kind: kind as never,
         background: want.background as never,
       });
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
