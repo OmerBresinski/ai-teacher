@@ -32,6 +32,7 @@ import {
   slotBox,
   slotLimit,
   strictForm,
+  UNSHARED_ASK,
   withAskedCounts,
   withBuilds,
   withLongLabels,
@@ -532,10 +533,11 @@ export async function drawWriterDiagram(
       }
       const r = await drawerCall(ask, deps);
       if (r.spec) {
-        // The drawer's spec (a retry or a library fallback included) is held to the request as the
-        // writer's own is: counters the request says are not shared yet are one pile, never the
-        // groups a retry may add to pass the schema (S10 paid L y2 s7: two groups of 8).
-        const pile = pileSpec(r.spec, ask0.shows);
+        // On an asking slide the drawer's spec (a retry or a library fallback included) is held to
+        // the request: counters the request says are not grouped yet are one pile, never the groups
+        // a retry may add to pass the schema (two groups of 8 for "share 16"). A teaching slide's
+        // groups are drawn as the drawer gave them.
+        const pile = ask0.question ? pileSpec(r.spec, ask0.shows, UNSHARED_ASK) : undefined;
         if (pile) {
           deps.log?.({ ev: "unshared-pile", key: ask.key, total: pile.total, via: "drawer" });
           return done(pile, "drawer");

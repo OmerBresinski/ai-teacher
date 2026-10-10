@@ -446,6 +446,44 @@ describe("S10 paid L y2 s7: a drawer fallback on an asking slide keeps the answe
     expect(s.total).toBe(16);
     expect(s.pile).toBe(true);
   });
+  test("a teaching slide keeps the drawer's groups, whatever the words say", async () => {
+    const s = (await run(false)).spec as J;
+    expect(s.groups).toBe(2);
+    expect(s.pile ?? false).toBe(false);
+  });
+  test("on an asking slide, 'one group' or 'all together' alone does not make a pile", async () => {
+    const grouped = {
+      kind: "equal-groups",
+      alt: "12 counters in 3 groups of 4.",
+      title: null,
+      total: 12,
+      groups: 3,
+      layout: "rings",
+      show_count: "none",
+      unknown: false,
+    };
+    for (const shows of [
+      "12 counters in 3 groups of 4. Circle one group.",
+      "12 counters, 3 groups of 4, then all together.",
+    ]) {
+      const r = await drawWriterDiagram(
+        {
+          key: "diagram",
+          kind: "equal-groups",
+          shows,
+          labels: [],
+          words: "How many in each group?",
+          yearGroup: "Year 2",
+          stage: "ks1",
+          slot: { placement: "across the slide", w: 0, h: 0, name: "full" },
+          question: true,
+        },
+        { callDrawer: async () => ({ out: grouped }), drawerSystem: "", theme: studio },
+      );
+      expect((r.spec as J).groups).toBe(3);
+      expect((r.spec as J).pile ?? false).toBe(false);
+    }
+  });
   test("the drawing does not repeat the slide's heading", async () => {
     const s = (await run(true)).spec as J;
     expect(s.title ?? null).toBeNull();
