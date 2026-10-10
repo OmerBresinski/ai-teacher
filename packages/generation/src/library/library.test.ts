@@ -30,7 +30,13 @@ describe("shipped models", () => {
         try {
           const r = await renderLibraryModel(id, await preset(id, n));
           const svg = svgOfDataUrl(r.src) ?? "";
-          if (!svg.startsWith("<svg") || !svg.includes("<style><![CDATA[@font-face"))
+          // Its tokens travel with it; its face is named, not embedded (TEACH-247 part o).
+          if (
+            !svg.startsWith("<svg") ||
+            !svg.includes("<style><![CDATA[") ||
+            svg.includes("@font-face") ||
+            !svg.includes("font-family:'Lexend Variable'")
+          )
             bad.push(`${id}/${p.id}: not a self-contained svg`);
           if (r.bytes > MAX_SVG_BYTES) bad.push(`${id}/${p.id}: ${r.bytes} bytes`);
           if (buildCount(svg) !== r.builds) bad.push(`${id}/${p.id}: builds`);

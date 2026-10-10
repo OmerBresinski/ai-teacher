@@ -234,6 +234,11 @@ export type LibraryAsk = {
    * (diagrams-06). Absent: no type-floor gate (today's behaviour).
    */
   place?: { w: number; h: number };
+  /**
+   * The lesson theme's body font stack (`theme.fonts.body`): the face the drawing's words are
+   * measured in and set in (TEACH-247 part o). Absent: Lexend.
+   */
+  font?: string;
 };
 /** A library drawing's source as the image element stores it (`ImageElement.diagram`). */
 export type LibrarySource = Extract<DiagramSource, { kind: "library" }>;
@@ -394,9 +399,10 @@ export async function libraryDiagram(
     if (step === undefined) return fallback("a question slide and no build before the answer");
   }
   const p = params;
+  const face = ask.font === undefined ? {} : { font: ask.font };
   // The full drawing (with a question slide's answer) is checked against the slide's words.
   let full = await nonFatal(
-    () => drawLibraryModel(ask.model, p),
+    () => drawLibraryModel(ask.model, p, face),
     (e) => String(e).slice(0, 160),
   );
   if (typeof full === "string") return fallback(`it did not draw: ${full}`);
@@ -416,7 +422,7 @@ export async function libraryDiagram(
       typeScale = Math.min(LABEL_FLOOR_MAX, typeScale * (TYPE_FLOOR / t.minPt) * 1.02);
       const ts = typeScale;
       const grown = await nonFatal(
-        () => drawLibraryModel(ask.model, p, { typeScale: ts }),
+        () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
         (e) => String(e).slice(0, 160),
       );
       if (typeof grown === "string")
@@ -451,7 +457,12 @@ export async function libraryDiagram(
     step === undefined
       ? drawnFull
       : await nonFatal(
-          () => drawLibraryModel(ask.model, p, { step, ...(typeScale !== 1 ? { typeScale } : {}) }),
+          () =>
+            drawLibraryModel(ask.model, p, {
+              step,
+              ...(typeScale !== 1 ? { typeScale } : {}),
+              ...face,
+            }),
           (e) => String(e).slice(0, 160),
         );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);

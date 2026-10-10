@@ -555,6 +555,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               yearGroup: brief.yearGroup,
               lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
               question,
+              // Its words are set and measured in the theme's label face, as the slide's are.
+              font: base.theme.fonts.body,
               // The drawing is measured where the slide puts it: under the heading, above the lead.
               ...(run.libraryModelBody
                 ? {
