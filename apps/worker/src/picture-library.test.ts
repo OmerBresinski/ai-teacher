@@ -10,7 +10,13 @@ import type { BankImageRow, NewBankImage } from "@tj/db";
 import { LIBRARY_WORKSPACE_ID, type ReadableStorageAdapter } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
 import { type BankRequest, findPicture, type MadePicture, type PictureBank } from "@tj/generation";
-import { cosine, type Embedder, type ImageGenerator, REUSE_THRESHOLD } from "@tj/images";
+import {
+  cosine,
+  createOpenAiEmbedder,
+  type Embedder,
+  type ImageGenerator,
+  REUSE_THRESHOLD,
+} from "@tj/images";
 import { createDailyImageCap, createGeneratingBank } from "./picture-generator";
 import { createPictureLibrary, type LibraryQueries } from "./picture-library";
 
@@ -82,9 +88,9 @@ function memoryTable() {
   const rows: BankImageRow[] = [];
   const touched: string[] = [];
   const queries: LibraryQueries = {
-    nearest: async (_db, embedding, limit = 5) =>
+    nearest: async (_db, embedding, limit = 20, family) =>
       rows
-        .filter((r) => r.status === "ready")
+        .filter((r) => r.status === "ready" && (!family || r.family === family))
         .map((r) => ({ ...r, similarity: cosine(r.embedding, embedding) }))
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, limit),
@@ -205,6 +211,14 @@ describe("picture library lookup", () => {
     await seed(table, storage, { similarity: 0.99, request: "two hens in a farmyard" });
     await seed(table, storage, { similarity: 0.99, status: "rejected" });
     expect(await library.lookup(REQ, signal)).toBeUndefined();
+  });
+
+  test("nearer rows of another family never crowd out a same-family match", async () => {
+    const { table, storage, library } = setup();
+    for (let i = 0; i < 6; i++)
+      await seed(table, storage, { similarity: 0.99, family: "portrait" });
+    await seed(table, storage, { id: "wide", similarity: 0.9 });
+    expect((await library.lookup(REQ, signal))?.src).toContain("/bank/wide.png");
   });
 
   test("an embedding failure is a miss, not an error", async () => {
@@ -437,6 +451,70 @@ describe("the director with the library (findPicture)", () => {
       async () => true,
     );
     expect(no.table.rows).toHaveLength(0);
+  });
+
+  test("the same picture asked for twice is stored once", async () => {
+    const { table, bank } = directorBank();
+    const ask = { ...REQ, route: "generic" as const, imagePrompt: "a hen" };
+    await findPicture(
+      ask,
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    await findPicture(
+      ask,
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    // The second run reuses the first row (a library hit), and nothing new is stored.
+    expect(table.rows).toHaveLength(1);
+    const { library, table: t2, storage } = setup();
+    const made = {
+      ...STOCK,
+      src: "/files/ws-1/images/a.png",
+      dataUrl: `data:image/png;base64,${Buffer.from(png(1536, 1024)).toString("base64")}`,
+    };
+    await library.store(REQ, made);
+    await library.store(REQ, { ...made, src: "/files/ws-1/images/b.png" });
+    expect(t2.rows).toHaveLength(1);
+    expect([...storage.files.keys()].filter((k) => k.includes("/bank/"))).toHaveLength(1);
+  });
+
+  test("a failed insert leaves no orphan object; long request text is capped", async () => {
+    const ctx = setup();
+    const insert = ctx.table.queries.insert;
+    ctx.table.queries.insert = async () => {
+      throw new Error("db down");
+    };
+    const pic = {
+      ...STOCK,
+      dataUrl: `data:image/png;base64,${Buffer.from(png(1536, 1024)).toString("base64")}`,
+    };
+    await expect(ctx.library.store(REQ, pic)).rejects.toThrow("db down");
+    expect([...ctx.storage.files.keys()].filter((k) => k.includes("/bank/"))).toEqual([]);
+    ctx.table.queries.insert = insert;
+    await ctx.library.store(
+      { ...REQ, text: "a hen ".repeat(100) },
+      { ...pic, alt: "x".repeat(900) },
+    );
+    expect(ctx.table.rows[0]?.request.length).toBe(300);
+    expect(ctx.table.rows[0]?.alt.length).toBe(300);
+  });
+
+  test("the embedder's cache keeps only the newest texts", async () => {
+    let calls = 0;
+    const fetch = (async () => {
+      calls++;
+      return Response.json({ data: [{ embedding: [1, 0] }], usage: { total_tokens: 1 } });
+    }) as unknown as typeof globalThis.fetch;
+    const e = createOpenAiEmbedder({ apiKey: "k", fetch, max: 2 });
+    for (const t of ["a", "b", "a", "c", "a", "b"]) await e.embed(t);
+    // a, b, (a cached), c evicts b, (a cached), b again.
+    expect(calls).toBe(4);
   });
 
   test("without a library the bank keeps today's behaviour: no lookup, nothing stored", async () => {

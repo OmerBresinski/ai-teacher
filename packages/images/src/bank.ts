@@ -242,15 +242,28 @@ export function createOpenAiImageGenerator(opts: {
   };
 }
 
-/** OpenAI embeddings, cached in-process by text (the same request text never pays twice). */
-export function createOpenAiEmbedder(opts: { apiKey: string; fetch?: FetchFn }): Embedder {
+/**
+ * OpenAI embeddings, cached in-process by text (the same request text never pays twice), the
+ * newest `max` texts only (about 12 KB a vector; 2,000 is about 25 MB).
+ */
+export function createOpenAiEmbedder(opts: {
+  apiKey: string;
+  fetch?: FetchFn;
+  max?: number;
+}): Embedder {
   const fetchFn = opts.fetch ?? globalThis.fetch;
+  const max = opts.max ?? 2_000;
   const cache = new Map<string, Promise<{ vector: number[]; tokens: number; costUsd: number }>>();
   return {
     model: EMBED_MODEL,
     embed(text, signal) {
       const hit = cache.get(text);
-      if (hit) return hit.then((r) => ({ ...r, tokens: 0, costUsd: 0 }));
+      if (hit) {
+        // Least recently used goes first: a hit moves to the back.
+        cache.delete(text);
+        cache.set(text, hit);
+        return hit.then((r) => ({ ...r, tokens: 0, costUsd: 0 }));
+      }
       const p = (async () => {
         const res = await fetchFn("https://api.openai.com/v1/embeddings", {
           method: "POST",
@@ -267,6 +280,7 @@ export function createOpenAiEmbedder(opts: { apiKey: string; fetch?: FetchFn }):
         return { vector: body.data[0]?.embedding ?? [], tokens, costUsd: embedCostUsd(tokens) };
       })();
       cache.set(text, p);
+      if (cache.size > max) cache.delete(cache.keys().next().value as string);
       p.catch(() => cache.delete(text));
       return p;
     },

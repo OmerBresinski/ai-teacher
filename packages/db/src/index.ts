@@ -5,10 +5,14 @@
 
 export {
   type BankImageRow,
+  bankImageIdsIn,
+  copyBankImage,
+  deleteBankImage,
   insertBankImage,
   listBankImages,
   type NewBankImage,
   nearestBankImages,
+  readyBankImages,
   rejectBankImage,
   touchBankImage,
 } from "./bank";

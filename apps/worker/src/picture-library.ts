@@ -37,6 +37,10 @@ import type { Logger } from "./picture-generator";
 
 /** How long a lookup's embedding may take before the lookup is a miss (the live search goes on). */
 export const LIBRARY_EMBED_TIMEOUT_MS = 2_000;
+/** Same-family candidates a lookup weighs (the numbers rule may drop the nearest few). */
+export const LOOKUP_CANDIDATES = 20;
+/** The most characters of request or alt text a shared row keeps. */
+export const STORED_TEXT_MAX = 300;
 
 /** What the worker knows about a picture it generated, so the stored row keeps true provenance. */
 export interface MadeProvenance {
@@ -165,8 +169,9 @@ export function createPictureLibrary(opts: {
           text,
           AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
         );
-        const near = await q.nearest(db, vector, 5);
         const family: AspectFamily = sizeForAspect(req.aspect).family;
+        // Family is filtered in SQL; the numbers rule runs here over a wide enough candidate set.
+        const near = await q.nearest(db, vector, LOOKUP_CANDIDATES, family);
         const best = pickReuse(
           near
             .filter((r) => numbersAgree(r.request, text))
@@ -242,44 +247,62 @@ export function createPictureLibrary(opts: {
       if (!file) return;
       const id = opts.ids();
       const storageKey = `${LIBRARY_WORKSPACE_ID}/bank/${id}.${EXT[file.mime] ?? "bin"}`;
-      const { vector } = await embedder.embed(requestText(req));
-      await storage.put(storageKey, file.bytes, { contentType: file.mime });
+      const text = requestText(req);
+      const { vector } = await embedder.embed(text);
       const dims = imageDimensions(file.bytes) ?? { width: 1024, height: 1024 };
+      const family = familyOf(dims.width, dims.height);
+      // Idempotent enough: a row this request would already reuse is not stored twice.
+      const [same] = await q.nearest(db, vector, 1, family);
+      if (same && same.similarity >= threshold && numbersAgree(same.request, text)) {
+        logger.info(
+          { stage: "illustrate", library: "duplicate", id: same.id, ms: Date.now() - t0 },
+          "picture already in library",
+        );
+        return;
+      }
       const style = photo.style ?? "photo";
-      await q.insert(db, {
-        id,
-        storageKey,
-        mime: file.mime,
-        byteSize: file.bytes.byteLength,
-        width: dims.width,
-        height: dims.height,
-        family: familyOf(dims.width, dims.height),
-        provider: s.provider,
-        source: s,
-        licence: s.licence ?? (s.provider === "pexels" ? "Pexels licence" : null),
-        credit: s.author ?? s.photographer,
-        alt: photo.alt,
-        tags: [],
-        request: requestText(req),
-        route: req.route,
-        embedModel: embedder.model,
-        embedDims: EMBED_DIMENSIONS,
-        embedding: vector,
-        ...(made
-          ? {
-              generator: made.generator,
-              generatorTerms: made.generatorTerms,
-              prompt: made.prompt,
-              costUsd: made.costUsd.toFixed(6),
-              flags: {
-                lookCheck: made.faithful,
-                faithful: made.faithful,
-                style,
-                ...(photo.palette ? { palette: photo.palette } : {}),
-              },
-            }
-          : {}),
-      });
+      await storage.put(storageKey, file.bytes, { contentType: file.mime });
+      try {
+        await q.insert(db, {
+          id,
+          storageKey,
+          mime: file.mime,
+          byteSize: file.bytes.byteLength,
+          width: dims.width,
+          height: dims.height,
+          family,
+          provider: s.provider,
+          source: s,
+          licence: s.licence ?? (s.provider === "pexels" ? "Pexels licence" : null),
+          credit: s.author ?? s.photographer,
+          // Shared across workspaces: capped so a long ask cannot carry a passage of lesson text.
+          alt: photo.alt.slice(0, STORED_TEXT_MAX),
+          tags: [],
+          request: text.slice(0, STORED_TEXT_MAX),
+          route: req.route,
+          embedModel: embedder.model,
+          embedDims: EMBED_DIMENSIONS,
+          embedding: vector,
+          ...(made
+            ? {
+                generator: made.generator,
+                generatorTerms: made.generatorTerms,
+                prompt: made.prompt,
+                costUsd: made.costUsd.toFixed(6),
+                flags: {
+                  lookCheck: made.faithful,
+                  faithful: made.faithful,
+                  style,
+                  ...(photo.palette ? { palette: photo.palette } : {}),
+                },
+              }
+            : {}),
+        });
+      } catch (error) {
+        // No row, so no orphan object either.
+        await storage.delete(storageKey).catch(() => undefined);
+        throw error;
+      }
       logger.info(
         { stage: "illustrate", library: "stored", id, provider: s.provider, ms: Date.now() - t0 },
         "picture stored in library",

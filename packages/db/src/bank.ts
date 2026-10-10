@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "./client";
 import { bankImages } from "./schema/bank-images";
 
@@ -16,23 +16,34 @@ export async function insertBankImage(db: Db, row: NewBankImage): Promise<BankIm
 }
 
 /**
- * The `limit` ready rows nearest to `embedding` by exact cosine (pgvector `<=>`), any family:
- * the caller applies the family rule and the threshold (`pickReuse` in `@tj/images`).
+ * The `limit` ready rows nearest to `embedding` by exact cosine (pgvector `<=>`), in one aspect
+ * `family` when given (filtered in SQL, so other families never crowd out a match). The caller
+ * applies the numbers rule and the threshold (`pickReuse` in `@tj/images`).
  */
 export async function nearestBankImages(
   db: Db,
   embedding: number[],
-  limit = 5,
+  limit = 20,
+  family?: string,
 ): Promise<(BankImageRow & { similarity: number })[]> {
   const literal = `[${embedding.join(",")}]`;
   const distance = sql<number>`${bankImages.embedding} <=> ${literal}::vector`;
   const rows = await db
     .select({ row: bankImages, distance })
     .from(bankImages)
-    .where(eq(bankImages.status, "ready"))
+    .where(
+      family
+        ? and(eq(bankImages.status, "ready"), eq(bankImages.family, family))
+        : eq(bankImages.status, "ready"),
+    )
     .orderBy(distance)
     .limit(limit);
   return rows.map((r) => ({ ...r.row, similarity: 1 - Number(r.distance) }));
+}
+
+/** Delete a row by id (an insert whose object could not be kept). */
+export async function deleteBankImage(db: Db, id: string): Promise<void> {
+  await db.delete(bankImages).where(eq(bankImages.id, id));
 }
 
 /** A reuse: `use_count` + 1 and `last_used_at` now. */
@@ -62,4 +73,24 @@ export async function rejectBankImage(db: Db, storageKey: string): Promise<void>
     .update(bankImages)
     .set({ status: "rejected" })
     .where(eq(bankImages.storageKey, storageKey));
+}
+
+/** Every ready row (the seed script's source read; the lab bank is a few thousand rows). */
+export async function readyBankImages(db: Db): Promise<BankImageRow[]> {
+  return db.select().from(bankImages).where(eq(bankImages.status, "ready"));
+}
+
+/** Which of `ids` are already rows (the seed script skips them). */
+export async function bankImageIdsIn(db: Db, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await db
+    .select({ id: bankImages.id })
+    .from(bankImages)
+    .where(inArray(bankImages.id, ids));
+  return new Set(rows.map((r) => r.id));
+}
+
+/** Insert a row copied from another library as it is; an id already present is left alone. */
+export async function copyBankImage(db: Db, row: NewBankImage): Promise<void> {
+  await db.insert(bankImages).values(row).onConflictDoNothing();
 }
