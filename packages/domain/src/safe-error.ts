@@ -66,7 +66,10 @@ export function safeError(error: unknown): SafeError {
 
 /** Where a failure was thrown, for the logs: never a value the code was handling. */
 export interface SafeErrorWhere {
-  /** The engine's own words for a code fault (TypeError, RangeError, ReferenceError), data masked. */
+  /**
+   * A code fault's message, only when it is one of the engine's known templates, rebuilt from
+   * code identifiers alone; any other message is `<unrecognised>`.
+   */
   message?: string;
   /** The stack's frames, function and file:line:col, paths from `packages/` or `apps/` on. */
   stack?: string[];
@@ -74,43 +77,91 @@ export interface SafeErrorWhere {
 
 const CODE_FAULTS = new Set(["TypeError", "RangeError", "ReferenceError"]);
 const MAX_FRAMES = 12;
+export const UNRECOGNISED = "<unrecognised>";
 
-/** A code fault's message with anything that could carry data masked (URLs, emails, tokens, numbers). */
-const maskMessage = (m: string) =>
-  m
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<url>")
-    .replace(/\S+@\S+/g, "<email>")
-    .replace(/\b[A-Za-z0-9_-]{20,}\b/g, "<token>")
-    .replace(/\d+/g, "<n>")
-    .slice(0, 300);
+/**
+ * A code expression as the engine quotes it: identifier characters only, no literal and no space,
+ * except Bun's own `(void 0)` for a compiled `undefined`.
+ */
+const ID = String.raw`(?:\(void 0\)|[A-Za-z0-9_$.?()[\]{}])+`;
+/**
+ * The engine fault templates kept (Bun/JSC and V8), each rebuilt from its captured identifiers so
+ * nothing outside the template reaches the log. A template that matches only a prefix ("x is not a
+ * function. (In 'x(\"…\")', …)") keeps the prefix.
+ */
+const TEMPLATES: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [
+    new RegExp(String.raw`^(undefined|null) is not an object \(evaluating '(${ID})'\)$`),
+    (m) => `${m[1]} is not an object (evaluating '${m[2]}')`,
+  ],
+  [
+    new RegExp(String.raw`^Cannot read properties of (undefined|null) \(reading '(${ID})'\)$`),
+    (m) => `Cannot read properties of ${m[1]} (reading '${m[2]}')`,
+  ],
+  [
+    new RegExp(String.raw`^(${ID}) is not a function(?=$|[.\s])`),
+    (m) => `${m[1]} is not a function`,
+  ],
+  [new RegExp(String.raw`^(${ID}) is not iterable(?=$|[.\s])`), (m) => `${m[1]} is not iterable`],
+  [
+    new RegExp(String.raw`^Cannot access '(${ID})' before initialization\.?$`),
+    (m) => `Cannot access '${m[1]}' before initialization`,
+  ],
+  [new RegExp(String.raw`^(${ID}) is not defined$`), (m) => `${m[1]} is not defined`],
+  [new RegExp(String.raw`^Can't find variable: (${ID})$`), (m) => `Can't find variable: ${m[1]}`],
+  [/^Maximum call stack size exceeded\.?$/, () => "Maximum call stack size exceeded"],
+  [/^Invalid array length$/, () => "Invalid array length"],
+];
 
-/** One stack frame, from the repo's own `packages/` or `apps/` on; anything else kept by file name. */
-const frame = (line: string) =>
-  line
-    .trim()
-    .replace(/^at\s+/, "")
-    .replace(/(?:file:\/\/)?\/[^\s()]*?\/((?:packages|apps)\/[^\s()]+)/g, "$1")
-    .replace(/(?:file:\/\/)?\/[^\s()]*\/(node_modules\/[^\s()]+)/g, "$1")
-    .replace(/(?:file:\/\/)?\/(?:[^\s()/]+\/)+([^\s()/]+:\d+:\d+)/g, "$1")
-    .slice(0, 200);
+const knownMessage = (m: string): string => {
+  for (const [re, out] of TEMPLATES) {
+    const hit = m.length <= 400 ? m.match(re) : null;
+    if (hit) return hit.slice(1).some((g) => (g ?? "").length > 120) ? UNRECOGNISED : out(hit);
+  }
+  return UNRECOGNISED;
+};
+
+/** One stack frame line, strictly: `at [async|new] [name (]path:line:col[)]`; anything else is dropped. */
+const FRAME =
+  /^\s+at (?:(?:async |new )?([A-Za-z0-9_$.<>[\]]{1,120}) \()?((?:file:\/\/)?[A-Za-z0-9_./@+-]{1,400}):(\d{1,7}):(\d{1,7})(\))?$/;
+
+/** The frame's path from the repo's own `packages/`, `apps/` or `node_modules/` on, else its file name. */
+const shortPath = (p: string) => {
+  const repo = p.match(/(?:^|\/)((?:packages|apps|node_modules)\/.+)$/);
+  return repo?.[1] ?? p.split("/").pop() ?? p;
+};
+
+const frameOf = (line: string): string | undefined => {
+  const m = line.match(FRAME);
+  if (!m || (m[1] !== undefined) !== (m[5] !== undefined)) return undefined;
+  const at = `${shortPath(m[2] ?? "")}:${m[3]}:${m[4]}`;
+  return m[1] ? `${m[1]} (${at})` : at;
+};
 
 /**
  * Where an error was thrown (TEACH-312 part g): a generation stage failure that logs only its
- * type cannot be placed. The message is read only for a code fault, whose words are the engine's
- * (masked as above); the frames are code locations. Never throws.
+ * type cannot be placed. The message is kept only for a code fault in a known engine template
+ * (rebuilt from identifiers); the frames are read only after the stack's `name: message` header and
+ * only in the strict frame shape. Never throws.
  */
 export function safeErrorWhere(error: unknown): SafeErrorWhere {
   try {
     if (!(error instanceof Error)) return {};
     const out: SafeErrorWhere = {};
-    if (CODE_FAULTS.has(error.name) && typeof error.message === "string")
-      out.message = maskMessage(error.message);
+    const message = typeof error.message === "string" ? error.message : "";
+    if (CODE_FAULTS.has(error.name)) out.message = knownMessage(message);
     const raw = typeof error.stack === "string" ? error.stack : "";
+    // The header is `name: message` (or `name`), however many lines the message runs to; a stack
+    // that does not start with it is not read.
+    const header = message ? `${error.name}: ${message}` : error.name;
+    if (!raw.startsWith(header)) return out;
     const frames = raw
+      .slice(header.length)
       .split("\n")
-      .filter((l) => /^\s+at\s/.test(l))
-      .slice(0, MAX_FRAMES)
-      .map(frame);
+      .slice(1)
+      .map(frameOf)
+      .filter((f): f is string => f !== undefined)
+      .slice(0, MAX_FRAMES);
     if (frames.length) out.stack = frames;
     return out;
   } catch {
