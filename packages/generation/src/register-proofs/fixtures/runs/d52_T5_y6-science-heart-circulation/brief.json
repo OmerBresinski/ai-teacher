@@ -1,0 +1,19 @@
+{
+  "id": "y6-science-heart-circulation",
+  "topic": "The heart and circulation",
+  "subject": "Science",
+  "yearGroup": "Year 6",
+  "year": 6,
+  "keyStage": "ks2",
+  "theme": "splash",
+  "readingLevel": "Year 6",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "D51NEW",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "s5",
+  "kind": "starter",
+  "elements": [
+    {
+      "type": "text",
+      "name": "Heading",
+      "x": 64,
+      "y": 46,
+      "w": 832,
+      "h": 55,
+      "text": "Explain how the bear survives"
+    },
+    {
+      "type": "shape",
+      "name": "Marker",
+      "x": 64,
+      "y": 167,
+      "w": 31,
+      "h": 31
+    },
+    {
+      "type": "text",
+      "name": "Item",
+      "x": 113,
+      "y": 165,
+      "w": 343,
+      "h": 70,
+      "text": "What temperature challenge does this bear face?"
+    },
+    {
+      "type": "shape",
+      "name": "Marker",
+      "x": 64,
+      "y": 247,
+      "w": 31,
+      "h": 31
+    },
+    {
+      "type": "text",
+      "name": "Item",
+      "x": 113,
+      "y": 245,
+      "w": 343,
+      "h": 70,
+      "text": "How does its thick fur help it survive?"
+    },
+    {
+      "type": "shape",
+      "name": "Marker",
+      "x": 64,
+      "y": 327,
+      "w": 31,
+      "h": 31
+    },
+    {
+      "type": "text",
+      "name": "Item",
+      "x": 113,
+      "y": 325,
+      "w": 343,
+      "h": 70,
+      "text": "How does its fat layer help it survive?"
+    },
+    {
+      "type": "text",
+      "name": "Instruction",
+      "x": 113,
+      "y": 405,
+      "w": 343,
+      "h": 57,
+      "text": "Explain each link: feature → effect → survival."
+    },
+    {
+      "type": "image",
+      "name": "Photo",
+      "x": 504,
+      "y": 226,
+      "w": 392,
+      "h": 196,
+      "src": "/files/01a1223a-99cd-7082-9417-ecdcee776c4d/images/01a1223b-9362-754c-9ba1-87b15900e5ca.jpg",
+      "alt": "A playful polar bear rolling in the snow, showcasing its furry paws and relaxed demeanor."
+    }
+  ],
+  "source": "t-teacherpath/.data/teacher-path/pr438-writer-2/recording/ks3-y7-science-adaptations-signed-in/lesson.json slides[4]"
+}

@@ -271,7 +271,7 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
     // A task must ask something (TEACH-223): an open-response stem, or each exit-ticket item.
     const stems =
       slide.kind === "open-response"
-        ? [stemOf(slide)]
+        ? (listItems(slide) ?? [stemOf(slide)])
         : slide.kind === "exit-ticket"
           ? lines(textsByPreset(slide, "body"))
           : [];
@@ -614,6 +614,20 @@ function textsByPreset(slide: Slide, preset: TextPreset): string[] {
 }
 
 /** The stem of a question slide: the recipes set it in the `heading` preset; else the first text. */
+/**
+ * A question list's own lines (template question sets and practice: `Item` elements under a
+ * heading that names the task, "Quick check"), or undefined when the slide has none. Each line is
+ * the question, so it is the stem the "asks nothing" check reads, not the heading.
+ */
+function listItems(slide: Slide): string[] | undefined {
+  const items: string[] = [];
+  walkElements(slide.elements, (element) => {
+    if (element.type === "text" && element.name === "Item")
+      items.push(richDocToPlainText(element.doc).trim());
+  });
+  return items.length ? items : undefined;
+}
+
 function stemOf(slide: Slide): string {
   const heading = textsByPreset(slide, "heading")[0];
   if (heading) return heading;

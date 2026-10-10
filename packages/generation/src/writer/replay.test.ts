@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
+import { slideRoles } from "./role";
 
 /*
  * Parity (TEACH-110 part e): the saved base4f-p123 writer outputs (lab/ab-base4f, runs
@@ -22,7 +23,19 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  * its 8 single pictures (splitOk), replacing the matching table the original run shipped. splitOk
  * is not ported: a split ships only when every picture lands, so the slide is the reroute's
  * adults / young word table, as the original run shipped it.
+ *
+ * Two deliberate changes since the lab replay (TEACH-75 part b):
+ *  - a question set after the deck's first teaching slide is a check, laid as open-response, not
+ *    a "Do now" starter (register prod-11);
+ *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
+ *    (ruling 198, register layout-06).
  */
+/** Each deck slide's role from the run's writer slides (title and objectives first). */
+const rolesOf = (b: string) => {
+  const main = JSON.parse(readFileSync(join(DIR, b, "main.json"), "utf8")) as { text: string };
+  const slides = (JSON.parse(main.text) as { slides: Record<string, unknown>[] }).slides;
+  return slideRoles([undefined, undefined, ...slides]);
+};
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
@@ -57,6 +70,7 @@ describe.each(LESSONS)("replay %s", (b) => {
   test("the stage reproduces the lab's replayed slides", async () => {
     const out = await replayRun(b);
     const saved = savedSlides(b);
+    const roles = rolesOf(b);
     expect(out.slides.length).toBe(saved.length);
     out.slides.forEach((s, i) => {
       const want = saved[i] as El & { elements: El[] };
@@ -67,9 +81,11 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
         return;
       }
+      const kind =
+        want.kind === "starter" && roles.get(i) === "check" ? "open-response" : want.kind;
       expect({ i, kind: s.kind, background: s.background }).toEqual({
         i,
-        kind: want.kind as never,
+        kind: kind as never,
         background: want.background as never,
       });
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
@@ -84,6 +100,13 @@ describe.each(LESSONS)("replay %s", (b) => {
           by: "ai",
         });
         const { authoredBy: _by, ...e } = el;
+        if (b === "y11-chemistry-rates-of-reaction" && i === 8 && w.name !== "Heading") {
+          expect({ at: `s${i + 1} #${k}`, el: stable({ ...e, y: Number(e.y) - 49 }) }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: stable(w),
+          });
+          continue;
+        }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;
