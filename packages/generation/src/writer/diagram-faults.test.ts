@@ -34,39 +34,85 @@ describe("a drawing whose title repeats the heading still draws", () => {
 
   test("the drawer's spec, as the stage stores it, is one the layout can draw", async () => {
     const callDrawer: DrawerCall = async () => ({ out: drawn, usd: 0, ms: 0 }) as never;
-    const r = await drawWriterDiagram(
-      {
-        key: "diagram",
-        kind: "flow",
-        shows: "Blood going round the body",
-        labels: [],
-        words: `${HEADING}\nThe heart pumps blood.`,
-        yearGroup: "Year 6",
-        stage: "ks2",
-        slot: { placement: "across the slide", w: 860, h: 360, name: "full" },
-        question: false,
-      } as never,
-      { callDrawer, drawerSystem: "", theme: studio },
-    );
+    const r = await drawWriterDiagram(drawerAsk(false), {
+      callDrawer,
+      drawerSystem: "",
+      theme: studio,
+    });
     expect(r.via).toBe("drawer");
     const d = drawDiagram(r.spec, studio, ZONE);
     expect(d.ok ? "drawn" : d.reasons).toBe("drawn");
   });
 });
 
-describe("a worked example is never read as a question", () => {
-  const worked = {
+const drawerAsk = (question: boolean, kind = "flow") =>
+  ({
+    key: "diagram",
+    kind,
+    shows: "Blood going round the body",
+    labels: [],
+    words: `${HEADING}\nThe heart pumps blood.`,
+    yearGroup: "Year 6",
+    stage: "ks2",
+    slot: { placement: "across the slide", w: 860, h: 360, name: "full" },
+    question,
+  }) as never;
+
+describe("ok covers the spec as stored", () => {
+  test("a question slide's answer-free drawing is the one stored, and it draws", async () => {
+    const bars = {
+      kind: "bar-model",
+      alt: "Twelve shared into three equal parts.",
+      title: HEADING,
+      bars: [{ parts: [{ value: 4 }, { value: 4 }, { value: 4 }], total: "12" }],
+      combined: "12",
+    };
+    const callDrawer: DrawerCall = async () => ({ out: bars, usd: 0, ms: 0 }) as never;
+    const r = await drawWriterDiagram(drawerAsk(true, "bar-model"), {
+      callDrawer,
+      drawerSystem: "",
+      theme: studio,
+    });
+    const s = r.spec as { title?: unknown; combined?: unknown; bars: { total?: unknown }[] };
+    expect([s.title, s.combined, s.bars[0]?.total]).toEqual([undefined, undefined, undefined]);
+    const d = drawDiagram(r.spec, studio, ZONE);
+    expect(d.ok ? "drawn" : d.reasons).toBe("drawn");
+  });
+});
+
+describe("a visual slide asks only when all its words ask", () => {
+  const leg = {
     template: "big-visual",
     heading: "Worked example: supplying a leg",
-    lead: "Which way does the blood go next? Follow it: lungs → heart → leg tissues → heart → lungs.",
-    figure: { kind: "model", shows: "The double loop" },
+    lead: "Which way does the blood go next?",
+    points: [
+      "The heart pumps oxygen-rich blood to the leg.",
+      "The leg tissues take the oxygen and food.",
+      "Oxygen-poor blood returns to the heart, then the lungs.",
+    ],
   };
-  test("a visual slide headed as a worked example is worked and hides nothing", () => {
-    expect(slideRole(worked, { index: 6 })).toBe("worked");
-    expect(slideHidesAnswer(worked)).toBe(false);
+  test("a teaching slide with a rhetorical hook teaches and hides nothing", () => {
+    expect(slideRole(leg, { index: 6 })).toBe("teach");
+    expect(slideHidesAnswer(leg)).toBe(false);
+    const hook = { ...leg, heading: "Why is the sky blue?", lead: "Ever wondered why?" };
+    expect(slideHidesAnswer(hook)).toBe(false);
   });
-  test("an asking visual slide with any other heading still hides its answer", () => {
-    expect(slideHidesAnswer({ ...worked, heading: "Supplying a leg" })).toBe(true);
-    expect(slideHidesAnswer({ ...worked, heading: "Your turn: supplying an arm" })).toBe(true);
+  test('"Example: Your turn" with only an ask is a task, whatever its heading', () => {
+    const turn = {
+      template: "big-visual",
+      heading: "Example: Your turn",
+      lead: "Find one half of 10.",
+    };
+    expect(slideRole(turn, { index: 6 })).toBe("task");
+    expect(slideHidesAnswer(turn)).toBe(true);
+  });
+  test("a real hinge hides its answer", () => {
+    const hinge = {
+      template: "hinge",
+      heading: "Which vessel carries blood away?",
+      stem: "Pick one",
+    };
+    expect(slideRole(hinge, { index: 6 })).toBe("hinge");
+    expect(slideHidesAnswer(hinge)).toBe(true);
   });
 });
