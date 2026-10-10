@@ -208,15 +208,16 @@ export const savedSlides = (b: string) =>
     .slides;
 
 /**
- * TEACH-247 part n: a table at its limits (8 rows by 5 columns of 4-word cells) parses but cannot be
- * shown readably in any slot at the 18 pt floor. Tests of the cannot-be-shown path swap it in for
- * one slide's recorded drawing, since y8 s3's family tree and y11 s3's apparatus now draw.
+ * TEACH-247 part n: a table past its row limit (40 rows; the limit is 8) does not parse, and a spec
+ * that does not parse is the one thing a drawing is refused for (Greg, 10 Oct 2026: placement
+ * faults are warnings). Tests of the cannot-be-shown path swap it in for one slide's recorded
+ * drawing, since y8 s3's family tree and y11 s3's apparatus now draw.
  */
 export const UNSHOWABLE_TABLE = {
   kind: "table",
   alt: "A table too big to show on a slide.",
   header: ["First column", "Second column", "Third column", "Fourth column", "Fifth column"],
-  rows: Array.from({ length: 8 }, () =>
+  rows: Array.from({ length: 40 }, () =>
     Array.from({ length: 5 }, () => "Longest words here fill it"),
   ),
 };
