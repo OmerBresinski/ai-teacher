@@ -29,7 +29,7 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
-import { atKeyStage, calloutTone, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
@@ -372,34 +372,9 @@ function onFill(fill: string): string {
   return 1.05 / (l + 0.05) >= (l + 0.05) / (lum("#1A1A1A") + 0.05) ? "#FFFFFF" : "#1A1A1A";
 }
 
-/**
- * One colour per hinge option (UX ruling 203, P8; Chalkie's teal, mustard, pink and black squares),
- * from the theme's tokens: its accent, its key-words amber and its second accent, then Chalkie's
- * teal, pink, violet and blue (lifted on a dark ground), then its ink. A candidate too close to one already picked, or to the correct or
- * incorrect hue the reveal uses, is skipped, so four options show four colours on every theme.
- */
+/** One colour per hinge option, from the theme's `OPTION_TONES` (UX ruling 203, P8). */
 export function optionColours(t: Theme): string[] {
-  const far = (a: string, b: string, d: number) =>
-    Math.hypot(...hex(a).map((v, i) => v - (hex(b)[i] ?? 0))) >= d;
-  const marks = [t.colors.correct, t.colors.incorrect];
-  const picked: string[] = [t.colors.accent];
-  // Chalkie's own family (teal, pink, violet, blue), lifted on a dark ground, after the tokens.
-  const lift = (h: string) => (t.dark ? mix(h, "#FFFFFF", 0.6) : h);
-  const more = [
-    calloutTone(t, "key-words").icon,
-    t.colors.accent2,
-    ...["#0E6B78", "#B0306A", "#5B3FA0", "#1F5FAD"].map(lift),
-    t.colors.ink,
-  ];
-  for (const c of more)
-    if (
-      picked.length < 4 &&
-      picked.every((p) => far(c, p, 56)) &&
-      marks.every((m) => far(c, m, 50))
-    )
-      picked.push(c);
-  while (picked.length < 4) picked.push(t.colors.ink);
-  return picked;
+  return [...optionTones(t)];
 }
 
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
