@@ -39,6 +39,11 @@ import {
 } from "./fallbacks";
 import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
 import {
+  FIGURE_SPEC_REPAIR_DEFAULT,
+  FIGURE_TEXT_FROM_SPEC_DEFAULT,
+  figureTextFix,
+} from "./figure-text";
+import {
   applyRepair,
   asksVisual,
   type Brief,
@@ -173,6 +178,10 @@ export type WriterRun = {
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
   activities?: boolean;
+  /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
+  figureTextFromSpec?: boolean;
+  /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
+  figureSpecRepair?: boolean;
   /**
    * lostPic (BAKEOFF base4f): place more photo asks after editable (a lost compound picture asked
    * again one subject each) and wait for them; absent, the asks read `visual` as they are.
@@ -560,6 +569,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const openSlide = (idx: number, raw: S) => {
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
+    const figOpts = {
+      fromSpec: run.figureTextFromSpec ?? FIGURE_TEXT_FROM_SPEC_DEFAULT,
+      specRepair: run.figureSpecRepair ?? FIGURE_SPEC_REPAIR_DEFAULT,
+    };
+    if (figOpts.fromSpec || figOpts.specRepair) {
+      const f = figureTextFix(s, figOpts);
+      for (const c of f.changes)
+        log({ ev: "figure-text", slide: idx + 1, key: c.key, kind: c.kind, action: c.action });
+      s = f.slide as S;
+    }
     // An activity: the writer's fields to the template's, repaired to the stage's capacity.
     if (isWriterActivity(s.template)) {
       const a = fromWriterActivity(s, stageKey, brief.subject);
