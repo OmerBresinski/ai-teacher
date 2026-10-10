@@ -243,32 +243,54 @@ describe("objective coverage", () => {
 });
 
 describe("a planned visual is never lost (Greg, 10 Oct 2026)", () => {
-  // Eight labels on one small square: every room draws it only with warnings.
+  // Six labels on crossings of a nine-line grid: in every room (beside the words, full width) a
+  // label sits across a line, so the drawing only ever draws with warnings.
+  const grid = Array.from({ length: 9 }, (_, k) => [
+    {
+      type: "line",
+      points: [
+        [0, k * 12.5],
+        [100, k * 12.5],
+      ],
+    },
+    {
+      type: "line",
+      points: [
+        [k * 12.5, 0],
+        [k * 12.5, 100],
+      ],
+    },
+  ]).flat();
   const crowded = {
     kind: "labelled-diagram",
-    alt: "A small square with six labels",
+    alt: "A small square on a grid with six labels",
     canvas: "square",
-    shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }],
-    labels: Array.from({ length: 8 }, (_, k) => ({
-      text: `Label number ${k + 1} words`,
-      at: [50, 50],
-    })),
+    shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }, ...grid],
+    // Each label names a crossing of the grid inside the drawing: no room clears them all.
+    labels: [
+      [37.5, 37.5],
+      [62.5, 37.5],
+      [37.5, 62.5],
+      [62.5, 62.5],
+      [50, 25],
+      [50, 75],
+    ].map((at, k) => ({ text: `Label number ${k + 1} words`, at })),
   };
-  // TODO(resume): no fixture yet parses and warns in every room on y8 s3 (6 labels draw clean, 8 and 12 go unshown).
-  test.skip("y8 s3: a family tree that draws only with warnings ships, its warnings on visual-path", async () => {
-    const b = "y8-french-my-family";
+  test("y12 s4: a drawing that only draws with warnings ships, its warnings on visual-path", async () => {
+    const b = "y12-psychology-multi-store-model";
+    const i = 3;
     const rec = recordedVisuals(b);
-    const visual: Parameters<typeof run>[2] = (i, key, a) => {
-      const v = rec(i, key, a);
-      return i === 2 && v.status === "diagram" ? { ...v, spec: crowded } : v;
+    const visual: Parameters<typeof run>[2] = (j, key, a) => {
+      const v = rec(j, key, a);
+      return j === i && v.status === "diagram" ? { ...v, spec: crowded } : v;
     };
     const r = await run(b, CHECKER_DEFAULTS, visual);
-    expect(r.pathOf(3)).toBe("diagram");
-    expect(r.images[2]).toBe(1);
-    const ev = r.events.find((e) => e.ev === "visual-path" && e.slide === 3) as
-      | { warnings?: string[] }
+    const ev = r.events.find((e) => e.ev === "visual-path" && e.slide === i + 1) as
+      | { path?: string; warnings?: string[] }
       | undefined;
+    expect(r.pathOf(i + 1)).toMatch(/^diagram/);
+    expect(r.images[i]).toBe(1);
+    expect(r.events.some((e) => e.ev === "unshown-strip" && e.slide === i + 1)).toBe(false);
     expect(ev?.warnings?.length ?? 0).toBeGreaterThan(0);
-    expect(r.events.some((e) => e.ev === "unshown-strip" && e.slide === 3)).toBe(false);
   });
 });
