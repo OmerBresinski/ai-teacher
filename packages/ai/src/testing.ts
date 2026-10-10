@@ -241,3 +241,19 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
 
   return { ...ai, calls };
 }
+
+/** A provider reply that failed: `finishReason: error`, no content and no usage (register layout-05). */
+export const nullUsageErrorReply = () => ({
+  warnings: [],
+  content: [],
+  finishReason: { unified: "error" as const, raw: "provider error" },
+  usage: {
+    inputTokens: {
+      total: undefined,
+      noCache: undefined,
+      cacheRead: undefined,
+      cacheWrite: undefined,
+    },
+    outputTokens: { total: undefined, text: undefined, reasoning: undefined },
+  },
+});

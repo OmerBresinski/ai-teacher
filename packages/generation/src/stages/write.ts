@@ -144,6 +144,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // stays `planned`, so a retry still resumes at the writer.
   const range = writerBrief(lesson).slides;
   type Laid = Parameters<NonNullable<Parameters<typeof runWriter>[0]["onSlide"]>>[1];
+  /** Each streamed slide's latest copy, the newest index, and the slides whose words are done. */
+  const latest = new Map<number, Laid>();
+  const closed = new Set<number>();
+  let newest = -1;
   const progressive = createProgressiveDeck<Laid>({
     onError: (err) =>
       deps.logger.warn({ stage: "generate", err: String(err).slice(0, 200) }, "slide save failed"),
@@ -158,7 +162,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         const slide = own?.slide ?? planned;
         if (!slide) continue;
         slides.push(slide);
-        states[slide.id] = own?.state ?? "done";
+        // A slide still from the plan (no words yet) is the job's: never editable before its words.
+        states[slide.id] = own?.state ?? "writing";
       }
       const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned", states));
       const written = [...patches.keys()].filter((i) => i >= 2).length;
@@ -187,7 +192,21 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       library: false,
       visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
-      onSlide: (i, slide) => progressive.patch(i, slide),
+      // Ruling 189 (ADR 0037): a slide's words are done once the writer has moved past it, so it
+      // turns `done` (editable) then; the newest slide stays `writing` until the next one opens or
+      // the deck is editable. Pictures, diagrams and notes land in its slots later.
+      onSlide: (i, slide) => {
+        latest.set(i, slide);
+        if (i > newest) {
+          for (const [j, earlier] of latest)
+            if (j < i && !closed.has(j)) {
+              closed.add(j);
+              progressive.patch(j, earlier, "done");
+            }
+          newest = i;
+        }
+        progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+      },
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
       signal: failed.signal,
@@ -231,10 +250,26 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     // ships them. Its cost is saved, so a retry's budget counts it.
     const streamed = !editableSaved && progressive.patches().size > 0;
     if (error instanceof WriterIncompleteError || streamed) {
+      // Slides whose words were done stay (ADR 0037: they are the teacher's); the rest go back
+      // to the plan, and no slide stays `writing` once the job has stopped. A writer that ran
+      // out of length (K3) shipped no valid deck, so its streamed slides go back to the plan too
+      // (a slide the teacher edited is still kept by the merge).
+      if (error instanceof WriterIncompleteError) closed.clear();
+      const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
+      const kept = Array.from({ length: count }, (_, i) =>
+        closed.has(i) && latest.get(i) ? (latest.get(i) as unknown as Slide) : lesson.slides[i],
+      ).filter((slide): slide is Slide => slide !== undefined);
+      const { slideStates: _states, ...generation } = lesson.generation ?? {};
       await deps.persist({
         ...lesson,
+        slides: kept,
         ...(lesson.generation
-          ? { generation: { ...lesson.generation, usage: deps.budget.totals() } }
+          ? {
+              generation: {
+                ...(generation as typeof lesson.generation),
+                usage: deps.budget.totals(),
+              },
+            }
           : {}),
       });
     }
