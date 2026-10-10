@@ -102,6 +102,28 @@ export function asTableText(raw: S, table: TableData): S {
   };
 }
 
+/** A picture field as the writer writes one: `shows` is what is searched for, never missing. */
+export type PictureField = {
+  shows: string;
+  must_see: string[];
+  subject: "named" | "generic";
+  ask: unknown;
+  ask_without: unknown;
+};
+
+/**
+ * What a diagram shows, as a picture's `shows`: a freeform figure's own `shows`, else a library
+ * model's `intent` (it has no `shows`), its `alt`, its caption or the slide's heading. Empty when
+ * none of them has words.
+ */
+export function diagramShows(f: S, slide: S): string {
+  for (const v of [f.shows, f.intent, f.alt, f.caption, slide.heading]) {
+    const t = str(v).trim();
+    if (t) return t;
+  }
+  return "";
+}
+
 /** A diagram of a real thing that could not draw, as a picture of the same thing. */
 export function asPicture(raw: S): S | undefined {
   const s = { ...raw };
@@ -116,8 +138,11 @@ export function asPicture(raw: S): S | undefined {
     const alone = f.ask_without ?? null;
     // The drawing's labels name what pupils must see in the picture.
     const labels = Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : [];
-    const pic = {
-      shows: f.shows,
+    // A picture with nothing to search for is no fallback: the slide keeps its other routes.
+    const shows = diagramShows(f, raw);
+    if (!shows) return undefined;
+    const pic: PictureField = {
+      shows,
       must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
       subject: "generic",
       ask: alone,

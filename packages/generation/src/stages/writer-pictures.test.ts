@@ -15,6 +15,7 @@ import {
   setLookOf,
   type WriterPhotoAsk,
   withPhotoSources,
+  writerAskBrief,
 } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
@@ -1053,5 +1054,50 @@ describe("writer pictures: the kept-picture and retry paths spend under the same
     await pictures.settle(1_000);
     pictures.start(3, heart, slide);
     await expect(pictures.settleSlide(3, 1_000)).rejects.toBeInstanceOf(BudgetExceeded);
+  });
+});
+
+describe("writer pictures: a malformed ask is a miss, never a throw", () => {
+  test("an ask with no shows ends failed with a miss line; the director never throws", async () => {
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: "fake-image",
+      generate: async () => {
+        throw new Error("never asked");
+      },
+    };
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({ pexels: [photo("p1")] }),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => direction({}),
+      // The maker is what sends an ask through splitSubjects (where `shows` was read first).
+      maker: {
+        bank: STOCK_ONLY_BANK,
+        generator,
+        save: async () => ({ id: "g1", src: "/files/g1.png" }),
+      },
+    });
+    const bad = { ...ask({ named: false }), shows: undefined } as unknown as WriterPhotoAsk;
+    expect(() => pictures.start(3, bad, slide)).not.toThrow();
+    expect(() =>
+      pictures.start(4, ask({ key: "x", named: false, shows: "  " }), slide),
+    ).not.toThrow();
+    await pictures.settle(1_000);
+    expect(pictures.state(3, "picture")).toEqual({ status: "failed" });
+    expect(pictures.state(4, "x")).toEqual({ status: "failed" });
+    expect(pictures.vetoed(3, "picture")).toContain("did not say what the picture shows");
+  });
+
+  test("the writer ask brief of an ask with no shows is empty, not a throw", () => {
+    const b = writerAskBrief({
+      key: "3:picture",
+      shows: undefined as unknown as string,
+      mustSee: [],
+      named: false,
+      slide,
+      index: 3,
+    });
+    expect(b.subject).toBe("");
   });
 });

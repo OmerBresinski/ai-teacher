@@ -746,11 +746,16 @@ export const STOCK_ONLY_BANK: PictureBank = {
 /** A map is a real source, never a made picture: it is searched as a named thing first. */
 export const isMapRequest = (shows: string) => /\bmaps?\b/i.test(shows);
 
+/** An ask's `shows`, or "" when the slide sent none (asks are read off model JSON). */
+const showsOf = (ask: { shows?: unknown }): string =>
+  typeof ask.shows === "string" ? ask.shows : "";
+
 /** The brief a writer ask is searched and judged with, as base4 built it. */
 export function writerAskBrief(ask: WriterPictureAsk): ImageBrief {
-  const request = [ask.shows, ...ask.mustSee].join(". ");
+  const shows = showsOf(ask);
+  const request = [shows, ...(ask.mustSee ?? [])].join(". ");
   return {
-    subject: plainSubject(ask.shows).slice(0, 60),
+    subject: plainSubject(shows).slice(0, 60),
     request: request.slice(0, 400),
     mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
     purpose: "context",
@@ -910,7 +915,9 @@ export type WriterPictureMiss =
   | "error"
   | "match6"
   /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
-  | "history-card-generated";
+  | "history-card-generated"
+  /** An ask with no words to search for (no `shows`): nothing is searched. */
+  | "malformed-ask";
 
 export interface WriterPictures {
   /** Start placing one ask (idempotent per slide and key). */
@@ -966,7 +973,7 @@ export const WRITER_PICTURE_DEADLINE_MS = 45_000;
  * A set panel, a named thing, a fixed-shape slot, a map or a library shape is never split.
  */
 export function splitSubjects(ask: WriterPhotoAsk): string[] | undefined {
-  if (ask.set || ask.named || ask.fixedShape) return undefined;
+  if (ask.set || ask.named || ask.fixedShape || !showsOf(ask)) return undefined;
   const colon = ask.shows.indexOf(":");
   if (colon <= 0 || !ask.shows.slice(0, colon).trim()) return undefined;
   if (libraryKind(ask.shows) || isMapRequest(ask.shows)) return undefined;
@@ -991,6 +998,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   match6: "",
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
+  "malformed-ask": "The slide did not say what the picture shows.",
 };
 
 export function createWriterPictures(opts: {
@@ -1053,7 +1061,7 @@ export function createWriterPictures(opts: {
   const taken = new Set<string>();
   const sources = new Map<string, PhotoSource>();
   const id = (index: number, key: string) => `${index}:${key}`;
-  const requestOf = (ask: WriterPhotoAsk) => [ask.shows, ...ask.mustSee].join(". ");
+  const requestOf = (ask: WriterPhotoAsk) => [showsOf(ask), ...(ask.mustSee ?? [])].join(". ");
   let settled = false;
   /** The look sets are made in (C5): `lookForSets`, else `opts.look`. */
   let setLook = opts.look;
@@ -1408,6 +1416,20 @@ export function createWriterPictures(opts: {
       if (prev) {
         reasked.add(k);
         heldPhotos.delete(k);
+      }
+      // An ask with nothing to search for is a miss, never a throw that fails the lesson.
+      if (!showsOf(ask).trim()) {
+        slots.set(k, {
+          state: { status: "failed" },
+          miss: "malformed-ask",
+          done: Promise.resolve(),
+          stop: new AbortController(),
+        });
+        opts.deps.logger.info(
+          { stage: "generate", picture: k, miss: "malformed-ask" },
+          "writer picture ask has no shows: miss",
+        );
+        return;
       }
       const slot: Slot = {
         state: { status: "pending" },

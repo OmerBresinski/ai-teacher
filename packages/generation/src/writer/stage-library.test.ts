@@ -1,11 +1,14 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { BudgetReservationError } from "@tj/ai";
 import { buildCount, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { endDrawThread } from "../library/guard";
 import { inspectDrawnSvg, loadModel } from "../library/render";
+import { BudgetExceeded } from "../types";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
+import { pictureShows, type VisualAsk } from "./materialise";
 import { recordedVisuals, replayServices } from "./replay-fixture";
 import { runWriter } from "./stage";
 
@@ -21,7 +24,16 @@ type El = Record<string, unknown>;
 
 async function run(
   fill: (attempt: number) => unknown,
-  shape: { side?: boolean; points?: boolean; heading?: string; checks?: "act" | "log" } = {},
+  shape: {
+    side?: boolean;
+    points?: boolean;
+    heading?: string;
+    checks?: "act" | "log";
+    model?: string;
+    noDrawer?: boolean;
+    placeMore?: (i: number, asks: VisualAsk[]) => Promise<void>;
+    onEditable?: (slides: { elements?: unknown[] }[]) => void;
+  } = {},
 ) {
   const brief = JSON.parse(read("brief.json")) as Brief;
   const objectives = (
@@ -36,7 +48,7 @@ async function run(
   if (shape.heading) first.heading = shape.heading;
   first.figure = {
     kind: "model",
-    model: "fractions",
+    model: shape.model ?? "fractions",
     intent: "one half of a circle shaded",
     alt: "A circle cut into two equal parts with one part shaded.",
   };
@@ -49,6 +61,7 @@ async function run(
     }
     const kind = /Kind: ([a-z-]+)/.exec(req.user)?.[1] ?? "";
     drawerKinds.push(kind);
+    if (shape.noDrawer) return { out: undefined };
     return {
       out:
         kind === "fraction-shapes"
@@ -70,6 +83,10 @@ async function run(
     drawDiagrams: { callDrawer },
     library: true,
     ...(shape.checks ? { checks: shape.checks } : {}),
+    ...(shape.placeMore
+      ? { placeMore: (i: number, a: VisualAsk[]) => shape.placeMore?.(i, a) ?? Promise.resolve() }
+      : {}),
+    ...(shape.onEditable ? { onEditable: shape.onEditable } : {}),
   });
   const slide = res.slides[2]; // title and objectives come first
   const diagram = ((slide?.elements ?? []) as El[]).find((e) => e.name === "Diagram");
@@ -168,6 +185,77 @@ describe("writer stage: library models", () => {
     expect(logged.drawerKinds).not.toContain("fraction-shapes");
     expect(svgOfDataUrl(String(logged.diagram?.src)) ?? "").toContain("theme-primary");
   }, 60_000);
+
+  test("a model that does not draw falls back to a picture whose ask says what it shows", async () => {
+    const asked: VisualAsk[] = [];
+    const { events } = await run(() => ({ representation: 42 }), {
+      model: "no-such-model",
+      noDrawer: true,
+      placeMore: async (_i, asks) => {
+        asked.push(...asks);
+      },
+    });
+    expect(events.some((e) => e.ev === "slide-tail-failed")).toBe(false);
+    expect(asked.length).toBeGreaterThan(0);
+    for (const a of asked) {
+      expect(a.type).toBe("photo");
+      expect(typeof a.shows).toBe("string");
+      expect(a.shows.trim().length).toBeGreaterThan(0);
+    }
+    // The model's intent is what the picture shows (a library model has no `shows`).
+    expect(asked[0]?.shows).toBe("one half of a circle shaded");
+  }, 60_000);
+
+  test("a slide whose tail throws is kept as it was at editable; the lesson still ships", async () => {
+    let atEditable: unknown;
+    const { events, slide } = await run(() => ({ representation: 42 }), {
+      model: "no-such-model",
+      noDrawer: true,
+      onEditable: (slides) => {
+        atEditable = structuredClone(slides[2]?.elements);
+      },
+      placeMore: async () => {
+        throw new TypeError("undefined is not an object (evaluating 'ask.shows.indexOf')");
+      },
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        ev: "slide-tail-failed",
+        slide: 3,
+        where: expect.objectContaining({ message: expect.stringContaining("ask.shows") }),
+      }),
+    );
+    // The same slide (element ids are minted again when the deck is laid out at the end).
+    const noIds = (els: unknown) => (els as El[]).map(({ id: _id, ...rest }) => rest);
+    expect(noIds(slide?.elements)).toEqual(noIds(atEditable));
+  }, 60_000);
+
+  for (const [name, stop] of [
+    ["a budget stop", () => new BudgetExceeded("usd")],
+    ["a budget reservation refusal", () => new BudgetReservationError("usd")],
+    ["an abort", () => Object.assign(new Error("stopped"), { name: "AbortError" })],
+  ] as const)
+    test(`${name} in a slide's tail still ends the run`, async () => {
+      const ran = run(() => ({ representation: 42 }), {
+        model: "no-such-model",
+        noDrawer: true,
+        placeMore: async () => {
+          throw stop();
+        },
+      });
+      await expect(ran).rejects.toBeDefined();
+    }, 60_000);
+
+  test("a writer picture with no shows is searched by its must_see, alt or the slide's words", () => {
+    expect(pictureShows({ shows: "", must_see: ["left ventricle", "aorta"] }, {})).toBe(
+      "left ventricle, aorta",
+    );
+    expect(pictureShows({ shows: "" }, { heading: "The heart" })).toBe("The heart");
+    expect(
+      pictureShows({ shows: "" }, { points: [{ label: "Valves", text: "stop backflow" }] }),
+    ).toBe("Valves: stop backflow");
+    expect(pictureShows({ shows: "" }, {})).toBe("");
+  });
 
   test("refused params fall back to the drawer for the model's kind", async () => {
     const { fills, drawerKinds, diagram } = await run(() => ({ representation: 42 }));
