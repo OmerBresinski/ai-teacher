@@ -1,8 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { drawDiagram, parseDiagram } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
+import { endDrawThread } from "../library/guard";
 import { type DrawerCall, drawWriterDiagram, noHeadingTitle } from "./diagrams";
+import type { Brief } from "./fixes";
+import { recordedVisuals, replayServices } from "./replay-fixture";
 import { slideHidesAnswer, slideRole } from "./role";
+import { runWriter } from "./stage";
 
 /*
  * TEACH-247 part q: diagrams lost or wrongly flagged in a production Y6 heart lesson (10 Oct).
@@ -114,5 +120,69 @@ describe("a visual slide asks only when all its words ask", () => {
     };
     expect(slideRole(hinge, { index: 6 })).toBe("hinge");
     expect(slideHidesAnswer(hinge)).toBe(true);
+  });
+});
+
+/** The production slide 7, exactly as written: a worked example on a full diagram, no points. */
+const SLIDE7 = {
+  template: "big-visual",
+  heading: "Worked example: supplying a leg",
+  lead: "Follow the arrows: lungs → heart → leg tissues → heart → lungs.",
+  figure: {
+    kind: "model",
+    model: "heart_circulation",
+    intent: "The double loop: blood from the lungs to the heart, out to the leg and back.",
+    alt: "Blood goes from the lungs to the heart, out to the leg tissues and back.",
+  },
+};
+
+describe("slide 7: a worked example on a library model teaches", () => {
+  afterAll(() => endDrawThread());
+  test("its role is teach and it holds nothing back", () => {
+    expect(slideRole(SLIDE7, { index: 6 })).toBe("teach");
+    expect(slideHidesAnswer(SLIDE7)).toBe(false);
+  });
+
+  test("through the stage, the heart model stays: no lib-fallback, drawn by the library", async () => {
+    const B = "y2-maths-halves-quarters";
+    const read = (f: string) =>
+      readFileSync(join(import.meta.dir, "fixtures/replay", B, f), "utf8");
+    const brief = JSON.parse(read("brief.json")) as Brief;
+    const objectives = (
+      JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
+    ).objectives.map((o) => o.teacher);
+    const main = JSON.parse(read("main.json")) as { text: string; finishReason?: string };
+    const out = JSON.parse(main.text) as { slides: unknown[] };
+    out.slides[0] = structuredClone(SLIDE7);
+    const fill = { detail: "double", exercise: "rest", showPulse: false, vesselNames: true };
+    const callDrawer: DrawerCall = async (req) => ({
+      out: req.system.startsWith("Set the parameters") ? fill : undefined,
+    });
+    const events: Record<string, unknown>[] = [];
+    await runWriter({
+      brief,
+      objectives,
+      services: { ...replayServices(B), log: (e) => events.push(e as Record<string, unknown>) },
+      visual: recordedVisuals(B),
+      recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
+      drawDiagrams: { callDrawer },
+      library: true,
+      checks: "log",
+    });
+    const s3 = events.filter((e) => e.slide === 3);
+    expect(s3.filter((e) => e.ev === "lib-fallback")).toEqual([]);
+    expect(s3).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
+  }, 60_000);
+
+  test("negatives: a direct pupil question, an ask field and a hinge still ask", () => {
+    const asks = (more: Record<string, unknown>) => slideHidesAnswer({ ...SLIDE7, ...more });
+    expect(asks({ lead: "Which vessel carries blood to the leg?" })).toBe(true);
+    expect(asks({ heading: "Example: Your turn", lead: "Trace the blood to the arm." })).toBe(
+      false,
+    );
+    expect(
+      asks({ heading: "Example: Your turn", instruction: "Trace the blood to the arm." }),
+    ).toBe(true);
+    expect(slideHidesAnswer({ template: "hinge", stem: "Which vessel?" })).toBe(true);
   });
 });
