@@ -18,9 +18,9 @@ type J = Record<string, unknown>;
 
 const hook: S = {
   template: "hook",
-  heading: "Can you feel the rhythm?",
-  lead: "Right now, a pump the size of your fist is beating about 80 times a minute. Why?",
-  picture: { shows: "a boy feeling the pulse in his neck", must_see: ["boy"], subject: "generic" },
+  heading: "Why do volcanoes erupt?",
+  lead: "Deep under your feet, rock is hot enough to melt. Why does it burst out?",
+  picture: { shows: "a volcano erupting at night", must_see: ["volcano"], subject: "generic" },
 };
 
 describe("the hook schema", () => {
@@ -72,7 +72,7 @@ describe("hook on the writer's layout", () => {
   test("a placed photo is full bleed under the scrim", () => {
     const r = run(hook, () => ({
       status: "photo",
-      photo: { src: "https://x.test/h.jpg", alt: "pulse", aspect: 16 / 9 },
+      photo: { src: "https://x.test/h.jpg", alt: "volcano", aspect: 16 / 9 },
     }));
     expect(r.slide.elements.find((e) => e.name === "Hook photo")).toMatchObject({ w: 960, h: 540 });
     expect(r.slide.elements.some((e) => e.name === "Scrim")).toBe(true);

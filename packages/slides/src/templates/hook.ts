@@ -1,7 +1,7 @@
 /**
  * Full-bleed hook (UX ruling 203, Chalkie layout parity P5; TEACH-75 part l): the photo
  * across the whole slide under a dark scrim, and the heading plus up to about 40 words centred in
- * white. Copied from the Chalkie heart deck's slide 2 ("Can you feel the rhythm?").
+ * white. Copied from the Chalkie heart deck's slide 2.
  *
  * - The scrim is theme-aware: the theme's accent sunk almost to black (`hookScrim`), at an opacity
  *   that keeps white text at 4.5:1 or better even over a pure white pixel (`hookContrast`, tested

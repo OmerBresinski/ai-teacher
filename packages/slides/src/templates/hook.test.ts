@@ -11,14 +11,14 @@ import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./i
  */
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
 const photo: Figure = {
-  photo: "https://x.test/pulse.jpg",
+  photo: "https://x.test/volcano.jpg",
   aspect: 16 / 9,
-  alt: "A boy feels his pulse",
+  alt: "A volcano erupting at night",
 };
 /** About 40 words at KS2 and KS3 (the budget), about 30 at KS1. */
 const LEAD = {
-  ks2: "Right now, a muscular pump the size of your fist is beating about **80 times every minute** inside your chest. Over a day it pumps around 7,000 litres of blood. Why does your body work so hard without stopping?",
-  ks1: "Put two fingers on your neck and keep very still. Can you feel a little bump, again and again? That is your heart pumping blood all around your body.",
+  ks2: "Deep under your feet, rock is so hot that it melts. When pressure builds up, this **molten rock** bursts through the crust as lava, ash and gas. What could make that pressure grow so strong, so fast?",
+  ks1: "Look out of the window at the sky. What colour is it today? Is it the same colour every day, or does it change when the weather changes?",
 };
 const lead = (stage: Stage) => (stage === "ks1" ? LEAD.ks1 : LEAD.ks2);
 const fontSizes = (els: SlideElement[]) =>
@@ -42,7 +42,7 @@ describe("hook", () => {
   test("the slide draws exactly that scrim, and the words in that white", () => {
     for (const theme of THEMES) {
       const els = layoutTemplate(
-        { template: "hook", heading: "Can you feel the rhythm?", lead: LEAD.ks2, figure: photo },
+        { template: "hook", heading: "Why do volcanoes erupt?", lead: LEAD.ks2, figure: photo },
         theme,
         "ks2",
       ).slide.elements;
@@ -68,7 +68,7 @@ describe("hook", () => {
         const r = layoutTemplate(
           {
             template: "hook",
-            heading: "Can you feel the rhythm?",
+            heading: "Why do volcanoes erupt?",
             lead: lead(stage),
             figure: photo,
           },
@@ -110,7 +110,7 @@ describe("hook", () => {
   test("a hook whose picture failed is a discussion prompt, never an empty dark slide", () => {
     for (const theme of THEMES) {
       const r = layoutTemplate(
-        { template: "hook", heading: "Your pulse", lead: LEAD.ks1 },
+        { template: "hook", heading: "Look at the sky", lead: LEAD.ks1 },
         theme,
         "ks1",
       );
