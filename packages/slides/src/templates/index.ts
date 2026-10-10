@@ -1048,7 +1048,7 @@ function processLine(c: Ctx, items: TemplatePoint[]): boolean {
     box(
       c,
       { x: cx(0), y: y0 + Math.round(d / 2) - 2, w: cx(n - 1) - cx(0), h: 4 },
-      mix(c.t.colors.accent, c.t.colors.background, 0.4),
+      c.t.colors.accent,
       { name: "Process line", shape: "rect", radius: 0 },
     );
     parts.forEach((p, k) => {
