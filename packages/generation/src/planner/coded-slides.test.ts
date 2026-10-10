@@ -421,6 +421,8 @@ describe("a quick check whose answers would cover its questions gets an answers 
       ),
       themeId,
     );
+  const checkSlide = (themeId: string) => check(themeId);
+  const withNotes = (slide: Slide, notes: string): Slide => ({ ...slide, notes });
   const after = (notes: string): Slide =>
     ({ ...check("studio"), id: "after", notes, elements: [] }) as Slide;
 
@@ -433,6 +435,26 @@ describe("a quick check whose answers would cover its questions gets an answers 
     expect(JSON.stringify(own.elements)).toContain("Quick check: answers");
     // A slide number said in words follows the slide it named.
     expect(next.notes).toBe("Recap slide 1, then slide 3.");
+  });
+
+  test("slide i still pairs with outline entry i after the answers slide goes in", () => {
+    const check = { kind: "instructions", factRefs: ["q1"] } as unknown as OutlineEntry;
+    const next = { kind: "content", factRefs: ["k1"] } as unknown as OutlineEntry;
+    const lesson = {
+      themeId: "studio",
+      facts: { outline: [check, next] } as unknown as LessonFacts,
+      slides: [withNotes(checkSlide("studio"), "Answers: 1. a"), after("")],
+    };
+    const out = withAnswersSlides(lesson);
+    const outline = out.facts?.outline ?? [];
+    expect(out.slides).toHaveLength(3);
+    expect(outline).toHaveLength(3);
+    // The answers slide pairs with a copy of its check's entry; the slide after keeps its own.
+    expect(outline[1]).toEqual(check);
+    expect(outline[2]).toBe(next);
+    // The presenter's note on the answers slide carries the check's answers.
+    expect(out.slides[1]?.notes).toContain("Answers: 1. a");
+    expect(out.slides[1]?.diagram).toBeUndefined();
   });
 
   test("a deck with no covering panel comes back as it was", () => {
