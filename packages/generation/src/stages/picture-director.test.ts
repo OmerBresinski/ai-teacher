@@ -212,6 +212,18 @@ describe("planPicture", () => {
       expect(p.request.route).toBe("real");
     });
 
+    test("a historical ask kept after a failed call takes the real ladder: nothing is generated", () => {
+      const past = {
+        text: "A Victorian street with horse-drawn carts",
+        named: null,
+        historical: true,
+      };
+      const p = photoPlan(undefined as never, past as never);
+      expect(p.request.route).toBe("real");
+      expect(p.request.realFallback ?? "none").toBe("none");
+      expect(p.request.stockFirst).toBe(false);
+    });
+
     test("a failed director call or an answer with no usable picture keeps the ask's picture", () => {
       expect(photoPlan(undefined as never, heart).request.text).toBe(heart.text);
       expect(photoPlan(dir({ pictures: [pic({ imagePrompt: " " })] }), heart).request.text).toBe(

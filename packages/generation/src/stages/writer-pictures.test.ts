@@ -975,3 +975,83 @@ describe("writer pictures: a director code route is drawn or kept as a picture, 
     }
   });
 });
+
+describe("writer pictures: the kept-picture and retry paths spend under the same rules and never throw", () => {
+  const spy = (generate: (req: { text: string }) => Promise<undefined>) => ({
+    lookup: async () => undefined,
+    remember: async () => undefined,
+    generate,
+  });
+  const make = (over: Partial<Parameters<typeof createWriterPictures>[0]>) =>
+    createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      ...over,
+    });
+  const street = ask({
+    shows: "A Victorian street with horse-drawn carts",
+    mustSee: [],
+    named: false,
+  });
+
+  test("a failed director call on a historical ask generates nothing (ruling 163 before spend)", async () => {
+    const made: string[] = [];
+    const pictures = make({
+      direct: async () => undefined,
+      bank: spy(async (r) => {
+        made.push(r.text);
+        return undefined;
+      }),
+    });
+    pictures.start(3, street, slide);
+    await pictures.settle(1_000);
+    expect(made).toEqual([]);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+  });
+
+  test("an ask that ran out of time is retryable once; a director miss is not", async () => {
+    const pictures = make({ direct: () => new Promise<PictureDirection | undefined>(() => {}) });
+    pictures.start(3, ask(), slide);
+    await pictures.settle(5);
+    expect(pictures.retryable(3, "picture")).toBe(true);
+    const none = make({ direct: async () => direction({ route: "none", pictures: [] }) });
+    none.start(3, ask(), slide);
+    await none.settle(1_000);
+    expect(none.retryable(3, "picture")).toBe(false);
+  });
+
+  test("a provider error on the re-asked picture ends failed without throwing", async () => {
+    const pictures = make({
+      direct: async () => direction({ route: "code", pictures: [], diagram: "labelled-diagram" }),
+      bank: spy(async () => {
+        throw new Error("provider down");
+      }),
+      draws: true,
+    });
+    const heart = ask({ shows: "A cross-section of the human heart", mustSee: [], named: false });
+    pictures.start(3, heart, slide);
+    await pictures.settle(1_000);
+    pictures.start(3, heart, slide);
+    await pictures.settleSlide(3, 1_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+  });
+
+  test("a budget stop on the re-asked picture still stops the lesson (never swallowed)", async () => {
+    // The re-asked placement's own model call (the director) hits the lesson budget.
+    let calls = 0;
+    const pictures = make({
+      direct: async () => {
+        if (calls++ > 0) throw new BudgetExceeded("usd");
+        return direction({ route: "code", pictures: [], diagram: "labelled-diagram" });
+      },
+      draws: true,
+    });
+    const heart = ask({ shows: "A cross-section of the human heart", mustSee: [], named: false });
+    pictures.start(3, heart, slide);
+    await pictures.settle(1_000);
+    pictures.start(3, heart, slide);
+    await expect(pictures.settleSlide(3, 1_000)).rejects.toBeInstanceOf(BudgetExceeded);
+  });
+});

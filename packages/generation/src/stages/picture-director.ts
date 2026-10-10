@@ -343,6 +343,11 @@ interface Ask {
   look?: LessonLook;
   /** What the writer's picture must show (its `must_see`), for a picture planned from the ask. */
   mustShow?: string[];
+  /**
+   * The ask is historical by its own words or a history lesson's event or people (ruling 163):
+   * kept as a picture, it takes the real ladder and is never generated.
+   */
+  historical?: boolean;
 }
 
 /**
@@ -352,8 +357,11 @@ interface Ask {
  */
 function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirection {
   const text = ask.text.replace(/\s+/g, " ").trim();
+  // Ruling 163 before any spend: a historical ask with no director answer is a past event, so the
+  // real ladder (Commons, then stock) and REAL_FALLBACK decide; nothing is generated for it.
+  const past = !ask.named && !d?.period && ask.historical === true;
   return {
-    route: ask.named ? "commons" : "library-or-generate",
+    route: ask.named || past ? "commons" : "library-or-generate",
     pictures: [
       {
         shows: text,
@@ -364,7 +372,7 @@ function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirecti
     ],
     count: null,
     diagram: null,
-    named: ask.named ? (d?.named ?? "object") : null,
+    named: ask.named ? (d?.named ?? "object") : past ? "event" : null,
     period: d?.period ?? null,
   };
 }
@@ -553,6 +561,9 @@ export async function findDirected(args: {
       ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
       ...(args.look ? { look: args.look } : {}),
       ...(b.mustShow?.length ? { mustShow: b.mustShow } : {}),
+      historical:
+        isHistoricalSet([ask.subject]) ||
+        (/^hist/i.test(lesson.subject ?? "") && DEPICTS.test(ask.subject)),
     },
     { draws: args.draws === true },
   );
@@ -921,6 +932,8 @@ export interface WriterPictures {
    * undefined otherwise. Asked again (`start`), the ask keeps the picture route instead.
    */
   drawAs(index: number, key: string): string | undefined;
+  /** The ask failed for a reason a second placement can fix (the deadline or an error). */
+  retryable(index: number, key: string): boolean;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
   /**
@@ -1526,6 +1539,10 @@ export function createWriterPictures(opts: {
     drawAs(index, key) {
       const slot = slots.get(id(index, key));
       return slot?.miss === "director-code" ? slot.draw : undefined;
+    },
+    retryable(index, key) {
+      const miss = slots.get(id(index, key))?.miss;
+      return miss === "deadline" || miss === "error";
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
