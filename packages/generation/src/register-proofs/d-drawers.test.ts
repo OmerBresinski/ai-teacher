@@ -1,14 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
   DIAGRAM_SAMPLES,
+  diagramFaults,
   fittedDiagramElement,
+  lastDiagramProbe,
   parseDiagram,
   renderDiagram,
   withLongLabels,
 } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
 import { acceptWriterSpec } from "../writer/diagrams";
-import type { J } from "./harness";
+import { fixture, type J } from "./harness";
 
 /*
  * Group D: drawer output ships wrong, or faults where code could mend it. Several separate code
@@ -121,5 +123,36 @@ describe("REGISTER diagrams-12: a valid writer timeline is rejected for 41-chara
     const long = "Germany and Austria-Hungary sign a secret defensive alliance treaty";
     expect(long.length).toBeGreaterThan(60);
     expect(accept(timeline(long)).fault).toContain("events.0.text");
+  });
+});
+
+describe("REGISTER diagrams-13: cycle link labels run off both edges (d52 T5 y6 s4)", () => {
+  const { title: _t, shows: _s, ...fig } = (fixture("diagrams-13").slide as J).figure as J;
+  const splash = getTheme("splash", "KS2" as never);
+
+  test("FIXED diagrams-13: at the recorded draw size 493x143 every word is inside the drawing, box words inside their boxes, and the shared arrow words appear once", () => {
+    expect(diagramFaults(fig, splash, { w: 493, h: 143 })).toEqual([]);
+    const rec = lastDiagramProbe()?.rec ?? [];
+    expect(rec.filter((r) => r.x0 < 0 || r.x1 > 493 || r.y0 < 0 || r.y1 > 143)).toEqual([]);
+    expect(rec.filter((r) => r.text === "blood vessels")).toHaveLength(1);
+    const svg = renderDiagram(fig, splash, { w: 493, h: 143 }) ?? "";
+    expect(svg.match(/blood vessels/g)).toHaveLength(1);
+    expect(svg).not.toContain("Arrows:");
+    // each box is as tall as its words: every label's lines sit inside its rect
+    const rects = [
+      ...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g),
+    ]
+      .map((m) => m.slice(1).map(Number) as [number, number, number, number])
+      .filter(([, , rw, rh]) => rw < 493 && rh < 143);
+    expect(rects).toHaveLength(4);
+    for (const name of fig.nodes as string[]) {
+      const r = rec.find((t) => t.text === name);
+      expect(r).toBeDefined();
+      const inBox = rects.some(
+        ([bx, by, bw, bh]) =>
+          r && r.x0 >= bx && r.x1 <= bx + bw && r.y0 >= by - 1 && r.y1 <= by + bh + 1,
+      );
+      expect(inBox).toBe(true);
+    }
   });
 });

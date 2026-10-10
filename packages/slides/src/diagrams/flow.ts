@@ -667,21 +667,29 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   const widest = Math.max(base, w * (k <= 4 ? 0.48 : 0.4));
   let boxes = ring(base);
   for (let i = 1; i <= 4 && !fitsIn(boxes); i++) boxes = ring(base + ((widest - base) * i) / 4);
-  const out: string[] = [];
   const small = Math.max(sub(fs), x.minFs);
-  boxes.forEach((b, i) => {
-    const next = boxes[(i + 1) % k];
-    if (!next) return;
-    const at = out.length;
-    // A gentle outward bow, so the ring reads as a cycle.
+  // A gentle outward bow, so the ring reads as a cycle.
+  const bowOf = (b: Box, next: Box) => {
     const mx = (b.cx + next.cx) / 2;
     const my = (b.cy + next.cy) / 2;
     const ox = mx - cx;
     const oy = my - cy;
     const ol = Math.hypot(ox, oy) || 1;
     const bow = Math.min(w, h) * 0.08;
-    const qx = mx + (ox / ol) * bow;
-    const qy = my + (oy / ol) * bow;
+    return { ox, oy, ol, qx: mx + (ox / ol) * bow, qy: my + (oy / ol) * bow };
+  };
+  // diagrams-13: a ring that cannot hold its words (a label spilling its box, boxes on each other,
+  // arrow words off the drawing or over a box) is drawn as a two-row loop instead, when that fits.
+  if (!ringHolds(f, x, boxes, w, h, small, bowOf)) {
+    const loop = cycleLoop(f, x, w, h);
+    if (loop) return loop;
+  }
+  const out: string[] = [];
+  boxes.forEach((b, i) => {
+    const next = boxes[(i + 1) % k];
+    if (!next) return;
+    const at = out.length;
+    const { ox, oy, ol, qx, qy } = bowOf(b, next);
     const [x1, y1] = edge(b, qx, qy, 6);
     const [x2, y2] = edge(next, qx, qy, 6);
     const head = fs * 0.75;
@@ -727,4 +735,141 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
     if (b) out.push(part(i, box(x, b, s.label, bfs)));
   });
   return out.join("");
+}
+
+const rectOf = (b: Box): Rect => ({
+  x0: b.cx - b.w / 2,
+  y0: b.cy - b.h / 2,
+  x1: b.cx + b.w / 2,
+  y1: b.cy + b.h / 2,
+});
+const meets = (a: Rect, b: Rect) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+/**
+ * diagrams-13: whether the ring as laid out holds its words: every label inside its box at the
+ * drawing's one box size, no box on another, and every arrow word inside the drawing and off the
+ * boxes. A ring that holds is drawn exactly as before.
+ */
+function ringHolds(
+  f: Flow,
+  x: Ctx,
+  boxes: Box[],
+  w: number,
+  h: number,
+  small: number,
+  bowOf: (b: Box, next: Box) => { ox: number; oy: number; ol: number; qx: number; qy: number },
+): boolean {
+  const labels = f.steps.map((s) => s.label);
+  const bfs = boxSize(x, boxes, labels);
+  if (!labels.every((l, i) => boxes[i] && boxLines(x, boxes[i] as Box, l, bfs))) return false;
+  const rects = boxes.map(rectOf);
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++)
+      if (meets(rects[i] as Rect, rects[j] as Rect)) return false;
+  return boxes.every((b, i) => {
+    const note = f.steps[i]?.arrow;
+    const next = boxes[(i + 1) % boxes.length];
+    if (!note || !next) return true;
+    const { ox, oy, ol, qx, qy } = bowOf(b, next);
+    const lx = qx + (ox / ol) * x.fs * 0.9;
+    const ly = qy + (oy / ol) * x.fs * 0.9;
+    const tw = textWidth(note, x, small, 600);
+    const x0 = Math.abs(ox) < 4 ? lx - tw / 2 : ox > 0 ? lx : lx - tw;
+    const top = ly + small * 0.35;
+    const r = { x0, x1: x0 + tw, y0: top - small * 0.8, y1: top + small * 0.25 };
+    if (r.x0 < 0 || r.x1 > w || r.y0 < 0 || r.y1 > h) return false;
+    return !rects.some((b2) => meets(r, b2));
+  });
+}
+
+/**
+ * diagrams-13: a cycle as a loop of two rows, for a zone too short or narrow for the ring: the
+ * first half of the steps left to right along the top, the rest right to left along the bottom
+ * (an odd one out sits between two columns), each box as tall as its words need, every arrow a
+ * straight one from box edge to box edge. Words shared by every arrow ("blood vessels") are shown
+ * once, at the arrow-word size but never larger than the box words, inside the loop between its
+ * upright arrows (under it when they do not fit there, or for an odd count, where slanted arrows
+ * cross the middle). Arrow words that differ are not placed here: undefined, as it is when
+ * the loop does not fit, and the ring is drawn.
+ */
+function cycleLoop(f: Flow, x: Ctx, w: number, h: number): string | undefined {
+  const { c, fs } = x;
+  const k = f.steps.length;
+  const notes = f.steps.map((s) => s.arrow?.trim() ?? "");
+  const shared = notes[0] && notes.every((t) => t === notes[0]) ? notes[0] : "";
+  if (!shared && notes.some((t) => t)) return undefined;
+  const cols = Math.ceil(k / 2);
+  const odd = k % 2 === 1;
+  const small = Math.max(sub(fs), x.minFs);
+  // arrowHead sizes every head from its stroke: a gap holds the head and a short shaft.
+  const head = STROKE.line * 4.2;
+  const gapX = Math.max(head + 30, 40);
+  const rise = Math.max(head + 22, 32);
+  const inset = 4;
+  const colW = (w - 2 * inset - (cols - 1) * gapX) / cols;
+  if (!(colW > fs * 3)) return undefined;
+  // boxSize's steps: the stage floor first, then (as the ring does) below it, down to the ring's
+  // own 16 floor, rather than no drawing.
+  const steps = [x.fs, x.fs * 0.88, x.fs * 0.76];
+  const tries = [
+    ...steps.map((v) => Math.max(sub(v, 1), 16, x.minFs)),
+    ...steps.map((v) => Math.max(sub(v, 1), 16)),
+    16,
+  ];
+  for (const bf of tries) {
+    const lines = f.steps.map((s) => wrap(s.label, x, colW - bf * 0.9, 3, bf, WEIGHT.name));
+    const spill = lines.some(
+      (ls) =>
+        ls[ls.length - 1]?.endsWith("…") ||
+        ls.some((l) => textWidth(l, x, bf, WEIGHT.name) > colW - bf * 0.9 + 0.5),
+    );
+    if (spill) continue;
+    const most = Math.max(...lines.map((ls) => ls.length));
+    // boxLines' room: floor((h - 0.5 f) / 1.2 f) lines, so this height holds `most` lines.
+    const bh = most * bf * 1.2 + bf * 0.6;
+    // The shared words: never larger than the box words, inside the loop when they fit between
+    // its two upright arrows (column centres), else under it.
+    const sfs = Math.min(small, bf);
+    const sharedW = shared ? textWidth(shared, x, sfs, 600) : 0;
+    const sharedH = sfs * 1.2;
+    if (sharedW > w - 2 * inset) continue;
+    const inside = !!shared && !odd && sharedW + 24 <= (cols - 1) * (colW + gapX);
+    const gapY = Math.max(rise, inside ? sharedH + 12 : 0);
+    const below = shared && !inside ? sharedH + 8 : 0;
+    const total = 2 * bh + gapY + below;
+    if (total > h - 2 * inset) continue;
+    const top = (h - total) / 2;
+    const colX = (j: number) => inset + colW / 2 + j * (colW + gapX);
+    const boxes: Box[] = f.steps.map((_, i) => {
+      if (i < cols) return { cx: colX(i), cy: top + bh / 2, w: colW, h: bh };
+      const j = cols - 1 - (i - cols) - (odd ? 0.5 : 0);
+      return { cx: colX(j), cy: top + bh + gapY + bh / 2, w: colW, h: bh };
+    });
+    const out: string[] = [];
+    boxes.forEach((b, i) => {
+      const next = boxes[(i + 1) % k] as Box;
+      const at = out.length;
+      const [x1, y1] = edge(b, next.cx, next.cy, 6);
+      const [x2, y2] = edge(next, b.cx, b.cy, 6);
+      const tl = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const ex = x2 - ((x2 - x1) / tl) * head * 0.8;
+      const ey = y2 - ((y2 - y1) / tl) * head * 0.8;
+      out.push(
+        `<path d="M${n(x1)},${n(y1)} L${n(ex)},${n(ey)}" fill="none" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>`,
+        arrowHead(x2, y2, x1, y1, head, c.ink),
+      );
+      x.arrows?.push({ tip: [x2, y2], target: rectOf(next) });
+      out.splice(at, out.length - at, part(Math.min(i + 1, k - 1), out.slice(at).join("")));
+    });
+    if (shared) {
+      const sy = inside ? top + bh + gapY / 2 : top + 2 * bh + gapY + 8 + sharedH / 2;
+      out.push(text(x, w / 2, sy, [shared], { fs: sfs, fill: c.ink, weight: 600, halo: c.bg }));
+    }
+    f.steps.forEach((s, i) => {
+      const b = boxes[i];
+      if (b) out.push(part(i, box(x, b, s.label, bf)));
+    });
+    return out.join("");
+  }
+  return undefined;
 }
