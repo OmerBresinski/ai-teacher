@@ -178,7 +178,7 @@ describe("fallback: an invalid spec draws nothing", () => {
       expect(() => renderDiagram(spec, chalk, SLOT)).not.toThrow();
       expect(() => diagramElement(spec, chalk, { x: 0, y: 0, ...SLOT })).not.toThrow();
     }
-    expect(Date.now() - t).toBeLessThan(15_000);
+    expect(Date.now() - t).toBeLessThan(1_000);
   });
 
   test("random junk never throws", () => {

@@ -5,8 +5,33 @@ type Rec = Record<string, unknown>;
 const COUNT_MAX = 20;
 const COUNT_MIN = 2;
 const EXTRA_MAX = 12;
+/** The particles schema's list limits (schema.ts ParticlesSchema). `key` is a pair, mended below. */
+const LIST_MAX: [string, number][] = [
+  ["panels", 3],
+  ["notes", 3],
+  ["captions", 3],
+  ["states", 3],
+  ["arrows", 2],
+  ["outcomes", 2],
+  ["key", 2],
+];
 const DANGLING =
   /^(a|an|the|of|in|on|at|to|for|and|or|but|with|by|from|into|than|as|is|are|per|same)$/i;
+
+/**
+ * A particles spec (drawn or meaning form) with any list far past its limit clipped to one past
+ * the limit, so the parse still refuses it, with the same message, without per-item work on a
+ * huge array. Anything else, and every list within limit + 1, comes back as the same object.
+ */
+export function clipParticleLists(spec: unknown): unknown {
+  if (!spec || typeof spec !== "object" || (spec as Rec).kind !== "particles") return spec;
+  let s = spec as Rec;
+  for (const [field, max] of LIST_MAX) {
+    const v = s[field];
+    if (Array.isArray(v) && v.length > max + 1) s = { ...s, [field]: v.slice(0, max + 1) };
+  }
+  return s;
+}
 
 /**
  * Register diagrams-11 (base4f-p123-1 y11 s9): a particles spec that missed one of its own limits
@@ -24,9 +49,10 @@ const DANGLING =
  */
 export function mendParticles(spec: unknown, stretch: number): unknown {
   if (!spec || typeof spec !== "object" || (spec as Rec).kind !== "particles") return spec;
-  const s = spec as Rec;
+  const s = clipParticleLists(spec) as Rec;
+  const clipped = s !== spec;
   const out: Rec = { ...s };
-  let changed = false;
+  let changed = clipped;
 
   const max = LIMITS.particles.noteChars;
   if (Array.isArray(s.notes) && s.notes.some((t) => typeof t === "string" && overNote(t))) {

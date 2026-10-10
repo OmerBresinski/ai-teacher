@@ -20,7 +20,7 @@ import { drawLineGraph } from "./line-graph";
 import { fromMeaning } from "./meaning";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
-import { mendParticles } from "./particles-mend";
+import { clipParticleLists, mendParticles } from "./particles-mend";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { LONG_LABEL_STRETCH, parseStretched } from "./stretch";
 import { finished, laddered, look, WEIGHT } from "./style";
@@ -115,7 +115,7 @@ export { family as svgFontFamily } from "./svg";
  * is mended (particles-mend.ts), not dropped. Every spec that already parses comes back as is.
  */
 function drawable(spec: unknown): unknown {
-  const drawn = fromMeaning(spec);
+  const drawn = fromMeaning(clipParticleLists(spec));
   const mended = mendParticles(drawn, LONG_LABEL_STRETCH);
   // A key cut to two names is then held to the labels3 rules like any other (labels3.ts).
   return mended === drawn ? drawn : mendParticleLabels(mended);
