@@ -34,8 +34,8 @@ describe("dd-diagrams readability", () => {
             bad.push(`${ks} ${zn} ${name}: throws ${(e as Error).message}`);
             continue;
           }
-          if (!r.ok) {
-            expect(r.reasons.length).toBeGreaterThan(0);
+          if (!r.ok || r.warnings) {
+            expect((r.ok ? r.warnings : r.reasons)?.length).toBeGreaterThan(0);
             continue;
           }
           drawn++;
@@ -134,14 +134,15 @@ describe("dd-diagrams readability", () => {
     if (r.ok) expect(svgOf(r.element.src as string)).not.toContain("4; ⅛");
   });
 
-  test("a flow past its key stage's cap, or too long for its zone, reports it cannot draw", () => {
+  test("a flow past its key stage's cap, or too long for its zone, warns that it cannot read", () => {
     const steps = (k: number) =>
       Array.from({ length: k }, (_, i) => ({ label: `Step number ${i + 1} happens` }));
     // KS2 reads at most six steps (dd-diagrams2 caps: KS1 5, KS2 6, KS3 and up 8).
     const seven = { kind: "flow", alt: "x", steps: steps(7) };
     const r = drawDiagram(seven, atKeyStage(t, "ks2"), { x: 0, y: 0, ...ZONES.band });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reasons.join(" ")).toContain("key stage");
+    // Drawn anyway (checks never cost a visual), with the cap as a warning.
+    expect(r.ok && !r.warnings).toBe(false);
+    expect((r.ok ? (r.warnings ?? []) : r.reasons).join(" ")).toContain("key stage");
     // KS3 adapts: seven steps draw as a two-row snake full width.
     expect(drawDiagram(seven, atKeyStage(t, "ks3"), { x: 0, y: 0, ...ZONES.band }).ok).toBe(true);
     const four = { kind: "flow", alt: "x", steps: steps(4) };
@@ -177,8 +178,9 @@ describe("dd-diagrams readability", () => {
     const r = drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, ...ZONES.band });
     expect(r.ok).toBe(true);
     if (r.ok) expect(svgOf(r.element.src as string)).toMatch(/>60<\/tspan>[\s\S]*>60<\/tspan>/);
-    // A band too short for any readable plot refuses rather than drawing a strip.
-    expect(drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, w: 788, h: 120 }).ok).toBe(false);
+    // A band too short for any readable plot still draws (checks never cost a visual), and warns.
+    const strip = drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, w: 788, h: 120 });
+    expect(strip.ok && (strip.warnings?.length ?? 0) > 0).toBe(true);
   });
 
   test("an energy profile draws each Ea as a double arrow from the reactant level", () => {
@@ -275,8 +277,8 @@ describe("dd-diagrams readability", () => {
               n++;
               try {
                 const r = drawDiagram(spec, staged, { x: 0, y: 0, ...z });
-                if (!r.ok) {
-                  if (!r.reasons.length)
+                if (!r.ok || r.warnings) {
+                  if (!(r.ok ? r.warnings : r.reasons)?.length)
                     bad.push(`${kind} ${count}x${chars} ${ks}: refused with no reason`);
                   continue;
                 }
@@ -338,10 +340,13 @@ describe("dd-diagrams readability", () => {
     for (const ks of KS) {
       const staged = atKeyStage(t, ks);
       const r = drawDiagram(spec, staged, { x: 0, y: 0, ...ZONES.half });
-      // y11 is KS4 (and KS3 type matches): it draws there; KS2's larger type may refuse, with a
-      // reason, but never draws a crossing.
-      if (ks !== "ks2") expect(r.ok).toBe(true);
-      if (!r.ok) expect(r.reasons.length).toBeGreaterThan(0);
+      // y11 is KS4 (and KS3 type matches): it draws there with no crossing; KS2's larger type may
+      // leave one, which then comes back as a warning (checks never cost a visual).
+      expect(r.ok).toBe(true);
+      if (r.ok && ks === "ks2" && r.warnings) {
+        expect(r.warnings.length).toBeGreaterThan(0);
+        continue;
+      }
       if (r.ok)
         expect(
           readabilityFaults(r.spec, staged, { ...ZONES.half, fs: r.fs }).filter((f) =>

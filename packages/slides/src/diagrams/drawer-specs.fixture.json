@@ -1,0 +1,753 @@
+{
+  "y8-french-my-family:1:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "Camille is centred with her brother and sister beside her; her parents are above, and her paternal grandparents are above her father.",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "rect",
+        "x": 28,
+        "y": 8,
+        "w": 36,
+        "h": 14,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 29,
+        "y": 34,
+        "w": 19,
+        "h": 14,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 56,
+        "y": 34,
+        "w": 19,
+        "h": 14,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 8,
+        "y": 68,
+        "w": 22,
+        "h": 14,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 37,
+        "y": 68,
+        "w": 22,
+        "h": 14,
+        "fill": "accent",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 67,
+        "y": 68,
+        "w": 22,
+        "h": 14,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "line",
+        "points": [[46, 22], [38, 34]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[46, 22], [65, 34]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[38, 48], [48, 58], [48, 68]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[65, 48], [48, 58]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[30, 75], [37, 75]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[59, 75], [67, 75]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "mes grands-parents\n grandparents",
+        "at": [46, 15],
+        "side": "top"
+      },
+      {
+        "text": "mon père\nfather",
+        "at": [38, 41],
+        "side": "top"
+      },
+      {
+        "text": "ma mère\nmother",
+        "at": [65, 41],
+        "side": "top"
+      },
+      {
+        "text": "mon frère\nbrother",
+        "at": [19, 75],
+        "side": "top"
+      },
+      {
+        "text": "Camille : moi\nme",
+        "at": [48, 75],
+        "side": "top"
+      },
+      {
+        "text": "ma sœur\nsister",
+        "at": [78, 75],
+        "side": "top"
+      }
+    ]
+  },
+  "y8-french-my-family:3:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "Arbre familial avec Camille et ses frère et sœur, ses parents au-dessus et ses grands-parents au-dessus de son père.",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "line",
+        "points": [[80, 21], [80, 29], [55, 29], [55, 33]]
+      },
+      {
+        "type": "line",
+        "points": [[55, 43], [55, 50], [80, 50], [80, 59]]
+      },
+      {
+        "type": "line",
+        "points": [[105, 43], [105, 50], [80, 50]]
+      },
+      {
+        "type": "line",
+        "points": [[35, 59], [125, 59]]
+      },
+      {
+        "type": "line",
+        "points": [[35, 59], [35, 65]]
+      },
+      {
+        "type": "line",
+        "points": [[80, 59], [80, 65]]
+      },
+      {
+        "type": "line",
+        "points": [[125, 59], [125, 65]]
+      },
+      {
+        "type": "rect",
+        "x": 57,
+        "y": 5,
+        "w": 46,
+        "h": 16,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 38,
+        "y": 33,
+        "w": 34,
+        "h": 10,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 88,
+        "y": 33,
+        "w": 34,
+        "h": 10,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 19,
+        "y": 65,
+        "w": 32,
+        "h": 12,
+        "fill": "surface",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 62,
+        "y": 65,
+        "w": 36,
+        "h": 12,
+        "fill": "accent",
+        "rounded": true
+      },
+      {
+        "type": "rect",
+        "x": 109,
+        "y": 65,
+        "w": 32,
+        "h": 12,
+        "fill": "surface",
+        "rounded": true
+      }
+    ],
+    "labels": [
+      {
+        "text": "mes grands-parents",
+        "at": [80, 13],
+        "side": "top"
+      },
+      {
+        "text": "mon père / dad",
+        "at": [55, 38],
+        "side": "top"
+      },
+      {
+        "text": "ma mère / mum",
+        "at": [105, 38],
+        "side": "top"
+      },
+      {
+        "text": "mon frère / brother",
+        "at": [35, 71],
+        "side": "top"
+      },
+      {
+        "text": "Camille / me",
+        "at": [80, 71],
+        "side": "top"
+      },
+      {
+        "text": "ma sœur / sister",
+        "at": [125, 71],
+        "side": "top"
+      }
+    ]
+  },
+  "y2-maths-halves-quarters:3:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "Two identical rectangles sit side by side. A has its left half shaded; B has a narrow left part shaded and a wider right part unshaded.",
+    "title": "Which shaded part is one half?",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "rect",
+        "x": 15,
+        "y": 30,
+        "w": 55,
+        "h": 40,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "rect",
+        "x": 15,
+        "y": 30,
+        "w": 27.5,
+        "h": 40,
+        "fill": "accent",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[42.5, 30], [42.5, 70]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 90,
+        "y": 30,
+        "w": 55,
+        "h": 40,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "rect",
+        "x": 90,
+        "y": 30,
+        "w": 15,
+        "h": 40,
+        "fill": "accent",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[105, 30], [105, 70]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "A",
+        "at": [55, 50],
+        "side": "top"
+      },
+      {
+        "text": "B",
+        "at": [125, 50],
+        "side": "top"
+      }
+    ]
+  },
+  "y11-chemistry-rates-of-reaction:1:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "title": "Collecting hydrogen gas",
+    "alt": "Hydrochloric acid reacts with magnesium in an airtight flask; hydrogen travels through a delivery tube and pushes a free gas-syringe plunger outwards.",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "polygon",
+        "points": [[38, 37], [62, 37], [75, 70], [25, 70]],
+        "fill": "surface"
+      },
+      {
+        "type": "rect",
+        "x": 45,
+        "y": 25,
+        "w": 10,
+        "h": 14,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "polygon",
+        "points": [[29, 54], [71, 54], [75, 70], [25, 70]],
+        "fill": "accent2"
+      },
+      {
+        "type": "rect",
+        "x": 46,
+        "y": 47,
+        "w": 9,
+        "h": 2,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "rect",
+        "x": 44,
+        "y": 22,
+        "w": 12,
+        "h": 5,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[50, 22], [50, 13], [112, 13], [112, 30]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 95,
+        "y": 23,
+        "w": 43,
+        "h": 14,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[101, 24], [101, 36]],
+        "dashed": false
+      },
+      {
+        "type": "arrow",
+        "from": [103, 30],
+        "to": [125, 30]
+      },
+      {
+        "type": "line",
+        "points": [[116, 38], [116, 43], [129, 43]],
+        "dashed": false
+      },
+      {
+        "type": "circle",
+        "cx": 22,
+        "cy": 25,
+        "r": 8,
+        "fill": "none"
+      },
+      {
+        "type": "line",
+        "points": [[22, 25], [22, 19]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[22, 25], [26, 27]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "Gas syringe",
+        "at": [117, 30],
+        "side": "top"
+      },
+      {
+        "text": "Delivery tube",
+        "at": [80, 13],
+        "side": "top"
+      },
+      {
+        "text": "Bung",
+        "at": [50, 24],
+        "side": "left"
+      },
+      {
+        "text": "Hydrochloric acid",
+        "at": [49, 62],
+        "side": "bottom"
+      },
+      {
+        "text": "Magnesium ribbon",
+        "at": [50, 48],
+        "side": "bottom"
+      },
+      {
+        "text": "Stopwatch",
+        "at": [22, 25],
+        "side": "left"
+      }
+    ]
+  },
+  "y11-chemistry-rates-of-reaction-r2:1:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "Magnesium reacts with hydrochloric acid in an airtight conical flask, sending hydrogen through a delivery tube into a graduated gas syringe whose plunger moves outward.",
+    "title": "Measuring the gas",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "polygon",
+        "points": [[25, 31], [35, 31], [35, 43], [47, 72], [47, 88], [13, 88], [13, 72], [25, 43]],
+        "fill": "surface"
+      },
+      {
+        "type": "rect",
+        "x": 25,
+        "y": 27,
+        "w": 10,
+        "h": 8,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "polygon",
+        "points": [[16, 72], [44, 72], [47, 88], [13, 88]],
+        "fill": "accent2"
+      },
+      {
+        "type": "circle",
+        "cx": 25,
+        "cy": 81,
+        "r": 1.7,
+        "fill": "accent"
+      },
+      {
+        "type": "circle",
+        "cx": 34,
+        "cy": 77,
+        "r": 1.7,
+        "fill": "accent"
+      },
+      {
+        "type": "line",
+        "points": [[30, 27], [30, 17], [50, 17], [50, 38], [72, 38]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 72,
+        "y": 29,
+        "w": 48,
+        "h": 18,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[79, 30], [79, 35]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[86, 30], [86, 35]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[93, 30], [93, 35]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[100, 30], [100, 35]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[107, 30], [107, 35]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 115,
+        "y": 27,
+        "w": 5,
+        "h": 22,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "arrow",
+        "from": [121, 38],
+        "to": [138, 38]
+      }
+    ],
+    "labels": [
+      {
+        "text": "Gas syringe (cm³)",
+        "at": [95, 42],
+        "side": "bottom"
+      },
+      {
+        "text": "Delivery tube",
+        "at": [51, 18],
+        "side": "top"
+      },
+      {
+        "text": "Airtight bung",
+        "at": [30, 31],
+        "side": "left"
+      },
+      {
+        "text": "Hydrochloric acid",
+        "at": [29, 72],
+        "side": "left"
+      },
+      {
+        "text": "Magnesium",
+        "at": [29, 81],
+        "side": "bottom"
+      }
+    ]
+  },
+  "y11-chemistry-rates-of-reaction-r2:2:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "A conical flask containing acid and magnesium is sealed with a bung and connected by a delivery tube to a clamped gas syringe. A thermometer sits beside the flask.",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "polygon",
+        "points": [[43, 24], [57, 24], [57, 39], [70, 69], [67, 77], [33, 77], [30, 69], [43, 39]],
+        "fill": "none"
+      },
+      {
+        "type": "polygon",
+        "points": [[39, 56], [61, 56], [68, 70], [65, 74], [35, 74], [32, 70]],
+        "fill": "accent2"
+      },
+      {
+        "type": "rect",
+        "x": 47,
+        "y": 20,
+        "w": 6,
+        "h": 5,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[50, 20], [50, 12], [107, 12], [107, 35]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 92,
+        "y": 29,
+        "w": 42,
+        "h": 12,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[128, 27], [128, 44]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[124, 45], [137, 45]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 46,
+        "y": 62,
+        "w": 8,
+        "h": 2,
+        "fill": "accent",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[24, 34], [24, 62]],
+        "dashed": false
+      },
+      {
+        "type": "circle",
+        "cx": 24,
+        "cy": 64,
+        "r": 2,
+        "fill": "accent"
+      },
+      {
+        "type": "line",
+        "points": [[19, 43], [29, 43]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "Gas syringe (cm³)",
+        "at": [111, 35],
+        "side": "top"
+      },
+      {
+        "text": "Airtight bung",
+        "at": [50, 22],
+        "side": "left"
+      },
+      {
+        "text": "25 cm³ acid",
+        "at": [50, 66],
+        "side": "bottom"
+      },
+      {
+        "text": "Fixed magnesium mass",
+        "at": [50, 63],
+        "side": "right"
+      },
+      {
+        "text": "Check temperature",
+        "at": [24, 50],
+        "side": "left"
+      }
+    ]
+  },
+  "y11-chemistry-rates-of-reaction-r2:4:labelled-diagram": {
+    "kind": "labelled-diagram",
+    "alt": "A conical flask with acid and magnesium is sealed by a bung and connected to a gas syringe; a thermometer sits beside the flask.",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "polygon",
+        "points": [[39, 24], [53, 24], [53, 42], [68, 76], [24, 76], [39, 42]],
+        "fill": "none"
+      },
+      {
+        "type": "polygon",
+        "points": [[31, 60], [61, 60], [66, 72], [26, 72]],
+        "fill": "accent"
+      },
+      {
+        "type": "rect",
+        "x": 43,
+        "y": 15,
+        "w": 6,
+        "h": 12,
+        "fill": "muted",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[46, 15], [46, 10], [110, 10], [110, 27]],
+        "dashed": false
+      },
+      {
+        "type": "rect",
+        "x": 104,
+        "y": 21,
+        "w": 42,
+        "h": 19,
+        "fill": "surface",
+        "rounded": false
+      },
+      {
+        "type": "line",
+        "points": [[110, 22], [110, 39]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[110, 30], [139, 30]],
+        "dashed": false
+      },
+      {
+        "type": "line",
+        "points": [[18, 30], [18, 69]],
+        "dashed": false
+      },
+      {
+        "type": "circle",
+        "cx": 18,
+        "cy": 71,
+        "r": 3,
+        "fill": "accent2"
+      },
+      {
+        "type": "line",
+        "points": [[41, 67], [48, 64]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "Gas syringe (cm³)",
+        "at": [125, 27],
+        "side": "top"
+      },
+      {
+        "text": "Airtight bung",
+        "at": [46, 20],
+        "side": "left"
+      },
+      {
+        "text": "25 cm³ acid",
+        "at": [45, 65],
+        "side": "bottom"
+      },
+      {
+        "text": "Fixed magnesium mass",
+        "at": [45, 66],
+        "side": "right"
+      },
+      {
+        "text": "Check temperature",
+        "at": [18, 49],
+        "side": "left"
+      }
+    ]
+  }
+}

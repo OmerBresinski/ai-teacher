@@ -204,7 +204,7 @@ export function fittedDiagramElement(
   rect: { x: number; y: number; w: number; h: number },
   ids: () => string = uid,
 ):
-  | { ok: true; element: ImageElement; stretched: boolean; fs?: number }
+  | { ok: true; element: ImageElement; stretched: boolean; fs?: number; warnings?: string[] }
   | { ok: false; reasons: string[] } {
   spec = drawable(spec);
   const strict = DiagramSpecSchema.safeParse(spec);
@@ -220,6 +220,8 @@ export function fittedDiagramElement(
   const size = { w: rect.w, h: rect.h };
   const base = context(theme, Math.round(rect.w), Math.round(rect.h)).fs;
   let last: string[] = [];
+  // The least-bad size, drawn when none reads cleanly: its faults are warnings, not a refusal.
+  let least: { fs: number; faults: string[] } | undefined;
   for (let fs = base; fs >= LONG_LABEL_MIN_FS; fs -= 2) {
     const faults = withLongLabels(() =>
       THEMES.flatMap((t) => diagramFaults(parsed, t, { ...size, fs })),
@@ -229,6 +231,13 @@ export function fittedDiagramElement(
       if (element) return { ok: true, element, stretched: true, fs };
     }
     last = [...new Set(faults)];
+    if (!last.includes("it does not draw") && (!least || last.length < least.faults.length))
+      least = { fs, faults: last };
+  }
+  if (least) {
+    const { fs, faults } = least;
+    const element = withLongLabels(() => diagramElement(parsed, theme, { ...rect, fs }, ids));
+    if (element) return { ok: true, element, stretched: true, fs, warnings: faults };
   }
   return { ok: false, reasons: last.length > 0 ? last : ["it does not draw"] };
 }
@@ -246,6 +255,7 @@ function body(
     arrows?: Ctx["arrows"];
     axes?: Ctx["axes"];
     leaders?: Ctx["leaders"];
+    parts?: Ctx["parts"];
   },
   fs?: number,
 ): string {
@@ -288,6 +298,7 @@ function body(
         arrows: probe.arrows,
         axes: probe.axes,
         leaders: probe.leaders,
+        parts: probe.parts,
       }
     : x;
   // Modern looks: the drawing keeps an inset from its zone's left and right edges, so no label,
@@ -301,6 +312,7 @@ function body(
         strokes: probe.strokes.length,
         arrows: probe.arrows?.length ?? 0,
         leaders: probe.leaders?.length ?? 0,
+        parts: probe.parts?.length ?? 0,
       }
     : undefined;
   const inner = (() => {
@@ -362,6 +374,7 @@ function body(
       l[0] += inset;
       l[2] += inset;
     }
+    for (const pts of probe.parts?.slice(marks.parts) ?? []) for (const q of pts) q[0] += inset;
   }
   const fin = finished(laddered(inner), x.c, mix, x.dark);
   const drawn = inset ? `<g transform="translate(${n(inset)},0)">${fin}</g>` : fin;
@@ -556,6 +569,7 @@ export type DiagramProbe = {
   arrows: NonNullable<Ctx["arrows"]>;
   axes: NonNullable<Ctx["axes"]>;
   leaders: NonNullable<Ctx["leaders"]>;
+  parts: NonNullable<Ctx["parts"]>;
 };
 const diagramProbe = (h: number): DiagramProbe => ({
   rec: [],
@@ -565,6 +579,7 @@ const diagramProbe = (h: number): DiagramProbe => ({
   arrows: [],
   axes: [],
   leaders: [],
+  parts: [],
 });
 let lastProbe: DiagramProbe | undefined;
 /** The probe of the last `diagramFaults` call (the geometry checks read arrows and axes from it). */
