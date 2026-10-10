@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
+import { slideRoles } from "./role";
 
 /*
  * Parity (TEACH-110 part e): the saved base4f-p123 writer outputs (lab/ab-base4f, runs
@@ -29,7 +30,12 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
  *    (ruling 198, register layout-06).
  */
-const TEACHING_KINDS = new Set(["content", "image-text", "diagram", "worked-example"]);
+/** Each deck slide's role from the run's writer slides (title and objectives first). */
+const rolesOf = (b: string) => {
+  const main = JSON.parse(readFileSync(join(DIR, b, "main.json"), "utf8")) as { text: string };
+  const slides = (JSON.parse(main.text) as { slides: Record<string, unknown>[] }).slides;
+  return slideRoles([undefined, undefined, ...slides]);
+};
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
@@ -64,6 +70,7 @@ describe.each(LESSONS)("replay %s", (b) => {
   test("the stage reproduces the lab's replayed slides", async () => {
     const out = await replayRun(b);
     const saved = savedSlides(b);
+    const roles = rolesOf(b);
     expect(out.slides.length).toBe(saved.length);
     out.slides.forEach((s, i) => {
       const want = saved[i] as El & { elements: El[] };
@@ -74,8 +81,8 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.filter((e) => e.type === "image" && e.name === "Photo")).toHaveLength(0);
         return;
       }
-      const taught = saved.slice(2, i).some((x) => TEACHING_KINDS.has(String((x as El).kind)));
-      const kind = want.kind === "starter" && taught ? "open-response" : want.kind;
+      const kind =
+        want.kind === "starter" && roles.get(i) === "check" ? "open-response" : want.kind;
       expect({ i, kind: s.kind, background: s.background }).toEqual({
         i,
         kind: kind as never,
