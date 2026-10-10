@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi, type FakeCall } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
+import { svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { WRITER_WORDS } from "../library/catalogue";
 import { WRITER_PLANNED_VERSION } from "../stages/objectives-first";
@@ -219,4 +220,82 @@ describe("the diagram library is on for the writer (TEACH-247 part m)", () => {
     expect(system).toContain(WRITER_WORDS.menuLine);
     expect(system).toContain(WRITER_WORDS.header);
   });
+});
+
+describe("the library through the production write stage (PR #450 review)", () => {
+  // The fixture's first slide (deck slide 3) asks the library for a model instead of a drawer spec.
+  const drawerFigure = (JSON.parse(fixture.main) as { slides: Record<string, unknown>[] }).slides[0]
+    ?.figure;
+  const withModel = (): string => {
+    const out = JSON.parse(fixture.main) as { slides: Record<string, unknown>[] };
+    out.slides[0] = {
+      template: "big-visual",
+      heading: "Find ¼ of 24",
+      lead: "Share 24 counters into four equal groups.",
+      figure: {
+        kind: "model",
+        model: "equal_groups",
+        intent: "24 counters shared into four equal groups of six.",
+        alt: "Four equal groups each contain six counters.",
+      },
+    };
+    return JSON.stringify(out);
+  };
+  const isFill = (call: FakeCall) => (call.systemText ?? "").startsWith("Set the parameters");
+  /** The fake with the model ask; `fill` answers the fill (and repair) calls. */
+  const libraryAi = (fill: () => string) =>
+    fakeAi((name, call) => {
+      if (name === "lesson") return withModel();
+      if (name !== "diagram") return undefined;
+      if (isFill(call)) return fill();
+      const { shows: _shows, ...spec } = drawerFigure as Record<string, unknown>;
+      return JSON.stringify(spec);
+    });
+  const diagramOf = (lesson: Lesson) => {
+    const els = (lesson.slides[2]?.elements ?? []) as unknown as Record<string, unknown>[];
+    return els.find((e) => e.name === "Diagram");
+  };
+  /** The library's drawings carry the kit's slide class; the drawer's never do. */
+  const librarySvg = (src: unknown) =>
+    (svgOfDataUrl(String(src ?? "")) ?? "").includes('class="slide tk theme-primary"');
+
+  test("a model the writer picks is filled by the fill call and drawn", async () => {
+    const ai = libraryAi(() => JSON.stringify({ groups: 4, size: 6, division: "sharing" }));
+    const out = await write(initialState(planned()), recordingDeps(ai));
+    expect(out.lesson.generation?.stage).toBe("generated");
+    const fills = ai.calls.filter(isFill);
+    expect(fills).toHaveLength(1);
+    expect(fills[0]?.promptText).toContain("Intent: 24 counters shared into four equal groups");
+    // Drawn by the library, so the drawer never runs for it.
+    expect(
+      ai.calls.filter((c) => c.context?.promptVersion?.endsWith("/diagram") && !isFill(c)),
+    ).toHaveLength(0);
+    expect(librarySvg(diagramOf(out.lesson)?.src)).toBe(true);
+  }, 60_000);
+
+  for (const [what, fill] of [
+    ["invalid params", () => JSON.stringify({ groups: "many" })],
+    [
+      "a failed fill call",
+      () => {
+        throw new Error("provider 500");
+      },
+    ],
+  ] as const) {
+    test(`${what}: the slide falls back to the drawer and the lesson is generated`, async () => {
+      const ai = libraryAi(fill);
+      const out = await write(initialState(planned()), recordingDeps(ai));
+      expect(out.lesson.generation?.stage).toBe("generated");
+      expect(ai.calls.filter(isFill).length).toBeGreaterThanOrEqual(1);
+      const drawer = ai.calls.filter(
+        (c) => c.context?.promptVersion?.endsWith("/diagram") && !isFill(c),
+      );
+      expect(drawer.length).toBeGreaterThanOrEqual(1);
+      expect(drawer[0]?.promptText).toContain("Kind: equal-groups");
+      const diagram = diagramOf(out.lesson);
+      expect(diagram).toBeDefined();
+      expect(svgOfDataUrl(String(diagram?.src)) ?? "").toContain("<svg");
+      expect(librarySvg(diagram?.src)).toBe(false);
+    }, 60_000);
+  }
 });
