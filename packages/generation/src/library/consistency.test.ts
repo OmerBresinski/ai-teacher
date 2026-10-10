@@ -322,3 +322,25 @@ describe("S10 paid L y2 s6: the counts the words state are drawn", () => {
     ).toBeUndefined();
   });
 });
+
+describe("S10 paid L y2 s9: an equivalence draws the finer parts with the coarser marked", () => {
+  /** The distinct cut lines across a bar (vertical paths) in a drawn SVG. */
+  const cuts = (svg: string) =>
+    new Set([...svg.matchAll(/<path d="M([\d.]+) [\d.]+ V[\d.]+"/g)].map((m) => m[1])).size;
+  test("2/4 = 1/2 (finer first, as the fill sent it) shows all three quarter cuts", async () => {
+    for (const fractions of [
+      [{ value: "2/4" }, { value: "1/2" }],
+      [{ value: "1/2" }, { value: "2/4" }],
+    ]) {
+      const c = await checkParams("fractions", {
+        operation: "equivalent",
+        representation: "bar",
+        fractions,
+      });
+      expect(c.params).toBeDefined();
+      const svg = (await renderLibraryModel("fractions", c.params as J)).svg;
+      expect(cuts(svg), JSON.stringify(fractions)).toBe(3);
+      expect(drawingWordsMismatch("fractions", svg, "Two quarters make one half")).toBeUndefined();
+    }
+  });
+});

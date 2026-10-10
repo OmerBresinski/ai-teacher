@@ -77,6 +77,28 @@ export function missingDrawingParams(id: string, own: J, params: J): LibRefusal[
     }));
 }
 
+/**
+ * An equivalence draws the finer partition with the coarser one marked (S10 paid L y2 s9: "2/4 =
+ * 1/2" drawn as halves only). The fractions model cuts the bar for the first fraction, then for
+ * the second, and keeps the first cuts only when the second's parts divide them; sent finer first,
+ * the quarter cuts were hidden when the halves came in. So the coarser fraction goes first whenever
+ * the other's denominator is a multiple of it. Any other params are returned as they are.
+ */
+export function orderedParams(id: string, own: J): J {
+  if (id !== "fractions" || own.operation !== "equivalent" || !Array.isArray(own.fractions))
+    return own;
+  const fr = own.fractions as unknown[];
+  if (fr.length !== 2) return own;
+  const den = (f: unknown) => {
+    const m = /^\s*\d+\s*\/\s*(\d+)\s*$/.exec(String((f as J | null)?.value ?? ""));
+    return m ? Number(m[1]) : undefined;
+  };
+  const a = den(fr[0]);
+  const b = den(fr[1]);
+  if (!a || !b || a <= b || a % b !== 0) return own;
+  return { ...own, fractions: [fr[1], fr[0]] };
+}
+
 /** The model's params schema as the filler sees it: no title or wording overrides, no $schema or x- keys. */
 export function fillSchema(params: J, id?: string): J {
   const strip = (n: unknown): unknown => {
@@ -124,8 +146,9 @@ export async function checkParams(
   if (!out || typeof out !== "object" || Array.isArray(out))
     return { refusals: [{ path: "(all)", reason: "no params object" }], warnings: [] };
   const k = await kit();
-  const own = { ...(out as J) };
+  let own = { ...(out as J) };
   for (const key of NOT_FILLED) delete own[key];
+  own = orderedParams(id, own);
   const shape = k.schemaCheck(fillSchema(m.params, id), own);
   if (shape.length) return { refusals: shape, warnings: [] };
   // A value outside the bounds the drawing holds to (or a __proto__ / constructor key) is refused,
