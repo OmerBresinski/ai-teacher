@@ -86,6 +86,10 @@ describe("writer stage: library models", () => {
     expect(fills[0]).toContain("Intent: one half of a circle shaded");
     const svg = svgOfDataUrl(String(diagram?.src)) ?? "";
     expect(svg).toContain('class="slide tk theme-primary"');
+    // Set in the lesson theme's label face (Splash: Nunito), named and not embedded (part o).
+    expect(svg).toContain('data-font="nunito"');
+    expect(svg).toContain("font-family:'Nunito Variable'");
+    expect(svg).not.toContain("@font-face");
     expect(diagram?.alt).toBe("A circle cut into two equal parts with one part shaded.");
     // A library model opens complete in Present: no builds from an empty frame.
     expect(Number(diagram?.builds ?? 0)).toBe(0);

@@ -193,6 +193,12 @@ const KEY_BY_STACK = new Map<string, FontKey>(
 );
 
 /** How wide `s` is at `fs` in the body family, in points (unknown glyphs count as 0.62 em). */
+/** Whether `stack` has measured advance widths (`textWidth` guesses 0.62 em per glyph without). */
+export function hasAdvances(stack: string): boolean {
+  const key = KEY_BY_STACK.get(stack);
+  return !!(key && ADVANCES[key]);
+}
+
 export function textWidth(s: string, x: Ctx, fs = x.fs, weight: number = WEIGHT.label): number {
   const key = KEY_BY_STACK.get(x.stack);
   const table = key ? ADVANCES[key] : undefined;

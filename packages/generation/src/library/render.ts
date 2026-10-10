@@ -1,8 +1,9 @@
 /// <reference path="./assets.d.ts" />
 /**
  * A library model drawn as a slide's diagram (TEACH-247 part h, ADR 0035): the kit's own engine
- * (`mountSlide`) runs on a happy-dom document, with text measured from the Lexend advance widths
- * production already measures with, and the result is serialised as one self-contained SVG. That
+ * (`mountSlide`) runs on a happy-dom document, with text measured from the advance widths of the
+ * lesson theme's label face (its body font; Lexend without a theme), and the result is serialised
+ * as one SVG that names that face (TEACH-247 part o). That
  * SVG goes in the slot the drawer's diagrams use (an image element, `name: "Diagram"`), so the
  * editor, Present (its `data-s` builds), PNG, PDF and PPTX show it with no new element type.
  *
@@ -12,10 +13,9 @@
  */
 
 import { REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
-import { textWidth } from "@tj/slides/diagrams";
-import { FONT_STACKS } from "@tj/slides/fonts";
+import { hasAdvances, svgFontFamily, textWidth } from "@tj/slides/diagrams";
+import { FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { type Element, Window } from "happy-dom";
-import { LEXEND_WOFF2_BASE64 } from "./lexend.gen";
 import { MODEL_LOADERS } from "./models";
 import { KIT_TOKENS as TOKENS } from "./tokens.gen";
 import type { J, LibModel } from "./types";
@@ -55,15 +55,45 @@ export async function loadModel(id: string): Promise<LibModel | undefined> {
   return p;
 }
 
-/** Only the primary theme's tokens travel with a drawing; fonts load nowhere inside an <img>. */
-export const SVG_CSS = `@font-face{font-family:"Lexend";font-weight:100 900;src:url(data:font/woff2;base64,${LEXEND_WOFF2_BASE64}) format("woff2")}${(
-  TOKENS as string
-)
+/**
+ * Only the primary theme's tokens travel with a drawing. No font does (TEACH-247 part o): the
+ * drawing names its face (`fontCss`) and each surface embeds the page's own copy at display and
+ * export time (`svgWithFonts`). Drawings stored before that embed Lexend and still show as drawn.
+ */
+export const SVG_CSS = `${(TOKENS as string)
   .replace(/@import\s+url\([^)]*\)\s*;/g, "")
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/\.theme-(?!primary\b)[\w-]+[^{}]*\{[^{}]*\}/g, "")
   .replace(/\s+/g, " ")
   .trim()}`;
+
+/**
+ * The face a drawing is measured in and names: a theme's body stack's key when that face has
+ * measured advance widths, else Lexend (an unknown stack, or a face such as Geist with no table,
+ * would otherwise be measured at a guessed 0.62 em while drawn in its real widths).
+ */
+export function fontKeyOf(stack?: string): FontKey {
+  for (const [k, v] of Object.entries(FONT_STACKS))
+    if (v === stack && hasAdvances(v)) return k as FontKey;
+  return "lexend";
+}
+/**
+ * The rule that sets every word of a drawing in `key`'s face: the kit's own family tokens and an
+ * explicit `font-family`, which is what the display helper reads to know which face to embed.
+ */
+export function fontCss(key: FontKey): string {
+  const f = svgFontFamily(FONT_STACKS[key]);
+  // Digits are set at the default widths the advance tables hold: a face with tabular figures
+  // (Public Sans) would otherwise widen "12" past its measure ("AD 122Hadrian's", "=20").
+  return `.slide.tk{--f-head:${f};--f-label:${f}}.slide text{font-family:${f}}.slide.tk text,.slide.tk tspan{font-variant-numeric:normal}`;
+}
+/** The face words are measured in while a drawing is made or read back. */
+let FONT: FontKey = "lexend";
+/** The face a stored drawing was measured in (`data-font`; none: Lexend, every older drawing). */
+const fontOfSvg = (svgText: string): FontKey => {
+  const k = /<svg\b[^>]*\sdata-font="([\w]+)"/.exec(svgText)?.[1];
+  return k && k in FONT_STACKS ? (k as FontKey) : "lexend";
+};
 
 type Win = InstanceType<typeof Window>;
 let env: { win: Win; host: Element } | undefined;
@@ -116,9 +146,20 @@ export function fsOverride(k: number): string {
     .join(";");
   return `svg.slide.tk,.slide.tk.theme-primary,.tk{${decl}}`;
 }
-/** Runs `f` with every `--fs-*` token times `k` (measurement and the DOM's computed style). */
-function withTypeScale<T>(k: number, f: () => T): T {
-  if (k === 1) return f();
+/**
+ * Runs `f` with every `--fs-*` token times `k` (measurement and the DOM's computed style) and words
+ * measured in `font`'s face.
+ */
+function withTypeScale<T>(k: number, font: FontKey, f: () => T): T {
+  const prevFont = FONT;
+  FONT = font;
+  try {
+    return k === 1 ? f() : scaled(k, f);
+  } finally {
+    FONT = prevFont;
+  }
+}
+function scaled<T>(k: number, f: () => T): T {
   const prev = FS_SCALE;
   FS_SCALE = k;
   const doc = libraryDom().win.document;
@@ -167,18 +208,22 @@ export function typeOf(el: Element): { fs: number; weight: number } {
   return { fs: fs ?? 16, weight: weight ?? (resolve("var(--w-body)") || 500) };
 }
 
-/** Width of a text element in slide units: Lexend advances (the primary theme's only family). */
+/** Width of a text element in slide units: the advances of the face the drawing names. */
 export function textLength(el: Element): number {
   const { fs, weight } = typeOf(el);
-  return lexendWidth(el.textContent ?? "", fs, weight);
+  return faceWidth(el.textContent ?? "", fs, weight, FONT);
 }
 
+/** `faceWidth` in Lexend. */
+export const lexendWidth = (s: string, fs: number, weight: number) =>
+  faceWidth(s, fs, weight, "lexend");
+
 /**
- * Lexend is one variable font: the advance tables hold 400, 600 and 700, and a weight between two
- * of them is set between their widths (500, the kit's body weight, is not 600's width).
+ * Every theme face is a variable font: the advance tables hold 400, 600 and 700, and a weight
+ * between two of them is set between their widths (500, the kit's body weight, is not 600's width).
  */
-export function lexendWidth(s: string, fs: number, weight: number): number {
-  const at = (w: number) => textWidth(s, { stack: FONT_STACKS.lexend } as never, fs, w);
+export function faceWidth(s: string, fs: number, weight: number, key: FontKey): number {
+  const at = (w: number) => textWidth(s, { stack: FONT_STACKS[key] } as never, fs, w);
   if (weight <= 400) return at(400);
   if (weight < 600) return at(400) + ((at(600) - at(400)) * (weight - 400)) / 200;
   if (weight < 700) return at(600) + ((at(700) - at(600)) * (weight - 600)) / 100;
@@ -663,14 +708,15 @@ const PAD = 18;
 export async function renderLibraryModel(
   id: string,
   params: J,
-  opts: { step?: number; typeScale?: number } = {},
+  opts: { step?: number; typeScale?: number; font?: string } = {},
 ): Promise<LibraryDrawing> {
   const model = await loadModel(id);
   if (!model) throw new Error(`no library model ${id}`);
   const k = await kit();
   const ts = opts.typeScale && opts.typeScale > 0 ? Math.round(opts.typeScale * 1000) / 1000 : 1;
+  const font = fontKeyOf(opts.font);
   return withDom(({ host }) =>
-    withTypeScale(ts, () => {
+    withTypeScale(ts, font, () => {
       // The slide's heading is the title: the drawing carries none. Params out of bounds are refused
       // (the caller falls back to the drawer), never clamped into a different number.
       const bad = boundsRefusals(model.params, params);
@@ -725,6 +771,7 @@ export async function renderLibraryModel(
         out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
         out.setAttribute("class", "slide tk theme-primary");
         if (ts !== 1) out.setAttribute("data-fs-scale", String(ts));
+        if (font !== "lexend") out.setAttribute("data-font", font);
         out.setAttribute("viewBox", `${Math.round(x0)} ${Math.round(y0)} ${w} ${h}`);
         out.setAttribute("width", String(w));
         out.setAttribute("height", String(h));
@@ -733,7 +780,7 @@ export async function renderLibraryModel(
         // editor, thumbnails and exports show the question, as the drawer's question slides do.
         const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
         const scaled = ts !== 1 ? `<style>${fsOverride(ts)}</style>` : "";
-        const style = `<style><![CDATA[${SVG_CSS}]]></style>${scaled}${hold}`;
+        const style = `<style><![CDATA[${SVG_CSS}${fontCss(font)}]]></style>${scaled}${hold}`;
         const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
         const open = /<svg\b[^>]*>/.exec(html);
         if (!open) throw new Error(`${id} did not serialise`);
@@ -781,7 +828,7 @@ export function inspectDrawnSvg(svgText: string): {
 } {
   const ts = Number(/data-fs-scale="([\d.]+)"/.exec(svgText)?.[1] ?? 1) || 1;
   return withDom(({ win, host }) =>
-    withTypeScale(ts, () => {
+    withTypeScale(ts, fontOfSvg(svgText), () => {
       // The first <style> is the embedded font and theme (CDATA, which happy-dom's parsers reject);
       // the kit's tokens are already in this document, and a model's own <style> is kept.
       // happy-dom's HTML parser loses the drawing after an inline <style>, so a model's own rules go
@@ -838,7 +885,7 @@ export type DrawnLines = { lines: string[]; fs: number; pitch: number[] };
 export function drawnLines(svgText: string): DrawnLines[] {
   const ts = Number(/data-fs-scale="([\d.]+)"/.exec(svgText)?.[1] ?? 1) || 1;
   return withDom(({ win, host }) =>
-    withTypeScale(ts, () => {
+    withTypeScale(ts, fontOfSvg(svgText), () => {
       const own = [...svgText.matchAll(/<style>(?!\s*<!\[CDATA\[)([\s\S]*?)<\/style>/g)].map(
         (m) => m[1],
       );
