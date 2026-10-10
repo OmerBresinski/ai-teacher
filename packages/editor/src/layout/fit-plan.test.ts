@@ -16,7 +16,7 @@ import type { Measurer } from "./reflow";
 
 const slide = (id: string): Slide => ({ id, kind: "content", elements: [] });
 const lessonWith = (fitVersion: number | undefined, ids: string[]): Lesson => ({
-  ...newLesson("The water cycle", "chalk"),
+  ...newLesson("The water cycle", "splash"),
   ...(fitVersion === undefined ? {} : { fitVersion }),
   slides: ids.map(slide),
 });
@@ -29,15 +29,15 @@ describe("fitVersionOf", () => {
     expect(isFitStale(lesson)).toBe(true);
   });
   test("defaults a stored document that predates the field to 0, not to the current table", () => {
-    const raw = JSON.parse(JSON.stringify(newLesson("Old", "chalk"))) as Record<string, unknown>;
+    const raw = JSON.parse(JSON.stringify(newLesson("Old", "splash"))) as Record<string, unknown>;
     delete raw.fitVersion;
     const lesson = LessonSchema.parse(raw);
     expect(lesson.fitVersion).toBe(0);
     expect(isFitStale(lesson)).toBe(true);
   });
   test("stamps a freshly made lesson with the current table", () => {
-    expect(newLesson("New", "chalk").fitVersion).toBe(FIT_VERSION);
-    expect(isFitStale(newLesson("New", "chalk"))).toBe(false);
+    expect(newLesson("New", "splash").fitVersion).toBe(FIT_VERSION);
+    expect(isFitStale(newLesson("New", "splash"))).toBe(false);
   });
 });
 
@@ -85,9 +85,9 @@ describe("planFitMigration", () => {
   });
   test("works on a real lesson of laid-out slides", () => {
     const lesson: Lesson = {
-      ...newLesson("W", "chalk"),
+      ...newLesson("W", "splash"),
       fitVersion: 1,
-      slides: [newSlide("title", "chalk"), newSlide("vocabulary", "chalk")],
+      slides: [newSlide("title", "splash"), newSlide("vocabulary", "splash")],
     };
     expect(planFitMigration(lesson, (s) => s.kind === "vocabulary", 2).slideIds).toEqual([
       lesson.slides[1]?.id ?? "",

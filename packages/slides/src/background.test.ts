@@ -160,7 +160,7 @@ describe("theme art per slide role (UX ruling 107)", () => {
     }
   });
 
-  test("the playful four vary by role; the clean six are plain off the title slide", () => {
+  test("the playful four vary by role; the clean five are plain off the title slide", () => {
     for (const id of ["playground", "crayon", "splash", "treehouse"]) {
       const t = getTheme(id);
       const area = (role: "title" | "content" | "picture") =>
@@ -170,7 +170,7 @@ describe("theme art per slide role (UX ruling 107)", () => {
       expect(area("content")).toBeGreaterThan(0);
       expect(area("picture")).toBeGreaterThan(0);
     }
-    for (const id of ["chalk", "reading-room", "studio", "exam-hall", "night-lab", "beacon"]) {
+    for (const id of ["reading-room", "studio", "exam-hall", "night-lab", "beacon"]) {
       const t = getTheme(id);
       expect(themeArt(t, "title").length).toBeGreaterThan(0);
       expect(themeArt(t, "content")).toEqual([]);

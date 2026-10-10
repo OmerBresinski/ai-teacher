@@ -108,7 +108,7 @@ export function WorksheetCreatePage() {
     const themeId =
       remembered?.themeId && LIBRARY_THEMES.some((theme) => theme.id === remembered.themeId)
         ? remembered.themeId
-        : (LIBRARY_THEMES[0]?.id ?? "chalk");
+        : (LIBRARY_THEMES[0]?.id ?? "splash");
     const sheet = starterWorksheet(BLANK_TITLE, themeId);
     const subject = rememberedSubject(remembered);
     if (subject) sheet.subject = subject;

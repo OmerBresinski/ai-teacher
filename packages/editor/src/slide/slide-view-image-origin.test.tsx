@@ -9,7 +9,7 @@ import { SlideView } from "./SlideView";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const slide: Slide = {
   id: "s1",
   kind: "content",

@@ -21,7 +21,7 @@ function imageLesson(fit: ImageElement["fit"]): Lesson {
   if (!first) throw new Error("seed");
   first.elements = [
     {
-      ...makeShape("rect", getTheme("chalk")),
+      ...makeShape("rect", getTheme("splash")),
       x: 100,
       y: 100,
       w: 400,

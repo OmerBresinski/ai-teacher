@@ -47,9 +47,9 @@ const sizes = (els: readonly unknown[]): { name: string; size: number }[] =>
   ]);
 
 describe("every writer template on every theme", () => {
-  test("the samples cover all 16 templates and there are 10 themes", () => {
+  test("the samples cover all 16 templates and there are 9 themes", () => {
     expect(templateSamples().map((s) => s.template)).toEqual(ALL);
-    expect(THEMES).toHaveLength(10);
+    expect(THEMES).toHaveLength(9);
   });
 
   for (const theme of THEMES)

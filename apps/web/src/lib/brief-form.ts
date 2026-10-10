@@ -85,7 +85,7 @@ export const INITIAL_BRIEF: BriefState = {
   subjectOther: "",
   yearGroup: "",
   duration: "",
-  themeId: LIBRARY_THEMES[0]?.id ?? "chalk",
+  themeId: LIBRARY_THEMES[0]?.id ?? "splash",
   classOpen: false,
   sizeBand: "",
   needs: {},

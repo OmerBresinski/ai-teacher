@@ -98,7 +98,7 @@ export function newText(
   };
 }
 
-export function newLesson(title = "Untitled lesson", themeId = "chalk"): Lesson {
+export function newLesson(title = "Untitled lesson", themeId = "splash"): Lesson {
   const ts = now();
   return {
     version: 1,

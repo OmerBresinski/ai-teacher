@@ -64,7 +64,7 @@ describe("writer objectives call", () => {
       JSON.stringify({ objectives: ["Explain why leaves are green."] }),
     );
     const got = await writerObjectivesCall(sampleBriefLesson(), deps);
-    expect(got).toEqual([{ text: "Explain why leaves are green." }]);
+    expect(got).toEqual({ objectives: [{ text: "Explain why leaves are green." }] });
     const P = writerBundle();
     const b = bodies[0] as {
       model: string;

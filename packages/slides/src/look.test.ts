@@ -126,7 +126,7 @@ describe("the lesson look", () => {
         points: ["shield: runny lava, gentle slopes", "composite: layers of ash and lava"],
         factRefs: ["k1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -152,7 +152,7 @@ describe("the lesson look", () => {
         explanation: "Sound needs particles to pass the vibration on.",
         factRefs: ["q1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -161,7 +161,7 @@ describe("the lesson look", () => {
   });
 
   test("is idempotent: a styled slide is returned as it is", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const slide = materialiseSlide(
       { kind: "starter", heading: "Do now", items: ["What is sediment?"], factRefs: [] },
       "chalk",
@@ -182,7 +182,7 @@ describe("one heading size across a deck (P19-14)", () => {
     )?.style.fontSize;
 
   test("a teaching slide and a one-line activity heading share the display size", () => {
-    const display = Math.round(getTheme("chalk").sizes.heading * HEADING_DISPLAY);
+    const display = Math.round(getTheme("studio").sizes.heading * HEADING_DISPLAY);
     expect(
       headingSize({
         kind: "content",

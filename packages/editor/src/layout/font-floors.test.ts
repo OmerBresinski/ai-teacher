@@ -81,7 +81,7 @@ describe("the floor clamps every path to the same number", () => {
     // Chalk: an option card 31 → 29 (the display body stop the teaching cut keeps on the ladder),
     // a question stem 38 → 36; the teaching body sits at its floor of 20 with no stop under it;
     // small 24 → 20, the teaching body stop under it.
-    const chalk = getTheme("chalk");
+    const chalk = getTheme("splash");
     expect(resolveFontSize(chalk, "small", 12, "option")).toBe(29);
     expect(resolveFontSize(chalk, "heading", 12, "question")).toBe(36);
     expect(resolveFontSize(chalk, "body", 12)).toBe(20);

@@ -14,11 +14,11 @@ import { layoutTemplate } from "./index";
 
 /** The writer's key-stage groups, their themes (prompts/shared/themes.txt) and the stages they cover. */
 export const GROUPS = {
-  KS1: { stages: ["ks1"], themes: ["playground", "crayon", "splash", "chalk"] },
-  KS2: { stages: ["ks2"], themes: ["crayon", "splash", "treehouse", "chalk"] },
+  KS1: { stages: ["ks1"], themes: ["playground", "crayon", "splash"] },
+  KS2: { stages: ["ks2"], themes: ["crayon", "splash", "treehouse"] },
   "KS3-5": {
     stages: ["ks3", "ks4", "ks5"],
-    themes: ["chalk", "reading-room", "studio", "exam-hall"],
+    themes: ["reading-room", "studio", "exam-hall"],
   },
 } as const;
 /** Each slot and the layout whose diagram box it is (every other layout's box is measured into one of these). */

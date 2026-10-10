@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  DEFAULT_THEME_ID,
   atKeyStage,
   BODY_SMALL,
   displayBodyStop,
@@ -28,10 +29,10 @@ describe("themes with no key stage", () => {
   });
 
   test("getTheme without an age band is the catalogue theme, sizes unchanged", () => {
-    const chalk = getTheme("chalk");
-    expect(chalk).toBe(THEMES.find((t) => t.id === "chalk") as never);
-    expect(getTheme("chalk", null)).toBe(chalk);
-    expect(getTheme("chalk", "not-a-stage")).toBe(chalk);
+    const chalk = getTheme("studio");
+    expect(chalk).toBe(THEMES.find((t) => t.id === "studio") as never);
+    expect(getTheme("studio", null)).toBe(chalk);
+    expect(getTheme("studio", "not-a-stage")).toBe(chalk);
     const sizes = { ...chalk.sizes };
     expect(JSON.parse(JSON.stringify(chalk.sizes))).toEqual(sizes);
   });
@@ -41,8 +42,8 @@ describe("themes with no key stage", () => {
     expect(displayBodyStop(getTheme("chalk"))).toBeNumber();
   });
 
-  test("an unknown theme id falls back to the first theme", () => {
-    expect(getTheme("nope").id).toBe((THEMES[0] as { id: string }).id);
+  test("an unknown theme id falls back to the default theme", () => {
+    expect(getTheme("nope").id).toBe(DEFAULT_THEME_ID);
   });
 });
 
