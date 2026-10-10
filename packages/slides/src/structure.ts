@@ -1297,17 +1297,8 @@ function textNeed(el: TextElement, slide: Slide, t: Theme): number {
 function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): Slide[] {
   if (!paginate) return slides;
   return slides.flatMap((slide) => {
-    const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);
+    const panel = coveringPanel(slide, t);
     if (!panel) return [slide];
-    const fitted = fitSlide(slide, t).slide;
-    const chrome = new Set(chromeOf(slide).map((e) => e.id));
-    const foot = Math.max(
-      0,
-      ...fitted.elements
-        .filter((e) => e.id !== panel.id && !chrome.has(e.id) && !isBackdrop(e) && !e.revealStep)
-        .map((e) => e.y + e.h),
-    );
-    if (panel.y >= foot + SPACE[2]) return [slide];
     const heading = headingOf(slide);
     const top = heading ? snapY(heading.y + heading.h + SPACE[4]) : SAFE.y;
     const { revealStep: _step, reveal: _reveal, ...still } = panel;
@@ -1346,6 +1337,48 @@ function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): S
       { ...answersSlide, elements: named },
     ];
   });
+}
+
+/** The answers panel when, revealed, it would cover the questions above it; else undefined. */
+function coveringPanel(slide: Slide, t: Theme): SlideElement | undefined {
+  const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);
+  if (!panel) return undefined;
+  const fitted = fitSlide(slide, t).slide;
+  const chrome = new Set(chromeOf(slide).map((e) => e.id));
+  const foot = Math.max(
+    0,
+    ...fitted.elements
+      .filter((e) => e.id !== panel.id && !chrome.has(e.id) && !isBackdrop(e) && !e.revealStep)
+      .map((e) => e.y + e.h),
+  );
+  return panel.y >= foot + SPACE[2] ? undefined : panel;
+}
+
+/**
+ * A slide that stays one slide (a generated set: it is never continued, so no Tidy will move its
+ * panel later) whose answers panel would cover its questions: the answers leave the face of the
+ * slide for the speaker notes (prod-17). A panel that clears the questions keeps its reveal.
+ */
+export function answersOffQuestions(slide: Slide, t: Theme): Slide {
+  const panel = coveringPanel(slide, t);
+  return panel ? answersToNotes(slide, panel) : slide;
+}
+
+/** The slide without its answers panel, the panel's answers added to the speaker notes. */
+function answersToNotes(slide: Slide, panel: SlideElement): Slide {
+  const answers = docText((panel as ShapeElement).doc ?? docFromText(""))
+    .replace(/\s+/g, " ")
+    .trim();
+  const notes = slide.notes?.trim() ?? "";
+  const carried =
+    !answers || notes.includes(answers)
+      ? notes
+      : [notes, `Answers: ${answers}`].filter(Boolean).join("\n\n");
+  return {
+    ...slide,
+    elements: slide.elements.filter((e) => e !== panel),
+    ...(carried ? { notes: carried } : {}),
+  };
 }
 
 /**
