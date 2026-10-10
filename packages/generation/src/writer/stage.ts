@@ -14,6 +14,7 @@ import {
   withActivityMenu,
 } from "./activities";
 import { type WriterBundleId, writerBundle } from "./bundle";
+import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { contractSystem } from "./contract";
 import { countMiss } from "./count";
@@ -88,6 +89,7 @@ import {
   wordsOf,
 } from "./materialise";
 import {
+  type CoverageRules,
   coverage,
   lessonNotes,
   notesOnlyLine,
@@ -212,6 +214,8 @@ export type WriterRun = {
    * laid out again afterwards, so no slot is left an open placeholder.
    */
   beforeEditable?: () => Promise<void>;
+  /** The checker's flags (`checker-flags.ts`) over `CHECKER_DEFAULTS`; `false` turns one off. */
+  checker?: CheckerFlags;
 };
 export type WriterSlide = Pick<Slide, "kind" | "elements" | "background" | "question"> & {
   id: string;
@@ -270,6 +274,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const asks = new Map<number, VisualAsk[]>();
   const laid = new Map<number, Materialised>();
+  /** fallbackOnlyOnFailure: slides laid out full width to fit their drawn diagram (points to notes). */
+  // Held by the slide object itself: a later step that swaps the slide out clears it, and a
+  // restore that puts the relaid slide back brings it back.
+  const relaid = new Map<number, unknown>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
@@ -384,7 +392,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!m) return undefined;
     const own = notes.get(i)?.notes ?? "";
     const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
-    const said = moved.length ? `On the slide: ${moved.join(" ")}` : "";
+    const fitted =
+      relaid.has(i) && relaid.get(i) === plan.slides[i]
+        ? relaidPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p))
+        : [];
+    const said = [
+      moved.length ? `On the slide: ${moved.join(" ")}` : "",
+      fitted.length ? `Moved off the slide to fit the diagram: ${fitted.join(" ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const q = m.slide.question ?? listQuestion(plan.slides[i] as S | undefined, notes.get(i));
     return {
       id: `s${i + 1}`,
@@ -680,6 +697,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
   await Promise.all(diagramJobs.values());
   const n = plan.slides.length;
+  const flags = { ...CHECKER_DEFAULTS, ...run.checker };
+  const coverageRules: CoverageRules = {
+    pictureTasks: flags.coverageCountsPictureTasks,
+    noDiscussion: flags.coverageExcludesDiscussion,
+    afterTeaching: flags.coverageExcludesPrediction,
+  };
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {
@@ -780,10 +803,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   let frozen: { slides: readonly unknown[]; own: number } | undefined;
   const deckSlide = (i: number) =>
     (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
-  const check = () => {
-    const res = baseCheck();
-    // A slide that repeats another goes to repair to be made different or merged.
-    const dup = duplicateFaults(
+  const duplicates = () =>
+    duplicateFaults(
       Array.from({ length: n }, (_, i) => i)
         .filter((i) => repairable(deckSlide(i), i))
         .map((i) => {
@@ -791,7 +812,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
         }),
     );
-    for (const [i, f] of dup) res[i]?.faults.push(f);
+  const check = () => {
+    const res = baseCheck();
+    // A slide that repeats another goes to repair to be made different or merged
+    // (duplicateLogOnly: it is logged once below and never repaired).
+    if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
     for (let i = 0; i < n; i++)
       res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
@@ -803,6 +828,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  if (flags.duplicateLogOnly)
+    for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
   // ── objective coverage: one targeted repair when an objective has no teaching or checking slide ──
   const swapSlide = (i: number, next0: S) => {
@@ -872,6 +899,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       chat,
       log,
       onUsd: () => {},
+      rules: coverageRules,
     });
     if (res.repaired) {
       plan.flow = res.plan.flow as Plan["flow"];
@@ -885,9 +913,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Dangling and unanswerable are reported, never a repair trigger: the ask / ask_without pair is
   // the fix by construction.
   const VISUAL_DANGLING = /^(dangling|unanswerable):/;
-  const failing = checks
-    .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
-    .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
+  const failingNow = () =>
+    checks
+      .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
+      .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
+  let failing = failingNow();
   const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
   /** How each slide's figure ended (diagram, picture, words-…), logged for the run. */
   const path = new Map<number, string>();
@@ -904,6 +934,38 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(i, oldAsks);
     relay(i);
   };
+  // fallbackOnlyOnFailure: a diagram that drew but did not fit beside the slide's words is a fit
+  // problem, not a drawing failure. Before any reword or fallback the slide is laid out full width
+  // (big-visual; its points are read in the notes), and kept when the diagram then fits.
+  if (flags.fallbackOnlyOnFailure) {
+    for (const c of failing) {
+      const i = c.slide - 1;
+      const s0 = plan.slides[i] as S;
+      if (s0.template !== "visual-text" || !c.faults.some((f) => f.startsWith("diagram:")))
+        continue;
+      const d = (asks.get(i) ?? []).find((a) => a.type === "diagram");
+      if (!d || visualState(i)(d.key).status !== "diagram") continue;
+      const n0 = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, { ...s0, template: "big-visual" });
+      const left = (check()[i]?.faults ?? []).filter(
+        (f) => f.startsWith("diagram:") || OVERFLOW.test(f),
+      );
+      if (left.length) restore(i, s0, n0, oldAsks);
+      else {
+        relaid.set(i, plan.slides[i]);
+        path.set(i, "diagram-big");
+      }
+      log({
+        ev: "diagram-relaid",
+        slide: i + 1,
+        ok: !left.length,
+        ...(left.length ? { why: left.slice(0, 2) } : {}),
+      });
+    }
+    checks = check();
+    failing = failingNow();
+  }
   const diagramKinds = () =>
     baseVisuals(stageKey)
       .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
@@ -1230,7 +1292,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     // A table is words already: one that cannot draw keeps its data as text lines.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
-    if (dAsk.kind === "table" && t.rows.length) {
+    if (dAsk.kind === "table" && t.rows.length && !flags.fixTableToText) {
       swapSlide(i, asTableText(s, t));
       path.set(i, "table-text");
       return;
@@ -1365,6 +1427,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!check()[i]?.faults.some((f) => DANGLING.test(f))) return;
     const { slide: stripped, removed } = stripPointTasks(s);
     if (!removed.length) return;
+    // Intended under D48: the slide ships with its pointing line, which may dangle; logged so a
+    // run counts every one.
+    if (flags.pointGuardLogOnly)
+      return void log({
+        ev: "point-guard",
+        slide: i + 1,
+        removed,
+        how: "log-only",
+        ships: "dangling pointer (D48)",
+      });
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, stripped);
@@ -1435,8 +1507,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Coverage by the written slides' templates, as the objective repair judges it (the summary
   // used to classify by `does` alone and read 0 while an objective was unchecked).
   const unmet = plan.flow
-    ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string)
-        .missing
+    ? coverage(plan.flow, run.objectives.length, (k) => plan.slides[k - 1]?.template as string, {
+        ...coverageRules,
+        slideOf: (k) => plan.slides[k - 1] as S | undefined,
+      }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
@@ -1454,6 +1528,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
  * A question list's answers (question set, practice, exit ticket) as slide question data, from the
  * notes stage's one answer per question, so present hides them until the reveal (TEACH-101 part b).
  */
+/** A relaid slide's points as lines for the notes. */
+function relaidPoints(s: S | undefined): string[] {
+  const p = Array.isArray(s?.points) ? (s.points as unknown[]) : [];
+  return p.map((x) =>
+    typeof x === "string"
+      ? x
+      : [String((x as S)?.label ?? ""), String((x as S)?.text ?? "")].filter(Boolean).join(": "),
+  );
+}
+
 function listQuestion(
   s: S | undefined,
   n: { answers: string[] } | undefined,
