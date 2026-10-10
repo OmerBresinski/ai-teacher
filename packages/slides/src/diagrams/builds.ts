@@ -55,8 +55,10 @@ export function buildCount(svg: string): number {
  * frames (`data-f="1 2"`, a label the next build takes away) is hidden by the drawing's own style,
  * so every other surface shows the finished drawing, and shown by `svgAtBuild` in its frames. A
  * mark away for some frames (`data-x="2"`) is in the finished drawing and hidden in those frames.
+ * No `!important`: the rules outrank the kit's own (`.slide .soft`, `.slide [data-c].quiet`) by
+ * specificity, as REVEAL_HIDDEN's doubled attribute does, so any SVG renderer applies them.
  */
-export const PASSING_HIDDEN = "[data-f]{opacity:0!important}";
+export const PASSING_HIDDEN = ".slide [data-f][data-f]{opacity:0}";
 
 /** Whether a tagged SVG has an answer part. */
 export const hasAnswerPart = (svg: string): boolean => / data-ans="1"/.test(svg);
@@ -123,8 +125,8 @@ export function svgAtBuild(
   // the doubled attribute outranks the drawing's own REVEAL_HIDDEN rule
   if (reveal && opts.answer)
     rules.push(`[data-reveal="1"][data-reveal]{opacity:1}`, `[data-qn="1"]{opacity:0}`);
-  if (/ data-f="/.test(svg)) rules.push(`[data-f~="${at}"][data-f]{opacity:1!important}`);
-  if (/ data-x="/.test(svg)) rules.push(`[data-x~="${at}"]{opacity:0!important}`);
+  if (/ data-f="/.test(svg)) rules.push(`.slide [data-f~="${at}"][data-f][data-f]{opacity:1}`);
+  if (/ data-x="/.test(svg)) rules.push(`.slide [data-x~="${at}"][data-x][data-x]{opacity:0}`);
   if (opts.motion && at > 0)
     rules.push(
       `@keyframes tj-build{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`,

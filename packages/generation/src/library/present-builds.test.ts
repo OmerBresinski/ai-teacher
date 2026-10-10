@@ -40,6 +40,17 @@ function frame(svg: string, k: number): { marks: number; words: string[] } {
   return { marks: root?.querySelectorAll(SHAPES).length ?? 0, words };
 }
 
+/** Every selector in a drawing's styles that depends on structure (`>`, `+`, `~`, `:nth-…`). */
+function selectors(svg: string): string[] {
+  const css = [...svg.matchAll(/<style>([\s\S]*?)<\/style>/g)]
+    .map((m) => (m[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/\/\*[\s\S]*?\*\//g, ""))
+    .join("\n");
+  return [...css.matchAll(/([^{};]+)\{/g)]
+    .map((m) => (m[1] ?? "").trim())
+    .filter((sel) => !sel.startsWith("@") && !/^(from|to|[\d.]+%)/.test(sel))
+    .filter((sel) => /[>+~]|:nth-|-child|-of-type|:has\(/.test(sel));
+}
+
 afterAll(() => endDrawThread());
 
 describe("library models play their builds in Present", () => {
@@ -47,6 +58,9 @@ describe("library models play their builds in Present", () => {
     const report: string[] = [];
     const stills: string[] = [];
     const failed: string[] = [];
+    // `wrapClassed` moves a classed mark into a plain group: safe only while no rule selects on
+    // structure (child, sibling or nth selectors), in the kit's tokens or a model's own style.
+    const structural: string[] = [];
     for (const id of Object.keys(MODEL_LOADERS)) {
       const d = await renderLibraryModel(id, await params(id)).catch(() => undefined);
       if (!d) {
@@ -58,6 +72,7 @@ describe("library models play their builds in Present", () => {
         `${id}: ${d.builds} builds, opens on ${open.marks} marks, ${open.words.length} words`,
       );
       if (!d.builds) stills.push(id);
+      for (const sel of selectors(d.svg)) structural.push(`${id}: ${sel}`);
       expect(open.words.length).toBeGreaterThan(0);
       expect(open.marks).toBeGreaterThan(2);
       expect(buildCount(d.svg)).toBe(d.builds);
@@ -66,6 +81,7 @@ describe("library models play their builds in Present", () => {
     // hist_map's coastline is over the slide's byte limit: the drawer draws that slide.
     expect(failed).toEqual(["hist_map"]);
     expect(stills).toEqual([]);
+    expect(structural).toEqual([]);
   }, 120_000);
 
   test("the stored drawing is the finished picture: marks that come and go are hidden there", async () => {
@@ -79,7 +95,7 @@ describe("library models play their builds in Present", () => {
     expect(end.words).not.toContain("1");
     // Present shows a passing mark in its frames only.
     expect(svgAtBuild(d.svg, 0, { answer: false, motion: false })).toContain(
-      '[data-f~="0"][data-f]{opacity:1!important}',
+      '.slide [data-f~="0"][data-f][data-f]{opacity:1}',
     );
     // Words that never share a frame are not an overlap.
     expect(overlappingWords(d.svg)).toEqual([]);
@@ -138,5 +154,61 @@ describe("library models play their builds in Present", () => {
     const last = frame(d.svg, d.builds);
     expect(last.words.some((w) => /\b24\b/.test(w))).toBe(false);
     expect(last.words.some((w) => /\b40\b/.test(w))).toBe(true);
+  });
+
+  test("a wrapped mark keeps its class and transform; the wrapper is a bare group", async () => {
+    const d = await renderLibraryModel("column_methods", await params("column_methods"));
+    const doc = new Window().document;
+    doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
+    const wrapped = [...doc.querySelectorAll("g[data-s]")].filter(
+      (g) => g.children.length === 1 && g.children[0]?.getAttribute("class")?.includes("soft"),
+    );
+    expect(wrapped.length).toBeGreaterThan(0);
+    for (const g of wrapped) {
+      expect([...g.attributes].map((a) => a.name).sort()).toEqual(["data-s"]);
+      expect(g.children[0]?.hasAttribute("data-s")).toBe(false);
+    }
+  });
+
+  test("over the byte limit with its builds, the drawing falls back to the still, not the drawer", async () => {
+    const P = await params("counting_subitising");
+    const full = await renderLibraryModel("counting_subitising", P);
+    expect(full.builds).toBeGreaterThan(0);
+    const still = await renderLibraryModel("counting_subitising", P, { maxBytes: full.bytes - 1 });
+    expect(still.builds).toBe(0);
+    expect(still.bytes).toBeLessThan(full.bytes);
+    expect(still.svg).not.toMatch(/ data-(s|f|x|builds)="/);
+    // The still is the finished picture: the same words as Present's last frame.
+    expect(frame(still.svg, 0).words.sort()).toEqual(frame(full.svg, full.builds).words.sort());
+    await expect(
+      renderLibraryModel("counting_subitising", P, { maxBytes: still.bytes - 1 }),
+    ).rejects.toThrow(/over the slide's limit/);
+  });
+
+  test("on a question slide the stored drawing is Present's question frame: passing marks match", async () => {
+    const asks: [string, number][] = [
+      ["bar_model", 2],
+      ["fractions", 0],
+      ["collision_theory", 0],
+      ["equal_groups", 0],
+    ];
+    for (const [id, preset] of asks) {
+      const P = await params(id, preset);
+      const step = await questionStep(id, P);
+      if (step === undefined) continue;
+      const d = await renderLibraryModel(id, P, { step });
+      const doc = new Window().document;
+      doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
+      // A mark shown at the question frame is never a passing mark (it would be hidden on the
+      // still): it is kept, or restored as data-qn and leaves at the reveal.
+      for (const el of [...doc.querySelectorAll("[data-f]")])
+        expect(el.getAttribute("data-f")?.split(" ").map(Number)).not.toContain(d.builds);
+      // What the editor shows (no answer, no passing marks) is what Present shows before the reveal.
+      for (const el of [...doc.querySelectorAll("[data-reveal],[data-f]")]) el.remove();
+      const still = [...doc.querySelectorAll("text")]
+        .map((t) => (t.textContent ?? "").trim())
+        .filter(Boolean);
+      expect(frame(d.svg, d.builds).words.sort()).toEqual(still.sort());
+    }
   });
 });
