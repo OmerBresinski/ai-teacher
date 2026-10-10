@@ -148,7 +148,9 @@ describe("facts reducers", () => {
 
 describe("applyProposals", () => {
   test("a regenerated check whose answers would cover its questions gets its answers slide (ruling 200)", () => {
-    const lesson = generatedLesson();
+    // No outline here: the aligned-outline cases are in coded-slides.test.ts (`syncAnswers`).
+    const { facts: _facts, ...rest } = generatedLesson();
+    const lesson = rest as ReturnType<typeof generatedLesson>;
     const target = lesson.slides[3];
     if (!target) throw new Error("fixture");
     const answers = [
@@ -185,9 +187,19 @@ describe("applyProposals", () => {
     expect(next.slides).toHaveLength(lesson.slides.length + 1);
     expect(next.slides[3]?.elements.some((e) => e.name === "Answers")).toBe(false);
     expect(JSON.stringify(next.slides[4]?.elements)).toContain("Quick check: answers");
-    // This fixture's outline does not line up with its slides (6 entries, 4 slides), so it is left
-    // as it was rather than spliced out of step (the aligned case: coded-slides.test.ts).
-    expect(next.facts).toBe(lesson.facts);
+    // An outline that does not line up with its slides (mid-generation) is never spliced out of
+    // step: the deck is left as it was.
+    const misaligned = generatedLesson();
+    const same = r.applyProposals(
+      misaligned,
+      fresh.elements.map((element) => ({
+        target: { slideId: target.id },
+        element,
+        notes: null,
+        generatedFrom: GENERATED_FROM,
+      })),
+    );
+    expect(same.slides).toHaveLength(misaligned.slides.length);
   });
 
   const elementProposal = (): Proposal => {

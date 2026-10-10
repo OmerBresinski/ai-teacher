@@ -20,7 +20,7 @@ import type {
   WorkedExample,
   Worksheet,
 } from "@tj/domain/documents";
-import { syncAnswersSlide } from "@tj/slides";
+import { syncAnswers } from "@tj/slides";
 import { renderTheme } from "../themes";
 import { edit, type WithId } from "./core";
 
@@ -265,7 +265,7 @@ export const applyProposals = (lesson: Lesson, proposals: readonly Proposal[]): 
 
 /**
  * Every slide a whole-slide proposal regenerated, its answers slide brought up to date (UX ruling
- * 200, `syncAnswersSlide`): added when the new questions' answers would cover them, dropped when
+ * 200, `syncAnswers`): added when the new questions' answers would cover them, dropped when
  * they now fit, so an answers slide never outlives the questions it answers.
  */
 function withAnswersSlidesOf(lesson: Lesson, proposals: readonly Proposal[]): Lesson {
@@ -277,10 +277,7 @@ function withAnswersSlidesOf(lesson: Lesson, proposals: readonly Proposal[]): Le
     ),
   );
   if (regenerated.size === 0) return lesson;
-  const theme = renderTheme(lesson);
-  let out = lesson;
-  for (const id of regenerated) out = syncAnswersSlide(out, id, theme).deck;
-  return out;
+  return syncAnswers(lesson, renderTheme(lesson), undefined, regenerated);
 }
 
 const applyProposalsOnly = (lesson: Lesson, proposals: readonly Proposal[]): Lesson =>
