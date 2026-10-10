@@ -1,0 +1,24 @@
+{
+  "source": "base4f-p123-1/T/y11-chemistry-rates-of-reaction/main.json slides[6]",
+  "slide": {
+    "template": "visual-text",
+    "heading": "More concentrated does not mean faster particles",
+    "lead": "Both acids are at 20 °C. Their particles have the same average kinetic energy.",
+    "points": [
+      {
+        "label": "What changes",
+        "text": "More particles occupy the same volume."
+      },
+      {
+        "label": "Why rate rises",
+        "text": "More successful collisions occur each second."
+      }
+    ],
+    "figure": {
+      "kind": "particles",
+      "shows": "Two equal-volume acid panels beside identical magnesium surfaces. One has fewer particles and one has more. Representative motion arrows have the same length in both panels, showing that concentration alone does not increase average particle speed.",
+      "labels": ["0.5 mol/dm³", "1.0 mol/dm³", "Both at 20 °C"]
+    }
+  },
+  "log": []
+}

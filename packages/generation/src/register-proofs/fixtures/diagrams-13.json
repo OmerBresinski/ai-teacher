@@ -1,0 +1,42 @@
+{
+  "source": "d52/T5/full/y6-science-heart-circulation/main.json slides[1] (log slide 4)",
+  "slide": {
+    "template": "big-visual",
+    "heading": "Follow one complete journey",
+    "lead": "Blood returns to the heart between its lung and body journeys.",
+    "figure": {
+      "kind": "flow",
+      "shows": "A worked example following blood from the heart to the lungs, back to the heart, out to the body and back again. Two heart boxes represent different sides of the same heart.",
+      "alt": "Blood travels from the heart to the lungs, back to the heart, to the body and back to the heart.",
+      "title": null,
+      "nodes": [
+        "Heart: pumps to lungs",
+        "Lungs: oxygen enters blood",
+        "Heart: pumps to body",
+        "Body: uses oxygen + nutrients"
+      ],
+      "links": [
+        {
+          "from": 0,
+          "to": 1,
+          "label": "blood vessels"
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "label": "blood vessels"
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "label": "blood vessels"
+        },
+        {
+          "from": 3,
+          "to": 0,
+          "label": "blood vessels"
+        }
+      ]
+    }
+  }
+}

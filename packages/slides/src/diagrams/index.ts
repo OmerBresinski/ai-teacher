@@ -15,10 +15,12 @@ import { drawCubes } from "./cubes";
 import { drawFlow } from "./flow";
 import { drawEqualGroups, drawFractionShapes } from "./groups";
 import { drawLabelled } from "./labelled";
+import { mendParticleLabels } from "./labels3";
 import { drawLineGraph } from "./line-graph";
 import { fromMeaning } from "./meaning";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
+import { mendParticles } from "./particles-mend";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { finished, laddered, look, WEIGHT } from "./style";
 import { type Ctx, context, type DrawnText, esc, mix, n, text, titleCtx, wrap } from "./svg";
@@ -105,10 +107,21 @@ export { titleAddsInformation, withoutEchoTitle } from "./echo-title";
 /** A theme font stack as the family an SVG names (the `var(--font-*)` part resolved). */
 export { family as svgFontFamily } from "./svg";
 
+/**
+ * `spec` in the form the drawer parses. Round 8: a spec in its meaning form (meaning.ts) is drawn
+ * from the form code derives. diagrams-11: a particles spec that misses its own limits by a little
+ * is mended (particles-mend.ts), not dropped. Every spec that already parses comes back as is.
+ */
+function drawable(spec: unknown): unknown {
+  const drawn = fromMeaning(spec);
+  const mended = mendParticles(drawn, LONG_LABEL_STRETCH);
+  // A key cut to two names is then held to the labels3 rules like any other (labels3.ts).
+  return mended === drawn ? drawn : mendParticleLabels(mended);
+}
+
 /** `spec` parsed, or `undefined` when it is not a diagram spec. */
 export function parseDiagram(spec: unknown): DiagramSpec | undefined {
-  // Round 8: a spec in its meaning form (meaning.ts) is drawn from the form code derives.
-  spec = fromMeaning(spec);
+  spec = drawable(spec);
   // BAKEOFF base4f (unshared): a one-group pile is drawn as is (groups.ts `pileSpec`).
   if ((spec as { pile?: unknown })?.pile === true) {
     const p = spec as { kind?: unknown; total?: unknown; groups?: unknown };
@@ -241,7 +254,7 @@ export function fittedDiagramElement(
 ):
   | { ok: true; element: ImageElement; stretched: boolean; fs?: number }
   | { ok: false; reasons: string[] } {
-  spec = fromMeaning(spec);
+  spec = drawable(spec);
   const strict = DiagramSpecSchema.safeParse(spec);
   if (strict.success) {
     const element = diagramElement(settleDiagram(strict.data, rect).spec, theme, rect, ids);
