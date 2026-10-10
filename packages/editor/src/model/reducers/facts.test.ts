@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Proposal } from "@tj/domain";
 import { generatedLesson, generatedWorksheet, text } from "@tj/domain/documents/fixtures";
+import { materialiseSlide } from "@tj/slides";
 import { applyBlockProposals } from "../../worksheet/reducers";
 import * as r from "./index";
 
@@ -146,6 +147,49 @@ describe("facts reducers", () => {
 });
 
 describe("applyProposals", () => {
+  test("a regenerated check whose answers would cover its questions gets its answers slide (ruling 200)", () => {
+    const lesson = generatedLesson();
+    const target = lesson.slides[3];
+    if (!target) throw new Error("fixture");
+    const answers = [
+      "carbon dioxide + water → glucose + oxygen",
+      "Light energy",
+      "The atoms are rearranged to make glucose and oxygen; they are not created or destroyed.",
+      "Chlorophyll absorbs and transfers light energy to the reactions that use carbon dioxide and water to make glucose and oxygen.",
+    ];
+    const fresh = materialiseSlide(
+      {
+        kind: "instructions",
+        factRefs: [],
+        heading: "Quick check",
+        steps: [
+          "State the word equation for photosynthesis.",
+          "In a lettuce leaf, what does chlorophyll absorb?",
+          "What happens to the atoms of carbon dioxide and water in photosynthesis?",
+          "Explain how chlorophyll helps a leaf make glucose.",
+        ],
+        footnote: `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`,
+      },
+      lesson.themeId,
+      { promptVersion: "t", model: "t", at: "2026-10-10T10:00:00.000Z" },
+    );
+    const next = r.applyProposals(
+      lesson,
+      fresh.elements.map((element) => ({
+        target: { slideId: target.id },
+        element,
+        notes: null,
+        generatedFrom: GENERATED_FROM,
+      })),
+    );
+    expect(next.slides).toHaveLength(lesson.slides.length + 1);
+    expect(next.slides[3]?.elements.some((e) => e.name === "Answers")).toBe(false);
+    expect(JSON.stringify(next.slides[4]?.elements)).toContain("Quick check: answers");
+    // This fixture's outline does not line up with its slides (6 entries, 4 slides), so it is left
+    // as it was rather than spliced out of step (the aligned case: coded-slides.test.ts).
+    expect(next.facts).toBe(lesson.facts);
+  });
+
   const elementProposal = (): Proposal => {
     const lesson = generatedLesson();
     const slide = lesson.slides[1];
