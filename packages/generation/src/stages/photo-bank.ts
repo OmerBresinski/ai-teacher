@@ -212,7 +212,8 @@ export async function findPicture(
   // Generated pictures this request's judge passed: only these are stored once placed.
   const judged = new WeakSet<PlacedPhoto>();
   const placeMade = async (photo: PlacedPhoto | undefined, via: BankVia): Promise<BankOutcome> => {
-    if (photo && judged.has(photo)) await bank.remember(req, photo).catch(rethrowAbort);
+    if (photo && judged.has(photo))
+      await bank.remember(req, photo).catch(whenNonFatal(() => undefined));
     return done(photo, via);
   };
   const make = async (faithful: boolean, sig: AbortSignal = signal) => {
