@@ -4,6 +4,7 @@ import { CAPTURE_READY_ATTR, waitForSlidePaint } from "../export/paint";
 import { printedSlide } from "../export/pdf-credit";
 import { parseSlideRange } from "../export/range";
 import { SlideCreditLine } from "../export/SlideCreditLine";
+import { prepareDiagramFonts } from "../images/diagram-fonts";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 
@@ -71,6 +72,8 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
   useEffect(() => {
     let cancelled = false;
     const settle = async () => {
+      // Fetch every diagram's fonts up front, independent of when each slide mounts.
+      await prepareDiagramFonts(lesson.slides);
       await waitForSlidePaint(root.current ?? document);
       if (cancelled) return;
       document.documentElement.setAttribute(CAPTURE_READY_ATTR, "true");

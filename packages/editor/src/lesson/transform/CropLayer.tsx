@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useDiagramFonts } from "../../images/diagram-fonts";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { StoredImage } from "../../images/StoredImage";
 import { type Point, type Rect, rectOf } from "../../model/geometry";
@@ -108,6 +109,8 @@ export function CropLayer({
 }: CropLayerProps) {
   const history = useHistory();
   const resolvedSrc = useResolvedImageSrc(element.src);
+  // A drawn diagram being cropped shows its words in their own face, as on the canvas.
+  const croppedSrc = useDiagramFonts(element.src);
   const actions = useSessionActions();
   const read = useSessionRead();
   const { crop: session } = useSessionUi();
@@ -486,7 +489,7 @@ export function CropLayer({
           }}
         >
           <StoredImage
-            src={element.src}
+            src={croppedSrc}
             alt=""
             draggable={false}
             style={{
