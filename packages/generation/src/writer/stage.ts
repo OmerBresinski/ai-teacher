@@ -1365,7 +1365,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (path.has(i) || i < 2) return;
     const lost = (asks.get(i) ?? []).find(
       (a): a is Extract<VisualAsk, { type: "photo" }> =>
-        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+        a.type === "photo" &&
+        !a.set &&
+        !a.fixedShape &&
+        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
+        // slide is never split or redrawn
+        !/^card\.\d+$/.test(a.key) &&
+        visualState(i)(a.key).status === "failed",
     );
     if (!lost) return;
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,

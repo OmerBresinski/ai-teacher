@@ -1,13 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
+import { activityFaults } from "../writer/activities";
 import { CHECKER_DEFAULTS } from "../writer/checker-flags";
 import { type Brief, titleOneThing, withLook } from "../writer/fixes";
 import { carryPairs, sameFigure } from "../writer/guards";
 import { compoundSubjects, splitLanded, splitSlide } from "../writer/lost-picture";
-import { materialise, type VisualState } from "../writer/materialise";
+import { isLanguageLesson, materialise, type VisualState, whatIs } from "../writer/materialise";
 import { stripPointTasks } from "../writer/point-guard";
 import { replayRun, replayServices } from "../writer/replay-fixture";
-import { eventsOf, fixture, type J, runFile, theme, writerSlides } from "./harness";
+import {
+  anyPhoto,
+  eventsOf,
+  fixture,
+  type J,
+  runFile,
+  stageRun,
+  theme,
+  writerSlides,
+} from "./harness";
 
 /*
  * Group E: picture selection and carry-over. Root cause: picture slots are matched and re-asked
@@ -66,6 +76,62 @@ describe("REGISTER layout-03: a picture-matching task ships with no pictures (d5
     const text = JSON.stringify(m.slide.elements);
     expect(text).toContain("What is a kitten?");
     expect(text).not.toContain("Match each picture");
+  });
+});
+
+describe("layout-03 review: the plain-question fallback (PR #449)", () => {
+  const run = "d52_A_y1-science-animals-young";
+  test("a card still failed after its retry never sends the pair slide to the lost-picture split", async () => {
+    const failed = (i: number, key: string) => i === 3 && (key === "card.0" || key === "card.2");
+    const { out, events } = await stageRun(run, {
+      visual: (i, key, a) =>
+        failed(i, key)
+          ? { status: "failed" }
+          : a.type === "photo"
+            ? anyPhoto(key)
+            : { status: "failed" },
+    });
+    const s4 = eventsOf(events, 4);
+    expect(s4.some((e) => e.ev === "lost-picture")).toBe(false);
+    const els = (out.slides[3] as unknown as { elements: J[] }).elements;
+    expect(els.some((e) => e.type === "image")).toBe(false);
+    expect(JSON.stringify(els)).toContain("What is a kitten?");
+  });
+  test("a language lesson asks what the word means; a card with no words is skipped", () => {
+    expect(whatIs("chat", true)).toBe("What does “chat” mean?");
+    expect(whatIs("chat")).toBe("What is a chat?");
+    expect(whatIs("  ")).toBeUndefined();
+    expect(isLanguageLesson("French")).toBe(true);
+    expect(isLanguageLesson("Science")).toBe(false);
+    const brief = JSON.parse(runFile(run, "brief.json")) as Brief;
+    const s = writerSlides(run)[1] as J;
+    const cards = (s.cards as J[]).map((c, n) => (n === 1 ? { ...c, label: "" } : c));
+    const visual = (): VisualState => ({ status: "failed" });
+    const ctx = {
+      brief,
+      theme: theme("KS1"),
+      stage: "KS1" as never,
+      index: 3,
+      plan: { slides: [] },
+      visual,
+    };
+    const m = materialise({ ...s, cards }, ctx);
+    const text = JSON.stringify(m.slide.elements);
+    expect(text).toContain("What is a kitten?");
+    expect(text).toContain("What is a calf?");
+    expect(text).not.toContain("“”");
+    const fr = materialise(s, { ...ctx, brief: { ...brief, subject: "French" } });
+    expect(JSON.stringify(fr.slide.elements)).toContain("What does “kitten” mean?");
+  });
+  test("a pair laid with its cards but no answer still faults", () => {
+    const faults = activityFaults(
+      { template: "pair", cards: [{ text: "a" }, { text: "b" }] },
+      {
+        elements: [{ type: "text", name: "Card" } as never],
+        question: undefined,
+      },
+    );
+    expect(faults).toContain("activity: no answer to reveal");
   });
 });
 

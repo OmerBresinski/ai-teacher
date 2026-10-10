@@ -515,7 +515,8 @@ describe("checks on the laid-out slide", () => {
     const pair = laid("pair", {}, () => ({ status: "failed" }));
     expect(pair.m.slide.question).toBeUndefined();
     const words = pair.m.slide.elements.map(elementText).join(" ");
-    for (const c of pair.s.cards as { text: string }[]) expect(words).toContain(whatIs(c.text));
+    for (const c of pair.s.cards as { text: string }[])
+      expect(words).toContain(String(whatIs(c.text)));
     expect(activityFaults(pair.s, pair.m.slide)).toEqual([]);
   });
 });

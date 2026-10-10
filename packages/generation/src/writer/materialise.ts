@@ -311,18 +311,19 @@ export function toInput(
   const lead = s.lead == null ? undefined : str(s.lead);
   // Ruling 195 (layout-03, d52 A y1 s4): a matching task whose card pictures are still missing
   // after their one retry becomes a plain question; it never matches a word to the same word.
+  // The writer's own cards are read: a failed picture is already resolved away from `s`.
+  const rawCards = Array.isArray((raw0 as S).cards) ? ((raw0 as S).cards as S[]) : [];
   if (
     template === "pair" &&
-    // the writer's own cards: a failed picture is already resolved away from `s`
-    (Array.isArray((raw0 as S).cards) ? ((raw0 as S).cards as S[]) : []).some(
-      (c, n) => c?.picture != null && ctx.visual(`card.${n}`).status === "failed",
-    )
-  )
-    return {
-      template: "question-set",
-      heading,
-      questions: (s.cards as S[]).map((c) => whatIs(str(c?.text ?? c?.label))),
-    };
+    rawCards.some((c, n) => c?.picture != null && ctx.visual(`card.${n}`).status === "failed")
+  ) {
+    const language = isLanguageLesson(ctx.brief?.subject);
+    const questions = ((s.cards as S[]) ?? [])
+      .map((c) => whatIs(str(c?.text ?? c?.label ?? ""), language))
+      .filter((q): q is string => !!q);
+    // fewer than two questions is no question set: the pair stays as it was
+    if (questions.length >= 2) return { template: "question-set", heading, questions };
+  }
   switch (template) {
     case "title":
       return { template, heading, lead, figure: fig("picture") };
@@ -556,14 +557,24 @@ export function aiAuthored<T extends { slide: { elements: unknown[] } }>(m: T): 
   return { ...m, slide: { ...m.slide, elements } };
 }
 
-/** Lay one slide out from its JSON and the visuals' current states. */
-/** A plain recall question about one card's word: "What is a kitten?", "What does “ma mère” mean?" */
-export function whatIs(word: string): string {
+/** A language lesson, whose card words are in the target language ("chat" is French for cat). */
+export const isLanguageLesson = (subject: string | undefined) =>
+  /\b(french|spanish|german|italian|latin|mandarin|chinese|japanese|welsh|arabic|urdu|polish|portuguese|languages?|mfl)\b/i.test(
+    subject ?? "",
+  );
+
+/**
+ * A plain recall question about one card's word: "What is a kitten?"; in a language lesson, or for
+ * anything but one plain word, "What does “chat” mean?". Undefined for a card with no words.
+ */
+export function whatIs(word: string, language = false): string | undefined {
   const w = word.trim().replace(/[.?!]+$/, "");
-  if (/^[a-z]+$/.test(w)) return `What is ${/^[aeiou]/.test(w) ? "an" : "a"} ${w}?`;
+  if (!w) return undefined;
+  if (!language && /^[a-z]+$/.test(w)) return `What is ${/^[aeiou]/.test(w) ? "an" : "a"} ${w}?`;
   return `What does “${w}” mean?`;
 }
 
+/** Lay one slide out from its JSON and the visuals' current states. */
 export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
   let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
   // A diagram the layout dropped is missing: the slide is laid out again with its `ask_without` lines.
