@@ -1,3 +1,5 @@
+import { LIMITS } from "@tj/slides/diagrams";
+
 // Long tables (UX ruling 197, register content-01 / diagrams-10): a table the writer wrote longer
 // than its slot holds is packed into up to 4 columns, and what still does not fit continues as a
 // table on the next slide. Words are never cut or rewritten; rows keep their order.
@@ -21,6 +23,11 @@ const entries = (t: Table, pairs: boolean) =>
   pairs
     ? t.rows.reduce((a, r) => a + (r.slice(2).some((x) => x.trim()) ? 2 : 1), 0)
     : t.rows.length;
+
+/** The most rows one slide's table draws: the drawer's table limit (`LIMITS.table.rows`). */
+export const MAX_ROWS = LIMITS.table.rows;
+/** A table spreads over at most this many slides: its own and three continuations. */
+export const MAX_SLIDES = 4;
 
 /** The most columns a packed table takes (ruling 197). */
 export const PACK_COLUMNS = 4;
@@ -90,20 +97,29 @@ export function continueTable(
     lead: null,
     figure: t,
   });
+  // Bounded search: a slide holds at most MAX_ROWS drawn rows (the drawer's own table limit), so
+  // at most twice that many entries when packed; the longest run that fits is found by bisection
+  // (fit is monotone in the run's length), a handful of layouts per slide, and a table needing more
+  // than MAX_SLIDES slides is not split (it takes the old path).
+  const most = pairs ? 2 * MAX_ROWS : MAX_ROWS;
   const parts: Table[] = [];
   let at = 0;
   while (at < list.length) {
-    let take = 0;
-    for (let k = list.length - at; k >= 1; k--) {
+    if (parts.length === MAX_SLIDES) return undefined;
+    const ok = (k: number) => {
       const t = chunk(list.slice(at, at + k));
-      if (fits(parts.length ? cont(t) : { ...top, figure: t }, parts.length === 0)) {
-        take = k;
-        break;
-      }
+      return fits(parts.length ? cont(t) : { ...top, figure: t }, parts.length === 0);
+    };
+    let lo = 0;
+    let hi = Math.min(most, list.length - at);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (ok(mid)) lo = mid;
+      else hi = mid - 1;
     }
-    if (!take) return undefined;
-    parts.push(chunk(list.slice(at, at + take)));
-    at += take;
+    if (!lo) return undefined;
+    parts.push(chunk(list.slice(at, at + lo)));
+    at += lo;
   }
   const [head, ...tail] = parts;
   if (!head) return undefined;
@@ -118,4 +134,49 @@ export function continueTable(
   }
   const balanced = even.every((t) => fits(cont(t), false)) ? even : tail;
   return { first: { ...top, figure: head }, rest: balanced.map(cont) };
+}
+
+const SLIDE_REF = /\b([Ss]lides?)(\s+)(\d+)\b/g;
+const REF_TEST = /\b[Ss]lides?\s+\d+\b/;
+
+/**
+ * Slide numbers said in words ("see slide 7", "Slides 4") rewritten to where those slides sit in
+ * the deck after continuation slides were inserted (`at`: plan number to deck number). Notes and
+ * every text element are rewritten; a slide whose numbers all stay is returned as it was. A number
+ * the map does not know is left alone.
+ */
+export function renumberSlideRefs<T extends { notes?: string; elements: unknown[] }>(
+  slides: T[],
+  at: Map<number, number>,
+): T[] {
+  if ([...at].every(([plan, deck]) => plan === deck)) return slides;
+  const fix = (t: string) =>
+    t.replace(SLIDE_REF, (m, word: string, sp: string, n: string) => {
+      const to = at.get(Number(n));
+      return to === undefined ? m : `${word}${sp}${to}`;
+    });
+  // Every `text` string inside an element (plain text or a rich-text doc's text nodes).
+  const deep = (v: unknown, key = ""): unknown => {
+    if (typeof v === "string") return key === "text" && REF_TEST.test(v) ? fix(v) : v;
+    if (Array.isArray(v)) {
+      const out = v.map((x) => deep(x, key));
+      return out.every((x, k) => x === v[k]) ? v : out;
+    }
+    if (!v || typeof v !== "object") return v;
+    const o = v as Record<string, unknown>;
+    let changed = false;
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(o)) {
+      out[k] = deep(x, k);
+      if (out[k] !== x) changed = true;
+    }
+    return changed ? out : v;
+  };
+  return slides.map((s) => {
+    const elements = s.elements.map((e) => deep(e));
+    const notes = typeof s.notes === "string" ? fix(s.notes) : s.notes;
+    return notes === s.notes && elements.every((e, k) => e === s.elements[k])
+      ? s
+      : { ...s, notes, elements };
+  });
 }

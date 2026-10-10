@@ -37,12 +37,13 @@ const caps = (kind: string, field: string) => {
 };
 
 describe("REGISTER content-01 / content-02 / diagrams-10: the writer grammar no longer closes a table at a row cap", () => {
-  test("FIXED caps: table rows carry no maxItems in the writer schema (were 5 full, 6 side)", () => {
-    expect(caps("table", "rows")).toEqual([undefined]);
+  test("FIXED caps: table rows are capped only at what 4 slides hold (32), not at 5 full / 6 side", () => {
+    expect(caps("table", "rows")).toEqual([32]);
   });
   test("FIXED content-02: decoding is never forced to close the rows mid-list, so no stray last cell", () => {
     // The stray words ('quinze blanche', 'seize soirées', 'seize toute') sat in the last cell the
-    // cap allowed. With no cap the grammar never ends the array early; the recorded outputs were
+    // cap allowed. The cap is now far past any one slide (32), so the grammar does not end a 1-20
+    // list early; the recorded outputs were
     // decoded under the old cap, so a paid writer run is what shows the cells themselves.
     const rows = ((fixture("content-01-r1").slide as J).figure as { rows: string[][] }).rows;
     expect(rows.at(-1)?.[3]).toBe("quinze blanche");

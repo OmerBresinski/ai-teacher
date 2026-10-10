@@ -1145,58 +1145,55 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
   const gap = 12;
   const w = Math.floor((G.width - (cols - 1) * gap) / cols);
   const bar = 5;
-  const lay = (role: "body" | "small") => {
-    const size = c.s[role];
-    const pad = Math.round(size * 0.6);
-    const iw = w - 2 * pad - bar;
-    const cards = points.map((p) => {
-      const label = pointLabel(p);
-      const lh = label ? measure(c, label, "lead", iw, 700) + 4 : 0;
-      return { p, label, lh, h: 2 * pad + lh + measure(c, pointText(p), role, iw) };
-    });
-    const rows: (typeof cards)[] = [];
-    for (let k = 0; k < cards.length; k += cols) rows.push(cards.slice(k, k + cols));
-    const heights = rows.map((r) => Math.max(...r.map((x) => x.h)));
-    const h = heights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
-    const draw = (y0: number) => {
-      let y = y0;
-      rows.forEach((r, ri) => {
-        const rh = heights[ri] ?? 0;
-        r.forEach((card, k) => {
-          const x = G.margin + k * (w + gap);
-          box(c, { x, y, w, h: rh }, wash(c.t), {
-            name: "Key card",
-            radius: Math.min(c.t.radius, 12),
-          });
-          box(c, { x, y, w: bar, h: rh }, c.t.colors.accent, {
-            name: "Key edge",
-            shape: "rect",
-            radius: 0,
-          });
-          if (card.label)
-            text(
-              c,
-              card.label,
-              "lead",
-              { x: x + bar + pad, y: y + pad, w: iw },
-              { color: c.t.colors.accent, weight: 700, name: "Key label" },
-            );
+  // The cards keep body size: they never read smaller than the points they replace.
+  const role = "body";
+  const size = c.s[role];
+  const pad = Math.round(size * 0.6);
+  const iw = w - 2 * pad - bar;
+  const cards = points.map((p) => {
+    const label = pointLabel(p);
+    const lh = label ? measure(c, label, "lead", iw, 700) + 4 : 0;
+    return { p, label, lh, h: 2 * pad + lh + measure(c, pointText(p), role, iw) };
+  });
+  const rows: (typeof cards)[] = [];
+  for (let k = 0; k < cards.length; k += cols) rows.push(cards.slice(k, k + cols));
+  const heights = rows.map((r) => Math.max(...r.map((x) => x.h)));
+  const h = heights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+  const draw = (y0: number) => {
+    let y = y0;
+    rows.forEach((r, ri) => {
+      const rh = heights[ri] ?? 0;
+      r.forEach((card, k) => {
+        const x = G.margin + k * (w + gap);
+        box(c, { x, y, w, h: rh }, wash(c.t), {
+          name: "Key card",
+          radius: Math.min(c.t.radius, 12),
+        });
+        box(c, { x, y, w: bar, h: rh }, c.t.colors.accent, {
+          name: "Key edge",
+          shape: "rect",
+          radius: 0,
+        });
+        if (card.label)
           text(
             c,
-            pointText(card.p),
-            role,
-            { x: x + bar + pad, y: y + pad + card.lh, w: iw },
-            { color: c.t.colors.ink, name: "Point" },
+            card.label,
+            "lead",
+            { x: x + bar + pad, y: y + pad, w: iw },
+            { color: c.t.colors.accent, weight: 700, name: "Key label" },
           );
-        });
-        y += rh + gap;
+        text(
+          c,
+          pointText(card.p),
+          role,
+          { x: x + bar + pad, y: y + pad + card.lh, w: iw },
+          { color: c.t.colors.ink, name: "Point" },
+        );
       });
-    };
-    return { h, draw };
+      y += rh + gap;
+    });
   };
-  const body = lay("body");
-  // The cards keep body size: they never read smaller than the points they replace.
-  return lay("body");
+  return { h, draw };
 }
 
 /** The label size a spec shows at in `rect` (the panel's inset taken off); undefined when it does not draw. */
