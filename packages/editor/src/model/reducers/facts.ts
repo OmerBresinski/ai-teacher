@@ -258,6 +258,21 @@ function replaceElement(elements: SlideElement[], id: Id, next: SlideElement): b
  * notes, an absent `question` on a whole-slide replacement clears the old answer data (the element
  * ids it named are gone). Block proposals are ignored here — see `applyBlockProposals`.
  */
+/**
+ * The slides a set of proposals regenerated whole (no `elementId`): their answers slides are
+ * brought up to date after the proposals land (`syncAnswersReducer`, `../answers-sync`, loaded on
+ * demand so the answers-slide layout stays out of the editor's first paint).
+ */
+export function regeneratedSlideIds(proposals: readonly Proposal[]): Set<Id> {
+  return new Set(
+    proposals.flatMap((p) =>
+      p.target.slideId !== undefined && p.target.elementId === undefined && p.element
+        ? [p.target.slideId]
+        : [],
+    ),
+  );
+}
+
 export const applyProposals = (lesson: Lesson, proposals: readonly Proposal[]): Lesson =>
   edit(lesson, (draft) => {
     const wholeSlides = new Map<Id, Proposal[]>();

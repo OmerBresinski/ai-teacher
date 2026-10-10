@@ -472,11 +472,14 @@ export function answersPanel(
     content: answers.map((a) => ({
       type: "paragraph",
       content: [
+        // The chip holds the number only and the gap after it is plain text, so every number's
+        // chip and gap are drawn alike (a "1" chip with its space inside touched its answer).
         {
           type: "text",
-          text: `${a.n} `,
+          text: String(a.n),
           marks: [{ type: "bold" }, { type: "textStyle", attrs: { color: t.colors.accent } }],
         },
+        { type: "text", text: " " },
         { type: "text", text: a.text },
       ],
     })),
@@ -1294,7 +1297,7 @@ function textNeed(el: TextElement, slide: Slide, t: Theme): number {
  * have revealed the panel. Without pages (a generated slide is one slide) the panel stays for the
  * editor's Tidy to move.
  */
-function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): Slide[] {
+export function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): Slide[] {
   if (!paginate) return slides;
   return slides.flatMap((slide) => {
     const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0);

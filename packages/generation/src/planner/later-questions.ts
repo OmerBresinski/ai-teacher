@@ -1,5 +1,5 @@
 import type { LessonFacts } from "@tj/domain/documents";
-import { codedSetSpec } from "./coded-slides";
+import { codedSetSpec, planIndexOf } from "./coded-slides";
 
 /*
  * Lab r3 (tested-not-taught, lab/r2/checks.md §3): a teaching slide is shown the questions later in
@@ -23,9 +23,10 @@ const ASKING_PHASES: ReadonlySet<string> = new Set(["practise", "check"]);
 /** The question ids that land on outline entry `j` (none for a teaching slide or a starter). */
 function landedQuestionRefs(facts: LessonFacts, j: number, seed: string): string[] {
   const entry = facts.outline[j];
-  if (!entry || TEACHING_KINDS.has(entry.kind)) return [];
+  // An answers slide (ruling 200) repeats its check's refs; it lands no question of its own.
+  if (!entry || entry.answersTo || TEACHING_KINDS.has(entry.kind)) return [];
   if (entry.kind === "starter" || entry.phase === "starter") return [];
-  const coded = codedSetSpec(entry, facts, `${seed}:${j}`);
+  const coded = codedSetSpec(entry, facts, `${seed}:${planIndexOf(facts.outline, j)}`);
   if (coded) return coded.questionRefs;
   const asks =
     entry.kind === "exit-ticket" || (entry.phase !== undefined && ASKING_PHASES.has(entry.phase));
