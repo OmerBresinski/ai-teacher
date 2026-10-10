@@ -56,6 +56,16 @@ describe("label floor", () => {
       expect(overlappingWords(after.drawing.svg)).toEqual([]);
     }
   });
+  test("checks only logged (HEART1 D): the water cycle still grows to 18 pt, whole words", async () => {
+    const a = { ...ask("water_cycle", "Where does rain come from?"), logOnly: true };
+    const fill = async () => preset("water_cycle", 0);
+    const plain = await libraryDiagram(a, fill);
+    const after = await libraryDiagram({ ...a, labelFloor: true }, fill);
+    expect(plain.ok && after.ok).toBe(true);
+    if (!plain.ok || !after.ok) return;
+    expect(placedTypeSize(after.drawing.svg, a.place).minPt).toBeGreaterThanOrEqual(17.99);
+    expect(grownTextFault(plain.drawing.svg, after.drawing.svg)).toBeUndefined();
+  });
   test("the D52 heart: grown, its key splits 'Oxygen-poor' across lines, so it falls back", async () => {
     const FILL = { detail: "double", showBody: true, carries: { oxygen: true, food: true } };
     const a = { ...ask("heart_circulation", "Follow the blood"), panelsOff: true };
