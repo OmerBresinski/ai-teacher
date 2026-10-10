@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { getResolvedPDFJS } from "unpdf";
 import { ExtractError, extract, LIMITS, MIME, PASTE_SECTION, sniffMime } from "./index";
 import {
   docxBomb,
@@ -32,6 +33,13 @@ describe("sniffMime", () => {
 });
 
 describe("extract pdf", () => {
+  // The first `extract` of a PDF loads unpdf's bundled pdfjs (1.6 MB): 180–230 ms cold here, ~4 s
+  // on a CI runner with no transpiler cache under turbo's parallel suites, which the first test
+  // below paid on top of its own ~40 ms and so ran into the 5 s default. Load it once up front.
+  beforeAll(async () => {
+    await getResolvedPDFJS();
+  }, 30_000);
+
   test("one chunk per page with page locators; blank pages are skipped but counted", async () => {
     const bytes = await pdfWithPages([PHOTOSYNTHESIS[0] ?? "", "", PHOTOSYNTHESIS[1] ?? ""]);
     const out = await extract({ bytes, mime: MIME.pdf, name: "plants.pdf" });

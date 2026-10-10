@@ -548,7 +548,11 @@ describe("LessonEditorPage", () => {
       });
       expect(stored().facts?.objectives[0]?.text).toBe("Describe the water cycle");
       expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
-    });
+      // 2.6 s of this is the product's own real-time windows, which the test asserts on:
+      // COALESCE_MS (1 s) before the cascade posts, then AUTOSAVE_MS (0.8 s) for each of the two
+      // saves it reads back. Measured 3.3 s alone and 4.6–5.3 s under turbo's parallel suites in
+      // CI, so bun's 5 s default left no room for the render.
+    }, 15_000);
 
     it("a second request while a job is in flight is held and sent after the terminal event", async () => {
       installFakeEventSource();
@@ -586,7 +590,9 @@ describe("LessonEditorPage", () => {
       });
       await waitFor(() => expect(cascades()).toHaveLength(2), { timeout: 3_000 });
       expect(cascades()[1]?.body).toEqual({ changedFactIds: ["v2"] });
-    });
+      // COALESCE_MS (1 s) plus the 1.3 s hold check is 2.3 s of real time the test asserts on;
+      // measured 3.0 s alone, so a loaded CI runner crowds the 5 s default as it does row 6.
+    }, 15_000);
 
     it("a worksheet-only result toasts without Undo (the lesson's history gained nothing)", async () => {
       installFakeEventSource();
