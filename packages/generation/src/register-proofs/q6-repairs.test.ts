@@ -37,14 +37,15 @@ describe("REGISTER content-05: the 1-20 number table becomes a bullet list (d52 
   test("FIXED content-05: no table-text; the writer's points stay, the rows go to the notes", async () => {
     const { out, events } = await stageRun("d52_A_y8-french-my-family");
     const ev = eventsOf(events, 6);
-    expect(ev.find((e) => e.ev === "visual-path")?.path).toBe("unshown");
+    // TEACH-110 part m (ruling 197): the table no longer has to go. It is shown, packed into 4
+    // columns, and continues on the next slide; the writer's points stay as key cards. Never
+    // table-text: the rows are not rebuilt as "Nombre 1: un" points.
+    expect(ev.find((e) => e.ev === "visual-path")?.path).toBe("diagram");
+    expect(ev.some((e) => e.ev === "table-continued")).toBe(true);
     const els = (out.slides[5]?.elements ?? []) as J[];
-    expect(diagramEls(els).length).toBe(0);
+    expect(diagramEls(els).length).toBe(1);
     expect(JSON.stringify(els)).toContain("Il est gentil");
     expect(JSON.stringify(els)).not.toContain("Nombre 1");
-    // The table's data is not lost: its rows are in the speaker notes.
-    const notes = String(out.slides[5]?.notes ?? "");
-    expect(notes).toContain("The table could not be shown on the slide:");
-    expect(notes).toContain("douze");
+    expect(JSON.stringify(out.slides[6]?.elements ?? [])).toContain("(continued)");
   }, 60_000);
 });
