@@ -67,7 +67,7 @@ function thread(url: string, loadMs: number): Thread {
 async function drawOne(
   id: string,
   params: J,
-  opts: { step?: number },
+  opts: { step?: number; typeScale?: number },
   limits: { drawMs?: number; loadMs?: number; workerUrl?: string },
 ): Promise<LibraryDrawing> {
   const t = thread(limits.workerUrl ?? renderWorkerUrl(), limits.loadMs ?? LOAD_DEADLINE_MS);
@@ -91,7 +91,12 @@ async function drawOne(
       if (a.type === "done") resolve(a.drawing);
       else reject(new Error(a.message));
     };
-    t.worker.postMessage({ id, params, ...(opts.step === undefined ? {} : { step: opts.step }) });
+    t.worker.postMessage({
+      id,
+      params,
+      ...(opts.step === undefined ? {} : { step: opts.step }),
+      ...(opts.typeScale === undefined ? {} : { typeScale: opts.typeScale }),
+    });
   });
 }
 
@@ -99,7 +104,7 @@ async function drawOne(
 export function drawLibraryModel(
   id: string,
   params: J,
-  opts: { step?: number } = {},
+  opts: { step?: number; typeScale?: number } = {},
   limits: { drawMs?: number; loadMs?: number; workerUrl?: string } = {},
 ): Promise<LibraryDrawing> {
   const run = queue.then(() => drawOne(id, params, opts, limits));

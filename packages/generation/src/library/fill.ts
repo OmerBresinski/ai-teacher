@@ -18,7 +18,14 @@ import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
 import { drawingWordsMismatch } from "./consistency";
 import { drawLibraryModel } from "./guard";
-import { boundsRefusals, inspectDrawnSvg, kit, type LibraryDrawing, loadModel } from "./render";
+import {
+  boundsRefusals,
+  drawnLines,
+  inspectDrawnSvg,
+  kit,
+  type LibraryDrawing,
+  loadModel,
+} from "./render";
 import type { J, LibRefusal } from "./types";
 
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
@@ -189,6 +196,12 @@ export type LibraryAsk = {
   question?: boolean;
   /** Words printed over words fall back (flag `libraryLabelOverlap`, diagrams-09). */
   labelOverlap?: boolean;
+  /**
+   * The label floor (flag `libraryLabelFloor`, needs `place`): the kit's type tokens grow until the
+   * smallest words show at `TYPE_FLOOR` where the drawing is placed; the grown drawing must then
+   * keep its words apart and inside the model's stage, or it falls back.
+   */
+  labelFloor?: boolean;
   /** Optional panels off unless the intent names them (flag `libraryPanelsOff`, diagrams-07). */
   panelsOff?: boolean;
   /**
@@ -253,6 +266,31 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
     }
   return out;
 }
+
+/**
+ * What went wrong with a drawing's words once its type grew (the label floor), against the same
+ * drawing at the kit's own sizes: a word split across lines or lost ("Oxygen-p" / "oor"), or a
+ * line set less than 0.9 of its type size below the one above (lines on top of one another).
+ * Undefined when neither.
+ */
+export function grownTextFault(baseSvg: string, grownSvg: string): string | undefined {
+  const words = (svg: string) =>
+    drawnLines(svg)
+      .flatMap((t) => t.lines.join(" ").split(/\s+/))
+      .filter(Boolean)
+      .sort()
+      .join(" ");
+  const grown = drawnLines(grownSvg);
+  if (words(baseSvg) !== words(grownSvg)) return "its words split or change across lines";
+  for (const t of grown)
+    if (t.pitch.some((d) => d < 0.9 * t.fs))
+      return `its lines "${t.lines.join(" / ").slice(0, 30)}" sit on top of one another`;
+  return undefined;
+}
+
+/** The label floor's draws after the first, and the most the type may grow (flag `libraryLabelFloor`). */
+const LABEL_FLOOR_TRIES = 3;
+export const LABEL_FLOOR_MAX = 2;
 
 const tokens = (t: string, v: Record<string, string>) =>
   t.replace(/\{\{(\w+)\}\}/g, (m, k: string) => v[k] ?? m);
@@ -324,28 +362,68 @@ export async function libraryDiagram(
   }
   const p = params;
   // The full drawing (with a question slide's answer) is checked against the slide's words.
-  const full = await nonFatal(
+  let full = await nonFatal(
     () => drawLibraryModel(ask.model, p),
     (e) => String(e).slice(0, 160),
   );
   if (typeof full === "string") return fallback(`it did not draw: ${full}`);
+  // The label floor: grow the type until the smallest words reach the floor where it is placed.
+  let typeScale = 1;
+  if (ask.labelFloor && ask.place) {
+    const place = ask.place;
+    const offBefore = new Set(full.offSlide);
+    const baseSvg = full.svg;
+    for (let i = 0; i < LABEL_FLOOR_TRIES; i++) {
+      const svg = full.svg;
+      const t = nonFatalSync(
+        () => placedTypeSize(svg, place),
+        () => undefined,
+      );
+      if (!t || t.minPt >= TYPE_FLOOR - 0.01) break;
+      typeScale = Math.min(LABEL_FLOOR_MAX, typeScale * (TYPE_FLOOR / t.minPt) * 1.02);
+      const ts = typeScale;
+      const grown = await nonFatal(
+        () => drawLibraryModel(ask.model, p, { typeScale: ts }),
+        (e) => String(e).slice(0, 160),
+      );
+      if (typeof grown === "string")
+        return fallback(`it did not draw at the label floor: ${grown}`);
+      full = grown;
+      if (ts >= LABEL_FLOOR_MAX) break;
+    }
+    log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
+    if (typeScale !== 1) {
+      const grownSvg = full.svg;
+      const fault = nonFatalSync(
+        () => grownTextFault(baseSvg, grownSvg),
+        (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
+      );
+      if (fault) return fallback(`at the label floor ${fault}`);
+    }
+    const off = full.offSlide.filter((w) => !offBefore.has(w));
+    if (off.length)
+      return fallback(
+        `at the label floor its words leave the model: ${off.slice(0, 2).join(", ").slice(0, 60)}`,
+      );
+  }
+  const drawnFull = full;
   // Only the words that describe the drawing: the slide's heading and the model's caption.
   const about =
     ask.heading !== undefined || ask.caption !== undefined
       ? [ask.heading, ask.caption].filter(Boolean).join("\n")
       : ask.words;
-  const mismatch = drawingWordsMismatch(ask.model, full.svg, about);
+  const mismatch = drawingWordsMismatch(ask.model, drawnFull.svg, about);
   if (mismatch) return fallback(`it disagrees with the slide: ${mismatch}`);
   const drawn =
     step === undefined
-      ? full
+      ? drawnFull
       : await nonFatal(
-          () => drawLibraryModel(ask.model, p, { step }),
+          () => drawLibraryModel(ask.model, p, { step, ...(typeScale !== 1 ? { typeScale } : {}) }),
           (e) => String(e).slice(0, 160),
         );
   if (typeof drawn === "string") return fallback(`it did not draw: ${drawn}`);
   // Words over words (flag `libraryLabelOverlap`): the drawer's text-box reading of the still.
-  if (ask.labelOverlap) {
+  if (ask.labelOverlap || ask.labelFloor) {
     const o = nonFatalSync(
       () => overlappingWords(drawn.svg),
       () => undefined,

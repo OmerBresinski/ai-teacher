@@ -103,9 +103,40 @@ function modelClassTypes(el: Element): ClassType[] {
   }
   return out.reverse();
 }
+/**
+ * The label floor's type scale (flag `libraryLabelFloor`): every `--fs-*` token times this while a
+ * drawing is made or read back. 1 outside those calls.
+ */
+let FS_SCALE = 1;
+/** The `--fs-*` tokens times `k`, as a rule a drawing carries after the kit's own. */
+export function fsOverride(k: number): string {
+  const decl = [...VARS]
+    .filter(([n]) => n.startsWith("--fs-"))
+    .map(([n, v]) => `${n}:${Math.round(Number.parseFloat(v) * k * 10) / 10}px`)
+    .join(";");
+  return `svg.slide.tk,.slide.tk.theme-primary,.tk{${decl}}`;
+}
+/** Runs `f` with every `--fs-*` token times `k` (measurement and the DOM's computed style). */
+function withTypeScale<T>(k: number, f: () => T): T {
+  if (k === 1) return f();
+  const prev = FS_SCALE;
+  FS_SCALE = k;
+  const doc = libraryDom().win.document;
+  const st = doc.createElement("style");
+  st.textContent = fsOverride(k);
+  doc.head.appendChild(st);
+  try {
+    return f();
+  } finally {
+    st.remove();
+    FS_SCALE = prev;
+  }
+}
 const resolve = (v: string): number => {
   const m = /var\((--[\w-]+)\)/.exec(v);
-  const base = Number.parseFloat(m ? (VARS.get(m[1] as string) ?? "") : v);
+  const base =
+    Number.parseFloat(m ? (VARS.get(m[1] as string) ?? "") : v) *
+    (m && (m[1] as string).startsWith("--fs-") ? FS_SCALE : 1);
   // calc(var(--fs-label) * 1.2): the kit's only calc form for type.
   const k = /\*\s*([\d.]+)/.exec(v);
   return k ? base * Number(k[1]) : base;
@@ -632,97 +663,102 @@ const PAD = 18;
 export async function renderLibraryModel(
   id: string,
   params: J,
-  opts: { step?: number } = {},
+  opts: { step?: number; typeScale?: number } = {},
 ): Promise<LibraryDrawing> {
   const model = await loadModel(id);
   if (!model) throw new Error(`no library model ${id}`);
   const k = await kit();
-  return withDom(({ host }) => {
-    // The slide's heading is the title: the drawing carries none. Params out of bounds are refused
-    // (the caller falls back to the drawer), never clamped into a different number.
-    const bad = boundsRefusals(model.params, params);
-    if (bad.length)
-      throw new Error(
-        `${id}: ${bad
-          .map((r) => `${r.path} ${r.reason}`)
-          .join("; ")
-          .slice(0, 200)}`,
-      );
-    const P = { ...params, title: "" };
-    const stage = k.mountSlide(host, model, P, { theme: "primary" });
-    try {
-      const svg = stage.svg;
-      // A question slide (TEACH-247 part i): the drawing as it ends, with the answer held back
-      // until the slide's answer is revealed. Marks the question shows and the answer replaces
-      // (a pile before it is shared) are restored and leave on the reveal (`data-qn`).
-      const q = opts.step;
-      if (q !== undefined)
-        for (const el of [...svg.querySelectorAll("[data-h]")]) {
-          const hide = Number(el.getAttribute("data-h"));
-          if (hide > q && !(Number(el.getAttribute("data-s") ?? 0) > q)) {
-            el.classList.remove("off");
-            el.setAttribute("data-qn", "1");
+  const ts = opts.typeScale && opts.typeScale > 0 ? Math.round(opts.typeScale * 1000) / 1000 : 1;
+  return withDom(({ host }) =>
+    withTypeScale(ts, () => {
+      // The slide's heading is the title: the drawing carries none. Params out of bounds are refused
+      // (the caller falls back to the drawer), never clamped into a different number.
+      const bad = boundsRefusals(model.params, params);
+      if (bad.length)
+        throw new Error(
+          `${id}: ${bad
+            .map((r) => `${r.path} ${r.reason}`)
+            .join("; ")
+            .slice(0, 200)}`,
+        );
+      const P = { ...params, title: "" };
+      const stage = k.mountSlide(host, model, P, { theme: "primary" });
+      try {
+        const svg = stage.svg;
+        // A question slide (TEACH-247 part i): the drawing as it ends, with the answer held back
+        // until the slide's answer is revealed. Marks the question shows and the answer replaces
+        // (a pile before it is shared) are restored and leave on the reveal (`data-qn`).
+        const q = opts.step;
+        if (q !== undefined)
+          for (const el of [...svg.querySelectorAll("[data-h]")]) {
+            const hide = Number(el.getAttribute("data-h"));
+            if (hide > q && !(Number(el.getAttribute("data-s") ?? 0) > q)) {
+              el.classList.remove("off");
+              el.setAttribute("data-qn", "1");
+            }
           }
-        }
-      const root = svg.firstElementChild;
-      const foot = (root?.children[2] as Element | undefined) ?? null;
-      const box = drawnBox(svg, foot);
-      const offSlide = wordsOffSlide(svg, foot);
-      const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
-      const x0 = Math.max(0, box ? box.x0 - PAD : 0);
-      const x1 = Math.min(W, box ? box.x1 + PAD : W);
-      const y1 = Math.min(FOOT, box ? box.y1 + PAD : FOOT);
-      const w = Math.round(x1 - x0);
-      const h = Math.round(y1 - y0);
-      if (w < 40 || h < 40) throw new Error(`${id} drew nothing to show`);
-      const out = svg.cloneNode(true) as Element;
-      const oroot = out.firstElementChild;
-      oroot?.children[2]?.remove();
-      for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
-      // The answer: every mark first shown after the question's build.
-      if (q !== undefined)
-        for (const el of [...out.querySelectorAll("[data-s]")])
-          if (Number(el.getAttribute("data-s")) > q) el.setAttribute("data-reveal", "1");
-      // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
-      // Present would open on a blank box. Every surface shows the drawing as it ends (on a
-      // question slide, without its answer until the reveal).
-      for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
-      for (const el of [...out.querySelectorAll("[data-h]")]) el.removeAttribute("data-h");
-      // Builds left on hidden marks only make Present wait on nothing.
-      out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      out.setAttribute("class", "slide tk theme-primary");
-      out.setAttribute("viewBox", `${Math.round(x0)} ${Math.round(y0)} ${w} ${h}`);
-      out.setAttribute("width", String(w));
-      out.setAttribute("height", String(h));
-      out.removeAttribute("aria-label");
-      // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
-      // editor, thumbnails and exports show the question, as the drawer's question slides do.
-      const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
-      const style = `<style><![CDATA[${SVG_CSS}]]></style>${hold}`;
-      const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
-      const open = /<svg\b[^>]*>/.exec(html);
-      if (!open) throw new Error(`${id} did not serialise`);
-      const at = open.index + open[0].length;
-      const text = html.slice(0, at) + style + html.slice(at);
-      const bytes = Buffer.byteLength(text);
-      if (bytes > MAX_SVG_BYTES)
-        throw new Error(`${id} drew ${bytes} bytes, over the slide's limit`);
-      let builds = 0;
-      for (const m of text.matchAll(/ data-s="(\d+)"/g)) builds = Math.max(builds, Number(m[1]));
-      return {
-        src: `${SVG_URL}${encodeURIComponent(text)}`,
-        svg: text,
-        aspect: Math.round((w / h) * 1000) / 1000,
-        builds,
-        alt: stage.alt ?? model.meta.name,
-        warnings: stage.warnings ?? [],
-        bytes,
-        offSlide,
-      };
-    } finally {
-      stage.destroy();
-    }
-  });
+        const root = svg.firstElementChild;
+        const foot = (root?.children[2] as Element | undefined) ?? null;
+        const box = drawnBox(svg, foot);
+        const offSlide = wordsOffSlide(svg, foot);
+        const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));
+        const x0 = Math.max(0, box ? box.x0 - PAD : 0);
+        const x1 = Math.min(W, box ? box.x1 + PAD : W);
+        const y1 = Math.min(FOOT, box ? box.y1 + PAD : FOOT);
+        const w = Math.round(x1 - x0);
+        const h = Math.round(y1 - y0);
+        if (w < 40 || h < 40) throw new Error(`${id} drew nothing to show`);
+        const out = svg.cloneNode(true) as Element;
+        const oroot = out.firstElementChild;
+        oroot?.children[2]?.remove();
+        for (const el of [...out.querySelectorAll(".off,.grain")]) el.remove();
+        // The answer: every mark first shown after the question's build.
+        if (q !== undefined)
+          for (const el of [...out.querySelectorAll("[data-s]")])
+            if (Number(el.getAttribute("data-s")) > q) el.setAttribute("data-reveal", "1");
+        // A library model is a still (TEACH-247 part i): its builds start from an empty frame, so
+        // Present would open on a blank box. Every surface shows the drawing as it ends (on a
+        // question slide, without its answer until the reveal).
+        for (const el of [...out.querySelectorAll("[data-s]")]) el.removeAttribute("data-s");
+        for (const el of [...out.querySelectorAll("[data-h]")]) el.removeAttribute("data-h");
+        // Builds left on hidden marks only make Present wait on nothing.
+        out.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        out.setAttribute("class", "slide tk theme-primary");
+        if (ts !== 1) out.setAttribute("data-fs-scale", String(ts));
+        out.setAttribute("viewBox", `${Math.round(x0)} ${Math.round(y0)} ${w} ${h}`);
+        out.setAttribute("width", String(w));
+        out.setAttribute("height", String(h));
+        out.removeAttribute("aria-label");
+        // The answer is hidden unless a reveal says otherwise (`svgAtBuild` with `answer`), so the
+        // editor, thumbnails and exports show the question, as the drawer's question slides do.
+        const hold = q !== undefined ? `<style>${REVEAL_HIDDEN}</style>` : "";
+        const scaled = ts !== 1 ? `<style>${fsOverride(ts)}</style>` : "";
+        const style = `<style><![CDATA[${SVG_CSS}]]></style>${scaled}${hold}`;
+        const html = out.outerHTML.replace(/&nbsp;/g, "&#160;");
+        const open = /<svg\b[^>]*>/.exec(html);
+        if (!open) throw new Error(`${id} did not serialise`);
+        const at = open.index + open[0].length;
+        const text = html.slice(0, at) + style + html.slice(at);
+        const bytes = Buffer.byteLength(text);
+        if (bytes > MAX_SVG_BYTES)
+          throw new Error(`${id} drew ${bytes} bytes, over the slide's limit`);
+        let builds = 0;
+        for (const m of text.matchAll(/ data-s="(\d+)"/g)) builds = Math.max(builds, Number(m[1]));
+        return {
+          src: `${SVG_URL}${encodeURIComponent(text)}`,
+          svg: text,
+          aspect: Math.round((w / h) * 1000) / 1000,
+          builds,
+          alt: stage.alt ?? model.meta.name,
+          warnings: stage.warnings ?? [],
+          bytes,
+          offSlide,
+        };
+      } finally {
+        stage.destroy();
+      }
+    }),
+  );
 }
 
 /** One run of words in a drawn SVG: its type size and box in view-box units, after transforms. */
@@ -743,43 +779,89 @@ export function inspectDrawnSvg(svgText: string): {
   viewBox: [number, number, number, number];
   words: DrawnWords[];
 } {
-  return withDom(({ win, host }) => {
-    // The first <style> is the embedded font and theme (CDATA, which happy-dom's parsers reject);
-    // the kit's tokens are already in this document, and a model's own <style> is kept.
-    // happy-dom's HTML parser loses the drawing after an inline <style>, so a model's own rules go
-    // in the document's head while it is read, and every <style> leaves the markup.
-    const own = [...svgText.matchAll(/<style>(?!\s*<!\[CDATA\[)([\s\S]*?)<\/style>/g)].map(
-      (m) => m[1],
-    );
-    const sheet = win.document.createElement("style");
-    sheet.textContent = own.join("\n");
-    win.document.head.appendChild(sheet);
-    host.innerHTML = svgText.replace(/<style>[\s\S]*?<\/style>/g, "");
-    const svg = host.querySelector("svg");
-    const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
-    const words: DrawnWords[] = [];
-    for (const el of svg ? [...svg.querySelectorAll("text")] : []) {
-      let mm: M = ID;
-      for (let e: Element | null = el as unknown as Element; e && e !== svg; e = e.parentElement)
-        mm = mul(parseTransform(e.getAttribute("transform")), mm);
-      const w = (el.textContent ?? "").trim();
-      const pts = w ? ownPoints(el as unknown as Element) : undefined;
-      if (!pts?.length) continue;
-      const t = pts.map(([x, y]) => [mm[0] * x + mm[2] * y + mm[4], mm[1] * x + mm[3] * y + mm[5]]);
-      const xs = t.map((p) => p[0] as number);
-      const ys = t.map((p) => p[1] as number);
-      const scale = Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1;
-      words.push({
-        words: w,
-        fs: typeOf(el as unknown as Element).fs * scale,
-        x0: Math.min(...xs),
-        y0: Math.min(...ys),
-        x1: Math.max(...xs),
-        y1: Math.max(...ys),
-      });
-    }
-    host.innerHTML = "";
-    sheet.remove();
-    return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words };
-  });
+  const ts = Number(/data-fs-scale="([\d.]+)"/.exec(svgText)?.[1] ?? 1) || 1;
+  return withDom(({ win, host }) =>
+    withTypeScale(ts, () => {
+      // The first <style> is the embedded font and theme (CDATA, which happy-dom's parsers reject);
+      // the kit's tokens are already in this document, and a model's own <style> is kept.
+      // happy-dom's HTML parser loses the drawing after an inline <style>, so a model's own rules go
+      // in the document's head while it is read, and every <style> leaves the markup.
+      const own = [...svgText.matchAll(/<style>(?!\s*<!\[CDATA\[)([\s\S]*?)<\/style>/g)].map(
+        (m) => m[1],
+      );
+      const sheet = win.document.createElement("style");
+      sheet.textContent = own.join("\n");
+      win.document.head.appendChild(sheet);
+      host.innerHTML = svgText.replace(/<style>[\s\S]*?<\/style>/g, "");
+      const svg = host.querySelector("svg");
+      const vb = (svg?.getAttribute("viewBox") ?? "0 0 0 0").split(/[\s,]+/).map(Number);
+      const words: DrawnWords[] = [];
+      for (const el of svg ? [...svg.querySelectorAll("text")] : []) {
+        let mm: M = ID;
+        for (let e: Element | null = el as unknown as Element; e && e !== svg; e = e.parentElement)
+          mm = mul(parseTransform(e.getAttribute("transform")), mm);
+        const w = (el.textContent ?? "").trim();
+        const pts = w ? ownPoints(el as unknown as Element) : undefined;
+        if (!pts?.length) continue;
+        const t = pts.map(([x, y]) => [
+          mm[0] * x + mm[2] * y + mm[4],
+          mm[1] * x + mm[3] * y + mm[5],
+        ]);
+        const xs = t.map((p) => p[0] as number);
+        const ys = t.map((p) => p[1] as number);
+        const scale = Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1;
+        words.push({
+          words: w,
+          fs: typeOf(el as unknown as Element).fs * scale,
+          x0: Math.min(...xs),
+          y0: Math.min(...ys),
+          x1: Math.max(...xs),
+          y1: Math.max(...ys),
+        });
+      }
+      host.innerHTML = "";
+      sheet.remove();
+      return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words };
+    }),
+  );
+}
+
+/** One drawn text's lines (its tspans, or its own words) and its type size, read back. */
+export type DrawnLines = { lines: string[]; fs: number; pitch: number[] };
+
+/**
+ * Every text of a drawn library SVG as lines: each tspan's words, the text's type size (at the
+ * drawing's own type scale) and each line's step down (`dy`). For the label floor's checks: a line
+ * step under the type size sets lines on top of one another; a word split across lines changes
+ * the drawing's words.
+ */
+export function drawnLines(svgText: string): DrawnLines[] {
+  const ts = Number(/data-fs-scale="([\d.]+)"/.exec(svgText)?.[1] ?? 1) || 1;
+  return withDom(({ win, host }) =>
+    withTypeScale(ts, () => {
+      const own = [...svgText.matchAll(/<style>(?!\s*<!\[CDATA\[)([\s\S]*?)<\/style>/g)].map(
+        (m) => m[1],
+      );
+      const sheet = win.document.createElement("style");
+      sheet.textContent = own.join("\n");
+      win.document.head.appendChild(sheet);
+      host.innerHTML = svgText.replace(/<style>[\s\S]*?<\/style>/g, "");
+      const out: DrawnLines[] = [];
+      for (const el of [...host.querySelectorAll("text")]) {
+        const spans = [...el.querySelectorAll("tspan")];
+        const lines = (spans.length ? spans : [el])
+          .map((s) => (s.textContent ?? "").trim())
+          .filter(Boolean);
+        if (!lines.length) continue;
+        const pitch = spans
+          .slice(1)
+          .map((s) => Number.parseFloat(s.getAttribute("dy") ?? ""))
+          .filter((d) => Number.isFinite(d) && d > 0);
+        out.push({ lines, fs: typeOf(spans[0] ?? (el as unknown as Element)).fs, pitch });
+      }
+      host.innerHTML = "";
+      sheet.remove();
+      return out;
+    }),
+  );
 }

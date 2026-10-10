@@ -192,6 +192,12 @@ export type WriterRun = {
    */
   libraryLabelOverlap?: boolean;
   /**
+   * Library turn-on, label floor (default off; with `libraryModelBody`): a model's type grows until
+   * its smallest words show at 18 pt where the slide places it; then the overlap check runs, and
+   * words that collide or leave the model fall back to the drawer.
+   */
+  libraryLabelFloor?: boolean;
+  /**
    * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
    * schema's model enum hold only models for the lesson's year and its subject (or general
    * ones); an empty list leaves out the Models block, the model kind line and the schema branch.
@@ -548,6 +554,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                 : {}),
               ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
               ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
+              ...(run.libraryLabelFloor ? { labelFloor: true } : {}),
             },
             async (req) =>
               (
