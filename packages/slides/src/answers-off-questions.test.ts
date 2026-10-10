@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import type { Slide, Theme } from "@tj/domain/documents";
+import { answersOnOwnSlide } from "./answers-slide";
 import { materialiseSlide } from "./materialise";
 import { ANSWERS_NAME } from "./reflow";
 import type { SlideSpec } from "./specs";
-import { answersOnOwnSlide } from "./structure";
 import { getTheme, THEMES } from "./themes";
 
 /*

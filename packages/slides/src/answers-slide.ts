@@ -1,8 +1,8 @@
 import type { Lesson, OutlineEntry, Slide, Theme } from "@tj/domain/documents";
-import { entriesWritten, outlineIndices, richDocToPlainText } from "@tj/domain/documents";
+import { isContinuation, richDocToPlainText } from "@tj/domain/documents";
 import { uid } from "./factories";
 import { ANSWERS_NAME } from "./reflow";
-import { answersOnOwnSlide } from "./structure";
+import { answersClear } from "./structure";
 
 /*
  * The answers slide of a check (prod-17, UX ruling 200): "<heading>: answers", straight after a
@@ -19,6 +19,24 @@ import { answersOnOwnSlide } from "./structure";
  *   check's answers are off its face;
  * - no answers panel that covers its questions.
  */
+
+/**
+ * A finished set slide whose answers panel would cover its questions, as two slides: the questions
+ * without the panel, then "<heading>: answers" with each answer by its question's number. A panel
+ * that clears the questions keeps its reveal, and the slide comes back alone.
+ */
+export function answersOnOwnSlide(slide: Slide, t: Theme, ids: () => string = uid): Slide[] {
+  return answersClear([slide], t, ids, true);
+}
+
+/** Each slide's outline entry (`outlineIndices`, `@tj/domain`, through `isContinuation`). */
+function entryIndices(slides: readonly Slide[]): number[] {
+  let entry = -1;
+  return slides.map((slide, i) => {
+    if (i === 0 || !isContinuation(slide, slides[i - 1])) entry += 1;
+    return entry;
+  });
+}
 
 /** The answers entry's id, from its check's: `s7` gives `a7`. Deterministic, so a re-run agrees. */
 export const answersIdOf = (checkId: string): string => `a${checkId.replace(/^\D+/, "")}`;
@@ -68,8 +86,8 @@ export function syncAnswers<D extends Deck>(
   regenerated: ReadonlySet<string> = new Set(),
 ): D {
   const plan = deck.facts?.outline;
-  if (plan && entriesWritten(deck.slides) !== plan.length) return deck;
-  const at = outlineIndices(deck.slides);
+  const at = entryIndices(deck.slides);
+  if (plan && (at.at(-1) ?? -1) + 1 !== plan.length) return deck;
   const groups: Group[] = [];
   deck.slides.forEach((slide, i) => {
     const k = at[i] ?? 0;

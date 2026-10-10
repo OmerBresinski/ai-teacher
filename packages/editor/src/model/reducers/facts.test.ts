@@ -3,6 +3,7 @@ import type { Proposal } from "@tj/domain";
 import { generatedLesson, generatedWorksheet, text } from "@tj/domain/documents/fixtures";
 import { materialiseSlide } from "@tj/slides";
 import { applyBlockProposals } from "../../worksheet/reducers";
+import { syncAnswersReducer } from "../answers-sync";
 import * as r from "./index";
 
 /* TEACH-134 rows 1–4: the facts reducers and the proposal application (ADR 0025 §18, §19). */
@@ -175,29 +176,24 @@ describe("applyProposals", () => {
       lesson.themeId,
       { promptVersion: "t", model: "t", at: "2026-10-10T10:00:00.000Z" },
     );
-    const next = r.applyProposals(
-      lesson,
-      fresh.elements.map((element) => ({
-        target: { slideId: target.id },
-        element,
-        notes: null,
-        generatedFrom: GENERATED_FROM,
-      })),
-    );
+    const proposals = fresh.elements.map((element) => ({
+      target: { slideId: target.id },
+      element,
+      notes: null,
+      generatedFrom: GENERATED_FROM,
+    }));
+    const applied = r.applyProposals(lesson, proposals);
+    expect(r.regeneratedSlideIds(proposals)).toEqual(new Set([target.id]));
+    const next = syncAnswersReducer(applied, r.regeneratedSlideIds(proposals));
     expect(next.slides).toHaveLength(lesson.slides.length + 1);
     expect(next.slides[3]?.elements.some((e) => e.name === "Answers")).toBe(false);
     expect(JSON.stringify(next.slides[4]?.elements)).toContain("Quick check: answers");
     // An outline that does not line up with its slides (mid-generation) is never spliced out of
     // step: the deck is left as it was.
     const misaligned = generatedLesson();
-    const same = r.applyProposals(
-      misaligned,
-      fresh.elements.map((element) => ({
-        target: { slideId: target.id },
-        element,
-        notes: null,
-        generatedFrom: GENERATED_FROM,
-      })),
+    const same = syncAnswersReducer(
+      r.applyProposals(misaligned, proposals),
+      r.regeneratedSlideIds(proposals),
     );
     expect(same.slides).toHaveLength(misaligned.slides.length);
   });
