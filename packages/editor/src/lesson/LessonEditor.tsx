@@ -440,6 +440,14 @@ export function LessonEditor({
         } finally {
           h.endTransaction();
         }
+        // A regenerated check's answers slide (ruling 200): added, kept or dropped once the
+        // answers-slide layout has loaded, as its own step.
+        const regenerated = reducers.regeneratedSlideIds(incoming);
+        if (regenerated.size > 0) {
+          void import("../model/answers-sync").then(({ syncAnswersReducer }) => {
+            historyRef.current.dispatch(syncAnswersReducer, regenerated);
+          });
+        }
         return reducers.proposalSlideIds(current, incoming);
       },
       receiveGenerated: (base, theirs) => {

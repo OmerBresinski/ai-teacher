@@ -1,5 +1,6 @@
 import type {
   FactQuestion,
+  Lesson,
   LessonFacts,
   Misconception,
   OutlineEntry,
@@ -20,9 +21,11 @@ import {
   SAFE_BOTTOM,
   type SlideSpec,
   SPACE,
+  syncAnswers,
   THEMES,
   textPartsOf,
 } from "@tj/slides";
+import { renumberSlideRefs } from "../writer/table-pack";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -288,7 +291,8 @@ export function codedSetSpec(
   seed: string,
 ): { spec: SlideSpec; answers: string[]; questionRefs: string[]; quiz: QuizLine[] } | undefined {
   const coded = CODED[entry.kind];
-  if (!coded) return undefined;
+  // An answers slide's entry (ruling 200) copies its check's kind and refs; it is not a set.
+  if (!coded || entry.answersTo) return undefined;
   const questions = new Map(facts.questions.map((q) => [q.id, q]));
   const misconceptions = new Map((facts.misconceptions ?? []).map((m) => [m.id, m]));
   const lines: Line[] = [];
@@ -490,4 +494,34 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
       return e;
     }),
   };
+}
+
+/**
+ * The finished lesson with every answers slide where it belongs (prod-17, UX ruling 200;
+ * `syncAnswers`, `@tj/slides`). The objectives-first lesson has no deck layer apart from what it
+ * stores, unlike the writer's `deck()`. Slide numbers said in words move with the slides they
+ * name. A second run changes nothing.
+ */
+export function withAnswersSlides<L extends Pick<Lesson, "themeId" | "slides" | "facts">>(
+  lesson: L,
+  ids?: () => string,
+  regenerated?: ReadonlySet<string>,
+): L {
+  const out = syncAnswers(lesson, getTheme(lesson.themeId), ids, regenerated);
+  if (out === lesson) return lesson;
+  const now = new Map(out.slides.map((s, k) => [s.id, k + 1]));
+  const at = new Map<number, number>();
+  lesson.slides.forEach((s, k) => {
+    const to = now.get(s.id);
+    if (to !== undefined) at.set(k + 1, to);
+  });
+  return { ...out, slides: renumberSlideRefs(out.slides, at) };
+}
+
+/**
+ * Entry `i`'s position in the plan as Generate numbered it: answers entries (ruling 200), added
+ * after Generate, do not count, so a coded set's seed stays the one it was printed with.
+ */
+export function planIndexOf(outline: readonly OutlineEntry[], i: number): number {
+  return outline.slice(0, i).filter((e) => !e.answersTo).length;
 }

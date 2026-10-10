@@ -240,6 +240,8 @@ export type OutlineEntry = {
   phase?: LessonPhase;
   /** The labelled box the slide carries, and the fact it is filled from; absent on most slides. */
   callout?: OutlineCallout;
+  /** An answers slide's entry (UX ruling 200): the id of the check whose answers it shows. */
+  answersTo?: FactId;
 };
 
 export type OutlineBrief = { adds: string; avoids?: string };
@@ -364,6 +366,11 @@ export const OutlineEntrySchema = z.strictObject({
   callout: z
     .strictObject({ kind: z.enum(CALLOUT_KINDS), factRefs: z.array(FactIdSchema).min(1) })
     .optional(),
+  /**
+   * An answers slide's entry (UX ruling 200): the id of the check whose answers it shows. It is
+   * part of that check, not a slide of its own in coverage or the explanation share.
+   */
+  answersTo: FactIdSchema.optional(),
 });
 
 /** The arrays whose ids `factRefs` may point at. Outline entries are structure, not facts. */
