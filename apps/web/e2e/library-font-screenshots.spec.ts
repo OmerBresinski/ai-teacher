@@ -65,3 +65,40 @@ test("shoots each library model in the editor and the PowerPoint export", async 
     await page.keyboard.press("Escape");
   }
 });
+
+/**
+ * `LIB_SWITCH=<lesson.json>` `LIB_SWITCH_TO=<theme name>`: a drawing made in one theme, after the
+ * teacher switches theme. It keeps the face it was measured in, so nothing overflows.
+ */
+test("a library model after a theme switch keeps the face it was measured in", async ({
+  signedInPage: { page },
+}) => {
+  const file = process.env.LIB_SWITCH ?? "";
+  test.skip(!file, "LIB_SWITCH not set");
+  const to = process.env.LIB_SWITCH_TO ?? "Exam Hall";
+  const dir = path.join(OUT, "theme-switch");
+  mkdirSync(dir, { recursive: true });
+  await page.addInitScript(() => localStorage.setItem("tj-theme", "light"));
+  const body = JSON.parse(readFileSync(file, "utf8")) as Lesson;
+  const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
+    headers: { origin: E2E_WEB_URL },
+    data: { documents: [{ key: "lib", kind: "lesson", body }] },
+  });
+  expect(res.ok()).toBe(true);
+  const { ids } = (await res.json()) as { ids: Record<string, string> };
+  await page.goto(`/l/${ids.lib}`);
+  await page.getByRole("button", { name: "Theme" }).click();
+  const dialog = page.getByRole("dialog", { name: "Theme" });
+  await dialog.getByRole("radio", { name: to }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  const rows = page.getByRole("listbox", { name: "Slides" }).getByRole("option");
+  for (let n = 1; n <= body.slides.length; n++) {
+    await rows.nth(n - 1).click();
+    const diagram = page.locator('[data-slide-frame] img[src^="data:image/svg"]').first();
+    await expect(diagram).toBeVisible();
+    await page.waitForTimeout(900);
+    const id = body.slides[n - 1]?.id ?? String(n);
+    await page.screenshot({ path: path.join(dir, `${id}-editor.png`) });
+    await diagram.screenshot({ path: path.join(dir, `${id}-editor-diagram.png`) });
+  }
+});

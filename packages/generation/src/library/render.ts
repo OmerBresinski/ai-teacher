@@ -13,7 +13,7 @@
  */
 
 import { REVEAL_HIDDEN } from "@tj/slides/diagram-builds";
-import { svgFontFamily, textWidth } from "@tj/slides/diagrams";
+import { hasAdvances, svgFontFamily, textWidth } from "@tj/slides/diagrams";
 import { FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { type Element, Window } from "happy-dom";
 import { MODEL_LOADERS } from "./models";
@@ -67,9 +67,14 @@ export const SVG_CSS = `${(TOKENS as string)
   .replace(/\s+/g, " ")
   .trim()}`;
 
-/** The face a drawing is measured in and names: a theme's body stack's key, Lexend without one. */
+/**
+ * The face a drawing is measured in and names: a theme's body stack's key when that face has
+ * measured advance widths, else Lexend (an unknown stack, or a face such as Geist with no table,
+ * would otherwise be measured at a guessed 0.62 em while drawn in its real widths).
+ */
 export function fontKeyOf(stack?: string): FontKey {
-  for (const [k, v] of Object.entries(FONT_STACKS)) if (v === stack) return k as FontKey;
+  for (const [k, v] of Object.entries(FONT_STACKS))
+    if (v === stack && hasAdvances(v)) return k as FontKey;
   return "lexend";
 }
 /**

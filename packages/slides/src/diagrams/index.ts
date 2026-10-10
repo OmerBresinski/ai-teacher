@@ -107,7 +107,7 @@ export const DRAW_INSET = 4;
 export const DIAGRAM_DRAWN_NAME = "Diagram";
 export { titleAddsInformation, withoutEchoTitle } from "./echo-title";
 /** A theme font stack as the family an SVG names (the `var(--font-*)` part resolved). */
-export { family as svgFontFamily } from "./svg";
+export { family as svgFontFamily, hasAdvances } from "./svg";
 
 /**
  * `spec` in the form the drawer parses. Round 8: a spec in its meaning form (meaning.ts) is drawn

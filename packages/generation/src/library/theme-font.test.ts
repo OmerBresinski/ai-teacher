@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { textWidth } from "@tj/slides/diagrams";
+import { svgFontFamily, textWidth } from "@tj/slides/diagrams";
 import { FONT_STACKS } from "@tj/slides/fonts";
-import { getTheme } from "@tj/slides/themes";
-import { inspectDrawnSvg, kit, loadModel, renderLibraryModel } from "./render";
+import { getTheme, THEMES } from "@tj/slides/themes";
+import {
+  faceWidth,
+  fontKeyOf,
+  inspectDrawnSvg,
+  kit,
+  loadModel,
+  renderLibraryModel,
+} from "./render";
 
 /*
  * TEACH-247 part o: a library model draws in the lesson theme's label face (its body font), measured
@@ -64,4 +71,34 @@ describe("theme font", () => {
     );
     expect(inspectDrawnSvg(old).words).toEqual(inspectDrawnSvg(d.svg).words);
   });
+
+  test("a stack with no advance table (Geist) or an unknown stack is measured and named as Lexend", () => {
+    expect(fontKeyOf(FONT_STACKS.geist)).toBe("lexend");
+    expect(fontKeyOf("'Comic Neue', cursive")).toBe("lexend");
+    expect(fontKeyOf(undefined)).toBe("lexend");
+  });
+
+  const cases: [string, string][] = [
+    ...THEMES.map((t) => [t.id, t.fonts.body] as [string, string]),
+    ["unknown stack", "'Comic Neue', cursive"],
+    ["geist (no table)", FONT_STACKS.geist],
+  ];
+  for (const [name, stack] of cases)
+    test(`${name}: names its face, records it, and reads back at that face's widths`, async () => {
+      const key = fontKeyOf(stack);
+      const d = await renderLibraryModel("number_line", await preset("number_line"), {
+        font: stack,
+      });
+      expect(d.svg).not.toContain("@font-face");
+      expect(d.svg).toContain(`.slide text{font-family:${svgFontFamily(FONT_STACKS[key])}}`);
+      if (key === "lexend") expect(d.svg).not.toContain("data-font=");
+      else expect(d.svg).toContain(`data-font="${key}"`);
+      const words = inspectDrawnSvg(d.svg).words.filter((w) => /^\d{2}$/.test(w.words));
+      expect(words.length).toBeGreaterThan(0);
+      for (const w of words) {
+        const width = w.x1 - w.x0;
+        expect(width).toBeGreaterThanOrEqual(faceWidth(w.words, w.fs, 400, key) - 1);
+        expect(width).toBeLessThanOrEqual(faceWidth(w.words, w.fs, 700, key) * 1.05 + 2);
+      }
+    });
 });
