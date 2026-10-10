@@ -45,6 +45,7 @@ import {
   continueForFit,
   pictureFallbackOk,
   tableRows,
+  tilesAsPictures,
 } from "./fallbacks";
 import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
 import {
@@ -99,6 +100,7 @@ import {
   modelPoints,
   type Plan,
   questionsOf,
+  tileDiagramKeys,
   type VisualAsk,
   type VisualState,
   visualsOf,
@@ -233,6 +235,11 @@ export type WriterRun = {
    * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
    */
   activities?: boolean;
+  /**
+   * Tile visuals (TEACH-75 part d): compare cards and sequence stages may be drawn, and a hinge
+   * takes a figure. Absent: `TILE_VISUALS_DEFAULT` (off, master's schema byte for byte).
+   */
+  tileVisuals?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -474,7 +481,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       : [];
   const activities = run.activities ?? ACTIVITIES_DEFAULT;
   const libbed = libSchema(
-    writerSchema(stageKey, brief.slides, P, { objectives: run.objectives.length }),
+    writerSchema(stageKey, brief.slides, P, {
+      objectives: run.objectives.length,
+      ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
+    }),
     models.map((m) => m.id),
   );
   const schema = activities ? withActivities(libbed, stageKey) : libbed;
@@ -1518,7 +1528,53 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
     return "strip";
   };
+  /**
+   * Tile diagrams (TEACH-75 part d): each was drawn with the same drawer and retries as any
+   * diagram. A tile that still could not be shown (failed, or drawn but too big for its tile)
+   * becomes a picture of the same thing; when those pictures do not all land, the slide takes its
+   * words-only form (text cards, numbered steps). Never an empty tile. True when it decided.
+   */
+  const tileFallback = async (i: number, fo: { noPicture?: boolean }): Promise<boolean> => {
+    const s = plan.slides[i] as S;
+    const tiles = tileDiagramKeys(s);
+    if (!tiles.length) return false;
+    const st = tiles.map((k) => visualState(i)(k).status);
+    if (st.includes("pending")) return true;
+    const laidLost = new Set(laid.get(i)?.lost ?? []);
+    const lost = tiles.filter((k, n) => st[n] === "failed" || laidLost.has(k));
+    if (!lost.length) {
+      path.set(i, "diagram");
+      return true;
+    }
+    const pic = fo.noPicture ? undefined : tilesAsPictures(s, lost);
+    if (pic) {
+      const n0 = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, pic);
+      const now = plan.slides[i] as S;
+      await run.placeMore?.(
+        i,
+        (asks.get(i) ?? []).filter((a) => a.type === "photo" && lost.includes(a.key)),
+        { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+      );
+      if (lost.every((k) => visualState(i)(k).status === "photo")) {
+        relay(i);
+        log({ ev: "tile-pictures", slide: i + 1, keys: lost });
+        path.set(i, "picture");
+        return true;
+      }
+      restore(i, s, n0, oldAsks);
+    }
+    // The lost tiles are failed: materialise lays the cards as text, the stages as steps.
+    for (const k of lost) override.set(`${i}:${k}`, { status: "failed" });
+    relay(i);
+    log({ ev: "tile-unshown", slide: i + 1, keys: lost });
+    path.set(i, "unshown");
+    unpoint(i);
+    return true;
+  };
   const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
+    if (!path.has(i) && (await tileFallback(i, fo))) return;
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
       | undefined;

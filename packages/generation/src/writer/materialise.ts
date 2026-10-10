@@ -90,6 +90,8 @@ export type Materialised = {
   diagram?: string[];
   /** The faults of a diagram that shipped with warnings because no room drew it cleanly. */
   diagramWarnings?: string[];
+  /** Tile visuals (`col.n`, `seq.n`) whose diagram the layout could not show: failed, never empty. */
+  lost?: string[];
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -169,13 +171,31 @@ export function studyFigure(f: Figure | undefined): boolean {
 /** A slide that teaches (teach or worked), not one that asks pupils. */
 const teaches = (s: S) => !asks(slideRole(s, { index: 0 }));
 
+/**
+ * A sequence stage's visual (TEACH-75 part d): the stage itself is a picture (`{shows, must_see,
+ * subject, caption}`, every older output) or carries a diagram (`{caption, diagram}`).
+ */
+const seqFigure = (x: unknown): Pic | Dia | undefined => {
+  if (isPic(x)) return x;
+  const d = (x as S | null)?.diagram;
+  return isDia(d) ? d : undefined;
+};
+/** The keys of a slide's tile diagrams (compare columns, sequence stages). */
+export const tileDiagramKeys = (raw: S | undefined): string[] =>
+  !raw || typeof raw !== "object"
+    ? []
+    : figures(normalise(raw))
+        .filter(({ key, f }) => /^(col|seq)\./.test(key) && isDia(f))
+        .map(({ key }) => key);
+
 /** The pictures and diagrams a slide holds, with stable keys. */
 function figures(s: S): { key: string; f: Pic | Dia }[] {
   const out: { key: string; f: Pic | Dia }[] = [];
   for (const k of ["picture", "diagram", "figure"])
     if (isPic(s[k]) || isDia(s[k])) out.push({ key: k, f: s[k] as Pic | Dia });
   (Array.isArray(s.sequence) ? s.sequence : []).forEach((x, n) => {
-    if (isPic(x)) out.push({ key: `seq.${n}`, f: x });
+    const f = seqFigure(x);
+    if (f) out.push({ key: `seq.${n}`, f });
   });
   // lostPic (BAKEOFF base4f): a lost compound picture asked again one subject each; the first in
   // the slot, the rest as tiles 1...
@@ -184,7 +204,7 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
   });
   (Array.isArray(s.columns) ? s.columns : []).forEach((c, n) => {
     const p = (c as S)?.picture;
-    if (isPic(p)) out.push({ key: `col.${n}`, f: p });
+    if (isPic(p) || isDia(p)) out.push({ key: `col.${n}`, f: p });
   });
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
@@ -300,16 +320,23 @@ export function resolveAsks(raw: S, placed: (key: string) => boolean): S {
     if (!l) continue;
     if (["question-set", "practice", "exit-ticket"].includes(tpl))
       s.instruction = joined(l, line(s.instruction));
+    else if (tpl === "hinge") s.stem = joined(l, line(s.stem));
     else s.lead = joined(line(s.lead), l);
   }
-  if (Array.isArray(s.columns))
-    s.columns = (s.columns as S[]).map((c, n) => {
+  if (Array.isArray(s.columns)) {
+    // Every card shows its visual or none does (toInput): one missing makes every ask stand alone.
+    const cols = s.columns as S[];
+    const all = cols.every(
+      (c, n) => !(isPic(c?.picture) || isDia(c?.picture)) || placed(`col.${n}`),
+    );
+    s.columns = cols.map((c) => {
       const p = c?.picture as S | undefined;
       if (!p || typeof p !== "object" || !("ask" in p || "ask_without" in p)) return c;
       const { ask, ask_without, ...rest } = p;
-      const l = placed(`col.${n}`) ? line(ask) : line(ask_without);
+      const l = all ? line(ask) : line(ask_without);
       return { ...c, picture: rest, ...(l ? { text: joined(line(c.text), l) } : {}) };
     });
+  }
   if (tpl === "picture-sequence" && ("ask" in s || "ask_without" in s)) {
     const seq = Array.isArray(s.sequence) ? s.sequence : [];
     const all = seq.length > 0 && seq.every((_, n) => placed(`seq.${n}`));
@@ -397,8 +424,15 @@ export function toInput(
     }
     case "picture-sequence": {
       const seq = (Array.isArray(s.sequence) ? s.sequence : []) as (Pic & { caption?: string })[];
-      // A sequence with a picture that could not be made: the stages become numbered steps.
-      if (seq.some((_, n) => ctx.visual(`seq.${n}`).status === "failed"))
+      // A sequence with a picture or diagram that could not be made: the stages become numbered
+      // steps, never an empty panel.
+      if (
+        seq.some(
+          (x, n) =>
+            seqFigure(x) &&
+            (ctx.visual(`seq.${n}`).status === "failed" || missing?.has(`seq.${n}`)),
+        )
+      )
         return lead
           ? { template: "explain", heading, lead, points: seq.map((x) => str(x.caption)) }
           : { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
@@ -408,23 +442,30 @@ export function toInput(
         ...(lead ? { lead } : {}),
         sequence: seq.map((x, n) => ({
           caption: str(x.caption),
-          figure: figureNow(`seq.${n}`, x, ctx, mark),
+          figure: (() => {
+            const f = seqFigure(x);
+            return f ? figureNow(`seq.${n}`, f, ctx, mark) : undefined;
+          })(),
         })),
       };
     }
     case "compare": {
       const cols = (Array.isArray(s.columns) ? s.columns : []) as S[];
       // One column's picture missing leaves a hole: every column goes without when any failed.
+      // A diagram tile (TEACH-75 part d) goes the same way: drawn, pending, or failed.
+      const vis = (c: S) => isPic(c.picture) || isDia(c.picture);
       const anyFailed = cols.some(
-        (c, n) => isPic(c.picture) && ctx.visual(`col.${n}`).status === "failed",
+        (c, n) =>
+          vis(c) && (ctx.visual(`col.${n}`).status === "failed" || missing?.has(`col.${n}`)),
       );
       return {
         template,
         heading,
-        ...(lead && !cols.some((c) => isPic(c.picture)) ? { lead } : {}),
+        ...(lead && !cols.some(vis) ? { lead } : {}),
         columns: cols.map((c, n) => {
           const p = c.picture;
-          const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
+          const f =
+            (isPic(p) || isDia(p)) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
           return { label: str(c.label), text: str(c.text), ...(f ? { figure: f } : {}) };
         }),
       };
@@ -460,6 +501,8 @@ export function toInput(
         options: strs(s.options),
         ...(s.correct !== undefined ? { correct: Number(s.correct) } : {}),
         ...(s.explanation ? { explanation: str(s.explanation) } : {}),
+        // TEACH-75 part d: the figure the question is about, beside the options.
+        ...(fig("figure") ? { figure: fig("figure") } : {}),
       };
     case "pair":
     case "group-sort":
@@ -650,12 +693,16 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     const warned = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage, { diagramWarnings: true });
     if (!warned.diagram?.length && warned.diagramWarnings?.length) r = warned;
   }
+  // A tile whose diagram the layout could not show (TEACH-75 part d), by its key.
+  const pre = str(normalise(s).template) === "compare" ? "col" : "seq";
+  const lost = (r.lost ?? []).map((n) => `${pre}.${n}`);
   // A diagram the layout dropped is missing: the slide is laid out again with its `ask_without` lines.
   if (r.diagram?.length) {
     const why = r.diagram;
-    const missing = new Set(
-      ["picture", "diagram", "figure"].filter((k) => ctx.visual(k).status === "diagram"),
-    );
+    const missing = new Set([
+      ...["picture", "diagram", "figure"].filter((k) => ctx.visual(k).status === "diagram"),
+      ...lost,
+    ]);
     r = { ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage), diagram: why };
   }
   const slide = { ...r.slide, kind: kindByRole(s, ctx, r.slide.kind) };
@@ -664,6 +711,7 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     over: r.over,
     ...(r.diagram ? { diagram: r.diagram } : {}),
     ...(r.diagramWarnings ? { diagramWarnings: r.diagramWarnings } : {}),
+    ...(lost.length ? { lost } : {}),
   });
 }
 

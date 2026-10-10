@@ -191,6 +191,11 @@ export type TemplateResult = {
    * visual is never lost to a crowded label, it ships with its faults logged.
    */
   diagramWarnings?: string[];
+  /**
+   * Compare columns or sequence panels (0-based) whose diagram could not be shown in its tile.
+   * The caller treats each as a failed visual: never an empty tile (TEACH-75 part d).
+   */
+  lost?: number[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -206,6 +211,8 @@ export type Ctx = {
   over: string[];
   els: SlideElement[];
   fails?: string[];
+  /** Tiles (compare columns, sequence panels) whose diagram did not draw; see `TemplateResult.lost`. */
+  lost?: number[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
@@ -668,6 +675,9 @@ function figurePanel(
     w: G.panel.w,
     h: G.band.h,
   },
+  /** Frameless (TEACH-75 part d review): a diagram in a compare card fills the card's visual
+   * area like a photo, with no wash panel or inset of its own inside the card's border. */
+  bare = false,
 ): boolean {
   if (!f) return false;
   if ("photo" in f && f.tiles?.length)
@@ -675,8 +685,9 @@ function figurePanel(
   if ("drawn" in f) {
     if (!svgDrawsSomething(f.drawn.src)) return false;
     // A library model's own cream canvas is its panel: a wash and inset round it doubled the margin.
-    if (!f.drawn.bare) box(c, rect, wash(c.t));
-    const i = f.drawn.bare ? 0 : G.inset;
+    const noFrame = bare || f.drawn.bare;
+    if (!noFrame) box(c, rect, wash(c.t));
+    const i = noFrame ? 0 : G.inset;
     const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
     const a = f.drawn.aspect || inner.w / inner.h;
     const w = Math.min(inner.w, Math.round(inner.h * a));
@@ -719,7 +730,7 @@ function figurePanel(
   // A diagram the drawer (or the spec call) reports as failed, or one that draws nothing but its
   // title, is no diagram: the caller lays the slide out without the panel (no empty panels ever).
   if (diagramFailed(f.diagram)) return false;
-  const i = G.inset;
+  const i = bare ? 0 : G.inset;
   const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
   // drawDiagram (round 1, DIAGRAMS.md) tries the spec, then each simpler form, from the stage's
   // small size down to its floor, and answers ok only for a drawing with no readability fault.
@@ -740,7 +751,7 @@ function figurePanel(
   };
   const d = draw();
   if (!d || !elementDrawsSomething(d.el)) return false;
-  box(c, rect, wash(c.t));
+  if (!bare) box(c, rect, wash(c.t));
   if (d.note) c.over.push(d.note);
   c.els.push(d.el);
   return true;
@@ -781,10 +792,11 @@ function figureDraws(
   f: Figure | undefined,
   rect?: Parameters<typeof figurePanel>[2],
   fails?: string[],
+  bare = false,
 ) {
   if (!f) return false;
   if ("photo" in f) return true;
-  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect);
+  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect, bare);
 }
 
 /** A column of blocks, centred on the band (or top-aligned at `top`), each measured first. */
@@ -1329,14 +1341,22 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
           ? { ...rest, template: "explain", lead: input.lead ?? "" }
           : rest;
   }
-  if (
-    out.columns?.some(
-      (col) => col.figure && !("photo" in col.figure) && !figureDraws(c, col.figure),
-    )
-  )
+  // A tile diagram that cannot draw even in the side panel is lost (TEACH-75 part d): reported by
+  // its index so the caller retries it as a picture, never dropped silently.
+  const undrawn = (xs: { figure?: Figure }[] | undefined) =>
+    (xs ?? []).flatMap((x, k) =>
+      x.figure && !("photo" in x.figure) && !figureDraws(c, x.figure) ? [k] : [],
+    );
+  const lostCols = undrawn(out.columns);
+  if (lostCols.length && out.columns) {
+    c.lost = lostCols;
     out = { ...out, columns: out.columns.map(({ figure: _, ...col }) => col) };
-  if (out.sequence?.some((x) => x.figure && !("photo" in x.figure) && !figureDraws(c, x.figure)))
+  }
+  const lostSeq = undrawn(out.sequence);
+  if (lostSeq.length && out.sequence) {
+    c.lost = lostSeq;
     out = { template: "steps", heading: out.heading, points: out.sequence.map((x) => x.caption) };
+  }
   return out;
 }
 
@@ -1686,40 +1706,63 @@ function layoutOnce(
           words = wordsH();
         }
         const picH = Math.min(full, bottom - top - 2 * pad - 8 - words);
-        if (picH < Math.floor(full * 0.96))
+        // The 4:3 band is a photo's crop; a drawing scales to whatever band it is given.
+        const photos = cols.some((col) => col.figure && "photo" in col.figure);
+        if (photos && picH < Math.floor(full * 0.96))
           c.over.push(`compare picture ${picH}/${full}pt (under 4:3)`);
         const bh = Math.max(picH, 60);
         const h = bh + 2 * pad + 8 + words;
         const y = Math.max(top, Math.round((top + bottom) / 2 - h / 2));
-        cols.forEach((col, k) => {
-          const x = G.margin + k * (colW + gap);
-          box(c, { x, y, w: colW, h }, c.t.colors.surface, {
-            stroke: c.t.colors.line,
-            strokeWidth: 1,
-            radius: Math.min(c.t.radius, 16),
-          });
-          const band = { x: x + pad, y: y + pad, w: iw, h: bh };
-          if (col.figure && "photo" in col.figure)
-            photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
-          else if (col.figure) figurePanel(c, col.figure, band);
-          const lab = text(
-            c,
-            col.label,
-            "lead",
-            { x: x + pad, y: band.y + band.h + 8, w: iw },
-            { color: c.t.colors.accent, weight: 700, name: "Label" },
-          );
-          if (col.text)
-            text(
-              c,
-              col.text,
-              "body",
-              { x: x + pad, y: lab.y + lab.h + 4, w: iw },
-              { color: c.t.colors.ink, name: "Text" },
-            );
+        // A diagram tile (TEACH-75 part d) is tried in its own band first: one that cannot draw
+        // there is lost, and every card goes without (text cards below), never an empty band.
+        const bandAt = (k: number) => ({
+          x: G.margin + k * (colW + gap) + pad,
+          y: y + pad,
+          w: iw,
+          h: bh,
         });
-        c.s = s0;
-        break;
+        const lost = cols.flatMap((col, k) =>
+          col.figure &&
+          !("photo" in col.figure) &&
+          !figureDraws(c, col.figure, bandAt(k), c.fails, true)
+            ? [k]
+            : [],
+        );
+        if (lost.length) {
+          c.lost = lost;
+          c.s = s0;
+        }
+        if (!lost.length) {
+          cols.forEach((col, k) => {
+            const x = G.margin + k * (colW + gap);
+            box(c, { x, y, w: colW, h }, c.t.colors.surface, {
+              stroke: c.t.colors.line,
+              strokeWidth: 1,
+              radius: Math.min(c.t.radius, 16),
+            });
+            const band = { x: x + pad, y: y + pad, w: iw, h: bh };
+            if (col.figure && "photo" in col.figure)
+              photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
+            else if (col.figure) figurePanel(c, col.figure, band, true);
+            const lab = text(
+              c,
+              col.label,
+              "lead",
+              { x: x + pad, y: band.y + band.h + 8, w: iw },
+              { color: c.t.colors.accent, weight: 700, name: "Label" },
+            );
+            if (col.text)
+              text(
+                c,
+                col.text,
+                "body",
+                { x: x + pad, y: lab.y + lab.h + 4, w: iw },
+                { color: c.t.colors.ink, name: "Text" },
+              );
+          });
+          c.s = s0;
+          break;
+        }
       }
       // Round 6: an optional lead over text cards (a table's rows as cards keep their lead).
       const leadH = input.lead ? measure(c, input.lead, "lead", G.width) + 16 : 0;
@@ -1815,6 +1858,30 @@ function layoutOnce(
       const picH = Math.min(Math.round(w * 0.9), G.band.h - capH - 14);
       const total = picH + 14 + capH;
       const y = Math.max(G.band.y, Math.round(bandMid - total / 2));
+      // A diagram panel (TEACH-75 part d) that cannot draw in its box is lost: the caller lays the
+      // stages out as steps; it is never left as an empty panel.
+      const lostSeq = seq.flatMap((s, k) =>
+        s.figure &&
+        !("photo" in s.figure) &&
+        !figureDraws(c, s.figure, { x: G.margin + k * (w + arrowW), y, w, h: picH }, c.fails)
+          ? [k]
+          : [],
+      );
+      if (lostSeq.length) {
+        // Laid as numbered steps (as the caller would), never with an empty panel.
+        const steps = layoutOnce(
+          { template: "steps", heading: input.heading, points: seq.map((x) => x.caption) },
+          theme,
+          stage,
+          opts,
+          headingCap,
+        );
+        const why = [...new Set([...(c.fails ?? []), ...(steps.result.diagram ?? [])])];
+        return {
+          ...steps,
+          result: { ...steps.result, lost: lostSeq, ...(why.length ? { diagram: why } : {}) },
+        };
+      }
       seq.forEach((s, k) => {
         const x = G.margin + k * (w + arrowW);
         if (s.figure && "photo" in s.figure)
@@ -1866,6 +1933,11 @@ function layoutOnce(
       heading(c, input.heading);
       const opts = input.options ?? [];
       const stem = input.stem;
+      // A hinge about a figure (TEACH-75 part d: y2 asked about a square pupils could not see):
+      // the stem and options sit in the left column and the figure in the panel beside them.
+      const hasFig = figureDraws(c, input.figure, undefined, c.fails);
+      const X = hasFig ? G.left.x : G.margin;
+      let W: number = hasFig ? G.left.w : G.width;
       // Round 2 (y11 s11 ran to the foot): the hinge is on the fit ladder. Full size first, then
       // closer gaps and padding, then body (stem and options) one step down; flagged only past that.
       const full = c.s;
@@ -1876,43 +1948,62 @@ function layoutOnce(
       // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
       // else one column (fit2: three options as 2 + 1 left a gap).
       const grid = (perRow: number) => {
-        const w = Math.floor((G.width - gap * (perRow - 1)) / perRow);
+        const w = Math.floor((W - gap * (perRow - 1)) / perRow);
         const iw = w - 2 * pad - d - 14;
         const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
         const rows = Math.ceil(opts.length / perRow);
         return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
       };
       let g = grid(1);
-      for (const [k, r] of RUNGS.entries()) {
-        c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
-        gap = Math.round(18 * r.space);
-        pad = Math.max(10, Math.round(20 * r.space));
-        d = markerDisc(c);
-        sH = stem ? measure(c, stem, "lead", G.width) + Math.round(22 * r.space) : 0;
-        g = grid(opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
-        if (opts.length === 3) {
-          const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
-          if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
-          // Three options in one column that do not fit may fit as a row of three.
-          if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
+      const ladder = () => {
+        for (const [k, r] of RUNGS.entries()) {
+          c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+          gap = Math.round(18 * r.space);
+          pad = Math.max(10, Math.round(20 * r.space));
+          d = markerDisc(c);
+          sH = stem ? measure(c, stem, "lead", W) + Math.round(22 * r.space) : 0;
+          g = grid(hasFig ? 1 : opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
+          // Beside a figure the options stack; four that do not fit stack as 2x2.
+          if (hasFig && g.total > G.band.h && opts.length >= 3 && grid(2).total < g.total)
+            g = grid(2);
+          if (opts.length === 3 && !hasFig) {
+            const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
+            if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
+            // Three options in one column that do not fit may fit as a row of three.
+            if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
+          }
+          if (g.total <= G.band.h || k === RUNGS.length - 1) break;
         }
-        if (g.total <= G.band.h || k === RUNGS.length - 1) break;
+      };
+      ladder();
+      // Options that do not fit beside the figure at the last rung take a wider column and the
+      // figure a narrower panel, when it still draws there (KS1's large type on chalk, crayon).
+      let figRect: { x: number; y: number; w: number; h: number } = {
+        x: G.panel.x,
+        y: G.band.y,
+        w: G.panel.w,
+        h: G.band.h,
+      };
+      const narrow = { x: G.left.x + 544, y: G.band.y, w: G.right - G.left.x - 544, h: G.band.h };
+      if (hasFig && g.total > G.band.h && figureDraws(c, input.figure, narrow)) {
+        const was = { W, g, s: c.s, gap, pad, d, sH };
+        W = 520;
+        ladder();
+        if (g.total < was.g.total) figRect = narrow;
+        else {
+          ({ W, g, gap, pad, d, sH } = was);
+          c.s = was.s;
+        }
       }
       if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
       let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
       if (stem) {
-        text(
-          c,
-          stem,
-          "lead",
-          { x: G.margin, y, w: G.width },
-          { color: c.t.colors.ink, name: "Stem" },
-        );
+        text(c, stem, "lead", { x: X, y, w: W }, { color: c.t.colors.ink, name: "Stem" });
         y += sH;
       }
       const optionIds: string[] = [];
       opts.forEach((o, k) => {
-        const x = G.margin + (k % g.perRow) * (g.w + gap);
+        const x = X + (k % g.perRow) * (g.w + gap);
         const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
         const card = box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
           stroke: c.t.colors.line,
@@ -1932,6 +2023,7 @@ function layoutOnce(
         );
       });
       c.s = full;
+      if (hasFig) figurePanel(c, input.figure, figRect);
       // The answer is question data on the option cards, so present hides it until the reveal.
       const right = Number(input.correct);
       if (Number.isInteger(right) && right >= 1 && right <= optionIds.length)
@@ -2005,6 +2097,7 @@ function layoutOnce(
     },
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
+    ...(c.lost?.length ? { lost: c.lost } : {}),
   };
   const warned = [...new Set(c.els.flatMap((e) => WARNED.get(e) ?? []))];
   if (warned.length) result.diagramWarnings = warned;
