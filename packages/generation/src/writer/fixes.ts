@@ -1,5 +1,6 @@
 import { writerBundle } from "./bundle";
 import fitData from "./fit-table.gen.json" with { type: "json" };
+import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
@@ -190,8 +191,37 @@ type FitGroup = {
   formulaBesideFigure: number;
   layouts: Record<string, { fields: string[]; variants: FitVariant[] }>;
 };
-export const fitTable = (): Record<string, FitGroup> =>
-  (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
+/**
+ * The measured fit per stage group. With `hingeCards` (HEART1 R3 s6, TEACH-110 part r) the hinge
+ * rows are what the cards hold at full size (`hinge-cards.gen.json`, 2 to 4 options) instead of
+ * the lab's caps, which let an option shrink and wrap to 4 lines in a 3-across card. Opt-in per
+ * writer bundle, so a bundle that does not ask keeps the lab's numbers.
+ */
+export const fitTable = (o: { hingeCards?: boolean } = {}): Record<string, FitGroup> => {
+  const groups = (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
+  if (!o.hingeCards) return groups;
+  const cards = (hingeData as { groups: Record<string, HingeCards> }).groups;
+  return Object.fromEntries(
+    Object.entries(groups).map(([g, f]) => {
+      const c = cards[g];
+      if (!c || !f.layouts.hinge) return [g, f];
+      const variants = Object.entries(c.options).map(([k, item]): FitVariant => {
+        const n = Number(k);
+        return {
+          label: `${n} options`,
+          counts: { options: n },
+          figure: false,
+          keyCards: false,
+          chars: item,
+          stem: c.stem,
+          limit: { item, total: c.stem + n * item },
+        };
+      });
+      return [g, { ...f, layouts: { ...f.layouts, hinge: { ...f.layouts.hinge, variants } } }];
+    }),
+  );
+};
+type HingeCards = { stem: number; options: Record<string, number> };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
