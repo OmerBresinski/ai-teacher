@@ -25,7 +25,7 @@ describe("ObjectivesStep slide tier", () => {
     expect(SLIDE_TIER_OPTIONS.map((o) => o.label)).toEqual([
       "Quick, 6–8 slides",
       "Standard, 9–12 slides",
-      "Detailed, 13–20 slides",
+      "Detailed, 13–16 slides",
     ]);
   });
 });

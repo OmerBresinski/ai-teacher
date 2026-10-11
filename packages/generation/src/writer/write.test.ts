@@ -163,6 +163,7 @@ describe("K3 in the stage", () => {
   test("the token cap scales with the slide range; Standard keeps the pinned 9,000", () => {
     expect(writerMaxTokens(8)).toBe(WRITER_MAX_TOKENS);
     expect(writerMaxTokens(12)).toBe(WRITER_MAX_TOKENS);
+    expect(writerMaxTokens(16)).toBe(11832);
     expect(writerMaxTokens(20)).toBe(14790);
   });
   test("the writer route needs the version's slash", () => {

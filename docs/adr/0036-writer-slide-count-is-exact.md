@@ -59,3 +59,5 @@ Evidence for what the count counts:
   ruling for the UX Improvements project, not decided here.
 - `objectiveCount` (one or two / two or three / three or four objectives) now reads the exact
   count, which is the same tier for 6, 8, 10 and 12.
+
+> Amended 2026-10-11 (ruling 204, TEACH-110 part o): Detailed is 13–16, and §1's clamp is now 6–16, read from `SLIDE_TIER_RANGES` (Quick's minimum, Detailed's maximum).
