@@ -1,8 +1,9 @@
-import type { RichDoc, RichNode, TextPreset, Theme } from "@tj/domain/documents";
+import type { RichDoc, RichNode, TextPreset, TextStyle, Theme } from "@tj/domain/documents";
 import { ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
-import { type ResolvedText, resolveTextStyle } from "./text-style";
+import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
+import { fontFloor } from "./themes";
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before
@@ -218,4 +219,46 @@ function upperDoc(doc: RichDoc): RichDoc {
       ? { ...node, text: (node.text ?? "").toUpperCase() }
       : { ...node, content: node.content?.map(up) };
   return { ...doc, content: doc.content?.map(up) };
+}
+
+/**
+ * Width a fitted box keeps spare. Measured in Chromium (Studio, 51pt): the ruler set "system today"
+ * on one 300pt line that the browser broke, so a fit is measured 6% narrower than the box.
+ */
+const FIT_CUSHION = 0.94;
+
+/**
+ * The size a fixed-height text box is drawn at so its words stay inside it, or `undefined` when
+ * they already fit at the stored size. A box the generator sized exactly to its words (the title
+ * slide's title stands on the foot of its box, `templates/index.ts`) has no room for one more line,
+ * so a teacher's edit that adds a word ran out of the top of the box and the first line was cut off
+ * (TEACH-75 part n). The type steps down 1pt at a time, never under the role's floor
+ * (`floorBelow`, UX ruling 91; display type down to the heading's 26pt); the box keeps its place and its height. `autoFit: false` opts out,
+ * and an auto-height box grows instead, so it is never fitted here.
+ */
+export function fittedFontSize(
+  el: { doc: RichDoc; w: number; h: number; style?: Partial<TextStyle> },
+  theme: Theme,
+): number | undefined {
+  const style = el.style ?? {};
+  if (style.autoHeight !== false || style.autoFit === false) return undefined;
+  const preset: TextPreset = style.preset ?? "body";
+  const r = resolveTextStyle(style, theme, preset);
+  const measure = measureHeadless(theme);
+  const pad = 2 * r.padding;
+  const need = (fontSize: number, width = el.w) =>
+    measure({ doc: el.doc, width, style, preset, fontSize, inset: pad, chrome: pad });
+  if (need(r.fontSize) <= el.h + 1) return undefined;
+  // Display type (a title, a subtitle) may come down to the heading's projector floor (26pt,
+  // SPEC §7) rather than be cut: a smaller title is still read from the back of the room.
+  const display = preset === "title" || preset === "subtitle";
+  const floor = Math.min(
+    r.fontSize,
+    floorBelow(theme, preset),
+    display ? fontFloor("heading") : Number.POSITIVE_INFINITY,
+  );
+  for (let size = Math.floor(r.fontSize) - 1; size > floor; size--) {
+    if (need(size, el.w * FIT_CUSHION) <= el.h) return size;
+  }
+  return floor;
 }

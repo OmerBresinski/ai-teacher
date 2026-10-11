@@ -1,5 +1,5 @@
 import type { TextElement, Theme } from "@tj/domain/documents";
-import { HEADING_NAME } from "@tj/slides";
+import { fittedFontSize, HEADING_NAME } from "@tj/slides";
 import { TriangleAlert } from "lucide-react";
 import { type CSSProperties, lazy, type ReactNode, type Ref, Suspense } from "react";
 import {
@@ -118,7 +118,11 @@ export function StaticText({
   bodyRef?: Ref<HTMLDivElement>;
   overflowing?: boolean;
 }) {
-  const r = resolveTextStyle(element.style, theme);
+  const resolved = resolveTextStyle(element.style, theme);
+  // A fixed-height box whose words outgrew it (a teacher's edit to a title sized to its words)
+  // is drawn at the size that fits, never clipped (TEACH-75 part n).
+  const fitted = fittedFontSize(element, theme);
+  const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
   return (
     <TextShell r={r} mode={mode} overflowing={overflowing} theme={theme}>
       <div ref={bodyRef} style={{ width: "100%", flex: "0 0 auto" }}>
