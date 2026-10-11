@@ -66,6 +66,7 @@ import {
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
 import { ImageCreditBadge } from "./ImageCreditBadge";
+import { type DiagramStep, ModelStepper } from "./ModelStepper";
 import {
   AngleLabel,
   CandidateOutlines,
@@ -74,6 +75,7 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+import { useModelStepping } from "./use-model-stepping";
 
 /*
  * The editor's transform layer (TeachDeck `components/editor/transform/SelectionLayer.tsx`).
@@ -110,6 +112,15 @@ export type SelectionLayerProps = {
    */
   marginRef?: MutableRefObject<MarginHandle | null>;
   className?: string;
+  /**
+   * The model build the editor previews (TEACH-247 part u); null is the finished drawing. The layer
+   * mounts a `ModelStepper` on a hovered or selected building model and drops the preview as soon
+   * as that model is neither hovered nor holding focus.
+   */
+  diagramStep?: DiagramStep | null;
+  onDiagramStep?: (next: DiagramStep | null) => void;
+  /** False on a slide the job is still writing: no stepper, so nothing can draw focus (ADR 0037). */
+  steppers?: boolean;
 };
 
 export type MarginHandle = { pointerDown: (e: ReactPointerEvent) => void };
@@ -138,6 +149,9 @@ export function SelectionLayer({
   className,
   images,
   lessonId,
+  diagramStep = null,
+  onDiagramStep,
+  steppers = true,
 }: SelectionLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scale = useSlideScale();
@@ -738,10 +752,18 @@ export function SelectionLayer({
   /* ---------------- render ---------------- */
 
   const stageProps = {
-    onPointerDown: onStageDown,
+    onPointerDown: (e: ReactPointerEvent) => {
+      notePress(e.pointerType);
+      onStageDown(e);
+    },
     onDoubleClick: onStageDoubleClick,
     onPointerMove: onStageHover,
-    onPointerLeave: () => setHoverId(null),
+    onPointerLeave: (e: ReactPointerEvent) => {
+      // Onto a model's build stepper: the model is still the one under the pointer.
+      if (e.relatedTarget instanceof Element && e.relatedTarget.closest("[data-model-stepper]"))
+        return;
+      setHoverId(null);
+    },
   };
   const stageStyle: CSSProperties = {
     position: "absolute",
@@ -767,6 +789,22 @@ export function SelectionLayer({
     crop && selected.length === 1 && first && first.id === crop.id && first.el.type === "image"
       ? first.el
       : null;
+
+  const {
+    stepping,
+    models: stepSteppers,
+    setFocusId,
+    notePress,
+  } = useModelStepping({
+    enabled: steppers && !gestureOn && !marquee && !cropping,
+    hoverId,
+    selectedId: selected.length === 1 ? (first?.id ?? null) : null,
+    boxOf: (id) => selected.find((b) => b.id === id) ?? byId.get(id),
+    ids: boxes.map((b) => b.id),
+    diagramStep,
+    onDiagramStep,
+  });
+
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: focus tracking only; the pointer catcher is the child below
     <div
@@ -878,6 +916,25 @@ export function SelectionLayer({
           lessonId={lessonId}
         />
       ) : null}
+
+      {stepSteppers.map((m) => (
+        <ModelStepper
+          key={m.id}
+          active={stepping?.id === m.id}
+          element={m.el}
+          rect={m.rect}
+          rotation={m.rotation}
+          scale={scale}
+          build={diagramStep?.id === m.id ? diagramStep.build : undefined}
+          onStep={(build) => onDiagramStep?.(build === undefined ? null : { id: m.id, build })}
+          onHover={(over, to) => {
+            // Off the stepper and out of the layer: nothing on the slide is under the pointer.
+            if (!over && !(to instanceof Node && rootRef.current?.contains(to))) setHoverId(null);
+          }}
+          onFocusChange={(inside) => setFocusId(inside ? m.id : null)}
+          onPress={notePress}
+        />
+      ))}
 
       {selected.length > 1 && selectionBounds ? (
         <>

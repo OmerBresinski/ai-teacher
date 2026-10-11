@@ -45,8 +45,9 @@ export type ElementViewProps<T extends SlideElement = SlideElement> = {
    */
   answerProgress?: number;
   /**
-   * Present only: the build a drawn diagram shows (TEACH-247 part b). Unset everywhere else, where
-   * a diagram shows its last build. Only `image` reads it.
+   * The build a drawn diagram shows: Present's current build (TEACH-247 part b), or in the editor
+   * the build the teacher is paging through with the model's stepper (part u). Unset everywhere
+   * else, where a diagram shows its last build. Only `image` reads it.
    */
   diagramBuild?: number;
   /**

@@ -33,6 +33,7 @@ import { ResidualBadge } from "./ResidualBadge";
 import { CANVAS_GUTTER_X, CANVAS_GUTTER_Y } from "./shell-layout";
 import { ContextualToolbar } from "./toolbar/ContextualToolbar";
 import { boxesOf, hitTest } from "./transform/hit-test";
+import type { DiagramStep } from "./transform/ModelStepper";
 import { type MarginHandle, type PreviewMap, SelectionLayer } from "./transform/SelectionLayer";
 import { useCanvasKeys } from "./transform/use-canvas-keys";
 import { useCompactChrome } from "./use-compact-chrome";
@@ -132,6 +133,14 @@ export function Canvas({
   const [focused, setFocused] = useState(false);
   /** The in-flight geometry of a drag, painted by `SlideView` instead of the cache (ADR 0022 §4). */
   const [preview, setPreview] = useState<PreviewMap | null>(null);
+  /** The model build the teacher is paging through, if any (TEACH-247 part u). */
+  const [diagramStep, setDiagramStep] = useState<DiagramStep | null>(null);
+  // Another slide opens on its finished drawings.
+  const [stepSlide, setStepSlide] = useState(slide.id);
+  if (stepSlide !== slide.id) {
+    setStepSlide(slide.id);
+    setDiagramStep(null);
+  }
 
   const scroller = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -454,6 +463,7 @@ export function Canvas({
                   revealAnswer={showingAnswer}
                   answerProgress={answerStepsTaken(slide, previewStep)}
                   transformOverride={preview ?? undefined}
+                  diagramPreview={diagramStep}
                   spill={spill}
                 />
               </div>
@@ -477,6 +487,9 @@ export function Canvas({
                 marginRef={layer}
                 images={images}
                 lessonId={lessonId}
+                diagramStep={diagramStep}
+                onDiagramStep={setDiagramStep}
+                steppers={!readOnly}
               />
             </div>
           </SlideScaler>
