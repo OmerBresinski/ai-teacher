@@ -236,6 +236,8 @@ export type Ctx = {
   optionColours?: boolean;
   /** `LayoutOptions.processLine` (UX ruling 203). */
   processLine?: boolean;
+  /** `LayoutOptions.objectiveCards` (UX ruling 203). */
+  objectiveCards?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1080,6 +1082,53 @@ function processLine(c: Ctx, items: TemplatePoint[]): boolean {
   return false;
 }
 
+/**
+ * The objectives as Chalkie's numbered cards (UX ruling 203, P12): one card per objective with an
+ * accent outline, a filled numbered disc and the objective beside it, stacked. On the fit ladder;
+ * when no rung holds them it returns false and the caller lays the numbered list, so the measured
+ * objectives capacity never drops.
+ */
+function objectiveCards(c: Ctx, items: string[], x: number, w: number): boolean {
+  if (!items.length) return false;
+  const full = c.s;
+  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
+  for (const r of rungs) {
+    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+    const d = Math.round(c.s.body * 1.5);
+    const pad = Math.round(c.s.body * 0.55 * r.space);
+    const gap = Math.round(c.s.body * 0.5 * r.space);
+    const tx = pad + d + Math.round(c.s.body * 0.6);
+    const tw = w - tx - pad;
+    const hs = items.map((q) => Math.max(d, measure(c, q, "body", tw)) + 2 * pad);
+    const total = hs.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+    if (total > G.band.h) continue;
+    let y = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+    items.forEach((q, k) => {
+      const h = hs[k] ?? 0;
+      box(c, { x, y, w, h }, c.t.colors.surface, {
+        stroke: c.t.colors.accent,
+        strokeWidth: 2,
+        radius: Math.min(c.t.radius, 14),
+        name: "Objective card",
+      });
+      disc(c, String(k + 1), x + pad, y + Math.round((h - d) / 2), d);
+      const th = measure(c, q, "body", tw);
+      text(
+        c,
+        q,
+        "body",
+        { x: x + tx, y: y + Math.round((h - th) / 2), w: tw },
+        { color: c.t.colors.ink, name: "Item" },
+      );
+      y += h + gap;
+    });
+    c.s = full;
+    return true;
+  }
+  c.s = full;
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /* The templates                                              */
 /* ------------------------------------------------------------------ */
@@ -1432,6 +1481,8 @@ export type LayoutOptions = {
   optionColours?: boolean;
   /** Steps as a numbered process line (P9). Off by default: old lessons and the default writer render as before. */
   processLine?: boolean;
+  /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
+  objectiveCards?: boolean;
 };
 
 /**
@@ -1537,6 +1588,7 @@ function layoutOnce(
     ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(opts.optionColours ? { optionColours: true } : {}),
     ...(opts.processLine ? { processLine: true } : {}),
+    ...(opts.objectiveCards ? { objectiveCards: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1618,10 +1670,17 @@ function layoutOnce(
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
       break;
     }
-    case "objectives":
+    case "objectives": {
       heading(c, input.heading);
-      numbered(c, pts, G.margin, 720, "objectives");
+      // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
+      const fig =
+        !!c.objectiveCards && !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
+      const x = G.margin;
+      const w = fig ? G.left.w : 720;
+      if (!(c.objectiveCards && objectiveCards(c, pts, x, w))) numbered(c, pts, x, w, "objectives");
+      if (fig) figurePanel(c, input.figure);
       break;
+    }
     case "explain": {
       heading(c, input.heading);
       const mark = c.els.length;
