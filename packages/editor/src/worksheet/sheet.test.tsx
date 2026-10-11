@@ -169,7 +169,7 @@ describe("Sheet", () => {
     const edit = render(
       <Sheet
         worksheet={worksheet}
-        theme={getTheme("chalk")}
+        theme={getTheme("splash")}
         pages={[{ index: 0, items: buildFlow(worksheet, false) }]}
         mode="edit"
       />,

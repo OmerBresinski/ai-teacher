@@ -35,6 +35,7 @@ export {
 export * from "./rich-text";
 export * from "./series";
 export * from "./slide";
+export * from "./slide-tiers";
 export * from "./source-ref";
 export * from "./subjects";
 export * from "./summarise";

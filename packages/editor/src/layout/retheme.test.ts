@@ -70,7 +70,7 @@ const show = (t: ReturnType<typeof lintTotals>) =>
   `overlaps ${t.overlaps}, overflow ${t.overflow}, lane ${t.lane}`;
 
 describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
-  const base = generated("chalk");
+  const base = generated("splash");
   const report: string[] = [];
 
   test("the fixture has no overlap or overflow in the theme it was generated in", () => {
@@ -79,7 +79,7 @@ describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
     expect(lintTotals(base)).toMatchObject({ overlaps: 0, overflow: 0 });
   });
 
-  for (const theme of THEMES.filter((t) => t.id !== "chalk")) {
+  for (const theme of THEMES.filter((t) => t.id !== "splash")) {
     test(`chalk → ${theme.id}: re-fitted with no overlap or overflow, every word kept, one theme`, () => {
       const naive = reducers.setTheme(base, theme.id);
       const measure = measureHeadless(theme);
@@ -105,7 +105,7 @@ describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
   });
 
   test("choosing the theme the lesson already has changes nothing", () => {
-    const { lesson, outcome } = rethemeLesson(base, "chalk", measureHeadless(getTheme("chalk")));
+    const { lesson, outcome } = rethemeLesson(base, "splash", measureHeadless(getTheme("splash")));
     expect(lesson).toBe(base);
     expect(outcome.tidied).toEqual([]);
   });
@@ -118,11 +118,11 @@ describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
     const previewed = rethemeFromReducer(browsed, base, "playground", measure).lesson;
     expect(previewed.themeId).toBe(once.themeId);
     expect(previewed.slides).toEqual(once.slides);
-    expect(rethemeFromReducer(browsed, base, "chalk", measure).lesson).toBe(base);
+    expect(rethemeFromReducer(browsed, base, "splash", measure).lesson).toBe(base);
   });
 
   test("the palette follows the theme: no old-theme colour is left, text is untouched", () => {
-    const chalk = getTheme("chalk");
+    const chalk = getTheme("splash");
     const night = getTheme("night-lab");
     const { lesson: after } = rethemeLesson(base, "night-lab", measureHeadless(night));
     const json = JSON.stringify(after.slides.map((s) => s.elements)).toLowerCase();

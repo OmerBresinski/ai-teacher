@@ -205,6 +205,30 @@ describe("confirmLesson (/generate)", () => {
     expect(lesson.plan?.revision).toBe(2);
   });
 
+  test("ruling 164: a new tier replaces an older exact count and re-plans pinned", () => {
+    const before = planned();
+    const { lesson, replan } = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), slideTier: "detailed" },
+      { jobId, now },
+    );
+    expect(replan).toBe(true);
+    expect(lesson.brief?.slideTier).toBe("detailed");
+    expect(lesson.brief?.slideCount).toBeUndefined();
+    expect(lesson.plan?.revision).toBe(2);
+  });
+
+  test("ruling 164: the tier an older exact count already stands for keeps the count, no re-plan", () => {
+    const before = planned();
+    const { lesson, replan } = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), slideTier: "standard" },
+      { jobId, now },
+    );
+    expect(replan).toBe(false);
+    expect(lesson.brief).toEqual({ topic: "The water cycle", durationMin: 60, slideCount: 10 });
+  });
+
   test("a new slide count with a new duration re-plans, and the facts carry the duration too", () => {
     const before = planned();
     const { lesson, replan } = confirmLesson(

@@ -531,7 +531,7 @@ describe("the writer stage on a fake model", () => {
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");
 
-  test("activities off (the default): the writer is sent master's system text and schema, byte for byte", async () => {
+  test("activities off: the writer is sent master's system text and schema, byte for byte", async () => {
     for (const [keyStage, [system, schema]] of Object.entries(MASTER)) {
       const seen: { writer?: WriterReq; chats: ChatReq[] } = { chats: [] };
       const out = await runWriter({
@@ -539,6 +539,7 @@ describe("the writer stage on a fake model", () => {
         objectives: ["Name animals and their young"],
         services: services(seen),
         pupilWording: false,
+        activities: false,
       });
       expect(out.slides.length).toBeGreaterThan(2);
       expect(sha(seen.writer?.system ?? "")).toBe(system);

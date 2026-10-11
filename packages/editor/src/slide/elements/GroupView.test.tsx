@@ -9,7 +9,7 @@ import { GroupView } from "./GroupView";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 const renderGroup = (element: GroupElement) =>
   render(

@@ -247,6 +247,12 @@ describe("POST /lessons/:id/plan and /generate guards and validation (ADR 0029)"
       ["slideCount"],
     ],
     ["generate: no objectives field", GENERATE_PATH, { expectedRevision: 1 }, ["objectives"]],
+    [
+      "generate: a slide tier and a slide count together (ruling 164)",
+      GENERATE_PATH,
+      { ...validGenerate, slideTier: "detailed", slideCount: 8 },
+      ["slideTier"],
+    ],
   ])("400 validation_failed for %s", async (_label, path, body, fields) => {
     const res = await testApp().request(path, post(body));
     expect(res.status).toBe(400);
@@ -356,7 +362,7 @@ describe("lessonFromBrief", () => {
       version: 1,
       id,
       title: "Fractions of amounts",
-      themeId: "chalk",
+      themeId: "splash",
       slides: [],
       createdAt: "2026-09-06T10:00:00.000Z",
       updatedAt: "2026-09-06T10:00:00.000Z",
@@ -364,7 +370,7 @@ describe("lessonFromBrief", () => {
       yearGroup: "Year 5",
       ageBand: "ks2",
       language: "en-GB",
-      brief: { topic: "  Fractions of amounts ", durationMin: 60, slideCount: 10 },
+      brief: { topic: "  Fractions of amounts ", durationMin: 60, slideTier: "standard" },
     });
   });
 

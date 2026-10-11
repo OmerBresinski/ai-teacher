@@ -35,7 +35,7 @@ describe("summarise", () => {
       title: doc.title,
       subject: "Science",
       yearGroup: "Year 4",
-      themeId: "chalk",
+      themeId: "splash",
       itemCount: 12,
       cover: slides[0] ?? null,
       createdAt: doc.createdAt,

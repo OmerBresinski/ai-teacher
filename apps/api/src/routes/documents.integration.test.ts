@@ -96,7 +96,7 @@ describeDb("/documents against Postgres", () => {
         title: input.title,
         subject: "Science",
         yearGroup: "Year 4",
-        themeId: "chalk",
+        themeId: "splash",
         itemCount: 3,
         deletedAt: null,
         generatingJobId: null,
@@ -310,6 +310,18 @@ describeDb("/documents against Postgres", () => {
       });
       expect(refused.status).toBe(422);
       expect((await errorOf(refused)).message).toBe("That theme does not exist.");
+    });
+
+    test("an older client's retired chalk is saved, stored as splash (ruling 202)", async () => {
+      const row = await seedLesson(wsA);
+      const res = await send(wsA, "PUT", `/documents/${row.id}`, {
+        document: { ...row.body, themeId: "chalk" },
+        expectedUpdatedAt: row.updatedAt.toISOString(),
+      });
+      expect(res.status).toBe(200);
+      const got = await documentOf(await send(wsA, "GET", `/documents/${row.id}`));
+      expect((got.body as Lesson).themeId).toBe("splash");
+      expect(got.themeId).toBe("splash");
     });
 
     test("200 with the row's updatedAt: body replaced, updatedAt advanced, title promoted", async () => {

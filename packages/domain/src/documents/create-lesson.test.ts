@@ -145,13 +145,14 @@ describe("lessonFromBrief", () => {
   const now = new Date("2026-09-16T10:00:00.000Z");
   const id = "0192f7a0-0000-7000-8000-000000000042";
 
-  test("defaults slideCount to 10 when the brief has none", () => {
+  test("defaults to the Standard tier, no exact count, when the brief has neither (ruling 164)", () => {
     const lesson = lessonFromBrief(
       CreateLessonSchema.parse({ brief: { topic: "Fractions" } }),
       id,
       now,
     );
-    expect(lesson.brief?.slideCount).toBe(10);
+    expect(lesson.brief?.slideTier).toBe("standard");
+    expect(lesson.brief?.slideCount).toBeUndefined();
   });
 
   test("keeps the slideCount and level the teacher chose", () => {

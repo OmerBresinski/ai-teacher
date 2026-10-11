@@ -20,7 +20,7 @@ import { getTheme, THEMES } from "./themes";
  */
 
 const META = { promptVersion: "test", model: "test", at: "2026-09-24T00:00:00.000Z" };
-const THEME = "chalk";
+const THEME = "treehouse";
 const theme = getTheme(THEME);
 
 function make(spec: SlideSpec, variant?: string): Slide {

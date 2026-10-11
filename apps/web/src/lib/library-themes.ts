@@ -14,13 +14,6 @@ export type LibraryTheme = {
 
 export const LIBRARY_THEMES: LibraryTheme[] = [
   {
-    id: "chalk",
-    name: "Chalk & Cream",
-    swatch: "#FAF4E6",
-    ink: "#2C2A24",
-    tags: ["Primary", "Calm"],
-  },
-  {
     id: "playground",
     name: "Playground",
     swatch: "#FFF6DA",

@@ -49,8 +49,8 @@ describe("fitReport", () => {
     );
     expect(report.slides).toEqual({ requested: 3, delivered: 2, stored: 3 });
     expect(Object.keys(report.overflowing)).toEqual(THEMES.map((t) => t.id));
-    expect(report.overflowing.chalk).toBe(0);
-    expect(report.clashing.chalk).toBe(0);
+    expect(report.overflowing.splash).toBe(0);
+    expect(report.clashing.splash).toBe(0);
     expect(report.pagesOnOpen).toBe(0);
   });
 

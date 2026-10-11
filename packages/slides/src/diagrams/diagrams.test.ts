@@ -48,7 +48,7 @@ describe("samples", () => {
   test("the theme's colours and a real family name are used, never a CSS variable", () => {
     const svg = renderDiagram(DIAGRAM_SAMPLES["bar-model-ratio"], chalk, SLOT) ?? "";
     expect(svg).toContain(chalk.colors.ink);
-    expect(svg).toContain("Lexend Variable");
+    expect(svg).toContain("Nunito Variable");
     expect(svg).not.toContain("var(");
   });
 

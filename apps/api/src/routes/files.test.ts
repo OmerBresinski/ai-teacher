@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { newId, storageKey, type WorkspaceId } from "@tj/domain";
+import { LIBRARY_WORKSPACE_ID, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import { fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
@@ -23,6 +23,8 @@ let app: ReturnType<typeof createApp>;
 let key: string;
 let foreignKey: string;
 let htmlKey: string;
+const libraryKey = `${LIBRARY_WORKSPACE_ID}/bank/hen.png`;
+const libraryOtherKey = `${LIBRARY_WORKSPACE_ID}/exports/notes.pdf`;
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "tj-api-files-"));
@@ -33,6 +35,8 @@ beforeAll(async () => {
   await storage.put(key, bytes, { contentType: "application/pdf" });
   await storage.put(foreignKey, bytes, { contentType: "application/pdf" });
   await storage.put(htmlKey, htmlBytes, { contentType: "text/html" });
+  await storage.put(libraryKey, bytes, { contentType: "image/png" });
+  await storage.put(libraryOtherKey, bytes, { contentType: "application/pdf" });
   app = createApp({ env: TEST_ENV, db: fakeSql(true), logger: silentLogger, storage });
 });
 
@@ -88,6 +92,19 @@ describe("GET /files/:key", () => {
     const res = await app.request(`/files/${foreignKey}`, { headers: { [WORKSPACE_HEADER]: ws } });
     expect(res.status).toBe(404);
     expect(await errorCode(res)).toBe("not_found");
+  });
+
+  test("the shared picture library's bank files → 200 for any Workspace (TEACH-84 part b)", async () => {
+    const res = await app.request(`/files/${libraryKey}`, { headers: { [WORKSPACE_HEADER]: ws } });
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+  });
+
+  test("the library workspace's files outside bank/ → 404", async () => {
+    const res = await app.request(`/files/${libraryOtherKey}`, {
+      headers: { [WORKSPACE_HEADER]: ws },
+    });
+    expect(res.status).toBe(404);
   });
 
   test("missing object in own Workspace → 404", async () => {

@@ -24,7 +24,7 @@ function textLesson(): Lesson {
   const lesson = seededLesson();
   const first = lesson.slides[0];
   if (!first) throw new Error("seed");
-  const box = { ...makeText("body", getTheme("chalk")), x: 500, y: 100, w: 300, h: 60 };
+  const box = { ...makeText("body", getTheme("splash")), x: 500, y: 100, w: 300, h: 60 };
   (box as TextElement).doc = docFromText("Water warms up and turns into a gas.");
   first.elements = [box as SlideElement];
   return lesson;

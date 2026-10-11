@@ -9,7 +9,7 @@ import * as r from "./index";
 type QuestionBlock = Extract<WorksheetBlock, { type: "question" }>;
 type MCBlock = Extract<WorksheetBlock, { type: "multiple-choice" }>;
 
-const sheet = () => starterWorksheet("Fractions practice", "chalk");
+const sheet = () => starterWorksheet("Fractions practice", "splash");
 const numbers = (blocks: WorksheetBlock[]) =>
   blocks.map((b) => ("number" in b ? b.number : undefined)).filter(Boolean);
 
