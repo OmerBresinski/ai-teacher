@@ -25,10 +25,11 @@ import {
   text,
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
+import { CALLOUT_ICONS } from "./point-kinds";
 import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
-import { type CalloutTone, calloutTone, calloutTones, fontFloor } from "./themes";
+import { calloutTone, fontFloor } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): Chalkie's labelled card under the body, refined to
@@ -54,18 +55,6 @@ export const CALLOUT_LABELS: Record<CalloutKind, string> = {
   "watch-out": "COMMON MISTAKE",
   example: "EXAMPLE",
   "key-words": "KEY WORDS",
-};
-
-/**
- * The drawn icon each kind carries (lucide names from the editor's icon set), drawn in the kind's
- * colour rather than set as emoji: Chalkie's warning sign for a common mistake; a lightbulb for
- * an example and an open book for key words, where Chalkie has a magnifier and a key (review
- * T75-7: the idea and the vocabulary read faster than the tools).
- */
-export const CALLOUT_ICONS: Record<CalloutKind, string> = {
-  "watch-out": "triangle-alert",
-  example: "lightbulb",
-  "key-words": "book-open",
 };
 
 /** The four elements a callout adds, by `name`; the card first so the rest stay above it. */
@@ -431,42 +420,4 @@ export function placeCallout(
   return { ...slide, elements: [...slide.elements, ...placed] };
 }
 
-/*
- * Typed callouts on a template key card (UX ruling 203, P1; TEACH-75 part e). The writer may type
- * one support point as a callout: Remember, Watch out (a misconception), Key point, Example or
- * Fun fact. The card is the key card the lead + points column and ruling 194's strip already set,
- * tinted per type with an icon at the head of its label row. The three kinds ruling 84 already
- * tunes per theme keep those tones and icons (watch-out, example, and key-words for a key point);
- * Remember (blue) and Fun fact (lilac) have their own rows in `CALLOUT_TONES`. A point with no type is the key card as before.
- */
-export const POINT_KINDS = ["remember", "watch-out", "key-point", "example", "fun-fact"] as const;
-export type PointKind = (typeof POINT_KINDS)[number];
-export const isPointKind = (v: unknown): v is PointKind =>
-  typeof v === "string" && (POINT_KINDS as readonly string[]).includes(v);
-
-/** The label a typed card shows when the point has none of its own. */
-export const POINT_KIND_LABELS: Record<PointKind, string> = {
-  remember: "Remember",
-  "watch-out": "Watch out",
-  "key-point": "Key point",
-  example: "Example",
-  "fun-fact": "Fun fact",
-};
-
-/**
- * The drawn icon per type: ruling 84's icons for the kinds it shares (`CALLOUT_ICONS`), so a card
- * looks the same whichever path draws it, plus a brain for Remember and sparkles for Fun fact.
- */
-export const POINT_KIND_ICONS: Record<PointKind, string> = {
-  remember: "brain",
-  "watch-out": CALLOUT_ICONS["watch-out"],
-  "key-point": CALLOUT_ICONS["key-words"],
-  example: CALLOUT_ICONS.example,
-  "fun-fact": "sparkles",
-};
-
-/** The tone a typed card takes on theme `t`. */
-export function pointTone(t: Theme, kind: PointKind): CalloutTone {
-  const set = calloutTones(t);
-  return kind === "key-point" ? set["key-words"] : set[kind];
-}
+export * from "./point-kinds";

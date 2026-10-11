@@ -21,11 +21,11 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../callout";
 import { drawDiagram } from "../diagrams";
+import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../point-kinds";
 import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
-export { isPointKind, POINT_KINDS, type PointKind } from "../callout";
+export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
 import { countLines } from "../text-measure";

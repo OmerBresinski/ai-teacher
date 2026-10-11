@@ -1,6 +1,6 @@
 import type { ShapeElement, SlideElement } from "@tj/domain/documents";
-import { POINT_KIND_ICONS, POINT_KIND_LABELS, pointTone } from "../callout";
 import { uid } from "../factories";
+import { POINT_KIND_ICONS, POINT_KIND_LABELS, pointTone } from "../point-kinds";
 import { type Ctx, kit, pointKind, pointLabel, pointText, type TemplatePoint } from "./index";
 
 /*

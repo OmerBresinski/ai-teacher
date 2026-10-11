@@ -4,7 +4,7 @@ import { templateSamples } from "../samples";
 /**
  * Inputs for the old-lesson snapshot (TEACH-75 part e): every template sample plus the key-card
  * shapes a lesson written before typed callouts holds (labelled points in a column, a labelled
- * strip under a full-width diagram). `old-lesson-master.json` holds master's (ae15ea9a) output
+ * strip under a full-width diagram). `old-lesson-master.json` holds master's (25ac3642) output
  * hash for each, every theme and stage, ids removed.
  */
 const flow = {
