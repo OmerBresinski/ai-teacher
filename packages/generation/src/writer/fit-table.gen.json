@@ -353,20 +353,20 @@
               "counts": { "options": 3 },
               "figure": false,
               "keyCards": false,
-              "chars": 30,
-              "ceiling": 30,
+              "chars": 62,
+              "ceiling": 80,
               "stem": 99,
-              "limit": { "item": 30, "total": 197, "shown": 197 }
+              "limit": { "item": 80, "total": 347, "shown": 347 }
             },
             {
               "label": "4 options",
               "counts": { "options": 4 },
               "figure": false,
               "keyCards": false,
-              "chars": 20,
-              "ceiling": 20,
+              "chars": 40,
+              "ceiling": 40,
               "stem": 64,
-              "limit": { "item": 20, "total": 193, "shown": 193 }
+              "limit": { "item": 40, "total": 273, "shown": 273 }
             }
           ]
         },
@@ -862,20 +862,20 @@
               "counts": { "options": 3 },
               "figure": false,
               "keyCards": false,
-              "chars": 30,
-              "ceiling": 30,
+              "chars": 76,
+              "ceiling": 100,
               "stem": 122,
-              "limit": { "item": 30, "total": 259, "shown": 259 }
+              "limit": { "item": 100, "total": 469, "shown": 469 }
             },
             {
               "label": "4 options",
               "counts": { "options": 4 },
               "figure": false,
               "keyCards": false,
-              "chars": 40,
-              "ceiling": 40,
+              "chars": 52,
+              "ceiling": 80,
               "stem": 83,
-              "limit": { "item": 40, "total": 229, "shown": 229 }
+              "limit": { "item": 80, "total": 389, "shown": 389 }
             }
           ]
         },
@@ -1369,20 +1369,20 @@
               "counts": { "options": 3 },
               "figure": false,
               "keyCards": false,
-              "chars": 44,
-              "ceiling": 44,
+              "chars": 106,
+              "ceiling": 144,
               "stem": 170,
-              "limit": { "item": 44, "total": 436, "shown": 238 }
+              "limit": { "item": 144, "total": 736, "shown": 238 }
             },
             {
               "label": "4 options",
               "counts": { "options": 4 },
               "figure": false,
               "keyCards": false,
-              "chars": 56,
-              "ceiling": 56,
+              "chars": 90,
+              "ceiling": 100,
               "stem": 144,
-              "limit": { "item": 56, "total": 585, "shown": 238 }
+              "limit": { "item": 100, "total": 761, "shown": 238 }
             }
           ]
         },
