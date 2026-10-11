@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { type Brief, BriefSchema, MAX_CLARIFYING_QUESTIONS } from "./brief";
 import { GUARD_MESSAGE } from "./identifier-guard";
+import { plannerSlideCount, slideTierOf } from "./slide-tiers";
 
 const minimal = (): Brief => ({ topic: "Fractions of amounts", durationMin: 60 });
 
@@ -11,6 +12,31 @@ describe("BriefSchema", () => {
     expect(BriefSchema.safeParse({ ...base, slideCount: 9 }).success).toBe(false);
     expect(BriefSchema.safeParse({ ...base, slideCount: "10" }).success).toBe(false);
     expect(BriefSchema.safeParse({ ...base, level: "Harder" }).success).toBe(false);
+  });
+
+  test("slideTier is quick, standard or detailed (ruling 164)", () => {
+    const base = { topic: "Fractions", durationMin: 45 };
+    for (const slideTier of ["quick", "standard", "detailed"])
+      expect(BriefSchema.safeParse({ ...base, slideTier }).success).toBe(true);
+    expect(BriefSchema.safeParse({ ...base, slideTier: "long" }).success).toBe(false);
+  });
+
+  test("slideTierOf: the tier, else the tier an older exact count falls in, else standard", () => {
+    expect(slideTierOf({ slideTier: "detailed", slideCount: 6 })).toBe("detailed");
+    expect(slideTierOf({ slideCount: 6 })).toBe("quick");
+    expect(slideTierOf({ slideCount: 8 })).toBe("quick");
+    expect(slideTierOf({ slideCount: 10 })).toBe("standard");
+    expect(slideTierOf({ slideCount: 12 })).toBe("standard");
+    expect(slideTierOf(undefined)).toBe("standard");
+  });
+
+  test("plannerSlideCount: the tier's planner count, inside its range; else an older exact count", () => {
+    expect(plannerSlideCount({ slideCount: 6, slideTier: "detailed" })).toBe(16);
+    expect(plannerSlideCount({ slideCount: 6 })).toBe(6);
+    expect(plannerSlideCount({ slideTier: "quick" })).toBe(8);
+    expect(plannerSlideCount({ slideTier: "standard" })).toBe(10);
+    expect(plannerSlideCount({ slideTier: "detailed" })).toBe(16);
+    expect(plannerSlideCount({})).toBe(10);
   });
 
   test("accepts the minimal brief: topic and duration only", () => {

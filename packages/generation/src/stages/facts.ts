@@ -1,8 +1,8 @@
 import {
-  DEFAULT_SLIDE_COUNT,
   type Finding,
   type Lesson,
   type LessonFacts,
+  plannerSlideCount,
 } from "@tj/domain/documents";
 import { mergeObjectiveFacts } from "../merge-objective-facts";
 import { type OutlineFromFactsResult, outlineFromFacts } from "../outline-from-facts";
@@ -84,7 +84,7 @@ export async function runFactsStep(
   const audience = audienceOf(lesson);
   const cls = planClassFor(lesson, deps);
   const topic = brief.topic;
-  const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
+  const slideCount = plannerSlideCount(brief);
   const objectives = confirmed.map((o) => ({ text: o.text }));
   const stored = lesson.facts?.retrieval;
   const retrieval = stored && stored.length > 0 ? stored : undefined;
