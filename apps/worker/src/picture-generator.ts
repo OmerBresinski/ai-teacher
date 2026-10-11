@@ -30,8 +30,7 @@ export interface Logger {
  * when its expected cost fits under the cap; its real cost is added once it has run.
  */
 export interface DailyImageCap {
-  /** `quiet`: an optional extra (a FRAME-CUT retry) that, refused, keeps a picture: no cap log. */
-  allow(size: ImageSize, quiet?: boolean): boolean;
+  allow(size: ImageSize): boolean;
   spent(usd: number): void;
   spentToday(): number;
 }
@@ -52,10 +51,10 @@ export function createDailyImageCap(opts: {
     }
   };
   return {
-    allow(size, quiet) {
+    allow(size) {
       roll();
       const ok = spent + expectedImageCostUsd(size) <= opts.capUsd;
-      if (!ok && !quiet)
+      if (!ok)
         opts.logger?.info(
           { stage: "illustrate", capUsd: opts.capUsd, spentUsd: Number(spent.toFixed(4)), size },
           "image generation daily cap spent: placeholder kept",
@@ -171,28 +170,16 @@ export function createGeneratingBank(opts: {
       const { size } = sizeForAspect(req.aspect);
       if (!opts.cap.allow(size)) return undefined;
       const prompt = directedImagePrompt(req.imagePrompt, faithful);
-      let out = await opts.generator.generate({ prompt, size, signal });
+      const out = await opts.generator.generate({ prompt, size, signal });
       opts.cap.spent(out.costUsd);
-      // FRAME-CUT (TEACH-251 part f): a subject drawn past its own frame (on a plain backdrop) is
-      // made once more, under the cap; the less cut of the two is kept. No slide fit can restore it.
+      // FRAME-CUT (TEACH-251 part f): log-only. A subject drawn past its frame (on a plain backdrop)
+      // is logged so the cut rate can be measured; the root fix is the image prompt's framing.
       const cut = frameCutOf(out.bytes);
-      if (cut?.cut && opts.cap.allow(size, true)) {
-        const again = await opts.generator.generate({ prompt, size, signal });
-        opts.cap.spent(again.costUsd);
-        const recut = frameCutOf(again.bytes);
-        const better = !recut || recut.bleed < cut.bleed;
+      if (cut?.cut)
         opts.logger.info(
-          {
-            stage: "illustrate",
-            frameCut: cut.edges,
-            retryCut: recut?.edges,
-            kept: better ? "retry" : "first",
-            costUsd: again.costUsd,
-          },
-          "picture subject ran off the frame; made again",
+          { stage: "illustrate", frameCut: cut.edges },
+          "picture subject ran off the frame",
         );
-        out = { ...(better ? again : out), costUsd: out.costUsd + again.costUsd };
-      }
       const saved = await opts.save(out.bytes, out.mime);
       // The picture's own shape (the model returns the size asked; the header is the fact).
       const [sw, sh] = size.split("x").map(Number) as [number, number];

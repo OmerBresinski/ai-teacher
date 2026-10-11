@@ -88,59 +88,18 @@ describe("the generating bank", () => {
     expect(calls).toHaveLength(1);
     expect(logs.filter((l) => /daily cap spent/.test(l.msg ?? ""))).toHaveLength(1);
   });
-  test("FRAME-CUT (TEACH-251 part f): a subject run off the frame is made once more, the less cut kept", async () => {
-    // A light backdrop; `cut` draws a dark subject over the top-left corner's edges, else centred.
-    const pic = (cut: boolean) => {
-      const width = 300;
-      const height = 200;
-      const rgb = new Uint8Array(width * height * 3).fill(232);
-      const [x0, y0] = cut ? [0, 0] : [100, 60];
-      for (let y = y0; y < y0 + 80; y++)
-        rgb.fill(90, (y * width + x0) * 3, (y * width + x0 + 100) * 3);
-      return encodePng({ width, height, rgb });
-    };
-    const made: boolean[] = [true, false];
-    const calls: string[] = [];
-    const generator: Pick<ImageGenerator, "model" | "generate"> = {
-      model: "gpt-image-2.5-sunburst",
-      async generate({ size }) {
-        calls.push(size);
-        return {
-          bytes: pic(made.shift() ?? true),
-          mime: "image/png",
-          usage: { inputTokens: 28, outputTokens: 158 },
-          costUsd: 0.005,
-          ms: 1,
-        };
-      },
-    };
-    const saved: Uint8Array[] = [];
-    const cap = createDailyImageCap({ capUsd: 5 });
+  test("FRAME-CUT (TEACH-251 part f): a subject run off the frame is logged, never made again", async () => {
+    const { generator, calls } = fakeGenerator(); // a dark band across the top: runs off three edges
+    logs.length = 0;
     const bank = createGeneratingBank({
       generator,
-      cap,
-      save: async (bytes) => {
-        saved.push(bytes);
-        return { id: "g2", src: "/files/w/images/g2.png" };
-      },
+      cap: createDailyImageCap({ capUsd: 5 }),
+      save: async () => ({ id: "g2", src: "/files/w/images/g2.png" }),
       logger,
     });
-    await bank.generate(req, false, signal);
-    expect(calls).toEqual(["1024x1024", "1024x1024"]);
-    expect(saved).toHaveLength(1);
-    expect(decodePng(saved[0] as Uint8Array).rgb[0]).toBe(232); // the whole one, not the cut one
-
-    // Under a cap with room for one: no second call, the first is kept.
-    calls.length = 0;
-    made.splice(0, made.length, true);
-    const tight = createGeneratingBank({
-      generator,
-      cap: createDailyImageCap({ capUsd: 0.007 }),
-      save: async () => ({ id: "g3", src: "/files/w/images/g3.png" }),
-      logger,
-    });
-    expect(await tight.generate(req, false, signal)).toBeDefined();
+    expect(await bank.generate(req, false, signal)).toBeDefined();
     expect(calls).toHaveLength(1);
+    expect(logs.filter((l) => /ran off the frame/.test(l.msg ?? ""))).toHaveLength(1);
   });
   test("the cap starts again each UTC day", () => {
     let now = new Date("2026-10-08T23:59:00Z");
