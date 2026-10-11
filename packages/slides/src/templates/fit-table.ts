@@ -41,7 +41,7 @@ const FORMULA = 16;
 const WORDS =
   "Young animals grow and change as they get older and many of them look like their parents while others change shape completely before they become adults that can have young of their own again";
 /** Real words cut at a word boundary to at most `n` characters (each item starts at its own word). */
-const sample = (n: number, seed = 0) => {
+export const sample = (n: number, seed = 0) => {
   const w = WORDS.split(" ");
   const rot = [...w.slice(seed % w.length), ...w.slice(0, seed % w.length)];
   let out = "";
@@ -182,6 +182,48 @@ const oneLine = (g: Group, w: number, role: "body" | "heading" = "body") =>
         );
       }),
     ),
+  );
+
+/**
+ * Hinge cards (HEART1 R3 s6): `clean` lets the options step down a size and wrap freely, so the
+ * table offered 3-across KS2 options 100 characters while 37 already wrapped to 4 lines in a card
+ * half empty. A card reads well when its option stays at full body size in at most this many lines.
+ */
+export const HINGE_CARD_LINES = 3;
+/** The most lines any option card takes, on every theme and stage of `g` (Infinity: over, or stepped down). */
+export function hingeCardLines(g: Group, options: string[], stem: string): number {
+  let worst = 0;
+  for (const th of GROUPS[g].themes)
+    for (const st of GROUPS[g].stages) {
+      const theme = getTheme(th);
+      const full = templateScale(theme, st as never).body;
+      const r = layoutTemplate(
+        { template: "hinge", heading: sample(40, 7), stem, options } as TemplateInput,
+        theme,
+        st as never,
+      );
+      if (r.over.length) return Number.POSITIVE_INFINITY;
+      for (const e of r.slide.elements) {
+        if (e.name !== "Option text" || e.type !== "text") continue;
+        const fs = e.style?.fontSize ?? full;
+        if (fs < full) return Number.POSITIVE_INFINITY;
+        worst = Math.max(worst, Math.round(e.h / (fs * (e.style?.lineHeight ?? 1.4))));
+      }
+    }
+  return worst;
+}
+/**
+ * The longest option (characters, cut at a word) that every one of `k` cards holds at full size in
+ * `HINGE_CARD_LINES` lines beside a stem of `stem` characters: the writer's true option budget.
+ */
+export const hingeCardFit = (g: Group, k: number, stem: number) =>
+  largest(
+    (n) =>
+      hingeCardLines(
+        g,
+        Array.from({ length: k }, (_, i) => sample(n, i * 3 + 1)),
+        sample(stem),
+      ) <= HINGE_CARD_LINES,
   );
 
 const FIELDS: Record<string, string[]> = {
