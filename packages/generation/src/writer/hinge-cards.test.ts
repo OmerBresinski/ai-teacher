@@ -31,6 +31,7 @@ describe("fitTable hinge cards", () => {
       const { hinge: _b, ...restOff } = off[g]?.layouts ?? {};
       expect(restOn).toEqual(restOff);
     }
-    expect(cards.groups.KS2.options["3"]).toBe(30);
+    // TEACH-75 part D: three options stack as full-width rows, so KS2 holds 48, not 30.
+    expect(cards.groups.KS2.options["3"]).toBe(48);
   });
 });
