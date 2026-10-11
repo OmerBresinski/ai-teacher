@@ -43,7 +43,7 @@ export const params = {
     showBody: { type: 'boolean', title: 'Show where the heart is in the body', default: true, 'x-panel': 'advanced' },
     // names on the slide are labels (40 letters); the body card holds a short phrase (60)
     text: TEXT_PARAM_FOR(Object.assign({ body: 'phrase' }, Object.fromEntries(
-      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'used', 'pulse', 'rest', 'running', 'carries']
+      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'pulse', 'rest', 'running', 'carries']
         .concat(CARRY.map(c => 'carry-' + c)).map(id => [id, 'label'])))),
   },
 };
@@ -74,9 +74,11 @@ function model(P) {
 }
 const DEF = {
   heart: 'Heart', lungs: 'Lungs', body: 'The rest of the body', artery: 'Artery', vein: 'Vein', 'artery-lungs': 'Artery to lungs', 'vein-lungs': 'Vein from lungs',
-  rich: 'Oxygen-rich blood', poor: 'Oxygen-poor blood', o2in: 'Oxygen in', co2out: 'Carbon dioxide out', used: 'Oxygen used',
+  rich: 'Oxygen-rich blood', poor: 'Oxygen-poor blood', o2in: 'Oxygen in', co2out: 'Carbon dioxide out',
   pulse: 'Beats a minute', rest: 'At rest', running: 'Running', carries: 'Blood carries',
 };
+// drawn only, never a writer label (the writer's label ids are unchanged from version 1)
+const USED = 'Oxygen used';
 const listWords = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
 
 /* ------------------------------------------------------------------ validate */
@@ -114,8 +116,7 @@ function plan(P) {
     note: M.names ? 'Arteries always carry blood away from the heart. A way to remember it: A for artery, A for away.' : 'Blood travels in tubes called blood vessels. It never leaves them.' });
   S.push({ key: 'back', caption: `Cells all over the body use up the oxygen. Oxygen-poor blood comes back to the heart${vn}.`,
     note: (M.names ? 'Veins carry blood back to the heart. ' : '') + 'Oxygen-poor blood is dark red, not blue. Veins only look blue through the skin. The colours here are a key, not real colours.' });
-  // the double loop keeps its picture to the circulation: "blood carries" is not piled onto it (version 2)
-  if (M.carries.length && !M.dbl) S.push({ key: 'carries', caption: `Blood carries ${listWords(M.carries.map(k => CARRY_LOWER[k]))} round the body.`,
+  if (M.carries.length) S.push({ key: 'carries', caption: `Blood carries ${listWords(M.carries.map(k => CARRY_LOWER[k]))} round the body.`,
     note: 'Food (nutrients) is taken into the blood from the gut, and water too. Carbon dioxide is a waste gas taken back to the lungs.' });
   if (M.pulse) S.push({ key: 'pulse', caption: `Each squeeze of the heart is a beat, felt as your pulse: about ${M.rest} a minute at rest.`,
     note: 'Find the pulse on the inside of the wrist or the side of the neck. Count for 15 seconds and multiply by 4.' });
@@ -150,7 +151,7 @@ const lungD = (cx, s) => { const y = LY; return `M${cx - s * 8} ${y - 60} C ${cx
 // top loop is heart -> lungs -> heart, the bottom loop heart -> body -> heart; no tube crosses or runs
 // beside another, and every vessel joins the heart's outline. Blood changes colour across the lungs
 // (oxygen picked up) and across the body (oxygen used), so the picture shows where without extra words.
-// The pulse, when shown, replaces the loop as its own builds; it never piles onto it.
+// "Blood carries" and the pulse, when shown, each replace the loop as their own builds; never piled onto it.
 function renderDouble(root, P, ctx, M) {
   const b = ctx.b; const bi = k => b[k];
   const g0 = h('g', { style: '--o2-rich:var(--heat);--o2-rich-text:var(--heat-text);--o2-poor:var(--focus);--o2-poor-text:var(--focus-text)' }, root);
@@ -169,7 +170,8 @@ function renderDouble(root, P, ctx, M) {
     textBlock(h('g', { s: bi(k) + 1 }, par), x, y, s, Object.assign({}, o, { a: { fill: 'var(--ink-2)', cls: 'halo' } }));
     tb(h('g', { s: bi(k), hide: bi(k) + 1, cls: 'rise', style: 'pointer-events:none' }, par), x, y, s, Object.assign({}, o, { a: { fill: col, cls: 'strong halo' } }));
   };
-  const circ = h('g', M.pulse ? { hide: bi('pulse') } : {}, g0);
+  const panel = M.carries.length ? 'carries' : M.pulse ? 'pulse' : null;
+  const circ = h('g', panel ? { hide: bi(panel) } : {}, g0);
   const defs = h('defs', {}, circ);
   const grad = (id, x0, x1, from, to) => {
     const lg = h('linearGradient', { id, gradientUnits: 'userSpaceOnUse', x1: x0, x2: x1, y1: 0, y2: 0 }, defs);
@@ -269,6 +271,19 @@ function renderDouble(root, P, ctx, M) {
     yC += r.h + 14;
   });
 
+  /* what blood carries replaces the loop as its own build (then gives way to the pulse, if shown) */
+  if (M.carries.length) {
+    const cg = h('g', Object.assign({ s: bi('carries'), cls: 'rise' }, M.pulse ? { hide: bi('pulse') } : {}), g0);
+    const CX = HX - 200;
+    tb(cg, HX, GRID.top + 60, M.L('carries'), { cls: 'ts-label', maxW: 440, maxLines: 1, anchor: 'middle', a: { fill: 'var(--ink-2)', cls: 'strong' }, edit: 'text.label:carries' });
+    let yy = GRID.top + 120;
+    M.carries.forEach(c => {
+      h('circle', { cx: CX + 14, cy: yy - 11, r: 14, fill: c === 'oxygen' ? RICH : c === 'carbonDioxide' ? POOR : 'var(--ink-3)' }, cg);
+      const r = tb(cg, CX + 44, yy, txt(P, 'label:carry-' + c, CARRY_WORDS[c]), { cls: 'ts-label', maxW: 400, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:carry-${c}` });
+      yy += r.h + 30;
+    });
+  }
+
   /* the pulse replaces the loop as its own builds: at rest, then exercising */
   const counters = []; const PX = HX - 220, PW = 440, BXs = scale(0, 200, 0, PW);
   if (M.pulse) {
@@ -302,7 +317,8 @@ function renderDouble(root, P, ctx, M) {
 
 export function render(root, P, ctx) {
   const { M } = plan(P);
-  if (M.dbl) return renderDouble(root, P, ctx, M); const b = ctx.b, N = ctx.N; const bi = k => b[k];
+  if (M.dbl) return renderDouble(root, P, ctx, M);
+ const b = ctx.b, N = ctx.N; const bi = k => b[k];
   const g0 = h('g', { style: '--o2-rich:var(--heat);--o2-rich-text:var(--heat-text);--o2-poor:var(--focus);--o2-poor-text:var(--focus-text)' }, root);
   const RICH = 'var(--o2-rich)', POOR = 'var(--o2-poor)';
   const VW = 'calc(var(--sw-arrow) * 3.2)', SW = 'calc(var(--sw-arrow) * 4.4)';
@@ -335,7 +351,7 @@ export function render(root, P, ctx) {
   tb(bodyG, BODY.x + BODY.w / 2, nb === 1 ? BY + BODY.h / 2 + 10 : BY + 33, M.L('body'), Object.assign({ maxW: BODY.w - 40, anchor: 'middle', a: { fill: 'var(--ink)' }, edit: 'text.label:body' }, bo));
 
   // version 2: where the body's cells use the oxygen (the colour change happens here), its own build
-  phased('back', OR - 26, BY - 14, M.L('used'), { cls: 'ts-label', maxW: OR - 26 - (HX + 60), maxLines: 1, anchor: 'end', edit: 'text.label:used' }, 'var(--o2-poor-text)');
+  phased('back', OR - 26, BY - 14, USED, { cls: 'ts-label', maxW: OR - 26 - (HX + 60), maxLines: 1, anchor: 'end' }, 'var(--o2-poor-text)');
 
   /* lungs: lobed, with the windpipe and airways */
   if (dbl) {

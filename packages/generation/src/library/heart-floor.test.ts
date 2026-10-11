@@ -154,6 +154,25 @@ describe("the heart builds in journey order (heart_circulation v2)", () => {
       "back",
     ]);
     expect(keys({ detail: "simple", showPulse: false })).toEqual(["heart", "out", "back"]);
+    // "Blood carries" and the pulse are kept as their own builds after the journey (they replace the loop)
+    const all = { oxygen: true, food: true, water: true, carbonDioxide: true };
+    expect(keys({ detail: "double", showPulse: false, carries: all })).toEqual([
+      "heart",
+      "lungs",
+      "oxygen",
+      "out",
+      "back",
+      "carries",
+    ]);
+    expect(keys({ detail: "double", exercise: "running", carries: {} })).toEqual([
+      "heart",
+      "lungs",
+      "oxygen",
+      "out",
+      "back",
+      "pulse",
+      "run",
+    ]);
   });
   test("v1 params with every v1 label overridden still draw, with no warnings", async () => {
     const { renderLibraryModel, kit, loadModel } = await import("./render");
