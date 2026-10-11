@@ -14,9 +14,10 @@ import { validate } from "./strict-subset";
  * split so that their sum also stays inside the variant's whole-slide room, so a slide that keeps
  * to its caps cannot overflow by the writer's own measure (`charsOver`).
  *
- * On when the writer bundle says so (`WriterBundle.features.slotFill`). A slide that breaks its caps, reaches one, or ends a sentence field mid-sentence
- * is logged as a writer fault (`ev: "slot-fill"`, `cut: true`) and kept as written: no code shrinks,
- * splits or cuts it (Greg, 11 Oct: "no after-the-fact rescue"). Old outputs (no `fit`) still parse.
+ * On when the writer bundle says so (`WriterBundle.features.slotFill`). A slide that breaks its
+ * caps, reaches one, or ends a sentence field mid-sentence is logged as a writer fault
+ * (`ev: "slot-fill"`, `cut: true`) and kept as written: no code shrinks, splits or cuts it. Old
+ * outputs (no `fit`) still parse.
  */
 
 type J = Record<string, unknown>;
@@ -36,18 +37,14 @@ type FitVariant = {
   columnLabel?: number;
 };
 
-export const SLOT_FILL_DEFAULT = false;
 /** Labels the fit table measured with a fixed length (fit-table.ts KEY_LABEL, COLUMN_LABEL). */
 const KEY_LABEL = 16;
 const COLUMN_LABEL = 12;
 /**
  * Characters per word (spaces included) used to turn a `maxLength` cap into the words the writer
- * is shown. Round 1 used 6 and Sol cut a quiz option at its 100-character cap after 13 words
- * ("... release energy by aerobic"; 7.7 a word). Across round 1's 208 on-slide strings (6 decks,
- * `.data/teacher-path/sf-*`) the mean was 6.2 characters a word but p90 7.7 and p95 8.0, and short
- * science items run longer (p90 8.0). At 8, a field written to its word budget fits its cap for 95%
- * of strings; the schema's `maxLength` stays the hard backstop. (80% of the 6-a-word number, the
- * other option, gives 13 words at 100 characters: the very option that was cut.)
+ * is shown. On-slide strings average about 6 characters a word but reach 8 at the 95th
+ * percentile, so at 8 a field written to its word budget fits its cap; the schema's `maxLength`
+ * stays the hard backstop.
  */
 export const CHARS_PER_WORD = 8;
 const LISTS = ["points", "questions", "options", "columns", "sequence"] as const;
@@ -244,35 +241,6 @@ export function withSlotFill(schema0: J, stage: string): J {
   // The split layouts' own defs are no longer referenced; strict mode is sent only what is used.
   for (const n of done) delete defs[n];
   return schema;
-}
-
-/** Each variant's caps in words (the budgets `fitsLines` shows, before sharing by label). */
-export function wordCaps(stage: string): Record<string, Record<string, Record<string, number>>> {
-  const out: Record<string, Record<string, Record<string, number>>> = {};
-  const F = fitTable()[stage];
-  if (!F) return out;
-  for (const [layout, vs] of Object.entries(slotLayouts(stage))) {
-    out[layout] = {};
-    for (const v of vs) {
-      const c = variantCaps(
-        layout,
-        v,
-        { lead: true, stem: layout === "hinge", instruction: false },
-        F.heading,
-      );
-      const w = (n?: number) => (n === undefined ? undefined : Math.floor(n / CHARS_PER_WORD));
-      const row: Record<string, number> = {};
-      for (const [k, n] of Object.entries({
-        heading: w(c.heading),
-        lead: layout === "hinge" ? undefined : w(c.lead),
-        stem: w(c.stem),
-        item: w(c.item),
-      }))
-        if (n !== undefined) row[k] = n;
-      (out[layout] as Record<string, Record<string, number>>)[fitKey(v)] = row;
-    }
-  }
-  return out;
 }
 
 /*
@@ -505,26 +473,4 @@ export function slotFillArrival(raw: J, stage: string, schema: J): Arrival {
   const over = charsOver(slide, stage);
   const route = breaches.length || cuts.length || over.length ? "writer-fault" : "as-written";
   return { slide, ...(key ? { fit: key } : {}), breaches, cuts, fields, over, route };
-}
-
-/**
- * The skeleton a slide's first two fields commit to, for the generating view:
- * how many items, whether key cards, whether a figure. Undefined until `fit` has arrived.
- */
-export function skeletonOf(
-  partial: J | undefined,
-):
-  | { template: string; fit: string; items: number; keyCards: boolean; figure: boolean }
-  | undefined {
-  const template = partial?.template;
-  const fit = partial?.fit;
-  if (typeof template !== "string" || typeof fit !== "string") return undefined;
-  const m = /^(?:[a-z]+-(\d+))?/.exec(fit);
-  return {
-    template,
-    fit,
-    items: m?.[1] ? Number(m[1]) : 0,
-    keyCards: /(^|-)key(-|$)/.test(fit),
-    figure: /(^|-)fig$/.test(fit),
-  };
 }

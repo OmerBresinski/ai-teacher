@@ -134,7 +134,7 @@ import {
   writerMaxTokens,
 } from "./services";
 import { slideStates } from "./slide-states";
-import { SLOT_FILL_DEFAULT, slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
+import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
 import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
 
 /*
@@ -251,7 +251,7 @@ export type WriterRun = {
    * Slot-fill (slot-fill.ts): layout first, then fill the slots. Each slide def splits into one
    * def per measured way of filling it, named by the slide's `fit` field, with `maxLength` caps;
    * the menu's `Fits:` lines become word budgets generated from those caps. Absent: the bundle's
-   * `features.slotFill` (base4g on), else `SLOT_FILL_DEFAULT` (off, schema unchanged).
+   * `features.slotFill` (base4g on), else off (schema unchanged).
    */
   slotFill?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
@@ -520,7 +520,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     models.map((m) => m.id),
   );
   const unsplit = activities ? withActivities(libbed, stageKey) : libbed;
-  const slotFill = run.slotFill ?? P.features?.slotFill ?? SLOT_FILL_DEFAULT;
+  const slotFill = run.slotFill ?? P.features?.slotFill ?? false;
   const schema = slotFill ? withSlotFill(unsplit, stageKey) : unsplit;
   const system0 = libSystem(writerSystem(brief, P), models);
   const system = slotFill ? slotFillSystem(system0, schema) : system0;

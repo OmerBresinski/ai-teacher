@@ -28,6 +28,6 @@
     "shared/restage.txt": "ed93563626de975edcbbfa86fda2339d3e07057698d9ddfc98d301a187378ce0",
     "shared/user.txt": "e980669337ec97382122070fee72c60693a15d897ac435022d3110238d759696"
   },
-  "sourceSha256": "f258befd1e40827a7273f4ae1bdf96a9da28d74cad0a0d11b8dc053be9e6375c",
-  "source": "bundles/base4g/prompts.gen.ts (no lab evidence yet: base4g is base4f-p123 plus the listed line edits)"
+  "sourceSha256": "11231d27b46ba0ef76c14e46a1c97db6cdb37adab9237fab759944bc4041a049",
+  "source": "bundles/base4g/prompts.gen.ts: base4f-p123 plus the line edits in base4g.test.ts; the slot-fill wording slot-fill.ts adds ran in lab/slotfill round 2 (3a26ce97), this bundle has not run yet"
 }

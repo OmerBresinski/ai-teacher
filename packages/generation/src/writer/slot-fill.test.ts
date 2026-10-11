@@ -8,14 +8,11 @@ import {
   fitKey,
   fitsLines,
   SHAPES,
-  SLOT_FILL_DEFAULT,
-  skeletonOf,
   slotFillArrival,
   slotFillSystem,
   slotLayouts,
   variantDefName,
   withSlotFill,
-  wordCaps,
 } from "./slot-fill";
 import { validate } from "./strict-subset";
 
@@ -97,37 +94,21 @@ describe("slot schema generation per layout", () => {
       expect((title.anyOf as J[]).length).toBe(2);
     });
 
-  test("every $ref resolves and no string slot is left uncapped", () => {
+  test("every $ref resolves", () => {
     for (const st of STAGES) {
       const s = split(st);
       const text = JSON.stringify(s);
       for (const m of text.matchAll(/"#\/\$defs\/([^"]+)"/g))
         expect(defsOf(s)[m[1] as string]).toBeDefined();
-      for (const [name, d] of Object.entries(defsOf(s))) {
-        if (!name.includes("~")) continue;
-        const p = d.properties as Record<string, J>;
-        for (const k of ["heading", "lead", "stem", "formula"])
-          if (p[k]) expect(typeof (p[k] as J).maxLength).toBe("number");
-      }
+      // Every on-slide string slot's cap: schema-limits.test.ts.
     }
   });
 
   test("off by default: the writer's schema is unchanged", () => {
-    expect(SLOT_FILL_DEFAULT).toBe(false);
+    expect(writerBundle("base4f-p123").features?.slotFill).toBeUndefined();
     const s = writerSchema("KS2", { min: 9, max: 12 });
     expect(JSON.stringify(s)).not.toContain('"fit"');
     expect(JSON.stringify(s)).not.toContain("maxLength");
-  });
-
-  test("word caps are the measured room at 8 characters a word (round 2 margin)", () => {
-    expect(CHARS_PER_WORD).toBe(8);
-    const w = wordCaps("KS2");
-    // KS2 visual-text lead + 2 points with a figure: 257 characters in all, 164 an item.
-    const row = w["visual-text"]?.["points-2-fig"];
-    expect(row?.item).toBe(Math.floor(Math.floor(257 / 3.5) / 8));
-    expect(row?.heading).toBe(Math.floor(68 / 8));
-    // Round 1's cut option: a 100-character cap now shows 12 words, not 16.
-    expect(Math.floor(100 / CHARS_PER_WORD)).toBe(12);
   });
 });
 
@@ -228,7 +209,7 @@ describe("old output still parses through the stage", () => {
   });
 });
 
-describe("the prompt and the skeleton", () => {
+describe("the prompt", () => {
   test("the Fits lines become word budgets from the schema's own caps, and the text is shorter", () => {
     const keys = { KS1: "systemKS1", KS2: "systemKS2", "KS3-5": "systemKS3_5" } as const;
     for (const st of STAGES) {
@@ -278,18 +259,5 @@ describe("the prompt and the skeleton", () => {
           );
       expect(keep(out)).toEqual(keep(sys));
     }
-  });
-
-  test("the skeleton is known as soon as template and fit arrive", () => {
-    expect(skeletonOf({ template: "compare" })).toBeUndefined();
-    expect(skeletonOf({ template: "compare", fit: "columns-3-fig" })).toEqual({
-      template: "compare",
-      fit: "columns-3-fig",
-      items: 3,
-      keyCards: false,
-      figure: true,
-    });
-    expect(skeletonOf({ template: "visual-text", fit: "points-2-key-fig" })?.keyCards).toBe(true);
-    expect(skeletonOf({ template: "title", fit: "bare" })?.items).toBe(0);
   });
 });

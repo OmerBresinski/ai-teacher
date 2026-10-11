@@ -1,4 +1,4 @@
-// Generated from base4f-p123 by exact line edits (writer-prompts.test.ts lists them); do not edit. Wording changes go
+// Generated from base4f-p123 by exact line edits (base4g.test.ts lists them); do not edit. Wording changes go
 // through the prompt-engineer agent and a new version. `writer-prompts.test.ts` checks every sha256.
 /* biome-ignore-all format: generated, byte-exact */
 
