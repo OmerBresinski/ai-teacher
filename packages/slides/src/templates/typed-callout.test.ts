@@ -61,8 +61,8 @@ const hosts = (kind: (typeof POINT_KINDS)[number], n: number): TemplateInput[] =
 };
 
 describe("typed callout card", () => {
-  test("each type fits on every theme and stage at 2, 3 and 4 items, with its tone, icon and label, last", () => {
-    for (const stage of OLD_LESSON_STAGES)
+  for (const stage of OLD_LESSON_STAGES)
+    test(`each type fits on every theme at ${stage} at 2, 3 and 4 items, with its tone, icon and label, last`, () => {
       for (const theme of THEMES)
         for (const kind of POINT_KINDS)
           for (const n of [2, 3, 4])
@@ -96,7 +96,7 @@ describe("typed callout card", () => {
                 if (p !== undefined && textOf(p) !== "The heart pumps blood; it does not make it.")
                   expect((p.y ?? 0) < (card?.y ?? 0)).toBe(true);
             }
-  });
+    });
 
   test("a full-width diagram's key card strip takes the type too (ruling 194)", () => {
     for (const theme of THEMES) {
