@@ -100,6 +100,8 @@ export async function startStack(opts: {
   fake?: boolean;
   /** Extra worker settings from config.json, to match production (e.g. the writer planner). */
   workerEnv?: Record<string, string>;
+  /** Extra api settings from config.json (the parity lab copies production's non-secret ones). */
+  apiEnv?: Record<string, string>;
   openaiKey?: string;
   pexelsKey?: string;
   imageCapUsd: number;
@@ -143,7 +145,10 @@ export async function startStack(opts: {
       TURNSTILE_SECRET_KEY: TURNSTILE_SECRET,
       STORAGE_ROOT: opts.storageRoot,
       LOG_LEVEL: "info",
+      // The lab marker: lets a declared lab candidate (LAB_WRITER_BUNDLE_ID) apply; production ignores it.
+      LAB_PARITY: "1",
       ...ai,
+      ...opts.apiEnv,
     });
     spawn("worker", ["bun", "src/index.ts"], join(ROOT, "apps/worker"), {
       // `test`, not `development`: pino writes JSON lines (no pino-pretty), which this tool reads.
@@ -154,6 +159,7 @@ export async function startStack(opts: {
       LOG_LEVEL: "info",
       AI_LESSON_COST_CAP_USD: String(opts.lessonCapUsd),
       IMAGE_GENERATION_DAILY_CAP_USD: String(opts.imageCapUsd),
+      LAB_PARITY: "1",
       ...ai,
       ...opts.workerEnv,
       ...(opts.fake
