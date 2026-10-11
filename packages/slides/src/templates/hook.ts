@@ -3,9 +3,9 @@
  * across the whole slide under a dark scrim, and the heading plus up to about 40 words centred in
  * white. Copied from the Chalkie heart deck's slide 2.
  *
- * - The scrim is theme-aware: the theme's accent sunk almost to black (`hookScrim`), at an opacity
- *   that keeps white text at 4.5:1 or better even over a pure white pixel (`hookContrast`, tested
- *   on every theme).
+ * - Colours are theme tokens (`hookStyle`): the words in the theme's lightest token, the scrim its
+ *   darkest token tinted with the accent, at an opacity that keeps the words at 4.5:1 or better even
+ *   over the brightest pixel (`hookContrast`, `contrastRatio` from look.ts, tested on every theme).
  * - The photo covers the slide, cropped round its must-see subjects (`placePhoto`). A photo that
  *   cannot fill the slide without cutting a subject blind is shown whole, centred on the scrim's
  *   colour, so nothing is cut and the slide is still the picture.
@@ -13,41 +13,49 @@
  *   reported in `over` past that. A hook whose picture failed is laid as a discussion prompt (the
  *   caller), never an empty dark slide.
  */
+import type { Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { contrastRatio } from "../look";
 import { type Ctx, kit, mix, placePhoto, type TemplateInput } from "./index";
 
 export const HOOK_NAMES = { photo: "Hook photo", scrim: "Scrim" } as const;
-/** White text on the scrim. */
-export const HOOK_TEXT = "#ffffff";
-/** The scrim's opacity: Chalkie's is about 60%; this keeps 4.5:1 over white on every theme. */
-export const HOOK_SCRIM_OPACITY = 0.68;
+/**
+ * The brightest pixel a photo can have under the scrim: the worst case the words are checked
+ * against. It is never drawn; the slide's colours are all theme tokens.
+ */
+export const BRIGHTEST_PIXEL = "#ffffff";
+/** The contrast the words keep over the scrim, over the brightest pixel. */
+export const HOOK_CONTRAST = 4.5;
 const SLIDE = { w: 960, h: 540 } as const;
 const TEXT_W = 800;
 
-/** The scrim's colour: the theme's accent sunk almost to black. */
-export const hookScrim = (accent: string) => mix(accent, "#000000", 0.16);
-
-const lin = (v: number) => {
-  const c = v / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-};
-const rgb = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
-const luminance = (c: number[]) =>
-  0.2126 * lin(c[0] ?? 0) + 0.7152 * lin(c[1] ?? 0) + 0.0722 * lin(c[2] ?? 0);
-
+export type HookStyle = { scrim: string; opacity: number; text: string };
 /**
- * White text's contrast on the scrim at its worst: laid over a pure white pixel, the scrim blended
- * at its opacity the way a browser blends it (in sRGB).
+ * The hook's colours from the theme's tokens: the words in the theme's lightest token, the scrim
+ * its darkest token tinted with the accent, at the lightest opacity (from Chalkie's 60%) that keeps
+ * the words at 4.5:1 over the brightest pixel (`contrastRatio`, look.ts).
  */
-export function hookContrast(accent: string, under = "#ffffff"): number {
-  const a = HOOK_SCRIM_OPACITY;
-  const s = rgb(hookScrim(accent));
-  const u = rgb(under);
-  const seen = s.map((v, i) => v * a + (u[i] ?? 0) * (1 - a));
-  const l1 = luminance(rgb(HOOK_TEXT));
-  const l2 = luminance(seen);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+export function hookStyle(t: Theme): HookStyle {
+  const c = t.colors;
+  const tokens = [c.ink, c.background, c.surface, c.onAccent, c.accent];
+  const byLight = [...tokens].sort(
+    (a, b) => contrastRatio(a, BRIGHTEST_PIXEL) - contrastRatio(b, BRIGHTEST_PIXEL),
+  );
+  const text = byLight[0] as string;
+  const dark = byLight[byLight.length - 1] as string;
+  const scrim = mix(c.accent, dark, 0.16);
+  const seen = (k: number) => contrastRatio(text, mix(scrim, BRIGHTEST_PIXEL, k));
+  let opacity = 0.6;
+  while (opacity < 0.95 && seen(opacity) < HOOK_CONTRAST)
+    opacity = Math.round((opacity + 0.02) * 100) / 100;
+  return { scrim, opacity, text };
 }
+
+/** The words' contrast on the scrim at its worst: over the brightest pixel. */
+export const hookContrast = (t: Theme): number => {
+  const s = hookStyle(t);
+  return contrastRatio(s.text, mix(s.scrim, BRIGHTEST_PIXEL, s.opacity));
+};
 
 /** A hook needs a photo (placed, or an open slot while it is being found). */
 export const hookOk = (input: TemplateInput) => !!input.figure && "photo" in input.figure;
@@ -60,7 +68,8 @@ export function asPrompt(input: TemplateInput): TemplateInput {
 export function layoutHook(c: Ctx, input: TemplateInput) {
   const f = input.figure;
   if (!f || !("photo" in f)) return;
-  const scrim = hookScrim(c.t.colors.accent);
+  const style = hookStyle(c.t);
+  const scrim = style.scrim;
   const page = { x: 0, y: 0, w: SLIDE.w, h: SLIDE.h };
   const covers =
     !f.photo || !f.aspect || placePhoto(f.aspect, SLIDE.w / SLIDE.h, f.subjects).mode === "cover";
@@ -77,7 +86,7 @@ export function layoutHook(c: Ctx, input: TemplateInput) {
     shape: "rect",
     ...page,
     fill: scrim,
-    opacity: HOOK_SCRIM_OPACITY,
+    opacity: style.opacity,
     name: HOOK_NAMES.scrim,
   });
 
@@ -104,7 +113,7 @@ export function layoutHook(c: Ctx, input: TemplateInput) {
       input.heading,
       "heading",
       { x, y, w: TEXT_W },
-      { color: HOOK_TEXT, align: "center", name: "Heading" },
+      { color: style.text, align: "center", name: "Heading" },
     );
     y += m.head + m.gap;
   }
@@ -114,7 +123,7 @@ export function layoutHook(c: Ctx, input: TemplateInput) {
       lead,
       "body",
       { x, y, w: TEXT_W },
-      { color: HOOK_TEXT, align: "center", name: "Lead" },
+      { color: style.text, align: "center", name: "Lead" },
     );
   c.s = full;
   // The words are centred on the photo, not in the band under a heading (ruling 198 does not move them).

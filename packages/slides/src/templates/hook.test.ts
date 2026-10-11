@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
+import { contrastRatio } from "../look";
 import { MIN_FONT_SIZE, THEMES } from "../themes";
-import { HOOK_NAMES, HOOK_SCRIM_OPACITY, HOOK_TEXT, hookContrast, hookScrim } from "./hook";
-import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
+import { BRIGHTEST_PIXEL, HOOK_NAMES, hookContrast, hookStyle } from "./hook";
+import { HOOK_GROUPS, type HookGroup, hookFitsAt } from "./hook-capacity";
+import CAPACITY from "./hook-capacity.json" with { type: "json" };
+import { type Figure, layoutTemplate, mix, type Stage, type TemplateInput } from "./index";
 
 /*
- * Full-bleed hook (UX ruling 203, P5): white text on the scrim at 4.5:1 or better on every theme
- * (over a pure white pixel, the worst case), fit on every theme and stage, the never-throw corpus
+ * Full-bleed hook (UX ruling 203, P5): the words on the scrim at 4.5:1 or better on every theme
+ * (over the brightest pixel, the worst case), fit on every theme and stage, the never-throw corpus
  * and the picture-missing paths.
  */
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
@@ -28,39 +31,50 @@ const fontSizes = (els: SlideElement[]) =>
   });
 
 describe("hook", () => {
-  test("white text on the scrim is at least 4.5:1 on every theme, even over white", () => {
+  test("the words on the scrim are at least 4.5:1 on every theme, even over the brightest pixel", () => {
     for (const theme of THEMES) {
-      expect(hookContrast(theme.colors.accent), theme.id).toBeGreaterThanOrEqual(4.5);
-      // and over the theme's own pale ground and any mid grey
-      expect(hookContrast(theme.colors.accent, theme.colors.background)).toBeGreaterThanOrEqual(
-        4.5,
-      );
-      expect(hookContrast(theme.colors.accent, "#808080")).toBeGreaterThanOrEqual(4.5);
+      const st = hookStyle(theme);
+      expect(hookContrast(theme), theme.id).toBeGreaterThanOrEqual(4.5);
+      for (const under of [theme.colors.background, "#808080", BRIGHTEST_PIXEL])
+        expect(contrastRatio(st.text, mix(st.scrim, under, st.opacity))).toBeGreaterThanOrEqual(
+          4.5,
+        );
+      const c = theme.colors;
+      expect([c.ink, c.background, c.surface, c.onAccent, c.accent]).toContain(st.text);
     }
   });
 
-  test("the slide draws exactly that scrim, and the words in that white", () => {
+  test("the slide draws exactly that scrim, and the words in that colour", () => {
     for (const theme of THEMES) {
+      const st = hookStyle(theme);
       const els = layoutTemplate(
         { template: "hook", heading: "Why do volcanoes erupt?", lead: LEAD.ks2, figure: photo },
         theme,
         "ks2",
       ).slide.elements;
       const scrim = els.find((e) => e.name === HOOK_NAMES.scrim);
-      expect(scrim).toMatchObject({ x: 0, y: 0, w: 960, h: 540, opacity: HOOK_SCRIM_OPACITY });
-      expect((scrim as { fill?: string }).fill).toBe(hookScrim(theme.colors.accent));
+      expect(scrim).toMatchObject({ x: 0, y: 0, w: 960, h: 540, opacity: st.opacity });
+      expect((scrim as { fill?: string }).fill).toBe(st.scrim);
       const shot = els.findIndex((e) => e.name === HOOK_NAMES.photo);
       expect(shot).toBeGreaterThanOrEqual(0);
       expect(els.indexOf(scrim as SlideElement)).toBeGreaterThan(shot);
       const words = els.filter((e) => e.type === "text");
       expect(words).toHaveLength(2);
       for (const w of words) {
-        expect(w.style?.color).toBe(HOOK_TEXT);
+        expect(w.style?.color).toBe(st.text);
         expect(w.style?.align).toBe("center");
         expect(els.indexOf(w)).toBeGreaterThan(els.indexOf(scrim as SlideElement));
       }
     }
   });
+
+  test("the writer's lead cap is the renderer's measurement at its edge", () => {
+    for (const g of Object.keys(HOOK_GROUPS) as HookGroup[]) {
+      const { chars } = CAPACITY[g];
+      expect(hookFitsAt(HOOK_GROUPS[g], chars), g).toBe(true);
+      if (chars < 600) expect(hookFitsAt(HOOK_GROUPS[g], chars + 2), g).toBe(false);
+    }
+  }, 30_000);
 
   for (const theme of THEMES)
     for (const stage of STAGES)

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { withActivities } from "./activities";
+import { charsOver, fitTable } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { materialise, type Plan, type VisualState, visualsOf } from "./materialise";
 import { HOOK_DEFAULT, writerSchema } from "./schema";
@@ -83,5 +84,18 @@ describe("hook on the writer's layout", () => {
     const r = run(hook, () => ({ status: "failed" }));
     expect(r.slide.kind).toBe("discussion");
     expect(r.slide.elements.some((e) => e.name === "Scrim")).toBe(false);
+  });
+});
+
+describe("the hook's fit", () => {
+  test("the fit table has the hook, and its cap holds the writer to it", () => {
+    const v = fitTable().KS2?.layouts.hook?.variants ?? [];
+    expect(v).toHaveLength(1);
+    expect(v[0]?.chars).toBeGreaterThan(200);
+    const SLIDES = (fixture as { brief: { slides: { min: number; max: number } } }).brief.slides;
+    const on = writerSchema("KS2", SLIDES, undefined, { hook: true }) as J;
+    const def = (on.$defs as Record<string, J>).hook as J;
+    expect(validate(def, { ...hook, lead: "word ".repeat(200) }, on)).not.toEqual([]);
+    expect(charsOver({ ...hook, lead: "word ".repeat(200) }, "KS2")[0]).toMatch(/^lead:/);
   });
 });

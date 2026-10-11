@@ -2,6 +2,7 @@ import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
 import { gridCaps } from "./cards-grid-fits";
 import { freeformLabels, teachesSchema, writerCaps } from "./contract";
+import { hookCap } from "./hook-fits";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -353,12 +354,14 @@ function withBannerText(schema: J, stage: WriterStage): J {
  */
 export const HOOK_DEFAULT = false;
 
-function withHook(schema: J): J {
+/** Its cap comes from the renderer's measured fit (`hookCap`, the fit table's hook entry). */
+function withHook(schema: J, stage: WriterStage): J {
   const defs = schema.$defs as Record<string, J>;
   defs.hook = obj({
     template: { type: "string", enum: ["hook"] },
     heading: S(),
-    lead: S(),
+    // strict mode takes `pattern`, not `maxLength`
+    lead: { type: "string", pattern: `^.{1,${hookCap(stage)}}$` },
     picture: REF("picture"),
   });
   const slides = (schema.properties as Record<string, J>).slides as J;
@@ -394,7 +397,7 @@ export function writerSchema(
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
   if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
-  if (opts.hook ?? HOOK_DEFAULT) withHook(s);
+  if (opts.hook ?? HOOK_DEFAULT) withHook(s, stage);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
