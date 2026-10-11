@@ -61,6 +61,11 @@ export type SlideViewProps = {
    */
   transformOverride?: ReadonlyMap<string, ElementTransform>;
   /**
+   * Edit mode only: a drawn model the teacher is paging through (TEACH-247 part u) shows `build`,
+   * as Present would; every other model shows its finished drawing.
+   */
+  diagramPreview?: { id: string; build: number } | null;
+  /**
    * Edit mode: let content past the bottom edge show instead of clipping it. The canvas sets it
    * while a text box is being typed into, so the teacher sees the lines that run off the slide;
    * sideways overflow stays clipped. Ignored in every other mode.
@@ -91,6 +96,7 @@ export function SlideView({
   answerProgress = 0,
   className,
   transformOverride,
+  diagramPreview,
   spill = false,
   imageOrigin,
 }: SlideViewProps) {
@@ -229,7 +235,11 @@ export function SlideView({
               revealAnswer={revealAnswer}
               answerProgress={answerProgress}
               diagramBuild={
-                mode === "present" && step !== undefined ? diagramBuildAt(slide, step) : undefined
+                mode === "present" && step !== undefined
+                  ? diagramBuildAt(slide, step)
+                  : mode === "edit" && diagramPreview?.id === el.id
+                    ? diagramPreview.build
+                    : undefined
               }
               diagramAnswer={
                 mode === "present"
