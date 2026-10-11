@@ -22,9 +22,15 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { drawDiagram } from "../diagrams";
+import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../point-kinds";
+import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
+
+export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
+
 import { uid } from "../factories";
+import { contrastRatio } from "../look";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
@@ -175,11 +181,20 @@ export type TemplateInput = {
   extra?: string[];
 };
 
-/** A point: plain words, or words with a short label (a key card in a lead + points column). */
-export type TemplatePoint = string | { text: string; label?: string };
+/**
+ * A point: plain words, or words with a short label (a key card in a lead + points column). A
+ * `kind` types the card as a callout (ruling 203, P1): its tint and icon, and its label when it
+ * has none of its own.
+ */
+export type TemplatePoint = string | { text: string; label?: string; kind?: PointKind };
 export const pointText = (p: TemplatePoint): string => (typeof p === "string" ? p : p.text);
-export const pointLabel = (p: TemplatePoint): string | undefined =>
-  typeof p === "string" ? undefined : p.label?.trim() || undefined;
+export const pointKind = (p: TemplatePoint): PointKind | undefined =>
+  typeof p === "string" || !isPointKind(p.kind) ? undefined : p.kind;
+export const pointLabel = (p: TemplatePoint): string | undefined => {
+  if (typeof p === "string") return undefined;
+  const k = pointKind(p);
+  return p.label?.trim() || (k ? POINT_KIND_LABELS[k] : undefined);
+};
 
 export type TemplateResult = {
   slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
@@ -215,6 +230,10 @@ export type Ctx = {
   lost?: number[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
+  /** `LayoutOptions.pictureBand` (UX ruling 203). */
+  pictureBand?: boolean;
+  /** `LayoutOptions.optionColours` (UX ruling 203). */
+  optionColours?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -343,8 +362,24 @@ const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
  */
 const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
 
+/**
+ * The letter's colour on a hinge disc of `fill` (ruling 203, P8): of the theme's own text tokens
+ * (`onAccent`, `ink`, `surface`, `background`), the one that reads best on it.
+ */
+function onFill(t: Theme, fill: string): string {
+  const { onAccent, ink, surface, background } = t.colors;
+  return [onAccent, ink, surface, background].reduce((a, b) =>
+    contrastRatio(b, fill) > contrastRatio(a, fill) ? b : a,
+  );
+}
+
+/** One colour per hinge option, from the theme's `OPTION_TONES` (UX ruling 203, P8). */
+export function optionColours(t: Theme): string[] {
+  return [...optionTones(t)];
+}
+
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
-function disc(c: Ctx, label: string, x: number, y: number, d: number) {
+function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: string) {
   c.els.push({
     id: uid(),
     type: "shape",
@@ -353,14 +388,14 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number) {
     y: Math.round(y),
     w: d,
     h: d,
-    fill: c.t.colors.accent,
+    fill: fill ?? c.t.colors.accent,
     name: "Marker",
     doc: doc(label),
     textStyle: {
       preset: "body",
       fontSize: markerSize(c),
       fontWeight: 700,
-      color: c.t.colors.onAccent,
+      color: fill ? onFill(c.t, fill) : c.t.colors.onAccent,
       align: "center",
       valign: "middle",
       padding: 0,
@@ -849,12 +884,14 @@ function ladder(
 function leadAndPoints(
   c: Ctx,
   lead: string | undefined,
-  points: TemplatePoint[],
+  given: TemplatePoint[],
   x: number,
   w: number,
   what: string,
   top?: number,
 ) {
+  // A typed card sits under the text (ruling 203, P1; `typedLast`).
+  const points = typedLast(given);
   const labelled = points.filter((p) => pointLabel(p)).length;
   const cards = labelled >= 1 && labelled <= 2;
   ladder(
@@ -870,45 +907,13 @@ function leadAndPoints(
         });
       }
       const pad = Math.round(c.s.body * 0.7);
-      const bar = 5;
-      const iw = w - 2 * pad - bar;
       const d = Math.round(c.s.body * 0.36);
       const indent = Math.round(c.s.body * 1.0);
       for (const p of points) {
         const label = pointLabel(p);
         if (cards && label) {
-          const body = pointText(p);
-          const lh = measure(c, label, "lead", iw, 700);
-          const bh = measure(c, body, "body", iw);
-          const h = 2 * pad + lh + 4 + bh;
-          blocks.push({
-            h,
-            draw: (y) => {
-              box(c, { x, y, w, h }, wash(c.t), {
-                name: "Key card",
-                radius: Math.min(c.t.radius, 12),
-              });
-              box(c, { x, y, w: bar, h }, c.t.colors.accent, {
-                name: "Key edge",
-                shape: "rect",
-                radius: 0,
-              });
-              const l = text(
-                c,
-                label,
-                "lead",
-                { x: x + bar + pad, y: y + pad, w: iw },
-                { color: c.t.colors.accent, weight: 700, name: "Key label" },
-              );
-              text(
-                c,
-                body,
-                "body",
-                { x: x + bar + pad, y: l.y + l.h + 4, w: iw },
-                { color: c.t.colors.ink, name: "Point" },
-              );
-            },
-          });
+          const h = keyCardHeight(c, p, w, pad, "body");
+          blocks.push({ h, draw: (y) => drawKeyCard(c, p, { x, y, w, h }, pad, "body") });
           continue;
         }
         const words = label ? `${label}: ${pointText(p)}` : pointText(p);
@@ -1176,17 +1181,12 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
   const cols = n <= 4 ? n : Math.ceil(n / 2);
   const gap = 12;
   const w = Math.floor((G.width - (cols - 1) * gap) / cols);
-  const bar = 5;
   // The cards keep body size: they never read smaller than the points they replace.
   const role = "body";
   const size = c.s[role];
   const pad = Math.round(size * 0.6);
-  const iw = w - 2 * pad - bar;
-  const cards = points.map((p) => {
-    const label = pointLabel(p);
-    const lh = label ? measure(c, label, "lead", iw, 700) + 4 : 0;
-    return { p, label, lh, h: 2 * pad + lh + measure(c, pointText(p), role, iw) };
-  });
+  const cards = points.map((p) => ({ p, h: keyCardHeight(c, p, w + 0, pad, role) }));
+
   const rows: (typeof cards)[] = [];
   for (let k = 0; k < cards.length; k += cols) rows.push(cards.slice(k, k + cols));
   const heights = rows.map((r) => Math.max(...r.map((x) => x.h)));
@@ -1197,30 +1197,7 @@ function keyCardStrip(c: Ctx, points: TemplatePoint[]): { h: number; draw: (y: n
       const rh = heights[ri] ?? 0;
       r.forEach((card, k) => {
         const x = G.margin + k * (w + gap);
-        box(c, { x, y, w, h: rh }, wash(c.t), {
-          name: "Key card",
-          radius: Math.min(c.t.radius, 12),
-        });
-        box(c, { x, y, w: bar, h: rh }, c.t.colors.accent, {
-          name: "Key edge",
-          shape: "rect",
-          radius: 0,
-        });
-        if (card.label)
-          text(
-            c,
-            card.label,
-            "lead",
-            { x: x + bar + pad, y: y + pad, w: iw },
-            { color: c.t.colors.accent, weight: 700, name: "Key label" },
-          );
-        text(
-          c,
-          pointText(card.p),
-          role,
-          { x: x + bar + pad, y: y + pad + card.lh, w: iw },
-          { color: c.t.colors.ink, name: "Point" },
-        );
+        drawKeyCard(c, card.p, { x, y, w, h: rh }, pad, role);
       });
       y += rh + gap;
     });
@@ -1372,6 +1349,10 @@ export type LayoutOptions = {
    * lays out with this only after a strict layout dropped the diagram.
    */
   diagramWarnings?: boolean;
+  /** Two picture cards' band no taller than three's, bold caps labels (P10). Off by default: old lessons and the default writer render as before. */
+  pictureBand?: boolean;
+  /** A colour per hinge option disc (P8). Off by default: old lessons and the default writer render as before. */
+  optionColours?: boolean;
 };
 
 /**
@@ -1474,6 +1455,8 @@ function layoutOnce(
     fails: [],
     fullSize: opts.fullSize ?? false,
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
+    ...(opts.pictureBand ? { pictureBand: true } : {}),
+    ...(opts.optionColours ? { optionColours: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1689,16 +1672,29 @@ function layoutOnce(
         c.bodyFromHeading = true;
         const bottom = G.band.y + G.band.h + 32;
         const iw = colW - 2 * pad;
+        // Chalkie's picture cards (ruling 203, P10): the label is its own bold caps line.
+        const caps = (col: { label: string }) =>
+          c.pictureBand ? col.label.toLocaleUpperCase("en-GB") : col.label;
         const wordsH = () =>
           Math.max(
             ...cols.map(
               (col) =>
-                measure(c, col.label, "lead", iw, 700) +
+                measure(c, caps(col), "lead", iw, 700) +
                 (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
             ),
             0,
           );
-        const full = Math.round(iw * 0.75);
+        // The picture band (ruling 203, P10): 4:3 at the card's width, but never taller than three
+        // columns' band unless the crop would pass the compare range's widest (1.78). Two wide
+        // cards had a 4:3 band so tall it left less room for words than three cards did.
+        const iw3 = Math.floor((G.width - gap * 2) / 3) - 2 * pad;
+        const widest = PICTURE_RANGES.compare[1];
+        const full = c.pictureBand
+          ? Math.min(
+              Math.round(iw * 0.75),
+              Math.max(Math.round(iw3 * 0.75), Math.round(iw / widest)),
+            )
+          : Math.round(iw * 0.75);
         // Round 2: on the fit ladder. Words too long for the full 4:3 band set one step down first.
         let words = wordsH();
         if (bottom - top - 2 * pad - 8 - words < Math.floor(full * 0.96)) {
@@ -1746,7 +1742,7 @@ function layoutOnce(
             else if (col.figure) figurePanel(c, col.figure, band, true);
             const lab = text(
               c,
-              col.label,
+              caps(col),
               "lead",
               { x: x + pad, y: band.y + band.h + 8, w: iw },
               { color: c.t.colors.accent, weight: 700, name: "Label" },
@@ -2012,7 +2008,15 @@ function layoutOnce(
           name: "Option",
         });
         optionIds.push(card.id);
-        disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
+        const tones = optionColours(c.t);
+        disc(
+          c,
+          String.fromCharCode(65 + k),
+          x + pad,
+          yy + g.rowH / 2 - d / 2,
+          d,
+          c.optionColours ? tones[k % tones.length] : undefined,
+        );
         const th = measure(c, o, "body", g.iw);
         text(
           c,

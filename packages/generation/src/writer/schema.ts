@@ -59,9 +59,10 @@ const THEMES = [
 ];
 
 /** `design` first (the title slide uses it), then the flow; the objectives come approved, as input. */
-const front = (lo: number, hi: number): J => ({
+const front = (lo: number, hi: number, planTheme = false): J => ({
+  // planTheme (base4g): the objectives call picks the theme (ruling 202); the writer no longer does.
   design: obj({
-    theme: { type: "string", enum: THEMES },
+    ...(planTheme ? {} : { theme: { type: "string", enum: THEMES } }),
     picture_style: { type: "string", enum: ["photo", "illustration"] },
   }),
   flow: arr(
@@ -177,7 +178,7 @@ function baseSchema(b: WriterBundle, stage: WriterStage, lo: number, hi: number)
   const T = templates(JSON.parse(capsOf(b, stage)) as Record<string, number>);
   const teach = WRITER_TEMPLATES.filter((n) => n !== "title" && n !== "objectives");
   const schema = obj({
-    ...front(lo - 2, hi - 2),
+    ...front(lo - 2, hi - 2, b.features?.planTheme),
     slides: arr({ anyOf: teach.map(REF) }, lo - 2, hi - 2),
   });
   schema.$defs = { ...visualDefs(b), ...T };
@@ -247,6 +248,34 @@ function withTileVisuals(schema: J): J {
 }
 
 /**
+ * Typed callouts (UX ruling 203, P1; TEACH-75 part e): a support point on explain and visual-text
+ * may be `{kind, text}`, one of Remember, Watch out (a misconception), Key point, Example or Fun
+ * fact, set as that type's key card under the text. A third branch beside the plain and labelled
+ * point, so every older output parses. Off by default (`CALLOUTS_DEFAULT`) until the writer's
+ * menu names it; a caller turns it on with `callouts: true`.
+ */
+export const CALLOUTS_DEFAULT = false;
+export const CALLOUT_TYPES = ["remember", "watch-out", "key-point", "example", "fun-fact"] as const;
+
+function withCallouts(schema: J): J {
+  const defs = schema.$defs as Record<string, J>;
+  const typed = obj({ kind: { type: "string", enum: [...CALLOUT_TYPES] }, text: S() });
+  for (const n of ["explain", "visual-text"]) {
+    const def = defs[n] as J | undefined;
+    const props = def?.properties as J | undefined;
+    const pts = props?.points as J | undefined;
+    const items = pts?.items as J | undefined;
+    if (!def || !props || !pts || !items) continue;
+    const branches = (items.anyOf as J[] | undefined) ?? [items];
+    defs[n] = {
+      ...def,
+      properties: { ...props, points: { ...pts, items: { anyOf: [...branches, typed] } } },
+    };
+  }
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
  * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
@@ -257,11 +286,12 @@ export function writerSchema(
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
-  opts: { objectives?: number; pinned?: boolean; tileVisuals?: boolean } = {},
+  opts: { objectives?: number; pinned?: boolean; tileVisuals?: boolean; callouts?: boolean } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
   if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
+  if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);

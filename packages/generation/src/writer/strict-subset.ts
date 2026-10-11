@@ -17,6 +17,8 @@ export function validate(schema: J, v: unknown, root: J = schema, path = "$"): s
   if (t === "null") return v === null ? [] : [`${path}: not null`];
   if (t === "string") {
     if (typeof v !== "string") return [`${path}: not a string`];
+    if (typeof schema.maxLength === "number" && v.length > schema.maxLength)
+      return [`${path}: ${v.length} characters, cap ${schema.maxLength}`];
     return typeof schema.pattern === "string" && !new RegExp(schema.pattern).test(v)
       ? [`${path}: not ${schema.pattern}`]
       : [];

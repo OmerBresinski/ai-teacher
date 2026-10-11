@@ -2,6 +2,7 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import {
   type Figure,
+  isPointKind,
   layoutTemplate,
   type TemplateInput,
   type TemplatePoint,
@@ -97,13 +98,18 @@ export type Materialised = {
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const strs = (v: unknown) =>
   Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : str((x as S)?.question))) : [];
-/** Support points: a string, or `{label, text}` (a key card). A blank label is no label. */
+/**
+ * Support points: a string, `{label, text}` (a key card) or `{kind, text}` (a typed callout card,
+ * ruling 203). A blank label is no label; an unknown kind is no kind.
+ */
 const pts = (v: unknown): TemplatePoint[] =>
   Array.isArray(v)
     ? v.map((x) => {
         if (typeof x === "string") return x;
         const o = (x ?? {}) as S;
         const label = str(o.label).trim();
+        if (isPointKind(o.kind))
+          return { kind: o.kind, text: str(o.text), ...(label ? { label } : {}) };
         return label ? { label, text: str(o.text) } : str(o.text);
       })
     : [];
