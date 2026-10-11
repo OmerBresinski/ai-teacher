@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
 import { MIN_FONT_SIZE, THEMES } from "../themes";
 import { BANNER_HEIGHTS, BANNER_NAMES, bannerOk } from "./banner-text";
+import { BANNER_GROUPS, type BannerGroup, bannerFitsAt } from "./banner-text-capacity";
+import CAPACITY from "./banner-text-capacity.json" with { type: "json" };
 import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /*
@@ -156,4 +158,15 @@ describe("banner text", () => {
           expect(Array.isArray(r.over)).toBe(true);
         }
     });
+
+  test("the writer's fit table is the renderer's measurement at each cell's edge", () => {
+    for (const g of Object.keys(BANNER_GROUPS) as BannerGroup[])
+      for (const cell of CAPACITY[g]) {
+        expect(bannerFitsAt(BANNER_GROUPS[g], cell.points, cell.chars), `${g} ${cell.points}`).toBe(
+          true,
+        );
+        if (cell.chars < 400)
+          expect(bannerFitsAt(BANNER_GROUPS[g], cell.points, cell.chars + 2)).toBe(false);
+      }
+  }, 30_000);
 });
