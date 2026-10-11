@@ -403,7 +403,8 @@ describe("a library hit is judged like a fresh picture", () => {
     expect(rejected).toEqual(["/files/lib/bank/old.png"]);
     expect(out.via).toBe("generated");
     expect(out.photo?.src).toBe("/files/lib/bank/new.png");
-    expect(calls).toEqual(["lookup", "generate"]);
+    // The judged new picture is stored once placed (TEACH-84 part b).
+    expect(calls).toEqual(["lookup", "generate", "remember"]);
   });
 
   test("a hit the judge accepts is placed from the library", async () => {

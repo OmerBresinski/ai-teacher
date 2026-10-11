@@ -225,7 +225,7 @@ export function plantLabelsWorksheet(): Worksheet {
   return sheet(
     {
       title: "Label a flowering plant",
-      themeId: "chalk",
+      themeId: "splash",
       subject: "Science",
       yearGroup: "Year 3",
       ageBand: "ks2",

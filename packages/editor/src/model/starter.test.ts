@@ -14,7 +14,7 @@ const textOf = (slide: Slide, preset: string): string => {
 
 /** Every objectives slide a teacher can open without a model: the starter and the library. */
 const objectivesSlides = () =>
-  [starterLesson("Photosynthesis", "chalk"), ...demoLibrary()].flatMap((lesson) =>
+  [starterLesson("Photosynthesis", "splash"), ...demoLibrary()].flatMap((lesson) =>
     lesson.slides.filter((slide) => slide.kind === "objectives"),
   );
 

@@ -7,7 +7,7 @@ import { drawDiagram } from "@tj/slides/diagrams";
 import { getTheme } from "../model/themes";
 import { SlideView } from "./SlideView";
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const stored = materialiseSlide(
   {
     kind: "content",
@@ -16,7 +16,7 @@ const stored = materialiseSlide(
     body: "Magma rises through cracks in the crust. Pressure builds as gas collects in the magma chamber. The crust gives way and lava pours out.",
     diagram: "Cross-section: magma chamber, vent, crater, ash cloud",
   },
-  "chalk",
+  "splash",
   { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" },
 );
 const rendered = (mode: "edit" | "present" | "view" | "capture") => {

@@ -25,7 +25,7 @@ export function answerLinesForMarks(marks: number | undefined): number {
   return 6;
 }
 
-export function newWorksheet(title = "Untitled worksheet", themeId = "chalk"): Worksheet {
+export function newWorksheet(title = "Untitled worksheet", themeId = "splash"): Worksheet {
   const ts = now();
   return {
     version: 1,
@@ -170,7 +170,7 @@ export function numberQuestions(blocks: WorksheetBlock[]): WorksheetBlock[] {
  * The seed used by "New worksheet": a header, an instruction line and a short
  * mixed set, so a teacher lands on something printable rather than a blank page.
  */
-export function starterWorksheet(title = "Untitled worksheet", themeId = "chalk"): Worksheet {
+export function starterWorksheet(title = "Untitled worksheet", themeId = "splash"): Worksheet {
   const sheet = newWorksheet(title, themeId);
   const question = (prompt: string, marks: number): WorksheetBlock => ({
     id: uid(),

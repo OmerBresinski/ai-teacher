@@ -15,6 +15,7 @@
  */
 import { zValidator } from "@hono/zod-validator";
 import {
+  LIBRARY_WORKSPACE_ID,
   parseStorageKey,
   type ReadableStorageAdapter,
   StorageKeyError,
@@ -56,7 +57,10 @@ export function fileRoutes(storage: ReadableStorageAdapter | undefined) {
       }
       const { key } = c.req.valid("param");
       const parsed = parseStorageKey(key);
-      if (!parsed.ok || parsed.value.workspaceId !== workspaceId) {
+      // The shared picture library is readable by every workspace (TEACH-84 part b): only its
+      // `bank/` files, which hold stock and generated pictures, never teacher content.
+      const library = key.startsWith(`${LIBRARY_WORKSPACE_ID}/bank/`);
+      if (!parsed.ok || (parsed.value.workspaceId !== workspaceId && !library)) {
         throw new HTTPException(404, { message: NOT_FOUND });
       }
       try {

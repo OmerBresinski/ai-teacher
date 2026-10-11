@@ -86,7 +86,7 @@ export const lesson = (): Lesson => ({
   version: 1,
   id: "demo-water-cycle",
   title: "The water cycle",
-  themeId: "chalk",
+  themeId: "splash",
   slides: [titleSlide(), trueFalseSlide(), multipleChoiceSlide()],
   createdAt: "2026-09-01T09:00:00.000Z",
   updatedAt: "2026-09-05T15:30:00.000Z",
@@ -288,7 +288,7 @@ export const generatedLesson = (): Lesson => ({
   version: 1,
   id: "gen-water-cycle",
   title: "The water cycle",
-  themeId: "chalk",
+  themeId: "splash",
   slides: [
     {
       id: "s-title",
@@ -382,7 +382,7 @@ export const generatedWorksheet = (): Worksheet => ({
   version: 1,
   id: "gen-water-cycle-ws",
   title: "The water cycle",
-  themeId: "chalk",
+  themeId: "splash",
   createdAt: "2026-09-06T10:01:00.000Z",
   updatedAt: "2026-09-06T10:05:00.000Z",
   header: {

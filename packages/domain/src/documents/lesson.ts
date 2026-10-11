@@ -21,6 +21,11 @@ export type Lesson = {
   id: Id;
   title: string;
   themeId: string;
+  /**
+   * True when the teacher chose `themeId` (an explicit or remembered choice). Unset, the planner
+   * picks the theme for the topic and age at the objectives step (UX ruling 202).
+   */
+  themeChosen?: boolean;
   slides: Slide[];
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -91,6 +96,7 @@ export const LessonSchema = z.object({
   id: z.string(),
   title: z.string(),
   themeId: z.string(),
+  themeChosen: z.boolean().optional(),
   slides: z.array(SlideSchema),
   // Defaulted, not optional: a lesson written before the field existed still has a date to show
   // in the info popover, and the rest of the code reads it without a fallback.

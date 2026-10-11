@@ -64,6 +64,13 @@ export const EnvSchema = z
      * slot routed to generation keeps its placeholder and no generation call is made.
      */
     IMAGE_GENERATION_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
+    /**
+     * TEACH-84 part b: `on` lets the writer planner's picture director reuse judged pictures from
+     * the shared library (`bank_images`) and store the pictures its judge passes. `off` (default)
+     * keeps today's behaviour: every picture is searched or generated afresh, nothing is stored.
+     * Needs `OPENAI_API_KEY` (the request embeddings); without it the library stays off.
+     */
+    PICTURE_LIBRARY_REUSE: z.enum(["off", "on"]).default("off"),
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),

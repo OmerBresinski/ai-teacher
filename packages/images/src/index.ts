@@ -1,7 +1,15 @@
 export {
   type AspectFamily,
+  type BankCandidate,
+  bankLicenceOk,
+  cosine,
+  createOpenAiEmbedder,
   createOpenAiImageGenerator,
   directedImagePrompt,
+  EMBED_DIMENSIONS,
+  EMBED_MODEL,
+  type Embedder,
+  embedCostUsd,
   expectedImageCostUsd,
   familyOf,
   IMAGE_MODEL,
@@ -10,6 +18,11 @@ export {
   type ImageGenerator,
   type ImageSize,
   imageCostUsd,
+  numbersAgree,
+  numbersIn,
+  pickReuse,
+  REUSE_THRESHOLD,
+  requestText,
   sizeForAspect,
 } from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";

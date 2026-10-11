@@ -396,7 +396,8 @@ describe("findPicture", () => {
       async () => ++n === 2,
     );
     expect(ok.via).toBe("generated");
-    expect(log).toEqual(["generate:false:P", "generate:false:P"]);
+    // The second, judged picture is the one placed, and only it is stored (TEACH-84 part b).
+    expect(log).toEqual(["generate:false:P", "generate:false:P", "remember"]);
     const never = await findPicture(
       req({ imagePrompt: "P" }),
       bank([]),

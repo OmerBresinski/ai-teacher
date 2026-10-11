@@ -118,7 +118,8 @@ describe("C7: stock races generation after the threshold", () => {
     expect(out.photo?.src).toBe("/g.png");
     expect(stockSignal?.aborted).toBe(true);
     await sleep(150);
-    expect(log.remembered).toEqual([]);
+    // Only the judged winner is stored (TEACH-84 part b); the stock answer never is.
+    expect(log.remembered).toEqual(["/g.png"]);
     // Its late answer is taken back out, never left stored.
     expect(log.rejected).toEqual(["/p.jpg"]);
   });
@@ -222,7 +223,7 @@ describe("C7: stock races generation after the threshold", () => {
     );
     expect(out.photo?.src).toBe("/g.png");
     await sleep(80);
-    expect(log.remembered).toEqual([]);
+    expect(log.remembered).toEqual(["/g.png"]);
     expect(log.rejected).toEqual(["/p.jpg"]);
   });
 

@@ -128,7 +128,7 @@ export interface PictureBank {
    * its bytes (`dataUrl`) so the judge sees it before it is used, and its style when generated.
    */
   lookup(req: BankRequest, signal: AbortSignal): Promise<MadePicture | undefined>;
-  /** Store a fetched picture once (licence-filtered by the implementation). */
+  /** Store a placed picture once: fetched, or generated and judged (licence-filtered by the implementation). */
   remember(req: BankRequest, photo: PlacedPhoto): Promise<void>;
   /** Generate (or draw), store and return a picture; undefined when refused. */
   generate(
@@ -184,7 +184,8 @@ export interface BankOutcome {
  * The ladder for one request: library, then stock (real things, and generic ones stock can show),
  * then generation. A generated picture is shown to the same photo judge (mustShow, stated
  * relations, count, period); a refusal regenerates once, then nothing. A library or generator
- * failure never throws: it is a miss.
+ * failure never throws: it is a miss. A generated picture the judge passed is stored in the
+ * library (`remember`) once it is the one placed, as a fetched one is (TEACH-84 part b).
  */
 export async function findPicture(
   req: BankRequest,
@@ -208,6 +209,13 @@ export async function findPicture(
     route: req.route,
     ms: now() - t0,
   });
+  // Generated pictures this request's judge passed: only these are stored once placed.
+  const judged = new WeakSet<PlacedPhoto>();
+  const placeMade = async (photo: PlacedPhoto | undefined, via: BankVia): Promise<BankOutcome> => {
+    if (photo && judged.has(photo))
+      await bank.remember(req, photo).catch(whenNonFatal(() => undefined));
+    return done(photo, via);
+  };
   const make = async (faithful: boolean, sig: AbortSignal = signal) => {
     // Ruling 163 (narrowed later): nothing is generated for a past event or person.
     if (req.period && req.depicts && !req.draw) return undefined;
@@ -219,7 +227,10 @@ export async function findPicture(
         return undefined;
       }
       if (!made || req.draw || !judgeMade || !made.dataUrl) return made;
-      if (await judgeMade(made).catch(rethrowAbort)) return made;
+      if (await judgeMade(made).catch(rethrowAbort)) {
+        judged.add(made);
+        return made;
+      }
       await bank.reject?.(made).catch(rethrowAbort);
     }
     return undefined;
@@ -261,12 +272,12 @@ export async function findPicture(
   if (req.route === "real") {
     const fallback = req.realFallback ?? "none";
     if (fallback === "none") return done(undefined, "none");
-    return done(
+    return placeMade(
       await make(fallback === "faithful"),
       fallback === "faithful" ? "generated-faithful" : "generated",
     );
   }
-  return done(await make(false), "generated");
+  return placeMade(await make(false), "generated");
 
   /**
    * Stock first, and generation beside it once stock has run `ms`. The race settles exactly once:
@@ -299,7 +310,7 @@ export async function findPicture(
         await bank.remember(req, early).catch(whenNonFatal(() => undefined));
         return done(early, "fetched");
       }
-      return done(await make(false), "generated");
+      return placeMade(await make(false), "generated");
     }
     // Stock is slow: generation starts beside it.
     const genP = make(false, AbortSignal.any([signal, genStop.signal])).then(
@@ -335,7 +346,7 @@ export async function findPicture(
       await bank.remember(req, win.p).catch(whenNonFatal(() => undefined));
       return done(win.p, "fetched");
     }
-    return done(win.p, "generated");
+    return placeMade(win.p, "generated");
   }
 }
 

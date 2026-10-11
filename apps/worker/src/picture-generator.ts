@@ -1,8 +1,9 @@
 /**
  * Generated pictures for the writer planner (TEACH-237, UX ruling 158): the generator behind the
- * director's `PictureBank`, the daily spend cap, and storage for strip panels. No library yet (the
- * reuse store is TEACH-84 part b): `lookup` always misses and `remember` keeps nothing. Logs ids,
- * sizes, costs and reasons only: never the request, prompt or alt (ADR 0015).
+ * director's `PictureBank`, the daily spend cap, and storage for strip panels. With a picture
+ * library (TEACH-84 part b, `PICTURE_LIBRARY_REUSE=on`) `lookup` offers a stored picture and
+ * `remember` stores each picture a judge passed; without one, `lookup` always misses and `remember`
+ * keeps nothing. Logs ids, sizes, costs and reasons only: never the request, prompt or alt (ADR 0015).
  */
 import { newId, type StorageAdapter, storageKey, type WorkspaceId } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
@@ -17,6 +18,7 @@ import {
   pngSize,
   sizeForAspect,
 } from "@tj/images";
+import type { MadeProvenance, PictureLibrary } from "./picture-library";
 
 export interface Logger {
   info(obj: Record<string, unknown>, msg?: string): void;
@@ -119,15 +121,29 @@ export function createGeneratingBank(opts: {
   save: (bytes: Uint8Array, contentType?: string) => Promise<{ id: string; src: string }>;
   /** Delete a stored picture (`removePicture`); absent, a rejected picture stays stored. */
   remove?: (src: string) => Promise<void>;
+  /** The shared picture library (TEACH-84 part b); absent, nothing is reused or stored. */
+  library?: PictureLibrary;
   logger: Logger;
 }): PictureBank {
+  const { library } = opts;
+  // What this job generated, by src: the row a judged picture is stored with keeps its provenance.
+  const generated = new Map<string, MadeProvenance>();
   return {
-    async lookup() {
-      return undefined;
+    async lookup(req, signal) {
+      return library?.lookup(req, signal);
     },
-    async remember() {},
-    // No library rows here: a picture the judge refused, or a race's loser, is deleted outright.
+    // `findPicture` calls this only for a picture its judge passed (fetched or generated).
+    async remember(req, photo) {
+      if (!library) return;
+      const provenance = generated.get(photo.src);
+      generated.delete(photo.src);
+      await library.store(req, photo as MadePicture, provenance);
+    },
+    // A refused library picture is marked and never offered again (its file stays: other lessons
+    // may show it). A refused fresh picture, or a race's loser, is deleted outright.
     async reject(photo) {
+      if (library?.owns(photo.src)) return library.reject(photo.src);
+      generated.delete(photo.src);
       await opts.remove?.(photo.src);
     },
     async generate(req, faithful, signal) {
@@ -163,6 +179,14 @@ export function createGeneratingBank(opts: {
         { stage: "illustrate", generated: saved.id, size, costUsd: out.costUsd, ms: out.ms },
         "picture generated",
       );
+      if (library)
+        generated.set(saved.src, {
+          generator: opts.generator.model,
+          generatorTerms: IMAGE_TERMS,
+          prompt,
+          costUsd: out.costUsd,
+          faithful,
+        });
       // No evidence yet: the judge's verdict is the evidence, added where the picture is placed.
       const made: Omit<MadePicture, "evidence"> & { aspect: number } = {
         src: saved.src,

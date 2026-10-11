@@ -11,7 +11,7 @@ import { setSlotPlaceholders } from "./slot-placeholders";
  * present or export. A slot brief is drawn in the editor only, whatever the demo switch says.
  */
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
 const [withPhoto] = materialiseSlides(
   {
@@ -20,7 +20,7 @@ const [withPhoto] = materialiseSlides(
     heading: "Why conquer Britain?",
     body: "Rome wanted Britain for its metals, grain and slaves. A victory there made Claudius look strong.",
   },
-  "chalk",
+  "splash",
   meta,
   undefined,
   0,
@@ -34,7 +34,7 @@ const [withDiagram] = materialiseSlides(
     body: "Water moves between the sea, the air and the land in a loop. The sun heats the sea and water evaporates.",
     diagram: "Cycle: evaporation → condensation → precipitation → collection",
   },
-  "chalk",
+  "splash",
   meta,
 ) as [Slide];
 

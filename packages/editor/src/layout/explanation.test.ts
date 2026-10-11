@@ -111,7 +111,7 @@ describe("the panel fits the safe area", () => {
   }
 
   test("a long reason steps the body down rather than spilling out of the lane", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const slide = slideOf("true-false", theme);
     const short = explanationLayout({ slide, theme, text: ONE_LINE });
     const long = explanationLayout({ slide, theme, text: LONG });
@@ -123,7 +123,7 @@ describe("the panel fits the safe area", () => {
 });
 
 describe("cards pushed into the lane", () => {
-  const theme = getTheme("chalk");
+  const theme = getTheme("splash");
 
   test("the panel gives up its own room rather than sitting on a card", () => {
     const base = slideOf("true-false", theme);
@@ -193,7 +193,7 @@ describe("reservedLines", () => {
   }
 
   test("a stem that wraps hands no line back to the panel", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const base = slideOf("multiple-choice", theme);
     const slide: Slide = {
       ...base,
@@ -207,7 +207,7 @@ describe("reservedLines", () => {
   });
 
   test("a slide with no panel asks for nothing", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     expect(reservedLines(slideOf("content", theme), theme)).toBe(0);
     expect(reservedLines(slideOf("open-response", theme), theme)).toBe(0);
   });

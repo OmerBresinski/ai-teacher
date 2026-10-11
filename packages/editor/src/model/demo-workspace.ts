@@ -139,7 +139,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
       body: stamp(
         now,
         waterCycle,
-        meta("demo-water-cycle", "The water cycle", "chalk", "Science", "Year 4", 1),
+        meta("demo-water-cycle", "The water cycle", "splash", "Science", "Year 4", 1),
       ),
     },
     {
@@ -164,7 +164,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
     ),
     lesson(
       now,
-      meta("plant-parts", "Parts of a flowering plant", "chalk", "Science", "Year 3", 216),
+      meta("plant-parts", "Parts of a flowering plant", "splash", "Science", "Year 3", 216),
       1,
     ),
     lesson(
@@ -190,7 +190,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
     ),
     worksheet(
       now,
-      meta("plant-labels", "Label a flowering plant", "chalk", "Science", "Year 3", 480),
+      meta("plant-labels", "Label a flowering plant", "splash", "Science", "Year 3", 480),
       plantLabelsWorksheet(),
     ),
     worksheet(

@@ -19,6 +19,7 @@ import {
   type LessonFacts,
   type PlanLesson,
   type SourceRef,
+  slideTierOf,
 } from "@tj/domain/documents";
 
 /** The facts a pinned re-plan starts from: the objectives, and nothing derived from them. */
@@ -67,6 +68,10 @@ export function replanLesson(
   const brief: Brief = {
     ...lesson.brief,
     ...input.brief,
+    // A tier sent replaces an older exact count (ruling 164).
+    ...(input.brief.slideTier !== undefined && input.brief.slideCount === undefined
+      ? { slideCount: undefined }
+      : {}),
     durationMin:
       input.brief.durationMin ?? lesson.brief?.durationMin ?? defaultDurationMin(ageBand),
   };
@@ -106,8 +111,11 @@ export function confirmLesson(
 ): ConfirmResult {
   const edited = applyObjectiveEdits(lesson.facts, input.objectives);
   const brief = lesson.brief;
+  // Ruling 164: a tier the stored brief does not already stand for replaces its tier or its
+  // exact count; the same tier keeps an older lesson's exact count.
+  const tierChanged = input.slideTier !== undefined && input.slideTier !== slideTierOf(brief);
   const slideCountChanged =
-    input.slideCount !== undefined && input.slideCount !== brief?.slideCount;
+    tierChanged || (input.slideCount !== undefined && input.slideCount !== brief?.slideCount);
   const replan = edited.shapeChanged || slideCountChanged;
   const revision = lesson.plan?.revision ?? 0;
   const plan = {
@@ -121,13 +129,16 @@ export function confirmLesson(
         brief: {
           ...brief,
           ...(input.slideCount !== undefined ? { slideCount: input.slideCount } : {}),
+          ...(tierChanged ? { slideTier: input.slideTier, slideCount: undefined } : {}),
           ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
         },
       }
     : {};
   // The stored duration follows the brief in both branches; nothing is re-planned for it.
   // Ruling 116: the starting theme sent with the confirm replaces the plan-time one.
-  const themePatch = input.themeId !== undefined ? { themeId: input.themeId } : {};
+  // Ruling 202: a theme sent here is the teacher's (explicit or remembered), so it wins.
+  const themePatch =
+    input.themeId !== undefined ? { themeId: input.themeId, themeChosen: true as const } : {};
   const withDuration = (facts: LessonFacts): LessonFacts =>
     input.durationMin !== undefined ? { ...facts, durationMin: input.durationMin } : facts;
   if (!replan) {

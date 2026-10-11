@@ -131,7 +131,11 @@ describe("real lesson intake", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().skipPlanning).toBe(false);
-    expect(post().brief).toEqual({ topic: "The water cycle", level: "standard", slideCount: 8 });
+    expect(post().brief).toEqual({
+      topic: "The water cycle",
+      level: "standard",
+      slideTier: "standard",
+    });
     expect(post().requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(navigate.mock.calls[0]?.[0]).toMatchObject({
       to: "/lessons/new",
@@ -282,14 +286,14 @@ describe("real lesson intake", () => {
     const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
     expect(confirm?.body).toMatchObject({ expectedRevision: 1, themeId: "night-lab" });
   });
-  it("confirms with the class default when nothing is remembered, and does not remember it", async () => {
+  it("confirms with no theme when nothing is remembered, and does not remember it", async () => {
     const id = openPlanned("chalk");
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
-    // Year 5 is Key Stage 2: Chalk & Cream.
-    expect(confirm?.body).toMatchObject({ themeId: "chalk" });
+    // Ruling 202: nothing remembered, so no theme is sent; the planner's pick stands.
+    expect(confirm?.body).not.toHaveProperty("themeId");
     expect(readLastClass()?.themeId ?? "").toBe("");
   });
   it("skip planning sends the remembered theme and keeps it", async () => {
@@ -304,13 +308,13 @@ describe("real lesson intake", () => {
     expect(post().themeId).toBe("playground");
     expect(readLastClass()?.themeId).toBe("playground");
   });
-  it("a brief with nothing remembered creates the lesson in its class default", async () => {
+  it("a brief with nothing remembered sends no theme for the planner to pick", async () => {
     search = { topic: "Rocks" };
     show();
     fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
-    // The brief opens on Year 4: Playground.
-    expect(post().themeId).toBe("playground");
+    // Ruling 202: nothing remembered, so no theme is sent; the planner picks (Splash fallback).
+    expect(post().themeId).toBeUndefined();
     expect(readLastClass()?.themeId).toBe("");
   });
   it("signed out: Turnstile, anonymous sign-in with the token, then one create with a requestId", async () => {

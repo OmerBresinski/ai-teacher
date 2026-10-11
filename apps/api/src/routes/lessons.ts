@@ -241,6 +241,16 @@ async function enqueueProposal<J extends ProposalJob>(
 }
 
 export const STALE_PLAN_MESSAGE = "This plan changed elsewhere. Reload to see the latest.";
+/**
+ * Ruling 164 (ADR 0038 item 5): a confirm names a slide tier or, from older clients, an exact
+ * count, never both; a body with both is a 400 rather than one silently winning. Checked here,
+ * not in `@tj/domain`, so the web bundle does not carry it.
+ */
+export const SLIDE_TIER_AND_COUNT_MESSAGE = "Send a slide tier or a slide count, not both.";
+const GenerateBodySchema = GenerateLessonSchema.refine(
+  (v) => v.slideTier === undefined || v.slideCount === undefined,
+  { message: SLIDE_TIER_AND_COUNT_MESSAGE, path: ["slideTier"] },
+);
 export const WORKSHEET_NOT_CONFIRMED_MESSAGE = "Confirm the plan before making a worksheet.";
 export const WORKSHEET_GENERATING_MESSAGE = "A worksheet for this lesson is already being written.";
 export const WORKSHEET_QUEUED_MESSAGE = "A worksheet for this lesson was requested a moment ago.";
@@ -458,8 +468,10 @@ export function lessonRoutes(
       async (c) => {
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
-        const input = c.req.valid("json");
-        assertKnownTheme(input.themeId);
+        const sent = c.req.valid("json");
+        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+        const themeId = assertKnownTheme(sent.themeId);
+        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
         const ws = forWorkspace(unsafeDb, workspaceId);
         const { requestId, skipPlanning = false } = input;
         if (requestId !== undefined) {
@@ -593,14 +605,16 @@ export function lessonRoutes(
       smallJsonBodyLimit(),
       requireJsonBody(),
       zValidator("param", lessonParam, validationHook),
-      zValidator("json", GenerateLessonSchema, validationHook),
+      zValidator("json", GenerateBodySchema, validationHook),
       async (c) => {
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const input = c.req.valid("json");
-        if (input.objectives.length === 0) {
+        const sent = c.req.valid("json");
+        if (sent.objectives.length === 0) {
           throw new HTTPException(422, { message: NO_OBJECTIVES_MESSAGE });
         }
-        assertKnownTheme(input.themeId);
+        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+        const themeId = assertKnownTheme(sent.themeId);
+        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
         const rt = requireRuntime(runtime);
         const lessonId = c.req.valid("param").id as LessonId;
         const ws = forWorkspace(unsafeDb, workspaceId);

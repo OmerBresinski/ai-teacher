@@ -139,7 +139,7 @@ function everyBlockSheet(): Worksheet {
     version: 1,
     id: "ws-every-block",
     title: "Every block",
-    themeId: "chalk",
+    themeId: "splash",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     header: {
