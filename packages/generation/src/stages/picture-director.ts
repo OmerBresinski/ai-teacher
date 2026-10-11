@@ -19,7 +19,7 @@ import {
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
-import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
+import { isFatal, nonFatal, nonFatalSync, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   judgeMadeDirected,
@@ -1027,6 +1027,8 @@ export function createWriterPictures(opts: {
   look?: LessonLook;
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
+  /** A single ask's picture is placed and kept (live writing P2, TEACH-202 part e). */
+  onPlaced?: (index: number, key: string) => void;
   /**
    * The stage draws what the director chooses to draw (its drawer and lostPic's library step):
    * such an ask ends failed with `drawAs` set. Absent, or for a slot the stage never redraws (a
@@ -1176,58 +1178,71 @@ export function createWriterPictures(opts: {
       },
       ...(redraw ? { draws: true } : {}),
       ...(real ? { realOnly: true } : {}),
-    }).then((photo) => {
-      if (slot.state.status !== "pending") return;
-      if (!photo) {
-        slot.state = { status: "failed" };
-        slot.miss = reason ?? "generation-refused-or-failed";
-        if (reason === "director-code") slot.draw = diagram;
-        return;
-      }
-      if (real && photo.source?.provider === "generated") {
-        slot.state = { status: "failed" };
-        slot.miss = "history-card-generated";
-        opts.deps.logger.info(
-          { stage: "generate", picture: id(index, ask.key) },
-          "history card picture was generated: word card",
+    })
+      .then((photo) => {
+        if (slot.state.status !== "pending") return;
+        if (!photo) {
+          slot.state = { status: "failed" };
+          slot.miss = reason ?? "generation-refused-or-failed";
+          if (reason === "director-code") slot.draw = diagram;
+          return;
+        }
+        if (real && photo.source?.provider === "generated") {
+          slot.state = { status: "failed" };
+          slot.miss = "history-card-generated";
+          opts.deps.logger.info(
+            { stage: "generate", picture: id(index, ask.key) },
+            "history card picture was generated: word card",
+          );
+          return;
+        }
+        sources.set(photo.src, photo.source);
+        const p = photo as typeof photo & { about?: string; boxes?: Box[] };
+        slot.state = photoState(
+          p,
+          (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1,
+          requestOf(ask),
         );
-        return;
-      }
-      sources.set(photo.src, photo.source);
-      const p = photo as typeof photo & { about?: string; boxes?: Box[] };
-      slot.state = photoState(
-        p,
-        (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1,
-        requestOf(ask),
-      );
-      // match6 + match6w (BAKEOFF base4f): a several-thing picture ships only when the judge saw
-      // every thing the slide's own words name; the dropped photo is held on every slide (keepPic)
-      // for a slide that would otherwise end with no visual.
-      const words = `${slide.heading} ${slide.text ?? ""}`;
-      const seen = seenOf({
-        alt: photo.alt,
-        about: p.about,
-        request: requestOf(ask),
-        provider: photo.source?.provider,
-        source: photo.source,
-        subjects: (p.boxes ?? [])
-          .filter((b) => b.right > b.left && b.bottom > b.top)
-          .map((b) => ({ name: b.item })),
+        // match6 + match6w (BAKEOFF base4f): a several-thing picture ships only when the judge saw
+        // every thing the slide's own words name; the dropped photo is held on every slide (keepPic)
+        // for a slide that would otherwise end with no visual.
+        const words = `${slide.heading} ${slide.text ?? ""}`;
+        const seen = seenOf({
+          alt: photo.alt,
+          about: p.about,
+          request: requestOf(ask),
+          provider: photo.source?.provider,
+          source: photo.source,
+          subjects: (p.boxes ?? [])
+            .filter((b) => b.right > b.left && b.bottom > b.top)
+            .map((b) => ({ name: b.item })),
+        });
+        const named = namedUnmatched(unmatchedItems(ask.mustSee, seen), words);
+        if (named.length) {
+          const k = id(index, ask.key);
+          // Held on every slide (Greg, 10 Oct: a visual is never lost): keepPic ships it only when
+          // the slide would otherwise end with no visual at all.
+          heldPhotos.set(k, slot.state);
+          slot.state = { status: "failed" };
+          slot.miss = "match6";
+          opts.deps.logger.info(
+            { stage: "generate", picture: k, unmatched: named },
+            "writer picture dropped (match6)",
+          );
+        }
+      }, onError(slot))
+      .then(() => {
+        if (slot.state.status !== "photo") return;
+        // Best effort: a failing re-lay never rejects (the deck is laid again before editable).
+        nonFatalSync(
+          () => opts.onPlaced?.(index, ask.key),
+          (e) =>
+            opts.deps.logger.warn(
+              { stage: "generate", picture: id(index, ask.key), err: String(e).slice(0, 200) },
+              "writer picture re-lay failed",
+            ),
+        );
       });
-      const named = namedUnmatched(unmatchedItems(ask.mustSee, seen), words);
-      if (named.length) {
-        const k = id(index, ask.key);
-        // Held on every slide (Greg, 10 Oct: a visual is never lost): keepPic ships it only when
-        // the slide would otherwise end with no visual at all.
-        heldPhotos.set(k, slot.state);
-        slot.state = { status: "failed" };
-        slot.miss = "match6";
-        opts.deps.logger.info(
-          { stage: "generate", picture: k, unmatched: named },
-          "writer picture dropped (match6)",
-        );
-      }
-    }, onError(slot));
   };
 
   /**

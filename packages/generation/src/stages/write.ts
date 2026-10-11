@@ -239,6 +239,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
   // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
   const images = deps.images as DirectedPlacer | undefined;
+  /** The stage's re-lay for a slide whose picture just landed (`bindPictureLanded`). */
+  let landed: ((index: number) => void) | undefined;
   const pictures = images
     ? createWriterPictures({
         lesson,
@@ -254,6 +256,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         draws: true,
         onOutcome: (key, o) =>
           deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
+        // Live writing P2 (TEACH-202 part e): a picture placed while the words stream re-lays its
+        // slide, which the next progressive save carries.
+        onPlaced: (index) => landed?.(index),
       })
     : undefined;
   const credited = <T extends { elements: unknown[] }>(slides: T[]) =>
@@ -339,6 +344,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
+      bindPictureLanded: (fn) => {
+        landed = fn;
+      },
       signal: failed.signal,
       // C5: a lesson's picture sets share one look, from the writer's picture style.
       onDesign: (design) => pictures?.lookForSets(setLookOf(design)),

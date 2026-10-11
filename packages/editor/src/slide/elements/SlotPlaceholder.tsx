@@ -46,6 +46,20 @@ export function SlotPlaceholder({
         textAlign: "center",
       }}
     >
+      {kind === "photo" ? (
+        // Live writing P2 (TEACH-202 part e): a soft pulsing sheen says the picture is on its way.
+        // (Not named for the effect's usual word: it contains "immer", which the thumb test bans.)
+        <div
+          aria-hidden
+          data-slot-sheen
+          className="pointer-events-none absolute inset-0 motion-safe:animate-pulse"
+          style={{
+            borderRadius: radius || undefined,
+            background:
+              "linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.35) 50%, transparent 85%)",
+          }}
+        />
+      ) : null}
       <Icon
         aria-hidden
         size={22}
