@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { getTheme, THEMES } from "../themes";
+import { resolveFontSize } from "../text-style";
+import { atKeyStage, getTheme, THEMES, typeScale } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /*
@@ -86,5 +87,21 @@ describe("practice: the instruction leads, rows keep one rhythm", () => {
         // A short set opens up: the gap between rows is more than the tight stack's.
         const step = (items[1]?.y ?? 0) - (items[0]?.y ?? 0);
         expect(step).toBeGreaterThan((items[0]?.h ?? 0) * 1.6);
+      });
+});
+
+describe("sized to the room (back-of-room test)", () => {
+  type T = El & { style?: { fontSize?: number; preset?: string } };
+  for (const theme of THEMES)
+    for (const stage of STAGES)
+      test(`${theme.id} ${stage}: two short options step up to the heading step, on the scale`, () => {
+        const r = layoutTemplate(hinge(["A dolphin", "A shark"]), theme, stage);
+        const step = typeScale(atKeyStage(theme, stage))?.heading ?? 0;
+        const words = (r.slide.elements as T[]).filter((e) => e.name === "Option text");
+        for (const e of words) {
+          expect(e.style?.fontSize).toBe(step);
+          expect(resolveFontSize(atKeyStage(theme, stage), "heading", step)).toBe(step);
+        }
+        expect(r.over).toEqual([]);
       });
 });

@@ -230,6 +230,8 @@ export type Ctx = {
   lost?: number[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
+  /** Words set a step up in the body face (`boosted`, TEACH-75 part D). */
+  boost?: boolean;
   /** `LayoutOptions.pictureBand` (UX ruling 203). */
   pictureBand?: boolean;
   /** `LayoutOptions.optionColours` (UX ruling 203). */
@@ -315,6 +317,9 @@ function text(
     name: extra.name ?? role,
     style: {
       preset: presetOf(role),
+      ...(c.boost && (role === "body" || role === "lead" || role === "small")
+        ? { preset: "heading" as const, fontFamily: c.t.fonts.body }
+        : {}),
       autoHeight: true,
       fontSize: c.s[role],
       lineHeight: LH[role],
@@ -361,6 +366,21 @@ const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
  * The glyph fills more of it than the lab's 0.55 (0.68 at full size, up to 0.81 on the small rung).
  */
 const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
+
+/**
+ * TEACH-75 part D: the steps a question slide's type may grow by when the band has room, largest
+ * first. Body (and with it the badge glyph and the stem) never passes 80% of the heading's size.
+ */
+/**
+ * The one step a question slide's words may grow to when the band has room: the type scale's heading
+ * step, set in the body face (`c.boost`), so it stays on the scale (UX ruling 91) and reads as words,
+ * not a heading. The badge glyph grows to body. Undefined when the stage has no larger step.
+ */
+function boosted(c: Ctx, full: Scale): Scale | undefined {
+  const step = typeScale(c.t)?.heading;
+  if (!step || step <= full.body) return undefined;
+  return { ...full, body: step, lead: step, small: full.body };
+}
 
 /**
  * The letter's colour on a hinge disc of `fill` (ruling 203, P8): of the theme's own text tokens
@@ -960,6 +980,25 @@ function numbered(
   ladder(
     c,
     (r) => {
+      // Practice (TEACH-75 part D): fewer or shorter questions are set a type step larger, as far
+      // as the set still fills no more than 88% of the band at its tight spacing.
+      if (opts.stretch && r.space === 1 && items.length) {
+        const full = c.s;
+        const height = (sc: Scale) => {
+          c.s = sc;
+          const dd = markerDisc(c);
+          const ind = dd + Math.round(sc.body * 0.7);
+          const p0 = Math.round(sc.body * 0.6);
+          const bH = opts.before ? measure(c, opts.before, "small", w, 600) + 6 : 0;
+          return items.reduce(
+            (a, q) => a + Math.max(dd, measure(c, q, "body", w - ind)) + 2 * p0,
+            bH,
+          );
+        };
+        const big = boosted(c, full);
+        c.boost = !!big && height(big) <= G.band.h * 0.88;
+        c.s = c.boost && big ? big : full;
+      }
       const d = markerDisc(c);
       const indent = d + Math.round(c.s.body * 0.7);
       const hs = items.map((q) => Math.max(d, measure(c, q, "body", w - indent)));
@@ -1025,6 +1064,7 @@ function numbered(
     },
     { what, ...(opts.top ? { top: opts.top } : {}) },
   );
+  c.boost = false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1981,7 +2021,7 @@ function layoutOnce(
         const room = Math.floor(
           (G.band.h * 0.92 - sH - rows * inner - (rows - 1) * gy) / (2 * rows),
         );
-        const py = col ? Math.min(pad, Math.max(Math.max(8, Math.round(pad * 0.6)), room)) : pad;
+        const py = col ? Math.min(pad, Math.max(Math.max(8, Math.round(pad * 0.4)), room)) : pad;
         // One row of one-line options is a row of answer tiles, two lines tall, not thin chips.
         const tile = !col && rows === 1 && hs.every((h) => h <= c.s.body * LH.body * 1.2);
         const rowH = Math.max(
@@ -2082,12 +2122,53 @@ function layoutOnce(
           c.s = was.s;
         }
       }
+      // Sized to the room (TEACH-75 part D, back-of-room test): when the chosen arrangement fits at
+      // full size with room to spare, stem, options and badges step up together, as far as the
+      // arrangement still fits and no option wraps to more lines than it took at full size.
+      let stemAtBody = false;
+      if (!hasFig && c.s === full && g.total <= G.band.h) {
+        const was = { g, s: c.s, gap, pad, d, sH };
+        const base = g;
+        stemAtBody = false;
+        let grown = false;
+        const big = boosted(c, full);
+        // The stem grows with its options; a stem that would then crowd the band stays at body.
+        for (const withStem of [true, false]) {
+          if (!big || grown) break;
+          const f = big.body / full.body;
+          c.s = withStem ? big : full;
+          sH = stem ? measure(c, stem, "lead", W) + Math.round(26 * f) : 0;
+          c.s = big;
+          gap = Math.round(18 * Math.min(f, 1.3));
+          pad = Math.round(20 * f);
+          d = Math.round(c.s.body * 1.3);
+          const t = grid(base.perRow);
+          if (t.total <= G.band.h && t.lines <= base.lines) {
+            g = t;
+            grown = true;
+            c.boost = true;
+            stemAtBody = !withStem;
+          }
+        }
+        if (!grown) {
+          ({ g, gap, pad, d, sH } = was);
+          c.s = was.s;
+        }
+      }
       if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
       // The stem sits with its options a little above the band's middle (a third of the room over
       // it), so a short hinge reads as heading, question, answers rather than a floating strip.
-      let y = Math.max(G.band.y, Math.round(G.band.y + (G.band.h - g.total) * 0.35));
+      let y = Math.max(G.band.y, Math.round(G.band.y + (G.band.h - g.total) * 0.4));
       if (stem) {
+        const grownS = c.s;
+        const grownB = c.boost;
+        if (stemAtBody) {
+          c.s = full;
+          c.boost = false;
+        }
         text(c, stem, "lead", { x: X, y, w: W }, { color: c.t.colors.ink, name: "Stem" });
+        c.s = grownS;
+        c.boost = grownB;
         y += sH;
       }
       const optionIds: string[] = [];
@@ -2124,6 +2205,7 @@ function layoutOnce(
         });
       });
       c.s = full;
+      c.boost = false;
       if (hasFig) figurePanel(c, input.figure, figRect);
       // The answer is question data on the option cards, so present hides it until the reveal.
       const right = Number(input.correct);
