@@ -137,19 +137,6 @@ describe.each(LESSONS)("replay %s", (b) => {
         kind: kind as never,
         background: want.background as never,
       });
-      // Ruling 203, P12 (TEACH-75 part i): the objectives are numbered disc cards. Same heading,
-      // same objectives in order.
-      if (got.some((e) => e.name === "Objective card")) {
-        const items = (els: El[]) =>
-          els
-            .filter((e) => e.name === "Item")
-            .map((e) =>
-              [...JSON.stringify(e.doc).matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join(""),
-            );
-        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
-        expect({ i, items: items(got) }).toEqual({ i, items: items(want.elements) });
-        return;
-      }
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =

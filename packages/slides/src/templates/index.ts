@@ -236,6 +236,8 @@ export type Ctx = {
   optionColours?: boolean;
   /** `LayoutOptions.processLine` (UX ruling 203). */
   processLine?: boolean;
+  /** `LayoutOptions.objectiveCards` (UX ruling 203). */
+  objectiveCards?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1479,6 +1481,8 @@ export type LayoutOptions = {
   optionColours?: boolean;
   /** Steps as a numbered process line (P9). Off by default: old lessons and the default writer render as before. */
   processLine?: boolean;
+  /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
+  objectiveCards?: boolean;
 };
 
 /**
@@ -1584,6 +1588,7 @@ function layoutOnce(
     ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(opts.optionColours ? { optionColours: true } : {}),
     ...(opts.processLine ? { processLine: true } : {}),
+    ...(opts.objectiveCards ? { objectiveCards: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1668,10 +1673,11 @@ function layoutOnce(
     case "objectives": {
       heading(c, input.heading);
       // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
-      const fig = !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
+      const fig =
+        !!c.objectiveCards && !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
       const x = G.margin;
       const w = fig ? G.left.w : 720;
-      if (!objectiveCards(c, pts, x, w)) numbered(c, pts, x, w, "objectives");
+      if (!(c.objectiveCards && objectiveCards(c, pts, x, w))) numbered(c, pts, x, w, "objectives");
       if (fig) figurePanel(c, input.figure);
       break;
     }
