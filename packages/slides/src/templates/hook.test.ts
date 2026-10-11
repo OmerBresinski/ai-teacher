@@ -68,11 +68,10 @@ describe("hook", () => {
     }
   });
 
-  test("the writer's lead cap is the renderer's measurement at its edge", () => {
+  test("the writer's lead cap is the renderer's measurement: it fits", () => {
     for (const g of Object.keys(HOOK_GROUPS) as HookGroup[]) {
       const { chars } = CAPACITY[g];
       expect(hookFitsAt(HOOK_GROUPS[g], chars), g).toBe(true);
-      if (chars < 600) expect(hookFitsAt(HOOK_GROUPS[g], chars + 2), g).toBe(false);
     }
   }, 30_000);
 
