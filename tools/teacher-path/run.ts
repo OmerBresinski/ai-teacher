@@ -49,6 +49,12 @@ type Config = {
   ignoreNetwork: string[];
   workerEnv: Record<string, string>;
   apiEnv?: Record<string, string>;
+  /**
+   * Model-routing secrets to pass, by name, to match production's (the parity lab sets these from
+   * which names production carries). Values come from the local env or `~/.dayback-*-key`, in
+   * memory only; never in config.
+   */
+  secrets?: { api?: SecretName[]; worker?: SecretName[] };
   thresholds: Record<string, number | boolean>;
   briefs: Brief[];
 };
@@ -81,6 +87,22 @@ const key = (name: string, env: string) =>
   process.env[env] ??
   (existsSync(join(homedir(), name)) ? readFileSync(join(homedir(), name), "utf8").trim() : "");
 const openaiKey = key(".dayback-openai-key", "OPENAI_API_KEY");
+const SECRET_FILES = {
+  AWS_BEARER_TOKEN_BEDROCK: ".dayback-bedrock-key",
+  AI_GATEWAY_API_KEY: ".dayback-gateway-key",
+} as const;
+type SecretName = keyof typeof SECRET_FILES;
+const secretsFor = (names: SecretName[] = []): Record<string, string> => {
+  if (!paid) return {};
+  const out: Record<string, string> = {};
+  for (const n of names) {
+    const v = key(SECRET_FILES[n], n);
+    if (!v)
+      throw new Error(`config.secrets names ${n} but it is not in the env or ~/${SECRET_FILES[n]}`);
+    out[n] = v;
+  }
+  return out;
+};
 const pexelsKey = key(".dayback-pexels-key", "PEXELS_API_KEY");
 if (paid && !openaiKey)
   throw new Error("paid mode needs OPENAI_API_KEY (or ~/.dayback-openai-key)");
@@ -114,8 +136,8 @@ const stack = await startStack({
   storageRoot: join(out, "storage"),
   paid,
   fake,
-  workerEnv: config.workerEnv,
-  apiEnv: config.apiEnv,
+  workerEnv: { ...config.workerEnv, ...secretsFor(config.secrets?.worker) },
+  apiEnv: { ...config.apiEnv, ...secretsFor(config.secrets?.api) },
   openaiKey,
   pexelsKey,
   imageCapUsd: config.ceilingPerLessonUsd.images * lessons,
