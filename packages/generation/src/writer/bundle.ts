@@ -1,6 +1,8 @@
 import base4Defs from "./bundles/base4/diagram-defs.gen.json" with { type: "json" };
 import * as base4 from "./bundles/base4/prompts.gen";
+import ACTIVITY_MENU_P123 from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
 import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
+import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
 
 /*
@@ -29,6 +31,8 @@ export type WriterBundle = Omit<Prompts, "WRITER_PROMPT_SHA256"> & {
   diagramDefs: Record<string, unknown>;
   /** Stage behaviour a bundle's wording relies on, switched with it (absent: off). */
   features?: BundleFeatures;
+  /** The activity menu the stage adds to the system text (`withActivityMenu`). */
+  activityMenu: string;
 };
 export type BundleFeatures = {
   /** Slot-fill (slot-fill.ts): per-fit slide defs with caps, Fits lines as word budgets. */
@@ -43,6 +47,7 @@ const bundle = (
   tHash: string,
   diagramDefs: Record<string, unknown>,
   features?: BundleFeatures,
+  activityMenu: string = ACTIVITY_MENU_P123,
 ): WriterBundle => {
   const { WRITER_PROMPT_SHA256, ...files } = p;
   return {
@@ -51,6 +56,7 @@ const bundle = (
     pins: WRITER_PROMPT_SHA256,
     tHash,
     diagramDefs,
+    activityMenu,
     ...(features ? { features } : {}),
   };
 };
@@ -63,7 +69,14 @@ export const WRITER_BUNDLES = {
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.
-  base4g: bundle("base4g", base4g, "2e5d71686b35", base4Defs, { slotFill: true, planTheme: true }),
+  base4g: bundle(
+    "base4g",
+    base4g,
+    "eca9c4e033f8",
+    base4Defs,
+    { slotFill: true, planTheme: true },
+    ACTIVITY_MENU_G,
+  ),
 } as const satisfies Record<string, WriterBundle>;
 export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 

@@ -95,13 +95,13 @@ describe("picture director prompt", () => {
     expect(user).toContain(f.request);
     expect(user).toContain("Slide heading: Dogs and cats");
     expect(user).toContain("taught in England");
-    expect(user).toContain("Year 1 Science");
+    expect(user).toContain("Year 1 (age 5 to 6) Science");
     expect(user).toContain("Picture zone: square, 0.89 wide to 1 high.");
     expect(pictureDirectorPrompt({ ...f, aspect: 1.78 }).user).toContain("landscape");
   });
 
   test("v8: the lesson's picture style is a user line, photo when the lesson has none", () => {
-    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v11");
+    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v12");
     expect(pictureDirectorPrompt(input).user).toContain("Picture style for this lesson: photo");
     expect(pictureDirectorPrompt({ ...input, style: "illustration" }).user).toContain(
       "Picture style for this lesson: illustration",
@@ -139,5 +139,25 @@ describe("director fixtures", () => {
       expect(f.expect.length).toBeGreaterThan(0);
       expect(f.input.request.length).toBeGreaterThan(10);
     }
+  });
+});
+
+describe("v12: the pupils' age", () => {
+  test("code puts the age beside the year group; no age when the year group is not one", async () => {
+    const { pupilAge } = await import("./picture-director");
+    expect(pupilAge("Year 6")).toBe("10 to 11");
+    expect(pupilAge("year 13")).toBe("17 to 18");
+    expect(pupilAge("Reception")).toBe("4 to 5");
+    expect(pupilAge("KS3")).toBeNull();
+    expect(pupilAge("")).toBeNull();
+    expect(pictureDirectorPrompt({ ...input, yearGroup: "Year 6" }).user).toContain(
+      "Lesson: Year 6 (age 10 to 11) ",
+    );
+    expect(pictureDirectorPrompt({ ...input, yearGroup: "Mixed" }).user).toContain(
+      "Lesson: Mixed ",
+    );
+    expect(pictureDirectorPrompt(input).system).toContain(
+      "A child in it is the pupils' age, in years, unless the slide is about another age.",
+    );
   });
 });

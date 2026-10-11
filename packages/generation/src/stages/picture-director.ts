@@ -10,6 +10,7 @@ import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images"
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
 import {
+  lessonLine,
   PICTURE_DIRECTOR_VERSION,
   type PictureDirection,
   type PictureDirectorInput,
@@ -87,10 +88,7 @@ export function pictureDirectorBatchUser(
 ): string {
   const first = slots[0]?.input;
   if (!first) return "";
-  const head = [
-    `Lesson: ${first.yearGroup} ${first.subject}, "${first.title}", taught in ${first.country}.`,
-    `Picture style for this lesson: ${first.style ?? "photo"}`,
-  ];
+  const head = [lessonLine(first), `Picture style for this lesson: ${first.style ?? "photo"}`];
   const blocks = slots.map(({ id, input }) => {
     // The per-slot lines are the single prompt's, minus the lesson and style lines given once.
     const lines = pictureDirectorPrompt(input)

@@ -933,7 +933,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: activities ? withActivityMenu(system, stageKey) : system,
+          system: activities ? withActivityMenu(system, stageKey, P.activityMenu) : system,
           user: localise(user),
           schema,
           name: "lesson",
