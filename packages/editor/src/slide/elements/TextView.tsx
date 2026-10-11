@@ -120,7 +120,7 @@ export function StaticText({
 }) {
   const resolved = resolveTextStyle(element.style, theme);
   // A fixed-height box whose words outgrew it (a teacher's edit to a title sized to its words)
-  // is drawn at the size that fits, never clipped (TEACH-75 part n).
+  // is drawn at the size that fits, never clipped (TEACH-75 part o).
   const fitted = fittedFontSize(element, theme);
   const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
   return (

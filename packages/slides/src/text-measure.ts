@@ -227,19 +227,10 @@ function upperDoc(doc: RichDoc): RichDoc {
  */
 const FIT_CUSHION = 0.94;
 
-/**
- * The size a fixed-height text box is drawn at so its words stay inside it, or `undefined` when
- * they already fit at the stored size. A box the generator sized exactly to its words (the title
- * slide's title stands on the foot of its box, `templates/index.ts`) has no room for one more line,
- * so a teacher's edit that adds a word ran out of the top of the box and the first line was cut off
- * (TEACH-75 part n). The type steps down 1pt at a time, never under the role's floor
- * (`floorBelow`, UX ruling 91; display type down to the heading's 26pt); the box keeps its place and its height. `autoFit: false` opts out,
- * and an auto-height box grows instead, so it is never fitted here.
- */
-export function fittedFontSize(
-  el: { doc: RichDoc; w: number; h: number; style?: Partial<TextStyle> },
-  theme: Theme,
-): number | undefined {
+type FixedText = { doc: RichDoc; w: number; h: number; style?: Partial<TextStyle> };
+
+/** How a fixed-height box fits: its stored size, its floor, and the height it needs at a size. */
+function fitPlan(el: FixedText, theme: Theme) {
   const style = el.style ?? {};
   if (style.autoHeight !== false || style.autoFit === false) return undefined;
   const preset: TextPreset = style.preset ?? "body";
@@ -248,7 +239,6 @@ export function fittedFontSize(
   const pad = 2 * r.padding;
   const need = (fontSize: number, width = el.w) =>
     measure({ doc: el.doc, width, style, preset, fontSize, inset: pad, chrome: pad });
-  if (need(r.fontSize) <= el.h + 1) return undefined;
   // Display type (a title, a subtitle) may come down to the heading's projector floor (26pt,
   // SPEC §7) rather than be cut: a smaller title is still read from the back of the room.
   const display = preset === "title" || preset === "subtitle";
@@ -257,8 +247,59 @@ export function fittedFontSize(
     floorBelow(theme, preset),
     display ? fontFloor("heading") : Number.POSITIVE_INFINITY,
   );
-  for (let size = Math.floor(r.fontSize) - 1; size > floor; size--) {
-    if (need(size, el.w * FIT_CUSHION) <= el.h) return size;
+  return { size: r.fontSize, floor, need };
+}
+
+/**
+ * The size a fixed-height text box is drawn at so its words stay inside it, or `undefined` when
+ * they already fit at the stored size. A box the generator sized exactly to its words (the title
+ * slide's title stands on the foot of its box, `templates/index.ts`) has no room for one more line,
+ * so a teacher's edit that adds a word ran out of the top of the box and the first line was cut off
+ * (TEACH-75 part o). The type steps down 1pt at a time, never under the role's floor (`floorBelow`,
+ * UX ruling 91; display type down to the heading's 26pt). Words that do not fit even at the floor
+ * get a taller box from `growFixedText`. `autoFit: false` opts out, and an auto-height box grows
+ * instead, so it is never fitted here. The renderer and the PPTX export both draw at this size.
+ */
+export function fittedFontSize(el: FixedText, theme: Theme): number | undefined {
+  const plan = fitPlan(el, theme);
+  if (!plan || plan.need(plan.size) <= el.h + 1) return undefined;
+  for (let size = Math.floor(plan.size) - 1; size > plan.floor; size--) {
+    if (plan.need(size, el.w * FIT_CUSHION) <= el.h) return size;
   }
-  return floor;
+  return plan.floor;
+}
+
+/** Top of the room a grown box may rise into, in slide points. */
+const GROW_TOP = 24;
+
+/**
+ * Gives a fixed-height text box whose words do not fit even at the floor the height they need, so
+ * nothing is clipped (TEACH-75 part o). A bottom-anchored box (the title) rises into the free room
+ * above it first, down to `GROW_TOP`; the rest of the growth goes downward and pushes the elements
+ * below it that share its column (the subtitle) down by the same amount. Boxes that fit, at their
+ * own size or a fitted one, are returned as they are. Top-level elements only.
+ */
+export function growFixedText<
+  E extends { type: string; x: number; y: number; w: number; h: number },
+>(elements: readonly E[], theme: Theme): E[] {
+  let out = elements as E[];
+  for (let i = 0; i < out.length; i++) {
+    const el = out[i] as E;
+    if (el.type !== "text") continue;
+    const text = el as unknown as E & FixedText;
+    const plan = fitPlan(text, theme);
+    if (!plan || fittedFontSize(text, theme) !== plan.floor) continue;
+    const delta = Math.ceil(plan.need(plan.floor, el.w * FIT_CUSHION) - el.h);
+    if (delta <= 0) continue;
+    const bottom = text.style?.valign === "bottom" || text.style?.valign === "middle";
+    const up = bottom ? Math.max(0, Math.min(delta, el.y - GROW_TOP)) : 0;
+    const down = delta - up;
+    const foot = el.y + el.h;
+    out = out.map((o, j) => {
+      if (j === i) return { ...o, y: o.y - up, h: o.h + delta };
+      const below = o.y >= foot - 1 && o.x < el.x + el.w && o.x + o.w > el.x;
+      return down > 0 && below ? { ...o, y: o.y + down } : o;
+    });
+  }
+  return out;
 }

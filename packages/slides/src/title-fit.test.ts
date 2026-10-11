@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { RichDoc, TextElement } from "@tj/domain/documents";
 import { layoutTemplate, type Stage } from "./templates/index";
-import { fittedFontSize, measureHeadless } from "./text-measure";
+import { fittedFontSize, growFixedText, measureHeadless } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
 import { atKeyStage, fontFloor, THEMES } from "./themes";
 
 /*
- * TEACH-75 part n: the title slide's title stands on the foot of a fixed-height box sized exactly to
+ * TEACH-75 part o: the title slide's title stands on the foot of a fixed-height box sized exactly to
  * its words. A teacher's edit that adds a line ran out of the top of the box, so the first line
  * ("The heart") was cut off in Present. The renderer now draws such a box at `fittedFontSize`.
  */
@@ -51,7 +51,7 @@ function needAt(
   });
 }
 
-describe("a long title fits its zone on every theme, KS1 to KS5 (TEACH-75 part n)", () => {
+describe("a long title fits its zone on every theme, KS1 to KS5 (TEACH-75 part o)", () => {
   for (const base of THEMES)
     for (const stage of STAGES) {
       const theme = atKeyStage(base, stage);
@@ -124,4 +124,38 @@ describe("fittedFontSize leaves other boxes alone", () => {
     expect(size).toBeDefined();
     expect(size as number).toBeGreaterThanOrEqual(fontFloor("heading"));
   });
+});
+
+describe("a title too long for the floor grows its box and pushes the subtitle (TEACH-75 part o)", () => {
+  const huge =
+    "The heart and circulatory system and how the blood carries oxygen from the lungs round the body, then back to the heart through arteries, veins and capillaries";
+  for (const base of THEMES)
+    for (const stage of STAGES) {
+      const theme = atKeyStage(base, stage);
+      test(`${base.id} ${stage}`, () => {
+        const r = layoutTemplate(
+          {
+            template: "title",
+            heading: "The heart",
+            lead: "Recall: what changes in your body when you run?",
+            figure: { photo: "x.jpg", aspect: 4 / 3, alt: "a runner" },
+          },
+          theme,
+          stage,
+        );
+        const els = r.slide.elements.map((e) =>
+          e.name === "Title" ? withText(e as TextElement, huge) : e,
+        );
+        const grown = growFixedText(els, theme);
+        const title = grown.find((e) => e.name === "Title") as TextElement;
+        const sub = grown.find((e) => e.name === "Subtitle") as TextElement;
+        const fitted = fittedFontSize(title, theme);
+        const size = fitted ?? resolveTextStyle(title.style, theme, "title").fontSize;
+        expect(size).toBeGreaterThanOrEqual(fontFloor("heading"));
+        expect(needAt(title, theme, size, fitted !== undefined)).toBeLessThanOrEqual(title.h + 1);
+        expect(title.y).toBeGreaterThanOrEqual(0);
+        expect(sub.y).toBeGreaterThanOrEqual(title.y + title.h - 1);
+        expect(sub.y + sub.h).toBeLessThanOrEqual(SLIDE.h);
+      });
+    }
 });
