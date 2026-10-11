@@ -187,18 +187,18 @@ function renderDouble(root, P, ctx, M) {
   /* where the heart is: a small figure for the first build, before the loop is drawn */
   if (P.showBody !== false) {
     const fig = h('g', { s: bi('heart'), hide: bi('lungs'), cls: 'rise' }, circ);
-    const body = bodyOutline(fig, { age: 'child', x: COLX + COLW / 2, top: 150, height: 420 });
+    const body = bodyOutline(fig, { age: 'child', x: HX - 330, top: 130, height: 380 });
     organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
   }
 
-  /* lungs: one pair, outlined so they read at slide size; blood turns from oxygen-poor to oxygen-rich across them */
-  const lungFill = grad(`${ctx.uid}-lg`, LXL - 40, LXR + 40, POOR, RICH);
+  /* lungs: one pair, outlined so they read at slide size; blood turns from oxygen-poor to oxygen-rich across
+     each lung alike (never one lung "poor" and the other "rich"); the windpipe is drawn in a neutral air colour */
   const lg = h('g', { s: bi('lungs'), cls: 'pop' }, circ);
-  h('path', { d: `M${HX} ${LY - 60} V ${LY - 34} M${HX} ${LY - 34} Q ${LXL + 70} ${LY - 34} ${LXL + 36} ${LY - 6} M${HX} ${LY - 34} Q ${LXR - 70} ${LY - 34} ${LXR - 36} ${LY - 6}`, fill: 'none', stroke: 'var(--berry-shade)', 'stroke-width': 'calc(var(--sw-arrow) * 2.6)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, lg);
+  h('path', { d: `M${HX} ${LY - 60} V ${LY - 34} M${HX} ${LY - 34} Q ${LXL + 70} ${LY - 34} ${LXL + 36} ${LY - 6} M${HX} ${LY - 34} Q ${LXR - 70} ${LY - 34} ${LXR - 36} ${LY - 6}`, fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 'calc(var(--sw-arrow) * 2.2)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, lg);
   const lobes = [[LXL, -1], [LXR, 1]];
   for (const [cx, sd] of lobes) h('path', { d: lungDAt(cx, sd, LY), fill: 'var(--ear)', stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, lg);
   const lgx = h('g', { s: bi('oxygen'), cls: 'pop' }, circ);
-  for (const [cx, sd] of lobes) h('path', { d: lungDAt(cx, sd, LY), fill: lungFill, stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, lgx);
+  for (const [cx, sd] of lobes) h('path', { d: lungDAt(cx, sd, LY), fill: grad(`${ctx.uid}-lg${sd}`, cx - 56, cx + 56, POOR, RICH), stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, lgx);
   const air = h('g', { s: bi('lungs') }, circ);
   for (const [cx, sd] of lobes) h('path', { d: `M${cx - sd * 36} ${LY - 6} L ${cx + sd * 8} ${LY - 30} M${cx - sd * 36} ${LY - 6} L ${cx + sd * 30} ${LY + 4} M${cx - sd * 36} ${LY - 6} L ${cx - sd * 4} ${LY + 38}`, fill: 'none', stroke: 'var(--paper)', 'stroke-width': 'var(--sw-struct)', 'stroke-linecap': 'round' }, air);
   tb(lg, LXR + 74, LY + 10, M.L('lungs'), { cls: 'ts-label', maxW: COLX - 24 - (LXR + 74), maxLines: 2, lh: 30, a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:lungs' });
@@ -228,8 +228,11 @@ function renderDouble(root, P, ctx, M) {
     const place = off => dots.forEach((c, i) => { const p = mp.getPointAtLength((i * gap + off) % (n * gap)); c.setAttribute('cx', p.x.toFixed(1)); c.setAttribute('cy', p.y.toFixed(1)); });
     place(gap / 2); flows.push({ place, gap });
   };
-  vessel('lungs', `M${pax} ${HY - 12 * k} L ${pax} ${LB + 34} Q ${pax} ${LB + 8} ${LXL + 24} ${LB + 2}`, LXL + 24, LB + 2, Math.atan2(-6, LXL + 24 - pax), POOR);
-  vessel('oxygen', `M${LXR - 24} ${LB + 2} Q ${pvx} ${LB + 8} ${pvx} ${LB + 34} L ${pvx} ${heartTop - 4}`, pvx, heartTop - 4, Math.PI / 2, RICH);
+  // blood enters each lung's oxygen-poor (purple) end and leaves its oxygen-rich (red) end: in at the
+  // left lung's outer side, out at the right lung's outer side, so the colour turn matches the vessels
+  const ry = LB + 20, lin = LXL - 40, rout = LXR + 40;
+  vessel('lungs', `M${pax} ${HY - 12 * k} L ${pax} ${ry + 20} Q ${pax} ${ry} ${pax - 20} ${ry} L ${lin + 20} ${ry} Q ${lin} ${ry} ${lin} ${ry - 20} L ${lin} ${LB - 6}`, lin, LB - 6, -Math.PI / 2, POOR);
+  vessel('oxygen', `M${rout} ${LB - 6} L ${rout} ${ry - 20} Q ${rout} ${ry} ${rout - 20} ${ry} L ${pvx + 20} ${ry} Q ${pvx} ${ry} ${pvx} ${ry + 20} L ${pvx} ${heartTop - 4}`, pvx, heartTop - 4, Math.PI / 2, RICH);
   vessel('out', `M${HX + 12 * k} ${AY} L ${RX - 24} ${AY} Q ${RX} ${AY} ${RX} ${AY + 24} L ${RX} ${BM - 24} Q ${RX} ${BM} ${RX - 24} ${BM} L ${BX1 + 8} ${BM}`, BX1 + 8, BM, Math.PI, RICH);
   vessel('back', `M${BX0} ${BM} L ${LX + 24} ${BM} Q ${LX} ${BM} ${LX} ${BM - 24} L ${LX} ${AY + 24} Q ${LX} ${AY} ${LX + 24} ${AY} L ${HX - 17 * k - 6} ${AY}`, HX - 17 * k - 6, AY, 0, POOR);
 
@@ -257,11 +260,12 @@ function renderDouble(root, P, ctx, M) {
   }
 
   /* one compact key, in journey order */
-  let yC = GRID.top + 24;
+  // compact, in the empty corner left of the lungs, so the whole diagram sits centred
+  let yC = GRID.top + 24; const KX = HX - 400, KW = LXL - 70 - KX;
   [['poor', POOR, 'lungs'], ['rich', RICH, 'oxygen']].forEach(([id, col, kk]) => {
     const g = h('g', { s: bi(kk), cls: 'rise' }, circ);
-    h('line', { x1: COLX, x2: COLX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
-    const r = tb(g, COLX + 40, yC, M.L(id), { cls: 'ts-label', maxW: COLW - 40, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
+    h('line', { x1: KX, x2: KX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
+    const r = tb(g, KX + 40, yC, M.L(id), { cls: 'ts-label', maxW: KW - 40, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
     yC += r.h + 14;
   });
 
