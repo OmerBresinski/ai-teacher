@@ -19,10 +19,10 @@ export const WRITER_MAX_TOKENS = 9000;
 /**
  * The most output tokens a slide took in the 24 saved base4 writer runs (3,065 for 12 slides,
  * reasoning included); the cap gives each slide of the range's maximum 2.9 times that, which keeps
- * Standard (12) on the pinned 9,000 and gives Detailed (20) 14,790.
+ * Standard (12) on the pinned 9,000 and gives Detailed (16) 11,832.
  */
 export const WRITER_TOKENS_PER_SLIDE = 255;
-/** The writer's output cap for a lesson of up to `maxSlides` (Detailed, 13–20, must not stop on length). */
+/** The writer's output cap for a lesson of up to `maxSlides` (Detailed, 13–16, must not stop on length). */
 export const writerMaxTokens = (maxSlides: number) =>
   Math.max(WRITER_MAX_TOKENS, Math.ceil(WRITER_TOKENS_PER_SLIDE * 2.9 * maxSlides));
 

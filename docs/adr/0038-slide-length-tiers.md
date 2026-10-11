@@ -37,4 +37,12 @@ say "Slides: 9 to 12", the pinned user turn renders `{{slides.min}} to {{slides.
 ## Consequences
 
 - ADR 0036 §1 now applies only to briefs without a tier. Its count-miss log stays for those.
-- A Detailed lesson on an outline planner is planned at 16 slides, inside 13–20.
+- A Detailed lesson on an outline planner is planned at 16 slides, inside 13–20. (Amended
+  2026-10-11, ruling 204: inside 13–16, the top of the range.)
+
+## Amendment (2026-10-11)
+
+The ruling that amends ruling 164 (Greg, 11 Oct: "detailed should be 13-16") narrows Detailed to
+13–16 in `SLIDE_TIER_RANGES`. Quick 6–8 and Standard 9–12 (the default) are unchanged, and the
+Detailed planner count stays 16, now the top of the range. `slideTierOf` still reads any count above
+Standard as Detailed, so a lesson stored with 17–20 slides opens as Detailed.

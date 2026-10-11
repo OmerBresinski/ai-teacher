@@ -55,7 +55,7 @@ describe("writer planner", () => {
     for (const n of [6, 8, 10, 12])
       expect(slideRange({ slideCount: n })).toEqual({ min: n, max: n });
     expect(slideRange({ slideCount: 3 })).toEqual({ min: 6, max: 6 });
-    expect(slideRange({ slideCount: 30 })).toEqual({ min: 20, max: 20 });
+    expect(slideRange({ slideCount: 30 })).toEqual({ min: 16, max: 16 });
     expect(slideRange(undefined)).toEqual({ min: 9, max: 12 });
     expect(slideRange({})).toEqual({ min: 9, max: 12 });
   });
@@ -63,8 +63,14 @@ describe("writer planner", () => {
   test("ruling 164: a tier gives its range and wins over an exact count", () => {
     expect(slideRange({ slideTier: "quick" })).toEqual({ min: 6, max: 8 });
     expect(slideRange({ slideTier: "standard" })).toEqual({ min: 9, max: 12 });
-    expect(slideRange({ slideTier: "detailed" })).toEqual({ min: 13, max: 20 });
-    expect(slideRange({ slideTier: "detailed", slideCount: 8 })).toEqual({ min: 13, max: 20 });
+    expect(slideRange({ slideTier: "detailed" })).toEqual({ min: 13, max: 16 });
+    expect(slideRange({ slideTier: "detailed", slideCount: 8 })).toEqual({ min: 13, max: 16 });
+  });
+
+  test("a legacy count with no tier never passes Detailed's maximum (ruling 204)", () => {
+    for (const n of [16, 17, 18, 20])
+      expect(slideRange({ slideCount: n })).toEqual({ min: 16, max: 16 });
+    expect(slideRange({ slideCount: 13 })).toEqual({ min: 13, max: 13 });
   });
 });
 
