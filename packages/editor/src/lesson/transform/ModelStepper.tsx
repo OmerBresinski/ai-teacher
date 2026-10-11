@@ -1,5 +1,5 @@
 import type { ImageElement, SlideElement } from "@tj/domain/documents";
-import { IconButton, IconGroup } from "@tj/ui";
+import { cn, IconButton, IconGroup } from "@tj/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Rect } from "../../model/geometry";
@@ -60,6 +60,7 @@ export function ModelStepper({
   onHover,
   onFocusChange,
   onPress,
+  active = true,
 }: {
   element: ImageElement;
   rect: Rect;
@@ -72,6 +73,14 @@ export function ModelStepper({
   onFocusChange: (inside: boolean) => void;
   /** A press on the stepper, with its pointer type (a tap holds the preview while selected). */
   onPress?: (pointerType: string) => void;
+  /**
+   * The model is hovered, selected or holds the stepper's focus: the pill is at full strength.
+   * Otherwise it rests faded (Greg, 11 Oct 2026, #494 y/n 2: "opacitied out but always present")
+   * at 70%, with its words and chevrons in the full foreground colour so they still clear 4.5:1
+   * on the card (measured 4.9:1 at rest on the light theme; 45% would drop them near 3:1). It is
+   * the app's chrome, not the slide's, so a slide theme never changes it.
+   */
+  active?: boolean;
 }) {
   const builds = element.builds ?? 0;
   const { n, of } = stepOf(builds, build);
@@ -103,6 +112,8 @@ export function ModelStepper({
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: a toolbar's arrow keys (ARIA toolbar pattern); the handlers also keep presses and keys off the stage */}
       <div
         data-model-stepper
+        data-active={active ? "" : undefined}
+        className="motion-safe:transition-opacity motion-safe:duration-150"
         role="toolbar"
         aria-label="Model build stepper"
         style={{
@@ -114,6 +125,7 @@ export function ModelStepper({
           transform: `translate(-50%, -50%) scale(${1 / scale})`,
           transformOrigin: "50% 50%",
           pointerEvents: "auto",
+          opacity: active ? 1 : 0.7,
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
@@ -132,11 +144,15 @@ export function ModelStepper({
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onFocusChange(false);
         }}
       >
-        <IconGroup aria-label="Build steps" className="bg-card shadow-sm">
+        <IconGroup
+          aria-label="Build steps"
+          className={
+            active ? "bg-card shadow-sm" : "bg-card shadow-none [&_button]:text-foreground"
+          }
+        >
           <IconButton
             label="Previous build step"
             noTooltip
-            size="sm"
             disabled={n <= 1}
             onClick={() => go(-1)}
           >
@@ -145,14 +161,16 @@ export function ModelStepper({
           <span
             data-tabular
             aria-live="polite"
-            className="inline-flex items-center whitespace-nowrap px-2 text-ink-2 text-meta tabular-nums"
+            className={cn(
+              "inline-flex items-center whitespace-nowrap px-2.5 font-medium text-[13px] tabular-nums",
+              active ? "text-ink-2" : "text-foreground",
+            )}
           >
             {`Build ${n} of ${of}`}
           </span>
           <IconButton
             label="Next build step"
             noTooltip
-            size="sm"
             disabled={build === undefined}
             onClick={() => go(1)}
           >

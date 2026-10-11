@@ -4,8 +4,9 @@ import type { ElementBox } from "./hit-test";
 import { type DiagramStep, isBuildingModel } from "./ModelStepper";
 
 /**
- * Which model the build stepper sits on, and when its preview holds (TEACH-247 part u, UX ruling
- * 205). The stepper goes on the model it holds focus for, else the hovered one, else the single
+ * Every building model carries a stepper in the editor, faded at rest; this picks the one at full
+ * strength, and when its preview holds (TEACH-247 part u, UX ruling
+ * 205). The active stepper is the model it holds focus for, else the hovered one, else the single
  * selected one. A previewed build holds while that model is hovered or the stepper holds focus;
  * after a touch or pen press it also holds while the model stays selected, because a tap raises no
  * hover and Safari does not focus a button it taps, so on an iPad the build stays until the
@@ -16,6 +17,7 @@ export function useModelStepping({
   hoverId,
   selectedId,
   boxOf,
+  ids,
   diagramStep,
   onDiagramStep,
 }: {
@@ -25,6 +27,8 @@ export function useModelStepping({
   /** The one selected element, or null for none or several. */
   selectedId: Id | null;
   boxOf: (id: Id) => ElementBox | undefined;
+  /** Every element on the slide, in order: each building model gets its own resting stepper. */
+  ids: readonly Id[];
   diagramStep: DiagramStep | null;
   onDiagramStep?: (next: DiagramStep | null) => void;
 }) {
@@ -45,7 +49,10 @@ export function useModelStepping({
   useEffect(() => {
     if (diagramStep && !live) onDiagramStep?.(null);
   }, [diagramStep, live, onDiagramStep]);
+  const models = enabled && onDiagramStep ? ids.flatMap((i) => model(i) ?? []) : [];
   return {
+    /** Every building model's box: each shows its stepper, faded unless it is `stepping`. */
+    models,
     stepping,
     setFocusId,
     /** Called with every press on the slide or the stepper. */

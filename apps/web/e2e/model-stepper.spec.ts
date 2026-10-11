@@ -85,7 +85,10 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
     .first();
   expect(await svgOf(thumb)).not.toContain(LAST_HIDDEN);
   const stepper = page.getByRole("toolbar", { name: "Model build stepper" });
-  await expect(stepper).toHaveCount(0);
+  // Always present, faded at rest; never in the thumbnail.
+  await expect(stepper).toBeVisible();
+  await expect(stepper).not.toHaveAttribute("data-active", "");
+  await expect(page.locator('[data-slide-mode="thumb"] [data-model-stepper]')).toHaveCount(0);
   await page.waitForTimeout(600);
   await shot(page, "editor-full");
 
@@ -93,7 +96,7 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   const box = await model.boundingBox();
   if (!box) throw new Error("model not on screen");
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.4);
-  await expect(stepper).toBeVisible();
+  await expect(stepper).toHaveAttribute("data-active", "");
   await expect(stepper).toContainText(`Build ${heart.builds + 1} of ${heart.builds + 1}`);
   await expect(stepper.getByRole("button", { name: "Next build step" })).toBeDisabled();
 
@@ -106,6 +109,12 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   expect(await svgOf(thumb)).not.toContain(LAST_HIDDEN);
   await page.waitForTimeout(1000);
   await shot(page, "editor-stepper-midway");
+  await stepper.getByRole("button", { name: "Next build step" }).click();
+  await stepper.getByRole("button", { name: "Next build step" }).click();
+  await page.waitForTimeout(400);
+  await shot(page, "editor-hover");
+  await prev.click();
+  await prev.click();
 
   // Keyboard: the arrows step inside the stepper, and the model does not move.
   await prev.focus();
@@ -119,7 +128,7 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   await page.mouse.move(4, 450);
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect.poll(() => svgOf(model)).not.toContain(LAST_HIDDEN);
-  await expect(stepper).toHaveCount(0);
+  await expect(stepper).not.toHaveAttribute("data-active", "");
 
   // Present: unchanged, it opens the model on its first build and builds one per Next.
   await page.getByRole("button", { name: "Present" }).click();
@@ -127,6 +136,7 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   await expect(presented).toBeVisible();
   await expect.poll(() => svgOf(presented)).toContain('[data-s="1"],');
   await page.waitForTimeout(800);
+  await expect(page.locator("[data-model-stepper]")).toHaveCount(0);
   await shot(page, "present-step-1");
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => svgOf(presented)).not.toContain('[data-s="1"],');

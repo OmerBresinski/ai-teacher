@@ -73,7 +73,10 @@ describe("ModelStepper in the editor", () => {
     // The finished drawing, no build style, before anything is hovered.
     await waitFor(() => expect(canvasSvg(container, el.id)).toContain("<path/>"));
     expect(canvasSvg(container, el.id)).not.toContain("opacity:0");
-    expect(screen.queryByRole("group", { name: "Build steps" })).toBeNull();
+    // Always there, resting faded until the model is hovered, focused or selected (#494 y/n 2).
+    const resting = await screen.findByRole("toolbar", { name: "Model build stepper" });
+    expect(resting.hasAttribute("data-active")).toBe(false);
+    expect(resting.textContent).toContain("Build 3 of 3");
 
     fireEvent.pointerMove(catcher(container), pointer(200, 150));
     const group = await screen.findByRole("group", { name: "Build steps" });
@@ -91,7 +94,11 @@ describe("ModelStepper in the editor", () => {
     // The pointer leaves the slide: the model is back to its finished drawing.
     fireEvent.pointerLeave(catcher(container), { relatedTarget: document.body });
     await waitFor(() => expect(canvasSvg(container, el.id)).not.toContain("opacity:0"));
-    await waitFor(() => expect(screen.queryByRole("group", { name: "Build steps" })).toBeNull());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("toolbar", { name: "Model build stepper" }).hasAttribute("data-active"),
+      ).toBe(false),
+    );
   });
 
   test("keys step inside the stepper and never reach the canvas nudge", async () => {

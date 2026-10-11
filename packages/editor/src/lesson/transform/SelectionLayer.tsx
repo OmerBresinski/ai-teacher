@@ -790,11 +790,17 @@ export function SelectionLayer({
       ? first.el
       : null;
 
-  const { stepping, setFocusId, notePress } = useModelStepping({
+  const {
+    stepping,
+    models: stepSteppers,
+    setFocusId,
+    notePress,
+  } = useModelStepping({
     enabled: steppers && !gestureOn && !marquee && !cropping,
     hoverId,
     selectedId: selected.length === 1 ? (first?.id ?? null) : null,
     boxOf: (id) => selected.find((b) => b.id === id) ?? byId.get(id),
+    ids: boxes.map((b) => b.id),
     diagramStep,
     onDiagramStep,
   });
@@ -911,25 +917,24 @@ export function SelectionLayer({
         />
       ) : null}
 
-      {stepping ? (
+      {stepSteppers.map((m) => (
         <ModelStepper
-          key={stepping.id}
-          element={stepping.el}
-          rect={stepping.rect}
-          rotation={stepping.rotation}
+          key={m.id}
+          active={stepping?.id === m.id}
+          element={m.el}
+          rect={m.rect}
+          rotation={m.rotation}
           scale={scale}
-          build={diagramStep?.id === stepping.id ? diagramStep.build : undefined}
-          onStep={(build) =>
-            onDiagramStep?.(build === undefined ? null : { id: stepping.id, build })
-          }
+          build={diagramStep?.id === m.id ? diagramStep.build : undefined}
+          onStep={(build) => onDiagramStep?.(build === undefined ? null : { id: m.id, build })}
           onHover={(over, to) => {
             // Off the stepper and out of the layer: nothing on the slide is under the pointer.
             if (!over && !(to instanceof Node && rootRef.current?.contains(to))) setHoverId(null);
           }}
-          onFocusChange={(inside) => setFocusId(inside ? stepping.id : null)}
+          onFocusChange={(inside) => setFocusId(inside ? m.id : null)}
           onPress={notePress}
         />
-      ) : null}
+      ))}
 
       {selected.length > 1 && selectionBounds ? (
         <>
