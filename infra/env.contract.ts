@@ -774,6 +774,35 @@ const CONTRACT = [
     description:
       "Default `off`. `on` lets the writer planner's picture director reuse judged pictures from the shared picture library (`bank_images`, TEACH-84 part b) and store each picture its judge passes, so the library grows. A reuse is a cosine of at least 0.77 between request embeddings (`text-embedding-3-small`, about $0.000004 a lookup) and is judged again before it is placed. Needs `OPENAI_API_KEY`; a failed lookup falls through to the live search. `off` searches or generates every picture afresh and stores nothing.",
   },
+  {
+    name: "LAB_PARITY",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["1"],
+    runtimeOnly: true,
+    files: [],
+    description:
+      "Lab marker for the production-matching (parity) lab: the teacher-path harness sets `1` on the local api and worker it starts. Never set on any deployed service. Without it `LAB_WRITER_BUNDLE_ID` is ignored.",
+  },
+  {
+    name: "LAB_WRITER_BUNDLE_ID",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    runtimeOnly: true,
+    files: [],
+    description:
+      "Parity lab only: the writer prompt bundle to run as the one declared candidate (a key of `WRITER_BUNDLES`). Honoured only when `LAB_PARITY=1`, no `RAILWAY_*` variable is present and NODE_ENV is not `production`; otherwise ignored with a warning. Production runs `WRITER_BUNDLE_ID`. Never set on any deployed service.",
+  },
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
     name: "AI_LESSON_COST_CAP_USD",

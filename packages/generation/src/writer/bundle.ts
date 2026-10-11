@@ -70,20 +70,20 @@ export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 /** The writer prompt set production ships: the one value to change when a new winner lands. */
 export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p123";
 
-/** True when the process runs as production (Railway production, or a production build). */
-export function isProductionEnv(env: Record<string, string | undefined>): boolean {
-  return (
-    env.RAILWAY_ENVIRONMENT === "production" ||
-    env.RAILWAY_ENVIRONMENT_NAME === "production" ||
-    env.NODE_ENV === "production"
-  );
+/**
+ * True when the process may be deployed: any Railway variable (every Railway environment, staging
+ * and PR ones included) or NODE_ENV=production. Fails closed: the lab is only a local process.
+ */
+export function isDeployedEnv(env: Record<string, string | undefined>): boolean {
+  return env.NODE_ENV === "production" || Object.keys(env).some((k) => k.startsWith("RAILWAY_"));
 }
 
 /**
  * The bundle this process runs. `WRITER_BUNDLE_ID` unless the parity lab declares a candidate:
- * `LAB_WRITER_BUNDLE_ID` is honoured only with the lab marker `LAB_PARITY=1` (the teacher-path
- * harness sets it) and never under a production signal, where it is ignored with a warning. An
- * unknown id in the lab throws, so a typo never runs as a silent production-identical lesson.
+ * `LAB_WRITER_BUNDLE_ID` is honoured only with the lab marker `LAB_PARITY=1` (exactly), no
+ * `RAILWAY_*` variable at all and NODE_ENV not `production`; otherwise it is ignored with a
+ * warning. An unknown id in the lab throws, so a typo never runs as a silent production lesson.
+ * The warning fires only when LAB_WRITER_BUNDLE_ID is set, which no deployed service does.
  */
 export function resolveWriterBundleId(
   env: Record<string, string | undefined> = process.env,
@@ -91,8 +91,10 @@ export function resolveWriterBundleId(
 ): WriterBundleId {
   const want = env.LAB_WRITER_BUNDLE_ID?.trim();
   if (!want) return WRITER_BUNDLE_ID;
-  if (isProductionEnv(env)) {
-    warn(`LAB_WRITER_BUNDLE_ID=${want} ignored in production; writer bundle ${WRITER_BUNDLE_ID}`);
+  if (isDeployedEnv(env)) {
+    warn(
+      `LAB_WRITER_BUNDLE_ID=${want} ignored outside the local lab; writer bundle ${WRITER_BUNDLE_ID}`,
+    );
     return WRITER_BUNDLE_ID;
   }
   if (env.LAB_PARITY !== "1") {

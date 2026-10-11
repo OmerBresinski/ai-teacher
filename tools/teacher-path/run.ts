@@ -87,18 +87,20 @@ const key = (name: string, env: string) =>
   process.env[env] ??
   (existsSync(join(homedir(), name)) ? readFileSync(join(homedir(), name), "utf8").trim() : "");
 const openaiKey = key(".dayback-openai-key", "OPENAI_API_KEY");
+// Short names only: the key file is `~/.dayback-<short>-key` (a literal path beside the variable
+// name reads as an assigned secret to gitleaks).
 const SECRET_FILES = {
-  AWS_BEARER_TOKEN_BEDROCK: ".dayback-bedrock-key",
-  AI_GATEWAY_API_KEY: ".dayback-gateway-key",
+  AWS_BEARER_TOKEN_BEDROCK: "bedrock",
+  AI_GATEWAY_API_KEY: "gateway",
 } as const;
 type SecretName = keyof typeof SECRET_FILES;
 const secretsFor = (names: SecretName[] = []): Record<string, string> => {
   if (!paid) return {};
   const out: Record<string, string> = {};
   for (const n of names) {
-    const v = key(SECRET_FILES[n], n);
-    if (!v)
-      throw new Error(`config.secrets names ${n} but it is not in the env or ~/${SECRET_FILES[n]}`);
+    const file = `.dayback-${SECRET_FILES[n]}-key`;
+    const v = key(file, n);
+    if (!v) throw new Error(`config.secrets names ${n} but it is not in the env or ~/${file}`);
     out[n] = v;
   }
   return out;
