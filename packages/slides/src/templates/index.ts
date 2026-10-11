@@ -955,20 +955,44 @@ function numbered(
   x: number,
   w: number,
   what: string,
-  opts: { ruled?: boolean; after?: string; top?: number } = {},
+  opts: { ruled?: boolean; after?: string; before?: string; stretch?: boolean; top?: number } = {},
 ) {
   ladder(
     c,
     (r) => {
       const d = markerDisc(c);
       const indent = d + Math.round(c.s.body * 0.7);
-      const pad = Math.round(c.s.body * (opts.ruled ? 0.6 : 0.35) * r.space);
-      const blocks: Block[] = items.map((q, k) => {
-        const h = Math.max(d, measure(c, q, "body", w - indent));
-        return {
+      const hs = items.map((q) => Math.max(d, measure(c, q, "body", w - indent)));
+      const before = opts.before;
+      const beforeH = before ? measure(c, before, "small", w, 600) : 0;
+      let pad = Math.round(c.s.body * (opts.ruled ? 0.6 : 0.35) * r.space);
+      // Practice (TEACH-75 part D): a short set opens its rows up, the same for every row, so the
+      // questions fill the band in an even rhythm instead of a tight stack over an empty foot.
+      if (opts.stretch && r.space === 1 && items.length) {
+        const used = hs.reduce((a, h) => a + h + 2 * pad, 0) + (before ? beforeH + 6 : 0);
+        const room = Math.floor((G.band.h * 0.88 - used) / (2 * items.length));
+        pad += Math.max(0, Math.min(room, Math.round(c.s.body * 0.9)));
+      }
+      const blocks: Block[] = [];
+      // The instruction leads the questions, so pupils read what to do before they start.
+      if (before)
+        blocks.push({
+          h: beforeH + Math.round(6 * r.space),
+          draw: (y) =>
+            text(
+              c,
+              before,
+              "small",
+              { x, y, w },
+              { color: c.t.colors.muted, weight: 600, name: "Instruction" },
+            ),
+        });
+      items.forEach((q, k) => {
+        const h = hs[k] ?? d;
+        blocks.push({
           h: h + 2 * pad,
           draw: (y) => {
-            if (opts.ruled && k > 0) rule(c, x, y, w);
+            if (opts.ruled && (k > 0 || before)) rule(c, x, y, w);
             const top = y + pad;
             disc(c, String(k + 1), x, top + Math.max(0, (c.s.body * LH.body - d) / 2), d);
             text(
@@ -979,7 +1003,7 @@ function numbered(
               { color: c.t.colors.ink, name: "Item" },
             );
           },
-        };
+        });
       });
       if (opts.after) {
         const after = opts.after;
@@ -1941,34 +1965,101 @@ function layoutOnce(
       let pad = 20;
       let d = 0;
       let sH = 0;
-      // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
-      // else one column (fit2: three options as 2 + 1 left a gap).
+      // Options never leave a hole: 2 in a row, 4 as 2x2 or a row of 4, 3 as a row of 3 or one
+      // column (fit2: three options as 2 + 1 left a gap). A column is a stack of slim full-width
+      // rows, so a sentence reads on one line instead of four in a narrow card (TEACH-75 part D).
       const grid = (perRow: number) => {
+        const col = perRow === 1;
+        const gy = col ? Math.round(gap * 0.67) : gap;
         const w = Math.floor((W - gap * (perRow - 1)) / perRow);
-        const iw = w - 2 * pad - d - 14;
-        const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
+        const iw = w - 2 * pad - d - Math.round(d * 0.4);
+        const hs = opts.map((o) => measure(c, o, "body", iw));
         const rows = Math.ceil(opts.length / perRow);
-        return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
+        const inner = Math.max(...hs, d);
+        // A column's rows are slim when the band is full and open up to a card's padding when it
+        // has room, so a short stack never sits as thin strips over an empty foot.
+        const room = Math.floor(
+          (G.band.h * 0.92 - sH - rows * inner - (rows - 1) * gy) / (2 * rows),
+        );
+        const py = col ? Math.min(pad, Math.max(Math.max(8, Math.round(pad * 0.6)), room)) : pad;
+        // One row of one-line options is a row of answer tiles, two lines tall, not thin chips.
+        const tile = !col && rows === 1 && hs.every((h) => h <= c.s.body * LH.body * 1.2);
+        const rowH = Math.max(
+          inner + 2 * py,
+          tile ? Math.ceil(c.s.body * LH.body * 2) + 2 * pad : 0,
+        );
+        const lines = Math.max(...hs.map((h) => Math.round(h / (c.s.body * LH.body))));
+        return {
+          perRow,
+          w,
+          iw,
+          rowH,
+          rows,
+          gy,
+          lines,
+          tile,
+          total: sH + rows * rowH + (rows - 1) * gy,
+        };
       };
       let g = grid(1);
+      // By length (TEACH-75 part D): short options side by side, longer ones a 2x2 or one column,
+      // each option in as few lines as it takes. [options across, most lines] in order of preference.
+      const PREFS: Record<number, [number, number][]> = {
+        2: [
+          [2, 1],
+          [1, 1],
+          [2, 2],
+          [1, 2],
+          [2, 3],
+        ],
+        3: [
+          [3, 1],
+          [1, 1],
+          [1, 2],
+          [3, 2],
+          [3, 3],
+        ],
+        4: [
+          [4, 1],
+          [2, 1],
+          [2, 2],
+          [1, 1],
+          [2, 3],
+          [1, 2],
+        ],
+      };
+      const choose = (last: boolean) => {
+        const n = opts.length;
+        const prefs = PREFS[n] ?? [[1, 99]];
+        for (const [k, most] of prefs) {
+          const t = grid(k);
+          if (t.total <= G.band.h && t.lines <= most) return t;
+        }
+        // Nothing reads well at this size: try closer gaps and the smaller type first (the next
+        // rung); on the last, the arrangement that fits in the fewest lines, else the shortest.
+        if (!last) return undefined;
+        const legal = (n === 3 ? [1, 3] : n === 4 ? [1, 2] : n === 2 ? [1, 2] : [1]).map(grid);
+        const fit = legal.filter((t) => t.total <= G.band.h);
+        if (fit.length) return fit.reduce((a, b) => (b.lines < a.lines ? b : a));
+        return legal.reduce((a, b) => (b.total < a.total ? b : a));
+      };
       const ladder = () => {
         for (const [k, r] of RUNGS.entries()) {
           c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
           gap = Math.round(18 * r.space);
           pad = Math.max(10, Math.round(20 * r.space));
-          d = markerDisc(c);
-          sH = stem ? measure(c, stem, "lead", W) + Math.round(22 * r.space) : 0;
-          g = grid(hasFig ? 1 : opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
-          // Beside a figure the options stack; four that do not fit stack as 2x2.
-          if (hasFig && g.total > G.band.h && opts.length >= 3 && grid(2).total < g.total)
-            g = grid(2);
-          if (opts.length === 3 && !hasFig) {
-            const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
-            if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
-            // Three options in one column that do not fit may fit as a row of three.
-            if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
-          }
-          if (g.total <= G.band.h || k === RUNGS.length - 1) break;
+          d = Math.round(c.s.body * 1.3);
+          sH = stem ? measure(c, stem, "lead", W) + Math.round(26 * r.space) : 0;
+          const last = k === RUNGS.length - 1;
+          let t: typeof g | undefined;
+          if (hasFig) {
+            t = grid(1);
+            // Beside a figure the options stack; four that do not fit stack as 2x2.
+            if (t.total > G.band.h && opts.length >= 3 && grid(2).total < t.total) t = grid(2);
+          } else t = choose(last);
+          if (!t) continue;
+          g = t;
+          if (g.total <= G.band.h || last) break;
         }
       };
       ladder();
@@ -1992,7 +2083,9 @@ function layoutOnce(
         }
       }
       if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
-      let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
+      // The stem sits with its options a little above the band's middle (a third of the room over
+      // it), so a short hinge reads as heading, question, answers rather than a floating strip.
+      let y = Math.max(G.band.y, Math.round(G.band.y + (G.band.h - g.total) * 0.35));
       if (stem) {
         text(c, stem, "lead", { x: X, y, w: W }, { color: c.t.colors.ink, name: "Stem" });
         y += sH;
@@ -2000,7 +2093,7 @@ function layoutOnce(
       const optionIds: string[] = [];
       opts.forEach((o, k) => {
         const x = X + (k % g.perRow) * (g.w + gap);
-        const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
+        const yy = y + Math.floor(k / g.perRow) * (g.rowH + g.gy);
         const card = box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
           stroke: c.t.colors.line,
           strokeWidth: 1,
@@ -2017,14 +2110,18 @@ function layoutOnce(
           d,
           c.optionColours ? tones[k % tones.length] : undefined,
         );
-        const th = measure(c, o, "body", g.iw);
-        text(
-          c,
-          o,
-          "body",
-          { x: x + pad + d + 14, y: yy + g.rowH / 2 - th / 2, w: g.iw },
-          { color: c.t.colors.ink, name: "Option text" },
-        );
+        const inset = pad + d + Math.round(d * 0.4);
+        // A tile's answer is set at lead size when every answer still takes one line there:
+        // "24" reads from the back of the room.
+        const tw = g.iw;
+        const one = (o2: string) => measure(c, o2, "lead", tw) <= c.s.lead * LH.lead * 1.2;
+        const role = g.tile && opts.every(one) ? "lead" : "body";
+        const th = measure(c, o, role, tw);
+        const at = { x: x + inset, y: yy + g.rowH / 2 - th / 2, w: tw };
+        text(c, o, role, at, {
+          color: c.t.colors.ink,
+          name: "Option text",
+        });
       });
       c.s = full;
       if (hasFig) figurePanel(c, input.figure, figRect);
@@ -2045,13 +2142,14 @@ function layoutOnce(
       const qs = input.questions ?? [];
       if (input.figure) {
         numbered(c, qs, G.left.x, G.left.w, tpl, {
-          ...(input.instruction ? { after: input.instruction } : {}),
+          ...(input.instruction ? { before: input.instruction } : {}),
         });
         figurePanel(c, input.figure);
       } else
         numbered(c, qs, G.margin, 760, tpl, {
           ruled: true,
-          ...(input.instruction ? { after: input.instruction } : {}),
+          stretch: true,
+          ...(input.instruction ? { before: input.instruction } : {}),
         });
       c.question = listAnswers(qs, input.answers);
       if (!c.question) delete c.question;

@@ -42,14 +42,16 @@ describe("hinge caps by card", () => {
       });
   }
 
-  test("R3 s6: three 36-character options on KS2 wrap past the card budget and the cap", () => {
+  test("R3 s6: three 36-character options on KS2 now read on one line each, within the cap", () => {
     const options = [
       "It always carries oxygen-rich blood.",
       "It carries blood away from the heart.",
       "It carries blood towards the heart.",
     ];
     const stem = "Why is the vessel taking blood from the heart to the lungs an artery?";
-    expect(hingeCardLines("KS2", options, stem)).toBeGreaterThan(HINGE_CARD_LINES);
-    for (const o of options) expect(o.length).toBeGreaterThan(TABLE.groups.KS2?.options["3"] ?? 0);
+    // TEACH-75 part D: three sentence options stack as full-width rows instead of three narrow cards.
+    expect(hingeCardLines("KS2", options, stem)).toBe(1);
+    for (const o of options)
+      expect(o.length).toBeLessThanOrEqual(TABLE.groups.KS2?.options["3"] ?? 0);
   });
 });
