@@ -318,7 +318,7 @@ function renderDouble(root, P, ctx, M) {
 export function render(root, P, ctx) {
   const { M } = plan(P);
   if (M.dbl) return renderDouble(root, P, ctx, M);
- const b = ctx.b, N = ctx.N; const bi = k => b[k];
+  const b = ctx.b, N = ctx.N; const bi = k => b[k];
   const g0 = h('g', { style: '--o2-rich:var(--heat);--o2-rich-text:var(--heat-text);--o2-poor:var(--focus);--o2-poor-text:var(--focus-text)' }, root);
   const RICH = 'var(--o2-rich)', POOR = 'var(--o2-poor)';
   const VW = 'calc(var(--sw-arrow) * 3.2)', SW = 'calc(var(--sw-arrow) * 4.4)';
