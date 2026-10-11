@@ -141,21 +141,6 @@ describe.each(LESSONS)("replay %s", (b) => {
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =
         want.elements.filter((e) => e.type === "image" && e.name === "Photo").length > 1;
-      // Ruling 203, P10 (TEACH-75 part h): two picture cards keep a band no taller than three
-      // cards' (it was 4:3 at the wide card's width), so the cards are shorter and re-centred,
-      // and a picture card's label is its bold caps line. Same elements, same words.
-      const labels = want.elements.filter((e) => e.name === "Label");
-      const photoCards = want.elements.filter((e) => e.type === "image" && e.name === "Photo");
-      if (labels.length >= 2 && photoCards.length === labels.length) {
-        const said = (els: El[]) =>
-          els
-            .filter((e) => e.name === "Label")
-            .map((e) => [...JSON.stringify(e.doc).matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]));
-        const upper = said(want.elements).map((l) => l.map((t) => t?.toLocaleUpperCase("en-GB")));
-        expect({ i, labels: said(got) }).toEqual({ i, labels: upper });
-        expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
-        return;
-      }
       for (const [k, el] of got.entries()) {
         const w = want.elements[k] as El;
         // Every writer element is the AI's (WRITER-CONTRACT §5); the lab's elements predate it.

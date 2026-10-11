@@ -215,6 +215,8 @@ export type Ctx = {
   lost?: number[];
   /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
   fullSize?: boolean;
+  /** `LayoutOptions.pictureBand` (UX ruling 203). */
+  pictureBand?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1372,6 +1374,8 @@ export type LayoutOptions = {
    * lays out with this only after a strict layout dropped the diagram.
    */
   diagramWarnings?: boolean;
+  /** Two picture cards' band no taller than three's, bold caps labels (P10). Off by default: old lessons and the default writer render as before. */
+  pictureBand?: boolean;
 };
 
 /**
@@ -1474,6 +1478,7 @@ function layoutOnce(
     fails: [],
     fullSize: opts.fullSize ?? false,
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
+    ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1690,7 +1695,8 @@ function layoutOnce(
         const bottom = G.band.y + G.band.h + 32;
         const iw = colW - 2 * pad;
         // Chalkie's picture cards (ruling 203, P10): the label is its own bold caps line.
-        const caps = (col: { label: string }) => col.label.toLocaleUpperCase("en-GB");
+        const caps = (col: { label: string }) =>
+          c.pictureBand ? col.label.toLocaleUpperCase("en-GB") : col.label;
         const wordsH = () =>
           Math.max(
             ...cols.map(
@@ -1705,10 +1711,12 @@ function layoutOnce(
         // cards had a 4:3 band so tall it left less room for words than three cards did.
         const iw3 = Math.floor((G.width - gap * 2) / 3) - 2 * pad;
         const widest = PICTURE_RANGES.compare[1];
-        const full = Math.min(
-          Math.round(iw * 0.75),
-          Math.max(Math.round(iw3 * 0.75), Math.round(iw / widest)),
-        );
+        const full = c.pictureBand
+          ? Math.min(
+              Math.round(iw * 0.75),
+              Math.max(Math.round(iw3 * 0.75), Math.round(iw / widest)),
+            )
+          : Math.round(iw * 0.75);
         // Round 2: on the fit ladder. Words too long for the full 4:3 band set one step down first.
         let words = wordsH();
         if (bottom - top - 2 * pad - 8 - words < Math.floor(full * 0.96)) {
