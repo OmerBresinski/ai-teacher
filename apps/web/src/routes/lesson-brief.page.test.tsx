@@ -131,7 +131,11 @@ describe("real lesson intake", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().skipPlanning).toBe(false);
-    expect(post().brief).toEqual({ topic: "The water cycle", level: "standard", slideCount: 8 });
+    expect(post().brief).toEqual({
+      topic: "The water cycle",
+      level: "standard",
+      slideTier: "standard",
+    });
     expect(post().requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(navigate.mock.calls[0]?.[0]).toMatchObject({
       to: "/lessons/new",

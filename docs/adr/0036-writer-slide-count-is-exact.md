@@ -1,6 +1,6 @@
 # 0036 — The writer's slide count is the teacher's, title and objectives included
 
-- Status: accepted
+- Status: accepted; amended by ADR 0038 (a tier gives a range; this exact count applies to briefs without a tier)
 - Date: 2026-10-09
 - Ticket: TEACH-110 part k
 - Related: ADR 0025 (generation pipeline), ruling 164 (slide tiers), TEACH-110 part b (K1 flow bounds)

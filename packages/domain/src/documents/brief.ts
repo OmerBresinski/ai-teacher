@@ -20,7 +20,13 @@ export const MAX_CLARIFYING_QUESTIONS = 2;
 export const SLIDE_COUNTS = [6, 8, 10, 12] as const;
 export type SlideCount = (typeof SLIDE_COUNTS)[number];
 export const DEFAULT_SLIDE_COUNT: SlideCount = 10;
-/** How hard the lesson is pitched relative to the year group (ruling 74). */
+/**
+ * The deck length a teacher picks (ruling 164): a tier, and the writer chooses the exact count
+ * inside its range, title and objectives slides included. Code holds the writer to the range.
+ */
+export const SLIDE_TIERS = ["quick", "standard", "detailed"] as const;
+export type SlideTier = (typeof SLIDE_TIERS)[number];
+export const DEFAULT_SLIDE_TIER: SlideTier = "standard";
 export const BRIEF_LEVELS = ["easier", "standard", "harder"] as const;
 export type BriefLevel = (typeof BRIEF_LEVELS)[number];
 
@@ -31,6 +37,11 @@ export type Brief = {
   classContext?: ClassContext;
   /** How many slides the deck should have; absent on lessons created before the field existed. */
   slideCount?: SlideCount;
+  /**
+   * The deck length tier (ruling 164). New lessons carry this and no `slideCount`; a lesson with
+   * only a `slideCount` (made before tiers) keeps its exact count.
+   */
+  slideTier?: SlideTier;
   level?: BriefLevel;
   /** Answers to the clarifying questions, keyed by the question id the brief screen chose. */
   answers?: Record<string, string>;
@@ -41,6 +52,7 @@ export const BriefSchema = z.strictObject({
   durationMin: z.number().int().min(BRIEF_DURATION_MIN).max(BRIEF_DURATION_MAX),
   classContext: ClassContextSchema.optional(),
   slideCount: z.union(SLIDE_COUNTS.map((n) => z.literal(n))).optional(),
+  slideTier: z.enum(SLIDE_TIERS).optional(),
   level: z.enum(BRIEF_LEVELS).optional(),
   answers: z
     .record(z.string().min(1).max(64), guarded(z.string().max(BRIEF_ANSWER_MAX)))
