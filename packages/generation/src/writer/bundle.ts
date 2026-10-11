@@ -1,6 +1,7 @@
 import base4Defs from "./bundles/base4/diagram-defs.gen.json" with { type: "json" };
 import * as base4 from "./bundles/base4/prompts.gen";
 import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
+import * as base4g from "./bundles/base4g/prompts.gen";
 
 /*
  * The writer's prompt set as a named, versioned bundle (Greg, 8 Oct): every pinned file the
@@ -26,6 +27,14 @@ export type WriterBundle = Omit<Prompts, "WRITER_PROMPT_SHA256"> & {
   tHash: string;
   /** Per-kind diagram defs the schema builder splices in, by stage, in the pinned order. */
   diagramDefs: Record<string, unknown>;
+  /** Stage behaviour a bundle's wording relies on, switched with it (absent: off). */
+  features?: BundleFeatures;
+};
+export type BundleFeatures = {
+  /** Slot-fill (slot-fill.ts): per-fit slide defs with caps, Fits lines as word budgets. */
+  slotFill?: boolean;
+  /** The objectives call picks the theme (ruling 202), so the writer's `design` has no theme. */
+  planTheme?: boolean;
 };
 
 const bundle = (
@@ -33,9 +42,17 @@ const bundle = (
   p: Prompts,
   tHash: string,
   diagramDefs: Record<string, unknown>,
+  features?: BundleFeatures,
 ): WriterBundle => {
   const { WRITER_PROMPT_SHA256, ...files } = p;
-  return { ...files, id, pins: WRITER_PROMPT_SHA256, tHash, diagramDefs };
+  return {
+    ...files,
+    id,
+    pins: WRITER_PROMPT_SHA256,
+    tHash,
+    diagramDefs,
+    ...(features ? { features } : {}),
+  };
 };
 
 export const WRITER_BUNDLES = {
@@ -43,6 +60,10 @@ export const WRITER_BUNDLES = {
   // base4 with three system lines (the recall opener asks what pupils already know; tasks use only
   // what the lesson teaches or pupils know; at least one hinge slide). Same schema and defs.
   "base4f-p123": bundle("base4f-p123", base4fP123, "8a0f9b4f6dde", base4Defs),
+  // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
+  // the curriculum statements and the theme in the objectives call, and the practice example cut.
+  // Its line edits are listed in writer-prompts.test.ts. Production switches by WRITER_BUNDLE_ID.
+  base4g: bundle("base4g", base4g, "26909a87fc34", base4Defs, { slotFill: true, planTheme: true }),
 } as const satisfies Record<string, WriterBundle>;
 export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 

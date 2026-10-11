@@ -134,6 +134,7 @@ import {
   writerMaxTokens,
 } from "./services";
 import { slideStates } from "./slide-states";
+import { SLOT_FILL_DEFAULT, slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
 import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
 
 /*
@@ -246,6 +247,13 @@ export type WriterRun = {
    * `CALLOUTS_DEFAULT` (off, master's schema byte for byte).
    */
   callouts?: boolean;
+  /**
+   * Slot-fill (slot-fill.ts): layout first, then fill the slots. Each slide def splits into one
+   * def per measured way of filling it, named by the slide's `fit` field, with `maxLength` caps;
+   * the menu's `Fits:` lines become word budgets generated from those caps. Absent: the bundle's
+   * `features.slotFill` (base4g on), else `SLOT_FILL_DEFAULT` (off, schema unchanged).
+   */
+  slotFill?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -511,8 +519,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }),
     models.map((m) => m.id),
   );
-  const schema = activities ? withActivities(libbed, stageKey) : libbed;
-  const system = libSystem(writerSystem(brief, P), models);
+  const unsplit = activities ? withActivities(libbed, stageKey) : libbed;
+  const slotFill = run.slotFill ?? P.features?.slotFill ?? SLOT_FILL_DEFAULT;
+  const schema = slotFill ? withSlotFill(unsplit, stageKey) : unsplit;
+  const system0 = libSystem(writerSystem(brief, P), models);
+  const system = slotFill ? slotFillSystem(system0, schema) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
@@ -788,7 +799,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
     return tc.first;
   };
-  const openSlide = (idx: number, raw: S) => {
+  const openSlide = (idx: number, arrived: S) => {
+    // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
+    // overflow is logged as the writer's fault and the slide is kept as written.
+    let raw = arrived;
+    if (slotFill) {
+      const a = slotFillArrival(arrived, stageKey, schema);
+      raw = a.slide;
+      log({
+        ev: "slot-fill",
+        slide: idx + 1,
+        template: raw.template,
+        fit: a.fit ?? null,
+        route: a.route,
+        ...(a.breaches.length ? { breaches: a.breaches.slice(0, 6) } : {}),
+        ...(a.cuts.length ? { cut: true, cuts: a.cuts } : {}),
+        ...(a.over.length ? { over: a.over } : {}),
+        ...(a.fields.length ? { fields: a.fields } : {}),
+      });
+    }
     // No em dashes on slides.
     let s = slideNoEmDash(raw);
     const figOpts = {

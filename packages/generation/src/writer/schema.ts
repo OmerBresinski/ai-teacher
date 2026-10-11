@@ -59,9 +59,10 @@ const THEMES = [
 ];
 
 /** `design` first (the title slide uses it), then the flow; the objectives come approved, as input. */
-const front = (lo: number, hi: number): J => ({
+const front = (lo: number, hi: number, planTheme = false): J => ({
+  // planTheme (base4g): the objectives call picks the theme (ruling 202); the writer no longer does.
   design: obj({
-    theme: { type: "string", enum: THEMES },
+    ...(planTheme ? {} : { theme: { type: "string", enum: THEMES } }),
     picture_style: { type: "string", enum: ["photo", "illustration"] },
   }),
   flow: arr(
@@ -177,7 +178,7 @@ function baseSchema(b: WriterBundle, stage: WriterStage, lo: number, hi: number)
   const T = templates(JSON.parse(capsOf(b, stage)) as Record<string, number>);
   const teach = WRITER_TEMPLATES.filter((n) => n !== "title" && n !== "objectives");
   const schema = obj({
-    ...front(lo - 2, hi - 2),
+    ...front(lo - 2, hi - 2, b.features?.planTheme),
     slides: arr({ anyOf: teach.map(REF) }, lo - 2, hi - 2),
   });
   schema.$defs = { ...visualDefs(b), ...T };
