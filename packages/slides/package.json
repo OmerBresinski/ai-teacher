@@ -21,6 +21,7 @@
     "./templates/pupil-words": "./src/templates/pupil-words.ts",
     "./templates/activities": "./src/templates/activities.ts",
     "./templates/activity-capacity.json": "./src/templates/activity-capacity.json",
+    "./templates/cards-grid-capacity.json": "./src/templates/cards-grid-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts"
   },
   "scripts": {

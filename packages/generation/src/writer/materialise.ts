@@ -44,6 +44,8 @@ export type VisualAsk =
       aspect?: number;
       fixedShape?: boolean;
       set?: string;
+      /** A cards grid's small square icon (ruling 203): one object, cut out, read at a glance. */
+      icon?: boolean;
     }
   | {
       key: string;
@@ -212,6 +214,12 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
     const p = (c as S)?.picture;
     if (isPic(p) || isDia(p)) out.push({ key: `col.${n}`, f: p });
   });
+  // Cards grid (ruling 203): one small icon picture per card.
+  if (s.template === "cards-grid")
+    (Array.isArray(s.grid) ? s.grid : []).forEach((c, n) => {
+      const p = (c as S)?.icon;
+      if (isPic(p)) out.push({ key: `icon.${n}`, f: p });
+    });
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
     const p = (c as S)?.picture;
@@ -279,6 +287,7 @@ function figureNow(
 /** Templates whose photo slots crop to their own box. */
 const FIXED_SHAPE = new Set([
   "compare",
+  "cards-grid",
   "picture-sequence",
   "pair",
   "group-sort",
@@ -554,6 +563,24 @@ export function toInput(
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
+    case "cards-grid":
+      // Ruling 203: an icon still being found is an open slot; one that failed (after its one
+      // retry) shows the theme's glyph, never an empty box.
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        grid: (Array.isArray(s.grid) ? s.grid : []).map((c0, n) => {
+          const c = (c0 ?? {}) as S;
+          const planned = isPic(c.icon);
+          const f = planned ? figureNow(`icon.${n}`, c.icon as Pic, ctx, mark) : undefined;
+          return {
+            label: str(c.label),
+            text: str(c.text),
+            ...(f ? { icon: f } : planned ? { iconLost: true } : {}),
+          };
+        }),
+      };
     case "discussion":
       return {
         template,
@@ -654,6 +681,7 @@ export function visualsOf(
             named: f.subject === "named",
             ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
             ...(setOf(key) ? { set: setOf(key) } : {}),
+            ...(key.startsWith("icon.") ? { icon: true } : {}),
           },
   );
 }
@@ -779,6 +807,8 @@ export function wordsOf(raw: S): string {
   for (const c of (Array.isArray(s.columns) ? s.columns : []) as S[])
     parts.push(str(c.label), str(c.text));
   for (const c of (Array.isArray(s.sequence) ? s.sequence : []) as S[]) parts.push(str(c.caption));
+  for (const c of (Array.isArray(s.grid) ? s.grid : []) as S[])
+    parts.push(str(c.label), str(c.text));
   parts.push(...activityWords(s));
   return parts.filter(Boolean).join("\n");
 }

@@ -1,4 +1,5 @@
 import { writerBundle } from "./bundle";
+import { gridFit } from "./cards-grid-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { compoundSubjects } from "./lost-picture";
@@ -191,6 +192,23 @@ type FitGroup = {
   formulaBesideFigure: number;
   layouts: Record<string, { fields: string[]; variants: FitVariant[] }>;
 };
+let FIT: Record<string, FitGroup> | undefined;
+/** The pinned table plus the layouts measured outside it (UX ruling 203), per group; built once. */
+const baseFit = (): Record<string, FitGroup> => {
+  if (FIT) return FIT;
+  const groups = (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
+  FIT = Object.fromEntries(
+    Object.entries(groups).map(([g, F]) => [
+      g,
+      { ...F, layouts: { ...F.layouts, ...extraLayouts(g) } },
+    ]),
+  );
+  return FIT;
+};
+/** Ruling 203 layouts' fit, from the renderer's own capacity tables. */
+function extraLayouts(group: string): FitGroup["layouts"] {
+  return { "cards-grid": gridFit(group) };
+}
 /**
  * The measured fit per stage group. With `hingeCards` (HEART1 R3 s6, TEACH-110 part r) the hinge
  * rows are what the cards hold at full size (`hinge-cards.gen.json`, 2 to 4 options) instead of
@@ -198,7 +216,7 @@ type FitGroup = {
  * writer bundle, so a bundle that does not ask keeps the lab's numbers.
  */
 export const fitTable = (o: { hingeCards?: boolean } = {}): Record<string, FitGroup> => {
-  const groups = (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
+  const groups = baseFit();
   if (!o.hingeCards) return groups;
   const cards = (hingeData as { groups: Record<string, HingeCards> }).groups;
   return Object.fromEntries(
@@ -234,7 +252,7 @@ export function charsOver(slide: unknown, stage: string): string[] {
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return [];
-  const listKey = ["points", "questions", "options", "columns", "sequence"].find((k) =>
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
     Array.isArray(s[k]),
   );
   const items = listKey ? (s[listKey] as unknown[]) : [];
@@ -360,7 +378,7 @@ export function roomLine(slide: unknown, stage: string): string {
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return "";
-  const listKey = ["points", "questions", "options", "columns", "sequence"].find((k) =>
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
     Array.isArray(s[k]),
   );
   const n = listKey ? (s[listKey] as unknown[]).length : 0;

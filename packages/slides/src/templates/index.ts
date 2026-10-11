@@ -32,9 +32,10 @@ import { contrastRatio } from "../look";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
+import { type GridCard, layoutCardsGrid } from "./cards-grid";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId };
+export type { ActivityCard, ActivityId, GridCard };
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -136,6 +137,7 @@ export type TemplateId =
   | "practice"
   | "exit-ticket"
   | "equation-hero"
+  | "cards-grid"
   | ActivityId;
 
 export type TemplateInput = {
@@ -157,6 +159,8 @@ export type TemplateInput = {
   columns?: { label: string; text: string; figure?: Figure }[];
   /** Picture sequence: 2-4 pictures in a row, a short caption under each, arrows between. */
   sequence?: { caption: string; figure?: Figure }[];
+  /** Cards grid (ruling 203): 2-4 cards, each a label, a body and an optional icon. */
+  grid?: GridCard[];
   /** The one quiet line under a question list. */
   instruction?: string;
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
@@ -1170,6 +1174,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   practice: "open-response",
   "exit-ticket": "exit-ticket",
   "equation-hero": "worked-example",
+  "cards-grid": "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2203,6 +2208,9 @@ function layoutOnce(
     case "odd-one-out":
     case "label":
       layoutActivity(c, input as TemplateInput & { template: ActivityId });
+      break;
+    case "cards-grid":
+      layoutCardsGrid(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);
