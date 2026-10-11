@@ -29,6 +29,7 @@ describe("worker env", () => {
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
       IMAGE_GENERATION_DAILY_CAP_USD: 5,
+      PICTURE_LIBRARY_REUSE: "off",
       AI_FAKE_SCRIPT: undefined,
       AI_FAKE_DELAY_MS: 0,
     });

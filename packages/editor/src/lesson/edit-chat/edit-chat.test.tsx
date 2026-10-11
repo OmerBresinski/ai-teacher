@@ -39,7 +39,7 @@ const ORIGINAL = "Water warms up and turns into a gas called water vapour.";
 
 function textLesson(): Lesson {
   const lesson = seededLesson();
-  const theme = getTheme("chalk");
+  const theme = getTheme("splash");
   lesson.slides.forEach((slide, i) => {
     const box = { ...makeText("body", theme), x: 500, y: 100, w: 300, h: 60 } as TextElement;
     box.doc = docFromText(i === 0 ? ORIGINAL : `Slide ${i + 1} text.`);

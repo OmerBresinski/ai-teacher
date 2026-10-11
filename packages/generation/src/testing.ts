@@ -85,7 +85,7 @@ export function sampleBriefLesson(patch: Partial<Lesson> = {}): Lesson {
     version: 1,
     id: SAMPLE_LESSON_ID,
     title: "States of matter",
-    themeId: "chalk",
+    themeId: "splash",
     slides: [],
     createdAt: "2026-09-06T10:00:00.000Z",
     updatedAt: "2026-09-06T10:00:00.000Z",

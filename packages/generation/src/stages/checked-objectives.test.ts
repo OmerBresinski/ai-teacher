@@ -19,7 +19,7 @@ const OBJECTIVES = JSON.stringify({
   ],
 });
 
-function run(checkAnswer: unknown, checkMs = 40) {
+function run(checkAnswer: unknown, checkMs = 40, objectives = OBJECTIVES) {
   const events: string[] = [];
   const ai = labAi({
     route: writerRoute,
@@ -37,7 +37,7 @@ function run(checkAnswer: unknown, checkMs = 40) {
       if (v === `${WRITER_VERSION}/objectives`) {
         events.push("objectives:start");
         events.push("objectives:end");
-        return OBJECTIVES;
+        return objectives;
       }
       return undefined;
     },
@@ -89,5 +89,44 @@ describe("check-input beside the writer's objectives (C14)", () => {
     expect(calls).toEqual([]);
     expect(ai.calls).toHaveLength(0);
     expect(deps.persisted).toHaveLength(0);
+  });
+});
+
+describe("the planner's theme (UX ruling 202)", () => {
+  const withTheme = (theme: string) => JSON.stringify({ ...JSON.parse(OBJECTIVES), theme });
+
+  test("a catalogue theme from the objectives call is the lesson's theme from the first save", async () => {
+    const { deps, done } = run({ findings: [] }, 0, withTheme("treehouse"));
+    const state = await done;
+    expect(state.lesson.themeId).toBe("treehouse");
+    expect(deps.persisted[0]?.lesson.themeId).toBe("treehouse");
+  });
+
+  test("an unknown or retired theme falls back by key stage", async () => {
+    for (const theme of ["nope", "chalk"]) {
+      const { done } = run({ findings: [] }, 0, withTheme(theme));
+      const state = await done;
+      expect(state.lesson.themeId).toBe(
+        state.lesson.ageBand === "ks1" || state.lesson.ageBand === "ks2" || !state.lesson.ageBand
+          ? "splash"
+          : "studio",
+      );
+      expect(state.lesson.themeId).not.toBe(theme);
+    }
+  });
+
+  test("the teacher's chosen theme wins, stored live", async () => {
+    const ai = labAi({
+      route: writerRoute,
+      extra: (call) => {
+        const v = call.context?.promptVersion ?? "";
+        if (v.startsWith("check-input")) return JSON.stringify({ findings: [] });
+        if (v === `${WRITER_VERSION}/objectives`) return withTheme("treehouse");
+        return undefined;
+      },
+    });
+    const lesson = { ...romansLesson(), themeId: "chalk", themeChosen: true };
+    const state = await checkedWriterObjectives(initialState(lesson), recordingDeps(ai));
+    expect(state.lesson.themeId).toBe("splash");
   });
 });

@@ -233,7 +233,7 @@ export type WriterRun = {
   libraryMenuRank?: boolean;
   /**
    * The activity layouts (TEACH-101 part c): the menu in the system text and the five families in
-   * the schema. Absent: `ACTIVITIES_DEFAULT` (off).
+   * the schema. Absent: `ACTIVITIES_DEFAULT` (on).
    */
   activities?: boolean;
   /**
@@ -293,6 +293,13 @@ export type WriterRun = {
   onDraft?: (index: number, draft: SlideDraft) => void;
   /** The drafts' throttle and clock (tests pass a fake clock). */
   draft?: DraftOptions;
+  /**
+   * Live writing P2 (TEACH-202 part e): hands the caller a function to call when a picture lands
+   * while the deck is still read-only. The slide is laid again and handed over (`onSlide`) at
+   * once, so the picture shows as soon as it is placed rather than when the deck turns editable.
+   * A slide not open (or opened again) is skipped: its old pictures were forgotten.
+   */
+  bindPictureLanded?: (landed: (index: number) => void) => void;
   /**
    * The final parse opened a slide again from other bytes than the stream did: its earlier asks
    * are void (the caller cancels their pictures); its asks follow through `onAsks`.
@@ -727,6 +734,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Each slide's raw JSON as it was opened, by index. */
   const opened = new Map<number, string>();
+  run.bindPictureLanded?.((i) => {
+    if (editable || !opened.has(i)) return;
+    relay(i);
+    shown(i);
+  });
   /**
    * One written slide's work: no em dash, the activity's fields, the seeded hinge, the flow's
    * look, its asks (`onAsks` starts its pictures), its layout and its diagrams. Run as each slide

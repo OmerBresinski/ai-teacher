@@ -19,8 +19,8 @@ describe("ThemeDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     const dialog = await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    // Every catalogue theme, once (the slide theme catalogue has ten).
-    expect(tiles).toHaveLength(10);
+    // Every catalogue theme, once (nine since Chalk & Cream was retired, ruling 202).
+    expect(tiles).toHaveLength(9);
     const paper = tiles.find((t) => t.getAttribute("data-theme-tile") === "playground");
     if (!paper) throw new Error("no playground tile");
     fireEvent.click(paper);
@@ -38,11 +38,11 @@ describe("ThemeDialog", () => {
     expect(read().themeId).toBe("playground");
     expect(screen.getByRole("button", { name: "Undo" })).not.toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(read().themeId).toBe("chalk");
+    expect(read().themeId).toBe("splash");
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
     // Done's change and the undo land inside one debounce window: one write, of the final state.
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1), { timeout: 3_000 });
-    expect(onSave.mock.calls[0]?.[0]?.themeId).toBe("chalk");
+    expect(onSave.mock.calls[0]?.[0]?.themeId).toBe("splash");
   });
 
   test("Cancel restores the theme the picker opened with", async () => {
@@ -104,8 +104,8 @@ describe("where the theme lives (ruling 123)", () => {
     renderEditor();
     const callout = screen.getByRole("button", { name: /^Theme:/ });
     expect(callout.closest("[data-topbar]")).not.toBeNull();
-    expect(callout).toHaveAccessibleName("Theme: Chalk & Cream");
-    expect(callout).toHaveTextContent("Theme · Chalk & Cream");
+    expect(callout).toHaveAccessibleName("Theme: Splash");
+    expect(callout).toHaveTextContent("Theme · Splash");
     expect(callout.querySelector("[data-theme-swatch]")).not.toBeNull();
     expect(document.querySelector("[data-navigator]")?.textContent).not.toContain("Theme");
   });
@@ -151,7 +151,7 @@ describe("while the lesson is being made (ruling 123)", () => {
   });
 
   function Harness({ onChange }: { onChange: (id: string) => void }) {
-    const [themeId, setThemeId] = useState(lesson?.themeId ?? "chalk");
+    const [themeId, setThemeId] = useState(lesson?.themeId ?? "splash");
     const [open, setOpen] = useState(false);
     const shown = lesson ? displayInTheme(lesson, themeId) : null;
     if (!shown) return null;

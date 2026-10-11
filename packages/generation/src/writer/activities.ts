@@ -6,12 +6,12 @@ import type { WriterStage } from "./schema";
 
 /*
  * The activity templates (TEACH-101 part b) as writer layouts (TEACH-101 part c), behind
- * `WriterRun.activities` (default off): the schema defs per family, bounded per key stage from the
- * templates' own measured capacities; the writer's activity slide mapped onto the template's input
- * (1-based indices to 0-based, a card's picture phrase to a one-subject picture ask); the code
- * repair for what strict mode cannot bound (card words over the measured cell); and the checks a
- * laid-out activity must pass (the seeded shuffles give nothing away, no answer shows in the
- * question state).
+ * `WriterRun.activities` (default on, `ACTIVITIES_DEFAULT`): the schema defs per family, bounded
+ * per key stage from the templates' own measured capacities; the writer's activity slide mapped
+ * onto the template's input (1-based indices to 0-based, a card's picture phrase to a one-subject
+ * picture ask); the code repair for what strict mode cannot bound (card words over the measured
+ * cell); and the checks a laid-out activity must pass (the seeded shuffles give nothing away, no
+ * answer shows in the question state).
  *
  * `label` is not offered: its pointers need the drawn parts' positions, and neither the drawer nor
  * the library returns label anchors (a drawn diagram is an SVG string). The template stays for
@@ -33,8 +33,12 @@ export type WriterActivity = (typeof WRITER_ACTIVITIES)[number];
 export const isWriterActivity = (t: unknown): t is WriterActivity =>
   (WRITER_ACTIVITIES as readonly unknown[]).includes(t);
 
-/** The production default: the writer's menu has no activities until the gate is turned on. */
-export const ACTIVITIES_DEFAULT = false;
+/**
+ * The production default: the writer's menu offers the activity layouts (Greg, 10 Oct 2026; the
+ * templates and their Present reveal shipped in TEACH-101 parts b to d). `WriterRun.activities`
+ * false turns them off for one run.
+ */
+export const ACTIVITIES_DEFAULT = true;
 
 /** A measured variant is offered only when its card words can be this long (the menu's rule). */
 export const MIN_CELL = 8;

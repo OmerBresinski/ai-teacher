@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { SLIDE_COUNTS, type SlideCount } from "@tj/domain/documents";
+import {
+  PLANNER_COUNT_OF_TIER,
+  plannerSlideCount,
+  SLIDE_COUNTS,
+  SLIDE_TIER_RANGES,
+  SLIDE_TIERS,
+  type SlideCount,
+} from "@tj/domain/documents";
 import {
   clip,
   EXIT_MAX,
@@ -152,7 +159,7 @@ const shapeOf = (verb: string, confidence = "Some prior knowledge") =>
 function run(over: {
   n?: number;
   shape?: LessonShape;
-  slideCount?: SlideCount;
+  slideCount?: number;
   facts?: OutlineFacts;
   options?: Options;
   priorKnowledge?: string;
@@ -225,6 +232,18 @@ describe("outlineFromFacts: the count and the fixed slots", () => {
     // The budget of three cannot also hold a practise slide: said, not hidden.
     expect(r.result.gaps.some((g) => /pupils answer/.test(g))).toBe(true);
   });
+
+  // Ruling 164: the outline plans inside the tier's range, so the writer never writes slides the
+  // outline did not plan (Detailed planned 12 before, under its 13-20 range).
+  for (const tier of SLIDE_TIERS)
+    test(`a ${tier} brief's outline is inside the ${tier} range`, () => {
+      const slideCount = plannerSlideCount({ slideTier: tier });
+      expect(slideCount).toBe(PLANNER_COUNT_OF_TIER[tier]);
+      const { min, max } = SLIDE_TIER_RANGES[tier];
+      const n = run({ n: 3, slideCount }).result.skeleton.outline.length;
+      expect(n).toBeGreaterThanOrEqual(min);
+      expect(n).toBeLessThanOrEqual(max);
+    });
 
   test("the outline is deterministic", () => {
     expect(run({ n: 3, slideCount: 12 }).result).toEqual(run({ n: 3, slideCount: 12 }).result);

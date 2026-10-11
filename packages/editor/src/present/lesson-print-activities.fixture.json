@@ -1,0 +1,2690 @@
+{
+  "_comment": "Slides 6-10 of the y1 activities fixture (packages/generation/src/writer/fixtures/activities/y1-animals.json) laid out by the writer with activities on by default (TEACH-101 part e); pictures blanked.",
+  "slides": [
+    {
+      "id": "s6",
+      "kind": "image-match",
+      "elements": [
+        {
+          "id": "z_5Sk1vn3F",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Match each baby to its name"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "ohiGsPHS8V",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 266,
+          "h": 241,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "dVAC3L7BZu",
+          "type": "image",
+          "name": "Photo",
+          "x": 70,
+          "y": 166,
+          "w": 254,
+          "h": 178,
+          "src": "data:,",
+          "alt": "card.0",
+          "crop": {
+            "x": 0,
+            "y": 0.03280839895013121,
+            "w": 1,
+            "h": 0.9343832020997376
+          },
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "3Hi1gXM-ax",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 176.5,
+          "y": 352,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "GXJVKZsifp",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 346,
+          "y": 160,
+          "w": 266,
+          "h": 241,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "QuSJn-lkSt",
+          "type": "image",
+          "name": "Photo",
+          "x": 352,
+          "y": 166,
+          "w": 254,
+          "h": 178,
+          "src": "data:,",
+          "alt": "card.1",
+          "crop": {
+            "x": 0,
+            "y": 0.03280839895013121,
+            "w": 1,
+            "h": 0.9343832020997376
+          },
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "b4xZu5xDGj",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 458.5,
+          "y": 352,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "UAi5OmJemM",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 628,
+          "y": 160,
+          "w": 266,
+          "h": 241,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "FDDHg5Vqia",
+          "type": "image",
+          "name": "Photo",
+          "x": 634,
+          "y": 166,
+          "w": 254,
+          "h": 178,
+          "src": "data:,",
+          "alt": "card.2",
+          "crop": {
+            "x": 0,
+            "y": 0.03280839895013121,
+            "w": 1,
+            "h": 0.9343832020997376
+          },
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "UxzseBV8Bl",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 740.5,
+          "y": 352,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "HTPiunsoJ5",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 70,
+          "y": 417,
+          "w": 254,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "radius": 28,
+          "name": "Word card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1.5,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "kvilz15WqL",
+          "type": "text",
+          "x": 70,
+          "y": 419,
+          "w": 254,
+          "h": 67,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "  lamb"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Word",
+          "style": {
+            "preset": "body",
+            "autoHeight": false,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center",
+            "valign": "middle"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "pW2JUfsrr9",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 352,
+          "y": 417,
+          "w": 254,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "radius": 28,
+          "name": "Word card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1.5,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "yP8uOJ9v6f",
+          "type": "text",
+          "x": 352,
+          "y": 419,
+          "w": 254,
+          "h": 67,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "  tadpole"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Word",
+          "style": {
+            "preset": "body",
+            "autoHeight": false,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center",
+            "valign": "middle"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Wt3sdjXoG5",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 634,
+          "y": 417,
+          "w": 254,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "radius": 28,
+          "name": "Word card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1.5,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "L8fJOBuJrQ",
+          "type": "text",
+          "x": 634,
+          "y": 419,
+          "w": 254,
+          "h": 67,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "  chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Word",
+          "style": {
+            "preset": "body",
+            "autoHeight": false,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center",
+            "valign": "middle"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "image-match",
+        "pairs": [
+          {
+            "id": "trsBZ7Pot7",
+            "imageId": "dVAC3L7BZu",
+            "labelId": "L8fJOBuJrQ"
+          },
+          {
+            "id": "6-JXuB2Fdf",
+            "imageId": "QuSJn-lkSt",
+            "labelId": "kvilz15WqL"
+          },
+          {
+            "id": "FNS1m5RonL",
+            "imageId": "FDDHg5Vqia",
+            "labelId": "yP8uOJ9v6f"
+          }
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "s7",
+      "kind": "fill-gap",
+      "elements": [
+        {
+          "id": "AmdNU0mLbX",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Baby or grown-up?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "UcgESIim3Y",
+          "type": "text",
+          "x": 64,
+          "y": 110,
+          "w": 832,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Sort the cards."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "yzo9E3gPzz",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 81,
+          "y": 175,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Xs4Dv4bcRt",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 87,
+          "y": 181,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "mtG44enJQB",
+          "type": "image",
+          "name": "Photo",
+          "x": 98,
+          "y": 181,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.0",
+          "request": "lamb",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "jf03Y5NuJD",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 89,
+          "y": 277,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: lamb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "RImcK5IMng",
+          "type": "text",
+          "x": 136,
+          "y": 279,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "lamb"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "uRUSylomDy",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 274,
+          "y": 175,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "0llpEMKyLv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 280,
+          "y": 181,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "MDe4w6VUGA",
+          "type": "image",
+          "name": "Photo",
+          "x": 291,
+          "y": 181,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.1",
+          "request": "sheep",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "wKGm_qGn6Q",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 282,
+          "y": 277,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: sheep",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "3NF9M9bEmi",
+          "type": "text",
+          "x": 329,
+          "y": 279,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "sheep"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "omnZPlWaej",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 467,
+          "y": 175,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "B1ak9_sPcN",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 473,
+          "y": 181,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "vW8lcuVSeu",
+          "type": "image",
+          "name": "Photo",
+          "x": 484,
+          "y": 181,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.3",
+          "request": "hen",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "ZivnRLktjS",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 475,
+          "y": 277,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: hen",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "5wsxbK4CO9",
+          "type": "text",
+          "x": 522,
+          "y": 279,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "hen"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "zsEmP0AA5K",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 81,
+          "y": 336,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "GRxN4ZGp25",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 87,
+          "y": 342,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "XEJOvdhUIz",
+          "type": "image",
+          "name": "Photo",
+          "x": 98,
+          "y": 342,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.4",
+          "request": "calf",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "sjSMmsbo-j",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 89,
+          "y": 438,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: calf",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "4"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "MnYlAr3PlS",
+          "type": "text",
+          "x": 136,
+          "y": 440,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calf"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "ZpeRn8CMse",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 274,
+          "y": 336,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "-8pO3EE616",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 280,
+          "y": 342,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "4BVZ1sl3z4",
+          "type": "image",
+          "name": "Photo",
+          "x": 291,
+          "y": 342,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.5",
+          "request": "cow",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "zGkw1X7680",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 282,
+          "y": 438,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: cow",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "5"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "rm0ADRAAI0",
+          "type": "text",
+          "x": 329,
+          "y": 440,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "cow"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "8RQkQNRfgV",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 467,
+          "y": 336,
+          "w": 151,
+          "h": 151,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "WllxVtwrfh",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 473,
+          "y": 342,
+          "w": 139,
+          "h": 88,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Photo panel",
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Weo0SWjXAh",
+          "type": "image",
+          "name": "Photo",
+          "x": 484,
+          "y": 342,
+          "w": 117,
+          "h": 88,
+          "src": "data:,",
+          "alt": "card.2",
+          "request": "chick",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "TV0ujIgqyc",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 475,
+          "y": 438,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: chick",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "6"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "3eRcG2UPZX",
+          "type": "text",
+          "x": 522,
+          "y": 440,
+          "w": 88,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "HP58RWZ4d3",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 651,
+          "y": 175,
+          "w": 245,
+          "h": 150,
+          "fill": "#d6e8f3",
+          "radius": 16,
+          "name": "Group",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "z7BWs_cFYJ",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 663,
+          "y": 183,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "kIZdz-Fae4",
+          "type": "text",
+          "x": 716,
+          "y": 181,
+          "w": 168,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Baby"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Group name",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "x3M7HVcrQ3",
+          "type": "gap-text",
+          "x": 667,
+          "y": 228,
+          "w": 213,
+          "h": 47,
+          "name": "Answer gap",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[[gap:uJ2Z7mm6ZI]]"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Zr-zP2422l",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 651,
+          "y": 337,
+          "w": 245,
+          "h": 150,
+          "fill": "#d6e8f3",
+          "radius": 16,
+          "name": "Group",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Km4fzb726Q",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 663,
+          "y": 345,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "G"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "B88vYUYp2N",
+          "type": "text",
+          "x": 716,
+          "y": 343,
+          "w": 168,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Grown-up"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Group name",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "xJtXsA2SwS",
+          "type": "gap-text",
+          "x": 667,
+          "y": 390,
+          "w": 213,
+          "h": 47,
+          "name": "Answer gap",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[[gap:eHnpdv3mLb]]"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "fill-gap",
+        "gaps": [
+          {
+            "id": "uJ2Z7mm6ZI",
+            "answer": "1, 4, 6"
+          },
+          {
+            "id": "eHnpdv3mLb",
+            "answer": "2, 3, 5"
+          }
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "s8",
+      "kind": "sort",
+      "elements": [
+        {
+          "id": "n1XwBVKP7y",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Put the frog's life in order"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "L8XrA5w2tr",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 197,
+          "w": 196,
+          "h": 254,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "enr0n0ysB9",
+          "type": "image",
+          "name": "Photo",
+          "x": 70,
+          "y": 203,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.3",
+          "request": "frog",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "OgsaduCPRG",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: frog",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "RrSqUrGil5",
+          "type": "text",
+          "x": 119,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "frog"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "GNYN_ZCNVR",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 276,
+          "y": 197,
+          "w": 196,
+          "h": 254,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "k7-vUujyBp",
+          "type": "image",
+          "name": "Photo",
+          "x": 282,
+          "y": 203,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.2",
+          "request": "froglet",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "bv2Sm0RxlN",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 284,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: froglet",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "hEPJByXHeX",
+          "type": "text",
+          "x": 331,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "froglet"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Pz3VtLAPYc",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 488,
+          "y": 197,
+          "w": 196,
+          "h": 254,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "6sXU7euzr8",
+          "type": "image",
+          "name": "Photo",
+          "x": 494,
+          "y": 203,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.0",
+          "request": "frogspawn",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "glZ6wfpfVx",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 496,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: frogspawn",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "pivHIylVmk",
+          "type": "text",
+          "x": 543,
+          "y": 350,
+          "w": 133,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "frogspawn"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "0iyn0cG2Zl",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 700,
+          "y": 197,
+          "w": 196,
+          "h": 254,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "H_cT66f5N0",
+          "type": "image",
+          "name": "Photo",
+          "x": 706,
+          "y": 203,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.1",
+          "request": "tadpole",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Gk7tId6-qV",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 708,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: tadpole",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "D"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "2D0GevPqWD",
+          "type": "text",
+          "x": 755,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "tadpole"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "sort",
+        "order": ["glZ6wfpfVx", "Gk7tId6-qV", "bv2Sm0RxlN", "OgsaduCPRG"]
+      },
+      "notes": ""
+    },
+    {
+      "id": "s9",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "7pt21v3A45",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which baby grows into a hen?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "ELnzAE1Mh1",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 194,
+          "w": 266,
+          "h": 260,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "1wyx2Ogbfq",
+          "type": "image",
+          "name": "Photo",
+          "x": 70,
+          "y": 200,
+          "w": 254,
+          "h": 191,
+          "src": "data:,",
+          "alt": "card.2",
+          "request": "lamb",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "dgLieBfHYG",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 402,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: lamb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Z54dX8Cdq_",
+          "type": "text",
+          "x": 119,
+          "y": 399,
+          "w": 203,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "lamb"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "5_KglDEmPr",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 346,
+          "y": 194,
+          "w": 266,
+          "h": 260,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Hszk_agz6R",
+          "type": "image",
+          "name": "Photo",
+          "x": 352,
+          "y": 200,
+          "w": 254,
+          "h": 191,
+          "src": "data:,",
+          "alt": "card.0",
+          "request": "calf",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "08N8gsQys6",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 354,
+          "y": 402,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: calf",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "JsLjPJPuDt",
+          "type": "text",
+          "x": 401,
+          "y": 399,
+          "w": 203,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calf"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "MjukJvhwm9",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 628,
+          "y": 194,
+          "w": 266,
+          "h": 260,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "tUak56ZsuE",
+          "type": "image",
+          "name": "Photo",
+          "x": 634,
+          "y": 200,
+          "w": 254,
+          "h": 191,
+          "src": "data:,",
+          "alt": "card.1",
+          "request": "chick",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "xTruFWbxVw",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 636,
+          "y": 402,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: chick",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "Y0BRxqwwyM",
+          "type": "text",
+          "x": 683,
+          "y": 399,
+          "w": 203,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "ELnzAE1Mh1",
+            "correct": false
+          },
+          {
+            "id": "5_KglDEmPr",
+            "correct": false
+          },
+          {
+            "id": "MjukJvhwm9",
+            "correct": true
+          }
+        ],
+        "explanation": "A chick grows into a hen."
+      },
+      "notes": ""
+    },
+    {
+      "id": "s10",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "md6N1C32VZ",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which is the odd one out?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "acPmWsQBnf",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 221,
+          "w": 196,
+          "h": 207,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "vBC0qm6KcA",
+          "type": "image",
+          "name": "Photo",
+          "x": 70,
+          "y": 227,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.1",
+          "request": "calf",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "9s-jOQptuu",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: calf",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "wtHO4C_dCN",
+          "type": "text",
+          "x": 119,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calf"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "HgBzA6mCg0",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 276,
+          "y": 221,
+          "w": 196,
+          "h": 207,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "6hY90IdYDC",
+          "type": "image",
+          "name": "Photo",
+          "x": 282,
+          "y": 227,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.3",
+          "request": "chick",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "HWcMcPxTuz",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 284,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: chick",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "JLZAeS-O7_",
+          "type": "text",
+          "x": 331,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "xieSE1M5zu",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 488,
+          "y": 221,
+          "w": 196,
+          "h": 207,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "nf49r91c4g",
+          "type": "image",
+          "name": "Photo",
+          "x": 494,
+          "y": 227,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.0",
+          "request": "lamb",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "5JNZ4V_VSR",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 496,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: lamb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "G-XR5ftcUH",
+          "type": "text",
+          "x": 543,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "lamb"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "tEpivLDtRd",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 700,
+          "y": 221,
+          "w": 196,
+          "h": 207,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Card",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "KuIp9yfcaQ",
+          "type": "image",
+          "name": "Photo",
+          "x": 706,
+          "y": 227,
+          "w": 184,
+          "h": 138,
+          "src": "data:,",
+          "alt": "card.2",
+          "request": "cow",
+          "fit": "cover",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "id": "y7ldIJE28U",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 708,
+          "y": 376,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker: cow",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "D"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "nusKopAZo7",
+          "type": "text",
+          "x": 755,
+          "y": 373,
+          "w": 133,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "cow"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Card word",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "acPmWsQBnf",
+            "correct": false
+          },
+          {
+            "id": "HgBzA6mCg0",
+            "correct": false
+          },
+          {
+            "id": "xieSE1M5zu",
+            "correct": false
+          },
+          {
+            "id": "tEpivLDtRd",
+            "correct": true
+          }
+        ],
+        "explanation": "The others are all babies."
+      },
+      "notes": ""
+    }
+  ]
+}

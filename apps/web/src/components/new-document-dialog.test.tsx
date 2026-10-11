@@ -100,6 +100,6 @@ describe("NewDocumentDialog", () => {
 
     expect(screen.queryByRole("radio", { name: "Playground" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create lesson" })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "Chalk & Cream" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Reading Room" })).toBeVisible();
   });
 });

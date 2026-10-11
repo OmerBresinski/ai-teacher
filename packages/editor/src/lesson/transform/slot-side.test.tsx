@@ -25,7 +25,7 @@ const [slotSlide] = materialiseSlides(
     body: "Roman soldiers carried a large shield and wore metal armour. Both kept them safe in battle.",
     factRefs: [],
   },
-  "chalk",
+  "splash",
   { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" },
   undefined,
   0,
@@ -35,7 +35,7 @@ const [slotSlide] = materialiseSlides(
 function lesson(): Lesson {
   if (!slotSlide) throw new Error("no slide");
   const seeded = seededLesson();
-  return { ...seeded, themeId: "chalk", slides: [structuredClone(slotSlide), ...seeded.slides] };
+  return { ...seeded, themeId: "splash", slides: [structuredClone(slotSlide), ...seeded.slides] };
 }
 
 const photoOf = (l: Lesson) => {
@@ -123,13 +123,13 @@ describe("the picture's side (R2)", () => {
         diagram: "Cross-section: magma chamber, vent, crater",
         factRefs: [],
       },
-      "chalk",
+      "splash",
       { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" },
     );
     const seeded = seededLesson();
     const { container, read } = renderEditor({
       ...seeded,
-      themeId: "chalk",
+      themeId: "splash",
       slides: [diagram, ...seeded.slides],
     });
     const zone = () => {

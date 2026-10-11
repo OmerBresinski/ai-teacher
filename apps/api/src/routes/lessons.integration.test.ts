@@ -291,6 +291,20 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     expect((await errorOf(res)).message).toBe("That theme does not exist.");
   });
 
+  test("POST /lessons takes an older client's chalk and stores splash, chosen (ruling 202)", async () => {
+    const res = await postLesson(wsA, {
+      brief: { topic: "Volcanoes" },
+      themeId: "chalk",
+      skipPlanning: true,
+    });
+    expect(res.status).toBe(202);
+    const { lessonId } = (await res.json()) as { lessonId: LessonId };
+    const row = await getDocument(forWorkspace(unsafeDb, wsA), lessonId);
+    const body = row?.body as Lesson | undefined;
+    expect(body?.themeId).toBe("splash");
+    expect(body?.themeChosen).toBe(true);
+  });
+
   test("skipPlanning: one job to the end, confirmed up front, continue_when_planned set", async () => {
     const res = await postLesson(wsA, { brief: { topic: "Volcanoes" }, skipPlanning: true });
     expect(res.status).toBe(202);
@@ -351,7 +365,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       topic: "Phonics warm-up",
       durationMin: 45,
       classContext: { sizeBand: "25to30" },
-      slideCount: 10,
+      slideTier: "standard",
     });
   });
 
@@ -778,6 +792,17 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       });
       expect(again.status).toBe(409);
       expect(await errorOf(again)).toMatchObject({ reason: "generating", jobId });
+    });
+
+    test("an older client's chalk sent with the confirm is stored as splash (ruling 202)", async () => {
+      const old = await seedPlanned({ ws: wsB });
+      const chalk = await postJson(wsB, `/lessons/${old.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(old.row.body as Lesson),
+        themeId: "chalk",
+      });
+      expect(chalk.status).toBe(202);
+      expect((await bodyOf(wsB, old.lessonId)).themeId).toBe("splash");
     });
 
     test("a theme sent with the confirm is stored on the lesson; none sent keeps it (ruling 113)", async () => {
