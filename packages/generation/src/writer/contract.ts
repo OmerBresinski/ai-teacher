@@ -69,7 +69,7 @@ export function freeformMenuLines(): {
 
 /** base4g's anatomy routing on the labelled-diagram line (t-anatomy PROPOSAL.md, option C). */
 const LABELLED_ROUTE =
-  "a route or process is a flow or cycle, and a structure hidden inside or too small to see is a picture";
+  "a structure hidden inside or too small to see, or a route through it, is a picture";
 
 /** The pinned lines the contract replaces, exactly as every bundle's system text holds them. */
 export const PINNED_LINES = {

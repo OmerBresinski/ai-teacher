@@ -63,7 +63,7 @@ export const WRITER_BUNDLES = {
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.
-  base4g: bundle("base4g", base4g, "26909a87fc34", base4Defs, { slotFill: true, planTheme: true }),
+  base4g: bundle("base4g", base4g, "2e5d71686b35", base4Defs, { slotFill: true, planTheme: true }),
 } as const satisfies Record<string, WriterBundle>;
 export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 
