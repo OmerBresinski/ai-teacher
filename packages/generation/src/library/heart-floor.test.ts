@@ -173,7 +173,8 @@ describe("the heart builds in journey order (heart_circulation v2)", () => {
     const text = Object.fromEntries(
       v1.map((id) => [`label:${id}`, id === "heart" ? "Heart" : "Blood"]),
     );
-    const P = (await kit()).withDefaults(m?.params, { ...m?.presets[1]?.params, text });
+    if (!m) throw new Error("no heart_circulation");
+    const P = (await kit()).withDefaults(m.params, { ...m.presets[1]?.params, text });
     const d = await renderLibraryModel("heart_circulation", P);
     expect(d.builds).toBeGreaterThan(3);
     expect(d.warnings).toEqual([]);
