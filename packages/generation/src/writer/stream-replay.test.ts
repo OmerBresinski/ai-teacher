@@ -219,3 +219,50 @@ describe("a slide the final parse opens from other words (stream-reopened)", () 
     expect(slide3.length).toBe(new Set(slide3.map((d) => d.key)).size);
   });
 });
+
+describe("a base4g stream under slot-fill (HEART1 R3)", () => {
+  // base4g's writer adds `fit` (the slot-fill variant) to each slide and the stage strips it on
+  // arrival. Every slide of the R3 lesson was "stream-reopened" when the stream ended: diagrams
+  // cancelled and drawn again, pictures asked for again. The stream and the final text are the
+  // same here, so no slide may reopen.
+  const b = "y5-maths-fractions-of-amounts";
+  const withFit = (text: string) => {
+    const out = JSON.parse(text) as {
+      title?: Record<string, unknown>;
+      slides: Record<string, unknown>[];
+    };
+    const fit = (s: Record<string, unknown>) => {
+      const { template, ...rest } = s;
+      return { template, fit: `${String(template)}-as-written`, ...rest };
+    };
+    return JSON.stringify({
+      ...out,
+      ...(out.title ? { title: fit(out.title) } : {}),
+      slides: out.slides.map(fit),
+    });
+  };
+
+  test("no slide reopens after the stream ends, and each slide's asks go out once", async () => {
+    const events: Record<string, unknown>[] = [];
+    const reopened: number[] = [];
+    const asked: number[] = [];
+    const base = replayServices(b);
+    const res = await replayRun(b, {
+      services: { ...base, log: (e) => events.push(e as Record<string, unknown>) },
+      text: withFit,
+      stream: pieces(11),
+      hooks: {
+        slotFill: true,
+        onReopen: (i) => reopened.push(i),
+        onAsks: (i) => asked.push(i),
+      },
+    });
+    expect(res.slides.length).toBeGreaterThan(3);
+    const sf = events.filter((e) => e.ev === "slot-fill");
+    expect(sf.length).toBeGreaterThan(3);
+    expect(events.filter((e) => e.ev === "stream-opened").length).toBe(1);
+    expect(events.filter((e) => e.ev === "stream-reopened")).toEqual([]);
+    expect(reopened).toEqual([]);
+    expect(new Set(asked).size).toBe(asked.length);
+  });
+});

@@ -873,7 +873,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       point: pointOf(s as S),
     });
     relay(idx);
-    opened.set(idx, JSON.stringify(raw));
+    // Keyed by the slide as the writer wrote it, which the final parse compares: under slot-fill
+    // `raw` has lost its `fit`, so keying by it reopened every slide (HEART1 R3: each slide's
+    // diagrams redrawn and pictures asked for twice, about $0.12 extra, editable 30 s later).
+    opened.set(idx, JSON.stringify(arrived));
     drawDiagramsOf(idx);
     shown(idx);
   };
