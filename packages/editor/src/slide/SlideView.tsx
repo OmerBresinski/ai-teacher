@@ -1,6 +1,7 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  growFixedText,
   isDiagramMark,
   slideArtVariant,
   slideBackground,
@@ -143,6 +144,16 @@ export function SlideView({
     return out;
   }, [slide.elements]);
 
+  /**
+   * A fixed-height box whose words do not fit even at the floor is drawn taller, pushing what sits
+   * under it, so nothing is clipped (TEACH-75 part o). The editor keeps the stored geometry: its
+   * handles must match what is saved, and the box's overflow mark shows there instead.
+   */
+  const drawn = useMemo(
+    () => (mode === "edit" ? slide.elements : growFixedText(slide.elements, theme)),
+    [mode, slide.elements, theme],
+  );
+
   const sortIndex = useMemo(() => sortPositions(slide), [slide]);
   const optionIndex = useMemo(() => optionPositions(slide), [slide]);
   const explanation = revealAnswer ? explanationText(slide.question) : null;
@@ -204,7 +215,7 @@ export function SlideView({
       >
         <SlideBackground theme={theme} slide={slide} />
 
-        {slide.elements.map((el, i) =>
+        {drawn.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
           isDiagramMark(el) && mode !== "edit" ? null : (

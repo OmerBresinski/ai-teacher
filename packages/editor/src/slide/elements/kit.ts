@@ -104,10 +104,17 @@ export function textTypeCss(r: ResolvedText): CSSProperties {
   };
 }
 
-export const JUSTIFY: Record<ResolvedText["valign"], "flex-start" | "center" | "flex-end"> = {
+/**
+ * `safe`: words that outgrow a middle- or bottom-aligned box run out of its foot, never its top,
+ * so the first line is never the one cut off (TEACH-75 part o).
+ */
+export const JUSTIFY: Record<
+  ResolvedText["valign"],
+  "flex-start" | "safe center" | "safe flex-end"
+> = {
   top: "flex-start",
-  middle: "center",
-  bottom: "flex-end",
+  middle: "safe center",
+  bottom: "safe flex-end",
 };
 
 /* ------------------------------------------------------------------ */

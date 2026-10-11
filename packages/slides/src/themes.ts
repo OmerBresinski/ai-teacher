@@ -451,7 +451,9 @@ export { DEFAULT_THEME_ID, fallbackThemeFor, liveThemeId } from "@tj/domain/docu
  */
 export type CalloutTone = { fill: string; line: string; ink: string; icon: string };
 
-/** The three tones a theme gives its callouts, one per kind. */
+/**
+ * The three tones a theme gives its callouts, one per kind.
+ */
 export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
 
 /**

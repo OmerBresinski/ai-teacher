@@ -131,6 +131,8 @@ export function confirmLesson(
           ...(input.slideCount !== undefined ? { slideCount: input.slideCount } : {}),
           ...(tierChanged ? { slideTier: input.slideTier, slideCount: undefined } : {}),
           ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+          // Ruling 201: the worksheet choice is a brief fact; it re-plans nothing.
+          ...(input.worksheet !== undefined ? { worksheet: input.worksheet } : {}),
         },
       }
     : {};

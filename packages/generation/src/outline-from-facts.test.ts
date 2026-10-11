@@ -234,7 +234,7 @@ describe("outlineFromFacts: the count and the fixed slots", () => {
   });
 
   // Ruling 164: the outline plans inside the tier's range, so the writer never writes slides the
-  // outline did not plan (Detailed planned 12 before, under its 13-20 range).
+  // outline did not plan (Detailed planned 12 before, under its 13-20 range, now 13-16).
   for (const tier of SLIDE_TIERS)
     test(`a ${tier} brief's outline is inside the ${tier} range`, () => {
       const slideCount = plannerSlideCount({ slideTier: tier });

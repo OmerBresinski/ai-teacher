@@ -49,7 +49,14 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type PathSegment, pathSegments, presentedSlide, slideBackground } from "@tj/slides";
+import {
+  fittedFontSize,
+  growFixedText,
+  type PathSegment,
+  pathSegments,
+  presentedSlide,
+  slideBackground,
+} from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -775,7 +782,10 @@ async function drawElement(
 }
 
 function drawText(pptxSlide: PptxGenJS.Slide, element: TextElement, theme: Theme): void {
-  const r = resolveTextStyle(element.style, theme);
+  // The size the renderer draws a fixed-height box at when its words outgrew it (TEACH-75 part o).
+  const resolved = resolveTextStyle(element.style, theme);
+  const fitted = fittedFontSize(element, theme);
+  const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
   pptxSlide.addText(
     paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)),
     textBoxOptions(element, r),
@@ -1357,7 +1367,8 @@ export async function exportLessonPptx(
         rasteriseSvg: options.rasteriseSvg ?? svgAsPng,
         warn: options.onWarning ?? ((m) => console.warn(`[pptx] ${m}`)),
       };
-      for (const element of slide.elements) {
+      // Drawn where the renderer draws it: a box too full for its floor grows (TEACH-75 part o).
+      for (const element of growFixedText(slide.elements, theme)) {
         if (!visibleAt(element, step)) continue;
         await drawElement(pptxSlide, element, theme, ctx, NO_FRAME);
       }

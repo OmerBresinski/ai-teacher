@@ -160,6 +160,12 @@ export interface PipelineDeps {
     documentUpdatedAt?: string,
   ) => Promise<void>;
   context: PipelineContext;
+  /**
+   * Ruling 201: whether a worksheet job was actually created for this lesson. The confirm's
+   * `brief.worksheet` is only the teacher's intent; the write stage asks this before it decides
+   * where the exit ticket goes. Absent (tests, scripts), the brief's flag stands.
+   */
+  worksheetQueued?: () => Promise<boolean>;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
   /**
