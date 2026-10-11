@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { type Brief, BriefSchema, MAX_CLARIFYING_QUESTIONS } from "./brief";
+import { type Brief, BriefSchema, MAX_CLARIFYING_QUESTIONS, SLIDE_TIERS } from "./brief";
 import { GUARD_MESSAGE } from "./identifier-guard";
-import { plannerSlideCount, slideTierOf } from "./slide-tiers";
+import { plannerSlideCount, SLIDE_TIER_RANGES, slideTierOf } from "./slide-tiers";
 
 const minimal = (): Brief => ({ topic: "Fractions of amounts", durationMin: 60 });
 
@@ -28,6 +28,20 @@ describe("BriefSchema", () => {
     expect(slideTierOf({ slideCount: 10 })).toBe("standard");
     expect(slideTierOf({ slideCount: 12 })).toBe("standard");
     expect(slideTierOf(undefined)).toBe("standard");
+  });
+
+  test("Detailed is 13–16; a count stored under the old 13–20 range still reads as Detailed", () => {
+    expect(SLIDE_TIER_RANGES).toEqual({
+      quick: { min: 6, max: 8 },
+      standard: { min: 9, max: 12 },
+      detailed: { min: 13, max: 16 },
+    });
+    for (const n of [13, 16, 17, 18, 20]) expect(slideTierOf({ slideCount: n })).toBe("detailed");
+    for (const tier of SLIDE_TIERS) {
+      const n = plannerSlideCount({ slideTier: tier });
+      expect(n).toBeGreaterThanOrEqual(SLIDE_TIER_RANGES[tier].min);
+      expect(n).toBeLessThanOrEqual(SLIDE_TIER_RANGES[tier].max);
+    }
   });
 
   test("plannerSlideCount: the tier's planner count, inside its range; else an older exact count", () => {
