@@ -226,8 +226,8 @@ function LessonIntake({
       const input = CreateLessonSchema.parse({
         brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
         yearGroup: brief.yearGroup,
-        // Ruling 116: no theme question; the teacher's last theme, else the class default.
-        themeId: startingTheme(last?.themeId, undefined, brief.yearGroup),
+        // Rulings 116, 202: no theme question; the teacher's last theme, else the planner picks.
+        themeId: startingTheme(last?.themeId),
         sourceIds: sources.map(({ id }) => id),
         skipPlanning: skip,
       });
@@ -296,8 +296,8 @@ function LessonIntake({
         expectedRevision: lesson.plan?.revision ?? 0,
         objectives: objectiveEdits(lesson, objectives),
         slideCount: Number(slideCount) as 6 | 8 | 10 | 12,
-        // Plan knows the subject now, so the class default can use it.
-        themeId: startingTheme(last?.themeId, lesson.subject, lesson.yearGroup ?? brief.yearGroup),
+        // Ruling 202: only the teacher's own theme is sent; the planner's pick stands otherwise.
+        themeId: startingTheme(last?.themeId),
       });
       const worksheet = worksheets[0];
       rememberWorksheetIntent(

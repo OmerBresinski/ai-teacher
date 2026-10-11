@@ -3,7 +3,7 @@ import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_COUN
 import { guarded } from "./identifier-guard";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { FactIdSchema } from "./lesson-facts";
-import { DEFAULT_THEME_ID } from "./theme";
+import { fallbackThemeFor } from "./theme";
 import { PRACTICE_MINUTES_OPTIONS, type RecipeId } from "./worksheet";
 
 /*
@@ -189,7 +189,9 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     version: 1,
     id: lessonId,
     title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
-    themeId: input.themeId ?? DEFAULT_THEME_ID,
+    // Ruling 202: the teacher's theme wins; else the key stage fallback until the planner picks.
+    themeId: input.themeId ?? fallbackThemeFor(ageBand),
+    ...(input.themeId !== undefined ? { themeChosen: true } : {}),
     slides: [],
     createdAt: at,
     updatedAt: at,

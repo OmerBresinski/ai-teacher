@@ -48,7 +48,7 @@ export function Content() {
           </Variant>
           <Variant label="Over a thumbnail">
             <div className="relative aspect-video w-full overflow-hidden rounded-card border border-border">
-              <LessonThumb lesson={{ title: "Fractions", themeId: "chalk", cover: KIT_COVER }} />
+              <LessonThumb lesson={{ title: "Fractions", themeId: "splash", cover: KIT_COVER }} />
               <div className="absolute top-2 left-2">
                 <StatusPill opaque>Draft</StatusPill>
               </div>
@@ -100,7 +100,7 @@ export function Content() {
             variant="contained"
             className="w-72"
             thumbnail={
-              <LessonThumb lesson={{ title: "Fractions", themeId: "chalk", cover: KIT_COVER }} />
+              <LessonThumb lesson={{ title: "Fractions", themeId: "splash", cover: KIT_COVER }} />
             }
             overlay={
               <CardOverlay>

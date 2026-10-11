@@ -93,8 +93,8 @@ describe("fitsPlanned", () => {
   });
 
   test("themes can be narrowed", () => {
-    const one = fitsPlanned(long, { stepDown: 1, themes: [getTheme("chalk")] });
-    expect(one.failing.map((f) => f.theme)).toEqual(["chalk"]);
+    const one = fitsPlanned(long, { stepDown: 1, themes: [getTheme("splash")] });
+    expect(one.failing.map((f) => f.theme)).toEqual(["splash"]);
   });
 });
 

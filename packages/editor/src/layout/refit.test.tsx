@@ -36,11 +36,11 @@ const cleanSlide = (id: string): Slide => ({
   elements: [textAt(`${id}-body`, 140, 41)],
 });
 const lessonOf = (slides: Slide[], fitVersion: number): Lesson => ({
-  ...newLesson("Stored under the old sizes", "chalk"),
+  ...newLesson("Stored under the old sizes", "splash"),
   fitVersion,
   slides,
 });
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const ruler = rulerFor(theme);
 const deps = { measurer: () => ruler, warm: () => {} };
 

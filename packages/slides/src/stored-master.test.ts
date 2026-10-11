@@ -7,7 +7,7 @@ import storedLessons from "./fixtures/stored-master-lessons.json";
 import { FIGURE_RECT, layoutSlide } from "./layouts";
 import { presentedSlide, withoutDiagramSlot, withSlotsShown } from "./materialise";
 import { slotSide } from "./structure";
-import { getTheme } from "./themes";
+import { getTheme, liveThemeId } from "./themes";
 
 /*
  * A lesson stored before the look (master) renders as it was stored: it has no slots and no
@@ -52,7 +52,9 @@ describe("stored master lessons fit as pinned at fit version 3", () => {
   const digest = (value: unknown) =>
     new Bun.CryptoHasher("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 
-  for (const lesson of lessons) {
+  // A master stored in a retired theme (ruling 202) renders in another and is re-fitted on open,
+  // so only masters in a live theme keep their pinned fit.
+  for (const lesson of lessons.filter((l) => liveThemeId(l.themeId) === l.themeId)) {
     test(`${lesson.name}: every slide's fit is the pinned one, and present draws it as stored`, () => {
       const t = getTheme(lesson.themeId);
       expect(lesson.slides.map((s) => s.kind)).toContain("exit-ticket");

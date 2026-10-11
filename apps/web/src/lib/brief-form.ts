@@ -3,6 +3,7 @@ import {
   type ClassContext,
   type CreateLessonInput,
   CreateLessonSchema,
+  DEFAULT_THEME_ID,
   SUBJECTS as DOMAIN_SUBJECTS,
   findNamePatterns,
   lessonFromBrief,
@@ -20,7 +21,6 @@ import {
   shouldAskQuestions,
   suggestedObjectiveIndex,
 } from "./brief-questions";
-import { LIBRARY_THEMES } from "./library-themes";
 import { queryKeys } from "./query";
 
 /*
@@ -85,7 +85,7 @@ export const INITIAL_BRIEF: BriefState = {
   subjectOther: "",
   yearGroup: "",
   duration: "",
-  themeId: LIBRARY_THEMES[0]?.id ?? "chalk",
+  themeId: DEFAULT_THEME_ID,
   classOpen: false,
   sizeBand: "",
   needs: {},

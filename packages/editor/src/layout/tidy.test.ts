@@ -20,7 +20,7 @@ import { CONTINUED_LABEL, tidyMessage, tidySlide, tidySlideReducer } from "./tid
 
 /* `tidySlide` as a pure function over the lesson (TeachDeck's wrote the store). */
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const isHeading = (e: SlideElement): boolean => e.type === "text" && e.style.preset === "heading";
 const ruler = rulerFor(theme);
 
@@ -42,7 +42,7 @@ const text = (
 });
 
 function lessonWith(elements: TextElement[]): Lesson {
-  const lesson = newLesson("Tidy", "chalk");
+  const lesson = newLesson("Tidy", "splash");
   const first = lesson.slides[0];
   if (!first) throw new Error("seed");
   first.elements = elements;
@@ -234,13 +234,13 @@ describe("tidySlide", () => {
   });
 
   test("an unknown slide id is a no-op", () => {
-    const lesson = newLesson("X", "chalk");
+    const lesson = newLesson("X", "splash");
     expect(tidySlide(lesson, "nope", ruler).lesson).toBe(lesson);
   });
 
   test("a recipe slide settles to its measured heights and then stays put", () => {
-    const lesson = newLesson("Y", "chalk");
-    lesson.slides = [newSlide("objectives", "chalk")];
+    const lesson = newLesson("Y", "splash");
+    lesson.slides = [newSlide("objectives", "splash")];
     const sid = lesson.slides[0]?.id ?? "";
     const once = tidySlide(lesson, sid, ruler);
     expect(once.outcome.overflow).toEqual([]);
@@ -263,14 +263,14 @@ describe("TEACH-247: a worked-example at the spec's limits fits its card", () =>
         steps: [step, step, step, step],
         factRefs: ["x1"],
       },
-      "chalk",
+      "splash",
       { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
       (() => {
         let n = 0;
         return () => `e${++n}`;
       })(),
     );
-    const lesson = newLesson("W", "chalk");
+    const lesson = newLesson("W", "splash");
     lesson.slides = [slide];
     const out = tidySlide(lesson, slide.id, ruler);
     expect(out.outcome.overflow).toEqual([]);
@@ -291,14 +291,14 @@ describe("TEACH-248: steps at the tolerant ceiling never throw", () => {
         steps: [step, step, step, step],
         factRefs: ["x1"],
       },
-      "chalk",
+      "splash",
       { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
       (() => {
         let n = 0;
         return () => `e${++n}`;
       })(),
     );
-    const lesson = newLesson("L", "chalk");
+    const lesson = newLesson("L", "splash");
     lesson.slides = [slide];
     expect(() => tidySlide(lesson, slide.id, ruler)).not.toThrow();
   });
@@ -425,7 +425,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     h: 1,
   });
   const lessonOf = (elements: SlideElement[]): Lesson => {
-    const lesson = newLesson("Tidy", "chalk");
+    const lesson = newLesson("Tidy", "splash");
     const first = lesson.slides[0];
     if (!first) throw new Error("seed");
     first.elements = elements;
@@ -538,11 +538,11 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
         steps,
         factRefs: ["x1"],
       },
-      "chalk",
+      "splash",
       { promptVersion: "test", model: "test", at: "2026-09-25T00:00:00.000Z" },
       () => `e${++n}`,
     );
-    const lesson = newLesson("W", "chalk");
+    const lesson = newLesson("W", "splash");
     lesson.slides = [slide];
     return { lesson, slide };
   };
@@ -737,8 +737,8 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
   });
 
   test("AC5: a multiple-choice slide with long options is never continued (ruling 91)", () => {
-    const lesson = newLesson("Q", "chalk");
-    lesson.slides = [newSlide("multiple-choice", "chalk")];
+    const lesson = newLesson("Q", "splash");
+    lesson.slides = [newSlide("multiple-choice", "splash")];
     const slide = lesson.slides[0];
     if (!slide) throw new Error("slide");
     slide.elements = slide.elements.map((e) =>

@@ -126,7 +126,7 @@ describe("the lesson look", () => {
         points: ["shield: runny lava, gentle slopes", "composite: layers of ash and lava"],
         factRefs: ["k1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -152,7 +152,7 @@ describe("the lesson look", () => {
         explanation: "Sound needs particles to pass the vibration on.",
         factRefs: ["q1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -161,10 +161,10 @@ describe("the lesson look", () => {
   });
 
   test("is idempotent: a styled slide is returned as it is", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const slide = materialiseSlide(
       { kind: "starter", heading: "Do now", items: ["What is sediment?"], factRefs: [] },
-      "chalk",
+      "splash",
       META,
       counter(),
     );
@@ -176,13 +176,13 @@ describe("one heading size across a deck (P19-14)", () => {
   const meta = { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" };
   const headingSize = (spec: Parameters<typeof materialiseSlide>[0]) =>
     (
-      materialiseSlide(spec, "chalk", meta).elements.find((e) => e.name === HEADING_NAME) as
+      materialiseSlide(spec, "studio", meta).elements.find((e) => e.name === HEADING_NAME) as
         | TextElement
         | undefined
     )?.style.fontSize;
 
   test("a teaching slide and a one-line activity heading share the display size", () => {
-    const display = Math.round(getTheme("chalk").sizes.heading * HEADING_DISPLAY);
+    const display = Math.round(getTheme("studio").sizes.heading * HEADING_DISPLAY);
     expect(
       headingSize({
         kind: "content",

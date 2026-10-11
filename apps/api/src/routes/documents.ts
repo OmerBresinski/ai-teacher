@@ -43,7 +43,7 @@ import type { AppEnv } from "../context";
 import { ConflictError } from "../errors";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
-import { assertKnownDocumentTheme, hasKnownOrNoTheme } from "./theme-guard";
+import { assertKnownDocumentTheme, hasKnownOrNoTheme, withLiveTheme } from "./theme-guard";
 
 /** ADR 0024 §8: a downscaled deck is 1–3 MB; anything past this fails loudly rather than slowly. */
 export const DOCUMENT_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
@@ -141,8 +141,10 @@ export function documentRoutes(unsafeDb: ScopableDb) {
       zValidator("json", createBody, validationHook),
       async (c) => {
         const ws = scoped(c);
-        const { kind, body } = c.req.valid("json");
-        assertKnownDocumentTheme(body);
+        const { kind, body: sent } = c.req.valid("json");
+        assertKnownDocumentTheme(sent);
+        // Ruling 202: an older client's retired theme (chalk) is stored as the one it renders in.
+        const body = withLiveTheme(sent);
         const row = await createDocument(ws, kind, body).catch(unprocessableOnParseError);
         return c.json({ document: toDocumentJson(row) }, 201);
       },
@@ -180,9 +182,13 @@ export function documentRoutes(unsafeDb: ScopableDb) {
           if (storedTheme !== (document as { themeId?: unknown }).themeId)
             assertKnownDocumentTheme(document);
         }
-        const result = await putDocument(ws, id, document, new Date(expectedUpdatedAt)).catch(
-          unprocessableOnParseError,
-        );
+        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+        const result = await putDocument(
+          ws,
+          id,
+          withLiveTheme(document),
+          new Date(expectedUpdatedAt),
+        ).catch(unprocessableOnParseError);
         switch (result.status) {
           case "ok":
             return c.json({ document: toDocumentJson(result.row) }, 200);

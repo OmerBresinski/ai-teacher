@@ -56,7 +56,7 @@ const cleanSlide = (id: string): Slide => ({
 const flatRuler: Measurer = () => 1;
 
 function stale(slides: Slide[]): Lesson {
-  return { ...newLesson("Stored under the old sizes", "chalk"), fitVersion: 0, slides };
+  return { ...newLesson("Stored under the old sizes", "splash"), fitVersion: 0, slides };
 }
 
 function setup(lesson: Lesson) {
@@ -92,7 +92,7 @@ function setup(lesson: Lesson) {
 
 describe("runFitMigration", () => {
   test("does nothing, and measures nothing, for a lesson at the current version", () => {
-    const { deps } = setup(newLesson("Current", "chalk"));
+    const { deps } = setup(newLesson("Current", "splash"));
     let warmed = 0;
     const out = runFitMigration(deps({ warm: () => void warmed++ }));
     expect(out).toEqual({ ran: false, tidied: 0 });
@@ -223,14 +223,14 @@ describe("runFitMigration", () => {
           steps: [step, step, step, step, step, step],
           factRefs: ["x1"],
         },
-        "chalk",
+        "splash",
         { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
         (() => {
           let n = 0;
           return () => `e${++n}`;
         })(),
       );
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const ruler = rulerFor(theme);
 
     // As the worker writes it: every element the AI's. Under the test ruler (harsher than the
@@ -372,7 +372,7 @@ describe("useFitMigration re-arms", () => {
     );
   }
   test("row 2: a lesson at the current version is left alone — no idle check, no dispatch", async () => {
-    const s = setup({ ...newLesson("Current", "chalk"), slides: [brokenSlide("b")] });
+    const s = setup({ ...newLesson("Current", "splash"), slides: [brokenSlide("b")] });
     const notes: string[] = [];
     const attempts = { n: 0 };
     const before = s.read();

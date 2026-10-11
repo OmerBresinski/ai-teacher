@@ -12,7 +12,7 @@ describe("setSlotSide (look/slides-layout, R2)", () => {
       body: "Roman soldiers carried a large shield and wore metal armour. Both kept them safe in battle.",
       factRefs: [],
     },
-    "chalk",
+    "splash",
     { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" },
     undefined,
     0,

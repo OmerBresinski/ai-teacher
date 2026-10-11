@@ -42,3 +42,15 @@ export const setFitVersion = silent((lesson: Lesson, version: number): Lesson =>
     l.fitVersion = version;
   });
 });
+
+/**
+ * Swap a retired theme id for the theme it renders in (UX ruling 202: Chalk & Cream → Splash).
+ * Written by the fit migration only, as bookkeeping like `setFitVersion`: no undo entry, so an
+ * undo never brings a retired theme back.
+ */
+export const setLiveTheme = silent((lesson: Lesson, themeId: string): Lesson => {
+  if (lesson.themeId === themeId) return lesson;
+  return editQuietly(lesson, (l) => {
+    l.themeId = themeId;
+  });
+});

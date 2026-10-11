@@ -8,7 +8,7 @@ import { ImageView } from "./ImageView";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const base: ImageElement = {
   id: "i1",
   type: "image",
@@ -132,7 +132,7 @@ describe("ImageView diagram builds: review fixes", () => {
     expect(srcOf(container)).toContain("animation");
     rerender(view(1));
     expect(srcOf(container)).not.toContain("animation");
-    rerender(view(1, { theme: getTheme("chalk") }));
+    rerender(view(1, { theme: getTheme("splash") }));
     expect(srcOf(container)).not.toContain("animation");
     rerender(view(2));
     expect(srcOf(container)).toContain("animation");
