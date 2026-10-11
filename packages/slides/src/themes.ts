@@ -533,7 +533,7 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   playground: ["#6532BE", "#855000", "#0E6B78", "#B0306A"],
   crayon: ["#A31F2E", "#805000", "#1A52A8", "#B0306A"],
   splash: ["#0A5CA2", "#7E5600", "#B8175A", "#5B3FA0"],
-  treehouse: ["#245F28", "#7E5A0A", "#0E6B78", "#B0306A"],
+  treehouse: ["#0E6B78", "#7E5A0A", "#B0306A", "#5B3FA0"],
   "reading-room": ["#2C5A4D", "#7C5810", "#B0306A", "#5B3FA0"],
   studio: ["#0B6E86", "#7A580A", "#6D35D6", "#B0306A"],
   "exam-hall": ["#1B3A8C", "#78580C", "#B0306A", "#5B3FA0"],

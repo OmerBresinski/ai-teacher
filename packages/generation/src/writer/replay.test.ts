@@ -162,19 +162,6 @@ describe.each(LESSONS)("replay %s", (b) => {
           });
           continue;
         }
-        // Ruling 203, P8 (TEACH-75 part f): a hinge option's letter disc has its own colour.
-        if (w.name === "Marker" && want.elements.some((x) => x.name === "Option")) {
-          const plainDisc = (x: El) => {
-            const { fill: _f, textStyle, ...rest } = x as El & { textStyle?: El };
-            const { color: _c, ...ts } = (textStyle ?? {}) as El;
-            return stable({ ...rest, textStyle: ts });
-          };
-          expect({ at: `s${i + 1} #${k}`, el: plainDisc(e) }).toEqual({
-            at: `s${i + 1} #${k}`,
-            el: plainDisc(w),
-          });
-          continue;
-        }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;
