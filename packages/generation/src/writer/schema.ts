@@ -1,3 +1,4 @@
+import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
 import { gridCaps } from "./cards-grid-fits";
 import { freeformLabels, teachesSchema, writerCaps } from "./contract";
@@ -321,13 +322,23 @@ export const BANNER_TEXT_DEFAULT = false;
 /** Most bullets under a banner's lead (the renderer's `BANNER_POINTS`). */
 export const BANNER_TEXT_POINTS = 3;
 
-function withBannerText(schema: J): J {
+/** A string held to `n` characters (strict mode takes `pattern`, not `maxLength`). */
+const capped = (n: number): J => ({ type: "string", pattern: `^.{1,${n}}$` });
+
+/** Its caps come from the renderer's measured fit (`bannerCaps`, the fit table's banner entry). */
+function withBannerText(schema: J, stage: WriterStage): J {
+  const caps = bannerCaps(stage);
   const defs = schema.$defs as Record<string, J>;
+  const point = capped(caps.point);
   defs["banner-text"] = obj({
     template: { type: "string", enum: ["banner-text"] },
     heading: S(),
-    lead: S(),
-    points: arr({ anyOf: [S(), obj({ label: S(), text: S() })] }, 0, BANNER_TEXT_POINTS),
+    lead: capped(caps.lead),
+    points: arr(
+      { anyOf: [point, obj({ label: capped(caps.label), text: point })] },
+      0,
+      BANNER_TEXT_POINTS,
+    ),
     picture: REF("picture"),
     at: { type: "string", enum: ["top", "bottom"] },
   });
@@ -362,7 +373,7 @@ export function writerSchema(
   if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
-  if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s);
+  if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);

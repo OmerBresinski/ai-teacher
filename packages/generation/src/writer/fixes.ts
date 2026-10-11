@@ -1,3 +1,4 @@
+import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
@@ -207,7 +208,7 @@ const baseFit = (): Record<string, FitGroup> => {
 };
 /** Ruling 203 layouts' fit, from the renderer's own capacity tables. */
 function extraLayouts(group: string): FitGroup["layouts"] {
-  return { "cards-grid": gridFit(group) };
+  return { "cards-grid": gridFit(group), "banner-text": bannerFit(group) };
 }
 /**
  * The measured fit per stage group. With `hingeCards` (HEART1 R3 s6, TEACH-110 part r) the hinge

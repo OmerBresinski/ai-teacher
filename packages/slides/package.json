@@ -22,6 +22,7 @@
     "./templates/activities": "./src/templates/activities.ts",
     "./templates/activity-capacity.json": "./src/templates/activity-capacity.json",
     "./templates/cards-grid-capacity.json": "./src/templates/cards-grid-capacity.json",
+    "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts"
   },
   "scripts": {

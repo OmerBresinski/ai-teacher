@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { withActivities } from "./activities";
+import { charsOver, fitTable } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { materialise, type Plan, type VisualState, visualsOf } from "./materialise";
 import { BANNER_TEXT_DEFAULT, writerSchema } from "./schema";
@@ -94,5 +95,23 @@ describe("banner text on the writer's layout", () => {
     const r = run(banner, () => ({ status: "failed" }));
     expect(r.slide.elements.filter((e) => e.type === "image")).toHaveLength(0);
     expect(r.slide.kind).toBe("content");
+  });
+});
+
+describe("the banner's fit", () => {
+  test("the fit table has the banner per bullet count, from the renderer's table", () => {
+    const v = fitTable().KS2?.layouts["banner-text"]?.variants ?? [];
+    expect(v.map((x) => x.counts.points)).toEqual([0, 1, 2, 3]);
+    expect(v.every((x) => x.chars > 0 && x.figure)).toBe(true);
+  });
+
+  test("the schema caps the lead, each bullet and its label; an overlong bullet is reported", () => {
+    const SLIDES = (fixture as { brief: { slides: { min: number; max: number } } }).brief.slides;
+    const on = writerSchema("KS2", SLIDES, undefined, { bannerText: true }) as J;
+    const def = (on.$defs as Record<string, J>)["banner-text"] as J;
+    expect(validate(def, { ...banner, lead: "word ".repeat(120) }, on)).not.toEqual([]);
+    const long = { label: "Erosion", text: "word ".repeat(30) };
+    const over = charsOver({ ...banner, points: [long, long, long] }, "KS2");
+    expect(over.some((o) => o.startsWith("points[1]"))).toBe(true);
   });
 });
