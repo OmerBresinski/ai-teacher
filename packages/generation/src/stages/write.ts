@@ -96,9 +96,9 @@ export function writerBrief(lesson: Lesson): Brief {
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
     language: lesson.language ?? "en-GB",
     durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
-    // The writer reads the flag through its user turn (rulings 141, 148); the API never sets it,
-    // so the exit ticket stays on the worksheet.
-    exitTicketOnSlides: false,
+    // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
+    // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
+    exitTicketOnSlides: b?.worksheet !== true,
     tier: "standard",
     slides: slideRange(b),
   };
@@ -160,8 +160,26 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
   return fromBrief && next ? next : lesson.title;
 }
 
+/**
+ * Ruling 201: a brief that asked for a worksheet keeps the exit ticket off the slides only when a
+ * worksheet job was actually created (`deps.worksheetQueued`). A request that failed, or never
+ * came, leaves `worksheet: false`, so the exit ticket goes on the last slide and no slide points
+ * at a worksheet that does not exist.
+ */
+export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): Promise<Lesson> {
+  const brief = lesson.brief;
+  if (brief?.worksheet !== true || deps.worksheetQueued === undefined) return lesson;
+  const queued = await deps.worksheetQueued();
+  if (queued) return lesson;
+  deps.logger.info(
+    { stage: "write" },
+    "worksheet asked for but not queued: exit ticket on the slides",
+  );
+  return { ...lesson, brief: { ...brief, worksheet: false } };
+}
+
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
-  const lesson = state.lesson;
+  const lesson = await withQueuedWorksheet(state.lesson, deps);
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
   const toLesson = (
     slides: { id: string; notes?: string }[],

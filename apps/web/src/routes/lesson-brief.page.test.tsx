@@ -286,6 +286,22 @@ describe("real lesson intake", () => {
     const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
     expect(confirm?.body).toMatchObject({ expectedRevision: 1, themeId: "night-lab" });
   });
+  it("ruling 201: the confirm says whether a worksheet is queued", async () => {
+    const slidesOnly = openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    const skipped = fakeApi.requests.find((r) => r.path === `/lessons/${slidesOnly}/generate`);
+    expect(skipped?.body).toMatchObject({ worksheet: false });
+  });
+  it("ruling 201: including a worksheet confirms with worksheet true", async () => {
+    const id = openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Include worksheet/ }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
+    expect(confirm?.body).toMatchObject({ worksheet: true });
+  });
   it("confirms with no theme when nothing is remembered, and does not remember it", async () => {
     const id = openPlanned("chalk");
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));

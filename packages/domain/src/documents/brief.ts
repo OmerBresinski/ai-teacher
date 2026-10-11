@@ -43,6 +43,11 @@ export type Brief = {
    */
   slideTier?: SlideTier;
   level?: BriefLevel;
+  /**
+   * Whether the teacher asked for a worksheet when confirming the plan (ruling 201): without one,
+   * the exit ticket goes on the last slide. Absent on lessons confirmed before the field existed.
+   */
+  worksheet?: boolean;
   /** Answers to the clarifying questions, keyed by the question id the brief screen chose. */
   answers?: Record<string, string>;
 };
@@ -54,6 +59,7 @@ export const BriefSchema = z.strictObject({
   slideCount: z.union(SLIDE_COUNTS.map((n) => z.literal(n))).optional(),
   slideTier: z.enum(SLIDE_TIERS).optional(),
   level: z.enum(BRIEF_LEVELS).optional(),
+  worksheet: z.boolean().optional(),
   answers: z
     .record(z.string().min(1).max(64), guarded(z.string().max(BRIEF_ANSWER_MAX)))
     .refine((answers) => Object.keys(answers).length <= MAX_CLARIFYING_QUESTIONS, {
