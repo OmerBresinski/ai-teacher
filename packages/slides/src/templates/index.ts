@@ -28,8 +28,9 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
+import { contrastRatio } from "../look";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
@@ -231,6 +232,8 @@ export type Ctx = {
   fullSize?: boolean;
   /** `LayoutOptions.pictureBand` (UX ruling 203). */
   pictureBand?: boolean;
+  /** `LayoutOptions.optionColours` (UX ruling 203). */
+  optionColours?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -359,8 +362,24 @@ const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
  */
 const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
 
+/**
+ * The letter's colour on a hinge disc of `fill` (ruling 203, P8): of the theme's own text tokens
+ * (`onAccent`, `ink`, `surface`, `background`), the one that reads best on it.
+ */
+function onFill(t: Theme, fill: string): string {
+  const { onAccent, ink, surface, background } = t.colors;
+  return [onAccent, ink, surface, background].reduce((a, b) =>
+    contrastRatio(b, fill) > contrastRatio(a, fill) ? b : a,
+  );
+}
+
+/** One colour per hinge option, from the theme's `OPTION_TONES` (UX ruling 203, P8). */
+export function optionColours(t: Theme): string[] {
+  return [...optionTones(t)];
+}
+
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
-function disc(c: Ctx, label: string, x: number, y: number, d: number) {
+function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: string) {
   c.els.push({
     id: uid(),
     type: "shape",
@@ -369,14 +388,14 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number) {
     y: Math.round(y),
     w: d,
     h: d,
-    fill: c.t.colors.accent,
+    fill: fill ?? c.t.colors.accent,
     name: "Marker",
     doc: doc(label),
     textStyle: {
       preset: "body",
       fontSize: markerSize(c),
       fontWeight: 700,
-      color: c.t.colors.onAccent,
+      color: fill ? onFill(c.t, fill) : c.t.colors.onAccent,
       align: "center",
       valign: "middle",
       padding: 0,
@@ -1332,6 +1351,8 @@ export type LayoutOptions = {
   diagramWarnings?: boolean;
   /** Two picture cards' band no taller than three's, bold caps labels (P10). Off by default: old lessons and the default writer render as before. */
   pictureBand?: boolean;
+  /** A colour per hinge option disc (P8). Off by default: old lessons and the default writer render as before. */
+  optionColours?: boolean;
 };
 
 /**
@@ -1435,6 +1456,7 @@ function layoutOnce(
     fullSize: opts.fullSize ?? false,
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
     ...(opts.pictureBand ? { pictureBand: true } : {}),
+    ...(opts.optionColours ? { optionColours: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1986,7 +2008,15 @@ function layoutOnce(
           name: "Option",
         });
         optionIds.push(card.id);
-        disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
+        const tones = optionColours(c.t);
+        disc(
+          c,
+          String.fromCharCode(65 + k),
+          x + pad,
+          yy + g.rowH / 2 - d / 2,
+          d,
+          c.optionColours ? tones[k % tones.length] : undefined,
+        );
         const th = measure(c, o, "body", g.iw);
         text(
           c,
