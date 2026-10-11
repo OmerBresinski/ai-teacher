@@ -234,6 +234,8 @@ export type Ctx = {
   pictureBand?: boolean;
   /** `LayoutOptions.optionColours` (UX ruling 203). */
   optionColours?: boolean;
+  /** `LayoutOptions.processLine` (UX ruling 203). */
+  processLine?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1003,6 +1005,81 @@ function numbered(
   );
 }
 
+/** A step's bold label and its body: a point's own label, else the words before its first colon. */
+function stepParts(p: TemplatePoint): { label: string; body: string } {
+  const own = pointLabel(p);
+  const words = pointText(p).trim();
+  if (own) return { label: own, body: words };
+  const m = words.match(/^([^:]{1,40}):\s+([\s\S]+)$/);
+  return m
+    ? { label: (m[1] as string).trim(), body: (m[2] as string).trim() }
+    : { label: "", body: words };
+}
+
+/**
+ * Steps with no figure as a numbered process line (UX ruling 203, P9; Chalkie's L6): 3 to 5 equal
+ * columns across the slide, a numbered disc on one connecting line, then each step's bold label
+ * and its body, centred. Tried on the fit ladder; when no rung holds it (a long step in a narrow
+ * column) it returns false and the caller lays the numbered list, so capacity never drops.
+ */
+function processLine(c: Ctx, items: TemplatePoint[]): boolean {
+  const n = items.length;
+  if (n < 3 || n > 5) return false;
+  const parts = items.map(stepParts);
+  const full = c.s;
+  const gap = 20;
+  const w = Math.floor((G.width - gap * (n - 1)) / n);
+  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
+  for (const r of rungs) {
+    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+    const fits = parts.every(
+      (p) =>
+        (!p.label || wordsFit(c, p.label, "lead", w, c.s.lead)) &&
+        wordsFit(c, p.body, "body", w, c.s.body),
+    );
+    const d = Math.round(full.body * 2);
+    const below = Math.round(18 * r.space);
+    const labelH = Math.max(
+      ...parts.map((p) => (p.label ? measure(c, p.label, "lead", w, 700) + 6 : 0)),
+    );
+    const bodyH = Math.max(...parts.map((p) => measure(c, p.body, "body", w)));
+    const total = d + below + labelH + bodyH;
+    if (!fits || total > G.band.h) continue;
+    const y0 = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+    const cx = (k: number) => G.margin + k * (w + gap) + Math.round(w / 2);
+    box(
+      c,
+      { x: cx(0), y: y0 + Math.round(d / 2) - 2, w: cx(n - 1) - cx(0), h: 4 },
+      c.t.colors.accent,
+      { name: "Process line", shape: "rect", radius: 0 },
+    );
+    parts.forEach((p, k) => {
+      const x = G.margin + k * (w + gap);
+      disc(c, String(k + 1), cx(k) - Math.round(d / 2), y0, d);
+      const top = y0 + d + below;
+      if (p.label)
+        text(
+          c,
+          p.label,
+          "lead",
+          { x, y: top, w },
+          { weight: 700, align: "center", color: c.t.colors.ink, name: "Step label" },
+        );
+      text(
+        c,
+        p.body,
+        "body",
+        { x, y: top + labelH, w },
+        { align: "center", color: c.t.colors.ink, name: "Item" },
+      );
+    });
+    c.s = full;
+    return true;
+  }
+  c.s = full;
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /* The templates                                              */
 /* ------------------------------------------------------------------ */
@@ -1353,6 +1430,8 @@ export type LayoutOptions = {
   pictureBand?: boolean;
   /** A colour per hinge option disc (P8). Off by default: old lessons and the default writer render as before. */
   optionColours?: boolean;
+  /** Steps as a numbered process line (P9). Off by default: old lessons and the default writer render as before. */
+  processLine?: boolean;
 };
 
 /**
@@ -1457,6 +1536,7 @@ function layoutOnce(
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
     ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(opts.optionColours ? { optionColours: true } : {}),
+    ...(opts.processLine ? { processLine: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1923,7 +2003,7 @@ function layoutOnce(
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
         figurePanel(c, input.figure);
-      } else numbered(c, pts, G.margin, 720, "steps");
+      } else if (!(c.processLine && processLine(c, raw))) numbered(c, pts, G.margin, 720, "steps");
       break;
     case "hinge": {
       heading(c, input.heading);
