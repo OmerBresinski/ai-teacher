@@ -261,7 +261,7 @@ function renderDouble(root, P, ctx, M) {
 
   /* one compact key, in journey order */
   // compact, in the empty corner left of the lungs, so the whole diagram sits centred
-  let yC = GRID.top + 24; const KX = HX - 400, KW = LXL - 70 - KX;
+  let yC = GRID.top + 24; const KX = HX - 420, KW = LXL - 50 - KX;
   [['poor', POOR, 'lungs'], ['rich', RICH, 'oxygen']].forEach(([id, col, kk]) => {
     const g = h('g', { s: bi(kk), cls: 'rise' }, circ);
     h('line', { x1: KX, x2: KX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
