@@ -118,6 +118,12 @@ describe("base4g against base4f-p123", () => {
       expect(contractSystem(a[k] as string)).toContain(
         "a subtitle line, and a picture if one helps.",
       );
+      // The trimmed "Slide 1 ..." sentence no longer says code fills slide 2; the objectives
+      // layout line still does, so the writer is still told it writes nothing there.
+      expect(out).toContain("Slide 1 is the title and slide 2 the objectives.");
+      expect(out).toContain(
+        "- objectives: slide 2, its own field before slides: code fills it from the approved objectives, so it has nothing to write.",
+      );
     }
   });
 
