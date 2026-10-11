@@ -137,25 +137,6 @@ describe.each(LESSONS)("replay %s", (b) => {
         kind: kind as never,
         background: want.background as never,
       });
-      // Ruling 203, P9 (TEACH-75 part g): 3 to 5 steps with no figure are a numbered process line.
-      // Same heading, same steps in order, every word kept (a label is the words before its colon).
-      if (got.some((e) => e.name === "Process line")) {
-        const words = (els: El[], names: string[]) =>
-          els
-            .filter((e) => names.includes(String(e.name)))
-            .flatMap((e) =>
-              [...JSON.stringify(e.doc).matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]),
-            )
-            .join(" ")
-            .replace(/[:\s]+/g, " ")
-            .trim();
-        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
-        expect({ i, steps: words(got, ["Step label", "Item"]) }).toEqual({
-          i,
-          steps: words(want.elements, ["Item"]),
-        });
-        return;
-      }
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =

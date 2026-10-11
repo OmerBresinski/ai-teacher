@@ -234,6 +234,8 @@ export type Ctx = {
   pictureBand?: boolean;
   /** `LayoutOptions.optionColours` (UX ruling 203). */
   optionColours?: boolean;
+  /** `LayoutOptions.processLine` (UX ruling 203). */
+  processLine?: boolean;
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1428,6 +1430,8 @@ export type LayoutOptions = {
   pictureBand?: boolean;
   /** A colour per hinge option disc (P8). Off by default: old lessons and the default writer render as before. */
   optionColours?: boolean;
+  /** Steps as a numbered process line (P9). Off by default: old lessons and the default writer render as before. */
+  processLine?: boolean;
 };
 
 /**
@@ -1532,6 +1536,7 @@ function layoutOnce(
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
     ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(opts.optionColours ? { optionColours: true } : {}),
+    ...(opts.processLine ? { processLine: true } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1998,7 +2003,7 @@ function layoutOnce(
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
         figurePanel(c, input.figure);
-      } else if (!processLine(c, raw)) numbered(c, pts, G.margin, 720, "steps");
+      } else if (!(c.processLine && processLine(c, raw))) numbered(c, pts, G.margin, 720, "steps");
       break;
     case "hinge": {
       heading(c, input.heading);

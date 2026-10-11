@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
+const on = (...a: Parameters<typeof layoutTemplate>) =>
+  layoutTemplate(a[0], a[1], a[2], { ...a[3], processLine: true });
+
 /*
  * UX ruling 203, P9 (TEACH-75 part g): 3 to 5 steps with no figure are a numbered process line,
  * discs on one line, a bold label (the words before a step's first colon) and a centred body.
@@ -24,7 +27,7 @@ describe("steps as a process line", () => {
     for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
       for (const theme of THEMES)
         for (const n of [3, 4, 5]) {
-          const r = layoutTemplate(steps(n), theme, stage);
+          const r = on(steps(n), theme, stage);
           const els = r.slide.elements as El[];
           expect({ stage, theme: theme.id, n, over: r.over }).toEqual({
             stage,
@@ -47,9 +50,7 @@ describe("steps as a process line", () => {
   test("2 steps, a figure, or steps too long for a column stay the numbered list", () => {
     const theme = THEMES[0] as (typeof THEMES)[number];
     const has = (input: TemplateInput) =>
-      (layoutTemplate(input, theme, "ks2").slide.elements as El[]).some(
-        (e) => e.name === "Process line",
-      );
+      (on(input, theme, "ks2").slide.elements as El[]).some((e) => e.name === "Process line");
     expect(has(steps(2))).toBe(false);
     expect(has(steps(4, true))).toBe(false);
     expect(
@@ -61,7 +62,7 @@ describe("steps as a process line", () => {
   });
 
   test("a step with no colon has no label, only its body", () => {
-    const els = layoutTemplate(
+    const els = on(
       { template: "steps", heading: "Tea", points: ["Boil the water.", "Pour it in.", "Wait."] },
       THEMES[0] as (typeof THEMES)[number],
       "ks2",
@@ -81,8 +82,16 @@ describe("steps as a process line", () => {
         ["a:b", "", " "],
         Array.from({ length: 5 }, () => "x".repeat(200)),
       ]) {
-        const r = layoutTemplate({ template: "steps", heading: "", points }, theme, "ks2");
+        const r = on({ template: "steps", heading: "", points }, theme, "ks2");
         expect(Array.isArray(r.slide.elements)).toBe(true);
+      }
+  });
+
+  test("off by default: steps stay the numbered list on every theme", () => {
+    for (const theme of THEMES)
+      for (const n of [3, 4, 5]) {
+        const els = layoutTemplate(steps(n), theme, "ks2").slide.elements as El[];
+        expect(els.some((e) => e.name === "Process line")).toBe(false);
       }
   });
 });
