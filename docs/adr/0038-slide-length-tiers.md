@@ -37,7 +37,8 @@ say "Slides: 9 to 12", the pinned user turn renders `{{slides.min}} to {{slides.
 ## Consequences
 
 - ADR 0036 §1 now applies only to briefs without a tier. Its count-miss log stays for those.
-- A Detailed lesson on an outline planner is planned at 16 slides, inside 13–20.
+- A Detailed lesson on an outline planner is planned at 16 slides, inside 13–20. (Amended
+  2026-10-11, ruling 204: inside 13–16, the top of the range.)
 
 ## Amendment (2026-10-11)
 
