@@ -294,19 +294,21 @@ function LessonIntake({
     setBusy(true);
     setError("");
     setSignInPrompt("");
+    const worksheet = includeWorksheet ? worksheets[0] : undefined;
     try {
       const result = await confirmLesson(client, lesson.id, {
         expectedRevision: lesson.plan?.revision ?? 0,
         objectives: objectiveEdits(lesson, objectives),
         slideTier,
+        // Ruling 201: no worksheet queued puts the exit ticket on the last slide.
+        worksheet: worksheet !== undefined,
         // Ruling 202: only the teacher's own theme is sent; the planner's pick stands otherwise.
         themeId: startingTheme(last?.themeId),
       });
-      const worksheet = worksheets[0];
       rememberWorksheetIntent(
         client,
         lesson.id,
-        includeWorksheet && worksheet
+        worksheet
           ? {
               recipeId: worksheet.recipe,
               practiceMinutes: Number(worksheet.minutes),

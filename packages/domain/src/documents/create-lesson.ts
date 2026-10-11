@@ -97,6 +97,9 @@ export const GenerateLessonSchema = z.strictObject({
   slideCount: BriefSchema.shape.slideCount,
   slideTier: BriefSchema.shape.slideTier,
   durationMin: DurationMinSchema.optional(),
+  // Ruling 201: whether a worksheet is queued with this confirm; without one the exit ticket
+  // goes on the last slide.
+  worksheet: BriefSchema.shape.worksheet,
   // Ruling 116: the lesson's starting theme (last used, else the class default) travels with the confirm.
   themeId: z.string().optional(),
 });

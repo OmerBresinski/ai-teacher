@@ -151,6 +151,26 @@ describe("confirmLesson (/generate)", () => {
     });
   });
 
+  test("ruling 201: the worksheet choice is stored on the brief and re-plans nothing", () => {
+    const before = planned(2);
+    for (const worksheet of [true, false]) {
+      const { lesson, replan } = confirmLesson(
+        before,
+        { expectedRevision: 2, objectives: sameObjectives(before), worksheet },
+        { jobId, now },
+      );
+      expect(replan).toBe(false);
+      expect(lesson.brief?.worksheet).toBe(worksheet);
+      expect(lesson.plan?.revision).toBe(2);
+    }
+    const untouched = confirmLesson(
+      before,
+      { expectedRevision: 2, objectives: sameObjectives(before) },
+      { jobId, now },
+    );
+    expect(untouched.lesson.brief).toEqual(before.brief);
+  });
+
   test("the same slide count and duration sent back are not a shape change", () => {
     const before = planned();
     const { replan } = confirmLesson(
