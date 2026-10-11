@@ -368,10 +368,6 @@ const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
 const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
 
 /**
- * TEACH-75 part D: the steps a question slide's type may grow by when the band has room, largest
- * first. Body (and with it the badge glyph and the stem) never passes 80% of the heading's size.
- */
-/**
  * The one step a question slide's words may grow to when the band has room: the type scale's heading
  * step, set in the body face (`c.boost`), so it stays on the scale (UX ruling 91) and reads as words,
  * not a heading. The badge glyph grows to body. Undefined when the stage has no larger step.
@@ -985,6 +981,9 @@ function numbered(
   ladder(
     c,
     (r) => {
+      // The step-up is decided on the full-spacing rung only; the tighter rungs lay at body.
+      if (r.space !== 1) c.boost = false;
+      let rowW = base;
       // Practice (TEACH-75 part D): fewer or shorter questions are set a type step larger, as far
       // as the set still fits the band at its tight spacing.
       if (opts.stretch && r.space === 1 && items.length) {
@@ -994,9 +993,9 @@ function numbered(
           const dd = markerDisc(c);
           const ind = dd + Math.round(sc.body * 0.7);
           const p0 = Math.round(sc.body * 0.3);
-          const bH = opts.before ? measure(c, opts.before, "small", w, 600) + 6 : 0;
+          const bH = opts.before ? measure(c, opts.before, "small", wide, 600) + 6 : 0;
           return items.reduce(
-            (a, q) => a + Math.max(dd, measure(c, q, "body", w - ind)) + 2 * p0,
+            (a, q) => a + Math.max(dd, measure(c, q, "body", wide - ind)) + 2 * p0,
             bH,
           );
         };
@@ -1004,12 +1003,12 @@ function numbered(
         c.boost = !!big;
         c.s = big ?? full;
       }
-      w = c.boost ? wide : base;
+      rowW = c.boost ? wide : base;
       const d = markerDisc(c);
       const indent = d + Math.round(c.s.body * 0.7);
-      const hs = items.map((q) => Math.max(d, measure(c, q, "body", w - indent)));
+      const hs = items.map((q) => Math.max(d, measure(c, q, "body", rowW - indent)));
       const before = opts.before;
-      const beforeH = before ? measure(c, before, "small", w, 600) : 0;
+      const beforeH = before ? measure(c, before, "small", rowW, 600) : 0;
       // Grown words start from the tight padding; the stretch below gives the rest of the room back.
       let pad = Math.round(c.s.body * (c.boost ? 0.3 : opts.ruled ? 0.6 : 0.35) * r.space);
       // Practice (TEACH-75 part D): a short set opens its rows up, the same for every row, so the
@@ -1029,7 +1028,7 @@ function numbered(
               c,
               before,
               "small",
-              { x, y, w },
+              { x, y, w: rowW },
               { color: c.t.colors.muted, weight: 600, name: "Instruction" },
             ),
         });
@@ -1038,14 +1037,14 @@ function numbered(
         blocks.push({
           h: h + 2 * pad,
           draw: (y) => {
-            if (opts.ruled && (k > 0 || before)) rule(c, x, y, w);
+            if (opts.ruled && (k > 0 || before)) rule(c, x, y, rowW);
             const top = y + pad;
             disc(c, String(k + 1), x, top + Math.max(0, (c.s.body * LH.body - d) / 2), d);
             text(
               c,
               q,
               "body",
-              { x: x + indent, y: top, w: w - indent },
+              { x: x + indent, y: top, w: rowW - indent },
               { color: c.t.colors.ink, name: "Item" },
             );
           },
@@ -1053,7 +1052,7 @@ function numbered(
       });
       if (opts.after) {
         const after = opts.after;
-        const h = measure(c, after, "small", w - indent);
+        const h = measure(c, after, "small", rowW - indent);
         const gapAbove = Math.round(8 * r.space);
         blocks.push({
           h: h + gapAbove,
@@ -1062,7 +1061,7 @@ function numbered(
               c,
               after,
               "small",
-              { x: x + indent, y: y + gapAbove, w: w - indent },
+              { x: x + indent, y: y + gapAbove, w: rowW - indent },
               { color: c.t.colors.muted, name: "Instruction" },
             ),
         });

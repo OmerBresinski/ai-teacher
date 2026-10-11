@@ -135,10 +135,14 @@ export function OptionView({
           role="img"
           aria-label="Correct answer"
           style={{
+            // On the card's corner, as on template choice cards (SlideView ChoiceMarks, TEACH-75
+            // part D), so a tick never covers an option's words in any mode.
             position: "absolute",
-            right: BADGE_INSET,
-            top: BADGE_INSET,
+            right: -14,
+            top: -14,
             display: "flex",
+            borderRadius: BADGE,
+            boxShadow: `0 0 0 3px ${theme.colors.surface}`,
           }}
         >
           <span

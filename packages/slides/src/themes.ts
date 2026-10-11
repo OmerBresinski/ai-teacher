@@ -360,13 +360,12 @@ export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
   ks4: { body: 25, heading: 1.05, caption: 1 },
   ks5: { body: 25, heading: 1.05, caption: 1 },
 };
-/** bodySmall = body x this: the one step under body. */
 /**
  * bodyLarge = body x this: the one step over body (TEACH-75 part D), for a question slide's options
- * and a short practice set's questions when the band has room (back-of-room test). About 32px at
- * 1440 over KS3 body, 34pt at KS2.
+ * and a short practice set's questions when the band has room (back-of-room test).
  */
 export const BODY_LARGE = 1.18;
+/** bodySmall = body x this: the one step under body. */
 export const BODY_SMALL = 0.85;
 /** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
 const DISPLAY_HEADING = 1.15;

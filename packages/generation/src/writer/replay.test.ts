@@ -151,12 +151,27 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect({ i, words: words(got) }).toEqual({ i, words: words(want.elements) });
         // The lab's run kept an overflowing instruction's first line only (y8 s7's word bank); with
         // the instruction first and the rows opened up it fits whole, so it starts with the lab's.
-        const said = (els: El[]) =>
-          JSON.stringify(els.find((e) => e.name === "Instruction")?.doc ?? "").replace(/"\W*$/, "");
-        expect({ i, starts: said(got).startsWith(said(want.elements).slice(0, -6)) }).toEqual({
+        const said = (els: El[]) => {
+          const d = els.find((e) => e.name === "Instruction")?.doc as
+            | { content?: { content?: { text?: string }[] }[] }
+            | undefined;
+          return (d?.content ?? [])
+            .flatMap((p) => p.content ?? [])
+            .map((t) => t.text ?? "")
+            .join("");
+        };
+        expect({ i, starts: said(got).startsWith(said(want.elements)) }).toEqual({
           i,
           starts: true,
         });
+        // Tolerance, not geometry: the same elements give or take the instruction's one hairline,
+        // and nothing outside the slide.
+        expect({ i, n: Math.abs(got.length - want.elements.length) <= 1 }).toEqual({ i, n: true });
+        for (const el of got)
+          expect({ i, inside: Number(el.y) >= 0 && Number(el.y) + Number(el.h) <= 540 }).toEqual({
+            i,
+            inside: true,
+          });
         for (const el of got) expect({ i, by: el.authoredBy }).toEqual({ i, by: "ai" });
         return;
       }
