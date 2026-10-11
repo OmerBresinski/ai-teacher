@@ -151,6 +151,26 @@ describe("confirmLesson (/generate)", () => {
     });
   });
 
+  test("ruling 201: the worksheet choice is stored on the brief and re-plans nothing", () => {
+    const before = planned(2);
+    for (const worksheet of [true, false]) {
+      const { lesson, replan } = confirmLesson(
+        before,
+        { expectedRevision: 2, objectives: sameObjectives(before), worksheet },
+        { jobId, now },
+      );
+      expect(replan).toBe(false);
+      expect(lesson.brief?.worksheet).toBe(worksheet);
+      expect(lesson.plan?.revision).toBe(2);
+    }
+    const untouched = confirmLesson(
+      before,
+      { expectedRevision: 2, objectives: sameObjectives(before) },
+      { jobId, now },
+    );
+    expect(untouched.lesson.brief).toEqual(before.brief);
+  });
+
   test("the same slide count and duration sent back are not a shape change", () => {
     const before = planned();
     const { replan } = confirmLesson(
@@ -203,6 +223,30 @@ describe("confirmLesson (/generate)", () => {
     expect(lesson.brief).toEqual({ topic: "The water cycle", durationMin: 60, slideCount: 6 });
     expect(lesson.facts).toEqual(pinnedFacts(before.facts));
     expect(lesson.plan?.revision).toBe(2);
+  });
+
+  test("ruling 164: a new tier replaces an older exact count and re-plans pinned", () => {
+    const before = planned();
+    const { lesson, replan } = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), slideTier: "detailed" },
+      { jobId, now },
+    );
+    expect(replan).toBe(true);
+    expect(lesson.brief?.slideTier).toBe("detailed");
+    expect(lesson.brief?.slideCount).toBeUndefined();
+    expect(lesson.plan?.revision).toBe(2);
+  });
+
+  test("ruling 164: the tier an older exact count already stands for keeps the count, no re-plan", () => {
+    const before = planned();
+    const { lesson, replan } = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), slideTier: "standard" },
+      { jobId, now },
+    );
+    expect(replan).toBe(false);
+    expect(lesson.brief).toEqual({ topic: "The water cycle", durationMin: 60, slideCount: 10 });
   });
 
   test("a new slide count with a new duration re-plans, and the facts carry the duration too", () => {

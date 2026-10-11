@@ -13,7 +13,7 @@ import fixture from "../writer/fixtures/activities/y1-animals.json" with { type:
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
 import { writerObjectivesCall } from "./objectives";
-import { stageOf, writerBrief, writtenTitle } from "./write";
+import { stageOf, withQueuedWorksheet, writerBrief, writtenTitle } from "./write";
 
 /*
  * Sixth-form lessons carry `ageBand: "post16"` (`deriveAgeBand`, Years 12–13). The writer used
@@ -52,6 +52,58 @@ describe("the writer's key stage", () => {
   test("a Year 12 lesson's brief is ks5", () => {
     expect(writerBrief(year12()).keyStage).toBe("ks5");
     expect(writerBrief(year12()).year).toBe(12);
+  });
+
+  test("ruling 201: the exit ticket is on the slides unless a worksheet was queued", () => {
+    const withWorksheet = (worksheet: boolean | undefined): Lesson => {
+      const lesson = year12();
+      return { ...lesson, brief: { topic: "Memory", durationMin: 60, worksheet } };
+    };
+    expect(writerBrief(withWorksheet(true)).exitTicketOnSlides).toBe(false);
+    expect(writerBrief(withWorksheet(false)).exitTicketOnSlides).toBe(true);
+    // A lesson confirmed before the field existed had no worksheet queued with it.
+    expect(writerBrief(withWorksheet(undefined)).exitTicketOnSlides).toBe(true);
+  });
+
+  describe("ruling 201: the worksheet flag holds only when its job was created", () => {
+    const asked = (): Lesson => ({
+      ...year12(),
+      brief: { topic: "Memory", durationMin: 60, worksheet: true },
+    });
+    const deps = (queued?: boolean) => {
+      const calls: number[] = [];
+      const d = {
+        logger: pino({ level: "silent" }),
+        ...(queued === undefined
+          ? {}
+          : {
+              worksheetQueued: async () => {
+                calls.push(1);
+                return queued;
+              },
+            }),
+      } as unknown as PipelineDeps;
+      return { d, calls };
+    };
+
+    test("the worksheet request failed: the exit ticket goes on the slides", async () => {
+      const lesson = await withQueuedWorksheet(asked(), deps(false).d);
+      expect(lesson.brief?.worksheet).toBe(false);
+      expect(writerBrief(lesson).exitTicketOnSlides).toBe(true);
+    });
+
+    test("the worksheet job exists: the exit ticket stays on the worksheet", async () => {
+      const lesson = await withQueuedWorksheet(asked(), deps(true).d);
+      expect(lesson.brief?.worksheet).toBe(true);
+      expect(writerBrief(lesson).exitTicketOnSlides).toBe(false);
+    });
+
+    test("no worksheet asked for: nothing is looked up", async () => {
+      const { d, calls } = deps(true);
+      const none = { ...asked(), brief: { topic: "Memory", durationMin: 60, worksheet: false } };
+      expect(await withQueuedWorksheet(none, d)).toBe(none);
+      expect(calls).toEqual([]);
+    });
   });
 });
 

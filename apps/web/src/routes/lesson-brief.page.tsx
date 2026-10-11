@@ -2,10 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CreateLessonSchema,
+  DEFAULT_SLIDE_TIER,
   findNamePatterns,
   GUARD_MESSAGE,
   type Lesson,
+  type SlideTier,
   type SourceRef,
+  slideTierOf,
 } from "@tj/domain/documents";
 import { Button, Spinner } from "@tj/ui";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -105,7 +108,7 @@ function LessonIntake({
   const [blank, setBlank] = useState(false);
   const [step, setStep] = useState<"brief" | "objectives" | "worksheet">("brief");
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
-  const [slideCount, setSlideCount] = useState("8");
+  const [slideTier, setSlideTier] = useState<SlideTier>(DEFAULT_SLIDE_TIER);
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "initial", recipe: "knowledge-check", minutes: "10" },
   ]);
@@ -181,7 +184,7 @@ function LessonIntake({
     });
     setSources(lesson.sources ?? []);
     setObjectives((lesson.facts?.objectives ?? []).map(({ id, text }) => ({ id, text })));
-    setSlideCount(String(lesson.brief?.slideCount ?? 8));
+    setSlideTier(slideTierOf(lesson.brief));
     setStep("objectives");
   }
 
@@ -224,7 +227,7 @@ function LessonIntake({
     setSignInPrompt("");
     try {
       const input = CreateLessonSchema.parse({
-        brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
+        brief: { topic: brief.topic.trim(), level: brief.level, slideTier },
         yearGroup: brief.yearGroup,
         // Rulings 116, 202: no theme question; the teacher's last theme, else the planner picks.
         themeId: startingTheme(last?.themeId),
@@ -291,19 +294,21 @@ function LessonIntake({
     setBusy(true);
     setError("");
     setSignInPrompt("");
+    const worksheet = includeWorksheet ? worksheets[0] : undefined;
     try {
       const result = await confirmLesson(client, lesson.id, {
         expectedRevision: lesson.plan?.revision ?? 0,
         objectives: objectiveEdits(lesson, objectives),
-        slideCount: Number(slideCount) as 6 | 8 | 10 | 12,
+        slideTier,
+        // Ruling 201: no worksheet queued puts the exit ticket on the last slide.
+        worksheet: worksheet !== undefined,
         // Ruling 202: only the teacher's own theme is sent; the planner's pick stands otherwise.
         themeId: startingTheme(last?.themeId),
       });
-      const worksheet = worksheets[0];
       rememberWorksheetIntent(
         client,
         lesson.id,
-        includeWorksheet && worksheet
+        worksheet
           ? {
               recipeId: worksheet.recipe,
               practiceMinutes: Number(worksheet.minutes),
@@ -460,8 +465,8 @@ function LessonIntake({
                 brief={brief}
                 objectives={objectives}
                 onChange={setObjectives}
-                slideCount={slideCount}
-                onSlideCount={setSlideCount}
+                slideTier={slideTier}
+                onSlideTier={setSlideTier}
                 duration=""
                 onDuration={() => {}}
                 onBack={() => setStep("brief")}

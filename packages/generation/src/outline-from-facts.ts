@@ -1,9 +1,4 @@
-import type {
-  CalloutKind,
-  GeneratableSlideKind,
-  LessonPhase,
-  SlideCount,
-} from "@tj/domain/documents";
+import type { CalloutKind, GeneratableSlideKind, LessonPhase } from "@tj/domain/documents";
 import { asksForUnlistedOptions, QUESTION_TIERS } from "@tj/domain/documents";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
 import {
@@ -115,7 +110,8 @@ export type OutlineFromFactsInput = {
   objectives: { text: string }[];
   facts: OutlineFacts;
   shape: LessonShape;
-  slideCount: SlideCount;
+  /** The deck length to plan, title and objectives included (a tier's planner count). */
+  slideCount: number;
   /** The brief's class-context prior knowledge, when the teacher gave it: what the starter retrieves. */
   priorKnowledge?: string | undefined;
   /**

@@ -1,10 +1,13 @@
 import {
   type AgeBand,
+  DEFAULT_SLIDE_TIER,
   deriveAgeBand,
   LESSON_TITLE_MAX,
   type Lesson,
+  SLIDE_TIER_RANGES,
   type Slide,
   type SlideGenerationState,
+  type SlideTier,
 } from "@tj/domain/documents";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
@@ -31,13 +34,21 @@ import { createProgressiveDeck } from "./progressive";
  */
 
 /**
- * The teacher's slide count, exactly, counting the title and objectives slides (ADR 0036; it
- * replaces ruling 164's tiers for the writer, which turned 10 into 9–12). No count keeps the
- * Standard range; a count is held to 6–20.
+ * The slides the writer may write, title and objectives included. A tier (ruling 164) gives its
+ * range and the writer picks the count inside it; the schema holds it there. A lesson made before
+ * tiers keeps its exact count (ADR 0036), held to Quick's minimum and Detailed's maximum (6–16). Neither keeps the Standard range.
  */
-export function slideRange(slideCount: number | undefined): { min: number; max: number } {
-  if (slideCount === undefined || !Number.isFinite(slideCount)) return { min: 9, max: 12 };
-  const n = Math.min(20, Math.max(6, Math.round(slideCount)));
+export function slideRange(
+  brief: { slideTier?: SlideTier | undefined; slideCount?: number | undefined } | undefined,
+): { min: number; max: number } {
+  if (brief?.slideTier) return { ...SLIDE_TIER_RANGES[brief.slideTier] };
+  const slideCount = brief?.slideCount;
+  if (slideCount === undefined || !Number.isFinite(slideCount))
+    return { ...SLIDE_TIER_RANGES[DEFAULT_SLIDE_TIER] };
+  const n = Math.min(
+    SLIDE_TIER_RANGES.detailed.max,
+    Math.max(SLIDE_TIER_RANGES.quick.min, Math.round(slideCount)),
+  );
   return { min: n, max: n };
 }
 
@@ -85,11 +96,11 @@ export function writerBrief(lesson: Lesson): Brief {
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
     language: lesson.language ?? "en-GB",
     durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
-    // The writer reads the flag through its user turn (rulings 141, 148); the API never sets it,
-    // so the exit ticket stays on the worksheet.
-    exitTicketOnSlides: false,
+    // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
+    // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
+    exitTicketOnSlides: b?.worksheet !== true,
     tier: "standard",
-    slides: slideRange(b?.slideCount),
+    slides: slideRange(b),
   };
 }
 
@@ -149,8 +160,26 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
   return fromBrief && next ? next : lesson.title;
 }
 
+/**
+ * Ruling 201: a brief that asked for a worksheet keeps the exit ticket off the slides only when a
+ * worksheet job was actually created (`deps.worksheetQueued`). A request that failed, or never
+ * came, leaves `worksheet: false`, so the exit ticket goes on the last slide and no slide points
+ * at a worksheet that does not exist.
+ */
+export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): Promise<Lesson> {
+  const brief = lesson.brief;
+  if (brief?.worksheet !== true || deps.worksheetQueued === undefined) return lesson;
+  const queued = await deps.worksheetQueued();
+  if (queued) return lesson;
+  deps.logger.info(
+    { stage: "write" },
+    "worksheet asked for but not queued: exit ticket on the slides",
+  );
+  return { ...lesson, brief: { ...brief, worksheet: false } };
+}
+
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
-  const lesson = state.lesson;
+  const lesson = await withQueuedWorksheet(state.lesson, deps);
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
   const toLesson = (
     slides: { id: string; notes?: string }[],
@@ -228,6 +257,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
   // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
   const images = deps.images as DirectedPlacer | undefined;
+  /** The stage's re-lay for a slide whose picture just landed (`bindPictureLanded`). */
+  let landed: ((index: number) => void) | undefined;
   const pictures = images
     ? createWriterPictures({
         lesson,
@@ -243,6 +274,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         draws: true,
         onOutcome: (key, o) =>
           deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
+        // Live writing P2 (TEACH-202 part e): a picture placed while the words stream re-lays its
+        // slide, which the next progressive save carries.
+        onPlaced: (index) => landed?.(index),
       })
     : undefined;
   const credited = <T extends { elements: unknown[] }>(slides: T[]) =>
@@ -328,6 +362,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
+      bindPictureLanded: (fn) => {
+        landed = fn;
+      },
       signal: failed.signal,
       // C5: a lesson's picture sets share one look, from the writer's picture style.
       onDesign: (design) => pictures?.lookForSets(setLookOf(design)),
