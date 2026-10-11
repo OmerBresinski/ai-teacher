@@ -48,6 +48,7 @@ type Config = {
   teachingKindsExcluded: string[];
   ignoreNetwork: string[];
   workerEnv: Record<string, string>;
+  apiEnv?: Record<string, string>;
   thresholds: Record<string, number | boolean>;
   briefs: Brief[];
 };
@@ -114,6 +115,7 @@ const stack = await startStack({
   paid,
   fake,
   workerEnv: config.workerEnv,
+  apiEnv: config.apiEnv,
   openaiKey,
   pexelsKey,
   imageCapUsd: config.ceilingPerLessonUsd.images * lessons,
