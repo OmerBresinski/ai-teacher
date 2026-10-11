@@ -161,6 +161,7 @@ export async function replayRun(
       | "onDraft"
       | "draft"
       | "bindPictureLanded"
+      | "slotFill"
     >;
     /** Called when the streamed text has all been handed over, before the writer call returns. */
     onStreamEnd?: () => void;

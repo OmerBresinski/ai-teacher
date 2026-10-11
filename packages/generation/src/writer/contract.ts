@@ -53,19 +53,30 @@ export function drawerLimits() {
 }
 
 /** The menu lines for the freeform kinds, from the drawer's limits (`Diagram kinds:` block). */
-export function freeformMenuLines(): { labelled: string; particles: string } {
+export function freeformMenuLines(): {
+  labelled: string;
+  labelledRoute: string;
+  particles: string;
+} {
   const L = drawerLimits();
   const p = L.particles;
   return {
     labelled: `- labelled-diagram: a simple drawing of one thing with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}.`,
+    labelledRoute: `- labelled-diagram: a drawing of one object with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}; ${LABELLED_ROUTE}.`,
     particles: `- particles: up to ${p.panels} panels of atoms or molecules, at least ${p.perPanel} particles in each, for states of matter, diffusion, dissolving, or how temperature, concentration or pressure changes how particles move and collide; ${LIMIT_TEXT.particles}, and no arrows between panels that compare. Organisms, populations and variants are never particles: compare them with bar-chart, table or the compare layout.`,
   };
 }
+
+/** base4g's anatomy routing on the labelled-diagram line (t-anatomy PROPOSAL.md, option C). */
+const LABELLED_ROUTE =
+  "a route or process is a flow or cycle, and a structure hidden inside or too small to see is a picture";
 
 /** The pinned lines the contract replaces, exactly as every bundle's system text holds them. */
 export const PINNED_LINES = {
   labelled:
     "- labelled-diagram: a simple drawing of one thing with up to 8 parts labelled, each label up to 4 words.",
+  /** base4g and later: the labelled line with the anatomy routing, in place of `labelled`. */
+  labelledRoute: `- labelled-diagram: a drawing of one object with up to 8 parts labelled, each label up to 4 words; ${LABELLED_ROUTE}.`,
   particles:
     "- particles: up to 3 particle panels, each with a note of up to 4 words, for states of matter, diffusion, dissolving, comparing conditions or collisions.",
   count:
@@ -86,7 +97,9 @@ export function contractSystem(text: string): string {
     if (!t.includes(from)) throw new Error(`writer contract: pinned line not found: ${from}`);
     return t.split(from).join(to);
   };
-  let t = swap(text, PINNED_LINES.labelled, lines.labelled);
+  let t = text.includes(PINNED_LINES.labelledRoute)
+    ? swap(text, PINNED_LINES.labelledRoute, lines.labelledRoute)
+    : swap(text, PINNED_LINES.labelled, lines.labelled);
   t = swap(t, PINNED_LINES.particles, lines.particles);
   return swap(t, PINNED_LINES.count, COUNT_LINE);
 }
