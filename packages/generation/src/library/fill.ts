@@ -337,6 +337,31 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
 }
 
 /** The label floor's draws after the first, and the most the type may grow (flag `libraryLabelFloor`). */
+/**
+ * With checks only logged, why a grown drawing is too big to keep, or undefined. Growing the type
+ * is how a drawing reads at slide size, not a check: a size that will not draw, whose words split
+ * mid-word or are cut short (HEART1 D: the R1 heart's key split "Oxygen-ric / h"), or whose
+ * smallest words come out no larger (some models fit their words to their room) is too big.
+ */
+function floorTooBig(
+  grown: { svg: string } | string,
+  baseSvg: string,
+  place: { w: number; h: number },
+  minPt: number,
+): string | undefined {
+  if (typeof grown === "string") return `it did not draw at the label floor: ${grown}`;
+  const broken = nonFatalSync(
+    () => grownTextFault(baseSvg, grown.svg),
+    (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
+  );
+  if (broken) return broken;
+  const pt = nonFatalSync(
+    () => placedTypeSize(grown.svg, place).minPt,
+    () => 0,
+  );
+  return (pt ?? 0) <= minPt + 0.01 ? "its smallest words came out no larger" : undefined;
+}
+
 const LABEL_FLOOR_TRIES = 3;
 export const LABEL_FLOOR_MAX = 2;
 
@@ -430,24 +455,48 @@ export async function libraryDiagram(
     const place = ask.place;
     const offBefore = new Set(full.offSlide);
     const baseSvg = full.svg;
-    for (let i = 0; i < LABEL_FLOOR_TRIES; i++) {
+    // The type scale `full` was drawn at, and the smallest scale found too big to draw cleanly.
+    let keptScale = 1;
+    let tooBig = Number.POSITIVE_INFINITY;
+    // With checks only logged, a size that breaks the words is backed off from (a few more tries to
+    // find the largest clean size); with checks on, it is drawn and the checks below fall back.
+    const tries = ask.logOnly ? LABEL_FLOOR_TRIES + 3 : LABEL_FLOOR_TRIES;
+    for (let i = 0; i < tries; i++) {
       const svg = full.svg;
       const t = nonFatalSync(
         () => placedTypeSize(svg, place),
         () => undefined,
       );
       if (!t || t.minPt >= TYPE_FLOOR - 0.01) break;
-      typeScale = Math.min(LABEL_FLOOR_MAX, typeScale * (TYPE_FLOOR / t.minPt) * 1.02);
-      const ts = typeScale;
+      const want = Math.min(LABEL_FLOOR_MAX, keptScale * (TYPE_FLOOR / t.minPt) * 1.02);
+      // Past a size whose words broke, try halfway between the last clean size and it.
+      const ts = want < tooBig ? want : (keptScale + tooBig) / 2;
+      if (ts - keptScale < 0.02) break;
       const grown = await nonFatal(
         () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
         (e) => String(e).slice(0, 160),
       );
-      if (typeof grown === "string")
+      // Two strategies. Checks on: a grown size is drawn and the checks below fall back. Checks only
+      // logged: a size `floorTooBig` rejects is backed off from, keeping the largest clean size.
+      if (!ask.logOnly && typeof grown === "string")
         return fallback(`it did not draw at the label floor: ${grown}`);
+      const why = ask.logOnly ? floorTooBig(grown, baseSvg, place, t.minPt) : undefined;
+      if (why || typeof grown === "string") {
+        log({
+          ev: "lib-label-floor-too-big",
+          key: ask.key,
+          model: ask.model,
+          typeScale: ts,
+          reason: why,
+        });
+        tooBig = ts;
+        continue;
+      }
       full = grown;
+      keptScale = ts;
       if (ts >= LABEL_FLOOR_MAX) break;
     }
+    typeScale = keptScale;
     log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
     if (typeScale !== 1) {
       const grownSvg = full.svg;

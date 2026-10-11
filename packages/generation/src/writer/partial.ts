@@ -33,6 +33,19 @@ export class PartialJson {
     return this.buf;
   }
 
+  /**
+   * The value still open at stack depth `depth` (0 is the root), with its path and where its text
+   * starts in `text` (live writing P4: the open slide's draft is peeked from there). Read-only: it
+   * changes nothing the scanner does or emits.
+   */
+  frameAt(depth: number): { path: Path; start: number; kind: "obj" | "arr" } | undefined {
+    const f = this.stack[depth];
+    if (!f || depth < 1) return undefined;
+    const path = this.pathOf(depth + 1);
+    if (path.some((p) => p === undefined)) return undefined;
+    return { path, start: f.start, kind: f.kind };
+  }
+
   private pathOf(depth: number): Path {
     // The path of a value that sits inside stack[depth - 1].
     const out: Path = [];

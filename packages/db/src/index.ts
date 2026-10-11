@@ -2,6 +2,20 @@
  * `@tj/db` — Drizzle schema, migrations and the `forWorkspace()` tenancy helper (ADR 0006, 0007,
  * 0012). Subpaths: `@tj/db/tenant`, `@tj/db/schema`, `@tj/db/testing`.
  */
+
+export {
+  type BankImageRow,
+  bankImageIdsIn,
+  copyBankImage,
+  deleteBankImage,
+  insertBankImage,
+  listBankImages,
+  type NewBankImage,
+  nearestBankImages,
+  readyBankImages,
+  rejectBankImage,
+  touchBankImage,
+} from "./bank";
 export {
   type CreateDbOptions,
   createDb,
