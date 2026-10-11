@@ -145,11 +145,16 @@ describe("director fixtures", () => {
 describe("v12: the pupils' age", () => {
   test("code puts the age beside the year group; no age when the year group is not one", async () => {
     const { pupilAge } = await import("./picture-director");
-    expect(pupilAge("Year 6")).toBe("10 to 11");
-    expect(pupilAge("year 13")).toBe("17 to 18");
     expect(pupilAge("Reception")).toBe("4 to 5");
-    expect(pupilAge("KS3")).toBeNull();
-    expect(pupilAge("")).toBeNull();
+    for (let n = 1; n <= 13; n++) {
+      const age = `${n + 4} to ${n + 5}`;
+      for (const g of [`Year ${n}`, `Y${n}`, `year ${n}`, `${n}`]) expect(pupilAge(g)).toBe(age);
+    }
+    expect(pupilAge("Years 5-6")).toBe("9 to 11");
+    expect(pupilAge("Y5/6")).toBe("9 to 11");
+    expect(pupilAge("KS3")).toBe("11 to 14");
+    for (const none of ["Year 0", "Year 14", "EYFS", "Mixed", ""])
+      expect(pupilAge(none)).toBeNull();
     expect(pictureDirectorPrompt({ ...input, yearGroup: "Year 6" }).user).toContain(
       "Lesson: Year 6 (age 10 to 11) ",
     );

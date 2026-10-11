@@ -15,7 +15,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 describe("picture prompt pins", () => {
   test("the batched director prompt is the pinned file, byte for byte", () => {
     expect(sha(PICTURE_DIRECTOR_BATCH_SYSTEM)).toBe(
-      "db7899ca3f53eceabc03864aff383717a0015335deff79cec87c8a387e548f08",
+      "30be0019783de5af1db4a1a64cb9c7ae0bd38649338f0e6bb7d703b4070bc527",
     );
   });
 
@@ -32,50 +32,26 @@ describe("picture prompt pins", () => {
 });
 
 /**
- * v12 (heart R3, UX rulings on picture age): a child in the picture is the pupils' age (the lesson
- * line now carries it), with trims so the prompt is no longer than v11. The batch prompt shares them.
+ * v12 (heart R3; production scope is these lines only): a child in the picture is the pupils' age
+ * (the lesson line carries it), and the subject sits whole inside the frame with a margin
+ * (TEACH-251 part f: an arm ran off the edge), large rather than frame-filling. The batch shares them.
  */
 const DIRECTOR_EDITS: [string, string][] = [
   [
-    "In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph.",
-    "In a photo lesson it is one realistic photograph, living subjects natural and unposed.",
-  ],
-  [
-    "are the same breed or variety with the same colouring, both whole and neither crowding the other out.",
-    "are the same breed or variety and colouring, both whole and neither crowding the other out. A child in it is the pupils' age, in years, unless the slide is about another age.",
-  ],
-  [
-    "it shows the real thing as it truly looks or looked.",
-    "it shows the real thing as it looks or looked.",
-  ],
-  [
-    "since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out.",
-    "since the image model draws every object named, and describe what is there, not what to leave out.",
-  ],
-  [
-    "Code adds the rules about text and a single frame.",
-    "Code adds the text and single-frame rules.",
-  ],
-  ["on a plain, uncluttered background", "on a plain background"],
-  ["and a generated one is only the fallback.", "and generation is the fallback."],
-  [
-    "a painted educational illustration of the scene, never a photograph.",
-    "a painted educational illustration, never a photograph.",
-  ],
-  // TEACH-251 part f: the subject sits whole inside the frame (heart R3 s8: an arm ran off the
-  // edge); "filling the frame" had pushed subjects to the edges, so they are large instead.
-  [
-    "one subject, or the few the slide needs, filling the frame on a plain background rather than a busy scene;",
-    "one subject, or the few the slide needs, large on a plain background;",
+    "both whole and neither crowding the other out.",
+    "both whole and neither crowding the other out. A child in it is the pupils' age, in years, unless the slide is about another age.",
   ],
   [
     "Frame it for the zone's shape.",
     "Frame it for the zone's shape, the subject whole inside the frame with a margin.",
   ],
-  ["unless the slide is about how it is used.", "unless the slide is about using it."],
+  [
+    "the few the slide needs, filling the frame on a plain",
+    "the few the slide needs, large on a plain",
+  ],
 ];
 
-const DIRECTOR_SYSTEM_SHA = "fb1b8240cb4b93b0a5a1c5e131c528dcc53ba4087fd4d4df7f1a6d8fda9a0396";
+const DIRECTOR_SYSTEM_SHA = "e6006c679ac6f6f881bdc4bf5fe7280c626f46d502509a51e1e6192c0e1f70c3";
 const JUDGE_SYSTEM_SHA = "b56d123687d97c8572a236402effe13d0e7b446ddcf25b9f2b4b30e2bc0cd395";
 
 /**
@@ -107,7 +83,6 @@ describe("base4 lab pins (not circular)", () => {
     expect(system).toBe(edited(read("picture-director.v11.system.txt")));
     expect(pickOrRequeryPrompt.system).toBe(read("pick-or-requery-photo.v17.system.txt"));
     expect(PICTURE_DIRECTOR_BATCH_SYSTEM).toBe(edited(read("director-batch.base4.txt")));
-    expect(system.length).toBeLessThan(read("picture-director.v11.system.txt").length);
   });
 
   test("the lab sources are the versions pinned", () => {

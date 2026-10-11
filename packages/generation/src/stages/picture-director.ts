@@ -17,6 +17,7 @@ import {
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
+import { PICTURE_DIRECTOR_BATCH_VERSION } from "../prompts/picture-director-batch";
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
@@ -119,7 +120,7 @@ export async function directPictures(
         stage: "illustrate",
         cls: "small",
         effort: "low",
-        prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+        prompt: { version: PICTURE_DIRECTOR_BATCH_VERSION, system, user: () => user },
         input: slots,
         schema: PictureDirectorBatchSchema,
         maxOutputTokens: 3000 * Math.min(slots.length, 6),
@@ -309,7 +310,7 @@ export const ILLUSTRATION_LINE =
  * subject large and whole within the frame, not frame-filling (heart R3 s8: an arm ran off the edge).
  */
 export const HOUSE_PHOTO_LINE =
-  "A natural-light photograph taken at eye level: the subject sharp, large and whole within the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object.";
+  "A natural-light photograph taken at eye level: the subject sharp, large and whole within the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object. Uncluttered.";
 
 /** True when generic pictures of this look are generated in the house photo look. */
 export function housePhoto(look?: LessonLook): boolean {
