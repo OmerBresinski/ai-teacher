@@ -6,9 +6,9 @@
     "T/schema.KS1.json": "8e7d6adafae974d967bc873476784dea73515056bae3edd601ecc3555826dc91",
     "T/schema.KS2.json": "9b864598e93d28ab21c1e3be45e376b1b6ebd3bccd8240cf658cb60645a1d53f",
     "T/schema.KS3-5.json": "183639060d3fa5b8a763019d7cffadd1010ef8a6bdfdc6b382995d08ec1e8b66",
-    "T/system.KS1.txt": "c93b4691873b1d7551c518424f2b5c4e9a6952c226ac3b78c9e2502eb9e8689b",
-    "T/system.KS2.txt": "ee4bc1c96a9c4b37c874c2cc635e742b5bfc928d63a971fa233aab2388c269e7",
-    "T/system.KS3-5.txt": "b577b9643c36beafc6bd66789881fb52ee75712bc1729b145d58f6f2ed30326f",
+    "T/system.KS1.txt": "fb98f4be012c58938967409f8ef2ab14ca9a544450939162f0a5867035df7f9a",
+    "T/system.KS2.txt": "23463c948b6dacd594bfc577922b420ca6142dd9ce9a20a48264da5cc06422f4",
+    "T/system.KS3-5.txt": "5ca6be4d5fd81dce13db0747d941b35bb8ae001129992dae931886c6f466deaf",
     "shared/base-visuals.KS1.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
     "shared/base-visuals.KS2.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
     "shared/base-visuals.KS3-5.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
@@ -28,6 +28,6 @@
     "shared/restage.txt": "ed93563626de975edcbbfa86fda2339d3e07057698d9ddfc98d301a187378ce0",
     "shared/user.txt": "e980669337ec97382122070fee72c60693a15d897ac435022d3110238d759696"
   },
-  "sourceSha256": "11231d27b46ba0ef76c14e46a1c97db6cdb37adab9237fab759944bc4041a049",
+  "sourceSha256": "23b881af55df2ac4c19c876ce3040168146f43acc4458a946d806626971339a3",
   "source": "bundles/base4g/prompts.gen.ts: base4f-p123 plus the line edits in base4g.test.ts; the slot-fill wording slot-fill.ts adds ran in lab/slotfill round 2 (3a26ce97), this bundle has not run yet"
 }

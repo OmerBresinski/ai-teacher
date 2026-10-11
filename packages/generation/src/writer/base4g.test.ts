@@ -34,6 +34,15 @@ const SYSTEM_EDITS: [string, string][] = [
     "- photo: real photographs of what a camera can show.\n- illustration: painted pictures, for stories, imagined scenes and things hidden inside or too small to see.\n",
   ],
   [PINNED_LINES.labelled, PINNED_LINES.labelledRoute],
+  // HEART1 R3 (c, e): the title picture shows the topic in colour; the objectives restatement goes.
+  [
+    "Slide 1 is the title and slide 2 is the objectives, which code fills from the approved objectives.",
+    "Slide 1 is the title and slide 2 the objectives.",
+  ],
+  [
+    "a subtitle line, and a picture if one helps.",
+    "a subtitle line, and a colour picture of what the title names, not a scene from the subtitle.",
+  ],
 ];
 
 describe("base4g against base4f-p123", () => {
@@ -89,7 +98,25 @@ describe("base4g against base4f-p123", () => {
       const out = contractSystem(g[k] as string);
       expect(out).not.toContain(PINNED_LINES.labelledRoute);
       expect(out).toMatch(
-        /- labelled-diagram: a drawing of one object with up to \d+ parts labelled, [^\n]*; a route or process is a flow or cycle, and a structure hidden inside or too small to see is a picture\.\n/,
+        /- labelled-diagram: a drawing of one object with up to \d+ parts labelled, [^\n]*; a structure hidden inside or too small to see, or a route through it, is a picture\.\n/,
+      );
+    }
+  });
+
+  test("HEART1 R3: a route through a body goes to a picture, not the drawer's flow or cycle", () => {
+    // R3 s5 drew a blood route as a labelled-diagram, and the old clause sent routes to flow or
+    // cycle, both drawn free-hand. Only the labelled line changes; flow and cycle keep their lines.
+    for (const k of SYSTEMS) {
+      const out = contractSystem(g[k] as string);
+      expect(out).not.toContain("a route or process is a flow or cycle");
+      expect(out).toContain("or a route through it, is a picture.");
+      expect(out).toContain("- flow: boxes joined by arrows");
+      expect(out).toContain("- cycle: stages that loop back to the start.");
+      expect(out).toContain(
+        "a colour picture of what the title names, not a scene from the subtitle.",
+      );
+      expect(contractSystem(a[k] as string)).toContain(
+        "a subtitle line, and a picture if one helps.",
       );
     }
   });
