@@ -9,7 +9,7 @@ import {
 import { bodyOutline, organ } from '../kit/batch-D.js';
 
 export const meta = {
-  id: 'heart_circulation', name: 'Heart, blood and exercise', kind: 'scene', version: 1,
+  id: 'heart_circulation', name: 'Heart, blood and exercise', kind: 'scene', version: 2,
   subjects: ['Science', 'PE'],
   years: ['Y2', 'Y6'],
   teaches: 'The heart pumps blood round the body in vessels, to the lungs for oxygen and out to the body, and beats faster when we exercise.',
@@ -43,7 +43,7 @@ export const params = {
     showBody: { type: 'boolean', title: 'Show where the heart is in the body', default: true, 'x-panel': 'advanced' },
     // names on the slide are labels (40 letters); the body card holds a short phrase (60)
     text: TEXT_PARAM_FOR(Object.assign({ body: 'phrase' }, Object.fromEntries(
-      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'pulse', 'rest', 'running', 'carries']
+      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'used', 'pulse', 'rest', 'running', 'carries']
         .concat(CARRY.map(c => 'carry-' + c)).map(id => [id, 'label'])))),
   },
 };
@@ -73,8 +73,8 @@ function model(P) {
   return { dbl, run, pulse, carries, rest, active, names: P.vesselNames !== false, L };
 }
 const DEF = {
-  heart: 'Heart', lungs: 'Lungs', body: 'The rest of the body', artery: 'Artery', vein: 'Vein', 'artery-lungs': 'Artery', 'vein-lungs': 'Vein',
-  rich: 'Oxygen-rich blood', poor: 'Oxygen-poor blood', o2in: 'Oxygen in', co2out: 'Carbon dioxide out',
+  heart: 'Heart', lungs: 'Lungs', body: 'The rest of the body', artery: 'Artery', vein: 'Vein', 'artery-lungs': 'Artery to lungs', 'vein-lungs': 'Vein from lungs',
+  rich: 'Oxygen-rich blood', poor: 'Oxygen-poor blood', o2in: 'Oxygen in', co2out: 'Carbon dioxide out', used: 'Oxygen used',
   pulse: 'Beats a minute', rest: 'At rest', running: 'Running', carries: 'Blood carries',
 };
 const listWords = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
@@ -102,16 +102,18 @@ function plan(P) {
   const art = M.names ? ' in arteries' : '', vn = M.names ? ' in veins' : '';
   S.push({ key: 'heart', caption: 'Your heart is a muscle in your chest. It pumps blood all the way round your body.',
     note: 'Ask pupils to put a hand on the middle of their chest, a little to the left. The heart is about the size of their fist.' });
-  S.push({ key: 'out', caption: `Blood leaves the heart${art} and carries oxygen out to every part of the body.`,
-    note: M.names ? 'Arteries always carry blood away from the heart. A way to remember it: A for artery, A for away.' : 'Blood travels in tubes called blood vessels. It never leaves them.' });
-  S.push({ key: 'back', caption: `The body uses up the oxygen. Oxygen-poor blood comes back to the heart${vn}.`,
-    note: (M.names ? 'Veins carry blood back to the heart. ' : '') + 'Oxygen-poor blood is dark red, not blue. Veins only look blue through the skin. The colours here are a key, not real colours.' });
+  // version 2: the double loop follows one drop of blood in journey order, lungs first, so blood is
+  // never shown leaving for the body "oxygen-rich" before it has been to the lungs
   if (M.dbl) {
-    S.push({ key: 'lungs', caption: `The heart pumps the oxygen-poor blood to the lungs${art ? ', in an artery' : ''}.`,
+    S.push({ key: 'lungs', caption: `One side of the heart pumps oxygen-poor blood to the lungs${art ? ', in an artery' : ''}.`,
       note: 'The heart is two pumps side by side: one side sends blood to the lungs, the other to the body. The two sides never mix.' });
-    S.push({ key: 'oxygen', caption: 'In the lungs, blood picks up oxygen and gets rid of carbon dioxide.',
+    S.push({ key: 'oxygen', caption: `In the lungs, blood picks up oxygen and gets rid of carbon dioxide. It flows back to the heart${M.names ? ' in a vein' : ''}.`,
       note: 'We breathe in air with oxygen and breathe out carbon dioxide. Blood goes through the heart twice on every trip round the body.' });
   }
+  S.push({ key: 'out', caption: M.dbl ? `The other side of the heart pumps the oxygen-rich blood out to the body${art}.` : `Blood leaves the heart${art} and carries oxygen out to every part of the body.`,
+    note: M.names ? 'Arteries always carry blood away from the heart. A way to remember it: A for artery, A for away.' : 'Blood travels in tubes called blood vessels. It never leaves them.' });
+  S.push({ key: 'back', caption: `Cells all over the body use up the oxygen. Oxygen-poor blood comes back to the heart${vn}.`,
+    note: (M.names ? 'Veins carry blood back to the heart. ' : '') + 'Oxygen-poor blood is dark red, not blue. Veins only look blue through the skin. The colours here are a key, not real colours.' });
   if (M.carries.length) S.push({ key: 'carries', caption: `Blood carries ${listWords(M.carries.map(k => CARRY_LOWER[k]))} round the body.`,
     note: 'Food (nutrients) is taken into the blood from the gut, and water too. Carbon dioxide is a waste gas taken back to the lungs.' });
   if (M.pulse) S.push({ key: 'pulse', caption: `Each squeeze of the heart is a beat, felt as your pulse: about ${M.rest} a minute at rest.`,
@@ -166,13 +168,6 @@ export function render(root, P, ctx) {
   const vc = HX - 10.5 * k, pa = HX - 3 * k, pv = HX + 4.5 * k, ao = HX + 12 * k;
   const LXL = HX - 120, LXR = HX + 120, LB = LY + 60;
 
-  /* where the heart is: a small figure, first build only */
-  if (P.showBody !== false) {
-    const fig = h('g', { s: bi('heart'), hide: bi('heart') + 1, cls: 'rise' }, g0);
-    const body = bodyOutline(fig, { age: 'child', x: COLX + COLW / 2, top: 150, height: 420 });
-    organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
-  }
-
   /* the body: where blood delivers oxygen (flat card, plain outline) */
   const bodyG = h('g', { s: bi('out'), cls: 'rise' }, g0);
   const tmp = h('g', {}, g0); const one = textBlock(tmp, 0, 0, M.L('body'), { cls: 'ts-label', maxW: BODY.w - 40, maxLines: 1 }); tmp.remove();
@@ -180,6 +175,9 @@ export function render(root, P, ctx) {
   const BY = BODY.y, nb = bo.maxLines === 1 ? 1 : 2, bh = nb === 1 ? BODY.h : 2 * 26 + 20;
   h('rect', { x: BODY.x, y: BY, width: BODY.w, height: bh, rx: 'var(--r-mark)', fill: 'var(--paper)', stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)' }, bodyG);
   tb(bodyG, BODY.x + BODY.w / 2, nb === 1 ? BY + BODY.h / 2 + 10 : BY + 33, M.L('body'), Object.assign({ maxW: BODY.w - 40, anchor: 'middle', a: { fill: 'var(--ink)' }, edit: 'text.label:body' }, bo));
+
+  // version 2: where the body's cells use the oxygen (the colour change happens here), its own build
+  phased('back', OR - 26, BY - 14, M.L('used'), { cls: 'ts-label', maxW: OR - 26 - (HX + 60), maxLines: 1, anchor: 'end', edit: 'text.label:used' }, 'var(--o2-poor-text)');
 
   /* lungs: lobed, with the windpipe and airways */
   if (dbl) {
@@ -236,13 +234,13 @@ export function render(root, P, ctx) {
   const inner = h('g', { 'clip-path': `url(#${cid})` }, hg);
   const sep = HX + .6 * k, x0 = HX - 15 * k, w = 31.5 * k, iy = HY - 14 * k, ih = 31.5 * k;
   h('rect', { x: x0, y: iy, width: w, height: ih, fill: 'var(--ear)' }, inner);
-  h('rect', { x: x0, y: iy, width: sep - x0, height: ih, fill: POOR, s: bi('back'), cls: 'pop' }, inner);
+  h('rect', { x: x0, y: iy, width: sep - x0, height: ih, fill: POOR, s: bi(dbl ? 'lungs' : 'back'), cls: 'pop' }, inner);
   h('rect', { x: sep, y: iy, width: x0 + w - sep, height: ih, fill: RICH, s: bi(dbl ? 'oxygen' : 'out'), cls: 'pop' }, inner);
   h('rect', { x: sep - .9 * k, y: iy, width: 1.8 * k, height: ih, fill: 'var(--berry-shade)' }, inner);
-  const hlx = HX - 18 * k - 18;
+  const hlx = HX - 18 * k - 12;
   const ho = { cls: 'ts-label', maxW: hlx - OL - 24, maxLines: 3, lh: 30 };
   const th = h('g', {}, g0); const hm = textBlock(th, 0, 0, M.L('heart'), ho); th.remove();
-  tb(hg, hlx, HY + 12 * k - (hm.lines.length - 1) * hm.lh, M.L('heart'), { ...ho, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:heart' });
+  tb(hg, hlx, HY - 4 * k + 10 - (hm.lines.length - 1) * hm.lh / 2, M.L('heart'), { ...ho, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:heart' });
 
   /* vessel names: artery = away, vein = back (placed by the direction the code draws) */
   if (M.names) {
@@ -252,20 +250,32 @@ export function render(root, P, ctx) {
     phased('out', OR - 22, vy, M.L('artery'), Object.assign(nmo(OR - (HX + 19 * k) - 50, 'end'), { edit: 'text.label:artery' }), 'var(--o2-rich-text)');
     if (dbl) {
       // the vessels to and from the lungs have their own names, so renaming the body's never renames these
-      phased('lungs', pa - 60, TOPY - 16, M.L('artery-lungs'), Object.assign(nmo(pa - 60 - GRID.left, 'end'), { maxLines: 1, edit: 'text.label:artery-lungs' }), 'var(--o2-poor-text)');
-      phased('oxygen', pv + 58, TOPY - 16, M.L('vein-lungs'), Object.assign(nmo(COLX - 24 - pv - 58, 'start'), { maxLines: 1, edit: 'text.label:vein-lungs' }), 'var(--o2-rich-text)');
+      phased('lungs', LXL + 30, TOPY - 16, M.L('artery-lungs'), Object.assign(nmo(LXL + 30 - GRID.left, 'end'), { maxLines: 1, edit: 'text.label:artery-lungs' }), 'var(--o2-poor-text)');
+      phased('oxygen', LXR - 30, TOPY - 16, M.L('vein-lungs'), Object.assign(nmo(COLX - 24 - LXR + 30, 'start'), { maxLines: 1, edit: 'text.label:vein-lungs' }), 'var(--o2-rich-text)');
     }
   }
 
   /* right column: the key, then the pulse at rest and when exercising, or what blood carries */
   let yC = GRID.top + 24;
-  [['rich', RICH, 'out'], ['poor', POOR, 'back']].forEach(([id, col, kk]) => {
+  // the key lists the colours in the order the journey shows them
+  const keyRows = [['rich', RICH, 'out'], ['poor', POOR, 'back']];
+  if (dbl) { keyRows.reverse(); keyRows[0][2] = 'lungs'; keyRows[1][2] = 'oxygen'; }
+  keyRows.forEach(([id, col, kk]) => {
     const g = h('g', { s: bi(kk), cls: 'rise' }, g0);
     h('line', { x1: COLX, x2: COLX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
     const r = tb(g, COLX + 40, yC, M.L(id), { cls: 'ts-label', maxW: COLW - 40, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
     yC += r.h + 14;
   });
   yC += 4;
+  /* where the heart is: a small figure below the key for the whole journey (version 2: it never
+     vanishes), receded after build 1; it gives way only to the pulse or "blood carries" panel */
+  if (P.showBody !== false) {
+    const panel = M.pulse ? 'pulse' : M.carries.length ? 'carries' : null;
+    const fig = h('g', Object.assign({ s: bi('heart'), cls: 'rise', c: recede('heart') }, panel ? { hide: bi(panel) } : {}), g0);
+    const fh = Math.min(420, GRID.bottom - yC - 8);
+    const body = bodyOutline(fig, { age: 'child', x: COLX + COLW / 2, top: yC + 8, height: fh });
+    organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
+  }
   const counters = []; const yList = yC;
   const BX = scale(0, 200, 0, COLW);
   if (M.pulse) {

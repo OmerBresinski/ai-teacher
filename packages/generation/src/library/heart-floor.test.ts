@@ -134,3 +134,48 @@ describe("the heart's key lists only colours drawn (HEART1 D)", () => {
       for (const c of key) expect(drawn).toContain(c);
     });
 });
+
+/*
+ * TEACH-247 part w (heart_circulation v2): the double loop follows one drop of blood in journey
+ * order, lungs before body, and a lesson stored with v1 params (every label overridden) still draws.
+ */
+describe("the heart builds in journey order (heart_circulation v2)", () => {
+  test("double loop: heart, lungs, oxygen, out, back; simple loop: heart, out, back", async () => {
+    const { loadModel, kit } = await import("./render");
+    const m = await loadModel("heart_circulation");
+    const K = await kit();
+    const keys = (p: Record<string, unknown>) =>
+      m?.builds?.(K.withDefaults(m.params, p)).steps.map((s: { key: string }) => s.key);
+    expect(keys({ detail: "double", showPulse: false })).toEqual([
+      "heart",
+      "lungs",
+      "oxygen",
+      "out",
+      "back",
+    ]);
+    expect(keys({ detail: "simple", showPulse: false })).toEqual(["heart", "out", "back"]);
+  });
+  test("v1 params with every v1 label overridden still draw, with no warnings", async () => {
+    const { renderLibraryModel, kit, loadModel } = await import("./render");
+    const m = await loadModel("heart_circulation");
+    const v1 = [
+      "heart",
+      "lungs",
+      "artery",
+      "vein",
+      "artery-lungs",
+      "vein-lungs",
+      "rich",
+      "poor",
+      "o2in",
+      "co2out",
+    ];
+    const text = Object.fromEntries(
+      v1.map((id) => [`label:${id}`, id === "heart" ? "Heart" : "Blood"]),
+    );
+    const P = (await kit()).withDefaults(m?.params, { ...m?.presets[1]?.params, text });
+    const d = await renderLibraryModel("heart_circulation", P);
+    expect(d.builds).toBeGreaterThan(3);
+    expect(d.warnings).toEqual([]);
+  });
+});
