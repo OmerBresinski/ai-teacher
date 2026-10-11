@@ -43,6 +43,28 @@ const SYSTEM_EDITS: [string, string][] = [
     "a subtitle line, and a picture if one helps.",
     "a subtitle line, and a colour picture of what the title names, not a scene from the subtitle.",
   ],
+  // HEART R3 (UX rulings, TEACH-251 B): each detail a picture lists must read at slide size; the
+  // labels line is tightened so the text is no longer.
+  [
+    "each one visible thing in two to four words.",
+    "each one thing in two to four words, clear at slide size.",
+  ],
+  [
+    "Words and labels belong to the slide, so the picture carries none.",
+    "Words and labels go on the slide, not in the picture.",
+  ],
+];
+
+/** HEART R3 (activities part E): an activity is offered for the closing apply task, never required. */
+const MENU_EDITS: [string, string][] = [
+  [
+    "practise or check what the slides just before it taught; use one only where matching, sorting or ordering things is how pupils would show that learning, and a lesson may have none.",
+    "practise, check or apply earlier teaching, the closing task included; like any layout, use one where matching, sorting or ordering is how pupils best show that learning.",
+  ],
+  [
+    "Every answer was taught on an earlier slide.",
+    "Every answer follows from what earlier slides taught.",
+  ],
 ];
 
 describe("base4g against base4f-p123", () => {
@@ -64,7 +86,13 @@ describe("base4g against base4f-p123", () => {
   });
 
   test("the objectives call gains the curriculum block and the theme; nothing else changes", () => {
-    const skip = new Set([...SYSTEMS, "objectives", "objectivesUser", "objectivesSchema"]);
+    const skip = new Set([
+      ...SYSTEMS,
+      "objectives",
+      "objectivesUser",
+      "objectivesSchema",
+      "activityMenu",
+    ]);
     for (const k of Object.keys(a)) {
       if (["id", "pins", "tHash", "features"].includes(k) || skip.has(k as never)) continue;
       expect(g[k]).toEqual(a[k]);
@@ -82,6 +110,20 @@ describe("base4g against base4f-p123", () => {
       expect(isThemeId(id)).toBe(true);
       expect(g.objectives).toContain(`\n- ${id}: `);
     }
+  });
+
+  test("the activity menu differs only by the listed edits, offers no quota and is no longer", () => {
+    let want = a.activityMenu as string;
+    for (const [from, to] of MENU_EDITS) {
+      expect(want.split(from).length).toBe(2);
+      want = want.replace(from, to);
+    }
+    expect(g.activityMenu).toBe(want);
+    expect((g.activityMenu as string).length).toBeLessThanOrEqual(
+      (a.activityMenu as string).length,
+    );
+    expect(g.activityMenu).not.toMatch(/\b(at least|must include|always)\b/i);
+    expect(writerBundle("base4").activityMenu).toBe(a.activityMenu as string);
   });
 
   test("its features: slot-fill on, the writer's design has no theme", () => {
@@ -165,6 +207,13 @@ describe("the compiled writer request, base4g against base4f-p123", () => {
     expect(neu.system).not.toMatch(/Fits: [^\n]*\bline/);
     expect(neu.system).not.toContain("Themes:");
     expect(neu.system).not.toMatch(/\b(heart|blood|cell|eye)\b/i);
+  });
+
+  test("each bundle's request carries its own activity menu", async () => {
+    const l = lesson("Year 6", "ks2");
+    expect((await req("base4g", l)).system).toContain("the closing task included; like any layout");
+    expect((await req("base4g", l)).system).not.toContain("a lesson may have none");
+    expect((await req("base4f-p123", l)).system).toContain("a lesson may have none");
   });
 
   test("an old output (no fit) still lays every slide under base4g", async () => {

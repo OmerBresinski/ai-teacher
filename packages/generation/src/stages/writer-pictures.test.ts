@@ -442,6 +442,8 @@ describe("writer pictures: generated sets", () => {
     expect(setLookOf(undefined)).toEqual({ style: "photo", generic: "generate" });
     expect(setLookOf({ picture_style: "illustration" })).toEqual({ style: "illustration" });
     expect((await run({ picture_style: "photo" })).startsWith(HOUSE_PHOTO_LINE)).toBe(true);
+    expect(HOUSE_PHOTO_LINE).toContain("large and whole within the frame");
+    expect(HOUSE_PHOTO_LINE).not.toContain("filling the frame");
     expect((await run({ picture_style: "illustration" })).startsWith(ILLUSTRATION_LINE)).toBe(true);
     // no look given: today's prompt, unchanged
     const plain = await run();

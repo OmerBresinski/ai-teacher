@@ -10,12 +10,14 @@ import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images"
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
 import {
+  lessonLine,
   PICTURE_DIRECTOR_VERSION,
   type PictureDirection,
   type PictureDirectorInput,
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
+import { PICTURE_DIRECTOR_BATCH_VERSION } from "../prompts/picture-director-batch";
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
@@ -87,10 +89,7 @@ export function pictureDirectorBatchUser(
 ): string {
   const first = slots[0]?.input;
   if (!first) return "";
-  const head = [
-    `Lesson: ${first.yearGroup} ${first.subject}, "${first.title}", taught in ${first.country}.`,
-    `Picture style for this lesson: ${first.style ?? "photo"}`,
-  ];
+  const head = [lessonLine(first), `Picture style for this lesson: ${first.style ?? "photo"}`];
   const blocks = slots.map(({ id, input }) => {
     // The per-slot lines are the single prompt's, minus the lesson and style lines given once.
     const lines = pictureDirectorPrompt(input)
@@ -121,7 +120,7 @@ export async function directPictures(
         stage: "illustrate",
         cls: "small",
         effort: "low",
-        prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+        prompt: { version: PICTURE_DIRECTOR_BATCH_VERSION, system, user: () => user },
         input: slots,
         schema: PictureDirectorBatchSchema,
         maxOutputTokens: 3000 * Math.min(slots.length, 6),
@@ -306,9 +305,12 @@ export const WRITER_STOCK_RACE_MS = 13_500;
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
 
-/** The house photo look (code's default until the prompt agent's file lands). */
+/**
+ * The house photo look (code's default until the prompt agent's file lands). TEACH-251 part f: the
+ * subject large and whole within the frame, not frame-filling (heart R3 s8: an arm ran off the edge).
+ */
 export const HOUSE_PHOTO_LINE =
-  "A natural-light photograph taken at eye level: the subject sharp and filling the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object. Uncluttered.";
+  "A natural-light photograph taken at eye level: the subject sharp, large and whole within the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object. Uncluttered.";
 
 /** True when generic pictures of this look are generated in the house photo look. */
 export function housePhoto(look?: LessonLook): boolean {

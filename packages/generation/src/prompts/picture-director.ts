@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { schoolYears } from "../curriculum";
 
 /**
  * The diagram kinds the writer's drawer draws, named in the code route. A copy of the writer's
@@ -65,8 +66,23 @@ export const DIAGRAM_KINDS: string[] = [
  *   (a lesson trial: a bean "seed" panel came back already sprouting) (v10).
  * - apparatus, equipment or an object alone, no people or hands, unless the slide is about using it
  *   (a lesson trial: the apparatus photos had people in frame) (v11).
+ * - a child in the picture is the pupils' age, from the year group code puts on the lesson line
+ *   (heart R3 s10: Year 6 children drawn far younger); the subject whole inside the frame with a
+ *   margin, large rather than frame-filling (TEACH-251 f: an arm ran off the edge) (v12).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v11";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v12";
+
+/** The pupils' age in England for a year group ("Year 6", "Y6": "10 to 11"); null when unread. */
+export function pupilAge(yearGroup: string | undefined): string | null {
+  const r = schoolYears(yearGroup ?? "");
+  return r ? `${r[0] + 4} to ${r[1] + 5}` : null;
+}
+
+/** The director's lesson line, the pupils' age beside the year group when code knows it. */
+export function lessonLine(i: PictureDirectorInput): string {
+  const age = pupilAge(i.yearGroup);
+  return `Lesson: ${i.yearGroup}${age ? ` (age ${age})` : ""} ${i.subject}, "${i.title}", taught in ${i.country}.`;
+}
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -138,9 +154,9 @@ Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
 - mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record. When a picture shows a young one with its adult, or one of a set showing one subject growing, one item is "same kind and colouring", so the judge checks that they look related.
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
-- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. A young one with its adult are the same breed or variety with the same colouring, both whole and neither crowding the other out. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
+- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. A young one with its adult are the same breed or variety with the same colouring, both whole and neither crowding the other out. A child in it is the pupils' age, in years, unless the slide is about another age. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape, the subject whole inside the frame with a margin.
 
-For pupils up to Year 6, choose a picture a young pupil takes in at a glance: one subject, or the few the slide needs, filling the frame on a plain, uncluttered background rather than a busy scene; the queries ask for that view and the imagePrompt describes it. Apparatus, equipment or an object is shown on its own, with no people or hands, unless the slide is about how it is used.
+For pupils up to Year 6, choose a picture a young pupil takes in at a glance: one subject, or the few the slide needs, large on a plain, uncluttered background rather than a busy scene; the queries ask for that view and the imagePrompt describes it. Apparatus, equipment or an object is shown on its own, with no people or hands, unless the slide is about how it is used.
 
 When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
@@ -158,7 +174,7 @@ export function pictureDirectorPrompt(input: PictureDirectorInput): {
   return {
     system: SYSTEM,
     user: [
-      `Lesson: ${input.yearGroup} ${input.subject}, "${input.title}", taught in ${input.country}.`,
+      lessonLine(input),
       `Slide heading: ${input.heading}`,
       `Slide text: ${input.text || "(none)"}`,
       `Teaching point: ${input.point || "(none)"}`,
