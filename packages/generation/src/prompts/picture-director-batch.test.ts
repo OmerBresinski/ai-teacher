@@ -15,7 +15,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 describe("picture prompt pins", () => {
   test("the batched director prompt is the pinned file, byte for byte", () => {
     expect(sha(PICTURE_DIRECTOR_BATCH_SYSTEM)).toBe(
-      "a262bf329669cf0073d772c6908d51edd649a3107925f5496e4615f68efe3ec4",
+      "db7899ca3f53eceabc03864aff383717a0015335deff79cec87c8a387e548f08",
     );
   });
 
@@ -62,9 +62,20 @@ const DIRECTOR_EDITS: [string, string][] = [
     "a painted educational illustration of the scene, never a photograph.",
     "a painted educational illustration, never a photograph.",
   ],
+  // TEACH-251 part f: the subject sits whole inside the frame (heart R3 s8: an arm ran off the
+  // edge); "filling the frame" had pushed subjects to the edges, so they are large instead.
+  [
+    "one subject, or the few the slide needs, filling the frame on a plain background rather than a busy scene;",
+    "one subject, or the few the slide needs, large on a plain background;",
+  ],
+  [
+    "Frame it for the zone's shape.",
+    "Frame it for the zone's shape, the subject whole inside the frame with a margin.",
+  ],
+  ["unless the slide is about how it is used.", "unless the slide is about using it."],
 ];
 
-const DIRECTOR_SYSTEM_SHA = "130404d52cbcc36a15800663fcebad07bccebcf7e6e262286eaab4e248cce29d";
+const DIRECTOR_SYSTEM_SHA = "fb1b8240cb4b93b0a5a1c5e131c528dcc53ba4087fd4d4df7f1a6d8fda9a0396";
 const JUDGE_SYSTEM_SHA = "b56d123687d97c8572a236402effe13d0e7b446ddcf25b9f2b4b30e2bc0cd395";
 
 /**

@@ -304,9 +304,12 @@ export const WRITER_STOCK_RACE_MS = 13_500;
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
 
-/** The house photo look (code's default until the prompt agent's file lands). */
+/**
+ * The house photo look (code's default until the prompt agent's file lands). TEACH-251 part f: the
+ * subject large and whole within the frame, not frame-filling (heart R3 s8: an arm ran off the edge).
+ */
 export const HOUSE_PHOTO_LINE =
-  "A natural-light photograph taken at eye level: the subject sharp and filling the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object. Uncluttered.";
+  "A natural-light photograph taken at eye level: the subject sharp, large and whole within the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object.";
 
 /** True when generic pictures of this look are generated in the house photo look. */
 export function housePhoto(look?: LessonLook): boolean {
