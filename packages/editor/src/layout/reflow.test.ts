@@ -23,7 +23,7 @@ import { rulerFor } from "./test-ruler";
  * these pin the engine's own contract — what moved, what stepped, where it would split.
  */
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const ruler = rulerFor(theme);
 
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(" ");

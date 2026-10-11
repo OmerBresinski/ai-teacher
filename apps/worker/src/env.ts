@@ -64,9 +64,19 @@ export const EnvSchema = z
      * slot routed to generation keeps its placeholder and no generation call is made.
      */
     IMAGE_GENERATION_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
+    /**
+     * TEACH-84 part b: `on` lets the writer planner's picture director reuse judged pictures from
+     * the shared library (`bank_images`) and store the pictures its judge passes. `off` (default)
+     * keeps today's behaviour: every picture is searched or generated afresh, nothing is stored.
+     * Needs `OPENAI_API_KEY` (the request embeddings); without it the library stays off.
+     */
+    PICTURE_LIBRARY_REUSE: z.enum(["off", "on"]).default("off"),
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),
+    // Live writing P0: a recorded writer run (a replay fixture folder) the fake streams at the
+    // recorded pace, for the writer planner (`AI_LESSON_PLANNER=writer`). Needs AI_FAKE_SCRIPT.
+    AI_FAKE_WRITER_REPLAY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {
@@ -74,6 +84,13 @@ export const EnvSchema = z
         code: "custom",
         path: ["OPENAI_API_KEY"],
         message: "required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
+      });
+    }
+    if (env.AI_FAKE_WRITER_REPLAY !== undefined && env.AI_FAKE_SCRIPT !== "pipeline") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AI_FAKE_WRITER_REPLAY"],
+        message: "the writer replay answers through the fake: set AI_FAKE_SCRIPT=pipeline",
       });
     }
     if (env.NODE_ENV === "production" && env.AI_FAKE_SCRIPT !== undefined) {

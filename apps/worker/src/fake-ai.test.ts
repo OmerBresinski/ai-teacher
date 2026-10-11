@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
+import { createFakeAi, type FakeCall } from "@tj/ai/testing";
 import { FIXTURES } from "@tj/generation/testing";
 import { blockSpecSchemaFor, diagramSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import {
   createPerJobFakeAi,
   FAKE_PROPOSAL_MARK,
   FAKE_REVIEW_WARNING,
+  loadWriterReplay,
   proposalAnswer,
+  writerReplayAnswer,
 } from "./fake-ai";
 
 /* `AI_FAKE_SCRIPT=pipeline`: one scripted run per job id, paced when asked. */
@@ -156,5 +160,54 @@ describe("createPerJobFakeAi", () => {
       const schema = blockSpecSchemaFor(block.type as never);
       if (schema) expect(schema.safeParse(JSON.parse(answer)).success, block.type).toBe(true);
     }
+  });
+});
+
+describe("the writer replay (live writing P0, TEACH-202 part d)", () => {
+  const dir = join(
+    import.meta.dir,
+    "../../../packages/generation/src/writer/fixtures/replay/y5-maths-fractions-of-amounts",
+  );
+  const call = (name: string) =>
+    ({ promptText: "", context: { promptVersion: `lesson-writer.v1/${name}` } }) as FakeCall;
+
+  test("streams the recorded writer text at the recorded pace", () => {
+    const replay = loadWriterReplay(dir);
+    const answer = writerReplayAnswer(call("lesson"), replay);
+    expect(answer?.text).toBe(replay.main.text);
+    const stream = answer?.stream;
+    expect(stream?.firstMs).toBe(replay.main.firstTokenMs);
+    const pieces = Math.ceil(replay.main.text.length / (stream?.pieceChars ?? 1));
+    const total = (stream?.firstMs ?? 0) + pieces * (stream?.paceMs ?? 0);
+    // Within 2% of the recorded writer call.
+    expect(Math.abs(total - replay.main.ms) / replay.main.ms).toBeLessThan(0.02);
+  });
+
+  test("answers the objectives and notes calls from the run, other writer calls with {}", () => {
+    const replay = loadWriterReplay(dir);
+    const objectives = JSON.parse(writerReplayAnswer(call("objectives"), replay)?.text ?? "");
+    expect(objectives.objectives).toEqual(replay.objectives);
+    expect(typeof objectives.objectives[0]).toBe("string");
+    expect(writerReplayAnswer(call("pupil_objectives"), replay)?.text).toBe("{}");
+    expect(
+      writerReplayAnswer(
+        { promptText: "", context: { promptVersion: "evaluate.v1" } } as FakeCall,
+        replay,
+      ),
+    ).toBeUndefined();
+  });
+
+  test("a streamed call waits for the first piece and then paces the rest", async () => {
+    const ai = createFakeAi({
+      fallback: { text: "abcdefghij", stream: { pieceChars: 5, paceMs: 40, firstMs: 80 } },
+    });
+    const t0 = Date.now();
+    const at: number[] = [];
+    const result = streamText({ model: ai.model("frontier"), prompt: "x" });
+    for await (const _ of result.textStream) at.push(Date.now() - t0);
+    expect(at).toHaveLength(2);
+    expect(at[0]).toBeGreaterThanOrEqual(75);
+    // Measured from the start, not between pieces: a busy machine can read the first piece late.
+    expect(at[1] ?? 0).toBeGreaterThanOrEqual(115);
   });
 });

@@ -9,12 +9,13 @@
  */
 
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
-import { FIT_VERSION } from "../model/themes";
-
 /**
  * `renderedHeights` and `measureInputsOf` moved to `@tj/slides` (`lint.ts`) with the linter, so
  * the headless fit check (`fitsPlanned`) and the editor draw the same slide; re-exported here.
  */
+import { liveThemeId } from "@tj/slides";
+import { FIT_VERSION } from "../model/themes";
+
 export { measureInputsOf, renderedHeights } from "@tj/slides";
 
 export type FitPlan = {
@@ -31,13 +32,22 @@ const NOTHING = (version: number): FitPlan => ({ needed: false, slideIds: [], ve
 /** What the lesson was last fitted to. A document written before the field is at 0. */
 export const fitVersionOf = (lesson: Pick<Lesson, "fitVersion">): number => lesson.fitVersion ?? 0;
 
-/** True when the stored layout predates the current floor table. */
-export const isFitStale = (lesson: Pick<Lesson, "fitVersion">, version = FIT_VERSION): boolean =>
-  fitVersionOf(lesson) < version;
+/** True for a lesson stored in a retired theme (UX ruling 202: Chalk & Cream renders as Splash). */
+export const isRetiredTheme = (lesson: { themeId?: string }): boolean =>
+  lesson.themeId !== undefined && liveThemeId(lesson.themeId) !== lesson.themeId;
+
+/**
+ * True when the stored layout predates the current floor table, or was laid out in a retired
+ * theme and now renders in another (its slides are re-fitted to the theme they render in).
+ */
+export const isFitStale = (
+  lesson: Pick<Lesson, "fitVersion"> & { themeId?: string },
+  version = FIT_VERSION,
+): boolean => fitVersionOf(lesson) < version || isRetiredTheme(lesson);
 
 /** Which slides of `lesson` need re-fitting, given a linter. */
 export function planFitMigration(
-  lesson: Pick<Lesson, "fitVersion" | "slides">,
+  lesson: Pick<Lesson, "fitVersion" | "slides"> & { themeId?: string },
   flagged: (slide: Slide) => boolean,
   version = FIT_VERSION,
 ): FitPlan {

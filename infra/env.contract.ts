@@ -760,6 +760,20 @@ const CONTRACT = [
     description:
       "Default 5. USD the picture generator may spend in one UTC day, per worker process (TEACH-237). Once spent, a picture slot routed to generation keeps its placeholder, no generation call is made, and one log line says so.",
   },
+  {
+    name: "PICTURE_LIBRARY_REUSE",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["off", "on"],
+    files: ["worker"],
+    description:
+      "Default `off`. `on` lets the writer planner's picture director reuse judged pictures from the shared picture library (`bank_images`, TEACH-84 part b) and store each picture its judge passes, so the library grows. A reuse is a cosine of at least 0.77 between request embeddings (`text-embedding-3-small`, about $0.000004 a lookup) and is judged again before it is placed. Needs `OPENAI_API_KEY`; a failed lookup falls through to the live search. `off` searches or generates every picture afresh and stores nothing.",
+  },
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
     name: "AI_LESSON_COST_CAP_USD",
@@ -911,6 +925,19 @@ const CONTRACT = [
     files: ["worker"],
     description:
       "Pause before each scripted fake answer when `AI_FAKE_SCRIPT` is set, so a browser test can watch slides arrive one by one. Ignored otherwise.",
+  },
+  {
+    name: "AI_FAKE_WRITER_REPLAY",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "Test only (live writing, TEACH-202 part d): a writer replay fixture folder the scripted fake streams at its recorded pace for the writer planner. Refused at boot unless `AI_FAKE_SCRIPT=pipeline`, which is itself refused when NODE_ENV=production; never set it on Railway.",
   },
   {
     name: "MASTRA_TELEMETRY_DISABLED",

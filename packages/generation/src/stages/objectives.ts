@@ -1,5 +1,7 @@
-import type { Lesson, LessonFacts, Slide } from "@tj/domain/documents";
+import { fallbackThemeFor, type Lesson, type LessonFacts, type Slide } from "@tj/domain/documents";
+import { isThemeId, liveThemeId } from "@tj/slides";
 import { callStructured } from "../call";
+import { curriculumBlock, curriculumFor } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
 import {
   type PlanRetrievalQuestion,
@@ -17,6 +19,7 @@ import {
 import { aiWriterServices } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { fillTemplate } from "../writer/fixes";
+import { locale } from "../writer/locale";
 import { isFatal } from "../writer/services";
 import { checkInput, structuralGuard } from "./check-input";
 import {
@@ -115,26 +118,63 @@ export const WRITER_OBJECTIVES = {
 } as const;
 
 /**
- * One writer objectives call: `objectives.txt` as the system text, `objectives-user.txt` filled
- * from the writer's brief, `objectives-schema.json` strict. It reads no curriculum source and
- * writes no retrieval questions or anchors, as in the lab.
+ * The writer objectives call's user turn: `objectives-user.txt` filled from the writer's brief,
+ * plus the statutory curriculum statements for the brief's year and subject as `{{curriculum}}`
+ * (`curriculumFor`, HEART1 plan F). A template without the placeholder renders exactly as
+ * before; with it and no data for the year or subject, the block is empty.
+ */
+export function writerObjectivesUser(
+  lesson: Lesson,
+  template: string = writerBundle().objectivesUser,
+): string {
+  const brief = writerBrief(lesson);
+  const lookup = curriculumFor({
+    country: locale().country,
+    subject: brief.subject,
+    yearGroup: brief.yearGroup,
+    topic: brief.topic,
+  });
+  return fillTemplate(template, brief, {
+    curriculum: curriculumBlock(lookup, brief.yearGroup),
+  }).trimEnd();
+}
+
+/**
+ * One writer objectives call: `objectives.txt` as the system text, `writerObjectivesUser` as the
+ * user turn, `objectives-schema.json` strict. It loads no uploaded source and writes no retrieval
+ * questions or anchors, as in the lab.
  */
 export async function writerObjectivesCall(
   lesson: Lesson,
   deps: PipelineDeps,
-): Promise<{ text: string }[]> {
+): Promise<{ objectives: { text: string }[]; theme?: string }> {
   const P = writerBundle();
   const r = await aiWriterServices(deps).chat({
     ...WRITER_OBJECTIVES,
     system: P.objectives,
-    user: fillTemplate(P.objectivesUser, writerBrief(lesson)),
+    user: writerObjectivesUser(lesson, P.objectivesUser),
     schema: JSON.parse(P.objectivesSchema),
     name: "objectives",
     strict: true,
   });
-  const list = (r.out as { objectives?: unknown } | undefined)?.objectives;
+  const out = r.out as { objectives?: unknown; theme?: unknown } | undefined;
+  const list = out?.objectives;
   if (!Array.isArray(list)) throw new Error("objectives: no objectives array");
-  return list.filter((t): t is string => typeof t === "string").map((text) => ({ text }));
+  const objectives = list
+    .filter((t): t is string => typeof t === "string")
+    .map((text) => ({ text }));
+  return typeof out?.theme === "string" ? { objectives, theme: out.theme } : { objectives };
+}
+
+/**
+ * The theme the lesson is planned in (UX ruling 202), known before any slide is laid out: the
+ * teacher's own choice (`themeChosen`) always; else the planner's `theme` when it is in the
+ * catalogue; else Splash up to Key Stage 2 and Studio from Key Stage 3 (`fallbackThemeFor`).
+ */
+export function plannedThemeId(lesson: Lesson, plannerTheme: string | undefined): string {
+  if (lesson.themeChosen) return liveThemeId(lesson.themeId);
+  if (plannerTheme && isThemeId(plannerTheme)) return plannerTheme;
+  return fallbackThemeFor(lesson.ageBand);
 }
 
 export async function runObjectivesStep(
@@ -142,8 +182,8 @@ export async function runObjectivesStep(
   deps: PipelineDeps,
   options: ObjectivesStepOptions = {},
 ): Promise<{ state: PipelineState; report: ObjectivesStepReport }> {
-  const { generation: _replaced, ...lesson } = state.lesson;
-  const brief = lesson.brief;
+  const { generation: _replaced, ...given } = state.lesson;
+  const brief = given.brief;
   if (!brief) throw new Error("objectives: the lesson has no brief");
   const startedAt = deps.now().toISOString();
   await deps.onProgress(PROGRESS_STARTING, "Starting", "plan");
@@ -153,13 +193,15 @@ export async function runObjectivesStep(
   let retrieval: PlanRetrievalQuestion[] | undefined;
   let model = "none";
   let calls = 0;
-  const pinned = state.pinObjectives ? (lesson.facts?.objectives ?? []) : undefined;
+  /** The planner's theme for the topic and age (ruling 202), validated in `plannedThemeId`. */
+  let plannerTheme: string | undefined;
+  const pinned = state.pinObjectives ? (given.facts?.objectives ?? []) : undefined;
   if (pinned) {
     if (pinned.length === 0) {
       throw new Error("objectives: pinObjectives is set but the lesson has no objectives");
     }
     objectives = pinned.map((o) => ({ text: o.text }));
-    const kept = lesson.facts?.retrieval;
+    const kept = given.facts?.retrieval;
     retrieval = kept && kept.length > 0 ? kept : undefined;
     deps.logger.info(
       { stage: "plan", call: "objectives", pinned: pinned.length },
@@ -167,12 +209,12 @@ export async function runObjectivesStep(
     );
   } else {
     // The writer's prompt reads no curriculum extract, so none is loaded or checked for anchors.
-    const loaded = lesson.sources && !options.writer ? await deps.sources(lesson.sources) : [];
+    const loaded = given.sources && !options.writer ? await deps.sources(given.sources) : [];
     const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
     const curriculum =
       selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
-    const shape = shapeOf(lesson);
-    const cls = planClassFor(lesson, deps);
+    const shape = shapeOf(given);
+    const cls = planClassFor(given, deps);
     const effort = plannerEffort(options.effort, "objectives");
     let issues: string[] = [];
     for (let attempt = 1; ; attempt++) {
@@ -184,7 +226,7 @@ export async function runObjectivesStep(
       if (options.writer) {
         // Production's check and attempt count, on the writer's call. A failed call counts as an
         // attempt (callStructured retries a provider failure once on its own).
-        const got = await writerObjectivesCall(lesson, deps).catch((error: unknown) => {
+        const got = await writerObjectivesCall(given, deps).catch((error: unknown) => {
           if (isFatal(error) || attempt >= OBJECTIVES_ATTEMPTS) throw error;
           deps.logger.warn(
             { stage: "plan", call: "objectives", attempt },
@@ -193,14 +235,21 @@ export async function runObjectivesStep(
           return undefined;
         });
         if (!got) continue;
-        const check = checkObjectives(got, shape.verb, { hasSource: false });
+        plannerTheme = got.theme;
+        const check = checkObjectives(got.objectives, shape.verb, { hasSource: false });
         issues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
         deps.logger.info(
-          { stage: "plan", call: "objectives", count: got.length, issues: issues.length, attempt },
+          {
+            stage: "plan",
+            call: "objectives",
+            count: got.objectives.length,
+            issues: issues.length,
+            attempt,
+          },
           issues.length === 0 ? "objectives accepted" : "objectives blocked by the check",
         );
         if (issues.length === 0) {
-          objectives = got;
+          objectives = got.objectives;
           model = `openai/${WRITER_OBJECTIVES.model}`;
           break;
         }
@@ -216,7 +265,7 @@ export async function runObjectivesStep(
         input: {
           topic: brief.topic,
           shape,
-          audience: audienceOf(lesson),
+          audience: audienceOf(given),
           priorKnowledge: brief.classContext?.priorKnowledge,
           curriculum,
         },
@@ -248,6 +297,9 @@ export async function runObjectivesStep(
       );
       if (issues.length === 0) {
         objectives = call.output.objectives;
+        // Ruling 202: the same planner theme rule as the writer's call, once its prompt asks.
+        const theme = (call.output as { theme?: unknown }).theme;
+        plannerTheme = typeof theme === "string" ? theme : undefined;
         const written = call.output.retrieval;
         retrieval = written && written.length > 0 ? written : undefined;
         model = call.modelId;
@@ -257,6 +309,15 @@ export async function runObjectivesStep(
     }
   }
   const objectivesMs = Date.now() - t0;
+  // Ruling 202: the theme is settled here, before the title and objectives slides are laid out,
+  // so every slide from the first frame on is in it and nothing switches mid-generation.
+  const themeId = plannedThemeId(given, plannerTheme);
+  if (themeId !== given.themeId)
+    deps.logger.info(
+      { stage: "plan", theme: themeId, planner: plannerTheme ?? null, was: given.themeId },
+      "lesson theme planned",
+    );
+  const lesson = { ...given, themeId };
 
   const skeletonFacts = assignFactIds(
     { learningObjectives: objectives.map((o) => ({ text: o.text })), outline: [] },

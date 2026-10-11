@@ -38,6 +38,7 @@ import {
   withBuildCounts,
   writerSpecOf,
 } from "./diagrams";
+import { type DraftOptions, type SlideDraft, SlideDrafts } from "./draft";
 import {
   asPicture,
   asTableText,
@@ -45,6 +46,7 @@ import {
   continueForFit,
   pictureFallbackOk,
   tableRows,
+  tilesAsPictures,
 } from "./fallbacks";
 import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
 import {
@@ -99,6 +101,7 @@ import {
   modelPoints,
   type Plan,
   questionsOf,
+  tileDiagramKeys,
   type VisualAsk,
   type VisualState,
   visualsOf,
@@ -233,6 +236,11 @@ export type WriterRun = {
    * the schema. Absent: `ACTIVITIES_DEFAULT` (on).
    */
   activities?: boolean;
+  /**
+   * Tile visuals (TEACH-75 part d): compare cards and sequence stages may be drawn, and a hinge
+   * takes a figure. Absent: `TILE_VISUALS_DEFAULT` (off, master's schema byte for byte).
+   */
+  tileVisuals?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -270,6 +278,16 @@ export type WriterRun = {
    * editable deck (`onEditable`) supersedes every one of them.
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
+  /**
+   * Live writing P4 (TEACH-202 part c): the slide the stream is writing, before it closes. The
+   * first draft of a slide comes as soon as its template closes, then its fields as they grow (an
+   * open string cut where the stream is), at most one per `draft.ms` (default 200). Read-only and
+   * best effort: drafts never feed the final parse, the laid slides, the checks or the costs, a
+   * throwing callback only stops the drafts, and the slide's `onSlide` supersedes them.
+   */
+  onDraft?: (index: number, draft: SlideDraft) => void;
+  /** The drafts' throttle and clock (tests pass a fake clock). */
+  draft?: DraftOptions;
   /**
    * The final parse opened a slide again from other bytes than the stream did: its earlier asks
    * are void (the caller cancels their pictures); its asks follow through `onAsks`.
@@ -394,10 +412,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const a = (asks.get(i) ?? []).find((x) => x.key === key);
     return a && run.visual ? run.visual(i, key, a) : ({ status: "pending" } as VisualState);
   };
-  const relay = (i: number) => {
+  // Slides whose diagram ships with warnings (no room drew it cleanly): every later relay keeps it.
+  const warned = new Set<number>();
+  const relay = (i: number, diagramWarnings = warned.has(i)) => {
     const s = plan.slides[i];
     if (!s) return;
-    const lay = () => materialise(s, { ...base, index: i, plan, visual: visualState(i) });
+    const lay = () =>
+      materialise(s, {
+        ...base,
+        index: i,
+        plan,
+        visual: visualState(i),
+        ...(diagramWarnings ? { diagramWarnings } : {}),
+      });
     // A drawn diagram carries its builds (Present shows its parts one per Next).
     if (!run.drawDiagrams) return void laid.set(i, lay());
     const m = withBuilds(lay);
@@ -465,7 +492,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       : [];
   const activities = run.activities ?? ACTIVITIES_DEFAULT;
   const libbed = libSchema(
-    writerSchema(stageKey, brief.slides, P, { objectives: run.objectives.length }),
+    writerSchema(stageKey, brief.slides, P, {
+      objectives: run.objectives.length,
+      ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
+    }),
     models.map((m) => m.id),
   );
   const schema = activities ? withActivities(libbed, stageKey) : libbed;
@@ -843,6 +873,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     if (ok) nextOpen = idx === 0 ? 2 : idx + 1;
   });
+  // Live writing P4: the open slide's drafts, peeked after each delta (never on a recorded run).
+  const onDraft = run.onDraft;
+  let drafts = onDraft && streaming ? new SlideDrafts(onDraft, run.draft) : undefined;
+  const draftStats = drafts?.stats;
   const main = run.recordedWriter
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
@@ -861,8 +895,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             () => parser.push(delta),
             (e) => stopStream("parser failed", e),
           );
+          if (!drafts || !streaming) return;
+          nonFatalSync(
+            () => drafts?.update(parser),
+            (e) => {
+              drafts = undefined;
+              log({ ev: "drafts-stopped", err: String(e).slice(0, 200) });
+            },
+          );
         },
       );
+  if (draftStats)
+    log({
+      ev: "drafts",
+      n: draftStats.drafts,
+      peeks: draftStats.peeks,
+      ms: +draftStats.ms.toFixed(2),
+    });
   // K3: an incomplete writer output fails the job; it never ships a headings-only deck.
   const incomplete = writerIncomplete({
     finishReason: main.finishReason ?? null,
@@ -1509,7 +1558,53 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
     return "strip";
   };
+  /**
+   * Tile diagrams (TEACH-75 part d): each was drawn with the same drawer and retries as any
+   * diagram. A tile that still could not be shown (failed, or drawn but too big for its tile)
+   * becomes a picture of the same thing; when those pictures do not all land, the slide takes its
+   * words-only form (text cards, numbered steps). Never an empty tile. True when it decided.
+   */
+  const tileFallback = async (i: number, fo: { noPicture?: boolean }): Promise<boolean> => {
+    const s = plan.slides[i] as S;
+    const tiles = tileDiagramKeys(s);
+    if (!tiles.length) return false;
+    const st = tiles.map((k) => visualState(i)(k).status);
+    if (st.includes("pending")) return true;
+    const laidLost = new Set(laid.get(i)?.lost ?? []);
+    const lost = tiles.filter((k, n) => st[n] === "failed" || laidLost.has(k));
+    if (!lost.length) {
+      path.set(i, "diagram");
+      return true;
+    }
+    const pic = fo.noPicture ? undefined : tilesAsPictures(s, lost);
+    if (pic) {
+      const n0 = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, pic);
+      const now = plan.slides[i] as S;
+      await run.placeMore?.(
+        i,
+        (asks.get(i) ?? []).filter((a) => a.type === "photo" && lost.includes(a.key)),
+        { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+      );
+      if (lost.every((k) => visualState(i)(k).status === "photo")) {
+        relay(i);
+        log({ ev: "tile-pictures", slide: i + 1, keys: lost });
+        path.set(i, "picture");
+        return true;
+      }
+      restore(i, s, n0, oldAsks);
+    }
+    // The lost tiles are failed: materialise lays the cards as text, the stages as steps.
+    for (const k of lost) override.set(`${i}:${k}`, { status: "failed" });
+    relay(i);
+    log({ ev: "tile-unshown", slide: i + 1, keys: lost });
+    path.set(i, "unshown");
+    unpoint(i);
+    return true;
+  };
   const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
+    if (!path.has(i) && (await tileFallback(i, fo))) return;
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
       | undefined;
@@ -1541,6 +1636,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         return;
       }
       restore(i, s, n0, oldAsks);
+    }
+    // Greg (10 Oct 2026): a planned visual is never lost. A drawing that draws in no room cleanly
+    // but does draw with warnings ships the least-bad layout, its warnings logged on visual-path.
+    if (st === "diagram") {
+      relay(i, true);
+      if (laid.get(i)?.diagramWarnings?.length && !laid.get(i)?.diagram?.length) {
+        warned.add(i);
+        path.set(i, "diagram");
+        return;
+      }
+      relay(i);
     }
     // A table is words already: one that cannot draw keeps its data, as text lines on the slide
     // (flag off) or, by default, in the speaker notes beside the writer's own slide.
@@ -1892,7 +1998,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
-  for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
+  for (const [i, p] of path) {
+    const warnings = laid.get(i)?.diagramWarnings;
+    log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
+  }
 
   // ── notes: the deck-wide call, with each changed slide's own note in its place ──
   const got = await deckNotes;

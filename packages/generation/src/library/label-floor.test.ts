@@ -56,12 +56,24 @@ describe("label floor", () => {
       expect(overlappingWords(after.drawing.svg)).toEqual([]);
     }
   });
-  test("the D52 heart: grown, its key splits 'Oxygen-poor' across lines, so it falls back", async () => {
+  test("checks only logged (HEART1 D): the water cycle still grows to 18 pt, whole words", async () => {
+    const a = { ...ask("water_cycle", "Where does rain come from?"), logOnly: true };
+    const fill = async () => preset("water_cycle", 0);
+    const plain = await libraryDiagram(a, fill);
+    const after = await libraryDiagram({ ...a, labelFloor: true }, fill);
+    expect(plain.ok && after.ok).toBe(true);
+    if (!plain.ok || !after.ok) return;
+    expect(placedTypeSize(after.drawing.svg, a.place).minPt).toBeGreaterThanOrEqual(17.99);
+    expect(grownTextFault(plain.drawing.svg, after.drawing.svg)).toBeUndefined();
+  });
+  test("the D52 heart: cropped to its marks it reaches the floor ungrown; grown, its key splits", async () => {
+    // Before HEART1 D its blood cells sat at the slide's corner, the crop reached it, and growing
+    // the type to the floor split "Oxygen-poor" across lines. Cropped to its marks, it needs none.
     const FILL = { detail: "double", showBody: true, carries: { oxygen: true, food: true } };
     const a = { ...ask("heart_circulation", "Follow the blood"), panelsOff: true };
     const r = await libraryDiagram({ ...a, labelFloor: true }, async () => FILL);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toContain("split");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(placedTypeSize(r.drawing.svg, a.place).minPt).toBeGreaterThanOrEqual(17.95);
     const p = (await kit()).withDefaults(
       (await loadModel("heart_circulation"))?.params ?? { properties: {} },
       { ...FILL, showPulse: false },

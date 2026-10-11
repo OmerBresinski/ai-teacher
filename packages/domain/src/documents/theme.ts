@@ -11,7 +11,26 @@ import type { TextPreset } from "./slide";
  * catalogue so the API (`POST /lessons`, ADR 0024 §6) can set it without importing the editor;
  * `@tj/editor` re-exports this value, so the two cannot drift.
  */
-export const DEFAULT_THEME_ID = "chalk";
+export const DEFAULT_THEME_ID = "splash";
+
+/**
+ * Retired theme ids and the theme a lesson stored with one renders in (UX ruling 202: Chalk &
+ * Cream is retired, its lessons render as Splash). Never offered, never accepted on a new write.
+ */
+export const RETIRED_THEMES: Readonly<Record<string, string>> = { chalk: "splash" };
+
+/** `id` with a retired id swapped for the theme it now renders in. */
+export const liveThemeId = (id: string): string => RETIRED_THEMES[id] ?? id;
+
+/**
+ * The theme a lesson gets when neither the teacher nor the planner chose one (UX ruling 202):
+ * Splash up to Key Stage 2 (Reception to Year 6), Studio from Key Stage 3. No band: the default.
+ */
+export function fallbackThemeFor(ageBand: string | undefined | null): string {
+  if (!ageBand || ageBand === "eyfs" || ageBand === "ks1" || ageBand === "ks2")
+    return DEFAULT_THEME_ID;
+  return "studio";
+}
 
 export type ThemeTag =
   | "early-learners"

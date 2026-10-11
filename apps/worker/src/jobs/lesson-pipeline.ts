@@ -6,7 +6,7 @@ import {
   putDocumentAsJob,
   type WorkspaceDb,
 } from "@tj/db";
-import type { JobId, LessonId, WorkspaceId } from "@tj/domain";
+import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import { type Lesson, parseLesson, resumeBase } from "@tj/domain/documents";
 import {
   BudgetExceeded,
@@ -24,6 +24,7 @@ import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
+import { createPictureLibrary } from "../picture-library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -82,7 +83,24 @@ function pictureMaker(
   const remove = removePicture(deps.images.storage, workspaceId);
   return {
     pictureMaker: {
-      bank: createGeneratingBank({ generator: gen.generator, cap: gen.cap, save, remove, logger }),
+      bank: createGeneratingBank({
+        generator: gen.generator,
+        cap: gen.cap,
+        save,
+        remove,
+        logger,
+        ...(deps.pictureLibrary
+          ? {
+              library: createPictureLibrary({
+                db: deps.db,
+                storage: deps.storage,
+                embedder: deps.pictureLibrary.embedder,
+                logger,
+                ids: newId,
+              }),
+            }
+          : {}),
+      }),
       generator: gen.generator,
       save: (bytes) => save(bytes),
       remove,

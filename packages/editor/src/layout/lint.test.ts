@@ -260,7 +260,7 @@ describe("isBleed", () => {
     expect(findOverflow(slideOf([pushed]))).toEqual(["s"]);
   });
   test("leaves the image-text recipe clean, so a fresh slide carries no warning dot", () => {
-    const { elements } = layoutSlide("image-text", "chalk");
+    const { elements } = layoutSlide("image-text", "splash");
     const slide: Slide = { id: "it", kind: "image-text", elements };
     expect(findOverflow(slide)).toEqual([]);
     expect(lintSlide(slide).ok).toBe(true);
@@ -283,7 +283,7 @@ describe("isBleed", () => {
     }
   });
   test("leaves the ten-slide fixture lesson clean under the ruler on two themes (TEACH-214)", () => {
-    for (const themeId of ["chalk", "playground"] as const) {
+    for (const themeId of ["splash", "playground"] as const) {
       const theme = THEMES.find((t) => t.id === themeId);
       if (!theme) throw new Error(themeId);
       const { slides, variants } = demoLessonSlides(themeId, {

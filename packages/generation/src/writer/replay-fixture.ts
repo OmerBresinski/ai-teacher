@@ -151,7 +151,10 @@ export async function replayRun(
      * instead of handing it over whole; `hooks` sees the slides as they open.
      */
     stream?: (text: string) => string[];
-    hooks?: Pick<WriterRun, "onAsks" | "onSlide" | "onEditable" | "onReopen" | "roleStamp">;
+    hooks?: Pick<
+      WriterRun,
+      "onAsks" | "onSlide" | "onEditable" | "onReopen" | "roleStamp" | "onDraft" | "draft"
+    >;
     /** Called when the streamed text has all been handed over, before the writer call returns. */
     onStreamEnd?: () => void;
     /** The saved brief changed before the run (a different slide count). */
@@ -206,3 +209,30 @@ export async function replayRun(
 export const savedSlides = (b: string) =>
   (JSON.parse(read(b, "lesson.json")) as { slides: (El & { elements: El[]; notes?: string })[] })
     .slides;
+
+/**
+ * TEACH-247 part n: a table past its row limit (40 rows; the limit is 8) does not parse, and a spec
+ * that does not parse is the one thing a drawing is refused for (Greg, 10 Oct 2026: placement
+ * faults are warnings). Tests of the cannot-be-shown path swap it in for one slide's recorded
+ * drawing, since y8 s3's family tree and y11 s3's apparatus now draw.
+ */
+export const UNSHOWABLE_TABLE = {
+  kind: "table",
+  alt: "A table too big to show on a slide.",
+  header: ["First column", "Second column", "Third column", "Fourth column", "Fifth column"],
+  rows: Array.from({ length: 40 }, () =>
+    Array.from({ length: 5 }, () => "Longest words here fill it"),
+  ),
+};
+
+/** The recorded visuals with slide `slideIndex`'s drawing (0-based) swapped for `UNSHOWABLE_TABLE`. */
+export function withUnshowable(
+  b: string,
+  slideIndex: number,
+  inner: (i: number, key: string, a: VisualAsk) => VisualState = recordedVisuals(b),
+) {
+  return (i: number, key: string, a: VisualAsk): VisualState => {
+    const v = inner(i, key, a);
+    return i === slideIndex && v.status === "diagram" ? { ...v, spec: UNSHOWABLE_TABLE } : v;
+  };
+}

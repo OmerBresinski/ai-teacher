@@ -127,7 +127,9 @@ export function confirmLesson(
     : {};
   // The stored duration follows the brief in both branches; nothing is re-planned for it.
   // Ruling 116: the starting theme sent with the confirm replaces the plan-time one.
-  const themePatch = input.themeId !== undefined ? { themeId: input.themeId } : {};
+  // Ruling 202: a theme sent here is the teacher's (explicit or remembered), so it wins.
+  const themePatch =
+    input.themeId !== undefined ? { themeId: input.themeId, themeChosen: true as const } : {};
   const withDuration = (facts: LessonFacts): LessonFacts =>
     input.durationMin !== undefined ? { ...facts, durationMin: input.durationMin } : facts;
   if (!replan) {

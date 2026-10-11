@@ -1,0 +1,179 @@
+{
+  "_provenance": {
+    "title": "National curriculum in England: citizenship programmes of study for key stages 3 and 4",
+    "publisher": "Department for Education",
+    "sourceUrl": "https://www.gov.uk/government/publications/national-curriculum-in-england-citizenship-programmes-of-study/national-curriculum-in-england-citizenship-programmes-of-study-for-key-stages-3-and-4",
+    "sourceUpdated": "2013-09-11T16:00:00+01:00",
+    "retrieved": "2026-10-10",
+    "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0.",
+    "scope": "Statutory programme-of-study statements only (the 'Pupils should be taught' lists), verbatim. Non-statutory notes and guidance, aims, purpose of study and appendices are not included."
+  },
+  "statements": [
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.1",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the development of the political system of democratic government in the United Kingdom, including the roles of citizens, Parliament and the monarch"
+    },
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.2",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the operation of Parliament, including voting and elections, and the role of political parties"
+    },
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.3",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the precious liberties enjoyed by the citizens of the United Kingdom"
+    },
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.4",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the nature of rules and laws and the justice system, including the role of the police and the operation of courts and tribunals"
+    },
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.5",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the roles played by public institutions and voluntary groups in society, and the ways in which citizens work together to improve their communities, including opportunities to participate in school-based activities"
+    },
+    {
+      "id": "england.citizenship.y7-9.key-stage-3.6",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS3",
+      "years": [7, 9],
+      "yearBand": "Key stage 3",
+      "domain": "Key stage 3",
+      "headings": ["Key stage 3"],
+      "text": "the functions and uses of money, the importance and practice of budgeting, and managing risk"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.1",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "parliamentary democracy and the key elements of the constitution of the United Kingdom, including the power of government, the role of citizens and Parliament in holding those in power to account, and the different roles of the executive, legislature and judiciary and a free press"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.2",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "the different electoral systems used in and beyond the United Kingdom and actions citizens can take in democratic and electoral processes to influence decisions locally, nationally and beyond"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.3",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "other systems and forms of government, both democratic and non-democratic, beyond the United Kingdom"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.4",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "local, regional and international governance and the United Kingdom’s relations with the rest of Europe, the Commonwealth, the United Nations and the wider world"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.5",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "human rights and international law"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.6",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "the legal system in the UK, different sources of law and how the law helps society deal with complex problems"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.7",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "diverse national, regional, religious and ethnic identities in the United Kingdom and the need for mutual respect and understanding"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.8",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "the different ways in which a citizen can contribute to the improvement of their community, to include the opportunity to participate actively in community volunteering, as well as other forms of responsible activity"
+    },
+    {
+      "id": "england.citizenship.y10-11.key-stage-4.9",
+      "country": "england",
+      "subject": "citizenship",
+      "keyStage": "KS4",
+      "years": [10, 11],
+      "yearBand": "Key stage 4",
+      "domain": "Key stage 4",
+      "headings": ["Key stage 4"],
+      "text": "income and expenditure, credit and debt, insurance, savings and pensions, financial products and services, and how public money is raised and spent"
+    }
+  ]
+}

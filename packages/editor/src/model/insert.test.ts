@@ -21,7 +21,7 @@ import {
 import { addElement } from "./reducers";
 import { getTheme } from "./themes";
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const inside = (r: { x: number; y: number; w: number; h: number }) =>
   r.x >= 0 && r.y >= 0 && r.x + r.w <= SLIDE_W && r.y + r.h <= SLIDE_H;
 

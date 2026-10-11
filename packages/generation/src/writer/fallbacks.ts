@@ -160,6 +160,42 @@ export function asPicture(raw: S): S | undefined {
 }
 void isPic;
 
+/**
+ * Tile diagrams that could not be shown (TEACH-75 part d), each as a picture of the same thing:
+ * `col.n` a compare card's visual, `seq.n` a sequence stage. Undefined when a lost tile is not a
+ * diagram or its kind is not a thing or process (`pictureFallbackOk`): the slide then takes its
+ * words-only form (text cards, numbered steps), never an empty tile.
+ */
+export function tilesAsPictures(raw: S, keys: string[]): S | undefined {
+  const s: S = { ...raw };
+  const cols = Array.isArray(s.columns) ? (s.columns as S[]).map((c) => ({ ...c })) : undefined;
+  const seq = Array.isArray(s.sequence) ? (s.sequence as S[]).map((x) => ({ ...x })) : undefined;
+  for (const key of keys) {
+    const m = /^(col|seq)\.(\d+)$/.exec(key);
+    const n = Number(m?.[2]);
+    const host = m?.[1] === "col" ? cols?.[n] : m?.[1] === "seq" ? seq?.[n] : undefined;
+    const f = host ? (m?.[1] === "col" ? host.picture : host.diagram) : undefined;
+    if (!host || !isDia(f) || !pictureFallbackOk(str(f.kind))) return undefined;
+    const labels = Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : [];
+    const alone = f.ask_without ?? null;
+    const pic: S = {
+      shows: str(f.shows) || str(host.label) || str(host.caption),
+      must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
+      subject: "generic",
+      ...(m?.[1] === "col" ? { ask: alone, ask_without: alone } : {}),
+    };
+    if (!pic.shows) return undefined;
+    if (m?.[1] === "col") host.picture = pic;
+    else {
+      delete host.diagram;
+      Object.assign(host, pic);
+    }
+  }
+  if (cols) s.columns = cols;
+  if (seq) s.sequence = seq;
+  return s;
+}
+
 const LIST_KEYS = ["points", "questions"] as const;
 /**
  * The last-resort strip never ships overflow: its list items are carried onto continuation slides

@@ -28,7 +28,7 @@ import { newLesson } from "./factories";
 
 /* TEACH-185: every derivation, the fixture fallback and the tier shaping. */
 
-const THEME = "chalk";
+const THEME = "splash";
 
 /** A small water-cycle fact set; `demo-facts.ts` (TEACH-183) is not this file's to rely on. */
 const FACTS: LessonFacts = {

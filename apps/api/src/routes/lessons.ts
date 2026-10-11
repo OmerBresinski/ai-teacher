@@ -458,8 +458,10 @@ export function lessonRoutes(
       async (c) => {
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
-        const input = c.req.valid("json");
-        assertKnownTheme(input.themeId);
+        const sent = c.req.valid("json");
+        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+        const themeId = assertKnownTheme(sent.themeId);
+        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
         const ws = forWorkspace(unsafeDb, workspaceId);
         const { requestId, skipPlanning = false } = input;
         if (requestId !== undefined) {
@@ -596,11 +598,13 @@ export function lessonRoutes(
       zValidator("json", GenerateLessonSchema, validationHook),
       async (c) => {
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const input = c.req.valid("json");
-        if (input.objectives.length === 0) {
+        const sent = c.req.valid("json");
+        if (sent.objectives.length === 0) {
           throw new HTTPException(422, { message: NO_OBJECTIVES_MESSAGE });
         }
-        assertKnownTheme(input.themeId);
+        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+        const themeId = assertKnownTheme(sent.themeId);
+        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
         const rt = requireRuntime(runtime);
         const lessonId = c.req.valid("param").id as LessonId;
         const ws = forWorkspace(unsafeDb, workspaceId);

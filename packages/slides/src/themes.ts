@@ -1,4 +1,5 @@
 import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
+import { DEFAULT_THEME_ID, liveThemeId } from "@tj/domain/documents";
 import { FONT_STACKS } from "./fonts";
 
 /**
@@ -42,36 +43,7 @@ function type(stops: Stops) {
 }
 
 const BASE: Theme[] = [
-  {
-    id: "chalk",
-    name: "Chalk & Cream",
-    suits: "The default. KS2, and any class with dyslexic readers.",
-    tags: ["dyslexia", "low-stimulation"],
-    colors: {
-      background: "#FAF4E6",
-      surface: "#FFFBF0",
-      ink: "#2C2A24",
-      muted: "#6E6656",
-      accent: "#A94A18",
-      accent2: "#4A5D8C",
-      onAccent: "#FAF4E6",
-      line: "#E7DCC4",
-      correct: "#2F6B44",
-      incorrect: "#A83A2E",
-    },
-    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
-    ...type([
-      [52, 1.1],
-      [44, 1.14],
-      [30, 1.2],
-      [24, 1.55],
-      [20, 1.55],
-      [14, 1.25],
-    ]),
-    weights: { title: 600, heading: 600, body: 400 },
-    titleTracking: "-0.01em",
-    radius: 14,
-  },
+  // Chalk & Cream was retired (UX ruling 202); `getTheme` renders its lessons as Splash.
   {
     id: "playground",
     name: "Playground",
@@ -469,7 +441,7 @@ const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
 export const displayBodyStop = (theme: Theme): number | undefined =>
   typeScale(theme) ? undefined : DISPLAY_BODY[theme.id];
 
-export { DEFAULT_THEME_ID } from "@tj/domain/documents";
+export { DEFAULT_THEME_ID, fallbackThemeFor, liveThemeId } from "@tj/domain/documents";
 
 /**
  * A callout's colours (UX ruling 84, TEACH-75): the card's tint, its hairline, the ink its label
@@ -566,7 +538,9 @@ const BOUND_THEMES = new Map<string, Theme>();
  * stage. No band, or one that is not a key stage: the catalogue theme, its own sizes.
  */
 export function getTheme(id: string | undefined | null, ageBand?: string | null): Theme {
-  const t = THEMES.find((x) => x.id === id) ?? (THEMES[0] as Theme);
+  const want = id ? liveThemeId(id) : DEFAULT_THEME_ID;
+  const t =
+    THEMES.find((x) => x.id === want) ?? (THEMES.find((x) => x.id === DEFAULT_THEME_ID) as Theme);
   const ks = asStage(ageBand);
   if (!ks) return t;
   const key = `${t.id}@${ks}`;

@@ -1,8 +1,15 @@
 import type { Id, Lesson, Theme } from "@tj/domain/documents";
+import { liveThemeId } from "@tj/slides";
 import { useEffect, useRef } from "react";
 import * as reducers from "../model/reducers";
 import { renderTheme } from "../model/themes";
-import { fitMigrationMessage, fitVersionOf, measureInputsOf, planFitMigration } from "./fit-plan";
+import {
+  fitMigrationMessage,
+  fitVersionOf,
+  isRetiredTheme,
+  measureInputsOf,
+  planFitMigration,
+} from "./fit-plan";
 import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer, whenFontsReady } from "./measure";
 import type { MeasureInput, Measurer } from "./reflow";
@@ -91,6 +98,10 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   // keeps the fact that it has looked.
   const previousVersion = fitVersionOf(lesson);
   dispatch(reducers.setFitVersion, plan.version);
+  // Ruling 202: a lesson stored in a retired theme takes the theme it renders in, stamped the same
+  // way, so it is re-fitted once and opens as a plain Splash lesson after.
+  const retired = isRetiredTheme(lesson) ? lesson.themeId : undefined;
+  if (retired) dispatch(reducers.setLiveTheme, liveThemeId(retired));
 
   // All or nothing: a tidy that throws rolls every slide back and un-stamps the lesson, so a
   // half-migrated deck is never marked current and the next open tries again.
@@ -104,6 +115,7 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   } catch (error) {
     deps.rollbackTransaction(token);
     dispatch(reducers.setFitVersion, previousVersion);
+    if (retired) dispatch(reducers.setLiveTheme, retired);
     throw error;
   }
   deps.endTransaction(token);

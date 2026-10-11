@@ -145,7 +145,7 @@ describe("planPicture", () => {
     expect(countImagePrompt({ ...eggs, empty: 0 })).toBeUndefined();
   });
 
-  test("code draws a plain array; a diagram kind, none, or no answer leaves the zone empty", () => {
+  test("code draws a plain array; the director's none keeps the writer's ask", () => {
     const arr = {
       things: "counters",
       total: 24,
@@ -161,8 +161,8 @@ describe("planPicture", () => {
       perGroup: 6,
       arrangement: "groups",
     });
-    // The director's own "no picture" stays its decision (RESULTS.md lists it).
-    expect(planPicture(dir({ route: "none", pictures: [] }), ask).kind).toBe("none");
+    // The director's own "no picture" keeps the writer's ask (lost-visual.test.ts).
+    expect(planPicture(dir({ route: "none", pictures: [] }), ask).kind).toBe("photo");
   });
 
   // Greg, 10 Oct: "a visual should never be lost." A writer ask is a picture the slide needs.
@@ -396,7 +396,8 @@ describe("findPicture", () => {
       async () => ++n === 2,
     );
     expect(ok.via).toBe("generated");
-    expect(log).toEqual(["generate:false:P", "generate:false:P"]);
+    // The second, judged picture is the one placed, and only it is stored (TEACH-84 part b).
+    expect(log).toEqual(["generate:false:P", "generate:false:P", "remember"]);
     const never = await findPicture(
       req({ imagePrompt: "P" }),
       bank([]),

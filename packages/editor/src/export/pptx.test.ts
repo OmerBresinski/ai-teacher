@@ -47,7 +47,7 @@ import { docToRuns } from "./runs";
  * Bun; the OOXML cases read `ppt/slides/*.xml` back through jszip.
  */
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 const doc = (content: unknown[]) => ({ type: "doc" as const, content: content as never });
 const text = (value: string, marks?: unknown[]) => ({
@@ -107,7 +107,7 @@ describe("hexColor", () => {
 
 describe("fontFaceFor", () => {
   it("maps every theme font stack to a real family name", () => {
-    expect(fontFaceFor(theme.fonts.body)).toBe("Lexend");
+    expect(fontFaceFor(theme.fonts.body)).toBe("Nunito");
     expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");
@@ -770,7 +770,7 @@ describe("exportLessonPptx", () => {
   // TEACH-77 row 9. pptxgenjs 4.0.1 has no alt text for a shape or a text box, so the figure's
   // alt stays on screen only: a known limitation, recorded in the ADR 0032 amendment.
   it("exports a diagram slide's figure as custom geometry and text boxes, without its alt", async () => {
-    const diagram = newSlide("diagram", "chalk");
+    const diagram = newSlide("diagram", "splash");
     const lesson = { id: "l1", title: "Diagram", slides: [diagram] } as Lesson;
     const blob = await exportLessonPptx(lesson, theme, { includeAnswers: false });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
@@ -1094,7 +1094,7 @@ describe("a slide exported as the class sees it", () => {
       body: "Magma rises through cracks in the crust. Pressure builds as gas collects in the magma chamber. The crust gives way and lava pours out.",
       diagram: "Cross-section: magma chamber, vent, crater, ash cloud",
     },
-    "chalk",
+    "splash",
     meta,
   );
   const write = async (slides: Slide[]) =>
