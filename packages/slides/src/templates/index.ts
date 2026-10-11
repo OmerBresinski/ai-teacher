@@ -376,10 +376,12 @@ const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
  * step, set in the body face (`c.boost`), so it stays on the scale (UX ruling 91) and reads as words,
  * not a heading. The badge glyph grows to body. Undefined when the stage has no larger step.
  */
-function boosted(c: Ctx, full: Scale): Scale | undefined {
-  const step = typeScale(c.t)?.heading;
-  if (!step || step <= full.body) return undefined;
-  return { ...full, body: step, lead: step, small: full.body };
+function boosted(c: Ctx, full: Scale): Scale[] {
+  const sc = typeScale(c.t);
+  if (!sc) return [];
+  return [sc.heading, sc.bodyLarge]
+    .filter((step) => step > full.body)
+    .map((step) => ({ ...full, body: step, lead: step, small: full.body }));
 }
 
 /**
@@ -977,34 +979,39 @@ function numbered(
   what: string,
   opts: { ruled?: boolean; after?: string; before?: string; stretch?: boolean; top?: number } = {},
 ) {
+  const base = w;
+  // Grown practice rows take the full content width (G.width), so a larger step costs fewer lines.
+  const wide = opts.stretch ? Math.max(w, G.width) : w;
   ladder(
     c,
     (r) => {
       // Practice (TEACH-75 part D): fewer or shorter questions are set a type step larger, as far
-      // as the set still fills no more than 88% of the band at its tight spacing.
+      // as the set still fits the band at its tight spacing.
       if (opts.stretch && r.space === 1 && items.length) {
         const full = c.s;
         const height = (sc: Scale) => {
           c.s = sc;
           const dd = markerDisc(c);
           const ind = dd + Math.round(sc.body * 0.7);
-          const p0 = Math.round(sc.body * 0.6);
+          const p0 = Math.round(sc.body * 0.3);
           const bH = opts.before ? measure(c, opts.before, "small", w, 600) + 6 : 0;
           return items.reduce(
             (a, q) => a + Math.max(dd, measure(c, q, "body", w - ind)) + 2 * p0,
             bH,
           );
         };
-        const big = boosted(c, full);
-        c.boost = !!big && height(big) <= G.band.h * 0.88;
-        c.s = c.boost && big ? big : full;
+        const big = boosted(c, full).find((b) => height(b) <= G.band.h);
+        c.boost = !!big;
+        c.s = big ?? full;
       }
+      w = c.boost ? wide : base;
       const d = markerDisc(c);
       const indent = d + Math.round(c.s.body * 0.7);
       const hs = items.map((q) => Math.max(d, measure(c, q, "body", w - indent)));
       const before = opts.before;
       const beforeH = before ? measure(c, before, "small", w, 600) : 0;
-      let pad = Math.round(c.s.body * (opts.ruled ? 0.6 : 0.35) * r.space);
+      // Grown words start from the tight padding; the stretch below gives the rest of the room back.
+      let pad = Math.round(c.s.body * (c.boost ? 0.3 : opts.ruled ? 0.6 : 0.35) * r.space);
       // Practice (TEACH-75 part D): a short set opens its rows up, the same for every row, so the
       // questions fill the band in an even rhythm instead of a tight stack over an empty foot.
       if (opts.stretch && r.space === 1 && items.length) {
@@ -2130,26 +2137,36 @@ function layoutOnce(
         const was = { g, s: c.s, gap, pad, d, sH };
         const base = g;
         stemAtBody = false;
+        const stemLines = stem ? measure(c, stem, "lead", W) / full.lead : 0;
         let grown = false;
-        const big = boosted(c, full);
-        // The stem grows with its options; a stem that would then crowd the band stays at body.
-        for (const withStem of [true, false]) {
-          if (!big || grown) break;
-          const f = big.body / full.body;
-          c.s = withStem ? big : full;
-          sH = stem ? measure(c, stem, "lead", W) + Math.round(26 * f) : 0;
-          c.s = big;
-          gap = Math.round(18 * Math.min(f, 1.3));
-          pad = Math.round(20 * f);
-          d = Math.round(c.s.body * 1.3);
-          const t = grid(base.perRow);
-          if (t.total <= G.band.h && t.lines <= base.lines) {
-            g = t;
-            grown = true;
-            c.boost = true;
-            stemAtBody = !withStem;
+        // The largest step that fits: heading, then bodyLarge. The stem grows with its options; a
+        // stem that would then crowd the band stays at body.
+        for (const big of boosted(c, full))
+          for (const withStem of [true, false]) {
+            if (grown) break;
+            const f = big.body / full.body;
+            c.s = withStem ? big : full;
+            // A stem grows only while it takes no more lines than it does at body.
+            if (withStem && stem && measure(c, stem, "lead", W) / big.lead > stemLines * 1.01)
+              continue;
+            // Grown words take the room from the padding, so a grown set may sit closer.
+            sH = stem ? measure(c, stem, "lead", W) + 18 : 0;
+            c.s = big;
+            gap = 14;
+            pad = Math.round(20 * f);
+            d = Math.round(c.s.body * 1.3);
+            const t = grid(base.perRow);
+            // Full-width rows may wrap to two lines when that is what the larger step costs.
+            if (
+              t.total <= G.band.h &&
+              t.lines <= (base.perRow === 1 ? Math.max(2, base.lines) : base.lines)
+            ) {
+              g = t;
+              grown = true;
+              c.boost = true;
+              stemAtBody = !withStem;
+            }
           }
-        }
         if (!grown) {
           ({ g, gap, pad, d, sH } = was);
           c.s = was.s;

@@ -105,3 +105,30 @@ describe("sized to the room (back-of-room test)", () => {
         expect(r.over).toEqual([]);
       });
 });
+
+describe("bodyLarge: the step between body and heading", () => {
+  for (const theme of THEMES)
+    for (const stage of STAGES)
+      test(`${theme.id} ${stage}: body < bodyLarge < heading, and a heading-role override lands on it`, () => {
+        const t = atKeyStage(theme, stage);
+        const sc = typeScale(t);
+        if (!sc) throw new Error("no scale");
+        expect(sc.bodyLarge).toBeGreaterThan(sc.body);
+        expect(sc.bodyLarge).toBeLessThan(sc.heading);
+        expect(resolveFontSize(t, "heading", sc.bodyLarge)).toBe(sc.bodyLarge);
+      });
+  test("heart R3 s6 at KS2 grows its options to bodyLarge, inside the band", () => {
+    const theme = getTheme("treehouse");
+    const r = layoutTemplate(
+      hinge(SENT3, "Why is the vessel taking blood from the heart to the lungs an artery?"),
+      theme,
+      "ks2",
+    );
+    const sc = typeScale(atKeyStage(theme, "ks2"));
+    const words = (r.slide.elements as (El & { style?: { fontSize?: number } })[]).filter(
+      (e) => e.name === "Option text",
+    );
+    for (const e of words) expect(e.style?.fontSize).toBe(sc?.bodyLarge);
+    expect(r.over).toEqual([]);
+  });
+});
