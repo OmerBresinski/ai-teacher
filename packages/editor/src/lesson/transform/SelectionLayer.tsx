@@ -66,7 +66,7 @@ import {
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
 import { ImageCreditBadge } from "./ImageCreditBadge";
-import { type DiagramStep, isBuildingModel, ModelStepper } from "./ModelStepper";
+import { type DiagramStep, ModelStepper } from "./ModelStepper";
 import {
   AngleLabel,
   CandidateOutlines,
@@ -75,6 +75,7 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+import { useModelStepping } from "./use-model-stepping";
 
 /*
  * The editor's transform layer (TeachDeck `components/editor/transform/SelectionLayer.tsx`).
@@ -169,8 +170,6 @@ export function SelectionLayer({
 
   const [coarse, setCoarse] = useState(false);
   const [hoverId, setHoverId] = useState<Id | null>(null);
-  /** The model whose build stepper holds keyboard focus, if any. */
-  const [stepperFocus, setStepperFocus] = useState<Id | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   /** What the marquee touches right now, outlined live; `commit` selects the same set. */
   const [candidates, setCandidates] = useState<Id[]>([]);
@@ -753,7 +752,10 @@ export function SelectionLayer({
   /* ---------------- render ---------------- */
 
   const stageProps = {
-    onPointerDown: onStageDown,
+    onPointerDown: (e: ReactPointerEvent) => {
+      notePress(e.pointerType);
+      onStageDown(e);
+    },
     onDoubleClick: onStageDoubleClick,
     onPointerMove: onStageHover,
     onPointerLeave: (e: ReactPointerEvent) => {
@@ -788,27 +790,14 @@ export function SelectionLayer({
       ? first.el
       : null;
 
-  // The build stepper (TEACH-247 part u): on the model the stepper holds focus for, else the
-  // hovered one, else the single selected one; never mid-gesture, mid-marquee or while cropping.
-  const modelBox = (id: Id | null) => {
-    if (!id) return undefined;
-    const b = selected.find((s) => s.id === id) ?? byId.get(id);
-    return b && isBuildingModel(b.el) ? { ...b, el: b.el } : undefined;
-  };
-  const stepping =
-    steppers && onDiagramStep && !gestureOn && !marquee && !cropping
-      ? (modelBox(stepperFocus) ??
-        modelBox(hoverId) ??
-        (selected.length === 1 ? modelBox(first?.id ?? null) : undefined))
-      : undefined;
-  // Back to the full view once the previewed model is neither hovered nor holding focus.
-  const stepLive =
-    !!diagramStep &&
-    stepping?.id === diagramStep.id &&
-    (hoverId === diagramStep.id || stepperFocus === diagramStep.id);
-  useEffect(() => {
-    if (diagramStep && !stepLive) onDiagramStep?.(null);
-  }, [diagramStep, stepLive, onDiagramStep]);
+  const { stepping, setFocusId, notePress } = useModelStepping({
+    enabled: steppers && !gestureOn && !marquee && !cropping,
+    hoverId,
+    selectedId: selected.length === 1 ? (first?.id ?? null) : null,
+    boxOf: (id) => selected.find((b) => b.id === id) ?? byId.get(id),
+    diagramStep,
+    onDiagramStep,
+  });
 
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: focus tracking only; the pointer catcher is the child below
@@ -937,7 +926,8 @@ export function SelectionLayer({
             // Off the stepper and out of the layer: nothing on the slide is under the pointer.
             if (!over && !(to instanceof Node && rootRef.current?.contains(to))) setHoverId(null);
           }}
-          onFocusChange={(inside) => setStepperFocus(inside ? stepping.id : null)}
+          onFocusChange={(inside) => setFocusId(inside ? stepping.id : null)}
+          onPress={notePress}
         />
       ) : null}
 

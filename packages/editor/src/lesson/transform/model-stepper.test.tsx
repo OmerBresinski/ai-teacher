@@ -77,16 +77,16 @@ describe("ModelStepper in the editor", () => {
 
     fireEvent.pointerMove(catcher(container), pointer(200, 150));
     const group = await screen.findByRole("group", { name: "Build steps" });
-    expect(group.textContent).toContain("Step 3 of 3");
+    expect(group.textContent).toContain("Build 3 of 3");
     const next = screen.getByRole("button", { name: "Next build step" }) as HTMLButtonElement;
     expect(next.disabled).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Previous build step" }));
     await waitFor(() => expect(canvasSvg(container, el.id)).toContain(HIDES_2));
-    expect(group.textContent).toContain("Step 2 of 3");
+    expect(group.textContent).toContain("Build 2 of 3");
     fireEvent.click(screen.getByRole("button", { name: "Previous build step" }));
     await waitFor(() => expect(canvasSvg(container, el.id)).toContain(HIDES_1_2));
-    expect(group.textContent).toContain("Step 1 of 3");
+    expect(group.textContent).toContain("Build 1 of 3");
 
     // The pointer leaves the slide: the model is back to its finished drawing.
     fireEvent.pointerLeave(catcher(container), { relatedTarget: document.body });
@@ -130,5 +130,41 @@ describe("ModelStepper in the editor", () => {
       ...container.querySelectorAll(`[data-slide-mode="thumb"] [data-element-id="${el.id}"] img`),
     ];
     for (const img of thumbs) expect(img.getAttribute("src") ?? "").not.toContain("opacity%3A0");
+  });
+
+  test("touch: a tap holds the build while the model is selected; a tap elsewhere drops it", async () => {
+    const el = model();
+    const { container } = renderEditor(seeded(el));
+    const touch = { pointerType: "touch" };
+    // A tap on the model: no hover, the press selects it and the stepper shows.
+    fireEvent.pointerDown(catcher(container), pointer(200, 150, touch));
+    fireEvent.pointerUp(window, pointer(200, 150, touch));
+    fireEvent.pointerLeave(catcher(container), { relatedTarget: document.body });
+    const prev = await screen.findByRole("button", { name: "Previous build step" });
+    // A tap on Previous: Safari leaves focus where it was.
+    fireEvent.pointerDown(prev, touch);
+    fireEvent.click(prev);
+    await waitFor(() => expect(canvasSvg(container, el.id)).toContain(HIDES_2));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(canvasSvg(container, el.id)).toContain(HIDES_2);
+    expect(screen.getByRole("group", { name: "Build steps" }).textContent).toContain(
+      "Build 2 of 3",
+    );
+    // A tap on empty slide clears the selection and the preview.
+    fireEvent.pointerDown(catcher(container), pointer(800, 500, touch));
+    fireEvent.pointerUp(window, pointer(800, 500, touch));
+    await waitFor(() => expect(canvasSvg(container, el.id)).not.toContain("opacity:0"));
+  });
+
+  test("mouse: a selected model still goes back to full once the pointer leaves", async () => {
+    const el = model();
+    const { container } = renderEditor(seeded(el));
+    fireEvent.pointerDown(catcher(container), pointer(200, 150, { pointerType: "mouse" }));
+    fireEvent.pointerUp(window, pointer(200, 150));
+    fireEvent.pointerMove(catcher(container), pointer(200, 150));
+    fireEvent.click(await screen.findByRole("button", { name: "Previous build step" }));
+    await waitFor(() => expect(canvasSvg(container, el.id)).toContain(HIDES_2));
+    fireEvent.pointerLeave(catcher(container), { relatedTarget: document.body });
+    await waitFor(() => expect(canvasSvg(container, el.id)).not.toContain("opacity:0"));
   });
 });

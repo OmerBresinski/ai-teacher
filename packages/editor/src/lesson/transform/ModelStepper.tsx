@@ -40,7 +40,7 @@ export function moveBuild(
 
 /**
  * The build stepper on a drawn model in the editor (TEACH-247 part u, UX ruling 205): previous,
- * next and "Step N of M" on the foot of the model. The editor shows the finished drawing; this lets
+ * next and "Build N of M" on the foot of the model. The editor shows the finished drawing; this lets
  * the teacher page through the frames Present builds, and the model goes back to the full view as
  * soon as it is neither hovered nor holding focus (`SelectionLayer` owns that rule).
  *
@@ -59,6 +59,7 @@ export function ModelStepper({
   onStep,
   onHover,
   onFocusChange,
+  onPress,
 }: {
   element: ImageElement;
   rect: Rect;
@@ -69,6 +70,8 @@ export function ModelStepper({
   /** The pointer entered (true) or left (false) the stepper. */
   onHover: (over: boolean, to: EventTarget | null) => void;
   onFocusChange: (inside: boolean) => void;
+  /** A press on the stepper, with its pointer type (a tap holds the preview while selected). */
+  onPress?: (pointerType: string) => void;
 }) {
   const builds = element.builds ?? 0;
   const { n, of } = stepOf(builds, build);
@@ -112,7 +115,10 @@ export function ModelStepper({
           transformOrigin: "50% 50%",
           pointerEvents: "auto",
         }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onPress?.(e.pointerType);
+        }}
         onDoubleClick={(e) => e.stopPropagation()}
         onPointerEnter={(e) => onHover(true, e.relatedTarget)}
         onPointerLeave={(e) => onHover(false, e.relatedTarget)}
@@ -141,7 +147,7 @@ export function ModelStepper({
             aria-live="polite"
             className="inline-flex items-center whitespace-nowrap px-2 text-ink-2 text-meta tabular-nums"
           >
-            {`Step ${n} of ${of}`}
+            {`Build ${n} of ${of}`}
           </span>
           <IconButton
             label="Next build step"

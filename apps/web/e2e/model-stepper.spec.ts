@@ -94,13 +94,13 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   if (!box) throw new Error("model not on screen");
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.4);
   await expect(stepper).toBeVisible();
-  await expect(stepper).toContainText(`Step ${heart.builds + 1} of ${heart.builds + 1}`);
+  await expect(stepper).toContainText(`Build ${heart.builds + 1} of ${heart.builds + 1}`);
   await expect(stepper.getByRole("button", { name: "Next build step" })).toBeDisabled();
 
   const prev = stepper.getByRole("button", { name: "Previous build step" });
   await prev.click();
   await prev.click();
-  await expect(stepper).toContainText(`Step ${heart.builds - 1} of ${heart.builds + 1}`);
+  await expect(stepper).toContainText(`Build ${heart.builds - 1} of ${heart.builds + 1}`);
   await expect.poll(() => svgOf(model)).toContain(LAST_HIDDEN);
   // The thumbnail keeps the finished drawing while the canvas steps.
   expect(await svgOf(thumb)).not.toContain(LAST_HIDDEN);
@@ -110,9 +110,9 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   // Keyboard: the arrows step inside the stepper, and the model does not move.
   await prev.focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(stepper).toContainText(`Step ${heart.builds - 2} of ${heart.builds + 1}`);
+  await expect(stepper).toContainText(`Build ${heart.builds - 2} of ${heart.builds + 1}`);
   await page.keyboard.press("ArrowRight");
-  await expect(stepper).toContainText(`Step ${heart.builds - 1} of ${heart.builds + 1}`);
+  await expect(stepper).toContainText(`Build ${heart.builds - 1} of ${heart.builds + 1}`);
   expect(await model.boundingBox()).toEqual(box);
 
   // Neither hovered nor focused: back to the whole model.
@@ -131,4 +131,33 @@ test("the editor shows the whole model, the stepper pages its builds, Present st
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => svgOf(presented)).not.toContain('[data-s="1"],');
   await expect.poll(() => svgOf(presented)).toContain(LAST_HIDDEN);
+});
+
+test.describe("on a touch screen (iPad)", () => {
+  test.use({ hasTouch: true });
+
+  test("a tap shows the stepper, the build holds after a tap, a tap elsewhere drops it", async ({
+    signedInPage: { page },
+  }) => {
+    await page.addInitScript(() => localStorage.setItem("tj-theme", "light"));
+    const id = await seedHeart(page);
+    await page.goto(`/l/${id}`);
+    const model = page.locator(`[data-slide-frame] [data-element-id="${MODEL_ID}"] img`);
+    await expect(model).toBeVisible();
+    const box = await model.boundingBox();
+    if (!box) throw new Error("model not on screen");
+    await page.touchscreen.tap(box.x + box.width * 0.3, box.y + box.height * 0.4);
+    const stepper = page.getByRole("toolbar", { name: "Model build stepper" });
+    await expect(stepper).toBeVisible();
+    await stepper.getByRole("button", { name: "Previous build step" }).tap();
+    await expect(stepper).toContainText(`Build ${heart.builds} of ${heart.builds + 1}`);
+    // Safari does not focus a tapped button: the build must hold without focus or hover.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.waitForTimeout(300);
+    await expect(stepper).toContainText(`Build ${heart.builds} of ${heart.builds + 1}`);
+    expect(await svgOf(model)).toContain(LAST_HIDDEN);
+    // A tap on the empty grey margin round the slide clears the selection: the whole model again.
+    await page.touchscreen.tap(box.x + box.width + 120, box.y + 10);
+    await expect.poll(() => svgOf(model)).not.toContain(LAST_HIDDEN);
+  });
 });
