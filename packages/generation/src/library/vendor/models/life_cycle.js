@@ -26,12 +26,14 @@ export const meta = {
   id: "life_cycle",
   name: "Life cycles",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Reception", "Y1", "Y2", "Y3", "Y4", "Y5"],
   teaches:
     "How a living thing grows, changes and makes new young, so its life cycle starts again; and how cycles differ between groups.",
 };
+// Present opens on the first build: the cycle starts from one stage (the seed or egg) and grows round, so every caption keeps its own frame (TEACH-247 part x).
+export const opensOnFirstBuild = true;
 
 /* ------------------------------------------------------------------ the science (fixed per organism) */
 // stage: id, kind (art), rel (size within the cycle), w [simple, scientific], cap [simple, scientific],

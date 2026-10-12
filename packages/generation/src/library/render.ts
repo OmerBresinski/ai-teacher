@@ -797,7 +797,11 @@ export async function renderLibraryModel(
         const draw = (target: Element, still: boolean) => {
           const tfoot = (target.firstElementChild?.children[2] as Element | undefined) ?? null;
           const frames = finished
-            ? tagBuilds(target, tfoot, finished, q, { measure: drawnBox, still })
+            ? tagBuilds(target, tfoot, finished, q, {
+                measure: drawnBox,
+                still,
+                fromStart: model.opensOnFirstBuild === true,
+              })
             : 0;
           const box = frames ? drawnBox(target, tfoot) : finished;
           const y0 = Math.max(0, Math.min(box ? box.y0 - PAD : STAGE_TOP, FOOT));

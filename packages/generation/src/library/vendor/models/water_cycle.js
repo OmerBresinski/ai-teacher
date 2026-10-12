@@ -10,7 +10,7 @@ import {
 import { cloud } from '../kit/batch-F.js';
 
 export const meta = {
-  id: 'water_cycle', name: 'The water cycle', kind: 'scene', version: 1,
+  id: 'water_cycle', name: 'The water cycle', kind: 'scene', version: 2,
   subjects: ['Science', 'Geography'],
   years: ['Y4', 'Y5', 'Y6'],
   teaches: 'How the same water goes round and round: it evaporates from the sea, condenses into clouds, falls as rain and flows back to the sea.',
@@ -269,6 +269,9 @@ export function render(root, P, ctx) {
     for (const [x1, y1, x2, y2] of [[1112, 236, 1062, 526], [1166, 244, 1160, 530]])
       arrow(ctx, g, wavyD(x1, y1, x2, y2, 7, 4), x2, y2, Math.atan2(y2 - y1, x2 - x1), 'var(--heat)', 'var(--sw-struct)', { draw: k, k: .8, g: { c: soft('sun') } });
     obstacles.push({ x: 1050, y: 236, w: 130, h: 300 });
+    // the Sun is named on its own build, so that build is a frame of its own in Present (TEACH-247 part x)
+    T(g, 1082, 176, 'Sun', 'ts-small', { 'text-anchor': 'end', s: k });
+    obstacles.push({ x: 1020, y: 148, w: 66, h: 40 });
   }
   obstacles.push({ x: 1086, y: 104, w: 128, h: 128 });
 

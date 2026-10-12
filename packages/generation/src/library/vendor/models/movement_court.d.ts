@@ -4,3 +4,4 @@ export declare const params: import("../../types").LibParams;
 export declare const presets: import("../../types").LibPreset[];
 export declare const validate: import("../../types").LibModel["validate"];
 export declare const builds: import("../../types").LibModel["builds"];
+export declare const opensOnFirstBuild: boolean;

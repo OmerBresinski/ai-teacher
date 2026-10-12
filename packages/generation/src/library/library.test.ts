@@ -44,9 +44,7 @@ describe("shipped models", () => {
             bad.push(`${id}/${p.id}: hidden marks or html`);
           if (!(r.aspect > 0.3 && r.aspect < 7)) bad.push(`${id}/${p.id}: aspect ${r.aspect}`);
         } catch (e) {
-          // hist_map's world journey preset is a 2 MB coastline: refused, so the drawer draws it.
-          if (!(id === "hist_map" && /over the slide's limit/.test(String(e))))
-            bad.push(`${id}/${p.id}: ${String(e).slice(0, 120)}`);
+          bad.push(`${id}/${p.id}: ${String(e).slice(0, 120)}`);
         }
       }
     }
