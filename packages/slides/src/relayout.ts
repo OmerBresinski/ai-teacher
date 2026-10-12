@@ -21,7 +21,6 @@ import type {
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
-import { atKeyStage, keyStageOf } from "./themes";
 
 /** How one adaptive template's items behave in the editor. */
 export type AdaptiveSpec = {
@@ -83,9 +82,25 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
   },
 };
 
-/** The stage a lesson's layouts are laid out at: the theme's bound stage, else the lesson's band. */
+/** The lesson age bands that are not key stage names, as the writer lays them out. */
+const BAND_STAGE: Readonly<Record<string, Stage>> = { eyfs: "ks1", post16: "ks5" };
+const STAGES: readonly string[] = ["ks1", "ks2", "ks3", "ks4", "ks5"];
+const asStage = (v: unknown): Stage | undefined =>
+  typeof v !== "string"
+    ? undefined
+    : STAGES.includes(v)
+      ? (v as Stage)
+      : Object.hasOwn(BAND_STAGE, v)
+        ? BAND_STAGE[v]
+        : undefined;
+
+/**
+ * The stage a lesson's layouts are laid out at: the theme's bound stage (`atKeyStage`), else the
+ * lesson's band. Read here rather than through `keyStageOf`, so the lazy layout panel keeps no
+ * extra theme exports alive in the chunks every lesson page loads.
+ */
 export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage {
-  return keyStageOf(theme) ?? keyStageOf(atKeyStage(theme, ageBand)) ?? "ks3";
+  return asStage((theme as { keyStage?: unknown }).keyStage) ?? asStage(ageBand) ?? "ks3";
 }
 
 /* ------------------------------------------------------------------ */

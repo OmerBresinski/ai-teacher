@@ -1,7 +1,6 @@
 import type { GroupElement, Id, LayoutRef } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
-import { Button, IconButton, toast } from "@tj/ui";
-import { Minus, Plus } from "lucide-react";
+import { Button, toast } from "@tj/ui";
 import { useMemo, useRef, useState } from "react";
 import type { Rect } from "../../model/geometry";
 import * as reducers from "../../model/reducers";
@@ -89,9 +88,14 @@ export default function LayoutPanel({
           >
             <div className="flex items-center justify-between">
               <legend className="font-medium">Item {n + 1}</legend>
-              <IconButton label={`Remove item ${n + 1}`} size="sm" onClick={() => remove(n)}>
-                <Minus aria-hidden />
-              </IconButton>
+              <Button
+                variant="outline"
+                size="xs"
+                aria-label={`Remove item ${n + 1}`}
+                onClick={() => remove(n)}
+              >
+                Remove
+              </Button>
             </div>
             {Object.entries(item as Record<string, unknown>)
               .filter(([, v]) => typeof v === "string")
@@ -117,7 +121,7 @@ export default function LayoutPanel({
           </fieldset>
         ))}
         <Button variant="outline" size="sm" onClick={add}>
-          <Plus aria-hidden /> Add item
+          Add item
         </Button>
         {over.length > 0 ? (
           <div role="alert" className="flex flex-col gap-2 border-t border-border pt-2">

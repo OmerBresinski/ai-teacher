@@ -120,7 +120,17 @@ export default defineConfig(({ mode }) => {
           // Vite 8 bundles with Rolldown: `manualChunks` is deprecated in favour of
           // `codeSplitting.groups` (rolldown 1.2). Keep React in its own long-lived chunk.
           codeSplitting: {
-            groups: [{ name: "react", test: /node_modules\/(react|react-dom|scheduler)\// }],
+            groups: [
+              { name: "react", test: /node_modules\/(react|react-dom|scheduler)\// },
+              // The slide structure recipes keep the small modules they share with the template
+              // recipes in their own chunk, as before the lazy layout panel (TEACH-205 part b)
+              // reached the templates: split out, they add three chunks every lesson page loads.
+              {
+                name: "structure",
+                test: /packages\/slides\/src\/(structure|look|point-kinds|fit-slide|sentences|art|lint|diagrams\/builds)\.ts$/,
+                includeDependenciesRecursively: false,
+              },
+            ],
           },
         },
       },
