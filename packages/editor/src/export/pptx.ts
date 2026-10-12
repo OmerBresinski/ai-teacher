@@ -147,7 +147,8 @@ export const FONT_FAMILIES: Record<string, string> = {
 /**
  * The installed face PowerPoint shows for a theme face the file does not embed (UX ruling 213),
  * measured in the theme v2 pilot against one sentence. Each is as wide or narrower, so text never
- * overflows its box; never Verdana for Lexend (+5%). Keyed by family, then role.
+ * overflows its box; never Verdana for Lexend (+5%). Keyed by family, then role; written into a
+ * v2 deck by `withFallbackFaces` (`pptx-fonts.ts`).
  */
 export const PPTX_FALLBACK_FACE: Record<
   string,
@@ -1406,7 +1407,10 @@ export async function exportLessonPptx(
     const answers = revealAnswers ? lessonAnswers(lesson) : [];
     if (answers.length > 0) addAnswersSlide(pptx, lesson, theme, answers);
 
-    const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    const written = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
+    const { withFallbackFaces } = await import("./pptx-fonts");
+    const buffer = await withFallbackFaces(written, theme);
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });
