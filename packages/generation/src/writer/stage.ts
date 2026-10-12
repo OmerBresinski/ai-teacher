@@ -14,7 +14,7 @@ import {
   withActivities,
   withActivityMenu,
 } from "./activities";
-import { fallbackIsBody, livingBodyOf, routeFreehandBodies } from "./body-figure";
+import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import {
@@ -630,6 +630,87 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       const cancelled = () => stop.signal.aborted || run.signal?.aborted === true;
       const callDrawer: DrawerCall = (req) =>
         cancelled() ? Promise.reject(new Error("diagram job cancelled")) : drawer(req);
+      /**
+       * A library model drawn by code into this slot: true when it drew, else the model's drawer
+       * kind (undefined once cancelled).
+       */
+      const libDraw = async (
+        want: { model: string; intent: string; alt?: string },
+        body = false,
+      ): Promise<true | string | undefined> => {
+        const r = await libraryDiagram(
+          {
+            key: a.key,
+            model: want.model,
+            intent: want.intent,
+            alt: want.alt,
+            words: wordsOf(s),
+            heading: typeof s.heading === "string" ? s.heading : "",
+            caption: typeof s.lead === "string" ? s.lead : "",
+            yearGroup: brief.yearGroup,
+            lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
+            question,
+            // Its words are set and measured in the theme's label face, as the slide's are.
+            font: base.theme.fonts.body,
+            // The drawing is measured where the slide puts it: under the heading, above the lead.
+            ...(run.libraryModelBody
+              ? {
+                  place: modelBodyRect(
+                    typeof s.heading === "string" ? s.heading : "",
+                    typeof s.lead === "string" ? s.lead : undefined,
+                    base.theme,
+                    base.stage as never,
+                  ),
+                }
+              : {}),
+            ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
+            ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
+            ...(run.libraryLabelFloor ? { labelFloor: true } : {}),
+            ...(act ? {} : { logOnly: true }),
+          },
+          async (req) =>
+            (
+              await callDrawer({
+                model: "gpt-6-luna",
+                effort: "low",
+                ...req,
+                name: "diagram",
+                strict: false,
+                timeoutMs: DRAWER_TIMEOUT_MS,
+              })
+            ).out,
+          (e) => log({ ...e, slide: i + 1 }),
+        );
+        if (cancelled()) return undefined;
+        if (r.ok) {
+          const { src, aspect, alt } = r.drawing;
+          drawnDiagrams.set(`${i}:${a.key}`, {
+            status: "diagram",
+            spec: {
+              drawn: {
+                src,
+                aspect,
+                alt,
+                bare: true,
+                ...(run.libraryModelBody ? { body: true } : {}),
+                source: r.source,
+              },
+            },
+          });
+          log({
+            ev: "diagram-done",
+            slide: i + 1,
+            key: a.key,
+            via: "library",
+            ok: true,
+            ...(body ? { body: true } : {}),
+          });
+          relay(i);
+          shown(i);
+          return true;
+        }
+        return r.ok ? true : r.fallbackKind;
+      };
       const job = nonFatal(
         async () => {
           // A library model: filled and drawn by code; one that cannot be falls back to the drawer.
@@ -644,83 +725,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           }
           if (modelPoints(s).length)
             log({ ev: "lib-points-to-notes", slide: i + 1, model: want.model });
-          const r = await libraryDiagram(
-            {
-              key: a.key,
-              model: String(want.model ?? ""),
-              intent: String(want.intent ?? a.shows),
-              alt: typeof want.alt === "string" ? want.alt : undefined,
-              words: wordsOf(s),
-              heading: typeof s.heading === "string" ? s.heading : "",
-              caption: typeof s.lead === "string" ? s.lead : "",
-              yearGroup: brief.yearGroup,
-              lesson: [brief.subject, brief.topic].filter(Boolean).join(": "),
-              question,
-              // Its words are set and measured in the theme's label face, as the slide's are.
-              font: base.theme.fonts.body,
-              // The drawing is measured where the slide puts it: under the heading, above the lead.
-              ...(run.libraryModelBody
-                ? {
-                    place: modelBodyRect(
-                      typeof s.heading === "string" ? s.heading : "",
-                      typeof s.lead === "string" ? s.lead : undefined,
-                      base.theme,
-                      base.stage as never,
-                    ),
-                  }
-                : {}),
-              ...(run.libraryPanelsOff ? { panelsOff: true } : {}),
-              ...(run.libraryLabelOverlap ? { labelOverlap: true } : {}),
-              ...(run.libraryLabelFloor ? { labelFloor: true } : {}),
-              ...(act ? {} : { logOnly: true }),
-            },
-            async (req) =>
-              (
-                await callDrawer({
-                  model: "gpt-6-luna",
-                  effort: "low",
-                  ...req,
-                  name: "diagram",
-                  strict: false,
-                  timeoutMs: DRAWER_TIMEOUT_MS,
-                })
-              ).out,
-            (e) => log({ ...e, slide: i + 1 }),
-          );
-          if (cancelled()) return undefined;
-          if (r.ok) {
-            const { src, aspect, alt } = r.drawing;
-            drawnDiagrams.set(`${i}:${a.key}`, {
-              status: "diagram",
-              spec: {
-                drawn: {
-                  src,
-                  aspect,
-                  alt,
-                  bare: true,
-                  ...(run.libraryModelBody ? { body: true } : {}),
-                  source: r.source,
-                },
-              },
-            });
-            log({ ev: "diagram-done", slide: i + 1, key: a.key, via: "library", ok: true });
-            relay(i);
-            shown(i);
-            return undefined;
-          }
-          // A body model that could not fill is never drawn freehand (TEACH-247 part ad): the
-          // slide's figure fails, and the restage ladder shows a picture of the same thing.
-          if (
-            r.fallbackKind === FALLBACK_KIND &&
-            fallbackIsBody(String(want.model ?? ""), String(want.intent ?? a.shows))
-          ) {
-            log({ ev: "body-figure", slide: i + 1, key: a.key, to: "failed", model: want.model });
-            drawnDiagrams.set(`${i}:${a.key}`, { status: "failed" });
-            relay(i);
-            shown(i);
-            return undefined;
-          }
-          return { ...a, kind: r.fallbackKind, labels: [], spec: undefined };
+          const drew = await libDraw({
+            model: String(want.model ?? ""),
+            intent: String(want.intent ?? a.shows),
+            alt: typeof want.alt === "string" ? want.alt : undefined,
+          });
+          if (drew === undefined || drew === true) return undefined;
+          return { ...a, kind: drew, labels: [], spec: undefined };
         },
         // A throw anywhere in the library path is the drawer's job, never a rejected batch.
         (e) => {
@@ -757,8 +768,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             probe: layoutSlotProbe,
             log: (e) => log({ ...e, slide: i + 1 }),
           },
-        ).then((r) => {
+        ).then(async (r) => {
           if (cancelled()) return;
+          // TEACH-247 part ad: a living body is never drawn from shapes. A full slide takes the
+          // lesson's library model for a body when its fill draws; otherwise the figure fails and
+          // the fallback ladder places a picture of the same thing.
+          if (r.body) {
+            for (const model of slot === "full" ? BODY_MODELS : []) {
+              if (!models.some((m) => m.id === model)) continue;
+              const drew = await libDraw({ model, intent: a2.shows }, true);
+              if (drew === undefined) return;
+              if (drew === true) return;
+            }
+            log({ ev: "body-figure", slide: i + 1, key: a.key, to: "picture" });
+          }
           drawnDiagrams.set(
             `${i}:${a.key}`,
             r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
@@ -830,19 +853,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
     return tc.first;
   };
-  /**
-   * TEACH-247 part ad: a labelled drawing of a living body is never drawn freehand. Decided as the
-   * slide opens, before its asks or any drawer call: a full slide takes the lesson's library model
-   * for that body, any other a picture of the same thing (`body-figure.ts`).
-   */
-  const noFreehandBody = (idx: number, s: S): S => {
-    const r = routeFreehandBodies(
-      s,
-      models.map((m) => m.id),
-    );
-    for (const x of r.routes) log({ ev: "body-figure", slide: idx + 1, ...x });
-    return r.slide as S;
-  };
   const openSlide = (idx: number, arrived: S) => {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
@@ -909,7 +919,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       });
       s = one.slide;
     }
-    s = noFreehandBody(idx, s);
     plan.slides[idx] = s;
     asks.set(idx, visualsOf(s, idx, { ...base, plan }));
     run.onAsks?.(idx, asks.get(idx) ?? [], {
@@ -1217,16 +1226,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       sync.action === "redrawn" || sync.action === "drop"
         ? actOn({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why })
         : true;
-    const next = noFreehandBody(
+    const next = splitTable(
       i,
-      splitTable(
-        i,
-        !synced
-          ? slideNoEmDash(next0)
-          : sync.action === "drop"
-            ? asWords(sync.slide as S)
-            : (sync.slide as S),
-      ),
+      !synced
+        ? slideNoEmDash(next0)
+        : sync.action === "drop"
+          ? asWords(sync.slide as S)
+          : (sync.slide as S),
     );
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));
@@ -1905,13 +1911,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (i < 2) return;
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
-      const chosen = run.drawAs?.(i, lost.key);
-      // TEACH-247 part ad: the director's labelled drawing of a living body is never drawn
-      // freehand; the ask is placed again as the picture it was.
-      const body = chosen === FALLBACK_KIND ? livingBodyOf(lost.shows) : undefined;
-      if (body) log({ ev: "body-figure", slide: i + 1, key: lost.key, to: "picture", why: body });
-      const kind = body ? undefined : chosen;
-      if (!chosen && !run.retryable?.(i, lost.key)) continue;
+      const kind = run.drawAs?.(i, lost.key);
+      if (!kind && !run.retryable?.(i, lost.key)) continue;
       if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
       again.push(lost);
     }

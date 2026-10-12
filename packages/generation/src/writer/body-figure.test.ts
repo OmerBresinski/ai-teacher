@@ -1,229 +1,238 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fallbackIsBody, livingBodyOf, routeFreehandBodies } from "./body-figure";
-import type { DrawerCall } from "./diagrams";
+import { slotBox } from "@tj/slides/diagrams";
+import { getTheme } from "@tj/slides/themes";
+import { loadModel } from "../library/render";
+import {
+  type DrawerCall,
+  drawWriterDiagram,
+  layoutSlotProbe,
+  type WriterDiagramAsk,
+} from "./diagrams";
 import type { Brief } from "./fixes";
-import { normalise, type VisualAsk } from "./materialise";
+import type { VisualAsk, VisualState } from "./materialise";
 import { recordedVisuals, replayServices } from "./replay-fixture";
 import { runWriter } from "./stage";
 
 /*
- * TEACH-247 part ad (STICKFIG): a labelled drawing of a living body is never drawn freehand. It
- * goes to a library model on a full slide when the lesson has one, else to a picture.
+ * TEACH-247 part ad (STICKFIG): the drawer names what a labelled drawing is of (`subject`); a
+ * living body is never drawn from shapes. The drawer's field is mocked here: these tests hold the
+ * routing on the field, not the drawer's judgement (the prompt-engineer owns its wording).
  */
 type S = Record<string, unknown>;
 
-/** WRITERBENCH raw/S slide 3 ("Three parts work together"), as the writer wrote it. */
-const HEART: S = {
-  template: "visual-text",
-  heading: "Three parts work together",
-  lead: "The circulatory system moves blood around your body.",
-  points: [
-    { label: "Heart", text: "A muscle that pumps blood." },
-    { label: "Blood", text: "Carries oxygen and nutrients." },
-    { label: "Blood vessels", text: "Tubes that blood travels through." },
-  ],
-  figure: {
-    kind: "labelled-diagram",
-    shows:
-      "A simplified human outline with a heart in the chest and a continuous network of blood vessels reaching the arms, legs and head; an enlarged vessel section shows blood inside.",
-    labels: ["Heart", "Blood vessels", "Blood"],
-  },
-};
-
-/** The other four lessons STICKFIG found drawing a living thing from primitives. */
-const OTHERS: Record<string, { shows: string; labels: string[] }> = {
-  // BAKEOFF/arm-c/smoke1 y1-science-animals-young (drawer request text).
-  "Y1 animals and their young": {
-    shows:
-      "Naturalistic animal comparison: adult dog on left, small puppy on right, same breed and coat colour.",
-    labels: ["dog", "puppy"],
-  },
-  // BAKEOFF round7, Y4 history.
-  "Y4 Roman legionary": {
-    shows:
-      "a historically grounded reconstruction of a Roman legionary around AD 43, holding a curved rectangular shield and a javelin",
-    labels: ["shield", "javelin", "helmet"],
-  },
-  // The Y1 lesson's third objective (LAYOUT-TEST ZV): a tadpole changing into a frog.
-  "Y1 frog and tadpole": {
-    shows: "A tadpole beside the adult frog it grows into, at the same scale.",
-    labels: ["tadpole", "frog"],
-  },
-  // Y12 psychology, multi-store model.
-  "Y12 eye and ear": {
-    shows:
-      "An eye and an ear receiving separate inputs, leading to separate visual and auditory sensory stores",
-    labels: ["Eye", "Ear", "Iconic store", "Echoic store"],
-  },
-};
-
-const slideOf = (f: S, template = "visual-text"): S => ({
-  template,
-  heading: "A heading",
-  lead: "A lead.",
-  ...(template === "visual-text" ? { points: ["One point", "Another point"] } : {}),
-  figure: f,
+/** A labelled drawing that parses and fits a side slot, with the drawer's subject. */
+const drawn = (subject: string, labels: string[]) => ({
+  kind: "labelled-diagram",
+  subject,
+  alt: "A drawing.",
+  canvas: "square",
+  shapes: [{ type: "rect", x: 10, y: 10, w: 80, h: 80 }],
+  labels: labels.map((text, k) => ({ text, at: [20 + k * 20, 50] })),
 });
 
-describe("freehand bodies are not drawn (TEACH-247 part ad)", () => {
-  test("the heart 'three parts' slide routes to a picture, never a drawn figure", () => {
-    const r = routeFreehandBodies(HEART, ["heart_circulation", "body_map"]);
-    expect(r.routes).toEqual([{ key: "figure", to: "picture", why: "person: human" }]);
-    const f = r.slide.figure as S;
-    expect(f.kind).toBeUndefined();
-    expect(f.shows).toBe((HEART.figure as S).shows);
-    expect(f.must_see).toEqual(["Heart", "Blood vessels", "Blood"]);
-    expect(normalise(r.slide).template).toBe("picture-text");
-    // The writer's words are kept as written.
-    expect(r.slide.points).toEqual(HEART.points);
-  });
+const ask = (shows: string, labels = ["Part one", "Part two"]): WriterDiagramAsk => {
+  const box = slotBox("KS2", "side");
+  return {
+    key: "figure",
+    kind: "labelled-diagram",
+    shows,
+    labels,
+    words: "A heading. A lead.",
+    yearGroup: "Year 6",
+    stage: "KS2",
+    slot: { placement: "beside text", w: box.w, h: box.h, name: "side" },
+  };
+};
 
-  test("on a full slide it takes the lesson's heart model; without one, a picture", () => {
-    const full = { ...HEART, template: "big-visual", points: undefined };
-    const m = routeFreehandBodies(full, ["heart_circulation"]);
-    expect(m.routes[0]).toMatchObject({ to: "model", model: "heart_circulation" });
-    expect(m.slide.figure).toMatchObject({ kind: "model", model: "heart_circulation" });
-    const p = routeFreehandBodies(full, []);
-    expect(p.routes[0]?.to).toBe("picture");
-    expect(normalise(p.slide).template).toBe("big-picture");
+async function draw(shows: string, subject: string) {
+  const schemas: S[] = [];
+  const events: S[] = [];
+  const callDrawer: DrawerCall = async (req) => {
+    schemas.push(req.schema as S);
+    return { out: drawn(subject, ["Part one", "Part two"]) };
+  };
+  const r = await drawWriterDiagram(ask(shows), {
+    callDrawer,
+    drawerSystem: "system",
+    fitActs: true,
+    theme: getTheme(undefined as never, "KS2" as never),
+    probe: layoutSlotProbe,
+    log: (e) => events.push(e as S),
   });
+  return { r, schemas, events };
+}
 
-  for (const [name, f] of Object.entries(OTHERS))
-    test(`${name}: a picture, never a drawn figure`, () => {
-      const r = routeFreehandBodies(slideOf({ kind: "labelled-diagram", ...f }), []);
-      expect(r.routes.map((x) => x.to)).toEqual(["picture"]);
-      expect(normalise(r.slide).template).toBe("picture-text");
-      expect((r.slide.figure as S).must_see).toEqual(f.labels.slice(0, 4));
+/** PR #514's review probes, and the lessons STICKFIG found, with the subject the drawer gives. */
+const PROBES: [string, string][] = [
+  // Not bodies: a word list rerouted these.
+  ["A factor tree of 60", "abstract_or_process"],
+  ["Child nodes in a binary tree", "abstract_or_process"],
+  ["A tree ring cross-section", "object_or_machine"],
+  ["Gear teeth meshing", "object_or_machine"],
+  ["A saw tooth profile", "object_or_machine"],
+  ["A kidney bean seed", "object_or_machine"],
+  ["Isle of Man map", "place_or_map"],
+  ["Bar chart of people by age", "abstract_or_process"],
+  ["Population of fish in a lake", "abstract_or_process"],
+  // The Y12 sensory register: its eye and ear feed memory-store boxes, a model of a process.
+  [
+    "An eye and an ear receiving separate inputs, leading to separate visual and auditory sensory stores",
+    "abstract_or_process",
+  ],
+  // Bodies: a word list missed these.
+  ["A camel with its hump and wide feet", "living_body"],
+  ["A monkey in a tree", "living_body"],
+  ["A brown bear", "living_body"],
+  ["Ants carrying a leaf", "living_body"],
+  ["An Anglo-Saxon warrior with a shield", "living_body"],
+  ["A pharaoh in a headdress", "living_body"],
+  ["Layers of the skin", "living_body"],
+  // STICKFIG's five lessons.
+  [
+    "A simplified human outline with a heart in the chest and a continuous network of blood vessels reaching the arms, legs and head",
+    "living_body",
+  ],
+  ["Adult dog on left, small puppy on right", "living_body"],
+  ["A tadpole beside the adult frog it grows into", "living_body"],
+  ["A Roman legionary around AD 43, holding a curved shield and a javelin", "living_body"],
+];
+
+describe("labelled drawings route on the drawer's subject (TEACH-247 part ad)", () => {
+  for (const [shows, subject] of PROBES)
+    test(`${subject}: ${shows.slice(0, 50)}`, async () => {
+      const { r, schemas, events } = await draw(shows, subject);
+      // One drawer call, asked to name the subject.
+      expect(schemas.length).toBe(1);
+      expect(schemas[0]?.required).toContain("subject");
+      if (subject === "living_body") {
+        expect(r).toMatchObject({ via: "none", body: true });
+        expect(r.spec).toBeUndefined();
+        expect(events.some((e) => e.ev === "body-figure")).toBe(true);
+      } else {
+        expect(r.via).toBe("drawer");
+        expect(r.spec).toMatchObject({ kind: "labelled-diagram", subject });
+        expect(r.body).toBeUndefined();
+      }
     });
 
-  test("a body model asked for on a side slot is a picture, not the drawer's fallback", () => {
-    const r = routeFreehandBodies(
-      slideOf({ kind: "model", model: "heart_circulation", intent: "heart and blood vessels" }),
-      ["heart_circulation"],
-    );
-    expect(r.routes[0]?.to).toBe("picture");
-    // A side-slot model with a base kind (a cycle) keeps its drawer route.
-    const c = slideOf({ kind: "model", model: "life_cycle", intent: "a frog's life cycle" });
-    expect(routeFreehandBodies(c, []).slide).toBe(c);
-    expect(fallbackIsBody("heart_circulation", "anything")).toBe(true);
-    expect(fallbackIsBody("fractions", "one half shaded")).toBe(false);
+  test("a stored spec with no subject still draws (lessons made before the field)", async () => {
+    const { r } = await draw("A volcano", undefined as never);
+    expect(r.via).toBe("drawer");
   });
 
-  test("a compare card drawing an animal becomes its picture", () => {
-    const s: S = {
-      template: "compare",
-      heading: "Adult and young",
-      columns: [
-        {
-          label: "Cat",
-          picture: { kind: "labelled-diagram", shows: "an adult cat", labels: ["cat"] },
-        },
-        { label: "Kitten", picture: { kind: "labelled-diagram", shows: "a kitten", labels: [] } },
-      ],
-    };
-    const r = routeFreehandBodies(s, []);
-    expect(r.routes.map((x) => x.key)).toEqual(["col.0", "col.1"]);
-    expect((r.slide.columns as S[]).every((c) => !("kind" in (c.picture as S)))).toBe(true);
-  });
-
-  test("words that only look like a body leave the drawing alone", () => {
-    for (const shows of [
-      "A lake as a body of water fed by two rivers",
-      "How a governing body passes a law",
-      "A celestial body orbiting a star",
-      "A hurricane cross-section with the eye of the storm at the centre",
-      "An ear of wheat with its grains",
-      "A plant cell with its cell wall, nucleus and chloroplasts",
-      "An animal cell with a nucleus and cell membrane",
-      "A coal power plant: boiler, turbine and generator",
-      "A family tree centred on a child, with parents and grandparents above",
-      "A food chain: grass, rabbit and fox",
-      "A bird's-eye view of a Roman fort",
-      "The market square at the heart of the town",
-      "A clock face with an hour hand and a minute hand",
-      "A circuit with a cell, a switch and a bulb",
-      "A volcano cross-section with a magma chamber and vent",
-      "A lever with a load, an effort and a pivot",
-      "A robot arm lifting a box",
-      "Three memory-store boxes: sensory register, STM and LTM",
-      "Gas and nutrient exchange between a capillary and body cells",
-    ]) {
-      expect([shows, livingBodyOf(shows)]).toEqual([shows, undefined]);
-      const s = slideOf({ kind: "labelled-diagram", shows, labels: ["A", "B"] });
-      expect(routeFreehandBodies(s, []).slide).toBe(s);
-    }
-  });
-
-  test("the lab corpus: bodies routed, every other labelled drawing unchanged", () => {
+  test("the lab corpus: only drawings named living_body are withheld", async () => {
     const corpus = JSON.parse(
       readFileSync(join(import.meta.dir, "fixtures/labelled-corpus.json"), "utf8"),
     ) as { shows: string; labels: string[] }[];
-    const routed: number[] = [];
-    let unchanged = 0;
-    corpus.forEach((f, i) => {
-      const s = slideOf({ kind: "labelled-diagram", ...f });
-      const r = routeFreehandBodies(s, []);
-      if (r.routes.length) routed.push(i);
-      else if (r.slide === s) unchanged++;
-    });
-    // 193 unique writer asks in scratchpad/quality-prd/lab/rounds (12 Oct 2026): 33 living bodies
-    // (hearts in a body, a wrist, an eye and ear, people and portraits, a plant, a puppy, soldiers),
-    // 160 others (apparatus, shapes, counters, family trees, memory stores, cells) left as they were.
-    expect(corpus.length).toBe(193);
-    expect(routed.length).toBe(33);
-    expect(unchanged).toBe(160);
-    expect(routed).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 8, 19, 56, 57, 64, 80, 82, 91, 92, 99, 100, 103, 111, 127, 128, 136, 137,
+    // 193 unique writer asks under scratchpad/quality-prd/lab/rounds (12 Oct 2026). The bodies,
+    // read one by one: hearts in a body, a wrist, people and portraits, a plant, a puppy, a
+    // legionary, soldiers, and the lungs-heart-leg circulation model.
+    const BODIES = new Set([
+      0, 1, 2, 3, 4, 5, 6, 8, 56, 57, 64, 80, 82, 91, 92, 99, 100, 103, 111, 127, 128, 136, 137,
       140, 144, 165, 169, 179, 187, 188, 191, 192,
     ]);
+    let withheld = 0;
+    let drew = 0;
+    for (const [i, f] of corpus.entries()) {
+      const { r } = await draw(f.shows, BODIES.has(i) ? "living_body" : "object_or_machine");
+      if (r.body) withheld++;
+      else if (r.spec) drew++;
+    }
+    expect(corpus.length).toBe(193);
+    expect(withheld).toBe(32);
+    expect(drew).toBe(161);
   });
 });
 
-describe("writer stage: a freehand body never reaches the drawer", () => {
+describe("writer stage: a living body is a picture or a model, never shapes", () => {
   const B = "y2-maths-halves-quarters";
   const DIR = join(import.meta.dir, "fixtures/replay", B);
   const read = (f: string) => readFileSync(join(DIR, f), "utf8");
+  const HEART = {
+    shows:
+      "A simplified human outline with a heart in the chest and a continuous network of blood vessels reaching the arms, legs and head; an enlarged vessel section shows blood inside.",
+    labels: ["Heart", "Blood vessels", "Blood", "Lungs", "A"],
+  };
 
-  test("the heart slide is planned as a picture: no labelled-diagram drawer call", async () => {
+  async function run(full: boolean) {
     const brief = JSON.parse(read("brief.json")) as Brief;
     const objectives = (
       JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
     ).objectives.map((o) => o.teacher);
     const main = JSON.parse(read("main.json")) as { text: string; finishReason?: string };
     const out = JSON.parse(main.text) as { slides: S[] };
-    out.slides[0] = structuredClone(HEART);
-    const asked: string[] = [];
-    const callDrawer: DrawerCall = async (req) => {
-      asked.push(req.user);
-      return { out: undefined };
+    out.slides[0] = {
+      template: full ? "big-visual" : "visual-text",
+      heading: "Three parts work together",
+      lead: "The circulatory system moves blood around your body.",
+      ...(full ? {} : { points: ["The heart pumps blood.", "Blood vessels carry it."] }),
+      figure: { kind: "labelled-diagram", ...HEART },
     };
+    const heart = await loadModel("heart_circulation");
+    const fills: string[] = [];
+    const drawerKinds: string[] = [];
+    const callDrawer: DrawerCall = async (req) => {
+      if (req.system.startsWith("Set the parameters")) {
+        fills.push(req.user);
+        return { out: heart?.presets[0]?.params };
+      }
+      const kind = /Kind: ([a-z-]+)/.exec(req.user)?.[1] ?? "";
+      drawerKinds.push(kind);
+      return {
+        out: /human outline/.test(req.user) ? drawn("living_body", HEART.labels) : undefined,
+      };
+    };
+    const rec = recordedVisuals(B);
+    const placed = new Set<string>();
+    const asked: VisualAsk[][] = [];
+    const visual = (i: number, key: string, a: VisualAsk): VisualState =>
+      placed.has(`${i}:${key}`)
+        ? {
+            status: "photo",
+            photo: { src: "/files/test/heart.png", alt: key, aspect: 1.5, request: key },
+          }
+        : rec(i, key, a);
     const events: S[] = [];
-    const placed: VisualAsk[][] = [];
-    await runWriter({
+    const res = await runWriter({
       brief,
       objectives,
       services: { ...replayServices(B), log: (e) => events.push(e as S) },
-      visual: recordedVisuals(B),
+      visual,
       recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
       drawDiagrams: { callDrawer },
-      onAsks: (i, a) => {
-        if (i === 2) placed.push(a);
+      library: true,
+      placeMore: async (i, more) => {
+        asked.push(more);
+        for (const a of more) placed.add(`${i}:${a.key}`);
       },
     });
-    // The fixture's own maths drawings still go to the drawer; the heart outline never does.
-    expect(asked.some((u) => /human outline/.test(u))).toBe(false);
-    expect(placed.at(-1)).toMatchObject([
-      { key: "picture", type: "photo", mustSee: ["Heart", "Blood vessels", "Blood"] },
-    ]);
-    expect(events.filter((e) => e.ev === "body-figure")).toContainEqual({
-      ev: "body-figure",
-      slide: 3,
-      key: "figure",
-      to: "picture",
-      why: "person: human",
+    const els = (res.slides[2]?.elements ?? []) as S[];
+    return { els, events, fills, drawerKinds, asked };
+  }
+
+  test("side slot: one drawer call, nothing drawn, the picture is placed with every label", async () => {
+    const { els, events, drawerKinds, asked } = await run(false);
+    expect(drawerKinds.filter((k) => k === "labelled-diagram").length).toBeGreaterThan(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "body-figure", slide: 3, to: "picture" }),
+    );
+    expect(els.some((e) => e.name === "Diagram")).toBe(false);
+    expect(els.find((e) => e.type === "image")?.src).toBe("/files/test/heart.png");
+    // Every label, the fifth and the one-letter one included.
+    expect(asked.flat().find((a) => a.type === "photo")).toMatchObject({
+      mustSee: HEART.labels,
     });
-    expect(events.some((e) => e.ev === "diagram-call" && e.slide === 3)).toBe(false);
+  });
+
+  test("full slot with the heart model in the lesson's catalogue: the model draws", async () => {
+    const { els, events, fills } = await run(true);
+    expect(fills.length).toBeGreaterThan(0);
+    expect(fills[0]).toContain("human outline");
+    expect(
+      events.some((e) => e.ev === "diagram-done" && e.slide === 3 && e.via === "library" && e.body),
+    ).toBe(true);
+    expect(els.some((e) => e.name === "Diagram")).toBe(true);
   });
 });

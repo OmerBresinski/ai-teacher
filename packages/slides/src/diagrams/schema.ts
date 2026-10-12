@@ -287,10 +287,25 @@ const Shape = z.discriminatedUnion("type", [
   z.object({ type: z.literal("arrow"), from: pt, to: pt }),
 ]);
 
+/**
+ * What a labelled drawing is of (TEACH-247 part ad). The drawer must name it; code never draws a
+ * `living_body` from primitives (it would be a stick figure). Optional in the parse so specs stored
+ * before the field still draw; the drawer's request schema makes it required.
+ */
+export const LABELLED_SUBJECTS = [
+  "living_body",
+  "object_or_machine",
+  "place_or_map",
+  "abstract_or_process",
+] as const;
+export type LabelledSubject = (typeof LABELLED_SUBJECTS)[number];
+
 export const LabelledDiagramSchema = z
   .object({
     kind: z.literal("labelled-diagram"),
     ...common,
+    // DRAFT (prompt-engineer to word): what the drawing is of.
+    subject: z.enum(LABELLED_SUBJECTS).describe("DRAFT: what the drawing is of.").optional(),
     canvas: z.enum(["square", "wide"]).default("square"),
     // r3-diag: apparatus (a flask, bung, tube and syringe) takes more than 12 primitives.
     shapes: z.array(Shape).min(1).max(20),
