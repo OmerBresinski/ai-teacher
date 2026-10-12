@@ -24,6 +24,7 @@
     "./templates/cards-grid-capacity.json": "./src/templates/cards-grid-capacity.json",
     "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",
     "./templates/hook-capacity.json": "./src/templates/hook-capacity.json",
+    "./templates/panel-list-capacity.json": "./src/templates/panel-list-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts"

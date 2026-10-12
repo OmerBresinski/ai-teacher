@@ -1,0 +1,657 @@
+/**
+ * Panel list (TEACH-75 part v, layout pilot T3; rulings 211, 212, 215, 217): a deep title panel
+ * down the left (the heading, and a photo, a pie chart or nothing under it) beside a calm list of
+ * 2-6 rows, each an icon or number disc, a name and one line, with hairline dividers. Ported from
+ * the pilot's `northstars/components/panel-list.js` (Greg's gold 2, "The five food groups"); the
+ * pilot draws at 1440 x 810 px, so every pilot length here is x 2/3 (slide points).
+ *
+ * - Comfortable to 5 rows, 4 at early; 6 rows are always `tight`. 2-line rows at 4+ are `tight`.
+ * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
+ *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
+ *   Words are never cut: a field past its measured hard maximum is named in `over`.
+ * - Icons are all or none (matched through the icon library); any miss draws numbers and is
+ *   reported in `iconMisses`. With icons or a pie the discs take the category colours, so each
+ *   row's disc is the swatch of its wedge.
+ * - The photo zone takes the tallest safe standard shape at the panel's width that fits under the
+ *   title (which may shrink to 80% for it); none safe: the photo's own shape, full bleed if it
+ *   fits, else inset with the picture radius. Never a mat or a blur (ruling 217).
+ */
+import type {
+  IconElement,
+  PathElement,
+  ShapeElement,
+  SlideElement,
+  TextElement,
+  Theme,
+} from "@tj/domain/documents";
+import { uid } from "../factories";
+import { countLines } from "../text-measure";
+import {
+  type Ctx,
+  type FieldReport,
+  type Figure,
+  kit,
+  layoutTemplate,
+  type Stage,
+  type TemplateInput,
+} from "./index";
+import CAPACITY from "./panel-list-capacity.json";
+import {
+  type AgeKey,
+  cropFor,
+  factsOf,
+  matchIcon,
+  type PanelLook,
+  panelLook,
+  SHAPES,
+  shapeMode,
+} from "./panel-list-deps";
+
+/** One row: a short name, one line, and an optional icon label (a library concept). */
+export type PanelRow = { name: string; text: string; icon?: string | null };
+/** The panel's visual: a picture (photo or diagram), or a pie of one share per row. */
+export type PanelVisual = { picture: Figure } | { shares: number[] };
+
+export const PANEL_MAX = 6;
+export const PANEL_MIN = 2;
+/** The most rows that can be comfortable at each age. */
+export const PANEL_COMFORT: Record<AgeKey, number> = { early: 4, primary: 5, secondary: 5 };
+/** Element names, as a teacher sees them in the editor's selection and layers. */
+export const PANEL_NAMES = {
+  panel: "Title panel",
+  title: "Heading",
+  lead: "Lead",
+  disc: "Row circle",
+  icon: "Row icon",
+  name: "Row name",
+  line: "Row line",
+  rule: "Divider",
+  photo: "Panel picture",
+  figure: "Panel diagram",
+  halo: "Pie chart back",
+  wedge: "Pie slice",
+} as const;
+
+/**
+ * The writer's menu line for panel-list per key-stage group, copied verbatim from the pilot's
+ * `writer/MENU-v3.md` (section A) for TEACH-110 part s to wire; its numbers come from the pilot's
+ * caps and are re-derived from `panel-list-capacity.json` there.
+ */
+// writer-prompt: owned by TEACH-110 s
+export const PANEL_LIST_WRITER_MENU = {
+  // writer-prompt: owned by TEACH-110 s
+  KS1: "- panel-list: 3 to 4 members of one group, such as kinds, groups or rules, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: 3 items each 8; 4 each 5; with a lead of up to 5 words: 3 items each 5.",
+  // writer-prompt: owned by TEACH-110 s
+  KS2: "- panel-list: 3 to 5 members of one group, such as kinds, groups or rules, or five named parts, too many for items-row, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: heading up to 5 words; 3 items each 12; 4 to 5 each 5; with a lead of up to 6 words: 3 items each 11; 4 each 5.",
+  // writer-prompt: owned by TEACH-110 s
+  "KS3-5":
+    "- panel-list: 3 to 5 members of one group, such as kinds, groups or rules, or five named parts, too many for items-row, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: heading up to 6 words; 3 items each 12; 4 to 5 each 6; with a lead of up to 6 words: 3 items each 11; 4 each 6.",
+} as const;
+
+/* Geometry (960 x 540; the pilot's 1440 px x 2/3). */
+const SLIDE_H = 540;
+export const PANEL_W = 313;
+const TITLE_X = 48;
+const TITLE_W = 244;
+const TITLE_TOP = 64;
+const TITLE_FOOT = 64;
+const ROWS_X = 360;
+const ROWS_W = 960 - 64 - ROWS_X;
+const ROWS_TOP = 43;
+const ROWS_FOOT = 43;
+const COL_GAP = 23;
+const NAME_GAP = 3;
+const LEAD_GAP = 24;
+const COMFORT_FILL = 0.85;
+/** The pilot's half-pixel tolerance on the comfort sizes, in points. */
+const TOL = 0.34;
+/** The photo zone's reserved height and the gap above it (pilot 300 / 48 px). */
+const PHOTO_ROOM = 200;
+const PHOTO_GAP = 32;
+/** The pie's square and its offsets from the panel's left and foot (pilot 300 / 80 / 70 px). */
+const PIE = 200;
+const PIE_X = 53;
+const PIE_FOOT = 47;
+const CHART_ROOM = 247;
+const CHART_GAP = 27;
+const INSET = 48;
+
+/* Caps (the measured table, `panel-list-capacity.json`). */
+export type Cap = { cap: number; hardMax: number };
+export type PanelCaps = {
+  heading: Cap;
+  lead: Cap;
+  name: Cap;
+  text: Cap;
+  withLead: { name: Cap; text: Cap };
+};
+const TABLE = CAPACITY as unknown as Partial<Record<AgeKey, Record<string, PanelCaps>>>;
+/** The caps for `count` rows at `age` (the nearest measured count at or over it). */
+export function panelCapsFor(age: AgeKey, count: number): PanelCaps | undefined {
+  const byCount = TABLE[age];
+  if (!byCount) return undefined;
+  const counts = Object.keys(byCount)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const n = counts.find((x) => x >= count) ?? counts[counts.length - 1];
+  return n === undefined ? undefined : byCount[String(n)];
+}
+
+/** What the layout measured, kept for the capacity probe (geometry only, no caps). */
+type Geometry = { fits: boolean; comfortable: boolean };
+const GEOMETRY = new WeakMap<object, Geometry>();
+
+const clean = (s: string | null | undefined) => (s ?? "").trim();
+
+export function layoutPanelList(c: Ctx, input: TemplateInput) {
+  c.bodyFromHeading = true;
+  const L = panelLook(c.t);
+  const all = (input.rows ?? []).filter((r) => r && typeof r === "object");
+  if (all.length > PANEL_MAX) c.over.push(`rows ${all.length}/${PANEL_MAX}`);
+  const rows = all.slice(0, PANEL_MAX).map((r) => ({
+    name: clean(r.name),
+    text: clean(r.text),
+    icon: clean(r.icon),
+  }));
+  const n = rows.length;
+  const geomOver: string[] = [];
+
+  // Icons: all or none, never drawn live. A miss is reported, and the rows take numbers.
+  const matched = rows.map((r) => (r.icon ? matchIcon(r.icon) : null));
+  const misses = rows.filter((r, i) => r.icon && !matched[i]).map((r) => r.icon);
+  if (misses.length) c.iconMisses = misses;
+  const icons = n > 0 && matched.every(Boolean);
+
+  // The panel's visual.
+  const panel = input.panel ?? null;
+  let shares: number[] | null = null;
+  let figure: Figure | null = null;
+  if (panel && "shares" in panel) {
+    const s = Array.isArray(panel.shares) ? panel.shares : [];
+    const valid = s.every((v) => Number.isFinite(v) && v >= 0) && s.reduce((a, b) => a + b, 0) > 0;
+    if (n && s.length === n && valid) shares = s;
+    else c.over.push("panel.shares");
+  } else if (panel && "picture" in panel && panel.picture) figure = panel.picture;
+  const photo = figure && "photo" in figure ? figure : null;
+  const cat = icons || !!shares;
+
+  // Panel and title.
+  kit.box(c, { x: 0, y: 0, w: PANEL_W, h: SLIDE_H }, L.deep, {
+    shape: "rect",
+    radius: 0,
+    name: PANEL_NAMES.panel,
+  });
+  const head = clean(input.heading);
+  const visual = !!(shares || figure);
+  const titleRoom = photo
+    ? SLIDE_H - TITLE_TOP - PHOTO_ROOM - PHOTO_GAP
+    : visual
+      ? SLIDE_H - TITLE_TOP - CHART_ROOM - CHART_GAP
+      : SLIDE_H - TITLE_TOP - TITLE_FOOT;
+  const titleAt = (tk: number) => {
+    const size = Math.round(L.sizes.titlePanel * tk * 10) / 10;
+    const lines = head ? lines_(c.t, head, "title", L.displayWeight, size, TITLE_W) : 0;
+    const h = Math.ceil(lines * size * L.lineHeights.title);
+    const whole = !head || kit.wordsFit(c, head, "title", TITLE_W, size, L.displayWeight);
+    return { size, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
+  };
+  let tk = 1;
+  let title = titleAt(tk);
+  while (!title.ok && tk > 0.62) {
+    tk = Math.round((tk - 0.02) * 100) / 100;
+    title = titleAt(tk);
+  }
+  const titleFits = title.ok;
+
+  // The photo zone: the tallest safe standard shape that fits under the title.
+  let picBox: { x: number; y: number; w: number; h: number; inset: boolean } | null = null;
+  if (photo) {
+    const aspect = photo.aspect && photo.aspect > 0 ? photo.aspect : 4 / 3;
+    const facts = factsOf(aspect, photo.subjects);
+    const avail = () => SLIDE_H - (TITLE_TOP + title.h + PHOTO_GAP);
+    const tk0 = tk;
+    const shapes = [...SHAPES].filter(([, r]) => shapeMode(facts, r)).sort((a, b) => a[1] - b[1]);
+    for (const [, r] of shapes) {
+      const h = Math.round(PANEL_W / r);
+      tk = tk0;
+      title = titleAt(tk);
+      while (h > avail() && tk > 0.8) {
+        tk = Math.round((tk - 0.02) * 100) / 100;
+        title = titleAt(tk);
+      }
+      if (h <= avail()) {
+        picBox = { x: 0, y: SLIDE_H - h, w: PANEL_W, h, inset: false };
+        break;
+      }
+    }
+    if (!picBox) {
+      tk = tk0;
+      title = titleAt(tk);
+      const h = Math.round(PANEL_W / aspect);
+      if (h <= avail()) picBox = { x: 0, y: SLIDE_H - h, w: PANEL_W, h, inset: false };
+      else {
+        const ih = Math.max(40, Math.min(avail() - INSET, TITLE_W / aspect));
+        const iw = Math.round(ih * aspect);
+        picBox = {
+          x: TITLE_X,
+          y: Math.round(SLIDE_H - INSET - ih),
+          w: iw,
+          h: Math.round(ih),
+          inset: true,
+        };
+      }
+    }
+  }
+
+  // Title: under the panel's top with a visual, at its foot without one.
+  if (head) {
+    const y = visual ? TITLE_TOP : SLIDE_H - TITLE_FOOT - title.h;
+    put(c, head, "title", { x: TITLE_X, y, w: TITLE_W }, title.size, {
+      weight: L.displayWeight,
+      lh: L.lineHeights.title,
+      color: L.onDeep,
+      name: PANEL_NAMES.title,
+    });
+  }
+
+  if (photo && picBox) {
+    const crop =
+      photo.photo && photo.aspect
+        ? cropFor(factsOf(photo.aspect, photo.subjects), picBox)
+        : undefined;
+    c.els.push({
+      id: uid(),
+      type: "image",
+      name: PANEL_NAMES.photo,
+      x: picBox.x,
+      y: picBox.y,
+      w: picBox.w,
+      h: picBox.h,
+      src: photo.photo,
+      alt: photo.alt ?? "",
+      ...(photo.request ? { request: photo.request } : {}),
+      ...(photo.subjects ? { subjects: photo.subjects } : {}),
+      ...(photo.source ? { source: photo.source } : {}),
+      ...(crop ? { crop } : {}),
+      fit: "cover",
+      ...(picBox.inset ? { radius: L.radiusPicture } : {}),
+    } as SlideElement);
+  } else if (figure && !photo) {
+    // A diagram contains inside the zone, on the panel, any shape.
+    const y = TITLE_TOP + title.h + CHART_GAP;
+    const rect = { x: TITLE_X, y, w: PANEL_W - 2 * TITLE_X, h: SLIDE_H - INSET - y };
+    if (!(rect.h > 40 && kit.figurePanel(c, figure, rect, true))) figure = null;
+  }
+  const fills = rows.map((_, i) => (cat ? (L.category[i % L.category.length] as string) : L.wash));
+  if (shares) pie(c, L, shares, fills);
+
+  // Lead: one line at the head of the rows column.
+  const lead = clean(input.lead);
+  let top = ROWS_TOP;
+  let leadLines = 0;
+  if (lead) {
+    const size = Math.max(L.floors.body, Math.round(L.sizes.body * 1.06 * 10) / 10);
+    leadLines = lines_(c.t, lead, "body", L.bodyWeight, size, ROWS_W);
+    const el = put(c, lead, "body", { x: ROWS_X, y: ROWS_TOP, w: ROWS_W }, size, {
+      weight: L.bodyWeight,
+      lh: L.lineHeights.body,
+      color: L.muted,
+      name: PANEL_NAMES.lead,
+    });
+    top = el.y + el.h + LEAD_GAP;
+    if (leadLines > 2) geomOver.push("lead");
+  }
+
+  // Rows: discs give way first, then type, until the column is comfortable.
+  const H = SLIDE_H - ROWS_FOOT - top;
+  const d0 = L.disc * (n >= 6 ? 0.86 : n <= 3 ? 1.2 : 1);
+  const f = n >= 6 ? 0.92 : n <= 3 ? 1.12 : 1;
+  const gapMin = n <= 3 ? 37 : 12;
+  const sizesAt = (k: number) => ({
+    name: Math.max(L.floors.name, Math.round(L.sizes.name * 0.87 * k * f * 10) / 10),
+    body: Math.max(L.floors.body, Math.round(L.sizes.body * 0.94 * k * f * 10) / 10),
+  });
+  const measureAt = (k: number, df: number) => {
+    const s = sizesAt(k);
+    const d = Math.round(d0 * df);
+    const tw = ROWS_W - d - COL_GAP;
+    const blocks = rows.map((r) => {
+      const nh = r.name
+        ? lines_(c.t, r.name, "heading", L.displayWeight, s.name, tw) * s.name * L.lineHeights.name
+        : 0;
+      const lh = r.text
+        ? lines_(c.t, r.text, "body", L.bodyWeight, s.body, tw) * s.body * L.lineHeights.body
+        : 0;
+      const th = nh + (nh && lh ? NAME_GAP : 0) + lh;
+      const whole =
+        (!r.name || kit.wordsFit(c, r.name, "heading", tw, s.name, L.displayWeight)) &&
+        (!r.text || kit.wordsFit(c, r.text, "body", tw, s.body, L.bodyWeight));
+      return { nh, lh, th, rh: Math.max(d + 4, th), whole };
+    });
+    const sum = blocks.reduce((a, b) => a + b.rh, 0);
+    const fits = n === 0 || (sum + (n - 1) * gapMin <= H + 0.5 && blocks.every((b) => b.whole));
+    // Row tops: three or fewer centred with a fixed gap, more spread to fill the column.
+    const gap = n <= 3 ? gapMin : n > 1 ? Math.max(gapMin, (H - sum) / (n - 1)) : 0;
+    const total = sum + (n - 1) * gap;
+    let y = top + (n <= 3 ? Math.max(0, (H - total) / 2) : 0);
+    const ys = blocks.map((b) => {
+      const at = y;
+      y += b.rh + gap;
+      return at;
+    });
+    const bodyLH = s.body * L.lineHeights.body;
+    let minGap = Number.POSITIVE_INFINITY;
+    for (let i = 1; i < n; i++) {
+      const a = blocks[i - 1];
+      const b = blocks[i];
+      if (!a || !b) continue;
+      const aTop = (ys[i - 1] ?? 0) + (a.rh - a.th) / 2;
+      const bTop = (ys[i] ?? 0) + (b.rh - b.th) / 2;
+      minGap = Math.min(minGap, bTop - (aTop + a.th));
+    }
+    const fill = (blocks.reduce((a, b) => a + b.th, 0) + (n - 1) * bodyLH) / Math.max(1, H);
+    const comfy = fits && fill <= COMFORT_FILL + 0.005 && (n < 2 || minGap >= bodyLH - 1);
+    const typeOk = s.name >= L.comfort.name - TOL && s.body >= L.comfort.body - TOL;
+    return { s, d, tw, blocks, ys, gap, fits, comfy, typeOk };
+  };
+  let df = 1;
+  let m = measureAt(1, df);
+  while (!m.fits && df > 0.75) {
+    df = Math.round((df - 0.05) * 100) / 100;
+    m = measureAt(1, df);
+  }
+  let k = 1;
+  while (!m.comfy && k > 0.6) {
+    const next = measureAt(Math.round((k - 0.025) * 1000) / 1000, df);
+    if (!next.typeOk) break;
+    k = Math.round((k - 0.025) * 1000) / 1000;
+    m = next;
+  }
+  if (!m.comfy || !m.typeOk)
+    while (!m.fits && k > 0.6) {
+      k = Math.round((k - 0.025) * 1000) / 1000;
+      m = measureAt(k, df);
+    }
+
+  const tight =
+    n < PANEL_MIN ||
+    n > PANEL_COMFORT[L.age] ||
+    !m.comfy ||
+    !m.typeOk ||
+    tk < 0.8 ||
+    !titleFits ||
+    leadLines > 1;
+  if (!titleFits) geomOver.push("heading");
+
+  // Draw the rows.
+  const tx = ROWS_X + m.d + COL_GAP;
+  rows.forEach((r, i) => {
+    const b = m.blocks[i];
+    const y = m.ys[i];
+    if (!b || y === undefined) return;
+    const fill = fills[i] as string;
+    const dy = y + (b.rh - m.d) / 2;
+    const numeral = Math.max(20, Math.round(m.d * 0.48));
+    c.els.push({
+      id: uid(),
+      type: "shape",
+      shape: "ellipse",
+      x: ROWS_X,
+      y: Math.round(dy),
+      w: m.d,
+      h: m.d,
+      fill,
+      name: PANEL_NAMES.disc,
+      ...(icons
+        ? {}
+        : {
+            doc: kit.doc(String(i + 1)),
+            textStyle: {
+              preset: "heading",
+              fontSize: numeral,
+              fontWeight: L.displayWeight,
+              color: cat ? L.onCategory(fill) : L.onWash,
+              align: "center",
+              valign: "middle",
+              padding: 0,
+            },
+          }),
+    } as ShapeElement);
+    if (icons) {
+      const g = Math.round(m.d * L.discIcon);
+      c.els.push({
+        id: uid(),
+        type: "icon",
+        x: ROWS_X + Math.round((m.d - g) / 2),
+        y: Math.round(dy + (m.d - g) / 2),
+        w: g,
+        h: g,
+        icon: matched[i] as string,
+        color: L.onCategory(fill),
+        strokeWidth: 2,
+        name: PANEL_NAMES.icon,
+      } as IconElement);
+    }
+    let ty = y + (b.rh - b.th) / 2;
+    if (r.name) {
+      put(c, r.name, "heading", { x: tx, y: ty, w: m.tw }, m.s.name, {
+        weight: L.displayWeight,
+        lh: L.lineHeights.name,
+        color: L.ink,
+        name: PANEL_NAMES.name,
+      });
+      ty += b.nh + NAME_GAP;
+    }
+    if (r.text)
+      put(c, r.text, "body", { x: tx, y: ty, w: m.tw }, m.s.body, {
+        weight: L.bodyWeight,
+        lh: L.lineHeights.body,
+        color: L.muted,
+        name: PANEL_NAMES.line,
+      });
+    // A hairline midway in the gap above the row; none when tight (a rule pressed on text reads packed).
+    const prev = m.blocks[i - 1];
+    const py = m.ys[i - 1];
+    if (i > 0 && !tight && prev && py !== undefined) {
+      const mid = (py + prev.rh + y) / 2;
+      c.els.push({
+        id: uid(),
+        type: "shape",
+        shape: "rect",
+        x: tx,
+        y: Math.round(mid),
+        w: ROWS_X + ROWS_W - tx,
+        h: 1.5,
+        fill: L.rule,
+        name: PANEL_NAMES.rule,
+      } as ShapeElement);
+    }
+  });
+
+  // Fields, the live counters, against the measured caps (ruling 215).
+  const caps = panelCapsFor(L.age, Math.max(PANEL_MIN, n));
+  const capOf = (key: "heading" | "lead" | "name" | "text") =>
+    caps
+      ? lead && (key === "name" || key === "text")
+        ? caps.withLead[key]
+        : caps[key]
+      : undefined;
+  const fields: FieldReport[] = [];
+  const add = (field: string, key: "heading" | "lead" | "name" | "text", s: string) => {
+    const cp = capOf(key);
+    const chars = s.length;
+    const cap = cp?.cap ?? 0;
+    const hardMax = cp?.hardMax ?? 0;
+    fields.push({
+      field,
+      path: field.replace(/\[(\d+)\]/g, ".$1"),
+      chars,
+      cap,
+      hardMax,
+      tight: !!cp && chars > cap,
+      over: !!cp && chars > hardMax,
+    });
+  };
+  add("heading", "heading", head);
+  if (lead) add("lead", "lead", lead);
+  rows.forEach((r, i) => {
+    add(`rows[${i}].name`, "name", r.name);
+    add(`rows[${i}].text`, "text", r.text);
+  });
+  c.fields = fields;
+  // Over: geometry that did not fit (blame the field furthest past its cap), and any field past its hard maximum.
+  const past = fields.filter((x) => x.over).map((x) => x.field);
+  if (!m.fits && !past.length) {
+    const worst = fields
+      .filter((x) => x.field.startsWith("rows["))
+      .sort((a, b) => b.chars / (b.cap || 60) - a.chars / (a.cap || 60))[0];
+    if (worst) past.push(worst.field);
+  }
+  for (const o of [...geomOver, ...past]) if (!c.over.includes(o)) c.over.push(o);
+  c.tight = tight || fields.some((x) => x.tight) || c.over.length > 0;
+  GEOMETRY.set(c.els, {
+    fits: m.fits && titleFits && leadLines <= 2,
+    comfortable: m.fits && !tight,
+  });
+}
+
+/** Lines of `text` in a `preset` box `w` wide at `size` and `weight`. */
+function lines_(
+  t: Theme,
+  text: string,
+  preset: "title" | "heading" | "body",
+  weight: number,
+  size: number,
+  w: number,
+) {
+  return countLines(text, preset, t, w, weight, size);
+}
+
+/** A text box at an explicit size, weight and line height (the profile's, not the template scale's). */
+function put(
+  c: Ctx,
+  value: string,
+  preset: "title" | "heading" | "body",
+  rect: { x: number; y: number; w: number },
+  size: number,
+  o: { weight: number; lh: number; color: string; name: string },
+): TextElement {
+  const lines = lines_(c.t, value, preset, o.weight, size, rect.w);
+  const el: TextElement = {
+    id: uid(),
+    type: "text",
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    w: Math.round(rect.w),
+    h: Math.ceil(lines * size * o.lh),
+    doc: kit.doc(value),
+    name: o.name,
+    style: {
+      preset,
+      autoHeight: true,
+      fontSize: size,
+      lineHeight: o.lh,
+      fontWeight: o.weight,
+      padding: 0,
+      color: o.color,
+    },
+  };
+  c.els.push(el);
+  return el;
+}
+
+/**
+ * The pie: a pale ground ring, a disc in the panel's light ink, and one closed wedge per share in
+ * the rows' category colours, starting at the foot and running clockwise (the pilot's `pie`).
+ */
+function pie(c: Ctx, L: PanelLook, shares: number[], fills: string[]) {
+  const cx = PIE_X + PIE / 2;
+  const cy = SLIDE_H - PIE_FOOT - PIE / 2;
+  const k = PIE / 320;
+  const ring = (r: number, fill: string, name: string, opacity?: number) =>
+    c.els.push({
+      id: uid(),
+      type: "shape",
+      shape: "ellipse",
+      x: Math.round(cx - r * k),
+      y: Math.round(cy - r * k),
+      w: Math.round(2 * r * k),
+      h: Math.round(2 * r * k),
+      fill,
+      name,
+      ...(opacity === undefined ? {} : { opacity }),
+    } as ShapeElement);
+  ring(152, L.onDeep, PANEL_NAMES.halo, 0.12);
+  ring(140, L.onDeep, PANEL_NAMES.halo);
+  const R = 118 * k;
+  const total = shares.reduce((a, b) => a + b, 0);
+  let a = Math.PI / 2 + 0.003;
+  shares.forEach((s, i) => {
+    const span = (s / total) * 2 * Math.PI;
+    if (span <= 0) return;
+    const b = a + span;
+    const steps = Math.max(2, Math.ceil(span / (Math.PI / 60)));
+    const pts = [{ x: 0.5, y: 0.5 }];
+    for (let j = 0; j <= steps; j++) {
+      const t = a + (span * j) / steps;
+      pts.push({
+        x: Math.round((0.5 + 0.5 * Math.cos(t)) * 10000) / 10000,
+        y: Math.round((0.5 + 0.5 * Math.sin(t)) * 10000) / 10000,
+      });
+    }
+    c.els.push({
+      id: uid(),
+      type: "path",
+      x: Math.round((cx - R) * 100) / 100,
+      y: Math.round((cy - R) * 100) / 100,
+      w: Math.round(2 * R * 100) / 100,
+      h: Math.round(2 * R * 100) / 100,
+      points: pts,
+      closed: true,
+      fill: fills[i],
+      stroke: L.onDeep,
+      strokeWidth: Math.round(5 * k * 10) / 10,
+      name: PANEL_NAMES.wedge,
+    } as PathElement);
+    a = b;
+  });
+}
+
+/**
+ * The capacity probe: whether `input` fits (geometry, at the floors) and is comfortable on every
+ * theme in `themes` at `stage`, judged on the layout alone (never on the caps it measures).
+ */
+export function panelListFits(
+  input: TemplateInput,
+  themes: readonly Theme[],
+  stage: Stage,
+): Geometry {
+  let fits = true;
+  let comfortable = true;
+  for (const theme of themes) {
+    const r = layoutTemplate(input, theme, stage);
+    const g = GEOMETRY.get(r.slide.elements) ?? { fits: false, comfortable: false };
+    const shares = r.over.includes("panel.shares") || r.over.some((o) => /^rows \d+\/\d+$/.test(o));
+    fits &&= g.fits && !shares;
+    comfortable &&= g.comfortable && !shares;
+    if (!fits) return { fits, comfortable: false };
+  }
+  return { fits, comfortable };
+}
+
+/**
+ * Which input path each laid element shows, in draw order (the editor's `AdaptiveSpec.paths`,
+ * TEACH-205 part b): the heading, the lead, and each row's name and line; the rest are not text
+ * the teacher edits through the layout.
+ */
+export function panelListPaths(els: readonly { name?: string }[]): (string | undefined)[] {
+  let row = -1;
+  return els.map((el) => {
+    if (el.name === PANEL_NAMES.title) return "heading";
+    if (el.name === PANEL_NAMES.lead) return "lead";
+    if (el.name === PANEL_NAMES.disc) row++;
+    if (el.name === PANEL_NAMES.name) return `rows.${row}.name`;
+    if (el.name === PANEL_NAMES.line) return `rows.${row}.text`;
+    return undefined;
+  });
+}

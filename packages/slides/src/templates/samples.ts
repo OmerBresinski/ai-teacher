@@ -137,5 +137,15 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
       formula: "1/4 of 20 = 20 ÷ 4 = 5",
       points: ["Divide by the denominator.", "Multiply by the numerator."],
     },
+    {
+      template: "panel-list",
+      heading: "Baby animals",
+      rows: [
+        { name: "Chick", text: "A young hen.", icon: "bird" },
+        { name: "Puppy", text: "A young dog.", icon: "dog" },
+        { name: "Kitten", text: "A young cat.", icon: "cat" },
+      ],
+      panel: { picture: ph("a hen with her chicks") },
+    },
   ];
 }
