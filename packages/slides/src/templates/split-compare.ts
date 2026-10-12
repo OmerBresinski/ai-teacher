@@ -31,8 +31,8 @@ import type {
   TextElement,
 } from "@tj/domain/documents";
 import { uid } from "../factories";
-import { SAFE } from "../grid";
-import { MIN_FONT_SIZE } from "../themes";
+import { SAFE, SPACE } from "../grid";
+import { MIN_FONT_SIZE, typeScale } from "../themes";
 import {
   type Ctx,
   type FieldCount,
@@ -94,17 +94,21 @@ export const SPLIT_MAX = 3;
 const W = 960;
 const H = 540;
 const SEAM = 5;
-const UNDER_HEADING = 35;
+/** Clear space under the heading band, before the fields (grid `SPACE`, Greg 12 Oct: more air). */
+const UNDER_HEADING = SPACE[5];
 const STAGE_TOP = 40;
 /**
  * Words only, or pictures that take the spare height: the content starts nearer the field's top (a
  * bubble's tail keeps the pilot's room).
  */
 const TEXT_TOP = 24;
-const TEXT_UNDER_HEADING = 26;
 const STAGE_FOOT = 43;
-const ZONE_GAP = 19;
-const BODY_GAP = 16;
+/** Clear space under a side's title, before its picture or words (`SPACE`). */
+const TITLE_GAP = SPACE[4];
+/** Clear space under a side's title before a bubble's tail, which reaches up toward it. */
+const TAIL_GAP = SPACE[2];
+/** Between a picture or bubble and the words under it (`SPACE`). */
+const BODY_GAP = SPACE[3];
 /** Room above a bubble for its tail. */
 const TAIL_ROOM = 27;
 const BUBBLE = { x: 21, top: 16, bottom: 17 } as const;
@@ -208,7 +212,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
   }
   c.bodyFromHeading = true;
   // Words only and pictures: the fields start a little nearer the heading, for the height it gives.
-  const ft = Math.round(top + (zoneOf(sides) === "quote" ? UNDER_HEADING : TEXT_UNDER_HEADING));
+  const ft = Math.round(top + UNDER_HEADING);
   const fh = H - ft;
   const fw = fieldW(n);
   const pad = sidePad(n);
@@ -219,7 +223,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
   const pics = zone === "picture" ? sides.map((s) => pictureOf(s) as Pic) : [];
 
   // Sizes on the stage's scale, scaled by k; never under the floors.
-  const base = splitSizes(full.body, MIN_FONT_SIZE.body);
+  const base = splitSizes(full.body, MIN_FONT_SIZE.body, typeScale(c.t)?.heading);
   const at = (k: number): SplitSizes => ({
     ...base,
     name: Math.max(base.floor.name, Math.round(base.name * k)),
@@ -308,10 +312,12 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
     let picH = 0;
     if (zone === "picture") {
       picH = Math.max(...boxesOf(steps[si] as Step).map((b) => b.h));
-      zoneH = picH + (name ? ZONE_GAP : 0);
-    } else if (zone === "quote") zoneH = TAIL_ROOM + Math.max(...sides.map((s) => quoteH(s, z)));
+      zoneH = picH + (name ? TITLE_GAP : 0);
+    } else if (zone === "quote")
+      zoneH = (name ? TAIL_GAP : 0) + TAIL_ROOM + Math.max(...sides.map((s) => quoteH(s, z)));
     const words = Math.max(0, ...sides.map((s) => textH(s, z)));
-    const body = words ? words + (name || zoneH ? BODY_GAP : 0) : 0;
+    const gap = zoneH ? BODY_GAP : name ? TITLE_GAP : 0;
+    const body = words ? words + gap : 0;
     return { name, zone: zoneH, picH, body, total: name + zoneH + body };
   };
   const judge = (p: Plan, z: SplitSizes) => {
@@ -510,19 +516,20 @@ function drawSides(c: Ctx, sides: SplitSide[], d: Draw) {
     let box: { x: number; y: number; w: number; h: number } | null = null;
     if (d.zone === "picture") {
       const b = d.boxes[i] as { w: number; h: number };
-      const r = { x, y: y + (d.p.name ? ZONE_GAP : 0), w: b.w, h: b.h };
+      const r = { x, y: y + (d.p.name ? TITLE_GAP : 0), w: b.w, h: b.h };
       box = r;
       const pic = d.pics[i] as Pic;
       now(() => picture(c, pic, r, ownCrops ? pairCrops([pic], b.w / b.h)[0] : crops[i], radius));
     } else if (d.zone === "quote") {
       const bh = d.quoteH(s, d.z);
-      const r = { x, y: y + TAIL_ROOM, w: d.cellW, h: bh };
+      const r = { x, y: y + (d.p.name ? TAIL_GAP : 0) + TAIL_ROOM, w: d.cellW, h: bh };
       box = r;
       now(() => bubble(c, s.quote ?? "", r, mix(field, c.t.colors.surface, 0.58), d, radius));
     }
     y += d.p.zone;
     const th = d.textH(s, d.z);
-    const textRect = { x, y: y + (y > d.y0 ? BODY_GAP : 0), w: d.cellW, h: th };
+    const gap = d.p.zone ? BODY_GAP : d.p.name ? TITLE_GAP : 0;
+    const textRect = { x, y: y + gap, w: d.cellW, h: th };
     if (s.text.trim())
       now(() =>
         sized(c, s.text, "body", d.z.body, textRect, {

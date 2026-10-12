@@ -171,8 +171,9 @@ describe("split-compare pictures take what the words leave (sc-19, sc-25)", () =
       const field = short.slide.elements.find((e) => e.name === SPLIT_NAMES.field) as SlideElement;
       const [a] = pics(short.slide.elements) as [ImageElement];
       expect(short.over).toEqual([]);
-      // KS1's type fills the field with even short words; above it the pair grows past 52%.
-      if (stage !== "ks1") expect(a.h, stage).toBeGreaterThan(field.h * 0.52);
+      // KS1's type fills the field with even short words; above it the pair takes about half the
+      // field (more with the heading's clear space given back: Greg's 12 Oct spacing costs ~25pt).
+      if (stage !== "ks1") expect(a.h, stage).toBeGreaterThan(field.h * 0.48);
       // The content runs to the stage's foot: no empty field under short words.
       const words = short.slide.elements.filter((e) => e.name === SPLIT_NAMES.text);
       const foot = Math.max(...words.map((e) => e.y + e.h));
@@ -400,21 +401,21 @@ describe("split-compare fields and colours", () => {
 });
 
 describe("split-compare capacity (row 7)", () => {
-  test("words-only sides take the zone's height: 2 sides hold about 30 words at KS2 and over", () => {
+  test("words-only sides take the zone's height: 2 sides hold 25+ words at KS2 and over", () => {
     const words = (g: SplitGroup, n: 2 | 3) =>
       (splitTable(g, n, "text").text as { words?: number }).words ?? 0;
-    // Measured, not targeted: 29 to 31 depending on the theme set; the table holds the truth.
-    expect(words("KS2", 2)).toBeGreaterThanOrEqual(29);
-    expect(words("KS3-5", 2)).toBeGreaterThanOrEqual(29);
+    // Measured, not targeted: 26 at KS2 since the 12 Oct spacing (31 before); the table holds the truth.
+    expect(words("KS2", 2)).toBeGreaterThanOrEqual(25);
+    expect(words("KS3-5", 2)).toBeGreaterThanOrEqual(30);
     expect(words("KS1", 2)).toBeGreaterThanOrEqual(20);
-    // And about 30 words are comfortable on every theme, not just in the table.
-    const thirty =
-      "Weather is what the air is doing today or this week, the rain and the sun and the wind, and it can change from hour to hour in a place.";
+    // And 25 words are comfortable on every theme, not just in the table.
+    const words25 =
+      "Weather is what the air is doing today or this week, the rain and the sun and the wind, and it can change by the hour.";
     for (const theme of THEMES) {
       const r = layoutTemplate(
         input([
-          { title: "Weather", text: thirty },
-          { title: "Climate", text: thirty },
+          { title: "Weather", text: words25 },
+          { title: "Climate", text: words25 },
         ]),
         theme,
         "ks2",

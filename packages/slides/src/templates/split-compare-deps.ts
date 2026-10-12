@@ -64,8 +64,8 @@ export function quoteVoice(t: Theme, stage: Stage): { family: string; italic: bo
 
 /**
  * The age profile's sizes against the stage's body size (ruling 212): full, comfortable (the
- * fit's comfort line, ruling 215) and the floor it never goes under. The pilot's ratios (name
- * 1.3x body, comfort 0.9 body and 0.82 name, floors 0.8 and 0.7), on the product's type scale.
+ * fit's comfort line, ruling 215) and the floor it never goes under. The pilot's ratios (comfort
+ * 0.9 body and 0.82 name, floors 0.8 and 0.7), on the product's type scale.
  */
 export type SplitSizes = {
   name: number;
@@ -74,8 +74,10 @@ export type SplitSizes = {
   comfort: { name: number; body: number };
   floor: { name: number; body: number };
 };
-export function splitSizes(body: number, floorBody: number): SplitSizes {
-  const name = Math.round(body * 1.3);
+export function splitSizes(body: number, floorBody: number, heading?: number): SplitSizes {
+  // The side title sits one step under the scale's heading: between heading and body on the
+  // scale's own ratio (their geometric mean; KS2 42 and 29 give 35). Greg, 12 Oct: titles were big.
+  const name = heading ? Math.round(Math.sqrt(heading * body)) : Math.round(body * 1.2);
   const fb = Math.max(floorBody, Math.round(body * 0.8));
   return {
     name,
