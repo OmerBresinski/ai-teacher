@@ -6,7 +6,9 @@ import { type Audience, audienceBlock, example, HOUSE_RULES } from "./shared";
  * called …" structurally; this call catches what a regex cannot — a bare name used as a pupil's —
  * without refusing Title Case topics or the historical figures a lesson is about. Two cheap
  * checks ride along (unsafe content, not a lesson request). The model reports problems in the
- * `Finding` shape and never quotes the text back. Bump `version` whenever the wording changes.
+ * `Finding` shape and never quotes the text back. It also names the lesson's historical period
+ * (ruling 163: no generated pictures of anything historical, whatever the subject) and flags
+ * fiction set in one. Bump `version` whenever the wording changes.
  */
 
 export type CheckInputInput = {
@@ -26,12 +28,14 @@ const EXAMPLE = {
       message: "The brief seems to name a pupil. Please describe the class without naming anyone.",
     },
   ],
+  historical_period: null,
+  fiction_in_period: false,
 };
 
 export const checkInputPrompt = {
-  version: "check-input.v4",
+  version: "check-input.v5",
   system: [
-    "You screen a teacher's lesson brief before it is turned into a lesson. You do not plan or write anything; you only report whether the brief may go forward.",
+    "You screen a teacher's lesson brief before it is turned into a lesson, and say when its content is set. You do not plan or write anything.",
     "",
     "Rules:",
     HOUSE_RULES,
@@ -43,6 +47,8 @@ export const checkInputPrompt = {
     "When in doubt about a name, ask whether the text treats the person as someone in the room: a pupil to help, assess or seat is a learner; a person to learn about is a subject.",
     "When in doubt about whether something is a lesson, let it through: a wasted plan costs less than a refused teacher.",
     "An empty `findings` list means the brief may go forward.",
+    'Whatever the findings, set `historical_period`: the period in the real past that the lesson\'s content is set in, named as a teacher would ("Ancient Egypt", "Tudor England", "1969 Moon landing"). Any subject counts, including a past event taught in science, geography, RE or English. Null when the content is present-day or timeless: how something works, a skill, or a place or process as it is today.',
+    "Set `fiction_in_period` true only when the content is a story, play or poem set in such a period; `historical_period` then names that period.",
     "",
     "Answer as JSON in this shape:",
     example(EXAMPLE),

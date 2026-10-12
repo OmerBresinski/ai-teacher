@@ -3,6 +3,7 @@ import { isThemeId, liveThemeId } from "@tj/slides";
 import { callStructured } from "../call";
 import { curriculumBlock, curriculumFor } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
+import { periodOf, withoutPeriod } from "../period";
 import {
   type PlanRetrievalQuestion,
   planObjectivesOutputSchemaFor,
@@ -105,7 +106,7 @@ export interface ObjectivesStepOptions {
    * Awaited before the plan is persisted (TEACH-110 part h, C14): the input check that runs
    * beside the objectives call. A rejection stops the step with nothing persisted.
    */
-  gate?: Promise<unknown>;
+  gate?: Promise<PipelineState>;
 }
 
 /** The writer's objectives call: the model, effort and output cap base4f-p123's harness used. */
@@ -353,11 +354,16 @@ export async function runObjectivesStep(
       findings: [],
     },
   };
-  if (options.gate) await options.gate;
-  const { updatedAt } = await deps.persist(planned);
+  // Ruling 163 (B1): the check's period goes onto the plan, so it is stored once, at `planned`.
+  // Always overwritten from the latest check, so a re-plan (pinned or a new topic) never keeps a
+  // stale period.
+  const stored: Lesson = options.gate
+    ? { ...withoutPeriod(planned), ...periodOf((await options.gate).lesson) }
+    : planned;
+  const { updatedAt } = await deps.persist(stored);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
   return {
-    state: { ...state, lesson: planned },
+    state: { ...state, lesson: stored },
     report: { objectives, ...(retrieval ? { retrieval } : {}), calls, objectivesMs },
   };
 }

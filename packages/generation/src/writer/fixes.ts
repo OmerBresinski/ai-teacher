@@ -20,6 +20,9 @@ export type Brief = {
   id: string;
   topic: string;
   subject: string;
+  /** The lesson's past period and fiction flag (ruling 163, B1), read by `isHistoricalLesson`. */
+  historicalPeriod?: string;
+  fictionInPeriod?: boolean;
   yearGroup: string;
   year: number;
   keyStage: Stage;

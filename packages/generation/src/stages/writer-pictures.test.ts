@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
-import type { PhotoSource } from "@tj/domain/documents";
+import type { Lesson, PhotoSource } from "@tj/domain/documents";
 import { encodePng, type ImageGenerator, type PhotoResult, type StoredPhoto } from "@tj/images";
+import { FICTION_IN_PERIOD_IS_HISTORICAL } from "../period";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
 import { BudgetExceeded } from "../types";
@@ -621,9 +622,12 @@ describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", 
 });
 
 describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
-  const generatedOnly = (subject: string) =>
+  const generatedOnly = (subject: string | Partial<Lesson>) =>
     createWriterPictures({
-      lesson: { ...sampleBriefLesson(), subject },
+      lesson:
+        typeof subject === "string"
+          ? { ...sampleBriefLesson(), subject }
+          : ({ ...sampleBriefLesson(), subject: undefined, ...subject } as Lesson),
       country: "UK",
       images: images({}),
       deps: recordingDeps(
@@ -674,6 +678,44 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     await pictures.settle(5_000);
     expect(pictures.state(4, "card.0").status).toBe("failed");
     expect([...pictures.sources().values()]).toEqual([]);
+  });
+
+  test("B1: the title picture and cards follow the stored period when the subject is blank", async () => {
+    const egypt = { historicalPeriod: "Ancient Egypt", fictionInPeriod: false };
+    const title = { heading: "Mummification", text: "", point: "" };
+    const outcome = async (lesson: string | Partial<Lesson>) => {
+      // One placer per slot: the fake judge has one verdict.
+      const t = generatedOnly(lesson);
+      t.start(
+        0,
+        ask({
+          key: "picture",
+          shows: "Egyptian people wrapping a body",
+          mustSee: ["a body"],
+          named: false,
+        }),
+        title,
+      );
+      const c = generatedOnly(lesson);
+      c.start(4, card, slide);
+      await Promise.all([t.settle(5_000), c.settle(5_000)]);
+      return {
+        title: t.state(0, "picture").status,
+        titleSources: [...t.sources().values()].length,
+        card: c.state(4, "card.0").status,
+      };
+    };
+    const history = await outcome("History");
+    expect(history.card).toBe("failed");
+    // A blank subject with the period stored behaves as a History lesson, on the title too.
+    expect(await outcome(egypt)).toEqual(history);
+    // Fiction in the period follows the constant; a present-day lesson is not held back.
+    const fiction = await outcome({ ...egypt, fictionInPeriod: true });
+    expect(fiction.card).toBe(FICTION_IN_PERIOD_IS_HISTORICAL ? "failed" : "photo");
+    const today = await outcome({});
+    expect(today.card).toBe("photo");
+    // The title ask takes the same guarded ladder (findDirected's \`historical\`) as a History one.
+    expect(today.title).toBe(history.title);
   });
 
   test("a card naming a person is never generated, whatever the subject", async () => {

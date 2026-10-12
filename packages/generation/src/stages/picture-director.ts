@@ -9,6 +9,7 @@ import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
+import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
   lessonLine,
   PICTURE_DIRECTOR_VERSION,
@@ -524,7 +525,7 @@ export async function findDirected(args: {
   ask: { subject: string; named?: string | null };
   brief: ImageBrief;
   slide: SlideForPicture;
-  lesson: { title: string; yearGroup?: string; subject?: string };
+  lesson: { title: string; yearGroup?: string } & PeriodFields;
   country: string;
   index: number;
   /** `signal` cancels this one search (a race it lost) without stopping the slot. */
@@ -570,8 +571,7 @@ export async function findDirected(args: {
       ...(args.look ? { look: args.look } : {}),
       ...(b.mustShow?.length ? { mustShow: b.mustShow } : {}),
       historical:
-        isHistoricalSet([ask.subject]) ||
-        (/^hist/i.test(lesson.subject ?? "") && DEPICTS.test(ask.subject)),
+        isHistoricalSet([ask.subject]) || (isHistoricalLesson(lesson) && DEPICTS.test(ask.subject)),
     },
     { draws: args.draws === true, ...(args.realOnly ? { real: true } : {}) },
   );
@@ -845,7 +845,13 @@ export async function placeWriterPicture(args: {
         ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
         brief: b,
         slide: ask.slide,
-        lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+        lesson: {
+          title: lesson.title,
+          yearGroup: lesson.yearGroup,
+          subject: lesson.subject,
+          historicalPeriod: lesson.historicalPeriod,
+          fictionInPeriod: lesson.fictionInPeriod,
+        },
         country: args.country,
         index: ask.index,
         stock,
@@ -1139,7 +1145,7 @@ export function createWriterPictures(opts: {
    */
   const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
     ask.key.startsWith("card.") &&
-    (ask.named || /^hist/i.test(opts.lesson.subject ?? "") || isHistoricalSet(shows));
+    (ask.named || isHistoricalLesson(opts.lesson) || isHistoricalSet(shows));
   const place = (
     slot: Slot,
     index: number,
@@ -1266,7 +1272,7 @@ export function createWriterPictures(opts: {
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
     }));
-    if (!setIsGenerated(asks, opts.lesson.subject ?? "")) {
+    if (!setIsGenerated(asks, opts.lesson)) {
       void Promise.all(
         panels.map(({ ask, slot }) =>
           slot
@@ -1498,7 +1504,7 @@ export function createWriterPictures(opts: {
         subjects &&
         parts &&
         !isHistoricalSet([ask.shows]) &&
-        setIsGenerated(parts, opts.lesson.subject ?? "")
+        setIsGenerated(parts, opts.lesson)
       ) {
         slot.done = placeSplit(slot, index, ask, opts.maker, subjects, parts);
         slots.set(k, slot);

@@ -63,6 +63,7 @@ export {
   RULE_FIELDS,
   type RuleField,
 } from "./parse-brief";
+export { FICTION_IN_PERIOD_IS_HISTORICAL, isHistoricalLesson } from "./period";
 // The objectives-first planner (TEACH-91) as the lab runs it; production runs its two steps as
 // workflow steps behind `AI_LESSON_PLANNER` (TEACH-93).
 export {
