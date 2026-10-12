@@ -800,6 +800,20 @@ export function seededOrder(n: number, seed: string, derangement: boolean): numb
 }
 
 /**
+ * A seeded order of 0..n-1 that passes `leak`; the seed is the words, so it is stable. Lives here,
+ * not only in `templates/activities`, so the worksheet word bank does not pull the slide templates
+ * into the worksheet bundle (TEACH-205 part b: the editor now loads the templates for layout groups).
+ */
+export function shuffled(n: number, seed: string, leak: (order: number[]) => boolean): number[] {
+  for (let k = 0; k < 64; k++) {
+    const order = seededOrder(n, `${seed}#${k}`, false);
+    if (!leak(order)) return order;
+  }
+  // Rotations pass every leak check for n of 3 or more.
+  return Array.from({ length: n }, (_, i) => (i + 1) % n);
+}
+
+/**
  * A derangement of 0..n-1: no index maps to itself, so no word can start in the
  * slot under the picture it names. `(i + 1) mod n` is the cheapest one and holds
  * for every n above 1; n of 1 has no derangement and returns [0].
