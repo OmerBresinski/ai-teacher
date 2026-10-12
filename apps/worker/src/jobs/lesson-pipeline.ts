@@ -24,6 +24,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { budgetFailure } from "../job-errors";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
@@ -219,9 +220,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       // A streamed call (the writer) surfaces the refusal wrapped in the stream's error, so the
       // check walks `cause` rather than testing the outer class (TEACH-202 part g).
       if (isBudgetRefusal(error)) {
-        throw new NonRetryableError(error instanceof Error ? error.message : "budget refused", {
-          cause: error,
-        });
+        throw budgetFailure(error);
       }
       // The writer stopped at its token cap (TEACH-110 part b): the same request stops the same
       // way, so it fails now instead of paying for a retry.

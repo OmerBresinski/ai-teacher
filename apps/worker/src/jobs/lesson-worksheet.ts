@@ -30,6 +30,7 @@ import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { budgetFailure } from "../job-errors";
 
 /**
  * `lesson.worksheet` — one worksheet beside a confirmed lesson, on its own row, lock and budget
@@ -203,9 +204,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         return;
       }
       if (isBudgetRefusal(error)) {
-        throw new NonRetryableError(error instanceof Error ? error.message : "budget refused", {
-          cause: error,
-        });
+        throw budgetFailure(error);
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
         throw new NonRetryableError(error.message, { cause: error });

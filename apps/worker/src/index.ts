@@ -1,6 +1,14 @@
 import { createDb } from "@tj/db";
 import { JobName, safeError } from "@tj/domain";
-import { type BossJob, createBoss, ensureQueues, type JobsContext, runJob } from "@tj/jobs";
+import {
+  type BossJob,
+  createBoss,
+  ensureQueues,
+  type JobsContext,
+  REAP_INTERVAL_MS,
+  reapOrphanedLocks,
+  runJob,
+} from "@tj/jobs";
 import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
 import { publicJobFailure } from "./job-errors";
@@ -89,6 +97,16 @@ logger.info(
   },
   "worker registered",
 );
+
+// TEACH-202 part g: a job that died on its last attempt (crash, OOM) never ran its `finally`;
+// once pg-boss settles it, this sweep writes its terminal event and releases its lock.
+const reaper = setInterval(() => {
+  reapOrphanedLocks(ctx, { logger: logger.child({ task: "reap-locks" }) }).catch((err) =>
+    logger.error({ err: safeError(err) }, "lock reaper failed"),
+  );
+}, REAP_INTERVAL_MS);
+reaper.unref();
+shutdown.signal.addEventListener("abort", () => clearInterval(reaper), { once: true });
 
 const server = Bun.serve({
   port: env.PORT,
