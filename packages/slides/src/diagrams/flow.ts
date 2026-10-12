@@ -89,6 +89,15 @@ function edge(b: Box, tx: number, ty: number, gap: number): [number, number] {
   return [b.cx + dx * s + (dx / len) * gap, b.cy + dy * s + (dy / len) * gap];
 }
 
+/**
+ * Link words that found no clear place in the last rejected layout of the last flow graph drawn
+ * that had any, with how much they overlapped where they stood (box, word and off-zone area in
+ * px², plus noteFs² per line crossed). Empty once a layout is clear: after a fault it says which
+ * words could not fit.
+ */
+let stuck: { words: string; overlap: number }[] = [];
+export const lastFlowStuck = (): { words: string; overlap: number }[] => stuck;
+
 export function drawFlow(f: Flow, x: Ctx, w: number, h: number): string {
   if (f.layout === "graph") return graph(f, x, w, h);
   return f.layout === "cycle" ? cycle(f, x, w, h) : chain(f, x, w, h);
@@ -129,13 +138,13 @@ export function graphLayers(k: number, links: GLink[]): { layer: number[]; back:
   return { layer, back };
 }
 
-type Rect = { x0: number; y0: number; x1: number; y1: number };
+export type Rect = { x0: number; y0: number; x1: number; y1: number };
 
 /** Two rects overlap by more than a hair (with `pad` clear room round each). */
 const hits = (a: Rect, b: Rect, pad = 0) =>
   a.x0 < b.x1 + pad && b.x0 < a.x1 + pad && a.y0 < b.y1 + pad && b.y0 < a.y1 + pad;
 
-type Pt = [number, number];
+export type Pt = [number, number];
 
 /** A place a link's words may stand: the text point, its lines and how they hang from it. */
 type Spot = {
@@ -146,7 +155,7 @@ type Spot = {
 };
 
 /** A Bézier curve (any degree) through its control points, as 25 points along it. */
-function bez(cp: Pt[]): Pt[] {
+export function bez(cp: Pt[]): Pt[] {
   return Array.from({ length: 25 }, (_, i) => {
     const t = i / 24;
     let p = cp;
@@ -160,7 +169,7 @@ function bez(cp: Pt[]): Pt[] {
 }
 
 /** Whether the segment from `a` to `b` passes through `r` (with `pad` room round it). */
-function segCrosses(a: Pt, b: Pt, r: Rect, pad: number): boolean {
+export function segCrosses(a: Pt, b: Pt, r: Rect, pad: number): boolean {
   let t0 = 0;
   let t1 = 1;
   const dx = b[0] - a[0];
@@ -209,6 +218,7 @@ const ports = (k: number, a: number, b: number) =>
  * small.
  */
 function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
+  stuck = [];
   const { c } = x;
   const inset = 2;
   const w = fullW - inset * 2;
@@ -617,16 +627,34 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         !boxRects.some((b) => hits(r, b, 2)) &&
         !placed.some((o) => hits(r, o, apart)) &&
         !paths.some((p) => p.own !== own && crosses(p.pts, r, 2));
+      const area = (a: Rect, b: Rect, pad = 0) =>
+        Math.max(0, Math.min(a.x1, b.x1 + pad) - Math.max(a.x0, b.x0 - pad)) *
+        Math.max(0, Math.min(a.y1, b.y1 + pad) - Math.max(a.y0, b.y0 - pad));
+      const overlap = (r: Rect, own: string) =>
+        (r.x1 - r.x0) * (r.y1 - r.y0) -
+        area(r, { x0: 0, y0: 0, x1: fullW, y1: fullH }) +
+        boxRects.reduce((v, b) => v + area(r, b, 2), 0) +
+        placed.reduce((v, o) => v + area(r, o, apart), 0) +
+        paths.filter((p) => p.own !== own && crosses(p.pts, r, 2)).length * noteFs * noteFs;
+      const stuckHere: { words: string; overlap: number }[] = [];
       let clash = paths.some((p) =>
         boxRects.some((b, i) => !p.ends.includes(i) && crosses(p.pts, b, 2)),
       );
       for (const q of [...asks].sort((p, r) => p.at.length - r.at.length)) {
-        const s = q.at.find((t) => clear(spotRect(t), q.own));
-        if (!s) clash = true;
-        const t = s ?? (q.at[0] as Spot);
+        let t = q.at.find((t) => clear(spotRect(t), q.own));
+        if (!t) {
+          // No spot is clear: the layout is rejected, but the words stand where they overlap
+          // least, and are logged (lastFlowStuck), so a fault says what could not fit.
+          clash = true;
+          const scored = q.at.map((p) => ({ p, v: overlap(spotRect(p), q.own) }));
+          const best = scored.reduce((a, b) => (b.v < a.v ? b : a));
+          t = best.p;
+          stuckHere.push({ words: t.wl.join(" "), overlap: Math.round(best.v) });
+        }
         placed.push(spotRect(t));
         out[q.slot] = text(x, t.px, t.py, t.wl, { ...t.o, ...style });
       }
+      if (stuckHere.length) stuck = stuckHere;
       if (clash) {
         // A rejected layout leaves no trace in the checks' records.
         if (x.rec) x.rec.length = rec0;
@@ -647,6 +675,7 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
           ),
         );
       });
+      stuck = [];
       return out.join("");
     }
   x.faults?.push("the flow does not fit its zone at a readable size");

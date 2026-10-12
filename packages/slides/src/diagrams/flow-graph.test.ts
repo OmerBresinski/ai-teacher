@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme } from "../themes";
+import { drawDiagram } from "./draw";
+import { bez, lastFlowStuck, segCrosses } from "./flow";
 import { diagramElement, renderDiagram } from "./index";
 
 /*
@@ -215,5 +217,79 @@ describe("TEACH-247 ac: flow graph words and links back", () => {
       expect(svg).not.toBe("");
       expect([k, crowded(svg, fs * 0.5)]).toEqual([k, []]);
     }
+  });
+});
+
+describe("TEACH-247 ac: a graph that clashes everywhere, and the geometry under the check", () => {
+  // A -> C skips B, which stands between them in every direction: the straight link crosses B
+  // at every size, so no layout is clear.
+  const SKIP = {
+    kind: "flow",
+    alt: "x",
+    layout: "graph",
+    steps: [{ label: "A" }, { label: "B" }, { label: "C" }],
+    links: [
+      { from: 0, to: 1 },
+      { from: 1, to: 2 },
+      { from: 0, to: 2 },
+    ],
+  };
+  test("draws nothing, reports why, and never throws", () => {
+    for (const z of [
+      { w: 860, h: 380 },
+      { w: 300, h: 420 },
+    ]) {
+      let svg: string | undefined = "x";
+      expect(() => {
+        svg = renderDiagram(SKIP, SPLASH, z);
+      }).not.toThrow();
+      expect(/<(rect|line|path|text)\b/.test(svg ?? "")).toBe(false);
+      const r = drawDiagram(SKIP, SPLASH, { x: 0, y: 0, ...z });
+      expect(r.ok).toBe(false);
+    }
+  });
+  test("words with no clear place are logged with their overlap", () => {
+    // A -> C's words stand over B, the box its line crosses, wherever they go.
+    const named = { ...SKIP, links: SKIP.links.map((l) => ({ ...l, label: "on" })) };
+    const svg = renderDiagram(named, SPLASH, { w: 860, h: 380 }) ?? "";
+    expect(/<(rect|line|path|text)\b/.test(svg)).toBe(false);
+    expect(lastFlowStuck().length).toBeGreaterThan(0);
+    for (const s of lastFlowStuck()) expect(s.overlap).toBeGreaterThan(0);
+  });
+  const R = { x0: 10, y0: 10, x1: 20, y1: 20 };
+  test("segCrosses: through, beside, touching with pad, zero length, axis-parallel", () => {
+    expect(segCrosses([0, 15], [30, 15], R, 0)).toBe(true);
+    expect(segCrosses([0, 0], [30, 30], R, 0)).toBe(true);
+    expect(segCrosses([0, 25], [30, 25], R, 0)).toBe(false);
+    expect(segCrosses([0, 21], [30, 21], R, 2)).toBe(true);
+    expect(segCrosses([0, 23], [30, 23], R, 2)).toBe(false);
+    // Zero length: a point inside crosses, a point outside does not (p === 0 with q < 0).
+    expect(segCrosses([15, 15], [15, 15], R, 0)).toBe(true);
+    expect(segCrosses([5, 15], [5, 15], R, 0)).toBe(false);
+    // Vertical left of the box (p === 0, q < 0) and inside its span.
+    expect(segCrosses([5, 0], [5, 30], R, 0)).toBe(false);
+    expect(segCrosses([15, 0], [15, 30], R, 0)).toBe(true);
+    // Stops short of the box; passes the corner outside it.
+    expect(segCrosses([0, 15], [8, 15], R, 0)).toBe(false);
+    expect(segCrosses([0, 12], [12, 0], R, 0)).toBe(false);
+  });
+  test("bez: 25 points, ends exact, a line stays a line, one point stays put", () => {
+    const c = bez([
+      [0, 0],
+      [0, 10],
+      [10, 10],
+      [10, 0],
+    ]);
+    expect(c.length).toBe(25);
+    expect(c[0]).toEqual([0, 0]);
+    expect(c[24]).toEqual([10, 0]);
+    expect(c[12]?.[0]).toBeCloseTo(5);
+    expect(c[12]?.[1]).toBeCloseTo(7.5);
+    for (const [px, py] of bez([
+      [0, 0],
+      [8, 4],
+    ]))
+      expect(py).toBeCloseTo(px / 2);
+    for (const p of bez([[3, 4]])) expect(p).toEqual([3, 4]);
   });
 });
