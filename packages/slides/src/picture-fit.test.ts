@@ -227,6 +227,20 @@ describe("matched pairs (row 4)", () => {
     expect(near(t.w / t.h, 600 / 1707, 0.01)).toBe(true);
     expect(near(w.w / w.h, 1280 / 380, 0.01)).toBe(true);
     expect(w.w).toBeLessThanOrEqual(556);
+    expect(t.h).toBe(w.h);
+    expect(t.h).toBeLessThanOrEqual(313);
+  });
+
+  test("one side zooms, the other does not: each keeps its own crop", () => {
+    const jar = pic("jar");
+    const scene = pic("scene");
+    const fit = pairFit([jar, scene], zone);
+    const box = fit.boxes[0] as { w: number; h: number };
+    const [a, b] = fit.crops;
+    expect(a).toEqual(cropFor(jar, box));
+    expect(b).toEqual(cropFor(scene, box));
+    expect(a?.zoomed || a?.extended).toBe(true);
+    expect(b?.zoomed).toBe(false);
   });
 });
 
@@ -269,6 +283,21 @@ describe("resolution floor", () => {
     expect(c.zoomed).toBe(true);
     // the floor wins over the 72% fill: the subject shows smaller than 72%
     expect((small.subject as FracRect).w / c.w).toBeLessThan(ZOOM_FILL);
+  });
+
+  test("the floor never zooms a low-resolution picture out into an extension it did not need", () => {
+    // a 400px object shown in a 900px box: the floor (540px) is past the whole picture
+    const low: PictureFacts = {
+      width: 400,
+      height: 300,
+      subject: { x: 0.35, y: 0.3, w: 0.3, h: 0.4 },
+      backdrop: { plain: { top: true, right: true, bottom: true, left: true }, colour: "#ffffff" },
+    };
+    const c = cropFor(low, { w: 900, h: 675 });
+    expect(c.extended).toBe(false);
+    expect(needsExtension(c)).toBe(false);
+    expect(c.w).toBeCloseTo(1, 6);
+    expect(c.h).toBeCloseTo(1, 6);
   });
 
   test("zoom: false keeps the largest in-image crop", () => {

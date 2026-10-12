@@ -18,7 +18,7 @@ import { demoLibrary } from "../model/starter";
 import { getTheme } from "../model/themes";
 import { resolveTextStyle } from "../slide/elements/kit";
 import { imageCredentials } from "./image-credentials";
-import { dataUrlImageSize } from "./image-size";
+import { dataUrlImageSize, imageSize } from "./image-size";
 import {
   answerText,
   buildSlidePlan,
@@ -1035,6 +1035,34 @@ describe("the emitted slide XML", () => {
       for (const [i, v] of got.entries())
         expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
     }, 30_000);
+
+    it("contain with a turn and a radius: centred at its own shape and turned about the box centre", async () => {
+      const [xml] = await write(
+        deck([picture({ w: 200, h: 200, fit: "contain", rotation: 90, radius: 8 })]),
+      );
+      const EMU = 914_400;
+      const want = [100, 100, 200, 100].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+      expect(xml).toContain('rot="5400000"');
+      // the radius is still PptxGenJS's `rounding` (an ellipse, a known gap, not this change)
+      expect(xml).toContain('prst="ellipse"');
+      expect(srcRect(xml)).toBeNull();
+    }, 30_000);
+
+    it("a JPEG with EXIF before its frame header", () => {
+      // SOI, an APP1 (EXIF) segment of 3000 bytes, then SOF0 for a 640x480 picture
+      const app1 = new Uint8Array(3002);
+      app1.set([0xff, 0xe1, 3000 >> 8, 3000 & 0xff]);
+      app1.set([0x45, 0x78, 0x69, 0x66, 0, 0], 4);
+      const sof = [0xff, 0xc0, 0x00, 0x11, 0x08, 480 >> 8, 480 & 0xff, 640 >> 8, 640 & 0xff, 3];
+      const bytes = new Uint8Array([0xff, 0xd8, ...app1, ...sof, ...new Uint8Array(20)]);
+      expect(imageSize(bytes)).toEqual({ w: 640, h: 480 });
+      const b64 = btoa(String.fromCharCode(...bytes));
+      expect(dataUrlImageSize(`data:image/jpeg;base64,${b64}`)).toEqual({ w: 640, h: 480 });
+    });
 
     it("a JPEG's size is read from its header too", () => {
       const jpeg =

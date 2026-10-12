@@ -147,7 +147,10 @@ export function safeShapes(f: PictureFacts, opts?: Pick<FitOptions, "extend">): 
 
 /**
  * The crop for a box (fractions of the picture; past 0..1 only where the plain backdrop extends),
- * zoomed to the subject.
+ * zoomed to the subject. `box` is the box's size in the pixels it is shown at: only its aspect and
+ * the resolution floor read it, and the floor compares it with the picture's source pixels. From
+ * slide units (960 wide) multiply by the render width over 960; the pilot's numbers were measured
+ * on a 1440-wide slide (1.5x).
  */
 export function cropFor(f: PictureFacts, box: Size, opts: FitOptions = {}): PictureCrop {
   const r = box.w / box.h;
@@ -162,7 +165,9 @@ export function cropFor(f: PictureFacts, box: Size, opts: FitOptions = {}): Pict
     const wantAt = (fill: number) =>
       Math.max((s.w * f.width) / fill, (s.h * f.height * r) / fill, n.w, n.h * r);
     const want = wantAt(ZOOM_FILL) <= mc ? wantAt(ZOOM_FILL) : Math.max(mc, wantAt(EXTEND_FILL));
-    cw = Math.max(want, RES_FLOOR * box.w);
+    // The floor stops zooming in past the picture's resolution; it never zooms OUT past the largest
+    // in-image crop, which would extend a low-resolution picture that needed no extension.
+    cw = Math.max(want, Math.min(RES_FLOOR * box.w, mc));
     zoomed = cw < mc - 1;
   }
   if (opts.cropW) {
@@ -283,7 +288,10 @@ export function pairFit(
       (!opts.shapes || opts.shapes.includes(n)) && photos.every((f) => shapeSafe(f, r, opts)),
   );
   if (!shared.length && photos.length) {
-    const boxes = sides.map((f) => boxIn({ w: zone.w, h: zone.h }, f ? f.width / f.height : 1));
+    // one shared height: the tallest at which every side's own shape fits the zone's width
+    const ratios = sides.map((f) => (f ? f.width / f.height : 1));
+    const h = Math.min(zone.h, ...ratios.map((r) => zone.w / r));
+    const boxes = ratios.map((r) => ({ w: Math.round(h * r), h: Math.round(h) }));
     return {
       shape: "own",
       boxes,
