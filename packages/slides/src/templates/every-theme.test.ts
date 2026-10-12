@@ -28,6 +28,7 @@ const ALL: TemplateId[] = [
   "exit-ticket",
   "equation-hero",
   "panel-list",
+  "split-compare",
 ];
 
 type Sized = {

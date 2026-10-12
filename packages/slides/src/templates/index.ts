@@ -36,9 +36,10 @@ import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+import { layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual };
+export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual, SplitSide };
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -146,6 +147,7 @@ export type TemplateId =
   | "banner-text"
   | "hook"
   | "panel-list"
+  | "split-compare"
   | ActivityId;
 
 export type TemplateInput = {
@@ -199,6 +201,15 @@ export type TemplateInput = {
   targets?: { x: number; y: number; text: string }[];
   /** Label: words in the bank that no pointer wants. */
   extra?: string[];
+  /**
+   * Split compare (TEACH-75 part w): 2-3 sides in edge-to-edge colour fields, each a title and a
+   * sentence or two, with all-or-none zones (a matched picture pair, a quote each, or words only).
+   */
+  sides?: SplitSide[];
+  /** Split compare: the seam marker's word ("vs" when absent). */
+  marker?: string | null;
+  /** An exact substring of the heading shown in the accent (ignored when it is not one). */
+  accentWord?: string | null;
 };
 
 /**
@@ -238,6 +249,9 @@ export type TemplateResult = {
   /** One entry per field with its length and measured limits: the live "62/80" counters. */
   fields?: FieldReport[];
 };
+
+/** split-compare's name for a FieldReport. */
+export type FieldCount = FieldReport;
 
 /** A field's length against its measured comfortable cap and hard maximum (ruling 215). */
 export type FieldReport = {
@@ -1244,6 +1258,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "panel-list": "content",
   "banner-text": "image-text",
   hook: "image-text",
+  "split-compare": "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2321,6 +2336,9 @@ function layoutOnce(
       break;
     case "hook":
       layoutHook(c, input);
+      break;
+    case "split-compare":
+      layoutSplitCompare(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);
