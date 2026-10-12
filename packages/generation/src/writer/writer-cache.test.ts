@@ -34,7 +34,7 @@ type Body = {
 };
 
 /** The real OpenAI provider with fetch replaced by a one-chunk stream: the body is what it sends. */
-function capture() {
+function capture(details: object = { cached_tokens: 13550 }) {
   const bodies: Body[] = [];
   globalThis.fetch = (async (_url: string, init: { body: string }) => {
     bodies.push(JSON.parse(init.body));
@@ -53,7 +53,7 @@ function capture() {
         prompt_tokens: 13757,
         completion_tokens: 1,
         total_tokens: 13758,
-        prompt_tokens_details: { cached_tokens: 13550 },
+        prompt_tokens_details: details,
       }) +
       "data: [DONE]\n\n";
     return new Response(sse, { headers: { "content-type": "text/event-stream" } });
@@ -118,6 +118,24 @@ describe("the writer's prompt cache", () => {
     expect(b.messages).toHaveLength(2);
     // A cache hit is priced at the cached rate: 13 550 at $0.10, 207 at $2, 1 out at $10 per MTok.
     expect(result.usd).toBeCloseTo((13550 * 0.1 + 207 * 2 + 1 * 10) / 1e6, 10);
+  });
+
+  test("a miss is priced at the write rate for the prefix and the input rate for the tail", async () => {
+    const { deps } = capture({ cached_tokens: 0, cache_write_tokens: 13550 });
+    const result = await aiWriterServices(deps).writer(
+      {
+        model: WRITER_MODEL,
+        effort: WRITER_EFFORT,
+        system: SYSTEM,
+        user: USER,
+        schema: SCHEMA,
+        name: "lesson",
+        maxTokens: 9000,
+      },
+      () => {},
+    );
+    // 13 550 written at $2.50 (1.25x input), 207 at $2, 1 out at $10 per MTok.
+    expect(result.usd).toBeCloseTo((13550 * 2.5 + 207 * 2 + 1 * 10) / 1e6, 10);
   });
 
   test("the prompt bytes are unchanged: sha256 before and after the cache plumbing", async () => {

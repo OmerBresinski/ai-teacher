@@ -1,5 +1,5 @@
 import type { AiCallContext } from "@tj/ai";
-import { costUsd, withGenerationBudget } from "@tj/ai";
+import { costUsd, type TokenUsage, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
 import { imageMediaType, providerOptionsFor } from "../call";
 import type { PipelineDeps } from "../types";
@@ -49,15 +49,16 @@ const usdOf = (
       }
     | undefined,
 ) => {
+  // Cache reads and writes priced at their own rates, so a hit (and a miss's write) shows in the
+  // stage's cost.
+  const usage: TokenUsage = {
+    inputTokens: u?.inputTokens ?? 0,
+    outputTokens: u?.outputTokens ?? 0,
+    cachedInputTokens: u?.inputTokenDetails?.cacheReadTokens ?? 0,
+    cacheWriteInputTokens: u?.inputTokenDetails?.cacheWriteTokens ?? 0,
+  };
   return nonFatalSync(
-    () =>
-      // Cache reads and writes priced at their own rates, so a cache hit shows in the stage's cost.
-      costUsd(modelId, {
-        inputTokens: u?.inputTokens ?? 0,
-        outputTokens: u?.outputTokens ?? 0,
-        cachedInputTokens: u?.inputTokenDetails?.cacheReadTokens ?? 0,
-        cacheWriteInputTokens: u?.inputTokenDetails?.cacheWriteTokens ?? 0,
-      } as never) ?? 0,
+    () => costUsd(modelId, usage) ?? 0,
     () => 0,
   );
 };
@@ -117,13 +118,16 @@ export function chatUserTurn(r: Pick<ChatReq, "user" | "images">) {
 
 /**
  * The writer's prompt cache (TEACH-202 part k). The system text and the schema are the same for
- * every lesson and come first; only the user turn is the lesson's. GPT-5.6 and later cache at
+ * every lesson and come first; only the user turn is the lesson's. GPT-5.6 and later (the
+ * writer's gpt-6.1-sol included) cache at
  * breakpoints, and the implicit one sits on the latest message, the lesson's own, so every call
  * wrote ~13.7k tokens at the write rate and the next lesson, differing in its last message, never
  * read them. An explicit breakpoint on the system message caches the shared prefix (schema and
  * system text) instead; the cache key keeps writer calls on the same cache, and the 30-minute
- * floor outlives a quiet spell. The text the model reads is unchanged: the system message goes as
- * one text part carrying the breakpoint instead of a bare string.
+ * floor outlives a quiet spell. `30m` is the only TTL and the default, with no surcharge; a write
+ * costs 1.25x uncached input, the `cacheWriteInputPerMTok` row (OpenAI prompt-caching guide, read
+ * 12 Oct 2026). The text the model reads is unchanged: the system message goes as one text part
+ * carrying the breakpoint instead of a bare string.
  */
 export const WRITER_CACHE_KEY = WRITER_VERSION;
 const WRITER_CACHE_BREAKPOINT = { openai: { promptCacheBreakpoint: { mode: "explicit" } } };
