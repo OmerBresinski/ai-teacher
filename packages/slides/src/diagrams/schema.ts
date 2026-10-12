@@ -304,8 +304,12 @@ export const LabelledDiagramSchema = z
   .object({
     kind: z.literal("labelled-diagram"),
     ...common,
-    // DRAFT (prompt-engineer to word): what the drawing is of.
-    subject: z.enum(LABELLED_SUBJECTS).describe("DRAFT: what the drawing is of.").optional(),
+    subject: z
+      .enum(LABELLED_SUBJECTS)
+      .describe(
+        "What the drawing is of. living_body: a person, an animal or a whole plant drawn as it looks, or part of a person's or animal's body drawn as it looks (an organ, a limb, a face). object_or_machine: an object, apparatus or mechanism, natural or made. place_or_map: a scene, landscape or map. abstract_or_process: a chart, graph, tree, cycle, flow or model of an idea, even where its boxes, icons or arrows stand for people, animals, organs, senses or cells.",
+      )
+      .optional(),
     canvas: z.enum(["square", "wide"]).default("square"),
     // r3-diag: apparatus (a flask, bung, tube and syringe) takes more than 12 primitives.
     shapes: z.array(Shape).min(1).max(20),
