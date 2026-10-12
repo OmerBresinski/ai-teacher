@@ -1,5 +1,6 @@
 import { type Finding, findNamePatterns } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { periodFields } from "../period";
 import { checkInputPrompt } from "../prompts";
 import { CheckInputOutputSchema } from "../specs";
 import {
@@ -57,6 +58,7 @@ export async function checkInput(state: PipelineState, deps: PipelineDeps): Prom
   // A structural hit is a learner identifier in the text: the model call is skipped, not added to.
   const findings: Finding[] = structuralGuard(state);
   const structural = findings.length > 0;
+  let period: ReturnType<typeof periodFields> = {};
 
   if (!structural) {
     const call = await callStructured({
@@ -70,9 +72,12 @@ export async function checkInput(state: PipelineState, deps: PipelineDeps): Prom
       maxOutputTokens: MAX_OUTPUT_TOKENS.checkInput,
     });
     findings.push(...call.output.findings);
+    period = periodFields(call.output);
   }
 
   deps.logger.info({ stage: "check-input", findings: findings.length }, "input checked");
   if (findings.length > 0) throw new InputRejected(findings);
-  return state;
+  // Ruling 163 (B1): the lesson's past period, stored once here on the lesson the later steps
+  // read (the writer's objectives step copies it onto the plan it persists).
+  return { ...state, lesson: { ...state.lesson, ...period } };
 }

@@ -332,12 +332,12 @@ describe("the set flow", () => {
     }
   });
   test("named things and history are not generated sets (ruling 163)", () => {
-    expect(setIsGenerated(asks(2), "science")).toBe(true);
-    expect(setIsGenerated(asks(2), "history")).toBe(false);
+    expect(setIsGenerated(asks(2), { subject: "science" })).toBe(true);
+    expect(setIsGenerated(asks(2), { subject: "history" })).toBe(false);
     expect(
       setIsGenerated(
         asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
-        "science",
+        { subject: "science" },
       ),
     ).toBe(false);
     expect(
@@ -346,7 +346,7 @@ describe("the set flow", () => {
           { key: "a", index: 1, shows: "The high street in 1900", mustSee: [] },
           { key: "b", index: 1, shows: "The same street in 2000", mustSee: [] },
         ],
-        "geography",
+        { subject: "geography" },
       ),
     ).toBe(false);
   });

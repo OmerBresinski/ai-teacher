@@ -341,7 +341,7 @@ describe("ruling 163: the card's subject reaches the director", () => {
             cards: Array.from({ length: 4 }, (_, k) => ({ label: `c${k}`, picture })),
           },
           "KS2",
-          subject,
+          { subject },
         ).slide.cards as { picture: { subject: string } }[]
       ).map((c) => c.picture.subject);
     expect(pics("History", "a ship")).toEqual(Array(4).fill("named"));
@@ -357,7 +357,7 @@ describe("ruling 163: the card's subject reaches the director", () => {
         ],
       },
       "KS2",
-      "Science",
+      { subject: "Science" },
     ).slide;
     const asks = visualsOf(s, 3, ctxFor());
     expect(asks.map((a) => a.type === "photo" && a.named)).toEqual([true, true, false]);

@@ -39,6 +39,14 @@ export type Lesson = {
   remixedFrom?: Id;
   /** Free text shown on the library card. */
   subject?: string;
+  /**
+   * The real past the lesson's content is set in ("Ancient Egypt"), named by the input check
+   * when it returns (ruling 163, B1). Unset for present-day or timeless content and for lessons
+   * stored before the field existed. The picture rules read it through `isHistoricalLesson`.
+   */
+  historicalPeriod?: string;
+  /** True when the content is a story, play or poem set in `historicalPeriod` (input check). */
+  fictionInPeriod?: boolean;
   ageBand?: AgeBand;
   /** What the teacher chose, e.g. "Year 5" or "EYFS"; ageBand is derived from it. */
   yearGroup?: string;
@@ -108,6 +116,9 @@ export const LessonSchema = z.object({
   fitVersion: z.number().int().nonnegative().default(0),
   remixedFrom: z.string().optional(),
   subject: z.string().optional(),
+  // Ruling 163 (B1): named by the input check; optional so stored lessons parse unchanged.
+  historicalPeriod: z.string().optional(),
+  fictionInPeriod: z.boolean().optional(),
   ageBand: AgeBandSchema.optional(),
   yearGroup: z.string().optional(),
   readingLevel: z.string().optional(),

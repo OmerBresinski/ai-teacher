@@ -105,7 +105,7 @@ export interface ObjectivesStepOptions {
    * Awaited before the plan is persisted (TEACH-110 part h, C14): the input check that runs
    * beside the objectives call. A rejection stops the step with nothing persisted.
    */
-  gate?: Promise<unknown>;
+  gate?: Promise<PipelineState>;
 }
 
 /** The writer's objectives call: the model, effort and output cap base4f-p123's harness used. */
@@ -353,7 +353,11 @@ export async function runObjectivesStep(
       findings: [],
     },
   };
-  if (options.gate) await options.gate;
+  // Ruling 163 (B1): the check's period goes onto the plan, so it is stored once, at `planned`.
+  if (options.gate) {
+    const { historicalPeriod, fictionInPeriod } = (await options.gate).lesson;
+    if (historicalPeriod) Object.assign(planned, { historicalPeriod, fictionInPeriod });
+  }
   const { updatedAt } = await deps.persist(planned);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
   return {

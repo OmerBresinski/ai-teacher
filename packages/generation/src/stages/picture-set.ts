@@ -9,6 +9,7 @@
  * The frame lines below are base4's, byte for byte (`picture-set.test.ts` checks them against the
  * pinned lab source); a wording change goes through the prompt-engineer.
  */
+
 import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import {
   duplicatePanels,
@@ -20,6 +21,7 @@ import {
   splitGrid,
   splitPanels,
 } from "@tj/images";
+import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
   SET_JUDGE_JSON_SCHEMA,
   SET_JUDGE_TIMEOUT_MS,
@@ -253,10 +255,10 @@ export interface PictureSetDeps {
  * lesson, and not change across real time. Those take the director's per-picture ladder (Commons
  * first, ruling 163).
  */
-export function setIsGenerated(asks: SetAsk[], lessonSubject: string): boolean {
+export function setIsGenerated(asks: SetAsk[], lesson: PeriodFields): boolean {
   return (
     !asks.some((a) => a.named) &&
-    !/^hist/i.test(lessonSubject) &&
+    !isHistoricalLesson(lesson) &&
     !isHistoricalSet(asks.map((a) => a.shows))
   );
 }

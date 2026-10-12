@@ -88,6 +88,9 @@ export function writerBrief(lesson: Lesson): Brief {
     id: lesson.id,
     topic: b?.topic ?? lesson.title,
     subject: lesson.subject ?? "",
+    ...(lesson.historicalPeriod
+      ? { historicalPeriod: lesson.historicalPeriod, fictionInPeriod: lesson.fictionInPeriod }
+      : {}),
     yearGroup: lesson.yearGroup ?? `Year ${year}`,
     year,
     keyStage: stageOf(lesson.ageBand, lesson.yearGroup),

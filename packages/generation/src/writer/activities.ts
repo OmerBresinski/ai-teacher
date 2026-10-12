@@ -1,6 +1,7 @@
 import type { RichDoc, Slide, SlideElement } from "@tj/domain/documents";
 import { LEAKS } from "@tj/slides/templates/activities";
 import CAPACITY from "@tj/slides/templates/activity-capacity.json" with { type: "json" };
+import { isHistoricalLesson, type PeriodFields } from "../period";
 import MENU from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
 import type { WriterStage } from "./schema";
 
@@ -230,7 +231,7 @@ const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 export function fromWriterActivity(
   raw: S,
   stage: WriterStage,
-  lessonSubject = "",
+  lesson: PeriodFields = {},
 ): { slide: S; fixes: string[]; converted?: string } {
   const id = raw.template as WriterActivity;
   const fixes: string[] = [];
@@ -315,7 +316,7 @@ export function fromWriterActivity(
   // Ruling 163: a history lesson's card, or a card naming a person, place or thing (a capitalised
   // word after the first), is a named subject: a real picture or its word, never generated.
   const named = (p: string) =>
-    /^hist/i.test(lessonSubject) ||
+    isHistoricalLesson(lesson) ||
     /\s(?!I\b)[A-Z][a-z]/.test(` ${p.split(/\s+/).slice(1).join(" ")}`);
   const slide: S = {
     template: id,
