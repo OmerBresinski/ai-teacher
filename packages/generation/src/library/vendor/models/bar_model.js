@@ -9,7 +9,7 @@ import {
 } from '../kit/index.js';
 
 export const meta = {
-  id: 'bar_model', name: 'Bar model', kind: 'info', version: 1,
+  id: 'bar_model', name: 'Bar model', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'Drawing a word problem as bars to scale, so you can see which amount is missing and which calculation finds it.',
@@ -344,9 +344,9 @@ export function render(root, P, ctx) {
   const unknownRegion = (x, y, w, hh) => {
     // coloured parts keep their colours at the answer: the solid ring marks it instead
     if (!coloured) h('rect', { x, y, width: w, height: hh, fill: FILL.ans, s: kA, cls: 'wipe' }, gAns);
-    h('rect', { x: x + 3, y: y + 3, width: Math.max(0, w - 6), height: hh - 6, rx: 'var(--r-mark)', fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', 'stroke-dasharray': '10 7', s: kU, hide: N, cls: 'pop' }, gLine);
-    // the recap: the answer's bar is ringed solid, so the still points at the result
-    h('rect', { x: x + 3, y: y + 3, width: Math.max(0, w - 6), height: hh - 6, rx: 'var(--r-mark)', fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-data)', s: N, cls: 'pop' }, gLine);
+    h('rect', { x: x + 3, y: y + 3, width: Math.max(0, w - 6), height: hh - 6, rx: 'var(--r-mark)', fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', 'stroke-dasharray': '10 7', s: kU, hide: kA > kU ? kA : N, cls: 'pop' }, gLine);
+    // the answer's bar is ringed solid as the answer arrives, so the answer frame points at the result
+    h('rect', { x: x + 3, y: y + 3, width: Math.max(0, w - 6), height: hh - 6, rx: 'var(--r-mark)', fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-data)', s: kA > kU ? kA : N, cls: 'pop' }, gLine);
   };
   const cellValues = (x, y, cw, n, hh) => { // the value of one equal part, in every part, at the calc build
     if (M.approx) return; // a rounded box value would not add back up to the total
@@ -374,7 +374,8 @@ export function render(root, P, ctx) {
     itemGlyph(gText, item, (X0 + X1) / 2 - wTop / 2 - 34, BY - 58, { s: topKnown ? kK : kU, cls: 'rise' });
     if (fr) {
       // the parts taken, shaded at the split
-      if (coloured) for (let i = 0; i < M.n; i++) box(edges[i], BY, edges[i + 1] - edges[i], BH, partFill(i, night), { s: kS, cls: 'wipe' });
+      // the parts taken are one amount, so they share one colour
+      if (coloured) for (let i = 0; i < M.n; i++) box(edges[i], BY, edges[i + 1] - edges[i], BH, partFill(0, night), { s: kS, cls: 'wipe' });
       else box(X0, BY, edges[M.n] - X0, BH, FILL.known, { s: kS, cls: 'wipe' });
       if (picsIn) for (let i = 0; i < M.d; i++) partPicture(picOf(-1), (edges[i] + edges[i + 1]) / 2, BY, edges[i + 1] - edges[i], kS, M.unitV, M.approx ? null : kC, 'amount');
       cellValues(X0, BY, BW / M.d, M.d, BH);
@@ -542,8 +543,10 @@ export function render(root, P, ctx) {
   computed(T(eq, ex, ey, F.u(M.ans), 'ts-num', { 'text-anchor': 'start', fill: 'var(--focus-text)', s: kA, cls: 'pop' }), ansPath);
 
   // centre the whole diagram in the space under the problem
-  const bb = content.getBBox(), room = GRID.bottom - top;
-  if (bb.height > room + 1) ctx.warn('The bar model is too tall for the slide.');
-  content.setAttribute('transform', `translate(0 ${Math.round(top + Math.max(0, (room - bb.height) / 2) - bb.y)})`);
+  // a diagram a little too tall for the room under a long story shrinks to fit, about the slide's centre line
+  const bb = content.getBBox(), room = GRID.bottom - top, k = Math.min(1, room / Math.max(1, bb.height));
+  if (k < .82) ctx.warn('The bar model is too tall for the slide.');
+  const kk = Math.max(k, .82);
+  content.setAttribute('transform', `translate(${(640 * (1 - kk)).toFixed(1)} ${Math.round(top + Math.max(0, (room - bb.height * kk) / 2) - bb.y * kk)}) scale(${kk.toFixed(3)})`);
   return {};
 }

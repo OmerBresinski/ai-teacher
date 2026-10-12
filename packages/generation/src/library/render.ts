@@ -776,11 +776,16 @@ export async function renderLibraryModel(
         const svg = stage.svg;
         // A question slide (TEACH-247 part i): the drawing as it ends, with the answer held back
         // until the slide's answer is revealed. Marks the question shows and the answer replaces
-        // (a pile before it is shared) are restored and leave on the reveal (`data-qn`).
+        // (a pile before it is shared) are restored and leave on the reveal (`data-qn`). A mark the
+        // model says states the answer (`data-ans`, a total said early) is left out of the question.
         const q = opts.step;
         if (q !== undefined)
           for (const el of [...svg.querySelectorAll("[data-h]")]) {
             const hide = Number(el.getAttribute("data-h"));
+            if (el.hasAttribute("data-ans") && hide > q) {
+              el.remove();
+              continue;
+            }
             if (hide > q && !(Number(el.getAttribute("data-s") ?? 0) > q)) {
               el.classList.remove("off");
               el.setAttribute("data-qn", "1");

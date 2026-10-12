@@ -15,7 +15,7 @@ import {
 import { fmtNum, groupRing } from '../kit/batch-A.js';
 
 export const meta = {
-  id: 'balance_equations', name: 'Balance and function machine', kind: 'scene', version: 1,
+  id: 'balance_equations', name: 'Balance and function machine', kind: 'scene', version: 2,
   subjects: ['Maths'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'That = means both sides have the same value, how to find a missing number by matching cubes (Year 1 and 2) or by doing the same to both sides, and how inverse operations undo a function machine.',
@@ -544,7 +544,7 @@ function renderWide(root, P, ctx) {
   const bi = k => b[k] ?? -1;
   const CX = 640, PY = 514, ARM = 310, PW = 500, PAN_Y = PY - 78, BASE_Y = 624;
   const TILT = Math.ceil(ARM * Math.sin(6 * Math.PI / 180));   // the most a pan rises when tilted
-  const kL = bi('left'), kR = bi('right'), kM = bi('match'), kO = bi('leftover'), kX = M.match ? N : -1;
+  const kL = bi('left'), kR = bi('right'), kM = bi('match'), kO = bi('leftover'), kX = M.match ? (kO >= 0 ? kO : N) : -1; // the box opens on what is left over
 
   const stand = h('g', {}, root);
   h('polygon', { points: `${CX},${PY} ${CX - 82},${BASE_Y} ${CX + 82},${BASE_Y}`, fill: 'var(--metal-shade)', stroke: 'var(--metal-shade)', 'stroke-width': 'var(--sw-struct)', 'stroke-linejoin': 'round', cls: 'body' }, stand);
@@ -621,6 +621,10 @@ function renderWide(root, P, ctx) {
       const ax = bo.x + bo.w / 2, cx2 = bu.x + bu.w / 2, y = yC - 7 - 4, cy = y - 70;
       h('path', { d: `M${ax} ${y} C ${ax} ${cy} ${cx2} ${cy} ${cx2} ${y}`, fill: 'none', stroke: 'var(--compare)', 'stroke-width': 'var(--sw-arrow)', 'stroke-linecap': 'round', s: kM, cls: 'draw', pathLength: 1, delay: 300 }, lg);
       topY = Math.min(topY, y - 56);
+      // the left over cubes are ringed in the focus colour, so the leftover frame shows what the box must hold
+      const rest = cubeAt[oS].filter(c => !c.inner);
+      if (kO >= 0 && rest.length) { const x1 = Math.min(...rest.map(c => c.x)), x2 = Math.max(...rest.map(c => c.x)) + cu;
+        groupRing(pans[oS].g, { x: x1, y: yC, w: x2 - x1, h: cu }, { pad: 7, s: kO, col: 'var(--focus)', a: { 'stroke-width': 'var(--sw-data)' } }); }
     }
   } else {
     // comparing, or an unknown the class is asked to find: boxes above, cubes in rows of 5 (up to 10) or 10 (5 + 5)
@@ -672,11 +676,13 @@ function renderWide(root, P, ctx) {
   const SP = mz('0') * .42;
   const wTok = tk => tk.kind === 'unk' ? Math.max(mz(tk.t), mz(fmtNum(M.x))) : tk.kind === 'sign' ? Math.max(mz(tk.t), mz('?')) : mz(tk.t);
   const ws = toks.map(wTok); const tot = ws.reduce((s2, w2) => s2 + w2, 0) + (toks.length - 1) * SP;
-  const eq = h('g', { s: kR, cls: 'rise', delay: 500 }, root);
+  // the left side is written as its pan fills, the rest when the right pan fills, so each pan has its own words
+  const nL = toks.findIndex(tk => tk.path === 'balance.right');
+  const eq = h('g', { s: kL, cls: 'rise', delay: 500 }, root);
   let ex = CX - tot / 2;
   toks.forEach((tk, i) => {
     const cx = ex + ws[i] / 2; ex += ws[i] + SP;
-    const a = { 'text-anchor': 'middle', ...FA };
+    const a = { 'text-anchor': 'middle', ...FA, s: nL >= 0 && i >= nL && kR > kL ? kR : null };
     if (tk.kind === 'edit') editable(T(eq, cx, EQ_Y, tk.t, cls, a), tk.path);
     else if (tk.kind === 'op') computed(T(eq, cx, EQ_Y, tk.t, cls, a), tk.path);
     else if (tk.kind === 'calc') computed(T(eq, cx, EQ_Y, tk.t, cls, { ...a, fill: 'var(--focus-text)' }), tk.path);
