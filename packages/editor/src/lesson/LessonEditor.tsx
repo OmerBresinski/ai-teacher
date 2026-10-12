@@ -663,9 +663,11 @@ export function LessonEditor({
                                           slideId={slide?.id}
                                           slide={slide}
                                           writing={!!slide && !!writingSlideIds?.has(slide.id)}
-                                          render={(shown) => (
+                                          render={(shown, live) => (
                                             <Canvas
-                                              readOnly={writingSlideIds?.has(slide.id) ?? false}
+                                              readOnly={
+                                                live || (writingSlideIds?.has(slide.id) ?? false)
+                                              }
                                               slide={shown ?? slide}
                                               theme={theme}
                                               onFocusChange={setCanvasFocused}

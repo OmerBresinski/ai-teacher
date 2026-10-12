@@ -169,6 +169,40 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
  * came, leaves `worksheet: false`, so the exit ticket goes on the last slide and no slide points
  * at a worksheet that does not exist.
  */
+/**
+ * Live writing (ADR 0039): a slide the writer has planned but not written, as the deck holds it
+ * while it is `writing`: blank but for one muted line saying what it will do (the flow's `does`),
+ * named "Planned" so the editor knows it for a placeholder. Its laid copy replaces it at close.
+ */
+export function plannedSlide(id: string, does?: string) {
+  const text = (does ?? "").trim().slice(0, 140);
+  return {
+    id,
+    kind: "content",
+    notes: "",
+    elements: text
+      ? [
+          {
+            id: `${id}-planned`,
+            type: "text",
+            name: "Planned",
+            x: 64,
+            y: 470,
+            w: 832,
+            h: 36,
+            doc: {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+            },
+            style: { preset: "small", fontSize: 18, color: "#8A8F98" },
+          },
+        ]
+      : [],
+  };
+}
+const plannedOf = (slide: unknown) =>
+  ((slide as { elements?: { name?: string }[] }).elements ?? []).some((e) => e.name === "Planned");
+
 export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): Promise<Lesson> {
   const brief = lesson.brief;
   if (brief?.worksheet !== true || deps.worksheetQueued === undefined) return lesson;
@@ -327,13 +361,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
   };
   /** Live writing (ADR 0039): a blank `writing` slide for index i, until its words close. */
-  const blank = (i: number, id: string) => {
-    if (latest.has(i) || progressive.patches().has(i)) return;
-    progressive.patch(
-      i,
-      { id, kind: "content", elements: [], notes: "" } as unknown as Laid,
-      "writing",
-    );
+  const blank = (i: number, id: string, does?: string) => {
+    const was = progressive.patches().get(i);
+    if (latest.has(i) || (was && (!does || plannedOf(was.slide)))) return;
+    progressive.patch(i, plannedSlide(id, does) as unknown as Laid, "writing");
   };
   // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
   // so the editor opens on it while the writer thinks; each later slide joins as a blank.
@@ -394,9 +425,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         ? {
             // The flow names every slide: each joins the deck as a blank at once, so the strip
             // shows the whole lesson before its first words.
-            onFlow: (flow: { slide?: number }[] | undefined) => {
+            onFlow: (flow: { slide?: number; does?: string }[] | undefined) => {
               for (const f of flow ?? [])
-                if (typeof f.slide === "number" && f.slide >= 3) blank(f.slide - 1, `s${f.slide}`);
+                if (typeof f.slide === "number" && f.slide >= 3)
+                  blank(f.slide - 1, `s${f.slide}`, f.does);
+            },
+            // Each planned slide joins as its flow entry closes, labelled with what it does.
+            onFlowItem: (f: { slide?: number; does?: string }) => {
+              if (typeof f.slide === "number" && f.slide >= 3)
+                blank(f.slide - 1, `s${f.slide}`, f.does);
             },
             onDraftSlide: (i: number, slide: Laid) => {
               // The slide joins the deck as soon as it is being written, as a blank `writing` slide

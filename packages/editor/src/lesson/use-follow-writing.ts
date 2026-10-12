@@ -1,5 +1,6 @@
 import type { Id } from "@tj/domain/documents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isPlannedBlank } from "./live-draft";
 
 /**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the
@@ -48,7 +49,7 @@ export function useFollowWriting({
     let blank: Id | undefined;
     for (const s of slides) {
       if (!writingSlideIds.has(s.id)) continue;
-      if (s.elements !== undefined && s.elements.length === 0) blank ??= s.id;
+      if (s.elements !== undefined && isPlannedBlank(s)) blank ??= s.id;
       else {
         target = s.id;
         blank = undefined;

@@ -336,6 +336,8 @@ export type WriterRun = {
    * slide): every slide it will write, in order. Best effort; a throw is logged and ignored.
    */
   onFlow?: (flow: Plan["flow"]) => void;
+  /** Live writing: each `flow` entry as soon as it closes in the stream (the flow is long). */
+  onFlowItem?: (item: NonNullable<Plan["flow"]>[number]) => void;
   /**
    * Live writing P2 (TEACH-202 part e): hands the caller a function to call when a picture lands
    * while the deck is still read-only. The slide is laid again and handed over (`onSlide`) at
@@ -1015,6 +1017,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "stream-stopped", why, ...(e ? { err: String(e).slice(0, 200) } : {}) });
   };
   const parser = new PartialJson((path, value) => {
+    // Live writing (ADR 0039): each flow entry as it closes, before the flow does.
+    if (streaming && path.length === 2 && path[0] === "flow" && run.onFlowItem) {
+      const item = value as NonNullable<Plan["flow"]>[number];
+      nonFatalSync(
+        () => run.onFlowItem?.(item),
+        (e) => log({ ev: "on-flow-item-failed", err: String(e).slice(0, 200) }),
+      );
+      return;
+    }
     if (!streaming || path.length !== (path[0] === "slides" ? 2 : 1)) return;
     const [key, k] = path;
     if (key === "design") {

@@ -9,7 +9,7 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
-import { draftStoreFor } from "@tj/editor/live-draft";
+import { type DraftStore, draftStoreFor } from "@tj/editor/live-draft";
 import { Button, IconButton, toast } from "@tj/ui";
 import { ArrowLeft, Download, FileText, LockKeyhole } from "lucide-react";
 import {
@@ -175,12 +175,30 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const openedTheme = useRef<string | undefined>(undefined);
   if (openedTheme.current === undefined && data && isFullDocument(data) && "slides" in data)
     openedTheme.current = data.themeId;
+  /** The row and job as the page last read them: whose slides are whose while a job fills. */
+  const rowRef = useRef<{ row: typeof data; generating: boolean; drafts?: DraftStore }>({
+    row: data,
+    generating: false,
+  });
+  rowRef.current.row = data;
   const save = useCallback(
     (lesson: Parameters<typeof saveDocument>[0]) => {
       if ("themeId" in lesson && lesson.themeId && lesson.themeId !== openedTheme.current) {
         openedTheme.current = lesson.themeId;
         rememberTheme(lesson.themeId);
       }
+      // Live writing (ADR 0039): the editor opens while every slide is still the job's. Nothing in
+      // it is the teacher's to save yet (the server refuses until a slide is done), so a save
+      // waits; the next save after a slide is done carries the whole document.
+      const { row, generating } = rowRef.current;
+      if (
+        generating &&
+        row &&
+        "slides" in row &&
+        !hasEditableSlides(row) &&
+        !("slides" in lesson && hasEditableSlides(lesson))
+      )
+        return Promise.resolve();
       return saveDocument(lesson);
     },
     [saveDocument],
@@ -406,7 +424,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const generatingJobId =
     fillingJobId ?? stoppedJobId ?? (watchedJobId !== completedJobId ? watchedJobId : null);
   // Live writing (ADR 0039): one store of slide drafts per job, fed by whichever view follows it.
+  rowRef.current.generating = !!meta?.generatingJobId;
   const draftStore = generatingJobId ? draftStoreFor(generatingJobId) : undefined;
+  // The job's store outlives its end by a moment: the last slide finishes typing over the hand-over
+  // (the store empties itself shortly after the job ends).
+  if (draftStore) rowRef.current.drafts = draftStore;
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
@@ -477,7 +499,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onPromptEdit={onPromptEdit}
         busySlideIds={proposals.busySlideIds}
         writingSlideIds={writing}
-        drafts={filling ? draftStore : undefined}
+        drafts={rowRef.current.drafts}
         proposalsBusy={proposals.busy}
         images={images}
         exportSlot={

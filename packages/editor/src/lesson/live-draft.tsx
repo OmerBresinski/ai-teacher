@@ -67,6 +67,15 @@ export function useDraftLead(store: DraftStore | undefined): string | undefined 
 }
 
 /**
+ * A slide the writer has planned but not written yet (live writing, ADR 0039): blank, or holding
+ * only its muted "Planned" line (what the slide will do, from the writer's flow).
+ */
+export function isPlannedBlank(slide: { elements?: readonly unknown[] }): boolean {
+  const els = (slide.elements ?? []) as { name?: string }[];
+  return els.every((e) => e.name === "Planned");
+}
+
+/**
  * A slide waiting for its words (live writing): a soft heading bar and three text lines, so the
  * canvas shows where the slide will be rather than an empty page. Never saved.
  */
@@ -86,6 +95,7 @@ export function skeletonSlide(slide: Slide): Slide {
   return {
     ...slide,
     elements: [
+      ...slide.elements.filter((e) => (e as { name?: string }).name === "Planned"),
       bar("h", 56, 520, 44),
       bar("l1", 160, 760, 18),
       bar("l2", 200, 700, 18),
@@ -191,15 +201,16 @@ function useReducedMotion(): boolean {
 }
 
 /** How long the words between two drafts take to type out (a draft comes about every 200 ms). */
-const TYPE_MS = 240;
 /** Fewest milliseconds between two shown steps: a step is a word or two, at most three. */
-const STEP_MS = 30;
+const STEP_MS = 70;
+/** A step while a done slide's typing catches up before its saved copy shows. */
+const RUSH_MS = 30;
 
 /**
- * Types a draft's new words out over about `TYPE_MS`, a word or two per step, never more than
+ * Types a draft's new words out at a steady pace (`STEP_MS` a step), a word a step, never more than
  * three; with reduced motion it shows each draft's words at once. Returns the words to show.
  */
-function useTypewriter(target: number, key: string, reduced: boolean): number {
+function useTypewriter(target: number, key: string, reduced: boolean, rush = false): number {
   const [shown, setShown] = useState(target);
   const ref = useRef({ shown: target, key });
   /** Words already typed per slide: a slide seen again (its draft back after a gap) resumes. */
@@ -219,13 +230,18 @@ function useTypewriter(target: number, key: string, reduced: boolean): number {
       setShown(s.shown);
       return;
     }
-    // Words per step so the gap types out in about TYPE_MS (one step per STEP_MS): one word when
-    // the writer is slow, up to three when it races ahead; never more than three at once.
-    const per = Math.min(3, Math.max(1, Math.ceil(((target - s.shown) * STEP_MS) / TYPE_MS)));
+    // A steady pace (a word about every 70 ms, near reading speed), so words that arrive in a burst
+    // (the writer streams a slide's text, then its figure spec) type across the slide's window
+    // rather than all at once; two or three words a step only when far behind, and the view moves
+    // on with the next slide, so the typing is never more than a slide behind.
+    // Rushing (the slide is done and its saved copy waits): three words a fast step to the end.
+    const backlog = target - s.shown;
+    const per = rush || backlog > 40 ? 3 : backlog > 20 ? 2 : 1;
+    const step = rush ? RUSH_MS : STEP_MS;
     let last = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      if (now - last >= STEP_MS) {
+      if (now - last >= step) {
         s.shown = Math.min(target, s.shown + per);
         typed.current.set(key, s.shown);
         last = now;
@@ -235,7 +251,7 @@ function useTypewriter(target: number, key: string, reduced: boolean): number {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, key, reduced]);
+  }, [target, key, reduced, rush]);
   // On the render where the slide changes the effect has not run yet: never show the last slide's
   // count for the new one (that flashed the new slide's whole text for a frame).
   if (ref.current.key !== key)
@@ -346,24 +362,36 @@ export function LiveSlide({
   useLayoutEffect(() => {
     const prev = was.current;
     was.current = { id: slideId, writing, words: prev.id === slideId ? prev.words : 0 };
-    if (prev.writing && !writing && prev.id === slideId && slideId && prev.words > savedWords) {
+    if (prev.id !== slideId) typedNow.current = 0;
+    if (
+      prev.writing &&
+      !writing &&
+      prev.id === slideId &&
+      slideId &&
+      prev.words > Math.min(savedWords, typedNow.current)
+    ) {
       setHold({ id: slideId, until: performance.now() + CATCH_UP_MS, words: prev.words });
       const t = setTimeout(() => setHold(null), CATCH_UP_MS);
       return () => clearTimeout(t);
     }
   }, [writing, slideId, savedWords]);
+  // Words typed on this slide at the last render: a done slide finishes typing (fast) first.
+  const typedNow = useRef(0);
   const holding =
     !writing &&
-    hold?.id === slideId &&
-    savedWords < (hold?.words ?? 0) &&
-    performance.now() < (hold?.until ?? 0);
+    hold !== null &&
+    hold.id === slideId &&
+    (savedWords < hold.words || typedNow.current < hold.words) &&
+    performance.now() < hold.until;
   const draft = (writing || holding) && slideId ? store?.get(slideId) : undefined;
   if (draft && writing) was.current.words = wordCount(draft.slide);
   const target = draft ? wordCount(draft.slide) : 0;
-  const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced);
+  const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced, holding);
+  // Kept while the draft is off screen, so a released hold never flips back on.
+  if (draft) typedNow.current = words;
   const host = useRef<HTMLDivElement | null>(null);
   // A writing slide with nothing on it yet and no draft: a skeleton, until its layout arrives.
-  const waiting = writing && !draft && slide !== undefined && slide.elements.length === 0;
+  const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);
   const shown = !draft
     ? { slide: waiting && slide ? skeletonSlide(slide) : slide }
     : reduced

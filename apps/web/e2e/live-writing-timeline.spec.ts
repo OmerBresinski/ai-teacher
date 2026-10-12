@@ -24,6 +24,10 @@ test("live writing timeline over the recorded writer run", async ({ signedInPage
   await page.getByRole("option", { name: "Year 5" }).click();
   const outDir = path.resolve(process.env.TEACH_LIVE_OUT ?? "test-results/live-timeline");
   const t0 = Date.now();
+  // Any refusal while the lesson writes is a bug the teacher would see as a toast: log it.
+  page.on("response", (r) => {
+    if (r.status() >= 400) console.log(`refused ${r.status()} ${r.request().method()} ${r.url()}`);
+  });
   await page.getByRole("button", { name: "Skip planning" }).click();
   await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
   const frameMs = Number(process.env.TEACH_LIVE_FRAME_MS ?? 500);
