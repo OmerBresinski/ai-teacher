@@ -39,10 +39,24 @@ const layoutGroupOf = (slide: Slide | undefined, groupId: Id) => {
 const stageFor = (lesson: Lesson, kit: LayoutKit) =>
   kit.stageOf(renderTheme(lesson), lesson.ageBand);
 
-/** Lay `ref` out again into the group's place: children in group space, the group re-fitted. */
-function relayInto(g: GroupElement, ref: LayoutRef, lesson: Lesson, kit: LayoutKit) {
+/** What a layout that cannot be laid out (its template is not live yet) answers. */
+export const NOT_LIVE_REASON = "This layout cannot be re-arranged yet.";
+
+type Relaid = ReturnType<LayoutKit["relayout"]>;
+
+/** Run the template for `ref`, or `null` when it cannot lay out: a reducer never throws. */
+function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Relaid | null {
   const theme = renderTheme(lesson);
-  const { elements, frame } = kit.relayout(ref, theme, kit.stageOf(theme, lesson.ageBand), g.id);
+  try {
+    return kit.relayout(ref, theme, kit.stageOf(theme, lesson.ageBand), id);
+  } catch {
+    return null;
+  }
+}
+
+/** Put a laid-out `ref` into the group's place: children in group space, the group re-fitted. */
+function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid) {
+  const { elements, frame } = relaid;
   const old = g.layout?.frame ?? { x: g.x, y: g.y };
   const dx = g.x - old.x;
   const dy = g.y - old.y;
@@ -54,7 +68,7 @@ function relayInto(g: GroupElement, ref: LayoutRef, lesson: Lesson, kit: LayoutK
   g.layout = { ...ref, frame };
 }
 
-/** Replace the group's ref with `next(ref)` and re-lay it. */
+/** Replace the group's ref with `next(ref)` and re-lay it; refused when it cannot lay out. */
 function change(
   lesson: Lesson,
   slideId: Id,
@@ -70,10 +84,12 @@ function change(
   const out = next(g0.layout);
   if (!out) return { lesson };
   if (!out.ok) return { lesson, refused: out.reason };
+  const relaid = tryRelayout(out.ref, lesson, kit, groupId);
+  if (!relaid) return { lesson, refused: NOT_LIVE_REASON };
   return {
-    lesson: editSlide(lesson, slideId, (s, l) => {
+    lesson: editSlide(lesson, slideId, (s) => {
       const g = layoutGroupOf(s, groupId);
-      if (g) relayInto(g, out.ref, l, kit);
+      if (g) placeInto(g, out.ref, relaid);
     }),
   };
 }
@@ -112,9 +128,10 @@ export const removeLayoutItem = (
 
 /**
  * Ruling 215's split: the trailing items move to a new slide right after this one, laid out by the
- * same template under the same heading; every word is kept. The new slide holds only the layout
- * (the teacher's other elements stay where they are). Refused for a layout with no continuation or
- * too few items to halve, where Shorten is the way.
+ * same template under the same heading; every word is kept. The new slide holds only the layout,
+ * in a fresh group at the template's own place (no lock, rotation or link copied); the notes and
+ * the teacher's other elements stay with the head slide. Refused for a layout with no
+ * continuation, too few items to halve (Shorten is the way), or a template that cannot lay out.
  */
 export function splitLayout(
   lesson: Lesson,
@@ -132,18 +149,31 @@ export function splitLayout(
       refused: "This layout cannot split onto a second slide. Shorten the words instead.",
     };
   const { head, tail } = kit.splitItems(g0.layout);
-  const { notes: _notes, question: _question, ...rest } = slide;
-  const copy: Slide = { ...structuredClone({ ...rest, elements: [] }), id: uid() };
-  let id: Id | null = null;
+  const tailId = uid();
+  const tailGroupId = `${tailId}-layout`;
+  const headLaid = tryRelayout(head, lesson, kit, groupId);
+  const tailLaid = tryRelayout(tail, lesson, kit, tailGroupId);
+  if (!headLaid || !tailLaid) return { lesson, id: null, refused: NOT_LIVE_REASON };
+  const moved: GroupElement = {
+    id: tailGroupId,
+    type: "group",
+    ...(g0.name ? { name: g0.name } : {}),
+    ...tailLaid.frame,
+    children: [],
+  };
+  placeInto(moved, tail, tailLaid);
+  const copy: Slide = {
+    id: tailId,
+    kind: slide.kind,
+    ...(slide.background ? { background: structuredClone(slide.background) } : {}),
+    ...(slide.transition ? { transition: slide.transition } : {}),
+    elements: [moved],
+  };
   const next = editSlide(lesson, slideId, (s, l) => {
     const g = layoutGroupOf(s, groupId);
     if (!g) return;
-    relayInto(g, head, l, kit);
-    const moved: GroupElement = { ...g, id: `${copy.id}-layout`, children: [], layout: tail };
-    relayInto(moved, tail, l, kit);
-    copy.elements = [moved];
+    placeInto(g, head, headLaid);
     l.slides.splice(l.slides.findIndex((x) => x.id === slideId) + 1, 0, copy);
-    id = copy.id;
   });
-  return { lesson: next, id };
+  return { lesson: next, id: next === lesson ? null : tailId };
 }

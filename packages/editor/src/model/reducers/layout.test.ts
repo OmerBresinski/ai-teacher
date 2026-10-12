@@ -11,7 +11,7 @@ import {
 } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
 import { createElement, type ReactNode } from "react";
-import { newLesson } from "../factories";
+import { docFromText, newLesson } from "../factories";
 import { renderTheme } from "../themes";
 import { useDocumentHistory } from "../use-document-history";
 import * as r from "./index";
@@ -226,5 +226,115 @@ describe("undo", () => {
     expect(result.current.lesson).toBe(seed);
     act(() => result.current.redo());
     expect(named(groupOf(result.current.lesson as Lesson), "Card")).toHaveLength(4);
+  });
+});
+
+describe("a template that is not live yet (never throws)", () => {
+  const notLive = (): { lesson: Lesson; slideId: string } => {
+    const lesson = newLesson("Row");
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    const items = ["a", "b", "c", "d"].map((title) => ({ title, text: "words" }));
+    first.elements = [
+      {
+        id: "g1",
+        type: "group",
+        x: 0,
+        y: 0,
+        w: 200,
+        h: 100,
+        layout: { template: "items-row", input: { heading: "Row", items } },
+        children: [{ ...teacherBox(), id: "g1:0", x: 0, y: 0 }],
+      },
+    ];
+    return { lesson, slideId: first.id };
+  };
+
+  test("edit, add, remove and split refuse and leave the lesson as it was", () => {
+    const { lesson, slideId } = notLive();
+    const outs = [
+      r.editLayoutItem(lesson, slideId, "g1", "items.0.text", "new words", kit),
+      r.addLayoutItem(lesson, slideId, "g1", 0, kit),
+      r.removeLayoutItem(lesson, slideId, "g1", 0, kit),
+      r.splitLayout(lesson, slideId, "g1", kit),
+    ];
+    for (const out of outs) {
+      expect(out.lesson).toBe(lesson);
+      expect(out.refused).toBe("This layout cannot be re-arranged yet.");
+    }
+  });
+});
+
+describe("teacher edits inside a layout group", () => {
+  test("new words in a bound text write through to the ref; the group stays a layout", () => {
+    const { lesson, slideId } = seeded(3);
+    const out = r.updateElement(lesson, slideId, "g1:grid.1.text", {
+      doc: docFromText("Carries water up the plant."),
+    });
+    const g = groupOf(out);
+    expect(g.layout).toBeDefined();
+    expect(kit.getAtPath(g.layout as LayoutRef, "grid.1.text")).toBe("Carries water up the plant.");
+    expect(words(g.children.find((c) => c.id === "g1:grid.1.text"))).toContain("Carries water");
+  });
+
+  test("a restyle of a child detaches the group: no ref, every element kept as it is", () => {
+    const { lesson, slideId } = seeded(3);
+    const box = groupOf(lesson).children.find((c) => c.name === "Card") as ShapeElement;
+    const out = r.updateElement(lesson, slideId, box.id, { fill: "#00ff00" });
+    const g = groupOf(out);
+    expect(g.layout).toBeUndefined();
+    expect(g.children.find((c) => c.id === box.id)).toEqual({ ...box, fill: "#00ff00" });
+    expect(g.children.map((c) => c.id)).toEqual(groupOf(lesson).children.map((c) => c.id));
+    // Detached, it is plain elements: item changes are a no-op.
+    expect(r.addLayoutItem(out, slideId, "g1", 0, kit).lesson).toBe(out);
+  });
+
+  test("deleting a child detaches the group", () => {
+    const { lesson, slideId } = seeded(3);
+    const out = r.deleteElements(lesson, slideId, ["g1:heading"]);
+    expect(groupOf(out).layout).toBeUndefined();
+  });
+
+  test("moving the group keeps it a layout; resizing it detaches (it cannot lay into a box)", () => {
+    const { lesson, slideId } = seeded(3);
+    const moved = r.transformElements(lesson, slideId, ["g1"], { dx: 10 });
+    expect(groupOf(moved).layout).toBeDefined();
+    const resized = r.transformElements(lesson, slideId, ["g1"], { scale: 0.8 });
+    expect(groupOf(resized).layout).toBeUndefined();
+  });
+
+  test("detaching is one undo step with the edit", () => {
+    const { lesson: seed, slideId } = seeded(3);
+    const KEY = ["library", "documents", "detach"] as const;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(KEY, seed);
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result } = renderHook(
+      () => useDocumentHistory({ queryKey: KEY, queryFn: () => Promise.resolve(seed) }),
+      { wrapper },
+    );
+    act(() => {
+      result.current.dispatch(r.deleteElements, slideId, ["g1:heading"]);
+    });
+    expect(groupOf(result.current.lesson as Lesson).layout).toBeUndefined();
+    act(() => result.current.undo());
+    expect(result.current.lesson).toBe(seed);
+  });
+});
+
+describe("the slide after a split", () => {
+  test("notes stay with the head; the tail group is fresh: own frame, no lock, rotation or link", () => {
+    const { lesson: l0, slideId } = seeded(4);
+    const withNotes = r.setSlideNotes(l0, slideId, "Ask about roots first.");
+    const locked = r.updateElement(withNotes, slideId, "g1", { locked: true, rotation: 3 });
+    const out = r.splitLayout(locked, slideId, "g1", kit);
+    const [head, tail] = out.lesson.slides;
+    expect(head?.notes).toBe("Ask about roots first.");
+    expect(tail?.notes).toBeUndefined();
+    const g = tail?.elements[0] as GroupElement;
+    expect(g.locked).toBeUndefined();
+    expect(g.rotation).toBeUndefined();
+    expect(g.layout?.frame).toEqual({ x: g.x, y: g.y, w: g.w, h: g.h });
   });
 });

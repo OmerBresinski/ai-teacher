@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { lesson } from "./fixtures.test-helpers";
-import { ADAPTIVE_TEMPLATE_IDS, isLayoutGroup, LayoutRefSchema } from "./layout-ref";
+import { ADAPTIVE_TEMPLATE_IDS, boundPath, isLayoutGroup, LayoutRefSchema } from "./layout-ref";
 import { parseLesson } from "./lesson";
 import { type SlideElement, SlideSchema } from "./slide";
 
@@ -74,5 +74,21 @@ describe("LayoutRef (TEACH-205 part b)", () => {
   test("isLayoutGroup is true only for a group with a ref", () => {
     const parsed = SlideSchema.parse(withGroup("cards-grid").slides[0]);
     expect(isLayoutGroup(parsed.elements[0] as SlideElement)).toBe(true);
+  });
+
+  test("an old lesson parses to the same document and re-serialises byte for byte", () => {
+    // Zod writes keys in schema order (true before this change too), so byte identity is checked
+    // on the stored form: a lesson saved once re-serialises to exactly the same bytes, no `layout`.
+    const input = lesson();
+    const stored = JSON.stringify(parseLesson(JSON.parse(JSON.stringify(input))));
+    expect(JSON.parse(stored)).toEqual(input as never);
+    expect(JSON.stringify(parseLesson(JSON.parse(stored)))).toBe(stored);
+    expect(stored).not.toContain('"layout"');
+  });
+
+  test("boundPath reads a child's field from its id", () => {
+    expect(boundPath("g1", "g1:grid.1.text")).toBe("grid.1.text");
+    expect(boundPath("g1", "g1:4")).toBeUndefined();
+    expect(boundPath("g1", "other")).toBeUndefined();
   });
 });

@@ -107,33 +107,9 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 /* Input paths                                                         */
 /* ------------------------------------------------------------------ */
 
-const segs = (path: string) => path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s));
+import { getAtPath } from "@tj/domain/documents";
 
-/** The value at a dotted path ("grid.1.text") in the ref's input. */
-export function getAtPath(ref: LayoutRef, path: string): unknown {
-  let v: unknown = ref.input;
-  for (const k of segs(path)) {
-    if (v === null || typeof v !== "object") return undefined;
-    v = (v as Record<string | number, unknown>)[k];
-  }
-  return v;
-}
-
-/** A copy of the ref with one value set at a dotted path; the source is untouched. */
-export function setAtPath(ref: LayoutRef, path: string, value: unknown): LayoutRef {
-  const put = (node: unknown, keys: (string | number)[]): unknown => {
-    const [k, ...rest] = keys;
-    if (k === undefined) return value;
-    const next = rest.length ? put((node as Record<string | number, unknown>)?.[k], rest) : value;
-    if (Array.isArray(node)) {
-      const arr = [...node];
-      arr[k as number] = next;
-      return arr;
-    }
-    return { ...((node as object) ?? {}), [k]: next };
-  };
-  return { ...ref, input: put(ref.input, segs(path)) as Record<string, unknown> };
-}
+export { getAtPath, setAtPath } from "@tj/domain/documents";
 
 /** The ref's item list (empty when the input has none). */
 export function itemsOf(ref: LayoutRef): unknown[] {
