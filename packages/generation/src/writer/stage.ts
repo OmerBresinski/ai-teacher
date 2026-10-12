@@ -466,6 +466,42 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const m = withBuilds(lay);
     laid.set(i, { ...m, slide: withBuildCounts(m.slide) });
   };
+  /**
+   * LAYOUT-SEL Egypt s1: a title picture that failed is searched once more for the lesson's topic
+   * itself (not the cut-down phrase `titleOneThing` chose). Whatever then is not a placed photo is
+   * failed for good, so the title is laid out with no picture slot, never a placeholder.
+   */
+  const retryTitle = async () => {
+    const s0 = plan.slides[0] as S | undefined;
+    const ask = (asks.get(0) ?? []).find(
+      (a): a is Extract<VisualAsk, { type: "photo" }> => a.type === "photo",
+    );
+    if (!s0 || !ask) return;
+    const topic = brief.topic.trim();
+    if (visualState(0)(ask.key).status === "failed" && run.placeMore && topic) {
+      const again = { ...ask, shows: topic, mustSee: [topic] };
+      asks.set(
+        0,
+        (asks.get(0) ?? []).map((a) => (a === ask ? again : a)),
+      );
+      const pic = s0[ask.key] as S | undefined;
+      if (pic) plan.slides[0] = { ...s0, [ask.key]: { ...pic, shows: topic, must_see: [topic] } };
+      await run.placeMore(0, [again], {
+        heading: String(s0.heading ?? ""),
+        text: wordsOf(s0),
+        point: pointOf(s0),
+      });
+      log({
+        ev: "title-retry",
+        slide: 1,
+        shows: topic,
+        ok: visualState(0)(ask.key).status === "photo",
+      });
+    }
+    for (const a of asks.get(0) ?? [])
+      if (a.type === "photo" && visualState(0)(a.key).status !== "photo")
+        override.set(`0:${a.key}`, { status: "failed" });
+  };
   const title = codeTitle(brief, base);
   laid.set(0, title);
   laid.set(1, codeObjectives({ ...base, index: 1, plan }));
@@ -1103,6 +1139,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   if (run.beforeEditable) {
     await run.beforeEditable();
+    await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
   }

@@ -248,6 +248,12 @@ function tiled(s: S, main: Figure | undefined, ctx: MaterialiseCtx, mark = false
   return (more.length ? { ...lead, tiles: more, tileMode: mode } : lead) as Figure;
 }
 
+/**
+ * A picture sequence or compare keeps its layout when at least half its asked pictures landed
+ * (the lost-picture split's rule); the rest show as caption tiles.
+ */
+export const keepsTiles = (landed: number, asked: number) => asked > 0 && landed * 2 >= asked;
+
 /** The figure a slot shows now: the photo or drawing once landed, an open slot while pending. */
 function figureNow(
   key: string,
@@ -439,49 +445,61 @@ export function toInput(
     }
     case "picture-sequence": {
       const seq = (Array.isArray(s.sequence) ? s.sequence : []) as (Pic & { caption?: string })[];
-      // A sequence with a picture or diagram that could not be made: the stages become numbered
-      // steps, never an empty panel.
-      if (
-        seq.some(
-          (x, n) =>
-            seqFigure(x) &&
-            (ctx.visual(`seq.${n}`).status === "failed" || missing?.has(`seq.${n}`)),
-        )
-      )
+      const lost = (n: number) =>
+        ctx.visual(`seq.${n}`).status === "failed" || !!missing?.has(`seq.${n}`);
+      const asked = seq.filter((x) => seqFigure(x)).length;
+      const gone = seq.filter((x, n) => seqFigure(x) && lost(n)).length;
+      // A lost diagram panel, or under half the pictures landed: the stages become numbered steps,
+      // never an empty panel.
+      const diaGone = seq.some((x, n) => isDia(seqFigure(x)) && lost(n));
+      if (gone && (diaGone || !keepsTiles(asked - gone, asked)))
         return lead
           ? { template: "explain", heading, lead, points: seq.map((x) => str(x.caption)) }
           : { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
+      // At least half landed (LAYOUT-SEL Egypt s6): the sequence stays, and a panel whose picture
+      // could not be made is a tile with its own caption and no picture.
       return {
         template,
         heading,
         ...(lead ? { lead } : {}),
-        sequence: seq.map((x, n) => ({
-          caption: str(x.caption),
-          figure: (() => {
-            const f = seqFigure(x);
-            return f ? figureNow(`seq.${n}`, f, ctx, mark) : undefined;
-          })(),
-        })),
+        sequence: seq.map((x, n) => {
+          const f = seqFigure(x);
+          if (f && lost(n)) return { caption: str(x.caption), tile: true };
+          return {
+            caption: str(x.caption),
+            figure: f ? figureNow(`seq.${n}`, f, ctx, mark) : undefined,
+          };
+        }),
       };
     }
     case "compare": {
       const cols = (Array.isArray(s.columns) ? s.columns : []) as S[];
-      // One column's picture missing leaves a hole: every column goes without when any failed.
-      // A diagram tile (TEACH-75 part d) goes the same way: drawn, pending, or failed.
+      // A diagram tile (TEACH-75 part d) counts like a picture: drawn, pending, or failed.
       const vis = (c: S) => isPic(c.picture) || isDia(c.picture);
-      const anyFailed = cols.some(
-        (c, n) =>
-          vis(c) && (ctx.visual(`col.${n}`).status === "failed" || missing?.has(`col.${n}`)),
-      );
+      const lost = (n: number) =>
+        ctx.visual(`col.${n}`).status === "failed" || !!missing?.has(`col.${n}`);
+      const asked = cols.filter(vis).length;
+      const gone = cols.filter((c, n) => vis(c) && lost(n)).length;
+      // Under half the column pictures landed: every column goes without (text cards). At least
+      // half: a column whose picture failed shows its label on a tile in the picture band.
+      // A lost diagram tile (TEACH-75 part d) still takes every card's visual away.
+      const diaGone = cols.some((c, n) => isDia(c.picture) && lost(n));
+      const without = gone > 0 && (diaGone || !keepsTiles(asked - gone, asked));
       return {
         template,
         heading,
         ...(lead && !cols.some(vis) ? { lead } : {}),
         columns: cols.map((c, n) => {
           const p = c.picture;
-          const f =
-            (isPic(p) || isDia(p)) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
-          return { label: str(c.label), text: str(c.text), ...(f ? { figure: f } : {}) };
+          const pic = (isPic(p) || isDia(p)) && !without;
+          const tile = pic && lost(n);
+          const f = pic && !tile ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
+          return {
+            label: str(c.label),
+            text: str(c.text),
+            ...(f ? { figure: f } : {}),
+            ...(tile ? { tile: true } : {}),
+          };
         }),
       };
     }

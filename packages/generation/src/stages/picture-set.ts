@@ -269,11 +269,12 @@ export function setIsGenerated(asks: SetAsk[], lesson: PeriodFields): boolean {
  * chicken failed twice on "developing feathers" while the judge said it fit).
  */
 export function panelBrief(ask: SetAsk, aspect: number): ImageBrief {
-  const request = [ask.shows, ...ask.mustSee].join(". ");
+  // Only the panel's subject: the writer's `mustSee` (lids on, a coffin lid nearby) is a stage
+  // detail the set judge reads, so a real panel is never failed on it (LAYOUT-SEL Egypt s6).
   return {
     subject: plainSubject(ask.shows).slice(0, 60),
-    request: request.slice(0, 400),
-    mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request).slice(0, 1),
+    request: ask.shows.slice(0, 400),
+    mustShow: mustShowOf(ask.shows).slice(0, 1),
     purpose: "context",
     specific: false,
     aspect: Math.round(aspect * 100) / 100,
@@ -488,13 +489,27 @@ export async function makePictureSet(
     } else {
       // Single pictures (the default for 3 or 4 until the grid's paid check): each made alone in
       // the lesson's look, judged alone, then all of them by the set judge.
+      // Each panel settles on its own (LAYOUT-SEL Egypt s6: one panel's error threw away three
+      // paid panels). A panel that errors is made again alone, like one the judge fails; a fatal
+      // error (budget, abort) still stops the set.
       const made = await Promise.all(
-        asks.map(async (a) => {
-          const m = await generate(soloImagePrompt(a.shows, look), soloSize);
-          return m ? m : undefined;
-        }),
+        asks.map((a) =>
+          nonFatal(
+            () => generate(soloImagePrompt(a.shows, look), soloSize),
+            (e) => {
+              deps.log({
+                ev: "set-panel-error",
+                set: setKey,
+                key: a.key,
+                err: String(e).slice(0, 200),
+              });
+              return undefined;
+            },
+          ),
+        ),
       );
-      if (made.every((m) => !m)) return "none";
+      // Nothing made: capped is the end of the set; errors alone leave every panel to its retry.
+      if (made.every((m) => !m)) return capped ? "none" : undefined;
       const panels = made.map((m) => m?.bytes ?? new Uint8Array());
       const judging = asks.map((a, k) =>
         made[k]

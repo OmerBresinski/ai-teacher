@@ -4,12 +4,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { directedImagePrompt, encodePng, type ImageGenerator } from "@tj/images";
 import { BudgetExceeded } from "../types";
+import { mustShowOf } from "./photo-bank";
 import {
   gridImagePrompt,
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
   type PictureSetDeps,
+  panelBrief,
   type SetAsk,
   STRIP_ATTEMPTS,
   setImagePrompt,
@@ -527,5 +529,79 @@ describe("card pictures are made at their slot's shape (TEACH-110 part h)", () =
     expect(new Set(sizes)).toEqual(new Set(["1536x1024"]));
     const strip = await sizesFor(2, 184 / 138, (a) => a.key !== "p1");
     expect(strip).toEqual(["2048x1152", "1536x1024"]);
+  });
+});
+
+describe("solo panels settle one by one (TEACH-251 part h, LAYOUT-SEL Egypt s6)", () => {
+  /** The fakes' generator, throwing on the given calls (0-based). */
+  const throwing = (f: ReturnType<typeof fakes>, bad: (call: number) => unknown) => {
+    let n = 0;
+    const gen = f.deps.generator;
+    const deps: PictureSetDeps = {
+      ...f.deps,
+      generator: {
+        model: gen.model,
+        generate: async (req) => {
+          const e = bad(n++);
+          if (e) throw e;
+          return gen.generate(req);
+        },
+      },
+    };
+    return { deps, calls: () => n };
+  };
+  const pngs = [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60]), stripPng([40])];
+
+  test("one panel's error keeps the three paid panels; only that panel is made again", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n === 1 ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(5);
+    expect(out.map((p) => p?.set)).toEqual([
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo1",
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo",
+    ]);
+    expect(f.logs.some((l) => l.ev === "set-error")).toBe(false);
+    expect(f.logs).toContainEqual(expect.objectContaining({ ev: "set-panel-error", key: "p1" }));
+  });
+
+  test("every panel errors: each is made alone once, within the one-retry budget", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n < 4 ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(8);
+    expect(out.map((p) => p?.set)).toEqual([0, 1, 2, 3].map((k) => `p0+p1+p2+p3#solo${k}`));
+  });
+
+  test("a failed panel's retry that errors again leaves only that slot empty", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n === 1 || n === 4 ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(5);
+    expect(out.map(Boolean)).toEqual([true, false, true, true]);
+  });
+
+  test("a budget stop while the panels are made still stops the set", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n === 1 ? new BudgetExceeded("usd") : undefined));
+    await expect(makePictureSet(asks(4), t.deps)).rejects.toBeInstanceOf(BudgetExceeded);
+  });
+});
+
+describe("a set panel is judged on its subject only (TEACH-251 part h)", () => {
+  test("the writer's stage details are not the panel's must-show", () => {
+    const ask: SetAsk = {
+      key: "seq.1",
+      index: 5,
+      shows: "Canopic jars holding the organs",
+      mustSee: ["the four jars open", "a coffin lid nearby"],
+      aspect: 1,
+    };
+    const b = panelBrief(ask, 1.11);
+    expect(b.mustShow).toEqual(mustShowOf(ask.shows).slice(0, 1));
+    expect(b.request).toBe(ask.shows);
+    expect(JSON.stringify(b)).not.toMatch(/coffin lid|jars open/);
   });
 });
