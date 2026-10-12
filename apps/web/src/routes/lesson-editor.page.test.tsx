@@ -414,6 +414,36 @@ describe("LessonEditorPage", () => {
     expect(within(banner).getByRole("button", { name: "Back to library" })).toBeVisible();
   });
 
+  it("a lock released before the cancelled event arrives keeps the generating view and says stopped", async () => {
+    // TEACH-202 part j: the worker releases the lock, then writes `cancelled`. A body refetch that
+    // lands between the two must not swap the view for the editor before the outcome is known.
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    const banner = await screen.findByTestId("generating-shell");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
+    const reads = () =>
+      fakeApi.requests.filter((r) => r.method === "GET" && r.path.startsWith("/documents/")).length;
+    const before = reads();
+    act(() =>
+      source.emit(
+        "progress",
+        jobEvent("progress", {
+          progress: { percent: 90, documentUpdatedAt: "2026-09-04T10:00:05.000Z" },
+        }),
+        "1",
+      ),
+    );
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
+    await wait(50);
+    expect(screen.getByTestId("generating-shell")).toBe(banner);
+    act(() => source.emit("cancelled", jobEvent("cancelled"), "2"));
+    await waitFor(() => expect(banner).toHaveAttribute("data-state", "cancelled"));
+    expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
+  });
+
   it("row 4: Stop posts one cancel for the job", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);

@@ -204,6 +204,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // A job that failed or was cancelled releases the lock, yet the page stays on the generating
   // view for it (the outcome, the partial slides, Back to library) until the teacher leaves.
   const [stoppedJobId, setStoppedJobId] = useState<string | null>(null);
+  // The job the generating view is following (TEACH-202 part j). The worker releases the lock
+  // before it writes the terminal event, so a body refetch can show the lock gone while the view
+  // has not yet learnt how the job ended; the view stays until it has (`onCompleted` /
+  // `onStopped`), or a cancelled run would open the editor instead of saying it stopped.
+  const [watchedJobId, setWatchedJobId] = useState<string | null>(null);
+  const releaseWatchedJob = useCallback(() => setWatchedJobId(null), []);
   const [unlocked, setUnlocked] = useState<{ jobId: string; base: Lesson } | null>(null);
   // The slide the teacher was looking at in the generating view (TEACH-252), so the editor opens
   // on it at Ready; `null` while the canvas followed the newest, which opens on the first slide.
@@ -372,7 +378,6 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     </>
   );
 
-  const generatingJobId = meta?.generatingJobId ?? stoppedJobId;
   // ADR 0037, UX ruling 189: once a slide's words are done the editor opens while the lesson
   // keeps filling. The first done slide latches it for this job; slides still being written are
   // read-only inside it, and the follower folds each newer row into the open document.
@@ -390,6 +395,10 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     setUnlocked({ jobId: fillingJobId, base: data });
   }
   const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
+  // The filling editor follows the job's end itself (`FillingFollower`), so it needs no latch.
+  if (fillingJobId && !filling && watchedJobId !== fillingJobId) setWatchedJobId(fillingJobId);
+  if (filling && watchedJobId !== null) setWatchedJobId(null);
+  const generatingJobId = fillingJobId ?? stoppedJobId ?? watchedJobId;
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
@@ -416,6 +425,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         jobId={generatingJobId}
         onBack={onBack}
         onStopped={setStoppedJobId}
+        onCompleted={releaseWatchedJob}
         onViewSlide={setViewedSlideId}
         exportSlot={exportSlot}
       />

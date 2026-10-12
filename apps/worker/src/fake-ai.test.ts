@@ -6,6 +6,7 @@ import { blockSpecSchemaFor, diagramSpecSchemaFor, slideSpecSchemaFor } from "@t
 import { generateText, streamText } from "ai";
 import {
   createPerJobFakeAi,
+  FAKE_HOLD_TOPIC,
   FAKE_PROPOSAL_MARK,
   FAKE_REVIEW_WARNING,
   loadWriterReplay,
@@ -94,6 +95,64 @@ describe("createPerJobFakeAi", () => {
       prompt: "Review the lesson.",
     });
     expect(JSON.parse(review.text).findings).toEqual([FAKE_REVIEW_WARNING]);
+  });
+
+  test("a topic held at review keeps the generate job's review open until it is cancelled", async () => {
+    const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 });
+    const lessonId = "held-lesson";
+    // The plan job sees the topic; the generate job (another job id) holds its review.
+    await generateText({
+      model: ai.model("standard", { lessonId, jobId: "plan", promptVersion: "plan-skeleton.v1" }),
+      prompt: `Topic: Adaptations ${FAKE_HOLD_TOPIC}`,
+    });
+    const slide = await generateText({
+      model: ai.model("standard", { lessonId, jobId: "gen", promptVersion: "generate-slide.v1" }),
+      prompt: 'Write the slide with kind "content".',
+    });
+    expect(JSON.parse(slide.text).kind).toBe("content");
+    const cancel = new AbortController();
+    let settled = false;
+    const review = generateText({
+      model: ai.model("standard", { lessonId, jobId: "gen", promptVersion: "evaluate.v1" }),
+      prompt: "Review the lesson.",
+      abortSignal: cancel.signal,
+    }).then(
+      () => {},
+      () => {},
+    );
+    void review.then(() => {
+      settled = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(settled).toBe(false);
+    cancel.abort("cancelled");
+    await review;
+    expect(settled).toBe(true);
+  });
+
+  test("a held review answers after its cap when no cancel comes; other lessons never wait", async () => {
+    const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 }, { holdMaxMs: 50 });
+    await generateText({
+      model: ai.model("standard", {
+        lessonId: "held",
+        jobId: "p",
+        promptVersion: "plan-skeleton.v1",
+      }),
+      prompt: `Topic: Rivers ${FAKE_HOLD_TOPIC}`,
+    });
+    const started = Date.now();
+    const held = await generateText({
+      model: ai.model("standard", { lessonId: "held", jobId: "g", promptVersion: "evaluate.v1" }),
+      prompt: "Review the lesson.",
+    });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(40);
+    expect(JSON.parse(held.text).findings).toEqual([FAKE_REVIEW_WARNING]);
+    const free = Date.now();
+    await generateText({
+      model: ai.model("standard", { lessonId: "other", jobId: "o", promptVersion: "evaluate.v1" }),
+      prompt: "Review the lesson.",
+    });
+    expect(Date.now() - free).toBeLessThan(40);
   });
 
   test("the review answer carries one lesson-level warning", () => {
