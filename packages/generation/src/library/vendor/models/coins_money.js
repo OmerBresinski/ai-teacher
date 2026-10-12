@@ -9,11 +9,13 @@ import {
 import { coin, locale } from '../kit/batch-B.js';
 
 export const meta = {
-  id: 'coins_money', name: 'Coins and money', kind: 'info', version: 1,
+  id: 'coins_money', name: 'Coins and money', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Reception', 'Y1', 'Y2', 'Y3'],
   teaches: 'Recognising coins, counting money, making an amount in different ways and giving change by counting up.',
 };
+// Present opens on the first build: "Make 10p" is the first idea, before any coin, so every caption keeps its own frame (TEACH-247 part x).
+export const opensOnFirstBuild = true;
 
 const LOCALE_CODES = ['GB', 'IN', 'US', 'EU'];
 const MONEY_NAME = { GB: 'pounds and pence', IN: 'rupees', US: 'dollars and cents', EU: 'euros and cents' };

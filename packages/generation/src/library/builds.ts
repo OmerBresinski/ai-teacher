@@ -104,14 +104,15 @@ function openingStep(
  * and is hidden on every other surface. A mark the kit hides for a while and brings back (a
  * `data-c` "a-z:off" range) gets `data-x` = the frames it is away in. A ghost (a trail the kit shows once it stops playing)
  * arrives with the finished drawing. With `still` every frame before the last is the opening one:
- * no builds, the drawing as it ends. Returns how many frames follow the opening one.
+ * no builds, the drawing as it ends. With `fromStart` (a model's `opensOnFirstBuild`) the opening
+ * frame is the kit's first build. Returns how many frames follow the opening one.
  */
 export function tagBuilds(
   svg: Element,
   foot: Element | null,
   box: Box,
   q: number | undefined,
-  opts: { measure: Measure; still?: boolean },
+  opts: { measure: Measure; still?: boolean; fromStart?: boolean },
 ): number {
   const last = q ?? Number.POSITIVE_INFINITY;
   const els = [...svg.querySelectorAll("[data-s],[data-h]")];
@@ -127,7 +128,11 @@ export function tagBuilds(
   if (q === undefined)
     for (const el of [...svg.querySelectorAll(".ghost")]) el.setAttribute("data-s", String(end));
   const top = Math.min(last, end);
-  const opening = opts.still ? top : openingStep(svg, foot, top, box, opts.measure);
+  const opening = opts.still
+    ? top
+    : opts.fromStart
+      ? 0
+      : openingStep(svg, foot, top, box, opts.measure);
   const kept = [...svg.querySelectorAll("[data-s],[data-h]")].filter((el) => !off(el));
   // Marks the kit hides for a while and brings back (a list that takes the stage for one build).
   const away = [...svg.querySelectorAll("[data-c]")].filter(

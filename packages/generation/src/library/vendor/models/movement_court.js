@@ -12,11 +12,13 @@ import {
 import { court, player, ball, SPORT_DIMS, NETBALL_POSITIONS, NETBALL_ALLOWED, netballAllowed } from '../kit/batch-H.js';
 
 export const meta = {
-  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 1,
+  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 2,
   subjects: ['PE'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How a skill is made of phases in order, and how passing and moving into space beats defenders on a real court.',
 };
+// Present opens on the first build: the empty court is the first idea, before the players, so every caption keeps its own frame (TEACH-247 part x).
+export const opensOnFirstBuild = true;
 
 /* ------------------------------------------------------------------ skills: phases in true order */
 // Pose angles in degrees from straight down, positive = forward (the figure faces right).
