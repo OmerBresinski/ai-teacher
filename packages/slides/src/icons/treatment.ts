@@ -121,7 +121,43 @@ interface AgeTokens {
   filter: Filter;
   /** early mixes the outline toward a warm brown (oklab, this share of the stroke slot) */
   outlineMix?: { with: string; share: number };
+  /** the outline's stroke-opacity (the soft style's faint early-years line) */
+  outlineOpacity?: number;
 }
+
+/**
+ * The icon style (TEACH-310 part b, Greg's review of 12 Oct 2026 against the gold heart slide):
+ * - "soft" (the default): no dark outline, soft radial gradients and a highlight on the full
+ *   palette, a faint thin outline for early years only; body and organ concepts are tinted to the
+ *   theme's red family (`tint`);
+ * - "pilot": the pilot's cartoon look, a thick dark outline at early and primary, flat fills.
+ */
+export type IconStyle = "soft" | "pilot";
+export const ICON_STYLES: readonly IconStyle[] = ["soft", "pilot"];
+
+/** The soft style's age tokens: the age shows in radius, gloss and a faint early outline. */
+export const SOFT_AGE_TOKENS: Readonly<Record<IconAge, AgeTokens>> = {
+  early: {
+    sw: 1.6,
+    gloss: 0.75,
+    glossK: 1.2,
+    shade: 0.3,
+    r: 26,
+    spark: 0,
+    filter: [],
+    outlineOpacity: 0.45,
+  },
+  primary: { sw: 0, gloss: 0.7, glossK: 1.15, shade: 0.35, r: 14, spark: 0, filter: [] },
+  secondary: {
+    sw: 0,
+    gloss: 0.5,
+    glossK: 1,
+    shade: 0.3,
+    r: 6,
+    spark: 0,
+    filter: [["saturate", 0.92]],
+  },
+};
 
 /** Age tokens from the pilot's tokens.css v2 (12 Oct 2026). */
 export const AGE_TOKENS: Readonly<Record<IconAge, AgeTokens>> = {
@@ -251,7 +287,13 @@ export function mixOklab(a: string, b: string, share: number): string {
 export interface TreatmentOptions {
   colours?: Partial<IconColours>;
   age?: IconAge;
+  /** "soft" (default) or "pilot" */
+  style?: IconStyle;
+  /** soft style: map the drawing's colours onto the theme's red family (body and organ icons) */
+  tint?: boolean;
 }
+
+const styleOf = (s: unknown): IconStyle => (s === "pilot" ? "pilot" : "soft");
 
 /** Every slot name a drawing may use, resolved to a literal colour before the age filter. */
 /** `value` as #rrggbb when it is a hex colour, else `fallback`: a slot never carries markup. */
@@ -265,8 +307,10 @@ export function safeHex(value: unknown, fallback: string): string {
 }
 
 /** The age's tokens; an unknown age reads as primary. */
-export const ageTokens = (age: unknown): AgeTokens =>
-  Object.hasOwn(AGE_TOKENS, String(age)) ? AGE_TOKENS[age as IconAge] : AGE_TOKENS.primary;
+export const ageTokens = (age: unknown, style: IconStyle = "pilot"): AgeTokens => {
+  const table = style === "soft" ? SOFT_AGE_TOKENS : AGE_TOKENS;
+  return Object.hasOwn(table, String(age)) ? table[age as IconAge] : table.primary;
+};
 
 export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string> {
   const given: Partial<IconColours> = opts.colours ?? {};
@@ -276,7 +320,7 @@ export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string
       safeHex(given[k] ?? DEFAULT_ICON_COLOURS[k], DEFAULT_ICON_COLOURS[k]),
     ]),
   ) as unknown as IconColours;
-  const age = ageTokens(opts.age);
+  const age = ageTokens(opts.age, styleOf(opts.style));
   return {
     ...ICON_PALETTE,
     "icon-primary": c.primary,
@@ -292,12 +336,70 @@ export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string
   };
 }
 
-/** The colours an icon may contain for these options: each slot and #fff, after the age filter. */
+/** The colours an icon may contain for these options: each slot and #fff, after the age filter,
+ * then (soft style) the tint and each colour's gradient stops. */
 export function iconColourSet(opts: TreatmentOptions = {}): Set<string> {
-  const filter = ageTokens(opts.age).filter;
-  return new Set(
-    [...Object.values(resolveSlots(opts)), "#ffffff"].map((h) => applyFilter(h, filter)),
-  );
+  const style = styleOf(opts.style);
+  const filter = ageTokens(opts.age, style).filter;
+  const base = [...Object.values(resolveSlots(opts)), "#ffffff"].map((h) => applyFilter(h, filter));
+  if (style === "pilot") return new Set(base);
+  const tint = opts.tint ? tinter(resolveSlots(opts)["icon-primary"] as string) : (c: string) => c;
+  return new Set(base.map(tint).flatMap((c) => [c, ...gradientStops(c)]));
+}
+
+// ---------- soft style ----------
+
+const WHITE = "#ffffff";
+/** The light and dark ends of a fill's soft radial gradient (the middle is the fill itself). */
+export const gradientStops = (c: string): [string, string] => [
+  mixOklab(c, WHITE, 0.72),
+  mixOklab(c, "#000000", 0.78),
+];
+
+/** Hue (radians) and chroma of a colour in OKLCH. */
+function lch(hex: string): [number, number, number] {
+  const [L, a, b] = toOklab(parseHex(hex));
+  return [L, Math.hypot(a, b), Math.atan2(b, a)];
+}
+/** The default flesh red: the tint for a theme whose accent is not in the red family. */
+const FLESH = "#E0343F";
+
+/**
+ * Maps every colour onto one hue family at its own lightness, greys onto one faintly tinted
+ * neutral: the gold heart slide's reds and pinks. The family is the theme's accent when that is
+ * a red, pink or orange; otherwise the default flesh red (a heart is never green).
+ */
+export function tinter(accent: string): (c: string) => string {
+  const [, ac, ah] = lch(accent);
+  const deg = ((ah * 180) / Math.PI + 360) % 360;
+  const warm = ac > 0.08 && (deg < 50 || deg > 330);
+  const [, fc, fh] = warm ? [0, ac, ah] : lch(FLESH);
+  return (c: string) => {
+    if (c === WHITE) return c;
+    const [L, C] = lch(c);
+    const Lm = Math.min(0.97, Math.max(0.4, L));
+    if (C < 0.045) return toHex(fromOklab([Lm, 0.012 * Math.cos(fh), 0.012 * Math.sin(fh)]));
+    const Cm = fc * Math.min(1, 0.5 + C / 0.25) * (Lm > 0.88 ? 0.6 : 1);
+    return toHex(fromOklab([Lm, Cm * Math.cos(fh), Cm * Math.sin(fh)]));
+  };
+}
+
+/** Soft style: each solid fill (white aside) becomes a radial gradient, highlight top left. */
+function soften(svg: string, idPrefix: string): string {
+  const defs = new Map<string, string>();
+  const body = svg.replace(/fill:(#[0-9a-f]{6})/g, (whole, c: string) => {
+    if (c === WHITE) return whole;
+    const id = `${idPrefix}-g${c.slice(1)}`;
+    if (!defs.has(id)) {
+      const [light, dark] = gradientStops(c);
+      defs.set(
+        id,
+        `<radialGradient id="${id}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="${light}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${dark}"/></radialGradient>`,
+      );
+    }
+    return `fill:url(#${id})`;
+  });
+  return defs.size ? `<defs>${[...defs.values()].join("")}</defs>${body}` : body;
 }
 
 // ---------- markup ----------
@@ -357,7 +459,8 @@ export interface FlattenOptions extends TreatmentOptions {
 
 /** The pilot markup of one drawing -> literal SVG children for one age, size and theme. */
 export function flatten(markup: string, opts: FlattenOptions): string {
-  const age = ageTokens(opts.age);
+  const style = styleOf(opts.style);
+  const age = ageTokens(opts.age, style);
   const size: IconSize = opts.size === "s" || opts.size === "l" ? opts.size : "m";
   // size s drops the outline at every age (tokens.css `.size-s{--icon-sw:0px}`)
   const sw = size === "s" ? 0 : age.sw;
@@ -411,11 +514,17 @@ export function flatten(markup: string, opts: FlattenOptions): string {
         fromClass.set("stroke-width", num((sw * 2) / k));
         fromClass.set("stroke-linejoin", "round");
         fromClass.set("paint-order", "stroke");
+        if (age.outlineOpacity !== undefined) {
+          fromClass.set("stroke-opacity", num(age.outlineOpacity));
+        }
       } else if (c === "lu") {
         fromClass.set("fill", "none");
         fromClass.set("stroke", outline);
         fromClass.set("stroke-width", num(px(custom.get("--w"), 0) + (sw * 2) / k));
         fromClass.set("stroke-linejoin", "round");
+        if (age.outlineOpacity !== undefined) {
+          fromClass.set("stroke-opacity", num(age.outlineOpacity));
+        }
       } else if (c === "hl") {
         fromClass.set("fill", "none");
         fromClass.set("stroke", "#fff");
@@ -448,7 +557,14 @@ export function flatten(markup: string, opts: FlattenOptions): string {
       ? `<${node.tag}${out.join("")}>${inner}</${node.tag}>`
       : `<${node.tag}${out.join("")}/>`;
   };
-  const out = parseMarkup(markup).map(visit).join("");
+  let out = parseMarkup(markup).map(visit).join("");
+  if (style === "soft") {
+    if (opts.tint) {
+      const tint = tinter(slots["icon-primary"] as string);
+      out = out.replace(/#[0-9a-f]{6}\b/g, tint);
+    }
+    out = soften(out, opts.idPrefix);
+  }
   // a clip path or marker whose user was dropped at this size goes too
   return out.replace(
     /<(clipPath|marker) id="([^"]+)"[^>]*>.*?<\/\1>/g,

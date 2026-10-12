@@ -43,7 +43,7 @@ export const EGYPT: Record<string, IconDrawing> = {
       ${F(body, "var(--linen)")}${C(46, 120, 24, "var(--linen)")}
       ${CLIP(body, IL("M150 92 L140 152 M170 94 L160 152 M190 96 L180 152 M210 100 L200 150 M120 92 L110 152", "var(--linen-d)", 4))}
       ${IL("M36 108 L58 132 M34 126 L52 142", "var(--linen-d)", 4)}
-      ${L("M100 146 C104 176 120 188 140 190", "var(--linen)", 14)}${C(150, 190, 16, "var(--linen)")}${C(150, 190, 6, "var(--linen-d)", false)}
+      <g class="dl">${L("M100 146 C104 176 120 188 140 190", "var(--linen)", 14)}${C(150, 190, 16, "var(--linen)")}${C(150, 190, 6, "var(--linen-d)", false)}</g>
       ${H("M70 108 L130 100", 6)}`;
     },
   },
@@ -247,7 +247,7 @@ export const EGYPT: Record<string, IconDrawing> = {
   },
   pyramid: {
     name: "Pyramid",
-    svg: () => `${C(184, 52, 22, "var(--sun)")}
+    svg: () => `<g class="dl">${C(184, 52, 22, "var(--sun)")}</g>
       ${F("M138 186 L176 120 L214 186Z", "var(--sand)")}${P("M176 120 L214 186 L182 186Z", "var(--clay)", 'class="sh"')}
       ${F("M24 192 L104 56 L184 192Z", "var(--sand)")}${P("M104 56 L184 192 L120 192Z", "var(--clay)", 'class="sh"')}
       <g class="dt">${IL("M60 154 L112 154 M78 122 L118 122", "var(--clay)", 3, 'opacity=".55"')}</g>
@@ -263,7 +263,7 @@ export const EGYPT: Record<string, IconDrawing> = {
     name: "Book of the Dead",
     svg: () => `${RR(46, 52, 148, 136, "var(--sand-l)", "rr2")}${L("M40 52 L40 188 M200 52 L200 188", "var(--sand)", 22)}
       ${IL("M74 72 L74 90 M70 104 C74 98 80 98 84 104 M74 116 L74 126 M66 140 L82 140 M74 154 L74 172", "var(--icon-ink)", 5)}
-      ${IL("M104 72 L104 90 M100 106 L108 106 M104 118 L104 136 M96 152 L112 152 M104 162 L104 172", "var(--flesh-d)", 5)}
+      <g class="dl">${IL("M104 72 L104 90 M100 106 L108 106 M104 118 L104 136 M96 152 L112 152 M104 162 L104 172", "var(--flesh-d)", 5)}</g>
       ${miniHeart(150, 96, 0.12)}${IL("M138 132 L170 132 M150 142 L150 176", "var(--icon-ink)", 5)}
       ${H("M36 72 L36 160", 6)}`,
   },
@@ -271,11 +271,11 @@ export const EGYPT: Record<string, IconDrawing> = {
     name: "Hieroglyphs",
     svg: () => `${RR(58, 18, 124, 196, "var(--sand-l)", "rr")}${L("M60 206 L180 206", "var(--gold-d)", 8)}
       ${L("M98 46 L98 70 M98 46 C80 46 80 26 98 26 C116 26 116 46 98 46 M86 54 L110 54", "var(--gold-d)", 6)}
-      ${IL("M128 34 L136 50 L144 34 L152 50", "var(--water)", 5)}
+      <g class="dl">${IL("M128 34 L136 50 L144 34 L152 50", "var(--water)", 5)}</g>
       ${F("M84 104 C84 90 96 84 108 88 L118 80 L120 92 C128 98 124 116 110 118 L96 132 L88 132 L94 116 C88 114 84 110 84 104Z", "var(--icon-ink)")}
-      ${IL("M140 92 C130 100 132 120 150 120 C160 120 162 108 154 104", "var(--lapis)", 6)}
+      <g class="dl">${IL("M140 92 C130 100 132 120 150 120 C160 120 162 108 154 104", "var(--lapis)", 6)}</g>
       ${E(98, 168, 22, 10, "#fff")}${C(98, 168, 6, "var(--icon-ink)", false)}
-      ${IL("M140 150 L140 190 M128 160 L152 160", "var(--flesh-d)", 6)}`,
+      <g class="dl">${IL("M140 150 L140 190 M128 160 L152 160", "var(--flesh-d)", 6)}</g>`,
   },
   "oils-resin": {
     name: "Oils and resin",
@@ -294,8 +294,8 @@ export const EGYPT: Record<string, IconDrawing> = {
       const land =
         "M20 40 L220 40 L220 200 C220 210 212 216 200 216 L40 216 C28 216 20 210 20 200Z";
       return `${F(land, "var(--sand)")}${CLIP(land, `${L("M150 30 C120 70 170 100 130 140 C96 174 120 196 96 230", "var(--leaf)", 64)}${L("M150 30 C120 70 170 100 130 140 C96 174 120 196 96 230", "var(--water)", 32)}`)}
-      ${IL("M140 70 C146 66 152 66 156 70 M120 160 C126 156 132 156 136 160", "var(--sky)", 4)}
-      ${L("M44 200 L50 130 M60 200 L60 120 M76 200 L70 136", "var(--leaf-d)", 5)}${(
+      <g class="dl">${IL("M140 70 C146 66 152 66 156 70 M120 160 C126 156 132 156 136 160", "var(--sky)", 4)}</g>
+      <g class="dl">${L("M44 200 L50 130 M60 200 L60 120 M76 200 L70 136", "var(--leaf-d)", 5)}${(
         [
           [50, 128],
           [60, 116],
@@ -303,7 +303,7 @@ export const EGYPT: Record<string, IconDrawing> = {
         ] as const
       )
         .map(([x, y]) => E(x, y, 9, 7, "var(--leaf)"))
-        .join("")}
+        .join("")}</g>
       ${H("M34 60 L80 60", 6)}`;
     },
   },

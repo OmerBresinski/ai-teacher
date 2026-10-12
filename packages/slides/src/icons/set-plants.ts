@@ -139,8 +139,8 @@ export const PLANTS: Record<string, IconDrawing> = {
         ] as const
       )
         .map(
-          ([x, y, c]) =>
-            `<rect x="${x - 8}" y="${y - 8}" width="16" height="16" class="o rr2" transform="rotate(45 ${x} ${y})" style="fill:${c}"/>`,
+          ([x, y, c], i) =>
+            `<rect x="${x - 8}" y="${y - 8}" width="16" height="16" class="o rr2${i > 2 ? " dl" : ""}" transform="rotate(45 ${x} ${y})" style="fill:${c}"/>`,
         )
         .join("")}
       ${AR("M120 90 L120 40", "var(--leaf-d)", 9)}${H("M50 170 C60 150 74 136 90 128", 8)}`;

@@ -74,7 +74,7 @@ export const CORE: Record<string, IconDrawing> = {
     name: "Volcano",
     subject: "Geography",
     ks: "KS3",
-    svg: () => `${C(98, 62, 18, "var(--smoke)")}${C(124, 46, 24, "var(--smoke)")}${C(150, 62, 18, "var(--smoke)")}
+    svg: () => `<g class="dl">${C(98, 62, 18, "var(--smoke)")}${C(124, 46, 24, "var(--smoke)")}${C(150, 62, 18, "var(--smoke)")}</g>
       ${F(CONE, "var(--earth)")}${SH(CONE, "M120 80 L220 80 L220 220 L150 220 Z", "var(--earth-d)")}
       ${P("M96 90 C104 84 136 84 144 90 C136 98 104 98 96 90Z", "var(--fire)")}
       <g class="dl">${IL("M62 168 C100 160 140 164 178 168 M44 196 C100 186 150 190 196 196 M80 136 C104 130 136 132 160 136", "var(--earth-d)", 4, 'opacity=".6"')}${IL("M120 96 L120 208", "var(--fire-l)", 6, 'opacity=".8"')}</g>

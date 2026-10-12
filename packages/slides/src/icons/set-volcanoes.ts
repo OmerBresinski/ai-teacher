@@ -76,7 +76,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
           [76, 124],
         ] as const
       )
-        .map(([x, y]) => C(x, y, 5, "var(--rock-d)", false))
+        .map(([x, y]) => `<g class="dl">${C(x, y, 5, "var(--rock-d)", false)}</g>`)
         .join("")}
       ${H("M66 98 C70 86 78 78 90 74", 8)}`,
   },
@@ -94,7 +94,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
       )}
       ${F("M100 118 C84 92 86 70 104 56 C104 76 112 84 120 70 C126 84 136 76 136 56 C154 70 156 92 140 118Z", "var(--fire)")}
       ${P("M108 118 C102 102 106 90 114 84 C116 96 124 96 126 86 C134 96 136 106 132 118Z", "var(--fire-l)")}
-      ${C(72, 72, 8, "var(--fire)")}${C(170, 78, 7, "var(--fire)")}${C(60, 106, 6, "var(--fire-l)")}${C(182, 110, 6, "var(--fire-l)")}
+      <g class="dl">${C(72, 72, 8, "var(--fire)")}${C(170, 78, 7, "var(--fire)")}${C(60, 106, 6, "var(--fire-l)")}${C(182, 110, 6, "var(--fire-l)")}</g>
       ${F(cone, "var(--earth)")}${SH(cone, "M120 110 L220 110 L220 220 L150 220Z", "var(--earth-d)")}
       ${L("M104 120 C96 150 108 166 94 196", "var(--fire)", 12)}${L("M138 120 C146 146 136 164 152 190", "var(--fire-l)", 10)}
       ${H("M56 190 L84 140", 8)}`;
@@ -129,7 +129,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
       )
         .map(
           ([x, y, r]) =>
-            `<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" class="o" transform="rotate(30 ${x} ${y})" style="fill:var(--rock-d)"/>`,
+            `<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" class="o dl" transform="rotate(30 ${x} ${y})" style="fill:var(--rock-d)"/>`,
         )
         .join("")}
       ${F(cone, "var(--earth)")}${SH(cone, "M120 130 L200 130 L200 220 L146 220Z", "var(--earth-d)")}
@@ -260,7 +260,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
       ${E(120, 150, 26, 18, "var(--magma)", false)}${L("M120 156 L120 104", "var(--magma)", 16)}${IL("M120 156 L120 104", "var(--fire-l)", 5)}
       ${F("M20 100 L108 100 L112 92 L112 132 L20 132Z", "var(--rock)")}${F("M220 100 L132 100 L128 92 L128 132 L220 132Z", "var(--rock)")}
       ${ocean(20, 86, 92)}${ocean(128, 86, 92)}
-      ${whiteArrow("M92 116 L40 116")}${whiteArrow("M148 116 L200 116")}
+      <g class="dl">${whiteArrow("M92 116 L40 116")}${whiteArrow("M148 116 L200 116")}</g>
       ${AR("M84 56 L34 56", "var(--icon-ink)", 9)}${AR("M156 56 L206 56", "var(--icon-ink)", 9)}`,
     small: () =>
       `${RR(20, 140, 200, 70, "var(--mantle)", "rr2")}${RR(20, 96, 86, 44, "var(--rock)", "rr2")}${RR(134, 96, 86, 44, "var(--rock)", "rr2")}${L("M120 170 L120 96", "var(--magma)", 18)}${AR("M80 60 L30 60", "var(--icon-ink)", 12)}${AR("M160 60 L210 60", "var(--icon-ink)", 12)}`,
@@ -301,7 +301,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
       ${F(mtn, "var(--rock)")}${SH(mtn, "M124 30 L220 30 L220 130 L140 130Z", "var(--rock-d)")}
       ${P("M124 36 L114 62 L124 56 L134 62Z M84 64 L76 76 L84 72 L92 76Z", "#fff")}
       ${F("M20 120 L114 120 L120 160 L20 160Z", "var(--earth)")}${F("M220 120 L126 120 L120 160 L220 160Z", "var(--earth)")}
-      ${IL("M108 124 C100 140 112 148 104 158 M132 124 C140 140 128 148 136 158", "var(--earth-d)", 4)}
+      <g class="dl">${IL("M108 124 C100 140 112 148 104 158 M132 124 C140 140 128 148 136 158", "var(--earth-d)", 4)}</g>
       ${whiteArrow("M30 142 L80 142")}${whiteArrow("M210 142 L160 142")}`;
     },
     small: () =>
@@ -341,7 +341,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
       ${F("M124 122 C126 150 136 164 134 182 C132 198 112 198 112 182 C112 164 120 150 118 122Z", "var(--magma)")}
       ${F("M156 118 C156 134 164 142 162 152 C160 160 150 160 150 152 C150 142 152 134 150 118Z", "var(--magma)")}
       ${E(124, 206, 30, 12, "var(--magma)")}
-      <g transform="translate(206 150) scale(.09)">${F(DROP, "var(--water)", 0.09)}</g><g transform="translate(212 190) scale(.07)">${F(DROP, "var(--water)", 0.07)}</g>
+      <g class="dl"><g transform="translate(206 150) scale(.09)">${F(DROP, "var(--water)", 0.09)}</g><g transform="translate(212 190) scale(.07)">${F(DROP, "var(--water)", 0.07)}</g></g>
       ${H("M60 84 L80 62", 7)}`;
     },
   },
@@ -383,17 +383,17 @@ export const VOLCANOES: Record<string, IconDrawing> = {
     name: "Volcanic island",
     svg: () => {
       const cone = steepD(40, 200, 168, 108, 132, 70);
-      return `${cloud(
+      return `<g class="dl">${cloud(
         [
           [106, 46, 16],
           [126, 36, 20],
           [146, 48, 14],
         ],
         "var(--smoke)",
-      )}
+      )}</g>
       ${F(cone, "var(--earth)")}${SH(cone, "M120 60 L210 60 L210 180 L150 180Z", "var(--earth-d)")}${P("M108 70 L132 70 L128 76 L112 76Z", "var(--fire)")}
       ${IL("M108 76 C100 100 108 116 98 140", "var(--fire)", 7)}
-      ${RR(14, 160, 212, 56, "var(--ocean)", "rr2")}${IL("M30 182 q12 -8 24 0 t24 0 M130 196 q12 -8 24 0 t24 0", "var(--sky)", 5)}
+      ${RR(14, 160, 212, 56, "var(--ocean)", "rr2")}<g class="dl">${IL("M30 182 q12 -8 24 0 t24 0 M130 196 q12 -8 24 0 t24 0", "var(--sky)", 5)}</g>
       ${H("M66 150 L96 100", 7)}`;
     },
   },
@@ -402,7 +402,7 @@ export const VOLCANOES: Record<string, IconDrawing> = {
     svg: () => `${IL("M20 70 L60 70 L72 40 L88 104 L104 22 L120 96 L134 52 L146 80 L160 70 L220 70", "var(--icon-primary)", 7)}
       ${F("M20 140 L110 140 L96 162 L120 184 L100 214 L20 214Z", "var(--earth)")}${F("M132 130 L220 130 L220 214 L122 214 L142 184 L118 162Z", "var(--earth)")}
       ${P("M20 140 L110 140 L106 148 L20 148Z M132 130 L220 130 L220 138 L128 138Z", "var(--grass)")}
-      ${IL("M30 118 L42 126 M210 112 L198 120", "var(--icon-ink)", 5)}`,
+      <g class="dl">${IL("M30 118 L42 126 M210 112 L198 120", "var(--icon-ink)", 5)}</g>`,
   },
   "volcanic-gas": {
     name: "Volcanic gas",
@@ -424,17 +424,17 @@ export const VOLCANOES: Record<string, IconDrawing> = {
     name: "Town near a volcano",
     svg: () => {
       const cone = steepD(40, 220, 160, 116, 144, 50);
-      return `${cloud(
+      return `<g class="dl">${cloud(
         [
           [118, 34, 14],
           [136, 26, 16],
           [154, 36, 12],
         ],
         "var(--smoke)",
-      )}
+      )}</g>
       ${F(cone, "var(--earth)")}${SH(cone, "M130 40 L230 40 L230 170 L170 170Z", "var(--earth-d)")}${P("M116 50 L144 50 L140 56 L120 56Z", "var(--fire)")}
       ${RR(14, 160, 212, 56, "var(--grass)", "rr2")}
-      ${house(60, 168, 1, "var(--icon-primary)")}${house(112, 180, 0.9, "var(--icon-secondary)")}${house(164, 172, 0.95, "var(--icon-primary)")}`;
+      ${house(60, 168, 1, "var(--icon-primary)")}<g class="dl">${house(112, 180, 0.9, "var(--icon-secondary)")}</g>${house(164, 172, 0.95, "var(--icon-primary)")}`;
     },
   },
   hazard: {

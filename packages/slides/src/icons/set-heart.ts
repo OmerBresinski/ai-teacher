@@ -86,7 +86,7 @@ export const HEART: Record<string, IconDrawing> = {
     svg: () => `${AR("M100 108 C66 100 62 66 84 56", "var(--vein)", 10)}${AR("M156 56 C178 66 174 100 142 108", "var(--flesh)", 10)}
       ${AR("M142 150 C180 160 184 186 166 196", "var(--flesh)", 10)}${AR("M74 196 C56 186 60 160 98 150", "var(--vein)", 10)}
       <g transform="translate(120 30) scale(.42) translate(-120 -120)">${F(LUNG, "var(--pink)", 0.42)}<g transform="translate(240 0) scale(-1 1)">${F(LUNG, "var(--pink)", 0.42)}</g></g>
-      ${RR(78, 186, 84, 40, "var(--gut)", "rr2")}${cell(100, 206, 9, "var(--stomach)", "var(--vein-d)")}${cell(124, 206, 9, "var(--stomach)", "var(--vein-d)")}${cell(146, 206, 9, "var(--stomach)", "var(--vein-d)")}
+      ${RR(78, 186, 84, 40, "var(--gut)", "rr2")}<g class="dl">${cell(100, 206, 9, "var(--stomach)", "var(--vein-d)")}${cell(124, 206, 9, "var(--stomach)", "var(--vein-d)")}${cell(146, 206, 9, "var(--stomach)", "var(--vein-d)")}</g>
       ${miniHeart(120, 126, 0.26)}`,
     small: () => `${L("M120 120 m-62 0 a62 40 0 1 0 124 0 a62 40 0 1 0 -124 0", "var(--flesh)", 14)}
       ${IL("M58 120 a62 40 0 0 1 62 -40", "var(--vein)", 14)}${IL("M182 120 a62 40 0 0 1 -62 40", "var(--vein)", 14)}${miniHeart(120, 118, 0.34)}`,
@@ -131,7 +131,7 @@ export const HEART: Record<string, IconDrawing> = {
       ${F("M126 60 C140 38 170 36 182 48 C168 66 144 70 126 60Z", "var(--leaf)", 0.82)}
       ${F(apple, "var(--leaf-l)", 0.82)}${SH(apple, "M150 80 C200 110 196 190 130 206 C170 170 176 120 150 80Z", "var(--leaf-d)")}
       ${H("M70 116 C72 100 80 90 92 86", 10)}</g>
-      ${C(180, 60, 9, "var(--sun)")}${C(204, 84, 7, "var(--icon-secondary)")}${C(206, 52, 6, "var(--icon-primary)")}`;
+      <g class="dl">${C(180, 60, 9, "var(--sun)")}${C(204, 84, 7, "var(--icon-secondary)")}${C(206, 52, 6, "var(--icon-primary)")}</g>`;
     },
   },
   "water-in-blood": {

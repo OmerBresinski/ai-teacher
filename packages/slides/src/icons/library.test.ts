@@ -7,10 +7,12 @@ import {
   ICON_IDS,
   ICON_LIBRARY,
   ICON_SIZES,
+  ICON_STYLES,
   iconColourSet,
   iconImageSrc,
   iconSizeFor,
   iconSvg,
+  TINTED_ICONS,
 } from "./library";
 
 const THEMES = { warm: DEFAULT_ICON_COLOURS, cool: COOL_ICON_COLOURS };
@@ -23,24 +25,26 @@ describe("iconSvg: every drawing, size, age and theme", () => {
       for (const size of ICON_SIZES) {
         for (const age of ICON_AGES) {
           for (const [name, colours] of Object.entries(THEMES)) {
-            const svg = iconSvg(id, { colours, age, size });
-            const where = `${id} ${size} ${age} ${name}`;
-            expect(svg.startsWith("<svg"), where).toBe(true);
-            expect(XMLValidator.validate(svg), where).toBe(true);
-            expect(svg.includes("var("), `${where}: var(`).toBe(false);
-            expect(/\bclass=/.test(svg), `${where}: class`).toBe(false);
-            expect(/--[a-z]/.test(svg), `${where}: custom property`).toBe(false);
-            expect(/color-mix|calc\(|filter:/.test(svg), `${where}: css function`).toBe(false);
-            const allowed = iconColourSet({ colours, age });
-            for (const c of svg.match(HEX) ?? []) {
-              expect(allowed.has(c.toLowerCase()), `${where}: stray colour ${c}`).toBe(true);
+            for (const style of ICON_STYLES) {
+              const svg = iconSvg(id, { colours, age, size, style });
+              const where = `${id} ${size} ${age} ${name} ${style}`;
+              expect(svg.startsWith("<svg"), where).toBe(true);
+              expect(XMLValidator.validate(svg), where).toBe(true);
+              expect(svg.includes("var("), `${where}: var(`).toBe(false);
+              expect(/\bclass=/.test(svg), `${where}: class`).toBe(false);
+              expect(/--[a-z]/.test(svg), `${where}: custom property`).toBe(false);
+              expect(/color-mix|calc\(|filter:/.test(svg), `${where}: css function`).toBe(false);
+              const allowed = iconColourSet({ colours, age, style, tint: TINTED_ICONS.has(id) });
+              for (const c of svg.match(HEX) ?? []) {
+                expect(allowed.has(c.toLowerCase()), `${where}: stray colour ${c}`).toBe(true);
+              }
+              n++;
             }
-            n++;
           }
         }
       }
     }
-    expect(n).toBe(122 * 3 * 3 * 2);
+    expect(n).toBe(122 * 3 * 3 * 2 * 2);
   }, 30_000);
 
   test("px sets an intrinsic size for rasterisers", () => {
@@ -104,8 +108,48 @@ describe("hostile input", () => {
   });
 });
 
-describe("age treatment", () => {
-  const at = (age: (typeof ICON_AGES)[number]) => iconSvg("seedling", { age, idPrefix: "x" });
+describe("soft style (the default)", () => {
+  test("no dark outline at primary and secondary; soft gradients and a highlight", () => {
+    for (const age of ["primary", "secondary"] as const) {
+      const svg = iconSvg("volcano", { age });
+      expect(svg).not.toMatch(/paint-order/);
+      expect(svg).toContain("<radialGradient");
+      expect(svg).toMatch(/stroke:#ffffff/); // the highlight
+    }
+  });
+
+  test("early years only: a faint thin outline", () => {
+    const early = iconSvg("seedling", { age: "early" });
+    expect(early).toMatch(/stroke-width:3\.2;/);
+    expect(early).toContain("stroke-opacity:0.45");
+  });
+
+  test("organ icons take the theme's red family; other icons keep their colours", () => {
+    const hue = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+      return { r: r as number, g: g as number, b: b as number };
+    };
+    const fills = (svg: string) =>
+      [...svg.matchAll(/stop-color="(#[0-9a-f]{6})"/g)].map((m) => hue(m[1] as string));
+    // a pink accent tints the heart pink-red; a green accent leaves it red, never green
+    for (const accent of ["#C2185B", "#1F7A5C"]) {
+      const heart = iconSvg("heart", { colours: { primary: accent } });
+      for (const c of fills(heart)) expect(c.r).toBeGreaterThanOrEqual(c.g);
+    }
+    const leafy = fills(iconSvg("seedling", { colours: { primary: "#D7263D" } }));
+    expect(leafy.some((c) => c.g > c.r)).toBe(true);
+    expect(TINTED_ICONS.has("seedling")).toBe(false);
+  });
+
+  test("the pilot style is still available", () => {
+    expect(iconSvg("seedling", { style: "pilot" })).toMatch(/paint-order/);
+    expect(iconSvg("seedling", { style: "pilot" })).not.toContain("radialGradient");
+  });
+});
+
+describe("age treatment (pilot style)", () => {
+  const at = (age: (typeof ICON_AGES)[number]) =>
+    iconSvg("seedling", { age, idPrefix: "x", style: "pilot" });
 
   test("each age draws the same concept differently", () => {
     expect(new Set(ICON_AGES.map(at)).size).toBe(3);
@@ -126,9 +170,10 @@ describe("age treatment", () => {
 
   test("rounded corners follow the age radius", () => {
     // seedling's pot rim is an `rr` rect
-    expect(iconSvg("seedling", { age: "early" })).toContain('rx="30"');
-    expect(iconSvg("seedling", { age: "primary" })).toContain('rx="14"');
-    expect(iconSvg("seedling", { age: "secondary" })).toContain('rx="4"');
+    expect(iconSvg("seedling", { age: "early", style: "pilot" })).toContain('rx="30"');
+    expect(iconSvg("seedling", { age: "primary", style: "pilot" })).toContain('rx="14"');
+    expect(iconSvg("seedling", { age: "secondary", style: "pilot" })).toContain('rx="4"');
+    expect(iconSvg("seedling", { age: "early" })).toContain('rx="26"');
   });
 });
 
@@ -167,6 +212,7 @@ describe("snapshots", () => {
     test(id, () => {
       expect(iconSvg(id, { idPrefix: "snap" })).toMatchSnapshot();
       expect(iconSvg(id, { idPrefix: "snap", age: "early", size: "s" })).toMatchSnapshot();
+      expect(iconSvg(id, { idPrefix: "snap", style: "pilot" })).toMatchSnapshot();
     });
   }
 });
