@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type {
   GapTextElement,
+  ImageElement,
   Lesson,
   OptionElement,
   Slide,
@@ -17,6 +18,7 @@ import { demoLibrary } from "../model/starter";
 import { getTheme } from "../model/themes";
 import { resolveTextStyle } from "../slide/elements/kit";
 import { imageCredentials } from "./image-credentials";
+import { dataUrlImageSize } from "./image-size";
 import {
   answerText,
   buildSlidePlan,
@@ -954,6 +956,99 @@ describe("the emitted slide XML", () => {
     expect(xml[1]).toContain("Chlorophyll");
     expect(xml[0]).not.toBe(xml[1]);
   }, 30_000);
+
+  // TEACH-25 part b, row 6: the picture's source rectangle is its crop, so PowerPoint shows the
+  // editor's pixels (before, `sizing` was only cover/contain and a crop exported uncropped).
+  describe("a picture's crop is its source rectangle", () => {
+    // a 4x2 PNG
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR4nGM8kWLEAANMcBYDAwMAIbQBYsejYxUAAAAASUVORK5CYII=";
+    const picture = (over: Partial<ImageElement>): SlideElement =>
+      ({
+        id: "p",
+        type: "image",
+        x: 100,
+        y: 50,
+        w: 400,
+        h: 200,
+        src: png,
+        fit: "cover",
+        ...over,
+      }) as SlideElement;
+    const srcRect = (xml: string | undefined) => {
+      const m = /<a:srcRect l="(-?\d+)" r="(-?\d+)" t="(-?\d+)" b="(-?\d+)"\/>/.exec(xml ?? "");
+      return m ? m.slice(1).map(Number) : null;
+    };
+    const ext = (xml: string | undefined) => {
+      const m =
+        /<p:pic>[\s\S]*?<a:off x="(\d+)" y="(\d+)"\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(
+          xml ?? "",
+        );
+      return m ? m.slice(1).map(Number) : null;
+    };
+
+    it("a stored crop", async () => {
+      const [xml] = await write(deck([picture({ crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.5 } })]));
+      const [l = 0, r = 0, t = 0, b = 0] = srcRect(xml) ?? [];
+      // within 0.5% of the crop
+      expect(Math.abs(l - 10_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(r - 40_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(t - 20_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(b - 30_000)).toBeLessThanOrEqual(500);
+      // the frame is still the element's box
+      const EMU = 914_400;
+      const want = [100, 50, 400, 200].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+      expect(ext(xml)).toHaveLength(4);
+    }, 30_000);
+
+    it("a focal point with cover keeps that side of the picture", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200, focal: { x: 0, y: 0.5 } })]));
+      expect(srcRect(xml)).toEqual([0, 50_000, 0, 0]);
+    }, 30_000);
+
+    it("a crop stored for another box shape is re-derived round its focal point, as the editor does", async () => {
+      // a 2x zoom window made for a 2:1 box, on a box that has since become square
+      const [xml] = await write(
+        deck([
+          picture({
+            w: 200,
+            h: 200,
+            crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
+            focal: { x: 0.5, y: 0.5 },
+          }),
+        ]),
+      );
+      expect(srcRect(xml)).toEqual([37_500, 37_500, 25_000, 25_000]);
+    }, 30_000);
+
+    it("contain: the picture is placed at its own shape, centred, never stretched", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200, fit: "contain" })]));
+      expect(srcRect(xml)).toBeNull();
+      const EMU = 914_400;
+      const want = [100, 100, 200, 100].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+    }, 30_000);
+
+    it("a JPEG's size is read from its header too", () => {
+      const jpeg =
+        "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAADAAYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBtFFFeWeyf/9k=";
+      expect(dataUrlImageSize(jpeg)).toEqual({ w: 6, h: 3 });
+      expect(dataUrlImageSize(png)).toEqual({ w: 4, h: 2 });
+      expect(dataUrlImageSize("data:image/png;base64,AAAA")).toBeUndefined();
+    });
+
+    it("no crop and no focal: cover crops the overflow instead of stretching", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200 })]));
+      expect(srcRect(xml)).toEqual([25_000, 25_000, 0, 0]);
+    }, 30_000);
+  });
 
   it("offsets a grouped child by the group, in EMU", async () => {
     const group: SlideElement = {

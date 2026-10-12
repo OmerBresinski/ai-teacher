@@ -63,6 +63,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { withDiagramFonts } from "../images/diagram-fonts";
 import { resolveImageSrc } from "../images/resolve-src";
+import { type Crop, currentCrop, normaliseTransform, renderedFit } from "../lesson/image-adjust";
 import { normaliseAngle } from "../model/geometry";
 import { choiceText } from "../slide/elements/choice";
 import {
@@ -79,6 +80,7 @@ import {
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
+import { dataUrlImageSize } from "./image-size";
 import { slugify } from "./json";
 import { docToRuns, type RunParagraph } from "./runs";
 
@@ -1218,12 +1220,54 @@ async function drawImage(
       h: inches(element.h),
     },
   };
+  // PptxGenJS sizes "cover" and "contain" against the frame, not the picture, so a picture whose
+  // shape differs from its box came out stretched (TEACH-25 part b). With the picture's own size
+  // read from its header: a cover picture (and any crop or focal point) becomes its source
+  // rectangle, the window the editor shows (`currentCrop`); a contain picture is placed at its
+  // contained size, centred in the box. PptxGenJS's "crop" sizing takes the whole picture's size
+  // (the frame over the window) and the window inside it.
+  const natural = svg ? undefined : dataUrlImageSize(data);
+  const window = natural ? exportWindow(element, natural) : undefined;
+  if (window) {
+    const fullW = element.w / window.w;
+    const fullH = element.h / window.h;
+    options.w = inches(fullW);
+    options.h = inches(fullH);
+    options.sizing = {
+      type: "crop",
+      x: inches(window.x * fullW),
+      y: inches(window.y * fullH),
+      w: inches(element.w),
+      h: inches(element.h),
+    };
+  } else if (natural && renderedFit(element) === "contain") {
+    const k = Math.min(element.w / natural.w, element.h / natural.h);
+    const w = natural.w * k;
+    const h = natural.h * k;
+    options.x = inches(element.x + (element.w - w) / 2);
+    options.y = inches(element.y + (element.h - h) / 2);
+    options.w = inches(w);
+    options.h = inches(h);
+    delete options.sizing;
+  }
   if (element.alt) options.altText = element.alt;
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   if ((element.radius ?? 0) > 0) options.rounding = true;
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
+}
+
+/**
+ * The window a cover picture shows, as fractions of the picture: its crop, re-derived for the box
+ * as the editor does, else cover round its focal point. Undefined for a contain picture and for a
+ * turned, flipped or straightened one: its window is in the turned picture's frame, which a source
+ * rectangle cannot express, so it keeps PptxGenJS's cover.
+ */
+function exportWindow(element: ImageElement, natural: { w: number; h: number }): Crop | undefined {
+  if (renderedFit(element) !== "cover") return undefined;
+  if (normaliseTransform(element.imageTransform)) return undefined;
+  return currentCrop(element, natural);
 }
 
 /** A CORS-blocked or missing image leaves a labelled plate, never a broken deck. */
