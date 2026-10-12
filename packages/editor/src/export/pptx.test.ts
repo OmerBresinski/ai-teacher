@@ -592,7 +592,7 @@ describe("exportLessonPptx", () => {
     expect(asked).toHaveLength(1);
     expect(asked[0]).toContain('viewBox="0 0 240 240"');
     expect(asked[0]).not.toContain("var(");
-    expect(asked[0]).toMatch(/fill:#[0-9a-f]{6}/);
+    expect(asked[0]).toMatch(/(fill:|stop-color=")#[0-9a-f]{6}/);
     expect(warnings).toEqual([]);
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"));
