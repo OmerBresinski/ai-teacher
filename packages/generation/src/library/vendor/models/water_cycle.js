@@ -151,7 +151,8 @@ const LAND = {
     trees: [[44, 446, .8], [100, 430, .85], [156, 426, .8]],
     leafTops: [[44, 384], [100, 366], [156, 364]],
     // a simple river from the hill foot, passing left of the road, along the front and into the sea
-    river: 'M 318 500 C 326 550, 332 600, 380 630 S 560 652, 690 640',
+    // rises in the hills left of the road and runs in front of the street, never under the houses
+    river: 'M 296 470 C 296 560, 300 628, 384 640 S 560 660, 690 645',
     riverSegs: [[[318, 500], [326, 550], [332, 600], [380, 630]], [[380, 630], [428, 660], [560, 652], [690, 640]]],
     // rain lands on the roofs: each drop stops at the roof line under it
     rain: { x0: 452, rows: 6, cols: 6, oh: 240, floor: x => { const r = roofY(x); return r == null ? 554 : r - 22; } },

@@ -108,7 +108,7 @@ export const REGIONS = {
 /** Real places, [lon, lat]. Routes that must start and end at real places look names up here. */
 export const PLACES = {
   London: [-0.13, 51.51], Canterbury: [1.08, 51.28], Dover: [1.31, 51.13], Richborough: [1.33, 51.29], Colchester: [0.9, 51.89],
-  York: [-1.08, 53.96], Lindisfarne: [-1.8, 55.67], Edinburgh: [-3.19, 55.95], Cardiff: [-3.18, 51.48], Belfast: [-5.93, 54.6],
+  York: [-1.08, 53.96], Lindisfarne: [-1.8, 55.67], Edinburgh: [-3.19, 55.95], Cardiff: [-3.18, 51.48], Belfast: [-6.02, 54.58] /* a little inland of the true -5.93, so the coarse coastline keeps it on land */,
   Dublin: [-6.26, 53.35], Bath: [-2.36, 51.38], Winchester: [-1.31, 51.06], 'Sutton Hoo': [1.34, 52.09], Hastings: [0.59, 50.86],
   Boulogne: [1.61, 50.73], Calais: [1.86, 50.95], Paris: [2.35, 48.86], Rome: [12.5, 41.9], Athens: [23.73, 37.98], Sparta: [22.43, 37.07],
   Alexandria: [29.92, 31.2], Cairo: [31.24, 30.04], Giza: [31.13, 29.98], Carthage: [10.32, 36.85], Constantinople: [28.98, 41.01],

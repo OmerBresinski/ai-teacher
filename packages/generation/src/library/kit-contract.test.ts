@@ -61,17 +61,6 @@ const SHARED_FRAME: Record<string, Owned> = {
   "body_map/y1-senses": "body_map", // 6 captions, 5 frames
   "body_map/y3-skeleton-muscles": "body_map", // 8 captions, 7 frames
   "forces_magnets/y5-parachutes": "forces_magnets", // 5 captions, 3 frames
-  "seasons_weather/reception-four-seasons": "seasons_weather", // 5 captions, 4 frames
-  "seasons_weather/y1-weather": "seasons_weather", // 5 captions, 4 frames
-  "seasons_weather/y1-long-days": "seasons_weather", // 5 captions, 4 frames
-  "seasons_weather/y2-australia": "seasons_weather", // 5 captions, 4 frames
-  "rivers_coasts/y5-meander": "rivers_coasts", // 5 captions, 4 frames
-  "rivers_coasts/y6-oxbow": "rivers_coasts", // 6 captions, 5 frames
-  "climate_biomes/y5-amazon": "climate_biomes", // 8 captions, 7 frames
-  "climate_biomes/y2-polar": "climate_biomes", // 8 captions, 7 frames
-  "map_skills/r-our-school": "map_skills", // 5 captions, 3 frames
-  "community_helpers/r-street": "community_helpers", // 9 captions, 8 frames
-  "algorithm_grid/y2-debug": "algorithm_grid", // 11 captions, 10 frames
 };
 /** model/preset: the last click takes away words a caption names. */
 const LAST_CLICK_DROPS: Record<string, Owned> = {
@@ -92,7 +81,6 @@ const LAST_CLICK_DROPS: Record<string, Owned> = {
   "mixtures_separating/y5-filter": "mixtures_separating", // drops Filter paper in a funnel
   "volcano_earthquake/y3-inside": "volcano_earthquake", // drops Lava
   "volcano_earthquake/y4-pompeii": "volcano_earthquake", // drops Ash and pumice
-  "community_helpers/y1-call": "community_helpers", // drops Someone is breaking into a house.
 };
 /** model/preset: the last click replaces a named word on purpose, and the pupil sees why. */
 const MORPH: Record<string, string> = {

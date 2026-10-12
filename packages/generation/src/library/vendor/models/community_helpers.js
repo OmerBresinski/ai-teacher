@@ -32,7 +32,7 @@ export const meta = {
   id: "community_helpers",
   name: "People who help us",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["History", "Geography", "PSHE", "Understanding the world"],
   years: ["Reception", "Y1"],
   teaches:
@@ -819,7 +819,7 @@ export function render(root, P, ctx) {
   M.asks.forEach((a, j) => {
     const kA = bi(`ask:${a.j}`),
       kW = bi(`who:${a.j}`);
-    const g = h("g", { s: kA, hide: kW + 1 < N ? kW + 1 : N, cls: "rise" }, root);
+    const g = h("g", { s: kA, hide: kW + 1 < N ? kW + 1 : null, cls: "rise" }, root);
     const tmp = h("g", {}, root);
     const tb = textBlock(tmp, 0, 0, a.words, {
       cls: "ts-label",
@@ -875,12 +875,12 @@ export function render(root, P, ctx) {
     if (a.emergency)
       callPill(root, card.x + card.w + 24, card.y, card.h, {
         s: kW,
-        hide: kW + 1 < N ? kW + 1 : N,
+        hide: kW + 1 < N ? kW + 1 : null,
         cls: "pop",
       });
     if (!a.hp) return;
     const box = boxes[a.hp.i];
-    const ring = h("g", { s: kW, hide: kW + 1 < N ? kW + 1 : N }, root);
+    const ring = h("g", { s: kW, hide: kW + 1 < N ? kW + 1 : null }, root);
     const top =
       bd.sign && box.x < bd.sign.x + bd.sign.w && bd.sign.x < box.x + box.w
         ? Math.max(box.y, bd.sign.y + bd.sign.h + 8)
@@ -900,7 +900,8 @@ export function render(root, P, ctx) {
       ring,
     );
   });
-  if (EMERG) callPill(root, GRID.left, 124, 64, { s: N, cls: "pop" });
+  // no separate 999 pill on the summary: each emergency answer already carries its own, and the last
+  // scenario now stays on the final view (a lone pill there had no case)
 
   function callPill(p, x, y, hh, a) {
     const g = h("g", a, p);

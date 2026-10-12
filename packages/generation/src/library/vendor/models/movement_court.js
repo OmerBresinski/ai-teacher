@@ -12,7 +12,7 @@ import {
 import { court, player, ball, SPORT_DIMS, NETBALL_POSITIONS, NETBALL_ALLOWED, netballAllowed } from '../kit/batch-H.js';
 
 export const meta = {
-  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 2,
+  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 1,
   subjects: ['PE'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How a skill is made of phases in order, and how passing and moving into space beats defenders on a real court.',

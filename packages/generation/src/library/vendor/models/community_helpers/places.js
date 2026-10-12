@@ -56,7 +56,9 @@ export function backdrop(p, place, base, sign, signEdit, o = {}) {
   if (shop) periodObject(g, 'shopfront', shop[0], base, shop[1], {}, { sign, signEdit });
   // the sign goes on later, in the first spot clear of the helpers (their tall props, like a lollipop sign)
   function placeSign(layer, avoid = []) {
-    if (!sign || place === 'street') return null;
+    // a street gets a street-name plate (a custom name is already on its shopfront), so the opening
+    // scene is named and counts as its own build
+    if (!sign || (place === 'street' && o.custom)) return null;
     const w = measure(layer, sign, 'ts-label', { cls: 'strong' });
     const xx = xs ? xs(w) : [640, 470, 810, 380, 900];
     const at = cx => ({ x: cx - w / 2 - 16, y: signY - 36, w: w + 32, h: 48 });

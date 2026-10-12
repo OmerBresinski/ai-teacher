@@ -10,7 +10,7 @@ import {
 import { beatGrid, playhead, rhythmRow, CELL_BEATS, barBeats, keys, noteToMidi, NOTE_LETTERS } from '../kit/batch-H.js';
 
 export const meta = {
-  id: 'rhythm_grid', name: 'Beat, rhythm and pitch', kind: 'info', version: 1,
+  id: 'rhythm_grid', name: 'Beat, rhythm and pitch', kind: 'info', version: 2,
   subjects: ['Music'],
   years: ['Reception', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'The difference between the steady beat and the rhythm on top of it, how bars add up, and how notes step up and down in pitch.',
@@ -287,7 +287,8 @@ export function render(root, P, ctx) {
   const sx = []; // x of every sound, in order (for pitch letters)
   for (let bar = 0; bar < bars; bar++) {
     const { g, i } = at(bar); const k = bi(`clap:${bar}`), box = g.barBox(i); dur[`clap:${bar}`] = bt * BEAT_MS;
-    const light = h('g', { s: k, hide: hasPitch ? kP : N }, grid);
+    // the beat marks stay on the final view (they are what the pupils clapped); only a pitch panel replaces them
+    const light = h('g', { s: k, hide: hasPitch ? kP : null }, grid);
     for (const w of words[bar]) {
       const f = clamp((w.x - box.x) / box.w); const d = f * bt * BEAT_MS;
       if (w.dot) h('circle', { cx: w.dot[0], cy: w.dot[1], r: 26, fill: 'var(--focus)', s: k, cls: 'pop', delay: d }, light);
@@ -298,7 +299,7 @@ export function render(root, P, ctx) {
   // one playhead per row, shown during that row's clap builds only
   const heads = rows.map((g, r) => {
     const mine = sweeps.filter((s, bar) => at(bar).row === r); if (!mine.length) return null;
-    const ph = playhead(grid, g, { a: { s: mine[0].k, hide: mine[mine.length - 1].k + 1 } });
+    const ph = playhead(grid, g, { a: { s: mine[0].k, cls: 'live' } }); // the playhead is a motion cue: shown only while the bars play, never left on a still
     return { ph, mine };
   }).filter(Boolean);
   const placeHead = (k, u) => { for (const H of heads) { const s = H.mine.find(m => m.k === k) || (k > H.mine[H.mine.length - 1].k ? H.mine[H.mine.length - 1] : H.mine[0]); const x = s.box.x + (k === s.k ? u : k > s.k ? 1 : 0) * s.box.w; H.ph.marks[0].inner.setAttribute('transform', `translate(${x} 0)`); } };
