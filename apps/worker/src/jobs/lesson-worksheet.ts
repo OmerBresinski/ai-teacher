@@ -219,8 +219,13 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       if (keepLockForRetry) {
         logger.info({ worksheetId }, "worksheet generating lock kept for the retry");
       } else {
-        await clearGenerating(ws, worksheetId, jobId);
-        logger.debug({ worksheetId }, "worksheet generating lock released");
+        // Released after `runJob` writes the terminal event (TEACH-202 part j).
+        const release = async () => {
+          await clearGenerating(ws, worksheetId, jobId);
+          logger.debug({ worksheetId }, "worksheet generating lock released");
+        };
+        if (ctx.afterSettle) ctx.afterSettle(release);
+        else await release();
       }
     }
   },

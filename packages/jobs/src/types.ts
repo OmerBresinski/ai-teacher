@@ -62,6 +62,15 @@ export interface JobContext<K extends JobName, D = unknown> {
    * releases the lock. Hand-built test contexts may leave it out: `undefined` reads as `true`.
    */
   attemptsLeft?: boolean;
+  /**
+   * Runs `hook` once this attempt is settled: after its terminal event (or its retry notice) is
+   * written, or after the attempt failed to write one. A handler releases its generating lock
+   * here (TEACH-202 part j), so a client that sees the lock gone can always find the terminal
+   * event; releasing it first let a page read an unlocked row while it still waited for the
+   * outcome. `runJob` always sets it; hand-built test contexts may leave it out, and a handler then
+   * runs the work itself.
+   */
+  afterSettle?: (hook: () => Promise<void>) => void;
 }
 
 /** The optional fields of a `progress` event beyond `percent` and `message`. */
