@@ -29,7 +29,9 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
 import { contrastRatio } from "../look";
+import { SAFE_BOTTOM } from "../metrics";
 import { countLines } from "../text-measure";
+import { resolveFontSize } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
@@ -147,6 +149,12 @@ export type TemplateId =
 export type TemplateInput = {
   template: TemplateId;
   heading: string;
+  /**
+   * Big diagram with points: a long table moved across the slide (generation's `cardsUnder`) is
+   * laid across even when beside the words would draw it larger, since beside the words it does
+   * not hold its rows (y3 plants s9). The 18 pt type floor still holds.
+   */
+  across?: boolean;
   /** Title slide: the enquiry line under the title. Others: the one lead sentence. */
   lead?: string;
   /**
@@ -876,8 +884,10 @@ function ladder(
     const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
     if (total <= limit || k === rungs.length - 1) {
       if (total > limit) c.over.push(`${where.what} ${total}/${limit}pt`);
-      // Optical centre: a little above the band's middle, so a short column sits with its heading.
-      let y = where.top ?? Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+      // Optical centre: a little above the middle of the room (the band, or the band's top `limit`
+      // points when the foot is reserved), so a short column sits with its heading.
+      const mid = G.band.y + limit / 2;
+      let y = where.top ?? Math.max(G.band.y, Math.round(mid - limit * 0.06 - total / 2));
       for (const b of blocks) {
         b.draw(y);
         y += b.h + gap;
@@ -969,7 +979,7 @@ function numbered(
   x: number,
   w: number,
   what: string,
-  opts: { ruled?: boolean; after?: string; top?: number } = {},
+  opts: { ruled?: boolean; after?: string; top?: number; limit?: number } = {},
 ) {
   ladder(
     c,
@@ -1013,8 +1023,64 @@ function numbered(
       }
       return { blocks, gap: 0 };
     },
-    { what, ...(opts.top ? { top: opts.top } : {}) },
+    {
+      what,
+      ...(opts.top ? { top: opts.top } : {}),
+      ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
+    },
   );
+}
+
+/** The revealed answer's box (present's `Explanation`): an accent rule, a gap, then small copy. */
+export const ANSWER_GAP = 19;
+const ANSWER_RULE_W = 3;
+
+/**
+ * Height a question list's revealed model answer takes on the slide, with the gap above it: small
+ * copy across the safe width, each answer on its own line. Measured at the larger of the stage's
+ * and the theme's small size, so present never needs more room than this.
+ */
+export function answerHeight(c: Pick<Ctx, "s" | "t">, answer: string): number {
+  const size = Math.max(c.s.small, resolveFontSize(c.t, "small"));
+  const w = G.width - ANSWER_RULE_W - ANSWER_GAP;
+  const lines = answer
+    .split("\n")
+    .reduce((n, line) => n + countLines(line || " ", "small", c.t, w, c.t.weights.body, size), 0);
+  return Math.ceil(lines * size * c.t.lineHeights.small);
+}
+
+/**
+ * Question set, practice and exit ticket (TEACH-75 part k's reveal): the questions are laid above
+ * a lane at the foot that holds the revealed answers whole, as the hinge leaves its "Why?" lane.
+ * When the questions cannot fit above the lane at any rung, they take the band and the answers
+ * reveal on their own sheet under the heading; an answer too long even for that sheet is over.
+ * Returns the room the questions were laid in when the foot was reserved.
+ */
+function questionList(
+  c: Ctx,
+  answer: string | undefined,
+  lay: (cx: Ctx, limit?: number) => void,
+): number | undefined {
+  if (!answer) {
+    lay(c);
+    return undefined;
+  }
+  const limit = Math.min(G.band.h, SAFE_BOTTOM - ANSWER_GAP - answerHeight(c, answer) - G.band.y);
+  if (limit > 0) {
+    // A dry run: the questions over the lane, kept only when nothing is over.
+    const dry: Ctx = { ...c, els: [], over: [] };
+    lay(dry, limit);
+    if (!dry.over.length) {
+      lay(c, limit);
+      return limit;
+    }
+  }
+  lay(c);
+  // The sheet: the answer alone in the body under the heading.
+  const room = SAFE_BOTTOM - G.band.y;
+  const h = answerHeight(c, answer);
+  if (h > room) c.over.push(`answers ${h}/${room}pt`);
+  return undefined;
 }
 
 /** A step's bold label and its body: a point's own label, else the words before its first colon. */
@@ -1350,6 +1416,18 @@ function drawnSize(
   f: Figure | undefined,
   rect: { x: number; y: number; w: number; h: number },
 ) {
+  if (f && "drawn" in f) {
+    // An already-drawn figure (a library model, a re-layout) is placed as it would be in `rect`:
+    // its smallest text times that zoom. A drawing with no text has no size to keep.
+    const dry: Ctx = { ...c, els: [], over: [] };
+    if (!figurePanel(dry, f, rect)) return undefined;
+    const el = dry.els.find((e) => e.name === "Diagram") as {
+      w?: number;
+      h?: number;
+      src?: string;
+    };
+    return { fs: (el && shownMinFont(el)) ?? Number.POSITIVE_INFINITY };
+  }
   if (!f || !("diagram" in f) || diagramFailed(f.diagram)) return undefined;
   const i = G.inset;
   const r = drawDiagram(f.diagram, c.t, {
@@ -1402,6 +1480,14 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
   const kind = "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
   const pw = PLOT.test(kind) ? Math.min(G.width, Math.round(h * 1.7)) : G.width;
   const rect = { x: G.margin + Math.round((G.width - pw) / 2), y: G.band.y, w: pw, h };
+  // An already-drawn figure takes the same type checks (it skipped them, so a drawn bar model
+  // came across at 16 pt labels where beside the words it shows them larger: T2-CODE-RANK).
+  if ("drawn" in f) {
+    const big = drawnSize(d, f, rect);
+    const side = drawnSize(d, f, { x: G.panel.x, y: G.band.y, w: G.panel.w, h: G.band.h });
+    if (!big || big.fs < TYPE_FLOOR_PT || d.s.body < TYPE_FLOOR_PT) return false;
+    if (side && big.fs < side.fs) return false;
+  }
   if ("diagram" in f) {
     const big = drawnSize(d, f, rect);
     const side = drawnSize(d, f, { x: G.panel.x, y: G.band.y, w: G.panel.w, h: G.band.h });
@@ -1410,7 +1496,8 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
     // it does not draw beside the words; wide kinds (a flow, a timeline, a table) gain from width.
     // Type floor: every label shown at 18 pt or more, and the cards at body size, also 18 or more.
     if (!big || big.fs < TYPE_FLOOR_PT || d.s.body < TYPE_FLOOR_PT) return false;
-    if (side && (big.fs < side.fs || !WIDE.has(kind))) return false;
+    if (side && !(input.across && WIDE.has(kind)) && (big.fs < side.fs || !WIDE.has(kind)))
+      return false;
     // Not drawn beside the words: across the slide replaces the squashed band under the words
     // (register diagrams-05), never a figure the slide would otherwise lose to a fallback.
     if (!side && !WIDE.has(kind)) {
@@ -2200,17 +2287,24 @@ function layoutOnce(
     case "practice": {
       heading(c, input.heading);
       const qs = input.questions ?? [];
-      if (input.figure) {
-        numbered(c, qs, G.left.x, G.left.w, tpl, {
-          ...(input.instruction ? { after: input.instruction } : {}),
-        });
-        figurePanel(c, input.figure);
-      } else
-        numbered(c, qs, G.margin, 760, tpl, {
-          ruled: true,
-          ...(input.instruction ? { after: input.instruction } : {}),
-        });
       c.question = listAnswers(qs, input.answers);
+      const answer = c.question?.type === "open-response" ? c.question.modelAnswer : undefined;
+      // The revealed answers are measured with the questions (practice clipped its answers while
+      // `over` stayed empty): the questions lay out above the answers' lane at the foot.
+      const room = questionList(c, answer, (cx, limit) =>
+        numbered(cx, qs, input.figure ? G.left.x : G.margin, input.figure ? G.left.w : 760, tpl, {
+          ...(input.figure ? {} : { ruled: true }),
+          ...(input.instruction ? { after: input.instruction } : {}),
+          ...(limit !== undefined ? { limit } : {}),
+        }),
+      );
+      // A figure beside the questions stops above the answers' lane too.
+      if (input.figure)
+        figurePanel(
+          c,
+          input.figure,
+          room === undefined ? undefined : { x: G.panel.x, y: G.band.y, w: G.panel.w, h: room },
+        );
       if (!c.question) delete c.question;
       break;
     }

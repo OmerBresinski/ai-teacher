@@ -136,7 +136,7 @@ import {
 } from "./services";
 import { slideStates } from "./slide-states";
 import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
-import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
+import { continueTable, drawable, renumberSlideRefs, tableDrawn } from "./table-pack";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -837,11 +837,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         plan,
         visual: () => ({ status: "diagram", spec: drawable(t) }),
       });
-      return (
-        !m.over.length &&
-        !m.diagram?.length &&
-        m.slide.elements.some((e) => e.type === "image" && e.name === "Diagram")
-      );
+      return tableDrawn(sl, first, m);
     });
     if (!tc) {
       tableRest.delete(idx);

@@ -1,4 +1,5 @@
 import { LIMITS } from "@tj/slides/diagrams";
+import { G } from "@tj/slides/templates";
 
 // Long tables (UX ruling 197, register content-01 / diagrams-10): a table the writer wrote longer
 // than its slot holds is packed into up to 4 columns, and what still does not fit continues as a
@@ -73,7 +74,9 @@ export function readingRows(t: Table): { rows: string[][]; pairs: boolean } {
  * down the left and the rest down the right (1-6 | 7-12), so reading order holds across slides. A
  * picture-and-words slide goes across the slide (its points as key cards, ruling 194) so its first
  * part holds as many rows as a continuation. Continuation slides are big visuals headed
- * "<heading> (continued)". Undefined when even one entry cannot fit.
+ * "<heading> (continued)". A picture-and-words slide whose table holds no row across the slide
+ * keeps its words on its own slide (explain) and the whole table continues, full width, after it.
+ * Undefined when even one entry cannot fit.
  */
 export function continueTable(
   slide: S,
@@ -91,6 +94,12 @@ export function continueTable(
     slide.template === "visual-text"
       ? { ...slide, template: "big-visual", cardsUnder: true }
       : slide;
+  // When not one row holds across the slide under its words (KS2's key-card strip leaves under
+  // 160 pt), the words keep their own slide and the table starts, full width, on the next.
+  const { figure: _f, ...plain } = slide;
+  const words: S | undefined =
+    slide.template === "visual-text" ? { ...plain, template: "explain" } : undefined;
+  let wordsFirst = false;
   const cont = (t: Table): S => ({
     template: "big-visual",
     heading: `${String(slide.heading ?? "")} (continued)`,
@@ -105,10 +114,11 @@ export function continueTable(
   const parts: Table[] = [];
   let at = 0;
   while (at < list.length) {
-    if (parts.length === MAX_SLIDES) return undefined;
+    if (parts.length + (wordsFirst ? 1 : 0) === MAX_SLIDES) return undefined;
+    const own = !parts.length && !wordsFirst;
     const ok = (k: number) => {
       const t = chunk(list.slice(at, at + k));
-      return fits(parts.length ? cont(t) : { ...top, figure: t }, parts.length === 0);
+      return fits(own ? { ...top, figure: t } : cont(t), own);
     };
     let lo = 0;
     let hi = Math.min(most, list.length - at);
@@ -117,12 +127,17 @@ export function continueTable(
       if (ok(mid)) lo = mid;
       else hi = mid - 1;
     }
+    if (!lo && own && words) {
+      wordsFirst = true;
+      continue;
+    }
     if (!lo) return undefined;
     parts.push(chunk(list.slice(at, at + lo)));
     at += lo;
   }
-  const [head, ...tail] = parts;
-  if (!head) return undefined;
+  const head = wordsFirst ? undefined : parts[0];
+  const tail = wordsFirst ? parts : parts.slice(1);
+  if (!head && !(wordsFirst && words)) return undefined;
   // The continuation slides share what is left evenly (not 12 rows then 2): the same number of
   // slides, each taking its share of the consecutive entries, never more than fitted greedily.
   const after = list.slice(list.length - tail.reduce((a, t) => a + entries(t, pairs), 0));
@@ -133,7 +148,37 @@ export function continueTable(
     at2 += share;
   }
   const balanced = even.every((t) => fits(cont(t), false)) ? even : tail;
-  return { first: { ...top, figure: head }, rest: balanced.map(cont) };
+  return {
+    first: head ? { ...top, figure: head } : (words as S),
+    rest: balanced.map(cont),
+  };
+}
+
+/**
+ * Whether a laid-out candidate (`materialise`) draws its table whole: nothing over, no diagram
+ * fault, the table drawn. The first part of a picture-and-words slide moved across for its table
+ * (`cardsUnder`) must draw it across, wider than the side panel: a table that fits only beside the
+ * words is the half-width table the move is there to prevent (y3 plants s9 drew 4 rows beside the
+ * bullets and continued the 5th). So a table takes the full width before it is continued, and is
+ * continued only when it does not fit even there.
+ */
+export function tableDrawn(
+  sl: S,
+  first: boolean,
+  m: {
+    over: unknown[];
+    diagram?: unknown[];
+    slide: { elements: { type: string; name?: string; w: number }[] };
+  },
+): boolean {
+  const across = first && sl.cardsUnder === true;
+  return (
+    !m.over.length &&
+    !m.diagram?.length &&
+    m.slide.elements.some(
+      (e) => e.type === "image" && e.name === "Diagram" && (!across || e.w > G.panel.w),
+    )
+  );
 }
 
 const SLIDE_REF = /\b([Ss]lides?)(\s+)(\d+)\b/g;
