@@ -1,6 +1,9 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  ANSWER_GAP,
+  ANSWER_RULE_W,
+  answerRevealLayout,
   growFixedText,
   isDiagramMark,
   slideArtVariant,
@@ -19,14 +22,12 @@ import {
 } from "react";
 import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
 import { hasExplanationPanel } from "../layout/explanation";
-import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
 import { choiceMarks } from "./elements/choice";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
   explanationText,
-  fontFloor,
   isStatic,
   optionPositions,
   resolveFontSize,
@@ -292,7 +293,13 @@ export function SlideView({
             <ExplanationPanel slide={slide} theme={theme} text={explanation} mode={mode} />
           ) : null
         ) : explanation ? (
-          <Explanation slide={slide} theme={theme} text={explanation} mode={mode} />
+          <Explanation
+            slide={slide}
+            elements={drawn}
+            theme={theme}
+            text={explanation}
+            mode={mode}
+          />
         ) : null}
       </div>
     </ImageOriginProvider>
@@ -339,72 +346,55 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
 /* Question reveal chrome                                              */
 /* ------------------------------------------------------------------ */
 
-const bottomOf = (el: SlideElement) => el.y + el.h;
-
-/** Gap between the lowest card and the explanation, and the smallest lane worth having. */
-const EXPLANATION_GAP = 19;
-const EXPLANATION_MIN_LANE = 48;
-const RULE_W = 3;
-
 /**
- * Reveal copy, under the options. Never overlaps them and never moves a card — and when
- * the lane is too short for the copy it steps the type down one stop and, failing that,
- * warns the author in edit mode rather than truncating in silence (research/04 §4).
+ * The revealed model answer on an open-response slide. Its box comes from `answerRevealLayout`
+ * (`@tj/slides`): under the content when it fits there, else a sheet over the body under the
+ * heading (TEACH-75 part k). Either way it is opaque, holds every line of the answer, keeps the
+ * answer's own line breaks, and never sits on text it does not cover outright. What still does
+ * not fit at the floor is cut on a whole line and flagged in edit mode.
  */
 function Explanation({
   slide,
+  elements,
   theme,
   text,
   mode,
 }: {
   slide: Slide;
+  elements: readonly SlideElement[];
   theme: Theme;
   text: string;
   mode: SlideMode;
 }) {
-  const options = slide.elements.filter((e) => e.type === "option");
-  const anchors = options.length > 0 ? options : slide.elements;
-  const below = anchors.reduce<number>((m, e) => Math.max(m, bottomOf(e)), SAFE.y);
-  const top = Math.min(below + EXPLANATION_GAP, SLIDE_H - SAFE.y - EXPLANATION_MIN_LANE);
-  const available = SLIDE_H - SAFE.y - top;
-
-  const lineHeight = theme.lineHeights.small;
-  const width = SAFE.w - RULE_W - EXPLANATION_GAP;
-  // Deterministic in every mode: no measurement, so capture and SSR agree with the
-  // editor. ~0.5em average advance is close enough to pick a stop.
-  const heightAt = (size: number) =>
-    Math.ceil(
-      Math.max(1, Math.ceil(text.length / Math.max(1, Math.floor(width / (size * 0.5))))) *
-        size *
-        lineHeight,
-    );
-
-  const base = resolveFontSize(theme, "small");
-  const floor = fontFloor("small");
-  const stepped = Math.max(floor, Math.round(base * 0.86));
-  const size = heightAt(base) <= available ? base : stepped;
-  const overflowing = heightAt(size) > available;
-
+  const box = answerRevealLayout({ elements: [...elements] }, theme, text);
+  const line = box.fontSize * box.lineHeight;
+  const shown = Math.max(1, Math.min(box.lines, Math.floor(box.h / line)));
   return (
     <div
       data-answer-anim=""
+      data-answer-reveal={box.mode}
       style={{
         position: "absolute",
-        left: SAFE.x,
-        top,
-        width: SAFE.w,
-        maxHeight: available,
-        overflow: "hidden",
+        left: box.x,
+        top: box.y,
+        width: box.w,
+        height: box.h,
+        boxSizing: "border-box",
         display: "flex",
-        gap: EXPLANATION_GAP,
+        alignItems: "flex-start",
+        gap: ANSWER_GAP,
+        // Opaque: the instruction (under) or the questions (sheet) it stands over do not show
+        // through it.
+        background: slide.background?.color ?? theme.colors.background,
         zIndex: 900,
       }}
     >
       <span
         aria-hidden
         style={{
-          flex: `0 0 ${RULE_W}px`,
-          width: RULE_W,
+          flex: `0 0 ${ANSWER_RULE_W}px`,
+          width: ANSWER_RULE_W,
+          height: Math.ceil(shown * line),
           background: theme.colors.accent,
           borderRadius: 2,
         }}
@@ -412,20 +402,20 @@ function Explanation({
       <p
         style={{
           margin: 0,
+          maxHeight: Math.ceil(shown * line),
+          overflow: "hidden",
+          whiteSpace: "pre-line",
           fontFamily: theme.fonts.body,
-          fontSize: size,
-          lineHeight,
+          fontSize: box.fontSize,
+          lineHeight: box.lineHeight,
           fontWeight: theme.weights.body,
           color: theme.colors.ink,
         }}
       >
         {text}
       </p>
-      {overflowing && mode === "edit" ? (
-        <OverflowGlyph
-          theme={theme}
-          title="This explanation is longer than the room under the options."
-        />
+      {box.overflowing && mode === "edit" ? (
+        <OverflowGlyph theme={theme} title="This answer is longer than the room on the slide." />
       ) : null}
     </div>
   );

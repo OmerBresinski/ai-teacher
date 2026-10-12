@@ -10,6 +10,7 @@
  * `bundle.test.ts` holds the line.
  */
 
+export * from "./answer-reveal";
 export * from "./answers-slide";
 export * from "./background";
 export * from "./callout";
