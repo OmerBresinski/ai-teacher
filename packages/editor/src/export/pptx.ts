@@ -76,6 +76,7 @@ import {
   resolveFontSize,
   resolveTextStyle,
 } from "../slide/elements/kit";
+import { libraryIconSvg, loadIconLibrary, svgDataUrl } from "../slide/elements/library-icon";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
@@ -764,7 +765,7 @@ async function drawElement(
       await drawImage(pptxSlide, element, theme, ctx);
       return;
     case "icon":
-      await drawIcon(pptxSlide, element, theme);
+      await drawIcon(pptxSlide, element, theme, ctx);
       return;
     case "group": {
       // A child of a group has its own reveal step, and the renderer hides it on
@@ -1251,14 +1252,35 @@ function drawMissingImage(pptxSlide: PptxGenJS.Slide, element: ImageElement, the
   });
 }
 
+/**
+ * A drawn library icon (TEACH-310 part b) as a PNG data URL: the library SVG already carries
+ * literal colours, so it goes through the same rasteriser as diagrams, at twice the box (which
+ * the rasteriser draws at 2x: 4x pixels, as the lucide icons). Null when the element has no
+ * concept or the library does not know it, so the lucide `icon` draws instead.
+ */
+async function libraryIconDataUrl(
+  element: IconElement,
+  theme: Theme,
+  size: number,
+  rasterise: DrawContext["rasteriseSvg"],
+): Promise<string | null> {
+  if (!element.concept) return null;
+  const svg = libraryIconSvg(await loadIconLibrary(), element.concept, theme, size, size * 4);
+  if (!svg) return null;
+  return (await rasterise(svgDataUrl(svg), size * 2, size * 2).catch(() => undefined)) ?? null;
+}
+
 async function drawIcon(
   pptxSlide: PptxGenJS.Slide,
   element: IconElement,
   theme: Theme,
+  ctx: Pick<DrawContext, "rasteriseSvg">,
 ): Promise<void> {
   const size = Math.max(8, Math.min(element.w, element.h));
   const color = element.color ?? theme.colors.accent;
-  const data = await iconDataUrl(element, color, size);
+  const data =
+    (await libraryIconDataUrl(element, theme, size, ctx.rasteriseSvg)) ??
+    (await iconDataUrl(element, color, size));
   const x = element.x + (element.w - size) / 2;
   const y = element.y + (element.h - size) / 2;
   if (data) {

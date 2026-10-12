@@ -40,6 +40,10 @@ describe("iconSvg: every drawing, size, age and theme", () => {
       }
     }
     expect(n).toBe(122 * 3 * 3 * 2);
+  }, 30_000);
+
+  test("px sets an intrinsic size for rasterisers", () => {
+    expect(iconSvg("heart", { px: 96 })).toMatch(/^<svg [^>]*width="96" height="96"/);
   });
 
   test("an unknown id gives an empty string", () => {

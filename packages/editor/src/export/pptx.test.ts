@@ -560,6 +560,53 @@ describe("exportLessonPptx", () => {
     expect(failed.warnings).toEqual(["A diagram could not be drawn as a picture: A square"]);
   }, 30_000);
 
+  it("draws a library icon from its SVG in literal colours (TEACH-310 part b)", async () => {
+    const [water] = demoLibrary();
+    const first = water?.slides[0];
+    if (!water || !first) throw new Error("fixture");
+    const icon = (concept: string) =>
+      ({
+        id: `ic-${concept}`,
+        type: "icon",
+        icon: "sparkles",
+        concept,
+        x: 100,
+        y: 100,
+        w: 120,
+        h: 120,
+      }) as SlideElement;
+    const lesson: Lesson = {
+      ...water,
+      slides: [{ ...first, elements: [icon("canopic-jar"), icon("kitten")] }],
+    };
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const asked: { svg: string; w: number; h: number }[] = [];
+    const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+      rasteriseSvg: async (src, w, h) => {
+        asked.push({
+          svg: decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")),
+          w,
+          h,
+        });
+        return png;
+      },
+    });
+    // only the library concept goes through the rasteriser; the unknown one stays a lucide glyph
+    expect(asked).toHaveLength(1);
+    const [only] = asked;
+    expect(only?.svg).toStartWith("<svg");
+    expect(only?.svg).toContain('viewBox="0 0 240 240"');
+    expect(only?.svg).not.toContain("var(");
+    expect(only?.svg).toMatch(/fill:#[0-9a-f]{6}/);
+    // twice the box, which the rasteriser draws at 2x: 4x pixels, as the lucide icons get
+    expect([only?.w, only?.h]).toEqual([240, 240]);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    expect(
+      Object.keys(zip.files).some((f) => f.startsWith("ppt/media/") && f.endsWith(".png")),
+    ).toBe(true);
+  }, 30_000);
+
   it("exports an image-match slide without throwing", async () => {
     const [water] = demoLibrary();
     if (!water) throw new Error("fixture");

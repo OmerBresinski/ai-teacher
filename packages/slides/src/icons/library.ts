@@ -37,6 +37,8 @@ export interface IconSvgOptions {
   size?: IconSize;
   /** Prefix for the SVG's internal ids; defaults to a fresh one per call. */
   idPrefix?: string;
+  /** Width and height attributes, for a rasteriser that needs an intrinsic size. */
+  px?: number;
 }
 
 let calls = 0;
@@ -51,5 +53,6 @@ export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
   const size = opts.size ?? "m";
   const markup = size === "s" && drawing.small ? drawing.small() : drawing.svg();
   const body = flatten(markup, { ...opts, size, idPrefix: opts.idPrefix ?? `tji${++calls}` });
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">${body}</svg>`;
+  const box = opts.px ? ` width="${opts.px}" height="${opts.px}"` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${box}>${body}</svg>`;
 }

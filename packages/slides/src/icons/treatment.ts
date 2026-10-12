@@ -156,7 +156,7 @@ export const AGE_TOKENS: Readonly<Record<IconAge, AgeTokens>> = {
 type Rgb = [number, number, number];
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-function parseHex(hex: string): Rgb {
+export function parseHex(hex: string): Rgb {
   let h = hex.trim().replace(/^#/, "");
   if (h.length === 3 || h.length === 4) h = [...h.slice(0, 3)].map((c) => c + c).join("");
   if (!/^[0-9a-fA-F]{6}/.test(h)) throw new Error(`icon colour must be #rgb or #rrggbb: ${hex}`);
@@ -236,7 +236,7 @@ function fromOklab([L, a, b]: Rgb): Rgb {
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ].map((v) => fromLinear(clamp01(v))) as Rgb;
 }
-function mixOklab(a: string, b: string, share: number): string {
+export function mixOklab(a: string, b: string, share: number): string {
   const x = toOklab(parseHex(a));
   const y = toOklab(parseHex(b));
   return toHex(

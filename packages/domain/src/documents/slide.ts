@@ -317,10 +317,16 @@ export type PathElement = ElementBase & {
 
 export type IconElement = ElementBase & {
   type: "icon";
-  /** lucide icon name in kebab-case, e.g. 'lightbulb'. */
+  /** lucide icon name in kebab-case, e.g. 'lightbulb'; drawn when `concept` is absent or unknown. */
   icon: string;
   color?: string;
   strokeWidth?: number;
+  /**
+   * A drawn-library concept id (`@tj/slides/icons`, e.g. 'canopic-jar', TEACH-310 part b). When
+   * the library has it, the element draws that illustration in the slide theme's icon colours
+   * instead of the lucide `icon`.
+   */
+  concept?: string;
 };
 
 export type TableElement = ElementBase & {
@@ -612,6 +618,7 @@ const IconElementSchema = z.object({
   icon: z.string(),
   color: z.string().optional(),
   strokeWidth: z.number().optional(),
+  concept: z.string().optional(),
 });
 
 const TableElementSchema = z.object({
