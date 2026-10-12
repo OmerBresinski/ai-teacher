@@ -159,9 +159,9 @@ describe("a failed title picture: one search for the topic, then no picture slot
     expect(els.some((e) => e.type === "image")).toBe(false);
   });
 
-  test("a history lesson's retry is a named (real-only) ask, whatever the failed ask said", async () => {
+  test("ruling 210: a history lesson's retry is asked afresh (the director decides real only)", async () => {
     const { asked } = await run(false, { brief: { historicalPeriod: "Ancient Egypt" } });
-    expect(asked[0]).toMatchObject({ named: true });
+    expect(asked[0]).toMatchObject({ named: false });
   });
 
   test("a title already re-asked this round is laid out with no picture, and says so", async () => {

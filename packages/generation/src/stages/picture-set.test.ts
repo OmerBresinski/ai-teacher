@@ -16,6 +16,7 @@ import {
   STRIP_ATTEMPTS,
   setImagePrompt,
   setIsGenerated,
+  setLookFor,
   setMode,
   setSize,
   soloImagePrompt,
@@ -333,15 +334,10 @@ describe("the set flow", () => {
       expect(f.logs.filter((l) => l.ev === "set-capped")).toHaveLength(1);
     }
   });
-  test("named things and history are not generated sets (ruling 163)", () => {
+  test("ruling 210: only a set naming a specific real thing is not generated", () => {
     expect(setIsGenerated(asks(2), { subject: "science" })).toBe(true);
-    expect(setIsGenerated(asks(2), { subject: "history" })).toBe(false);
-    expect(
-      setIsGenerated(
-        asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
-        { subject: "science" },
-      ),
-    ).toBe(false);
+    // Historical scenes and processes are generated (in one drawn style: `setLookFor`).
+    expect(setIsGenerated(asks(2), { subject: "history" })).toBe(true);
     expect(
       setIsGenerated(
         [
@@ -350,7 +346,15 @@ describe("the set flow", () => {
         ],
         { subject: "geography" },
       ),
+    ).toBe(true);
+    expect(
+      setIsGenerated(
+        asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
+        { subject: "science" },
+      ),
     ).toBe(false);
+    expect(setLookFor({ subject: "history" }, ["A chick"])?.style).toBe("illustration");
+    expect(setLookFor({ subject: "science" }, ["A chick"])).toBeUndefined();
   });
 });
 

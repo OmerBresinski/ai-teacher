@@ -155,7 +155,7 @@ describe("match6 on any slide", () => {
   });
 });
 
-describe("a history card takes the real ladder (ruling 163), never generate-then-drop", () => {
+describe("a named history card takes the real ladder (rulings 163, 210), never generate-then-drop", () => {
   test("its picture is searched in stock and the generator is never called", async () => {
     const made: string[] = [];
     const pictures = createWriterPictures({
@@ -191,7 +191,7 @@ describe("a history card takes the real ladder (ruling 163), never generate-then
           ],
         }),
     });
-    pictures.start(4, ask({ key: "card.0", shows: "A ship", mustSee: ["a ship"] }), {
+    pictures.start(4, ask({ key: "card.0", shows: "A ship", mustSee: ["a ship"], named: true }), {
       heading: "Match the pictures",
       text: "A ship",
       point: "",

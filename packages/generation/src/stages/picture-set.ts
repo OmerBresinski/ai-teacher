@@ -251,16 +251,25 @@ export interface PictureSetDeps {
 }
 
 /**
- * True when these panels are made as one generated set: no named real thing, not a history
- * lesson, and not change across real time. Those take the director's per-picture ladder (Commons
- * first, ruling 163).
+ * True when these panels are made as one generated set (ruling 210): every set but one naming a
+ * specific real thing (a named person, a specific artefact or document, a real place as it looks
+ * today). Historical scenes, processes and everyday life are generated, in one drawn style
+ * (`setLookFor`); a named set takes the real ladder only (ruling 163).
  */
-export function setIsGenerated(asks: SetAsk[], lesson: PeriodFields): boolean {
-  return (
-    !asks.some((a) => a.named) &&
-    !isHistoricalLesson(lesson) &&
-    !isHistoricalSet(asks.map((a) => a.shows))
-  );
+export function setIsGenerated(asks: SetAsk[], _lesson?: PeriodFields): boolean {
+  return !asks.some((a) => a.named);
+}
+
+/**
+ * The look a generated set is made in: a historical lesson or set is drawn or painted, never
+ * photo-style (rulings 163, 209), and every panel takes the same look, so a set never mixes.
+ */
+export function setLookFor(
+  lesson: PeriodFields,
+  shows: string[],
+  look?: LessonLook,
+): LessonLook | undefined {
+  return isHistoricalLesson(lesson) || isHistoricalSet(shows) ? illustratedLook(look) : look;
 }
 
 /**
@@ -289,24 +298,6 @@ const dataUrl = (png: Uint8Array) => `data:image/png;base64,${Buffer.from(png).t
  */
 export function illustratedLook(look?: LessonLook): LessonLook {
   return { ...(look ?? {}), style: "illustration" } as LessonLook;
-}
-
-/**
- * Ruling 209 (with 163): what a named or historical set does once its real search is done.
- * - `real`: every panel has a real picture; the set ships real.
- * - `cards`: history activity cards stay real or their word (163, TEACH-101 part c); landed kept.
- * - `drop`: a named set (people, specific artefacts) is real only (163); with a miss the whole set
- *   goes, since a caption tile stands only for a generated panel that failed (209).
- * - `illustrate`: any other miss illustrates the whole set in one drawn style; the real pictures
- *   found are not used, so a set never mixes real and generated.
- */
-export function setAfterRealSearch(
-  landed: boolean[],
-  kind: { named: boolean; cards: boolean },
-): "real" | "cards" | "drop" | "illustrate" {
-  if (landed.every(Boolean)) return "real";
-  if (kind.cards) return "cards";
-  return kind.named ? "drop" : "illustrate";
 }
 
 /** The style a set is made in, from the lesson's look. */

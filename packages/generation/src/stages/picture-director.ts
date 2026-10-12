@@ -42,14 +42,13 @@ import {
 } from "./photo-bank";
 import {
   directedSetJudges,
-  illustratedLook,
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
   type SetAsk,
   type SetPicture,
-  setAfterRealSearch,
   setIsGenerated,
+  setLookFor,
 } from "./picture-set";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
@@ -1150,9 +1149,9 @@ export function createWriterPictures(opts: {
    * Ruling 163 for activity cards (TEACH-101 part c): a history card is a searched picture or its
    * word, never a generated picture (no painted fallback either).
    */
-  const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
-    ask.key.startsWith("card.") &&
-    (ask.named || isHistoricalLesson(opts.lesson) || isHistoricalSet(shows));
+  // Ruling 210: real-only is for a specific real thing (a named ask) only.
+  const realOnly = (ask: WriterPhotoAsk, _shows: string[]) =>
+    ask.key.startsWith("card.") && ask.named;
   const place = (
     slot: Slot,
     index: number,
@@ -1323,37 +1322,24 @@ export function createWriterPictures(opts: {
         },
       );
     if (!setIsGenerated(asks, opts.lesson)) {
-      // Ruling 209 (with 163): a named or historical set searches real sources for every panel
-      // first (the director's ladder, real only: never a generated panel beside a real one).
+      // Rulings 163 and 210: a set naming a specific real thing takes the real ladder only, each
+      // panel; a panel with no real picture is a caption tile, never a generated picture beside
+      // real ones.
       void Promise.all(
         panels.map(({ ask, slot }) =>
           slot ? place(slot, group.index, ask, group.slide, true) : undefined,
         ),
-      ).then(() => {
-        const how = setAfterRealSearch(
-          panels.map(({ slot }) => slot?.state.status === "photo"),
-          {
-            named: asks.some((a) => a.named),
-            cards: asks.some((a) => a.key.startsWith("card.")),
-          },
-        );
-        deps.logger.info({ stage: "generate", ev: "set-real", set: setId, how }, "picture set");
-        if (how === "real" || how === "cards") return finish();
-        // One source type per set: the real pictures found are not used beside generated ones.
-        for (const { ask, slot } of panels) {
-          if (!slot) continue;
-          if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
-          heldPhotos.delete(id(group.index, ask.key));
-          slot.state = how === "drop" ? { status: "failed" } : { status: "pending" };
-          slot.miss = how === "drop" ? "set-real-incomplete" : undefined;
-        }
-        if (how === "drop") return finish();
-        // Any panel without a real picture: the whole set is illustrated in one drawn style.
-        generateSet(illustratedLook(setLook));
-      }, finish);
+      ).then(finish, finish);
       return;
     }
-    generateSet(setLook);
+    // Ruling 210: anything else is generated, in one look (drawn for history, rulings 163/209).
+    generateSet(
+      setLookFor(
+        opts.lesson,
+        asks.map((a) => a.shows),
+        setLook,
+      ),
+    );
   };
 
   /**

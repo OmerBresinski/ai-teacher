@@ -20,7 +20,6 @@ import {
   writerAskBrief,
 } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
-import { setAfterRealSearch } from "./picture-set";
 
 const DIRECTOR_INPUT = DIRECTOR_FIXTURES[0]?.input as never;
 const PNG =
@@ -674,9 +673,9 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     });
   const card = ask({ key: "card.0", shows: "A ship", mustSee: ["a ship"], named: false });
 
-  test("a history card never shows a generated picture: it fails and the card shows its word", async () => {
+  test("a named history card never shows a generated picture: it fails and the card shows its word", async () => {
     const pictures = generatedOnly("History");
-    pictures.start(4, card, slide);
+    pictures.start(4, { ...card, named: true }, slide);
     await pictures.settle(5_000);
     expect(pictures.state(4, "card.0").status).toBe("failed");
     expect([...pictures.sources().values()]).toEqual([]);
@@ -698,8 +697,9 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
         }),
         title,
       );
+      // Ruling 210: a generic history card may be generated; a named one is real only.
       const c = generatedOnly(lesson);
-      c.start(4, card, slide);
+      c.start(4, { ...card, named: true }, slide);
       await Promise.all([t.settle(5_000), c.settle(5_000)]);
       return {
         title: t.state(0, "picture").status,
@@ -713,9 +713,10 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     expect(await outcome(egypt)).toEqual(history);
     // Fiction in the period follows the constant; a present-day lesson is not held back.
     const fiction = await outcome({ ...egypt, fictionInPeriod: true });
-    expect(fiction.card).toBe(FICTION_IN_PERIOD_IS_HISTORICAL ? "failed" : "photo");
+    expect(fiction.card).toBe("failed");
+    void FICTION_IN_PERIOD_IS_HISTORICAL;
     const today = await outcome({});
-    expect(today.card).toBe("photo");
+    expect(today.card).toBe("failed");
     // The title ask takes the same guarded ladder (findDirected's \`historical\`) as a History one.
     expect(today.title).toBe(history.title);
   });
@@ -742,7 +743,7 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     expect(history.state(4, "picture").status).toBe("photo");
   });
 
-  test("a history card set is never made by the generator", async () => {
+  test("a named history card set is never made by the generator (rulings 163, 210)", async () => {
     let made = 0;
     const pictures = createWriterPictures({
       lesson: { ...sampleBriefLesson(), subject: "History" },
@@ -765,7 +766,7 @@ describe("ruling 163 on activity cards (TEACH-101 part c)", () => {
     for (const k of [0, 1])
       pictures.start(
         4,
-        ask({ key: `card.${k}`, shows: `A Roman coin ${k}`, named: false, set: "cards" }),
+        ask({ key: `card.${k}`, shows: `A Roman coin ${k}`, named: true, set: "cards" }),
         slide,
       );
     await pictures.settle(5_000);
@@ -1277,55 +1278,51 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
   const generatedPhoto = (x: { status: string; photo?: { src: string } }) =>
     x.status === "photo" && /\/files\/g\d+\.png$/.test(x.photo?.src ?? "");
 
-  test("the routing rule", () => {
-    const k = { named: false, cards: false };
-    expect(setAfterRealSearch([true, true], k)).toBe("real");
-    expect(setAfterRealSearch([true, false], k)).toBe("illustrate");
-    expect(setAfterRealSearch([true, false], { ...k, named: true })).toBe("drop");
-    expect(setAfterRealSearch([true, false], { ...k, cards: true })).toBe("cards");
-  });
-
-  test("a historical set (ancient, real time) with a partial hit: every panel illustrated", async () => {
-    const r = await run({
-      lesson: { subject: "Science" },
-      panels: [JAR, BODY],
-      hit: (w) => w === JAR,
-    });
-    painted(r.prompts);
-    expect(r.states.every(generatedPhoto)).toBe(true);
-    expect([...r.providers]).toEqual(["generated"]);
-  });
-
-  test("a History lesson (its stored period) with a partial hit: every panel illustrated, the period judged", async () => {
+  test("ruling 210: an Egypt mummification sequence is generated, in one drawn style", async () => {
     const r = await run({
       lesson: { subject: undefined, historicalPeriod: "Ancient Egypt" },
-      panels: ["A canopic jar", "Priests drying a body with natron"],
-      hit: (w) => w === "A canopic jar",
+      panels: ["Priests removing the organs", "Priests drying the body with natron"],
+      hit: () => false,
     });
     painted(r.prompts);
     expect(r.states.every(generatedPhoto)).toBe(true);
     expect([...r.providers]).toEqual(["generated"]);
-    // Ruling 209: the made panels are checked against the lesson's period.
-    const madeJudged = r.ai.calls.filter((c) => !c.promptText.includes("Photo p"));
-    expect(madeJudged.some((c) => c.promptText.includes("Ancient Egypt"))).toBe(true);
+    // The made panels are checked against the lesson's period.
+    expect(r.ai.calls.some((c) => c.promptText.includes("Ancient Egypt"))).toBe(true);
   });
 
-  test("a historical set with a hit for every panel is all real", async () => {
-    const r = await run({ lesson: { subject: "Science" }, panels: [JAR, BODY], hit: () => true });
-    expect(r.prompts).toHaveLength(0);
-    expect(r.states.map((x) => x.status)).toEqual(["photo", "photo"]);
-    // A real (stored stock or Commons) picture for every panel; nothing generated.
-    expect(r.providers.has("generated")).toBe(false);
-    expect(
-      r.states.every((x) => x.status === "photo" && x.photo.src.startsWith("/files/ws/")),
-    ).toBe(true);
-  });
-
-  test("an illustrated panel that still fails after its retry is a tile: no real picture beside it", async () => {
+  test("a Rosetta Stone set (a specific artefact) is real only: a miss is a tile, never generated", async () => {
     const r = await run({
+      lesson: { subject: "History" },
+      panels: ["The Rosetta Stone in the British Museum", "The Greek text on the Rosetta Stone"],
+      hit: (w) => w.startsWith("The Rosetta"),
+      named: true,
+    });
+    expect(r.prompts).toHaveLength(0);
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
+    expect(r.providers.has("generated")).toBe(false);
+  });
+
+  test("never mixed: a generic set is all generated; a named set is all real or empty", async () => {
+    const gen = await run({ lesson: { subject: "Science" }, panels: [JAR, BODY], hit: () => true });
+    expect([...gen.providers]).toEqual(["generated"]);
+    expect(gen.states.every(generatedPhoto)).toBe(true);
+    const real = await run({
       lesson: { subject: "Science" },
       panels: [JAR, BODY],
-      hit: (w) => w === JAR,
+      hit: () => true,
+      named: true,
+    });
+    expect(real.prompts).toHaveLength(0);
+    expect(real.providers.has("generated")).toBe(false);
+    expect(real.states.every((x) => x.status === "photo")).toBe(true);
+  });
+
+  test("a generated panel that still fails after its retry is a tile, beside generated ones only", async () => {
+    const r = await run({
+      lesson: { subject: "History" },
+      panels: [JAR, BODY],
+      hit: () => false,
       refuseMade: (w) => w === BODY,
     });
     painted(r.prompts);
@@ -1334,27 +1331,23 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     expect([...r.providers]).toEqual(["generated"]);
   });
 
-  test("a named set outside history with a partial hit never mixes: the whole set goes", async () => {
-    const r = await run({
-      lesson: { subject: "Science" },
-      panels: [JAR, BODY],
-      hit: (w) => w === JAR,
-      named: true,
+  test("history activity cards of everyday things are generated; named ones stay real only", async () => {
+    const gen = await run({
+      lesson: { subject: "History" },
+      panels: [COIN, HELMET],
+      hit: () => false,
+      key: (k) => `card.${k}`,
     });
-    expect(r.prompts).toHaveLength(0);
-    expect(r.states.map((x) => x.status)).toEqual(["failed", "failed"]);
-    expect(r.providers.size).toBe(0);
-  });
-
-  test("history compare cards end to end: real or their word (163), never generated", async () => {
-    const r = await run({
+    painted(gen.prompts);
+    expect([...gen.providers]).toEqual(["generated"]);
+    const real = await run({
       lesson: { subject: "History" },
       panels: [COIN, HELMET],
       hit: (w) => w === COIN,
+      named: true,
       key: (k) => `card.${k}`,
     });
-    expect(r.prompts).toHaveLength(0);
-    expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
-    expect(r.providers.has("generated")).toBe(false);
+    expect(real.prompts).toHaveLength(0);
+    expect(real.states.map((x) => x.status)).toEqual(["photo", "failed"]);
   });
 });

@@ -5,7 +5,6 @@ import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
-import { isHistoricalLesson } from "../period";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import {
   ACTIVITIES_DEFAULT,
@@ -486,10 +485,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (failed && run.canReask && !run.canReask(0, ask.key))
       log({ ev: "title-retry", slide: 1, ok: false, skipped: "already-reasked" });
     else if (failed && run.placeMore && topic) {
-      // Rulings 163 and 209: `named` comes from the lesson, never the failed ask. A history
-      // lesson's title is a named (real-only) ask, so its retry can never come back generated;
-      // otherwise the director decides named and period from the topic itself.
-      const again = { ...ask, shows: topic, mustSee: [topic], named: isHistoricalLesson(brief) };
+      // Ruling 210: the topic is asked afresh, never as the failed ask's `named`; the director
+      // decides from the topic whether it is a specific real thing (real only, else no picture)
+      // or anything else (searched, then generated when the search misses).
+      const again = { ...ask, shows: topic, mustSee: [topic], named: false };
       asks.set(
         0,
         (asks.get(0) ?? []).map((a) => (a === ask ? again : a)),
