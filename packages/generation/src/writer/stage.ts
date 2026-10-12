@@ -301,6 +301,8 @@ export type WriterRun = {
   drawAs?: (index: number, key: string) => string | undefined;
   /** The failed photo ask may land if placed again (it ran out of time or its placement failed). */
   retryable?: (index: number, key: string) => boolean;
+  /** False when this key was already asked again this round (the director re-asks a key once). */
+  canReask?: (index: number, key: string) => boolean;
   /**
    * A slide as soon as it is laid out while the deck is still being made (TEACH-110 part h, C2):
    * each slide the writer's stream closes, and again when its diagram is drawn. Read-only: the
@@ -465,6 +467,50 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!run.drawDiagrams) return void laid.set(i, lay());
     const m = withBuilds(lay);
     laid.set(i, { ...m, slide: withBuildCounts(m.slide) });
+  };
+  /**
+   * LAYOUT-SEL Egypt s1: a title picture that failed is searched once more for the lesson's topic
+   * itself (not the cut-down phrase `titleOneThing` chose). Whatever then is not a placed photo is
+   * failed for good, so the title is laid out with no picture slot, never a placeholder.
+   */
+  const retryTitle = async () => {
+    const s0 = plan.slides[0] as S | undefined;
+    const ask = (asks.get(0) ?? []).find(
+      (a): a is Extract<VisualAsk, { type: "photo" }> => a.type === "photo",
+    );
+    if (!s0 || !ask) return;
+    const topic = brief.topic.trim();
+    const failed = visualState(0)(ask.key).status === "failed";
+    // The director re-asks a key once per round; a title already re-asked is laid out without.
+    if (failed && run.canReask && !run.canReask(0, ask.key))
+      log({ ev: "title-retry", slide: 1, ok: false, skipped: "already-reasked" });
+    else if (failed && run.placeMore && topic) {
+      // Ruling 210: the topic is asked afresh, never as the failed ask's `named`; the director
+      // decides from the topic whether it is a specific real thing (real only, else no picture)
+      // or anything else (searched, then generated when the search misses).
+      const again = { ...ask, shows: topic, mustSee: [topic], named: false };
+      asks.set(
+        0,
+        (asks.get(0) ?? []).map((a) => (a === ask ? again : a)),
+      );
+      const pic = s0[ask.key] as S | undefined;
+      if (pic) plan.slides[0] = { ...s0, [ask.key]: { ...pic, shows: topic, must_see: [topic] } };
+      await run.placeMore(0, [again], {
+        heading: String(s0.heading ?? ""),
+        text: wordsOf(s0),
+        point: pointOf(s0),
+      });
+      log({
+        ev: "title-retry",
+        slide: 1,
+        shows: topic,
+        named: again.named,
+        ok: visualState(0)(ask.key).status === "photo",
+      });
+    }
+    for (const a of asks.get(0) ?? [])
+      if (a.type === "photo" && visualState(0)(a.key).status !== "photo")
+        override.set(`0:${a.key}`, { status: "failed" });
   };
   const title = codeTitle(brief, base);
   laid.set(0, title);
@@ -1103,6 +1149,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   if (run.beforeEditable) {
     await run.beforeEditable();
+    await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
   }

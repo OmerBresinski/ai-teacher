@@ -160,9 +160,11 @@ export type TemplateInput = {
   stem?: string;
   options?: string[];
   /** Compare: 2-3 columns, each with an optional photo over its text. */
-  columns?: { label: string; text: string; figure?: Figure }[];
+  /** `tile`: the column's picture could not be made; its band shows the label on a tile instead. */
+  columns?: { label: string; text: string; figure?: Figure; tile?: boolean }[];
   /** Picture sequence: 2-4 pictures in a row, a short caption under each, arrows between. */
-  sequence?: { caption: string; figure?: Figure }[];
+  /** `tile`: the panel's picture could not be made; the panel is a tile carrying its caption. */
+  sequence?: { caption: string; figure?: Figure; tile?: boolean }[];
   /** Cards grid (ruling 203): 2-4 cards, each a label, a body and an optional icon. */
   grid?: GridCard[];
   /** The one quiet line under a question list. */
@@ -362,6 +364,30 @@ function box(
   };
   c.els.push(el);
   return el;
+}
+
+/**
+ * A picture that could not be made, in a row of pictures that did (LAYOUT-SEL Egypt s6): a tile in
+ * the theme's surface with the slot's own words centred on it. Never an empty frame, never words
+ * the writer did not write.
+ */
+function captionTile(c: Ctx, words: string, rect: { x: number; y: number; w: number; h: number }) {
+  box(c, rect, c.t.colors.surface, {
+    stroke: c.t.colors.line,
+    strokeWidth: 1,
+    radius: Math.min(c.t.radius, 16),
+    name: "Caption tile",
+  });
+  const pad = 16;
+  const w = rect.w - 2 * pad;
+  const h = measure(c, words, "lead", w, 700);
+  text(
+    c,
+    words,
+    "lead",
+    { x: rect.x + pad, y: rect.y + Math.max(pad, (rect.h - h) / 2), w },
+    { color: c.t.colors.ink, weight: 700, align: "center", name: "Caption" },
+  );
 }
 
 /**
@@ -1818,7 +1844,7 @@ function layoutOnce(
       const colW = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
       // Every card has its picture or none does (round 2 y9 s6: one picture over three cards left
       // two blank picture bands). Cards without a picture for every column are text cards.
-      const pics = cols.length > 0 && cols.every((col) => col.figure);
+      const pics = cols.length > 0 && cols.every((col) => col.figure || col.tile);
       if (pics) {
         // Picture first (Greg 6 Oct): equal columns across the content width from the heading's
         // left edge; each card is a 4:3 picture band at the card's full inner width, then the label
@@ -1897,6 +1923,7 @@ function layoutOnce(
             if (col.figure && "photo" in col.figure)
               photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
             else if (col.figure) figurePanel(c, col.figure, band, true);
+            else if (col.tile) captionTile(c, col.label, band);
             const lab = text(
               c,
               caps(col),
@@ -2047,13 +2074,16 @@ function layoutOnce(
             "bottom",
           );
         else if (s.figure) figurePanel(c, s.figure, { x, y, w, h: picH });
-        text(
-          c,
-          s.caption,
-          "body",
-          { x, y: y + picH + 14, w },
-          { color: c.t.colors.ink, weight: 600, align: "center", name: "Caption" },
-        );
+        else if (s.tile) captionTile(c, s.caption, { x, y, w, h: picH });
+        // A caption tile carries its caption already: none under it.
+        if (!s.tile)
+          text(
+            c,
+            s.caption,
+            "body",
+            { x, y: y + picH + 14, w },
+            { color: c.t.colors.ink, weight: 600, align: "center", name: "Caption" },
+          );
         if (k < n - 1)
           c.els.push({
             id: uid(),

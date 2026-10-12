@@ -251,16 +251,25 @@ export interface PictureSetDeps {
 }
 
 /**
- * True when these panels are made as one generated set: no named real thing, not a history
- * lesson, and not change across real time. Those take the director's per-picture ladder (Commons
- * first, ruling 163).
+ * True when these panels are made as one generated set (ruling 210): every set but one naming a
+ * specific real thing (a named person, a specific artefact or document, a real place as it looks
+ * today). Historical scenes, processes and everyday life are generated, in one drawn style
+ * (`setLookFor`); a named set takes the real ladder only (ruling 163).
  */
-export function setIsGenerated(asks: SetAsk[], lesson: PeriodFields): boolean {
-  return (
-    !asks.some((a) => a.named) &&
-    !isHistoricalLesson(lesson) &&
-    !isHistoricalSet(asks.map((a) => a.shows))
-  );
+export function setIsGenerated(asks: SetAsk[], _lesson?: PeriodFields): boolean {
+  return !asks.some((a) => a.named);
+}
+
+/**
+ * The look a generated set is made in: a historical lesson or set is drawn or painted, never
+ * photo-style (rulings 163, 209), and every panel takes the same look, so a set never mixes.
+ */
+export function setLookFor(
+  lesson: PeriodFields,
+  shows: string[],
+  look?: LessonLook,
+): LessonLook | undefined {
+  return isHistoricalLesson(lesson) || isHistoricalSet(shows) ? illustratedLook(look) : look;
 }
 
 /**
@@ -269,11 +278,12 @@ export function setIsGenerated(asks: SetAsk[], lesson: PeriodFields): boolean {
  * chicken failed twice on "developing feathers" while the judge said it fit).
  */
 export function panelBrief(ask: SetAsk, aspect: number): ImageBrief {
-  const request = [ask.shows, ...ask.mustSee].join(". ");
+  // Only the panel's subject: the writer's `mustSee` (lids on, a coffin lid nearby) is a stage
+  // detail the set judge reads, so a real panel is never failed on it (LAYOUT-SEL Egypt s6).
   return {
     subject: plainSubject(ask.shows).slice(0, 60),
-    request: request.slice(0, 400),
-    mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request).slice(0, 1),
+    request: ask.shows.slice(0, 400),
+    mustShow: mustShowOf(ask.shows).slice(0, 1),
     purpose: "context",
     specific: false,
     aspect: Math.round(aspect * 100) / 100,
@@ -281,6 +291,14 @@ export function panelBrief(ask: SetAsk, aspect: number): ImageBrief {
 }
 
 const dataUrl = (png: Uint8Array) => `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
+
+/**
+ * Ruling 209: a set illustrated after a real-source miss is drawn or painted, never photo-style.
+ * Every panel takes this one look, so the set never mixes styles.
+ */
+export function illustratedLook(look?: LessonLook): LessonLook {
+  return { ...(look ?? {}), style: "illustration" } as LessonLook;
+}
 
 /** The style a set is made in, from the lesson's look. */
 export function setStyle(look?: LessonLook): SetPicture["style"] {
@@ -488,13 +506,27 @@ export async function makePictureSet(
     } else {
       // Single pictures (the default for 3 or 4 until the grid's paid check): each made alone in
       // the lesson's look, judged alone, then all of them by the set judge.
+      // Each panel settles on its own (LAYOUT-SEL Egypt s6: one panel's error threw away three
+      // paid panels). A panel that errors is made again alone, like one the judge fails; a fatal
+      // error (budget, abort) still stops the set.
       const made = await Promise.all(
-        asks.map(async (a) => {
-          const m = await generate(soloImagePrompt(a.shows, look), soloSize);
-          return m ? m : undefined;
-        }),
+        asks.map((a) =>
+          nonFatal(
+            () => generate(soloImagePrompt(a.shows, look), soloSize),
+            (e) => {
+              deps.log({
+                ev: "set-panel-error",
+                set: setKey,
+                key: a.key,
+                err: String(e).slice(0, 200),
+              });
+              return undefined;
+            },
+          ),
+        ),
       );
-      if (made.every((m) => !m)) return "none";
+      // Nothing made: capped is the end of the set; errors alone leave every panel to its retry.
+      if (made.every((m) => !m)) return capped ? "none" : undefined;
       const panels = made.map((m) => m?.bytes ?? new Uint8Array());
       const judging = asks.map((a, k) =>
         made[k]
@@ -537,7 +569,13 @@ export function directedSetJudges(
       const ok = await judgeMadeDirected({
         lesson,
         index: ask.index,
-        brief: panelBrief(ask, aspect),
+        // Ruling 209: an illustrated history set is checked for wrong-period details.
+        brief: {
+          ...panelBrief(ask, aspect),
+          ...((lesson as PeriodFields).historicalPeriod
+            ? { period: (lesson as PeriodFields).historicalPeriod as string }
+            : {}),
+        },
         deps,
         dataUrl: url,
         onVerdict: (v) => {

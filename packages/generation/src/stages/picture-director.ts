@@ -48,6 +48,7 @@ import {
   type SetAsk,
   type SetPicture,
   setIsGenerated,
+  setLookFor,
 } from "./picture-set";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
@@ -933,6 +934,8 @@ export type WriterPictureMiss =
   | "match6"
   /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
   | "history-card-generated"
+  /** Rulings 163 and 209: a named set missed a real picture; it is never part real, part generated. */
+  | "set-real-incomplete"
   /** An ask with no words to search for (no `shows`): nothing is searched. */
   | "malformed-ask";
 
@@ -958,6 +961,8 @@ export interface WriterPictures {
   drawAs(index: number, key: string): string | undefined;
   /** The ask failed for a reason a second placement can fix (the deadline or an error). */
   retryable(index: number, key: string): boolean;
+  /** True while `start` would place this key again (once per round after settle). */
+  canReask(index: number, key: string): boolean;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
   /**
@@ -1015,6 +1020,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   match6: "",
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
+  "set-real-incomplete": "No real photograph was found for every picture in this set.",
   "malformed-ask": "The slide did not say what the picture shows.",
 };
 
@@ -1143,9 +1149,9 @@ export function createWriterPictures(opts: {
    * Ruling 163 for activity cards (TEACH-101 part c): a history card is a searched picture or its
    * word, never a generated picture (no painted fallback either).
    */
-  const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
-    ask.key.startsWith("card.") &&
-    (ask.named || isHistoricalLesson(opts.lesson) || isHistoricalSet(shows));
+  // Ruling 210: real-only is for a specific real thing (a named ask) only.
+  const realOnly = (ask: WriterPhotoAsk, _shows: string[]) =>
+    ask.key.startsWith("card.") && ask.named;
   const place = (
     slot: Slot,
     index: number,
@@ -1272,25 +1278,6 @@ export function createWriterPictures(opts: {
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
     }));
-    if (!setIsGenerated(asks, opts.lesson)) {
-      void Promise.all(
-        panels.map(({ ask, slot }) =>
-          slot
-            ? place(
-                slot,
-                group.index,
-                ask,
-                group.slide,
-                realOnly(
-                  ask,
-                  group.asks.map((a) => a.shows),
-                ),
-              )
-            : undefined,
-        ),
-      ).then(finish, finish);
-      return;
-    }
     const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {
       opts.onOutcome?.(ask.key, {
         director: "set",
@@ -1307,31 +1294,51 @@ export function createWriterPictures(opts: {
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
-    makePictureSet(
-      asks,
-      {
-        generator: maker.generator,
-        save: maker.save,
-        ...directedSetJudges(opts.lesson, deps),
-        ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
-        ...(maker.allow ? { allow: maker.allow } : {}),
-        ...(maker.spent ? { spent: maker.spent } : {}),
-        signal: AbortSignal.any([
-          deps.signal,
-          ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
-        ]),
-        log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
-      },
-      setLook,
-    ).then(
-      (made) => {
-        for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
-        finish();
-      },
-      (error: unknown) => {
-        for (const { slot } of panels) if (slot) onError(slot)(error);
-        finish();
-      },
+    const generateSet = (look: typeof setLook) =>
+      makePictureSet(
+        asks,
+        {
+          generator: maker.generator,
+          save: maker.save,
+          ...directedSetJudges(opts.lesson, deps),
+          ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
+          ...(maker.allow ? { allow: maker.allow } : {}),
+          ...(maker.spent ? { spent: maker.spent } : {}),
+          signal: AbortSignal.any([
+            deps.signal,
+            ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
+          ]),
+          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+        },
+        look,
+      ).then(
+        (made) => {
+          for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
+          finish();
+        },
+        (error: unknown) => {
+          for (const { slot } of panels) if (slot) onError(slot)(error);
+          finish();
+        },
+      );
+    if (!setIsGenerated(asks, opts.lesson)) {
+      // Rulings 163 and 210: a set naming a specific real thing takes the real ladder only, each
+      // panel; a panel with no real picture is a caption tile, never a generated picture beside
+      // real ones.
+      void Promise.all(
+        panels.map(({ ask, slot }) =>
+          slot ? place(slot, group.index, ask, group.slide, true) : undefined,
+        ),
+      ).then(finish, finish);
+      return;
+    }
+    // Ruling 210: anything else is generated, in one look (drawn for history, rulings 163/209).
+    generateSet(
+      setLookFor(
+        opts.lesson,
+        asks.map((a) => a.shows),
+        setLook,
+      ),
     );
   };
 
@@ -1596,6 +1603,11 @@ export function createWriterPictures(opts: {
     drawAs(index, key) {
       const slot = slots.get(id(index, key));
       return slot?.miss === "director-code" ? slot.draw : undefined;
+    },
+    canReask(index, key) {
+      const k = id(index, key);
+      const prev = slots.get(k);
+      return !prev || (settled && prev.state.status === "failed" && !reasked.has(k));
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;
