@@ -22,6 +22,7 @@ export * from "./generated-from";
 export * from "./generation";
 export * from "./generation-merge";
 export * from "./identifier-guard";
+export * from "./layout-ref";
 export * from "./lesson";
 export * from "./lesson-facts";
 export * from "./links";

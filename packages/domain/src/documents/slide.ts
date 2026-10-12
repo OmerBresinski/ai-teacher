@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
+import { type LayoutRef, LayoutRefSchema } from "./layout-ref";
 import { isLinkableHref } from "./links";
 import { type RichDoc, RichDocSchema } from "./rich-text";
 
@@ -389,6 +390,11 @@ export type GroupElement = ElementBase & {
   alt?: string;
   /** The Figure template and values the group was drawn from, when it is a Figure. */
   figure?: FigureRef;
+  /**
+   * The adaptive template and input the group was laid out from (TEACH-205 part b): the editor
+   * re-lays the group from it when an item is edited, added or removed. Ungrouping drops it.
+   */
+  layout?: LayoutRef;
 };
 
 export type SlideElement =
@@ -696,6 +702,7 @@ const GroupElementSchema = z.object({
   },
   alt: z.string().optional(),
   figure: FigureRefSchema.optional(),
+  layout: LayoutRefSchema.optional(),
 });
 
 export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion("type", [
