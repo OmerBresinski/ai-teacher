@@ -47,26 +47,15 @@ const OWNER = {
   rhythm_grid: "fix list 25 (small fixes)",
   community_helpers: "fix list 25 (small fixes)",
   data_chart: "fix list 25 (small fixes)",
+  place_value: "TEACH-247 part y follow-up (place_value)",
 } as const;
 type Owned = keyof typeof OWNER;
 
 /** model/preset: two or more captions share a frame. */
 const SHARED_FRAME: Record<string, Owned> = {
-  "number_bonds/y1-three-parts": "number_bonds", // 5 captions, 4 frames
-  "equal_groups/y2-groups-of-2": "equal_groups", // 5 captions, 3 frames
-  "equal_groups/y3-13-div-4": "equal_groups", // 5 captions, 3 frames
-  "equal_groups/y4-array-turn": "equal_groups", // 6 captions, 4 frames
-  "balance_equations/y2-compare": "balance_equations", // 3 captions, 2 frames
-  "measuring_scales/y2-jug": "measuring_scales", // 5 captions, 4 frames
-  "measuring_scales/y3-ruler": "measuring_scales", // 5 captions, 4 frames
-  "measuring_scales/y4-scale": "measuring_scales", // 5 captions, 4 frames
-  "measuring_scales/y5-thermometer": "measuring_scales", // 5 captions, 3 frames
   "shape_3d_nets/rec-roll-stack": "shape_3d_nets", // 6 captions, 5 frames
   "shape_3d_nets/y4-prisms-pyramids": "shape_3d_nets", // 6 captions, 5 frames
   "shape_3d_nets/y6-cube-nets": "shape_3d_nets", // 6 captions, 3 frames
-  "angles_turns/y2-quarter-half": "angles_turns", // 5 captions, 4 frames
-  "angles_turns/y4-acute-obtuse": "angles_turns", // 5 captions, 4 frames
-  "angles_turns/y6-missing-line": "angles_turns", // 4 captions, 3 frames
   "coordinate_grid/rec-bee-forward": "coordinate_grid", // 3 captions, 2 frames
   "body_map/reception-my-body": "body_map", // 9 captions, 8 frames
   "body_map/y1-senses": "body_map", // 6 captions, 5 frames
@@ -90,9 +79,13 @@ const SHARED_FRAME: Record<string, Owned> = {
 const LAST_CLICK_DROPS: Record<string, Owned> = {
   "clock_time/y1-oclock-half-past": "clock_time", // drops 3 o’clock
   "clock_time/y3-how-long": "clock_time", // drops 10:40 am, 20 minutes to 11
-  "angles_turns/y4-acute-obtuse": "angles_turns", // drops An obtuse angle
-  "angles_turns/y5-protractor": "angles_turns", // drops An acute angle, Less than 90°.
   "angles_turns/y6-missing-line": "angles_turns", // drops a
+  "number_bonds/rec-bonds-5": "number_bonds", // drops 3, part, 2, part (part y ends on the list of bonds)
+  "number_bonds/y1-bonds-10": "number_bonds", // drops 7, part, 3, part (part y ends on the list of bonds)
+  "place_value/y3-exchange": "place_value", // drops 50, 5, 2 (part y: the x10 arcs give way to the move)
+  "equal_groups/y3-13-div-4": "equal_groups", // drops 13 counters
+  "clock_time/y2-quarter-to": "clock_time", // drops 15, 45 (part y: the five-minute ring steps away)
+  "data_chart/y3-sport": "data_chart", // drops 12, 12 children (part y: the key card becomes a key line)
   "data_chart/y1-fruit": "data_chart", // drops 5 children
   "data_chart/y2-books": "data_chart", // drops 4 × 2 + 1 = 9
   "data_chart/y6-travel": "data_chart", // drops 360° ÷ 30 = 12°
