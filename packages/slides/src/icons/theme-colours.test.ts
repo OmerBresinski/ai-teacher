@@ -8,9 +8,9 @@ describe("iconColoursFor", () => {
 
   test("slots follow the theme's accent and ink, with a darker accent and a wash", () => {
     const c = iconColoursFor(red);
-    expect(c.primary).toBe("#D7263D");
-    expect(c.ink).toBe("#22152B");
-    expect(c.stroke).toBe("#22152B");
+    expect(c.primary).toBe("#d7263d");
+    expect(c.ink).toBe("#22152b");
+    expect(c.stroke).toBe("#22152b");
     expect(c.primaryDark).not.toBe(c.primary);
     expect(c.tint).not.toBe(c.primary);
   });
@@ -23,6 +23,12 @@ describe("iconColoursFor", () => {
   test("a theme's own icon slots win", () => {
     expect(iconColoursFor({ ...red, iconSlots: { primary: "#000000" } }).primary).toBe("#000000");
   });
+});
+
+test("a theme colour that is not hex falls back to the default slots", () => {
+  const c = iconColoursFor({ colors: { accent: "rgb(1,2,3)", ink: '"/><script>' } });
+  expect(c.primary).toBe("#D7263D");
+  expect(c.ink).toBe("#22152B");
 });
 
 describe("iconAgeFor", () => {

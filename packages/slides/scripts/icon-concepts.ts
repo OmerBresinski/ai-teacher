@@ -13,13 +13,78 @@ interface RawConcept {
   keyStage: string;
 }
 
+/*
+ * One-word (and article-only) synonyms that mean something else in another subject: matched on a
+ * slide about that subject they draw the wrong icon, which is worse than the number fallback. A
+ * concept still matches its full label and its qualified phrases. Keep a one-word synonym only if
+ * it is unambiguous across school subjects (reviewed 12 Oct 2026, TEACH-310 part b).
+ */
+const DROP_SYNONYMS: Record<string, string[]> = {
+  "blood-route": ["the route"],
+  "heart-chambers": ["chambers"],
+  "water-in-blood": ["fluids"],
+  digestion: ["intestine"],
+  "body-cells": ["cells"],
+  exercise: ["running", "active", "marching", "dancing", "skipping"],
+  rest: ["recovery"],
+  timer: ["time"],
+  "pulse-graph": ["results", "evidence"],
+  smoking: ["smoke"],
+  "healthy-heart": ["support"],
+  harm: ["damage", "risk"],
+  "blood-pressure": ["pressure"],
+  seedling: ["shoot"],
+  light: ["sun", "the sun"],
+  water: ["rain"],
+  "soil-nutrients": ["minerals"],
+  "room-to-grow": ["space", "room"],
+  soil: ["earth"],
+  "measure-height": ["measuring", "height", "measure"],
+  "plant-pot": ["pot"],
+  "growth-over-time": ["growing", "growth"],
+  windowsill: ["window"],
+  bee: ["insects"],
+  "explosive-eruption": ["explosive"],
+  "gentle-eruption": ["gentle"],
+  "magma-chamber": ["chamber", "reservoir"],
+  vent: ["pipe", "conduit"],
+  crater: ["opening"],
+  "lava-layers": ["layers"],
+  "earth-layers": ["core"],
+  "tectonic-plates": ["plates", "plate"],
+  "constructive-boundary": ["constructive"],
+  "destructive-boundary": ["destructive"],
+  "collision-boundary": ["collision", "mountains"],
+  "conservative-boundary": ["conservative"],
+  "continental-plate": ["continent"],
+  "mantle-melting": ["melting"],
+  cracks: ["crack", "cracks"],
+  "volcanic-island": ["island"],
+  "volcanic-gas": ["gas", "steam"],
+  "town-near-volcano": ["a town", "settlement"],
+  hazard: ["danger", "warning"],
+  "canopic-jar": ["jars"],
+  "brain-removal": ["brain"],
+  natron: ["drying"],
+  linen: ["bandages", "wrapping"],
+  embalmer: ["priest"],
+  "weighing-heart": ["judgement"],
+  feather: ["truth"],
+  "death-mask": ["mask"],
+  pharaoh: ["king", "queen"],
+  papyrus: ["spells", "writing"],
+  "oils-resin": ["perfume", "spices"],
+  "eye-of-horus": ["protection"],
+  decay: ["bacteria"],
+};
+
 const source = process.argv[2];
 if (!source) throw new Error("usage: bun scripts/icon-concepts.ts <pilot-concepts.json>");
 const raw = JSON.parse(readFileSync(source, "utf8")) as RawConcept[];
 const rows = raw.map(({ id, label, synonyms, lesson, keyStage }) => ({
   id,
   label,
-  synonyms,
+  synonyms: synonyms.filter((s) => !DROP_SYNONYMS[id]?.includes(s.toLowerCase())),
   lesson,
   keyStage,
 }));

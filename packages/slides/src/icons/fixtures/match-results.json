@@ -72,7 +72,8 @@
   {
     "lesson": "heart",
     "label": "Support",
-    "id": "healthy-heart"
+    "id": null,
+    "note": "pruned 12 Oct: 'support' is generic across subjects (TEACH-310 part b review)"
   },
   {
     "lesson": "heart",

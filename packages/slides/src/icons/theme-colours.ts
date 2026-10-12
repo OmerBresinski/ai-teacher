@@ -5,7 +5,7 @@
  * pilot's theme-v2.css derived them.
  */
 import { ICON_LIBRARY, iconSizeFor, iconSvg } from "./library";
-import { mixOklab, parseHex } from "./treatment";
+import { DEFAULT_ICON_COLOURS, mixOklab, parseHex, safeHex } from "./treatment";
 import type { IconAge, IconColours } from "./types";
 
 export interface IconThemeInput {
@@ -29,7 +29,9 @@ function hue(hex: string): number {
 }
 
 export function iconColoursFor(theme: IconThemeInput): IconColours {
-  const { accent, ink } = theme.colors;
+  // a theme colour that is not hex (or is hostile) falls back to the default slots
+  const accent = safeHex(theme.colors?.accent, DEFAULT_ICON_COLOURS.primary);
+  const ink = safeHex(theme.colors?.ink, DEFAULT_ICON_COLOURS.ink);
   const h = hue(accent);
   // the pilot's partners: a red or orange accent takes blue, any other accent takes amber
   const partner = h < 60 || h >= 330 ? BLUE : AMBER;

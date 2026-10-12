@@ -50,10 +50,17 @@ let calls = 0;
 export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
   const drawing = ICON_LIBRARY[id];
   if (!drawing) return "";
-  const size = opts.size ?? "m";
+  const size: IconSize = opts.size === "s" || opts.size === "l" ? opts.size : "m";
   const markup = size === "s" && drawing.small ? drawing.small() : drawing.svg();
-  const body = flatten(markup, { ...opts, size, idPrefix: opts.idPrefix ?? `tji${++calls}` });
-  const box = opts.px ? ` width="${opts.px}" height="${opts.px}"` : "";
+  // ids and sizes reach attributes, so only safe characters and finite positive numbers pass
+  const prefix = String(opts.idPrefix ?? "").replace(/[^A-Za-z0-9_-]/g, "");
+  const idPrefix = /^[A-Za-z]/.test(prefix) ? prefix : `tji${++calls}${prefix}`;
+  const body = flatten(markup, { ...opts, size, idPrefix });
+  const px = Number(opts.px);
+  const box =
+    Number.isFinite(px) && px > 0
+      ? ` width="${Math.round(px * 100) / 100}" height="${Math.round(px * 100) / 100}"`
+      : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${box}>${body}</svg>`;
 }
 

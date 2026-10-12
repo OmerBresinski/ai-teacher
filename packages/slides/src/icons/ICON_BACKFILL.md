@@ -10,6 +10,11 @@ drawn in batches:
 2. **Synonym first.** If the miss is another name for a concept already here ("Arteries" for
    `artery`), add it to that concept's `synonyms` in the pilot's `pilot-concepts.json` and
    regenerate `concepts.ts` (`bun scripts/icon-concepts.ts <path>`). No drawing needed.
+   **A wrong icon is worse than a number.** A one-word synonym goes in only if it means the
+   same thing in every school subject ("smoke", "earth", "pressure", "core", "queen" do not);
+   otherwise add the qualified phrase ("cigarette smoke", "blood pressure"). The generator's
+   `DROP_SYNONYMS` strips the generic ones the pilot list carried, and `match.test.ts` checks
+   other subjects' words resolve to nothing.
 3. **Draw.** Otherwise an in-session agent batch draws the new concepts (no paid API), following
    the style guide in the pilot's `ICONS.md`: 240x240 box, the helpers in `kit.ts` only, colours
    only from the slots in `treatment.ts` (`ICON_PALETTE` names and the theme's `icon-*` slots) or
@@ -19,4 +24,5 @@ drawn in batches:
 4. **Vet.** Render a contact sheet of the new drawings at the three ages and sizes s, m and l
    (as for TEACH-310 part b) and redraw any that do not read. `library.test.ts` checks every
    drawing parses, has literal colours only and resolves; `match.test.ts` checks no label or
-   synonym collides with another concept.
+   synonym maps to two concepts (exactly or after the plural fold) and that generic words from
+   other subjects resolve to nothing.

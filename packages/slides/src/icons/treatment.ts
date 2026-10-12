@@ -159,7 +159,9 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 export function parseHex(hex: string): Rgb {
   let h = hex.trim().replace(/^#/, "");
   if (h.length === 3 || h.length === 4) h = [...h.slice(0, 3)].map((c) => c + c).join("");
-  if (!/^[0-9a-fA-F]{6}/.test(h)) throw new Error(`icon colour must be #rgb or #rrggbb: ${hex}`);
+  if (!/^(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(h)) {
+    throw new Error(`icon colour must be #rgb or #rrggbb: ${hex}`);
+  }
   return [0, 2, 4].map((i) => Number.parseInt(h.slice(i, i + 2), 16) / 255) as Rgb;
 }
 const toHex = (c: Rgb) =>
@@ -252,9 +254,29 @@ export interface TreatmentOptions {
 }
 
 /** Every slot name a drawing may use, resolved to a literal colour before the age filter. */
+/** `value` as #rrggbb when it is a hex colour, else `fallback`: a slot never carries markup. */
+export function safeHex(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  try {
+    return toHex(parseHex(value));
+  } catch {
+    return fallback;
+  }
+}
+
+/** The age's tokens; an unknown age reads as primary. */
+export const ageTokens = (age: unknown): AgeTokens =>
+  Object.hasOwn(AGE_TOKENS, String(age)) ? AGE_TOKENS[age as IconAge] : AGE_TOKENS.primary;
+
 export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string> {
-  const c = { ...DEFAULT_ICON_COLOURS, ...opts.colours };
-  const age = AGE_TOKENS[opts.age ?? "primary"];
+  const given: Partial<IconColours> = opts.colours ?? {};
+  const c = Object.fromEntries(
+    (Object.keys(DEFAULT_ICON_COLOURS) as (keyof IconColours)[]).map((k) => [
+      k,
+      safeHex(given[k] ?? DEFAULT_ICON_COLOURS[k], DEFAULT_ICON_COLOURS[k]),
+    ]),
+  ) as unknown as IconColours;
+  const age = ageTokens(opts.age);
   return {
     ...ICON_PALETTE,
     "icon-primary": c.primary,
@@ -272,7 +294,7 @@ export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string
 
 /** The colours an icon may contain for these options: each slot and #fff, after the age filter. */
 export function iconColourSet(opts: TreatmentOptions = {}): Set<string> {
-  const filter = AGE_TOKENS[opts.age ?? "primary"].filter;
+  const filter = ageTokens(opts.age).filter;
   return new Set(
     [...Object.values(resolveSlots(opts)), "#ffffff"].map((h) => applyFilter(h, filter)),
   );
@@ -335,8 +357,8 @@ export interface FlattenOptions extends TreatmentOptions {
 
 /** The pilot markup of one drawing -> literal SVG children for one age, size and theme. */
 export function flatten(markup: string, opts: FlattenOptions): string {
-  const age = AGE_TOKENS[opts.age ?? "primary"];
-  const size = opts.size ?? "m";
+  const age = ageTokens(opts.age);
+  const size: IconSize = opts.size === "s" || opts.size === "l" ? opts.size : "m";
   // size s drops the outline at every age (tokens.css `.size-s{--icon-sw:0px}`)
   const sw = size === "s" ? 0 : age.sw;
   const slots = resolveSlots(opts);

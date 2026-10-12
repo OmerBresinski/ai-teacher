@@ -78,6 +78,32 @@ describe("iconSvg: every drawing, size, age and theme", () => {
   });
 });
 
+describe("hostile input", () => {
+  test("bad colours, ids, sizes, ages and px never reach the markup", () => {
+    const evil = '"/><script>alert(1)</script><x a="';
+    const svg = iconSvg("heart", {
+      colours: { primary: evil, ink: "red", stroke: "#12345", tint: "#ffffffzz" },
+      idPrefix: evil,
+      px: evil as unknown as number,
+      age: "toddler" as unknown as "early",
+      size: "xl" as unknown as "m",
+    });
+    expect(XMLValidator.validate(svg)).toBe(true);
+    expect(svg).not.toContain("<script");
+    expect(svg).not.toContain("alert(");
+    expect(svg).not.toContain("width=");
+    for (const id of [...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1])) {
+      expect(id).toMatch(/^[A-Za-z][A-Za-z0-9_-]*$/);
+    }
+    // invalid slots fall back to the defaults; an unknown age and size read as primary, m
+    expect(svg.replace(/ id="[^"]+"|url\(#[^)]+\)/g, "")).toBe(
+      iconSvg("heart").replace(/ id="[^"]+"|url\(#[^)]+\)/g, ""),
+    );
+    expect(iconSvg("heart", { px: -5 })).not.toContain("width=");
+    expect(iconSvg("heart", { px: Number.NaN })).not.toContain("width=");
+  });
+});
+
 describe("age treatment", () => {
   const at = (age: (typeof ICON_AGES)[number]) => iconSvg("seedling", { age, idPrefix: "x" });
 
