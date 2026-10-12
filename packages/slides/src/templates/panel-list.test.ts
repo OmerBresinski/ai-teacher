@@ -6,7 +6,9 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { MIN_FONT_SIZE, THEMES } from "../themes";
+import { countLines } from "../text-measure";
+import { resolveTextStyle } from "../text-style";
+import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
 import { sample as sampleOf } from "./capacity";
 import { cutSubjects, type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
@@ -207,6 +209,43 @@ describe("panel-list", () => {
       "rows.2.name",
       "rows.2.text",
     ]);
+  });
+
+  test("every text is stored at the size the renderer draws, so the fit is the browser's", () => {
+    for (const theme of THEMES)
+      for (const stage of STAGES)
+        for (const visual of ["none", "photo", "pie"]) {
+          const r = layoutTemplate(input(4, visual, "Eat a little of each."), theme, stage);
+          for (const e of r.slide.elements) {
+            const st = e.type === "text" ? e.style : e.type === "shape" ? e.textStyle : undefined;
+            if (st?.fontSize === undefined) continue;
+            const preset = st.preset ?? "body";
+            const shown = resolveTextStyle({ ...st, preset }, atKeyStage(theme, stage), preset);
+            expect(shown.fontSize, `${theme.id} ${stage} ${e.name}`).toBe(st.fontSize);
+          }
+        }
+  });
+
+  test("a 46-character heading over a pie never draws into the pie: it fits above it or is over", () => {
+    const heading = "The five main food groups on the Eatwell Guide";
+    expect(heading).toHaveLength(46);
+    for (const theme of THEMES)
+      for (const stage of STAGES) {
+        const r = layoutTemplate(
+          { ...input(5, "none"), heading, panel: { shares: [39, 37, 12, 8, 4] } },
+          theme,
+          stage,
+        );
+        const t = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+        const [ground] = named(r.slide.elements, PANEL_NAMES.halo) as ShapeElement[];
+        const st = atKeyStage(theme, stage);
+        const shown = resolveTextStyle(t.style ?? {}, st, t.style?.preset ?? "title");
+        const lines = countLines(heading, shown.preset, st, t.w, shown.fontWeight, shown.fontSize);
+        const bottom = t.y + lines * shown.fontSize * (t.style?.lineHeight ?? 1);
+        const tag = `${theme.id} ${stage} ${shown.fontSize}pt ${lines} lines`;
+        if (!r.over.includes("heading"))
+          expect(bottom, tag).toBeLessThanOrEqual((ground?.y ?? 540) + 0.5);
+      }
   });
 
   test("odd input never throws", () => {

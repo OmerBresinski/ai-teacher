@@ -3,99 +3,71 @@
     "2": {
       "heading": {
         "cap": 37,
-        "hardMax": 37
+        "hardMax": 45
       },
       "lead": {
-        "cap": 39,
-        "hardMax": 78
+        "cap": 34,
+        "hardMax": 71
       },
       "name": {
-        "cap": 101,
-        "hardMax": 137
+        "cap": 74,
+        "hardMax": 101
       },
       "text": {
-        "cap": 132,
-        "hardMax": 213
+        "cap": 88,
+        "hardMax": 114
       },
       "withLead": {
         "name": {
-          "cap": 80,
-          "hardMax": 108
+          "cap": 69,
+          "hardMax": 74
         },
         "text": {
-          "cap": 144,
-          "hardMax": 184
+          "cap": 80,
+          "hardMax": 114
         }
       }
     },
     "3": {
       "heading": {
         "cap": 37,
-        "hardMax": 37
+        "hardMax": 45
       },
       "lead": {
-        "cap": 39,
-        "hardMax": 78
+        "cap": 34,
+        "hardMax": 71
       },
       "name": {
-        "cap": 47,
-        "hardMax": 80
+        "cap": 22,
+        "hardMax": 47
       },
       "text": {
-        "cap": 74,
-        "hardMax": 108
+        "cap": 29,
+        "hardMax": 59
       },
       "withLead": {
         "name": {
-          "cap": 29,
-          "hardMax": 59
+          "cap": 22,
+          "hardMax": 22
         },
         "text": {
-          "cap": 37,
-          "hardMax": 80
+          "cap": 29,
+          "hardMax": 29
         }
       }
     },
     "4": {
       "heading": {
-        "cap": 37,
-        "hardMax": 37
+        "cap": 0,
+        "hardMax": 45
       },
       "lead": {
         "cap": 0,
-        "hardMax": 78
-      },
-      "name": {
-        "cap": 22,
-        "hardMax": 59
-      },
-      "text": {
-        "cap": 32,
-        "hardMax": 74
-      },
-      "withLead": {
-        "name": {
-          "cap": 0,
-          "hardMax": 29
-        },
-        "text": {
-          "cap": 0,
-          "hardMax": 37
-        }
-      }
-    },
-    "5": {
-      "heading": {
-        "cap": 0,
-        "hardMax": 37
-      },
-      "lead": {
-        "cap": 0,
-        "hardMax": 39
+        "hardMax": 71
       },
       "name": {
         "cap": 0,
-        "hardMax": 29
+        "hardMax": 22
       },
       "text": {
         "cap": 0,
@@ -108,14 +80,14 @@
         },
         "text": {
           "cap": 0,
-          "hardMax": 37
+          "hardMax": 29
         }
       }
     },
-    "6": {
+    "5": {
       "heading": {
         "cap": 0,
-        "hardMax": 37
+        "hardMax": 45
       },
       "lead": {
         "cap": 0,
@@ -127,7 +99,35 @@
       },
       "text": {
         "cap": 0,
-        "hardMax": 37
+        "hardMax": 29
+      },
+      "withLead": {
+        "name": {
+          "cap": 0,
+          "hardMax": 0
+        },
+        "text": {
+          "cap": 0,
+          "hardMax": 0
+        }
+      }
+    },
+    "6": {
+      "heading": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "name": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "text": {
+        "cap": 0,
+        "hardMax": 0
       },
       "withLead": {
         "name": {
@@ -145,140 +145,140 @@
     "2": {
       "heading": {
         "cap": 37,
-        "hardMax": 45
+        "hardMax": 50
       },
       "lead": {
-        "cap": 44,
+        "cap": 39,
         "hardMax": 84
       },
       "name": {
-        "cap": 160,
-        "hardMax": 271
+        "cap": 108,
+        "hardMax": 137
       },
       "text": {
-        "cap": 213,
-        "hardMax": 292
+        "cap": 125,
+        "hardMax": 160
       },
       "withLead": {
         "name": {
-          "cap": 125,
-          "hardMax": 228
+          "cap": 80,
+          "hardMax": 108
         },
         "text": {
-          "cap": 174,
-          "hardMax": 213
+          "cap": 101,
+          "hardMax": 125
         }
       }
     },
     "3": {
       "heading": {
         "cap": 37,
-        "hardMax": 45
+        "hardMax": 50
       },
       "lead": {
-        "cap": 44,
+        "cap": 39,
         "hardMax": 84
       },
       "name": {
-        "cap": 94,
-        "hardMax": 151
+        "cap": 51,
+        "hardMax": 59
       },
       "text": {
-        "cap": 125,
-        "hardMax": 125
+        "cap": 59,
+        "hardMax": 74
       },
       "withLead": {
         "name": {
-          "cap": 64,
-          "hardMax": 114
+          "cap": 29,
+          "hardMax": 51
         },
         "text": {
-          "cap": 88,
-          "hardMax": 125
+          "cap": 32,
+          "hardMax": 64
         }
       }
     },
     "4": {
       "heading": {
         "cap": 37,
-        "hardMax": 45
-      },
-      "lead": {
-        "cap": 44,
-        "hardMax": 84
-      },
-      "name": {
-        "cap": 37,
-        "hardMax": 114
-      },
-      "text": {
-        "cap": 41,
-        "hardMax": 125
-      },
-      "withLead": {
-        "name": {
-          "cap": 32,
-          "hardMax": 88
-        },
-        "text": {
-          "cap": 41,
-          "hardMax": 88
-        }
-      }
-    },
-    "5": {
-      "heading": {
-        "cap": 37,
-        "hardMax": 45
+        "hardMax": 50
       },
       "lead": {
         "cap": 0,
         "hardMax": 84
       },
       "name": {
-        "cap": 29,
-        "hardMax": 80
+        "cap": 22,
+        "hardMax": 51
       },
       "text": {
-        "cap": 41,
-        "hardMax": 88
+        "cap": 32,
+        "hardMax": 69
       },
       "withLead": {
         "name": {
           "cap": 0,
-          "hardMax": 41
+          "hardMax": 29
         },
         "text": {
           "cap": 0,
-          "hardMax": 41
+          "hardMax": 32
+        }
+      }
+    },
+    "5": {
+      "heading": {
+        "cap": 0,
+        "hardMax": 50
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 39
+      },
+      "name": {
+        "cap": 0,
+        "hardMax": 29
+      },
+      "text": {
+        "cap": 0,
+        "hardMax": 32
+      },
+      "withLead": {
+        "name": {
+          "cap": 0,
+          "hardMax": 22
+        },
+        "text": {
+          "cap": 0,
+          "hardMax": 32
         }
       }
     },
     "6": {
       "heading": {
         "cap": 0,
-        "hardMax": 45
+        "hardMax": 0
       },
       "lead": {
         "cap": 0,
-        "hardMax": 44
+        "hardMax": 0
       },
       "name": {
         "cap": 0,
-        "hardMax": 41
+        "hardMax": 0
       },
       "text": {
         "cap": 0,
-        "hardMax": 47
+        "hardMax": 0
       },
       "withLead": {
         "name": {
           "cap": 0,
-          "hardMax": 41
+          "hardMax": 0
         },
         "text": {
           "cap": 0,
-          "hardMax": 41
+          "hardMax": 0
         }
       }
     }
@@ -287,99 +287,71 @@
     "2": {
       "heading": {
         "cap": 37,
-        "hardMax": 50
+        "hardMax": 66
       },
       "lead": {
         "cap": 50,
         "hardMax": 95
       },
       "name": {
-        "cap": 213,
-        "hardMax": 271
+        "cap": 156,
+        "hardMax": 196
       },
       "text": {
         "cap": 196,
-        "hardMax": 299
+        "hardMax": 242
       },
       "withLead": {
         "name": {
-          "cap": 180,
-          "hardMax": 228
+          "cap": 125,
+          "hardMax": 165
         },
         "text": {
-          "cap": 213,
-          "hardMax": 255
+          "cap": 160,
+          "hardMax": 196
         }
       }
     },
     "3": {
       "heading": {
         "cap": 37,
-        "hardMax": 50
+        "hardMax": 66
       },
       "lead": {
         "cap": 50,
         "hardMax": 95
       },
       "name": {
-        "cap": 114,
-        "hardMax": 151
+        "cap": 64,
+        "hardMax": 101
       },
       "text": {
-        "cap": 125,
-        "hardMax": 132
+        "cap": 88,
+        "hardMax": 114
       },
       "withLead": {
         "name": {
-          "cap": 80,
-          "hardMax": 114
+          "cap": 64,
+          "hardMax": 74
         },
         "text": {
           "cap": 88,
-          "hardMax": 125
+          "hardMax": 88
         }
       }
     },
     "4": {
       "heading": {
         "cap": 37,
-        "hardMax": 50
+        "hardMax": 66
       },
       "lead": {
         "cap": 50,
         "hardMax": 95
       },
       "name": {
-        "cap": 37,
-        "hardMax": 114
-      },
-      "text": {
-        "cap": 41,
-        "hardMax": 125
-      },
-      "withLead": {
-        "name": {
-          "cap": 37,
-          "hardMax": 88
-        },
-        "text": {
-          "cap": 41,
-          "hardMax": 94
-        }
-      }
-    },
-    "5": {
-      "heading": {
-        "cap": 37,
-        "hardMax": 50
-      },
-      "lead": {
-        "cap": 0,
-        "hardMax": 95
-      },
-      "name": {
         "cap": 32,
-        "hardMax": 80
+        "hardMax": 74
       },
       "text": {
         "cap": 41,
@@ -387,19 +359,19 @@
       },
       "withLead": {
         "name": {
-          "cap": 0,
-          "hardMax": 41
+          "cap": 32,
+          "hardMax": 64
         },
         "text": {
-          "cap": 0,
-          "hardMax": 51
+          "cap": 41,
+          "hardMax": 88
         }
       }
     },
-    "6": {
+    "5": {
       "heading": {
         "cap": 0,
-        "hardMax": 50
+        "hardMax": 66
       },
       "lead": {
         "cap": 0,
@@ -407,7 +379,7 @@
       },
       "name": {
         "cap": 0,
-        "hardMax": 41
+        "hardMax": 37
       },
       "text": {
         "cap": 0,
@@ -416,11 +388,39 @@
       "withLead": {
         "name": {
           "cap": 0,
-          "hardMax": 41
+          "hardMax": 32
         },
         "text": {
           "cap": 0,
-          "hardMax": 47
+          "hardMax": 41
+        }
+      }
+    },
+    "6": {
+      "heading": {
+        "cap": 0,
+        "hardMax": 66
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "name": {
+        "cap": 0,
+        "hardMax": 32
+      },
+      "text": {
+        "cap": 0,
+        "hardMax": 41
+      },
+      "withLead": {
+        "name": {
+          "cap": 0,
+          "hardMax": 0
+        },
+        "text": {
+          "cap": 0,
+          "hardMax": 0
         }
       }
     }

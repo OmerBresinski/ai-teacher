@@ -5,7 +5,8 @@
  * the pilot's `northstars/components/panel-list.js` (Greg's gold 2, "The five food groups"); the
  * pilot draws at 1440 x 810 px, so every pilot length here is x 2/3 (slide points).
  *
- * - Comfortable to 5 rows, 4 at early; 6 rows are always `tight`. 2-line rows at 4+ are `tight`.
+ * - Comfortable to 4 rows, 3 at early, at the sizes the renderer draws (`PANEL_COMFORT`); 6 rows are
+ *   always `tight`. 2-line rows at 4+ are `tight`.
  * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
  *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
  *   Words are never cut: a field past its measured hard maximum is named in `over`.
@@ -26,6 +27,7 @@ import type {
 } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
+import { resolveTextStyle } from "../text-style";
 import {
   type Ctx,
   type FieldReport,
@@ -55,7 +57,12 @@ export type PanelVisual = { picture: Figure } | { shares: number[] };
 export const PANEL_MAX = 6;
 export const PANEL_MIN = 2;
 /** The most rows that can be comfortable at each age. */
-export const PANEL_COMFORT: Record<AgeKey, number> = { early: 4, primary: 5, secondary: 5 };
+/**
+ * The pilot holds 5 (4 at early); measured at the sizes the product draws (the deck's key-stage
+ * scale snaps body to 25pt at KS2, 28pt at KS1), one row fewer is comfortable on the v1 themes.
+ * Re-measure when theme v2 (TEACH-152 part b) gives the v2 sizes their own steps.
+ */
+export const PANEL_COMFORT: Record<AgeKey, number> = { early: 3, primary: 4, secondary: 4 };
 /** Element names, as a teacher sees them in the editor's selection and layers. */
 export const PANEL_NAMES = {
   panel: "Title panel",
@@ -188,12 +195,17 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     : visual
       ? SLIDE_H - TITLE_TOP - CHART_ROOM - CHART_GAP
       : SLIDE_H - TITLE_TOP - TITLE_FOOT;
+  // The title takes the deck's type-scale step the renderer draws for the wanted size: a title
+  // step while one sits at or under it, else a heading step (the title role stops at subtitle).
   const titleAt = (tk: number) => {
-    const size = Math.round(L.sizes.titlePanel * tk * 10) / 10;
-    const lines = head ? lines_(c.t, head, "title", L.displayWeight, size, TITLE_W) : 0;
+    const want = L.sizes.titlePanel * tk;
+    const asTitle = drawn(c.t, "title", want);
+    const preset: "title" | "heading" = asTitle <= want + 0.5 ? "title" : "heading";
+    const size = preset === "title" ? asTitle : drawn(c.t, "heading", want);
+    const lines = head ? lines_(c.t, head, preset, L.displayWeight, size, TITLE_W) : 0;
     const h = Math.ceil(lines * size * L.lineHeights.title);
-    const whole = !head || kit.wordsFit(c, head, "title", TITLE_W, size, L.displayWeight);
-    return { size, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
+    const whole = !head || kit.wordsFit(c, head, preset, TITLE_W, size, L.displayWeight);
+    return { size, preset, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
   };
   let tk = 1;
   let title = titleAt(tk);
@@ -246,7 +258,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   // Title: under the panel's top with a visual, at its foot without one.
   if (head) {
     const y = visual ? TITLE_TOP : SLIDE_H - TITLE_FOOT - title.h;
-    put(c, head, "title", { x: TITLE_X, y, w: TITLE_W }, title.size, {
+    put(c, head, title.preset, { x: TITLE_X, y, w: TITLE_W }, title.size, {
       weight: L.displayWeight,
       lh: L.lineHeights.title,
       color: L.onDeep,
@@ -290,7 +302,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   let top = ROWS_TOP;
   let leadLines = 0;
   if (lead) {
-    const size = Math.max(L.floors.body, Math.round(L.sizes.body * 1.06 * 10) / 10);
+    const size = drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 1.06));
     leadLines = lines_(c.t, lead, "body", L.bodyWeight, size, ROWS_W);
     const el = put(c, lead, "body", { x: ROWS_X, y: ROWS_TOP, w: ROWS_W }, size, {
       weight: L.bodyWeight,
@@ -307,10 +319,14 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const d0 = L.disc * (n >= 6 ? 0.86 : n <= 3 ? 1.2 : 1);
   const f = n >= 6 ? 0.92 : n <= 3 ? 1.12 : 1;
   const gapMin = n <= 3 ? 37 : 12;
+  // Every size is the step the renderer draws (the deck's one key-stage scale snaps any stored
+  // size to a step of its role), so what is measured here is what the browser lays out.
   const sizesAt = (k: number) => ({
-    name: Math.max(L.floors.name, Math.round(L.sizes.name * 0.87 * k * f * 10) / 10),
-    body: Math.max(L.floors.body, Math.round(L.sizes.body * 0.94 * k * f * 10) / 10),
+    name: drawn(c.t, "heading", Math.max(L.floors.name, L.sizes.name * 0.87 * k * f)),
+    body: drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.94 * k * f)),
   });
+  const comfortName = drawn(c.t, "heading", L.comfort.name);
+  const comfortBody = drawn(c.t, "body", L.comfort.body);
   const measureAt = (k: number, df: number) => {
     const s = sizesAt(k);
     const d = Math.round(d0 * df);
@@ -351,7 +367,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     }
     const fill = (blocks.reduce((a, b) => a + b.th, 0) + (n - 1) * bodyLH) / Math.max(1, H);
     const comfy = fits && fill <= COMFORT_FILL + 0.005 && (n < 2 || minGap >= bodyLH - 1);
-    const typeOk = s.name >= L.comfort.name - TOL && s.body >= L.comfort.body - TOL;
+    const typeOk = s.name >= comfortName - TOL && s.body >= comfortBody - TOL;
     return { s, d, tw, blocks, ys, gap, fits, comfy, typeOk };
   };
   let df = 1;
@@ -391,7 +407,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     if (!b || y === undefined) return;
     const fill = fills[i] as string;
     const dy = y + (b.rh - m.d) / 2;
-    const numeral = Math.max(20, Math.round(m.d * 0.48));
+    const numeral = drawn(c.t, "heading", Math.max(20, m.d * 0.48));
     c.els.push({
       id: uid(),
       type: "shape",
@@ -516,6 +532,10 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
 }
 
 /** Lines of `text` in a `preset` box `w` wide at `size` and `weight`. */
+/** The size the renderer draws a `preset` text stored at `size` (the key-stage scale's step). */
+const drawn = (t: Theme, preset: "title" | "heading" | "body", size: number) =>
+  resolveTextStyle({ preset, fontSize: size }, t, preset).fontSize;
+
 function lines_(
   t: Theme,
   text: string,
