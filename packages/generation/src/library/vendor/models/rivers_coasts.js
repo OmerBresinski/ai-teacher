@@ -19,7 +19,7 @@ import { REAL_PARAM, realRiver, realWarnings, renderRealCourse } from './rivers_
 import { riverIdFor } from './river_real.js'; // libriver: named real rivers are river_real's
 
 export const meta = {
-  id: 'rivers_coasts', name: 'Rivers and coasts', kind: 'scene', version: 1,
+  id: 'rivers_coasts', name: 'Rivers and coasts', kind: 'scene', version: 2,
   subjects: ['Geography', 'Science'],
   years: ['Y3', 'Y4', 'Y5', 'Y6', 'KS3'],
   teaches: 'How a river runs downhill from its source to the sea, how meanders and oxbow lakes form, and how waves wear a headland into caves, arches, stacks and stumps.',
@@ -154,7 +154,8 @@ function plan(P) {
     if (m.section) items.push({ key: 'section', caption: 'From the side: deep and steep outside, shallow and gentle inside.' });
     if (m.stage === 'oxbow') {
       items.push({ key: 'neck', caption: 'Year after year the bend grows, and the neck of land gets narrower.' });
-      items.push({ key: 'oxbow', caption: 'A flood cuts through the neck. The old loop is left as an oxbow lake.' });
+      items.push({ key: 'cut', caption: 'In a flood, the river cuts straight through the narrow neck: a shorter, faster way.' });
+      items.push({ key: 'oxbow', caption: 'Sand seals off the old loop. It is left behind as an oxbow lake.' });
     }
     return { items, summary: m.stage === 'oxbow' ? 'The bend grows until the river cuts through and leaves an oxbow lake.' : 'Erosion outside, deposition inside: so the bend slowly moves and grows.' };
   }
@@ -167,6 +168,8 @@ function plan(P) {
     stump: 'Waves wear the stack down until only a low stump is left.',
   };
   P.coast.forEach(c => items.push({ key: `f:${c.feature}`, caption: C[c.feature] }));
+  // the time arrow is its own build: one idea (older further out) after the features it orders
+  if (P.coast.length > 1) items.push({ key: 'older', caption: 'The further out to sea a feature is, the older it is.' });
   return { items, summary: 'The further out to sea a feature is, the older it is.' };
 }
 export function builds(P) { const { items, summary } = plan(P); return { steps: items.map(({ key, caption }) => ({ key, caption })), summary: { caption: summary } }; }
@@ -185,6 +188,7 @@ export function notes(P) {
     deposition: 'Slow water has less energy, so it cannot carry its load and drops it. This builds the slip-off slope (also called a point bar).',
     section: 'Read the cross-section from A (inside) to B (outside). Not to scale: the depth is stretched so you can see it.',
     neck: 'The outside of each bend keeps eroding, so the two ends of the loop creep towards each other.',
+    cut: 'Floodwater takes the shortest path downhill. Ask: why does the river not go back round the loop?',
     oxbow: 'The ends of the old loop are sealed with deposited sand. Oxbow lakes slowly dry out and fill with plants.',
     headland: 'Headlands are made of hard rock, which wears away slowly; the softer rock either side wears back into bays. Not to scale, and the changes take thousands of years.',
     'f:crack': 'Hydraulic action: waves squeeze air into cracks and the pressure breaks the rock.',
@@ -447,7 +451,9 @@ function renderMeander(root, P, ctx) {
   const b = ctx.b, bi = k => b[k] ?? 0; const m = P.meander; const oxbow = m.stage === 'oxbow';
   const WR = 46, MIG = 26; const MT = 124, MB = 660;
   h('rect', { x: 0, y: MT, width: 1280, height: MB - MT, fill: 'var(--hill-far)' }, root);
-  const entry = [[-30, 212], [150, 212]], exit = [[930, 212], [1310, 212]];
+  // the river stops a hair inside the slide edges, so the bend itself is the opening picture
+  // (a mark as wide as the slide is read as ground, and the first build would merge into the next)
+  const entry = [[1, 212], [150, 212]], exit = [[930, 212], [1279 - 2, 212]];
   const A = meanderState([540, 384], 160, 205, -25, entry, exit);
   const W0 = 'var(--water-text)';
   const obstacles = []; if (P.title) obstacles.push({ x: GRID.left, y: 30, w: measure(root, P.title, 'ts-title') + 8, h: 96 });
@@ -488,7 +494,7 @@ function renderMeander(root, P, ctx) {
 
   // the cross-section A to B
   if (m.section) {
-    const ks = bi('section'); const ia = Math.round(arcIdx.length * .7);
+    const ks = bi('section'); const ia = Math.round(arcIdx.length * .8);
     const pin = innerAt(i => WR / 2 + 18)[ia], pout = outerAt(i => WR / 2 + MIG * A.arc[i] + 26)[ia];
     const sg = h('g', { s: ks, c: ctx.rc('section', null, 'soft') }, gA);
     h('line', { x1: pin[0], y1: pin[1], x2: pout[0], y2: pout[1], stroke: 'var(--ink)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '5 5' }, sg);
@@ -521,7 +527,11 @@ function renderMeander(root, P, ctx) {
       const tb = textBlock(tg, 0, 0, s, { cls: 'ts-small', maxW: 220, maxLines: 3, lh: 26, anchor: 'middle', edit: path, a: { cls: 'strong', fill: 'var(--ink)' } });
       const hh = tb.h + 14, w = Math.max(hh, tb.w + 20); const box = { x: -w / 2, y: -20 - 7, w, hh };
       gr.setAttribute('x', box.x); gr.setAttribute('y', box.y); gr.setAttribute('width', w); gr.setAttribute('height', hh); tg.box = { x: box.x, y: box.y, w, h: hh };
-      const cands = []; for (const d of [0, 16, 40, 70]) { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 6 + d; cands.push([p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2]); }
+      const cands = []; for (const d of [0, 16, 40, 70, 100, 130, 160]) { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 6 + d; cands.push([p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2]); }
+      // A sits inside the bend and B outside it, right at their ends of the line: on its own side, a
+      // tag is never moved across the river (that would put both ends on the outside bank)
+      { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 4; const [tx, ty] = [p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2];
+        tg.setAttribute('transform', `translate(${tx} ${ty})`); obstacles.push({ x: tx + box.x, y: ty + box.y, w, h: hh }); return; }
       const bb = placeBlock(ctx, tg, cands.concat(around(p[0], p[1], tg.box, 10)), obstacles, s, undefined, true) || placeBlock(ctx, tg, sweep(tg.box, GRID.left, GRID.right - tg.box.w, GRID.top, GRID.bottom - tg.box.h, p[0], p[1], 10), obstacles, s, undefined, false, leaderClear(p, obstacles));
       if (bb) { const qx = clamp(p[0], bb.x, bb.x + bb.w), qy = clamp(p[1], bb.y, bb.y + bb.h); if (Math.hypot(qx - p[0], qy - p[1]) > 4) sg.insertBefore(h('line', { x1: p[0], y1: p[1], x2: qx, y2: qy, stroke: 'var(--ink)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '5 5' }), sg.firstChild); }
     };
@@ -535,16 +545,22 @@ function renderMeander(root, P, ctx) {
     const B = meanderState([540, 404], 196, 238, -58, entry, exit);
     gB = h('g', { s: bi('neck'), hide: bi('oxbow') }, root);
     h('path', { d: ribbonD(B.pts, () => WR, 1), fill: 'var(--water)' }, gB);
-    const nk = h('g', {}, gB); const ny = (B.A0[1] + B.A1[1]) / 2 - 2;
+    const nk = h('g', { hide: bi('cut') }, gB); const ny = (B.A0[1] + B.A1[1]) / 2 - 2;
     h('line', { x1: B.A0[0] + 30, y1: ny, x2: B.A1[0] - 30, y2: ny, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-lead)' }, nk);
     for (const x of [B.A0[0] + 30, B.A1[0] - 30]) h('line', { x1: x, y1: ny - 12, x2: x, y2: ny + 12, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-lead)' }, nk);
     // its label sits beside the marker, above the neck, never inside the loop
     const bl = block(nk, 540, 0, [{ text: txt(P, 'label:neck', 'The neck gets narrower'), edit: 'text.label:neck', fill: 'var(--focus-text)' }], { anchor: 'middle', maxW: 300 });
     const nObs = B.pts.map(p => ({ cx: p[0], cy: p[1], r: WR / 2 + 4 })); if (P.title) nObs.push(obstacles[0]);
     placeBlock(ctx, bl, [ny - 28, ny - 44, ny - 60, ny - 76, ny - 92].map(y => [0, y - bl.box.h - bl.box.y]).concat([[0, ny + 22 - bl.box.y]]), nObs, 'neck');
+    // the cut: floodwater breaks through the neck while the loop is still full; the oxbow stage follows
+    const gX = h('g', { s: bi('cut'), hide: bi('oxbow') }, root);
+    h('path', { d: ribbonD(smooth([[B.A0[0] - 10, B.A0[1] + 4], [B.A1[0] + 10, B.A1[1] + 4]], 4), () => WR), fill: 'var(--water)', cls: 'pop' }, gX);
+    flow(ctx, gX, [[B.A0[0] - 40, ny], [B.A1[0] + 40, ny]], 'var(--energy)', { w: 'var(--sw-struct)', k: .7, dash: '10 9' });
+    const cl = block(gX, 540, 0, [{ text: 'A flood cuts through', fill: 'var(--focus-text)' }], { anchor: 'middle', maxW: 300 });
+    placeBlock(ctx, cl, [ny - 28, ny - 44, ny - 60, ny - 76, ny - 92].map(y => [0, y - cl.box.h - cl.box.y]).concat([[0, ny + 22 - cl.box.y]]), B.pts.map(p => ({ cx: p[0], cy: p[1], r: WR / 2 + 4 })).concat(P.title ? [obstacles[0]] : []), 'cut');
     // oxbow: straight river through the neck; the old loop is a lake sealed at both ends with sand
     const gC = h('g', { s: bi('oxbow') }, root);
-    const straight = smooth([[-30, 212], [150, 212], [B.A0[0] - 10, B.A0[1] + 4], [B.A1[0] + 10, B.A1[1] + 4], [930, 212], [1310, 212]], 10);
+    const straight = smooth([[1, 212], [150, 212], [B.A0[0] - 10, B.A0[1] + 4], [B.A1[0] + 10, B.A1[1] + 4], [930, 212], [1277, 212]], 10);
     const lakeIdx = B.arc.map((a, i) => a > .16 ? i : -1).filter(i => i >= 0); const lake = lakeIdx.map(i => B.pts[i]);
     // sand fills the old channel from each lake end up to the new channel's bank
     const a0 = B.arc.findIndex(a => a > 0) - 1, a1 = B.arc.length - 1 - B.arc.slice().reverse().findIndex(a => a > 0) + 1;
@@ -553,6 +569,10 @@ function renderMeander(root, P, ctx) {
     h('path', { d: ribbonD(straight, () => WR), fill: 'var(--water)' }, gC);
     const lb = block(gC, 540, 404, [{ text: txt(P, 'label:oxbow', 'Oxbow lake'), edit: 'text.label:oxbow', cls: 'ts-label', fill: W0 }], { anchor: 'middle', maxW: 240 });
     void lb;
+    // the sand that seals the old loop off, named on the stage that shows it
+    const plug = B.pts[Math.max(0, lakeIdx[0] - 2)];
+    const sl = block(gC, plug[0] - 70, plug[1] + 4, [{ text: 'Sand seals the ends', fill: 'var(--ink)' }], { anchor: 'end', maxW: 260 });
+    if (sl) gC.insertBefore(h('line', { x1: plug[0] - 64, y1: plug[1] - 4, x2: plug[0] - 14, y2: plug[1] - 4, stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-lead)' }), gC.firstChild);
   }
   const setA = (e1, e2) => riverA.setAttribute('d', ribbonD(A.pts, () => WR, 1, off(A, e1, e2)));
   return {
@@ -652,7 +672,7 @@ function renderCoast(root, P, ctx) {
     place(lg, c.label || txt(P, `label:${c.feature}`, FEATURE_WORDS[c.feature]), c.label ? `coast.${i}.label` : `coast.${i}.label`, X[c.feature], anchor[1], 'ts-label', 'var(--ink)');
   });
   // time: the further out to sea, the older (summary)
-  const tg = h('g', { s: ctx.N }, root);
+  const tg = h('g', { s: P.coast.length > 1 ? bi('older') : ctx.N }, root);
   const tx1 = 1180;
   h('rect', { x: tBox.x, y: tBox.y, width: tBox.w, height: tBox.h, rx: 'var(--r-mark)', fill: 'var(--knockout)' }, tg);
   textBlock(tg, tcx, ty0, tl, { cls: 'ts-label', maxW: TMAX, maxLines: 2, lh: 30, anchor: 'middle', edit: 'text.label:older', a: { fill: 'var(--ink)' } });

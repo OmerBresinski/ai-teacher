@@ -10,7 +10,7 @@ import {
 import { PLANETS, planet, globe, moonPhase, PHASE_NAMES } from '../kit/batch-F.js';
 
 export const meta = {
-  id: 'earth_sun_moon', name: 'Earth, Sun and Moon', kind: 'scene', version: 1,
+  id: 'earth_sun_moon', name: 'Earth, Sun and Moon', kind: 'scene', version: 2,
   subjects: ['Science'],
   years: ['Y5'],
   teaches: 'Why we have day and night, what a year is, why the Moon has phases, and how the planets orbit the Sun.',
@@ -330,7 +330,7 @@ function moonScene(root, P, ctx, bi, N) {
   for (const j of idx) {
     const t = Math.PI + j * Math.PI / 4; const [x, y] = at(C, RO, t);
     litFromLeft(root, x, y, mr, 'var(--moon)', { s: kO, cls: 'pop', delay: 200 + j * 110 });
-    h('circle', { cx: x, cy: y, r: mr + 8, fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', s: buildOf(j), hide: buildOf(j) + 1 }, root);
+    h('circle', { cx: x, cy: y, r: mr + 8, fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', s: buildOf(j), hide: buildOf(j) + 1 < N ? buildOf(j) + 1 : null }, root); // the last ring set stays: no empty extra click
   }
   // the ring outside: the Moon as we see it from Earth at each place, and its name
   for (const j of idx) {

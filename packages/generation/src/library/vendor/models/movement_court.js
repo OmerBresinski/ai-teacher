@@ -533,6 +533,8 @@ function renderTactics(root, P, ctx) {
     const [runoff, inner] = C.g.querySelectorAll('rect'); runoff.style.setProperty('fill', 'none'); inner.style.setProperty('fill', 'var(--mc-court)');
     if (P.sport === 'netball') for (const gx of [0, C.L]) h('circle', { cx: C.mx(gx), cy: C.my(C.Wd / 2), r: 11, fill: 'none', stroke: 'var(--counter)', 'stroke-width': 'var(--sw-struct)' }, C.g);
   }
+  // an open space is named with its cones, so the first build (the area alone) is its own frame
+  if (P.sport === 'open') T(h('g', { s: kC, cls: 'rise' }, root), C.box.x, C.box.y - 14, 'Playing area', 'ts-small', { fill: 'var(--ink-2)', cls: 'strong' });
   // netball thirds named in the run-off above the court
   if (P.sport === 'netball') {
     const names = [txt(P, 'label:third1', 'Goal third'), txt(P, 'label:third2', 'Centre third'), txt(P, 'label:third3', 'Goal third')];

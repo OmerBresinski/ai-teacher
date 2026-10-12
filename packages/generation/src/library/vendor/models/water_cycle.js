@@ -151,7 +151,8 @@ const LAND = {
     trees: [[44, 446, .8], [100, 430, .85], [156, 426, .8]],
     leafTops: [[44, 384], [100, 366], [156, 364]],
     // a simple river from the hill foot, passing left of the road, along the front and into the sea
-    river: 'M 318 500 C 326 550, 332 600, 380 630 S 560 652, 690 640',
+    // rises in the hills left of the road and runs in front of the street, never under the houses
+    river: 'M 296 470 C 296 560, 300 628, 384 640 S 560 660, 690 645',
     riverSegs: [[[318, 500], [326, 550], [332, 600], [380, 630]], [[380, 630], [428, 660], [560, 652], [690, 640]]],
     // rain lands on the roofs: each drop stops at the roof line under it
     rain: { x0: 452, rows: 6, cols: 6, oh: 240, floor: x => { const r = roofY(x); return r == null ? 554 : r - 22; } },
@@ -274,6 +275,9 @@ export function render(root, P, ctx) {
     obstacles.push({ x: 1020, y: 148, w: 66, h: 40 });
   }
   obstacles.push({ x: 1086, y: 104, w: 128, h: 128 });
+  // the Sun is named from the first build: the cycle starts with it, and the opening frame has a word
+  T(g, 1076, 176, 'Sun', 'ts-label', { 'text-anchor': 'end', fill: 'var(--ink)' });
+  obstacles.push({ x: 1010, y: 148, w: 70, h: 40 });
 
   // vapour: invisible, so it is drawn as dotted arrows (where it goes, not what it looks like)
   const vapour = (paths, id) => {
