@@ -506,7 +506,7 @@ const L = {
   top: 152,
   bot: 640,
 };
-const FOS_LAB = 240; // v3: the fossil build's row words over the kept counts, right-aligned to the bars
+const FOS_LAB = 230; // v3: the fossil build's count column, beside the rock
 const SKY = "color-mix(in oklab, var(--hue-blue) 10%, var(--cloud))";
 const GROUND = {
   finch: "color-mix(in oklab, var(--hue-gold) 40%, var(--cloud))",
@@ -779,16 +779,9 @@ export function render(root, P, ctx) {
     });
     // the count: worked out, so clicking it focuses the setting it comes from
     if (P.showCounts) {
-      const ends = i === 0 || last;
-      const cg = h("g", { s: k, cls: "rise", delay: dl + 300 }, ends ? keep : stage);
+      const cg = h("g", { s: k, cls: "rise", delay: dl + 300 }, stage);
       const c = M.counts[i],
         y = midY(i);
-      // on the fossil build the row labels go with the rows, so each kept count says which row it was
-      if (fos && ends) {
-        const tb = textBlock(root, L.cntL + L.cntW, 0, rowWord(i), { cls: "ts-cap", maxW: FOS_LAB, maxLines: 2, lh: 26, anchor: "end", a: { fill: "var(--ink)", s: b.fossils, cls: "rise" } });
-        [...tb.el.children].forEach((t) => t.setAttribute("x", L.cntL + L.cntW));
-        tb.el.setAttribute("y", y - 30 - (tb.lines.length - 1) * tb.lh);
-      }
       computed(
         T(cg, L.cntL, y + 4, `${c} of ${n}`, "ts-label", {
           "font-variant-numeric": "tabular-nums",
@@ -917,11 +910,19 @@ export function render(root, P, ctx) {
     textBlock(bg, bx + Z.w * ks + 18, by + 9, "Did not survive", { cls: "ts-cap", maxW: 220, maxLines: 1, lh: 30, a: { fill: "var(--ink)" } });
   }
 
-  /* fossils: one rock column over the stage, oldest layer at the bottom; gone for the summary */
+  /* fossils: one rock column over the stage, oldest layer at the bottom; v3: the counts the captions
+     named sit in a column beside it, the population now by the youngest layer and the first generation
+     by the oldest, so both read older going down */
   if (fos) {
     const fg = h("g", { s: b.fossils, cls: "rise" }, root);
     const fx0 = GRID.left - 4,
-      fx1 = P.showCounts ? L.cntL + L.cntW - FOS_LAB - 28 : GRID.right + 4;
+      fx1 = P.showCounts ? GRID.right - FOS_LAB - 24 : GRID.right + 4;
+    const ly0 = L.top - 8,
+      lay = 3,
+      lh = (L.bot - ly0) / lay,
+      gs = Math.min(2.4, (lh - 20) / ART_SIZE.giraffe.h),
+      gx = (i) => (fx0 + fx1) / 2 + (i - 1) * 150;
+    if (lh < 44) ctx.warn("fossil layers are cramped: shorten the fossil wording");
     // the rock column is scenery: it never takes clicks meant for the labels under it in other builds
     h(
       "rect",
@@ -935,25 +936,6 @@ export function render(root, P, ctx) {
       },
       fg,
     );
-    // the heading sits in the head band, right, where the legend was, so the rock gets the full height
-    const ft = fitHead(
-      fg,
-      fx1 - 20,
-      txt(P, "label:fossils", "Fossils: oldest rock at the bottom"),
-      {
-        maxW: Math.min(520, (fx1 - fx0) / 2),
-        maxLines: 2,
-        anchor: "end",
-        edit: "text.label:fossils",
-        a: { fill: "var(--ink)", "font-weight": "var(--w-strong)" },
-      },
-      Math.min(520, (fx1 - fx0) / 2),
-    );
-    ft.el.setAttribute("y", L.top + 30);
-    const ly0 = L.top - 8,
-      lay = 3,
-      lh = (L.bot - ly0) / lay;
-    if (lh < 44) ctx.warn("fossil layers are cramped: shorten the fossil wording");
     for (let i = 0; i < lay; i++) {
       const y = ly0 + i * lh,
         t = 0.9 - i * 0.4,
@@ -972,15 +954,32 @@ export function render(root, P, ctx) {
         },
         fg,
       );
-      fossilGiraffe(
-        fg,
-        clamp(t, 0, 1),
-        (fx0 + fx1) / 2 + (i - 1) * 150,
-        y + lh - 14,
-        Math.min(2.4, (lh - 20) / ART_SIZE.giraffe.h),
-        { delay: d, "pointer-events": "none" },
-      );
+      fossilGiraffe(fg, clamp(t, 0, 1), gx(i), y + lh - 14, gs, { delay: d, "pointer-events": "none" });
+      const r = i === 0 ? R - 1 : i === lay - 1 ? 0 : null;
+      if (P.showCounts && r != null) {
+        const cx = fx1 + 24;
+        const tb = textBlock(fg, cx, y + 28, rowWord(r), { cls: "ts-cap", maxW: FOS_LAB, maxLines: 2, lh: 26, a: { fill: "var(--ink)" } });
+        const cy = y + 28 + (tb.lines.length - 1) * tb.lh + 40;
+        computed(T(fg, cx, cy, `${M.counts[r]} of ${n}`, "ts-label", { "font-variant-numeric": "tabular-nums" }), "startCount");
+        h("rect", { x: cx, y: cy + 14, width: L.cntW, height: 8, rx: "var(--r-mark)", fill: "var(--rule)" }, fg);
+        h("rect", { x: cx, y: cy + 14, width: Math.max(0.01, (L.cntW * M.counts[r]) / n), height: 8, rx: "var(--r-mark)", fill: "var(--ink-2)" }, fg);
+      }
     }
-    fg.appendChild(ft.el); // the heading sits on the top layer
+    // the heading: one line in the top layer, right, clear of that layer's giraffe
+    const headW = fx1 - 20 - (gx(0) + (ART_SIZE.giraffe.w * gs) / 2 + 24);
+    const ft = fitHead(
+      fg,
+      fx1 - 20,
+      txt(P, "label:fossils", "Fossils: oldest rock at the bottom"),
+      {
+        maxW: headW,
+        maxLines: 1,
+        anchor: "end",
+        edit: "text.label:fossils",
+        a: { fill: "var(--ink)", "font-weight": "var(--w-strong)" },
+      },
+      headW,
+    );
+    ft.el.setAttribute("y", L.top + 30);
   }
 }
