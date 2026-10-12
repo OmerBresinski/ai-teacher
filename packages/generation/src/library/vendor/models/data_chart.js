@@ -350,6 +350,10 @@ export function render(root, P, ctx) {
   const chartG = h('g', {}, root);
   const softFrom = i => (ka != null && M.A.length && !M.A.includes(i)) ? `${ka}:soft` : null;
   const readA = ka != null ? { s: kr, hide: ka } : { s: kr, c: `${N}:soft` };
+  // v2: a bar or line chart keeps its reading once the answer arrives, quietened, so the value the caption
+  // read is still on the chart at the end
+  const keepRead = ka != null && (M.kind === 'bar' || M.kind === 'line');
+  const readKeepA = keepRead ? { s: kr, c: `${ka}:soft` } : readA;
   const data = M.D.map(d => ({ label: d.label, value: d.v }));
   const bigTitle = sel => { const el = chartG.querySelector(`[data-edit="${sel}"]`); if (el) { el.style.fontSize = F.title; el.style.fill = 'var(--ink)'; } };
 
@@ -382,7 +386,7 @@ export function render(root, P, ctx) {
       const sf = softFrom(i); if (sf) bar.el.dataset.c = sf;
     });
     // the reading: across from the top of the bar to the scale, and the value above it
-    { const bar = C.bars[M.rt], y = C.S(bar.value); const g = h('g', readA, chartG);
+    { const bar = C.bars[M.rt], y = C.S(bar.value); const g = h('g', M.kind === 'bar' ? readKeepA : readA, chartG);
       h('line', { x1: left, x2: bar.x - bar.w / 2, y1: y, y2: y, stroke: 'var(--ink-2)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
       if (M.kind === 'bar') computed(T(g, bar.x, y - 14, fmtN(bar.value), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`); }
     // the answer: the bars it is about turn to the focus colour
@@ -460,7 +464,7 @@ export function render(root, P, ctx) {
     const lane = [], xA = fsA('calc(var(--fs-small) * 1.3)', true);
     M.D.forEach(d => { const w = measure(root, d.label, 'ts-small', xA); const x = C.X(d.i); const pl = lanePlace(lane, w, x, { gap: 28, shift: 0, min: CH.x, max: CHR + 20 });
       if (pl) editable(T(chartG, x, baseY + 40, d.label, 'ts-small', Object.assign({ 'text-anchor': 'middle' }, xA)), `data.${d.i}.label`); });
-    { const x = C.X(M.rt), y = C.S(M.D[M.rt].v); const g = h('g', readA, chartG);
+    { const x = C.X(M.rt), y = C.S(M.D[M.rt].v); const g = h('g', readKeepA, chartG);
       h('path', { d: `M${x} ${baseY} V${y} H${box.x + 70}`, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
       computed(T(g, x, y - 22, fmtN(M.D[M.rt].v), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`); }
     if (ka != null) for (const i of M.A) h('circle', { cx: C.X(i), cy: C.S(M.D[i].v), r: 17, fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', s: ka, cls: 'pop' }, chartG);
@@ -500,6 +504,12 @@ export function render(root, P, ctx) {
   }
   card(root, y0, { head: txt(P, 'label:read', 'Reading the chart'), headEdit: 'text.label:read', sentence: rd.sentence, result: rd.result, path: rd.path,
     accent: 'var(--ink-3)', ink: 'var(--ink)', a: Object.assign({ cls: 'rise' }, ka != null ? { s: kr, hide: ka } : { s: kr }) });
+  // v2: the reading card gives way to the answer, and its result stays as a quiet line at the foot of the column
+  if (keepRead) {
+    const g = h('g', { s: ka, cls: 'rise' }, root);
+    textBlock(g, CARD.x, GRID.bottom - 78, `${M.D[M.rt].label}:`, { cls: 'ts-small', maxW: CARD.w, maxLines: 1, lh: 28, a: { fill: 'var(--ink-2)' } });
+    computed(textBlock(g, CARD.x, GRID.bottom - 38, rd.result, { cls: 'ts-label', maxW: CARD.w, maxLines: 1, lh: 30, a: { fill: 'var(--ink-2)', cls: 'strong' } }).el, rd.path);
+  }
   if (an) card(root, y0, { head: txt(P, 'label:question', questionWords(M)), headEdit: 'text.label:question', sentence: an.sentence, result: an.result, path: an.path,
     accent: 'var(--focus)', ink: 'var(--focus-text)', a: { s: ka, cls: 'rise' } });
 

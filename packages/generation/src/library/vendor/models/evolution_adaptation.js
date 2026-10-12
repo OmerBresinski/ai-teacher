@@ -506,6 +506,7 @@ const L = {
   top: 152,
   bot: 640,
 };
+const FOS_LAB = 240; // v3: the fossil build's row words over the kept counts, right-aligned to the bars
 const SKY = "color-mix(in oklab, var(--hue-blue) 10%, var(--cloud))";
 const GROUND = {
   finch: "color-mix(in oklab, var(--hue-gold) 40%, var(--cloud))",
@@ -538,6 +539,9 @@ export function render(root, P, ctx) {
   // the whole population stage steps aside for the fossil build, and comes back for the summary
   // v2: and the drawing ends on the fossils (the evidence), instead of returning to the grid
   const stage = h("g", fos ? { hide: b.fossils } : {}, root);
+  // v3: the fossil build keeps the trait key and the first and last counts beside the rock, so the end
+  // still shows the change the captions counted (2 of 7, then 7 of 7)
+  const keep = fos ? h("g", {}, root) : stage;
   /* generation labels: the label column widens (and the population narrows) until every label
      fits its row, wrapped and at most shrunk to the minimum size */
   const isManyRow = (i) => M.many && i === R - 1;
@@ -659,7 +663,7 @@ export function render(root, P, ctx) {
     const hx = L.cntL + L.cntW,
       hdW = Math.min(520, hx - subR - 28);
     const hd = fitHead(
-      stage,
+      keep,
       hx,
       word.charAt(0).toUpperCase() + word.slice(1),
       {
@@ -684,7 +688,7 @@ export function render(root, P, ctx) {
         stroke: "var(--ink-2)",
         "stroke-width": "var(--sw-struct)",
       },
-      stage,
+      keep,
     );
   }
 
@@ -775,9 +779,16 @@ export function render(root, P, ctx) {
     });
     // the count: worked out, so clicking it focuses the setting it comes from
     if (P.showCounts) {
-      const cg = h("g", { s: k, cls: "rise", delay: dl + 300 }, stage);
+      const ends = i === 0 || last;
+      const cg = h("g", { s: k, cls: "rise", delay: dl + 300 }, ends ? keep : stage);
       const c = M.counts[i],
         y = midY(i);
+      // on the fossil build the row labels go with the rows, so each kept count says which row it was
+      if (fos && ends) {
+        const tb = textBlock(root, L.cntL + L.cntW, 0, rowWord(i), { cls: "ts-cap", maxW: FOS_LAB, maxLines: 2, lh: 26, anchor: "end", a: { fill: "var(--ink)", s: b.fossils, cls: "rise" } });
+        [...tb.el.children].forEach((t) => t.setAttribute("x", L.cntL + L.cntW));
+        tb.el.setAttribute("y", y - 30 - (tb.lines.length - 1) * tb.lh);
+      }
       computed(
         T(cg, L.cntL, y + 4, `${c} of ${n}`, "ts-label", {
           "font-variant-numeric": "tabular-nums",
@@ -910,7 +921,7 @@ export function render(root, P, ctx) {
   if (fos) {
     const fg = h("g", { s: b.fossils, cls: "rise" }, root);
     const fx0 = GRID.left - 4,
-      fx1 = GRID.right + 4;
+      fx1 = P.showCounts ? L.cntL + L.cntW - FOS_LAB - 28 : GRID.right + 4;
     // the rock column is scenery: it never takes clicks meant for the labels under it in other builds
     h(
       "rect",
@@ -927,18 +938,18 @@ export function render(root, P, ctx) {
     // the heading sits in the head band, right, where the legend was, so the rock gets the full height
     const ft = fitHead(
       fg,
-      fx1 - 4,
+      fx1 - 20,
       txt(P, "label:fossils", "Fossils: oldest rock at the bottom"),
       {
-        maxW: Math.min(600, fx1 - subR - 40),
+        maxW: Math.min(520, (fx1 - fx0) / 2),
         maxLines: 2,
         anchor: "end",
         edit: "text.label:fossils",
         a: { fill: "var(--ink)", "font-weight": "var(--w-strong)" },
       },
-      fx1 - subR - 40,
+      Math.min(520, (fx1 - fx0) / 2),
     );
-    ft.el.setAttribute("y", L.head - 14 - (ft.lines.length - 1) * ft.lh);
+    ft.el.setAttribute("y", L.top + 30);
     const ly0 = L.top - 8,
       lay = 3,
       lh = (L.bot - ly0) / lay;
@@ -970,5 +981,6 @@ export function render(root, P, ctx) {
         { delay: d, "pointer-events": "none" },
       );
     }
+    fg.appendChild(ft.el); // the heading sits on the top layer
   }
 }

@@ -387,6 +387,8 @@ function renderGroups(root, P, ctx) {
   // and is marked as saying the answer (data-ans), so a question slide never restores it before the reveal
   const firstEq = M.add ? b.add : b.sentence;
   computed(T(root, 640, EQ_Y, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: M.div ? firstEq : (kMove ?? firstEq), cls: 'rise', 'data-ans': M.div ? null : '1' }), M.array ? 'size' : 'groups');
+  // v2: a division keeps its whole to the end: when the sentence takes the row, the whole steps down under it
+  if (M.div && firstEq != null) computed(T(root, 640, EQ_Y + 54, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: firstEq, cls: 'rise' }), M.array ? 'size' : 'groups');
   if (M.add) {
     // repeated addition first, on its own centred line; it leaves when the multiplication takes its place
     const ap = addParts(M); eqCls = EQ_CLS.find(c => measure(root, ap.join(''), c) <= ZONE.w) || EQ_CLS[EQ_CLS.length - 1];
