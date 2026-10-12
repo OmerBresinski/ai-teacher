@@ -10,7 +10,7 @@ import {
 import { pvColour, digitCard, dienes, fmtNum } from '../kit/batch-A.js';
 
 export const meta = {
-  id: 'place_value', name: 'Place value', kind: 'info', version: 1,
+  id: 'place_value', name: 'Place value', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'What each digit is worth from its column: partitioning, multiplying and dividing by 10, 100 and 1,000, and exchanging between columns.',
@@ -22,7 +22,11 @@ const ONE = { 7: 'ten million', 6: 'million', 5: 'hundred thousand', 4: 'ten tho
 const SHORT = { 7: 'TM', 6: 'M', 5: 'HTh', 4: 'TTh', 3: 'Th', 2: 'H', 1: 'T', 0: 'O', '-1': 'Tth', '-2': 'Hth', '-3': 'Thth' };
 const EXP = Object.fromEntries(Object.entries(NAME).map(([e, n]) => [n, +e]));
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
-const colour = e => pvColour(e === 7 ? 4 : e);
+// the kit's place-value colours repeat every three columns either side of the ones, so tenths would share the tens'
+// blue; columns after the point get their own hues
+const DEC_HUE = { '-1': 'red', '-2': 'teal', '-3': 'brown' };
+const decColour = e => { const k = DEC_HUE[e]; return { fill: `var(--hue-${k})`, text: `color-mix(in oklab, var(--hue-${k}) 65%, var(--ink))`, pale: `color-mix(in oklab, var(--hue-${k}) 20%, var(--paper))` }; };
+const colour = e => e < 0 ? decColour(e) : pvColour(e === 7 ? 4 : e);
 const valueOf = e => fmtNum(Math.pow(10, e));
 const many = (d, e) => `${d} ${d === 1 ? ONE[e] : NAME[e]}`;
 const HIGH = ['auto', 'ten millions', 'millions', 'hundred thousands', 'ten thousands', 'thousands', 'hundreds', 'tens', 'ones'];
@@ -269,7 +273,12 @@ function crisp(el, e, u) {
 // a digit card at any size: the kit card (88 tall) scaled as a whole, so the digit grows with the card
 function bigCard(p, x, y, d, col, { w, ht, ...o }) {
   const k = ht / 88, g = h('g', { transform: `translate(${x} ${y}) scale(${k})` }, p);
-  return digitCard(g, 0, 0, d, col, Object.assign({}, o, { w: w / k, h: 88 }));
+  const out = digitCard(g, 0, 0, d, col, Object.assign({}, o, { w: w / k, h: 88 }));
+  if (col < 0) { // a decimal column's card takes that column's own hue (see colour)
+    const was = pvColour(col), now = decColour(col);
+    for (const el of [g, ...g.querySelectorAll('*')]) { const st = el.getAttribute('style'); if (st) el.setAttribute('style', st.split(was.text).join(now.text).split(was.pale).join(now.pale).split(was.fill).join(now.fill)); }
+  }
+  return out;
 }
 
 export function render(root, P, ctx) {
@@ -343,7 +352,8 @@ export function render(root, P, ctx) {
     setBottom(bodyB);
     const sNum = bi('number');
     // the first build's focal: ×10 from each column to the one on its left (gone once the number arrives)
-    const ag = h('g', { hide: sNum }, root); const lift = Math.min(70, cw * .25), yA = Math.round((hb + bodyB) / 2) + lift * .8;
+    // when the digits will move, the x10 arcs stay over the number until the move's own arrows take their place
+    const ag = h('g', { hide: M.rows === 2 ? bi('move') : sNum }, root); const lift = Math.min(70, cw * .25), yA = Math.round((hb + bodyB) / 2) + lift * .8;
     const lab = txt(P, 'label:times10', '× 10');
     for (let i = 1; i < cols.length; i++) {
       const x1 = cx(cols[i]) - 10, x2 = cx(cols[i - 1]) + 10, cy = yA - 2 * lift, ang = Math.atan2(yA - cy, x2 - (x1 + x2) / 2);
@@ -372,15 +382,15 @@ export function render(root, P, ctx) {
       }
       for (const e of zeros(M)) card(mv, e, rowY[1], 0, { s: sZero, cls: 'pop' });
       const eq = `${fromN3(M.n3)} ${verb(M)} ${fmtNum(+P.factor)} = ${fromN3(M.r3)}`, ecls = lineCls(eq, true);
-      computed(T(root, 640, bodyB + dLine - 12, eq, ecls, { 'text-anchor': 'middle', s: N, cls: `${ecls} rise` }), 'number');
+      computed(T(root, 640, bodyB + dLine - 12, eq, ecls, { 'text-anchor': 'middle', s: N - 1, cls: `${ecls} rise` }), 'number');
       return {};
     }
     for (let e = Math.max(0, M.s.hi); e >= Math.min(0, M.s.lo); e--) card(root, e, rowY[0], M.d[e], { s: sNum, cls: 'pop', delay: (M.hi - e) * 90, hide: regroup && (e === M.ef || e === M.ef - 1) ? sEx : null });
     if (regroup) for (const e of [M.ef, M.ef - 1]) card(root, e, rowY[0], M.after[e], { s: sEx, cls: 'pop', delay: 600 });
     if (M.lo < 0) point(rowY[0], sNum, 300);
     const lineY = bodyB + dLine - 12;
-    if (M.op === 'partition') sumLine(lineY, N, true);
-    if (regroup) { const s = `${wordsOf(M.d, M.s)} = ${afterWords(M)}`, c = lineCls(s, true); computed(T(root, 640, lineY, s, c, { 'text-anchor': 'middle', s: N, cls: `${c} rise` }), 'regroupFrom'); }
+    if (M.op === 'partition') sumLine(lineY, N - 1, true);
+    if (regroup) { const s = `${wordsOf(M.d, M.s)} = ${afterWords(M)}`, c = lineCls(s, true); computed(T(root, 640, lineY, s, c, { 'text-anchor': 'middle', s: N - 1, cls: `${c} rise` }), 'regroupFrom'); }
     return {};
   }
 
@@ -474,7 +484,7 @@ export function render(root, P, ctx) {
 
   /* the bottom line: the partition, or the exchange statement (in the summary) */
   const lineY = cy + cardH / 2 + (lineBig ? 66 : 54);
-  if (M.op === 'partition') sumLine(lineY, N, lineBig);
-  if (regroup) { const s = `${wordsOf(M.d, M.s)} = ${afterWords(M)}`, c = lineCls(s, lineBig); computed(T(root, 640, lineY, s, c, { 'text-anchor': 'middle', s: N, cls: `${c} rise` }), 'regroupFrom'); }
+  if (M.op === 'partition') sumLine(lineY, N - 1, lineBig);
+  if (regroup) { const s = `${wordsOf(M.d, M.s)} = ${afterWords(M)}`, c = lineCls(s, lineBig); computed(T(root, 640, lineY, s, c, { 'text-anchor': 'middle', s: N - 1, cls: `${c} rise` }), 'regroupFrom'); }
   return {};
 }

@@ -9,7 +9,7 @@ import {
 import { clockFace, digitalTime, timeWords } from '../kit/batch-B.js';
 
 export const meta = {
-  id: 'clock_time', name: 'Clocks and time', kind: 'info', version: 1,
+  id: 'clock_time', name: 'Clocks and time', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Y1', 'Y2', 'Y3', 'Y4'],
   teaches: 'How to read the time on analogue and digital clocks, say it in words, convert to the 24-hour clock and work out how long passes.',
@@ -186,7 +186,7 @@ export function render(root, P, ctx) {
   place(kMove < Infinity ? 1 : 0);
 
   /* the analogue face */
-  let F = null, elapsed = null, ghost = null;
+  let F = null, elapsed = null, ghost = null, endHands = null;
   if (M.face) {
     F = clockFace(clk, hh, mm, { cx: CX, cy: CY, r: R, ring: false, a: { s: bi('face'), cls: 'rise' }, hourA: { s: bi('hour') }, minA: { s: bi('minute') }, computedPath: 'clock' });
     // flat face with one outline: no shadow, no second edge, no halos on the numerals
@@ -196,7 +196,8 @@ export function render(root, P, ctx) {
     h('line', { x1: CX, y1: CY - (R - 12), x2: CX, y2: CY - (R - 34), stroke: 'var(--focus)', 'stroke-width': 'calc(var(--sw-data) * 1.4)', 'stroke-linecap': 'round' }, F.minute);
     const behind = F.g.childNodes[2]; // after the face and its rim: under the ticks, numbers and hands
     if (M.ring) {
-      const rg = h('g', { s: bi('minute'), cls: 'rise' }, F.g);
+      // the five-minute ring is for counting the minutes; once the time is said in words or digits it steps away
+      const rg = h('g', { s: bi('minute'), hide: kMove < Infinity ? kMove : null, cls: 'rise' }, F.g);
       for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - Math.PI / 2; computed(T(rg, CX + (R + 42) * Math.cos(a), CY + (R + 42) * Math.sin(a) + 10, String(i * 5), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)' }), 'clock'); }
     }
     const sector = (a0, a1, rr) => { // angles in degrees clockwise from 12
@@ -215,6 +216,13 @@ export function render(root, P, ctx) {
       const a = (mm * 6 - 90) * Math.PI / 180;
       ghost = h('line', { x1: CX, y1: CY, x2: CX + minLen * Math.cos(a), y2: CY + minLen * Math.sin(a), stroke: 'var(--focus)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 7', 'stroke-linecap': 'round', s: bi('sweep') }, null);
       F.g.insertBefore(ghost, F.minute.parentNode.parentNode);
+      // the hands at the start time stay as drawn; a second pair, for the time that passes, replaces them at the sweep,
+      // so every frame before the sweep shows the start time
+      const pair = [F.hour, F.minute].map(inner => {
+        const o = inner.parentNode, c = o.cloneNode(true); o.parentNode.insertBefore(c, o.nextSibling);
+        o.dataset.h = bi('sweep'); c.dataset.s = bi('sweep'); c.removeAttribute('class'); return c.firstChild;
+      });
+      endHands = (H, Mi) => { const A = F.angles(H, Mi); pair[0].setAttribute('transform', `rotate(${A.hour} ${CX} ${CY})`); pair[1].setAttribute('transform', `rotate(${A.minute} ${CX} ${CY})`); };
     }
   }
 
@@ -279,7 +287,7 @@ export function render(root, P, ctx) {
 
   /* motion: the clock moves aside for the reading column; the minute hand sweeps through the minutes that pass */
   const sweepK = has('sweep') ? bi('sweep') : null;
-  const at = u => { if (F) F.set(hh, mm + M.d * u); if (elapsed) elapsed.sector(u); if (counter) counter.textContent = `+ ${durText(Math.round(M.d * u))}`; };
+  const at = u => { if (endHands) endHands(hh, mm + M.d * u); else if (F) F.set(hh, mm); if (elapsed) elapsed.sector(u); if (counter) counter.textContent = `+ ${durText(Math.round(M.d * u))}`; };
   const step = (k, u, k0) => k < k0 ? 0 : k > k0 ? 1 : eIO(u);
   return {
     dur: sweepK != null ? { sweep: clamp(1400 + M.d * 14, 1800, 4200) } : {},

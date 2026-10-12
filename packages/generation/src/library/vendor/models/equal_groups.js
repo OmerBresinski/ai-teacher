@@ -12,7 +12,7 @@ import {
 import { countable, groupRing, fmtNum, COUNTABLES, pvColour } from '../kit/batch-A.js';
 
 export const meta = {
-  id: 'equal_groups', name: 'Equal groups and arrays', kind: 'info', version: 1,
+  id: 'equal_groups', name: 'Equal groups and arrays', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'Multiplication as equal groups, rows and columns, and division as sharing or grouping, up to the grid method for bigger numbers.',
@@ -382,6 +382,9 @@ function renderGroups(root, P, ctx) {
   }
   const EQ = eqs(P);
   let eqCls = null;
+  // the whole amount, said before anything is grouped: it holds the sentence row until a sentence takes its place
+  const firstEq = M.add ? b.add : b.sentence;
+  computed(T(root, 640, EQ_Y, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: firstEq, cls: 'rise' }), M.array ? 'size' : 'groups');
   if (M.add) {
     // repeated addition first, on its own centred line; it leaves when the multiplication takes its place
     const ap = addParts(M); eqCls = EQ_CLS.find(c => measure(root, ap.join(''), c) <= ZONE.w) || EQ_CLS[EQ_CLS.length - 1];
@@ -394,10 +397,21 @@ function renderGroups(root, P, ctx) {
   if (eqG) eqG.appendChild(row[0]);
   // the turn (commutativity): the same array spins a quarter turn about its centre and settles in the middle;
   // 3 rows of 6 become 6 rows of 3
+  // the turn has its own frame: the array as built (rows as the captions say) leaves, and a copy of it turns in its place
+  let turnG = null, turnSpin = [];
+  if (L.turn) {
+    turnG = mainG.cloneNode(true); root.insertBefore(turnG, mainG.nextSibling);
+    for (const el of [turnG, ...turnG.querySelectorAll('[data-s],[data-h]')]) { delete el.dataset.s; delete el.dataset.h; }
+    for (const el of [...turnG.querySelectorAll('.snap')]) el.remove(); // the pile copies are long gone by the turn
+    turnG.dataset.s = b.turn; mainG.dataset.h = b.turn;
+    const inners = [...itemsG.querySelectorAll('.fly > g')], copies = [...turnG.querySelectorAll('.fly > g')];
+    turnSpin = spinners.map(([el, x, y]) => [copies[inners.indexOf(el)], x, y]).filter(q => q[0]);
+    for (const el of [...turnG.querySelectorAll('.fly,.pop')]) { el.classList.remove('fly', 'pop'); el.removeAttribute('style'); } // it turns, it does not fly in again
+  }
   const spin = f => {
-    if (!L.turn) return; const { cx, cy, s } = L.turn, k = 1 + (s - 1) * f;
-    mainG.setAttribute('transform', `translate(${(cx + (640 - cx) * f).toFixed(1)} ${cy}) rotate(${(90 * f).toFixed(2)}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})`);
-    spinners.forEach(([el, x, y]) => el.setAttribute('transform', `rotate(${(-90 * f).toFixed(2)} ${x} ${y})`));
+    if (!turnG) return; const { cx, cy, s } = L.turn, k = 1 + (s - 1) * f;
+    turnG.setAttribute('transform', `translate(${(cx + (640 - cx) * f).toFixed(1)} ${cy}) rotate(${(90 * f).toFixed(2)}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})`);
+    turnSpin.forEach(([el, x, y]) => el.setAttribute('transform', `rotate(${(-90 * f).toFixed(2)} ${x} ${y})`));
   };
   const eqAt = f => eqG && eqG.setAttribute('transform', `translate(${(eqDx * f).toFixed(1)} 0)`);
   const at = e => { spin(e); eqAt(1 - e); };

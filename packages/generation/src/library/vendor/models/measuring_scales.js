@@ -9,7 +9,7 @@ import {
 import { gauge, fmtNum, locale, INSTRUMENT_UNITS } from '../kit/batch-B.js';
 
 export const meta = {
-  id: 'measuring_scales', name: 'Reading scales', kind: 'scene', version: 1,
+  id: 'measuring_scales', name: 'Reading scales', kind: 'scene', version: 2,
   subjects: ['Maths', 'Science'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How to read a scale: find what the numbers go up in, work out what each unmarked step is worth, then read the value.',
@@ -258,13 +258,18 @@ export function render(root, P, ctx) {
   }
   if (kind === 'ruler') G = gauge(root, 'ruler', Object.assign(inst === 'ruler' ? { x: GRID.left, len: GRID.right - GRID.left - 56 } : { x: 96, len: GEOM.ruler.len }, { y: RY, readA: { s: kR } }, common));
   else if (kind === 'jug') G = gauge(root, 'jug', Object.assign({ x: VX, y: 124, len: 440, width: 250, readA: { s: kR } }, common));
-  else if (kind === 'thermometer') G = gauge(root, 'thermometer', Object.assign({ x: VX, y: 140, len: 400 }, common));
+  else if (kind === 'thermometer') {
+    G = gauge(root, 'thermometer', Object.assign({ x: VX, y: 140, len: 400, readA: { s: kR, cls: 'lq' } }, common));
+    // the liquid where it starts stays until the reading build, then the reading's own liquid replaces it
+    const lq = G.g.querySelector('g.lq'); if (lq) { const c0 = lq.cloneNode(true); c0.removeAttribute('class'); delete c0.dataset.s; c0.dataset.h = kR; lq.parentNode.insertBefore(c0, lq); lq.classList.remove('lq'); }
+  }
   else if (kind === 'dial') G = gauge(root, 'dial', Object.assign({ x: DX, y: DY, r: DR, readA: { s: kR } }, common));
   else G = forceMeter(root, Object.assign({ x: VX, y: 150, len: GEOM.force.len, LE: M.LE, loadA: { s: kR, cls: 'rise' } }, common));
   // the numbers (and the unit) are their own build; the unit word comes from the unit setting
   const texts = [...G.g.querySelectorAll('text')], tickTs = texts.slice(0, M.labels.length);
+  // the unit word shows with the instrument (the first caption names the unit); the numbers are their own build
   for (const t of texts) {
-    if (t.dataset.computed === undefined) computed(t, 'unit');
+    if (t.dataset.computed === undefined) { computed(t, 'unit'); continue; }
     t.dataset.s = kN; t.classList.add('rise');
   }
   // tick numbers as big as the spacing allows (a row of numbers keeps a 28 gap)
@@ -341,7 +346,8 @@ export function render(root, P, ctx) {
     ? [{ s: `${fmtNum(M.L0)} to ${fmtNum(M.L1)}: ${M.gaps} gaps`, computed: 'interval' }, { s: `${fmtNum(M.LE)} ÷ ${M.gaps} = ${withUnit(M.step, u)}`, cls: 'ts-label', computed: 'interval', fill: 'var(--focus-text)' }]
     : [{ s: 'Each mark is worth', computed: 'interval' }, { s: withUnit(M.step, u), cls: 'ts-label', computed: 'interval', fill: 'var(--focus-text)' }];
   // the method card leaves once the answer shows, so the lens and the answer are the only focus
-  const iCard = card(iPos.x, iPos.y, iPos.w, iRows, { s: kI, hide: kRead, cls: 'rise', c: recede });
+  // the method card stays as a quiet tag once the reading is the focus, so what one mark is worth is never lost
+  const iCard = card(iPos.x, iPos.y, iPos.w, iRows, { s: kI, cls: 'rise', c: recede });
   const rRows = [...(th ? [{ s: th, edit: 'thing', lines: kind === 'dial' ? 3 : 4 }] : []), { s: `${M.onMark ? '' : '≈ '}${withUnit(M.v, u)}`, big: true, computed: 'value' }];
   const rCard = card(rPos.x, rPos.y, rPos.w, rRows, { s: kRead, cls: 'rise', delay: P.zoom ? 700 : 1200 }, rPos.right);
 

@@ -11,7 +11,7 @@ import {
 import { barChart, pictogram, pictoSymbol, lineChart, pie, pieAngles, tally, niceTop, pictogramCheck, PICTO_SYMBOLS } from '../kit/batch-C.js';
 
 export const meta = {
-  id: 'data_chart', name: 'Data chart', kind: 'info', version: 1,
+  id: 'data_chart', name: 'Data chart', kind: 'info', version: 2,
   subjects: ['Maths', 'Science', 'Geography'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How to show data as a tally, pictogram, block, bar, line or pie chart, read a value off the scale and answer a question from it.',
@@ -392,7 +392,7 @@ export function render(root, P, ctx) {
         const [a, bb] = M.pair, A1 = C.bars[a], B1 = C.bars[bb], ya = C.S(A1.value), yb = C.S(B1.value), dir = B1.x > A1.x ? 1 : -1;
         const g = h('g', { s: ka }, chartG);
         // the reference across from the taller bar shows where the gap starts, then fades for the summary
-        h('line', { x1: A1.x + dir * A1.w / 2, x2: B1.x + dir * 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6', hide: N > ka ? N : null }, g);
+        h('line', { x1: A1.x + dir * A1.w / 2, x2: B1.x + dir * 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
         if (yb - ya > 4) { h('line', { x1: B1.x, x2: B1.x, y1: ya, y2: yb - 4, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)' }, g);
           h('line', { x1: B1.x - 12, x2: B1.x + 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)' }, g); }
         const dl = fmtN(A1.value - B1.value), sd = B1.x + 18 + measure(g, dl, 'ts-big') > CHR ? -1 : dir;   // keep the number off the side column
@@ -491,6 +491,13 @@ export function render(root, P, ctx) {
   const kw = keyWords(M), y0 = CH.y + 8;
   card(root, y0, { head: txt(P, 'label:scale', M.kind === 'bar' || M.kind === 'line' ? 'The scale' : 'The key'), headEdit: 'text.label:scale', sentence: kw.sentence, result: kw.result, path: kw.path,
     accent: 'var(--ink-3)', ink: 'var(--ink)', a: { hide: kr } });
+  // a key stays on the slide as a quiet line at the foot of the column once its card gives way, so every later
+  // frame can still be read
+  if (M.kind === 'block' || M.kind === 'tally') { // a pictogram keeps its key inside the chart
+    const line = `${kw.sentence.replace(/[:.]\s*$/, '')} ${kw.result}.`;
+    const tb = textBlock(root, CARD.x, GRID.bottom - 44, line, { cls: 'ts-small', maxW: CARD.w, maxLines: 2, lh: 28, a: { fill: 'var(--ink-2)', s: kr, cls: 'rise' } });
+    computed(tb.el, kw.path);
+  }
   card(root, y0, { head: txt(P, 'label:read', 'Reading the chart'), headEdit: 'text.label:read', sentence: rd.sentence, result: rd.result, path: rd.path,
     accent: 'var(--ink-3)', ink: 'var(--ink)', a: Object.assign({ cls: 'rise' }, ka != null ? { s: kr, hide: ka } : { s: kr }) });
   if (an) card(root, y0, { head: txt(P, 'label:question', questionWords(M)), headEdit: 'text.label:question', sentence: an.sentence, result: an.result, path: an.path,
