@@ -581,6 +581,22 @@ export function toInput(
           };
         }),
       };
+    case "banner-text": {
+      // Ruling 203 (P4): the photo as a strip over or under the words. A picture that could not
+      // be made (after the same retries and lostPic ladder as any picture slot) leaves the words
+      // alone, never an empty strip; the layout puts a photo it cannot crop cleanly beside them.
+      const f = fig("picture");
+      return f
+        ? {
+            template,
+            heading,
+            lead,
+            points: pts(s.points),
+            figure: f,
+            at: s.at === "bottom" ? "bottom" : "top",
+          }
+        : { template: "explain", heading, lead, points: pts(s.points) };
+    }
     case "discussion":
       return {
         template,

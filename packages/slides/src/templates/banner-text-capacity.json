@@ -1,0 +1,68 @@
+{
+  "KS1": [
+    {
+      "points": 0,
+      "chars": 290,
+      "label": 12
+    },
+    {
+      "points": 1,
+      "chars": 124,
+      "label": 12
+    },
+    {
+      "points": 2,
+      "chars": 44,
+      "label": 12
+    },
+    {
+      "points": 3,
+      "chars": 44,
+      "label": 12
+    }
+  ],
+  "KS2": [
+    {
+      "points": 0,
+      "chars": 386,
+      "label": 12
+    },
+    {
+      "points": 1,
+      "chars": 172,
+      "label": 12
+    },
+    {
+      "points": 2,
+      "chars": 62,
+      "label": 12
+    },
+    {
+      "points": 3,
+      "chars": 54,
+      "label": 12
+    }
+  ],
+  "KS3-5": [
+    {
+      "points": 0,
+      "chars": 400,
+      "label": 12
+    },
+    {
+      "points": 1,
+      "chars": 230,
+      "label": 12
+    },
+    {
+      "points": 2,
+      "chars": 140,
+      "label": 12
+    },
+    {
+      "points": 3,
+      "chars": 68,
+      "label": 12
+    }
+  ]
+}

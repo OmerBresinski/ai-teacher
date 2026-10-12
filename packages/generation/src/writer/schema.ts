@@ -1,3 +1,4 @@
+import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
 import { gridCaps } from "./cards-grid-fits";
 import { freeformLabels, teachesSchema, writerCaps } from "./contract";
@@ -311,6 +312,40 @@ function withCardsGrid(schema: J, stage: WriterStage): J {
 }
 
 /**
+ * Banner text (UX ruling 203, Chalkie layout parity P4; TEACH-75 part k): a picture as a
+ * full-width strip across the top or the bottom of the slide, with a heading, a lead and 0-3
+ * labelled bullets. Added to the slide menu as one more teaching layout; every older output still
+ * parses. Off by default (`BANNER_TEXT_DEFAULT`) until the writer's menu names it; a caller turns it
+ * on with `bannerText: true`.
+ */
+export const BANNER_TEXT_DEFAULT = false;
+/** Most bullets under a banner's lead (the renderer's `BANNER_POINTS`). */
+export const BANNER_TEXT_POINTS = 3;
+
+/** Its caps come from the renderer's measured fit (`bannerCaps`, the fit table's banner entry). */
+function withBannerText(schema: J, stage: WriterStage): J {
+  const caps = bannerCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  const point = capped(caps.point);
+  defs["banner-text"] = obj({
+    template: { type: "string", enum: ["banner-text"] },
+    heading: S(),
+    lead: capped(caps.lead),
+    points: arr(
+      { anyOf: [point, obj({ label: capped(caps.label), text: point })] },
+      0,
+      BANNER_TEXT_POINTS,
+    ),
+    picture: REF("picture"),
+    at: { type: "string", enum: ["top", "bottom"] },
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("banner-text")] };
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
  * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
@@ -327,6 +362,7 @@ export function writerSchema(
     tileVisuals?: boolean;
     callouts?: boolean;
     cardsGrid?: boolean;
+    bannerText?: boolean;
   } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
@@ -334,6 +370,7 @@ export function writerSchema(
   if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
+  if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
