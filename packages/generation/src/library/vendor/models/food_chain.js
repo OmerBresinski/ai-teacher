@@ -33,7 +33,7 @@ export const meta = {
   id: "food_chain",
   name: "Food chains and webs",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Y2", "Y3", "Y4", "Y5", "Y6"],
   teaches:
@@ -763,7 +763,8 @@ export function render(root, P, ctx) {
   const roles = P.vocabulary !== "eats";
   const kRoles = roles ? bi("roles") : null;
   // in a web or with energy squares the role words show on their own build only, so they don't crowd the rest
-  const kRolesEnd = roles && (web || energy) ? kRoles + 1 : null;
+  // v2: the producer, prey and predator roles stay to the end once built (they are the point)
+  const kRolesEnd = null;
   const appear = (i) =>
     web ? (L[i] === 0 ? bi("plants") : bi(`eat:${i}`)) : i === 0 ? bi("sun") : bi(`eat:${i}`);
   const role = (i) => roleOf(P, i, L);
@@ -1308,7 +1309,7 @@ function drawEnergy(root, ctx, P, blk, bi, xs, knocks) {
     // heat shows on its own build only
     if (kLost != null) {
       const hx = q.x + q.w * 0.25,
-        hg = h("g", { hide: kLost + 1 }, g);
+        hg = h("g", {}, g); // v2: the heat-loss marks stay: the lost energy is the lesson
       for (const dx of [0, q.w * 0.5])
         wavy(ctx, hg, hx + dx, q.y - 8, hx + dx, q.y - 58, "var(--lost)", {
           draw: kLost,
@@ -1341,9 +1342,9 @@ function drawEnergy(root, ctx, P, blk, bi, xs, knocks) {
   const kN = ctx.N;
   const keyLine = (g, x, y, s, edit, a) =>
     textBlock(g, x, y, s, { cls: "ts-cap", maxW: GRID.right - x, maxLines: 1, lh: 28, edit, a });
+  // v2: each key line stays from the build that explains it (no separate summary frame)
   const twice = (k, draw) => {
-    draw(h("g", { s: k, hide: k + 1 < kN ? k + 1 : null }, root));
-    if (k + 1 < kN) draw(h("g", { s: kN }, root));
+    draw(h("g", { s: k }, root));
   };
   twice(bi("sun"), (kg) =>
     keyLine(kg, kx, ky, txt(P, "label:key", "1 square = 1 unit of energy"), "text.label:key", {
