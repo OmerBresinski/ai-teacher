@@ -40,6 +40,18 @@ export function isFatal(e: unknown): boolean {
 }
 
 /**
+ * The budget refused a call (`BudgetReservationError`, `UnestimableCallError`, `BudgetExceeded`),
+ * found at any depth of `cause`: a streamed call surfaces the refusal wrapped in the stream's own
+ * error, so a job's catch that only checks the outer class retries a call it can never afford.
+ */
+export function isBudgetRefusal(e: unknown): boolean {
+  if (e instanceof BudgetReservationError || e instanceof UnestimableCallError) return true;
+  if (e instanceof BudgetExceeded) return true;
+  const cause = (e as { cause?: unknown } | null)?.cause;
+  return cause !== undefined && cause !== e && isBudgetRefusal(cause);
+}
+
+/**
  * The one way the writer, picture and diagram paths recover from an error: a fatal one (budget,
  * abort; `isFatal`) is rethrown so the job stops, any other goes to `onError`, whose value is
  * returned. A bare `catch` in those modules is a test failure (`non-fatal.test.ts`).

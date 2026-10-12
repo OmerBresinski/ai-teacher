@@ -156,7 +156,14 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         writerRoute("frontier", c) ?? deps.ai.modelId("frontier"),
         deps.budget,
       );
+      // The SDK reports a stream's error to `onError` and then fails `usage` with its own
+      // `NoOutputGeneratedError`, which drops the original: a budget refusal would reach the job
+      // as an unknown error and be retried (TEACH-202 part g). Keep the first error and throw it.
+      let streamError: unknown;
       const result = streamText({
+        onError: ({ error }) => {
+          streamError ??= error;
+        },
         model,
         system: r.system,
         prompt: r.user,
@@ -167,16 +174,25 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         ...writerProviderOptions(r.model, r.effort),
       });
       let text = "";
-      for await (const delta of result.textStream) {
-        if (firstTokenMs === undefined) firstTokenMs = Date.now() - t0;
-        text += delta;
-        onDelta(delta);
-      }
-      const usage = await result.usage;
+      let usage: Awaited<typeof result.usage> | undefined;
+      let finishReason: Awaited<typeof result.finishReason> | undefined;
+      const read = async () => {
+        for await (const delta of result.textStream) {
+          if (firstTokenMs === undefined) firstTokenMs = Date.now() - t0;
+          text += delta;
+          onDelta(delta);
+        }
+        usage = await result.usage;
+        finishReason = await result.finishReason;
+      };
+      // Always rethrows (never recovers), so it is not one of the stage's non-fatal handlers.
+      await read().then(undefined, (error: unknown) => {
+        throw streamError ?? error;
+      });
       return {
         text,
-        finishReason: (await result.finishReason) ?? null,
-        usd: usdOf(r.model, usage),
+        finishReason: finishReason ?? null,
+        usd: usdOf(r.model, usage as Awaited<typeof result.usage>),
         ms: Date.now() - t0,
         ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
       };

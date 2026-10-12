@@ -17,12 +17,12 @@ import {
   type WorksheetGeneration,
 } from "@tj/domain/documents";
 import {
-  BudgetExceeded,
   buildFrame,
   checkWorksheet,
   type FillDeps,
   fillFrame,
   generateWorksheetFillPrompt,
+  isBudgetRefusal,
   repairPrompt,
   StageFailure,
 } from "@tj/generation";
@@ -30,6 +30,7 @@ import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { budgetFailure } from "../job-errors";
 
 /**
  * `lesson.worksheet` — one worksheet beside a confirmed lesson, on its own row, lock and budget
@@ -60,10 +61,12 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
     const { lessonId, worksheetId, revision, recipeId, practiceMinutes } = payload;
     const ws = forWorkspace(deps.db, workspaceId);
+    // Kept only for a retry pg-boss will run (TEACH-202 part g); the last attempt releases it.
+    const attemptsLeft = ctx.attemptsLeft !== false;
     let keepLockForRetry = false;
     try {
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
       const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
@@ -197,11 +200,11 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       // What was persisted stays (item 9). A cancel is terminal (`runJob` records `cancelled`);
       // a shutdown is retried by pg-boss, so the next attempt needs the lock.
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
-      if (error instanceof BudgetExceeded) {
-        throw new NonRetryableError(error.message, { cause: error });
+      if (isBudgetRefusal(error)) {
+        throw budgetFailure(error);
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
         throw new NonRetryableError(error.message, { cause: error });
@@ -210,7 +213,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       if (error instanceof StageFailure) {
         throw new NonRetryableError(error.message, { cause: error });
       }
-      if (!(error instanceof NonRetryableError)) keepLockForRetry = true;
+      if (!(error instanceof NonRetryableError)) keepLockForRetry = attemptsLeft;
       throw error;
     } finally {
       if (keepLockForRetry) {

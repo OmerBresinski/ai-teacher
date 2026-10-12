@@ -29,6 +29,7 @@ export {
   type ProgressEmitter,
   type ProgressEmitterOptions,
 } from "./progress";
+export { REAP_INTERVAL_MS, reapOrphanedLocks } from "./reap";
 export {
   type BossJob,
   CANCEL_POLL_INTERVAL_MS,

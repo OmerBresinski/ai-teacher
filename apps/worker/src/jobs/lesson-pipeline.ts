@@ -10,8 +10,8 @@ import {
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import { type Lesson, parseLesson, resumeBase } from "@tj/domain/documents";
 import {
-  BudgetExceeded,
   InputRejected,
+  isBudgetRefusal,
   type PipelineDeps,
   type PipelineInput,
   type PipelineOptions,
@@ -24,6 +24,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { budgetFailure } from "../job-errors";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
@@ -160,11 +161,18 @@ export async function runLessonJob<K extends LessonPipelineJob>(
   const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
   const ws = forWorkspace(deps.db, workspaceId);
   const lessonId = payload.lessonId;
+  // The lock is kept only for a retry pg-boss will actually run (TEACH-202 part g): on the last
+  // attempt, or for a terminal failure, it is released here, since nothing else releases it.
+  const attemptsLeft = ctx.attemptsLeft !== false;
   let keepLockForRetry = false;
   let handedOff = false;
+  // Aborted when this attempt ends however it ends, so work the pipeline left running (the
+  // writer's off-screen diagram and picture calls) makes no model call after the terminal event.
+  const settled = new AbortController();
+  const runSignal = AbortSignal.any([signal, settled.signal]);
   try {
     if (signal.aborted) {
-      keepLockForRetry = signal.reason === "shutdown";
+      keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
       return;
     }
     const stored = await loadOwnedLesson(ws, lessonId, jobId, payload.revision);
@@ -181,7 +189,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         : {}),
       ...effortOverride(deps.reasoningEffort),
       ...(deps.costWarnUsd !== undefined ? { costWarnUsd: deps.costWarnUsd } : {}),
-      signal,
+      signal: runSignal,
       logger: logger.child({
         resumed: priorUsage !== undefined,
         usagePriorUsd: priorUsage === undefined ? 0 : priorUsage.costUsd,
@@ -204,13 +212,15 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       // What was persisted stays (§5). A cancel is terminal (`runJob` records `cancelled`); a
       // shutdown is retried by pg-boss, so the next attempt needs the lock.
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
       // Before a skeleton exists there is no certified checkpoint to finish as a partial Lesson.
       // Keep the title already persisted, release its lock and avoid repeating an unaffordable call.
-      if (error instanceof BudgetExceeded) {
-        throw new NonRetryableError(error.message, { cause: error });
+      // A streamed call (the writer) surfaces the refusal wrapped in the stream's error, so the
+      // check walks `cause` rather than testing the outer class (TEACH-202 part g).
+      if (isBudgetRefusal(error)) {
+        throw budgetFailure(error);
       }
       // The writer stopped at its token cap (TEACH-110 part b): the same request stops the same
       // way, so it fails now instead of paying for a retry.
@@ -236,11 +246,12 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         logger.warn({ lessonId, sourceId: error.sourceId }, "source unavailable");
         throw new NonRetryableError(error.message, { cause: error });
       }
-      if (!(error instanceof NonRetryableError)) keepLockForRetry = true;
+      if (!(error instanceof NonRetryableError)) keepLockForRetry = attemptsLeft;
       throw error;
     }
     if (spec.after && !signal.aborted) handedOff = await spec.after(ws, final);
   } finally {
+    settled.abort("settled");
     if (keepLockForRetry) {
       logger.info({ lessonId }, "generating lock kept for the retry");
     } else if (handedOff) {

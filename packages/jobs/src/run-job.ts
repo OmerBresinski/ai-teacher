@@ -249,6 +249,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     progress: progress.emit,
     logger,
     deps: opts.deps,
+    attemptsLeft: bossJob.retryCount < bossJob.retryLimit,
   };
 
   let thrown: unknown;
@@ -320,8 +321,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     );
   }
 
-  const attemptsLeft = bossJob.retryCount < bossJob.retryLimit;
-  if (attemptsLeft) {
+  if (jobCtx.attemptsLeft) {
     await emit({
       type: "progress",
       ...base,
