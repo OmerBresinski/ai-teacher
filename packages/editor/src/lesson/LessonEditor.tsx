@@ -50,6 +50,7 @@ import { FollowMarkContext } from "./follow-mark";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
+import { type DraftStore, LiveSlide } from "./live-draft";
 import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
@@ -140,6 +141,12 @@ export type LessonEditorProps = {
    * marked "Writing". Every other slide is the teacher's to edit while the lesson fills.
    */
   writingSlideIds?: ReadonlySet<Id>;
+  /**
+   * Live writing (ADR 0039): the generating job's slide drafts. A slide still being written shows
+   * its newest draft, typed out, in place of its saved copy; the saved copy always wins once the
+   * slide is done. Drafts never enter the document, its history or a save.
+   */
+  drafts?: DraftStore;
   editorRef?: Ref<LessonEditorHandle>;
   /**
    * The slide to open on (TEACH-252: the one the teacher was looking at while the lesson
@@ -203,6 +210,7 @@ export function LessonEditor({
   busySlideIds,
   proposalsBusy = false,
   writingSlideIds,
+  drafts,
   editorRef,
   initialSlideId,
   worksheetsSlot,
@@ -648,18 +656,28 @@ export function LessonEditor({
                                         className="contents"
                                         inert={!!slide && !!writingSlideIds?.has(slide.id)}
                                       >
-                                        <Canvas
-                                          readOnly={writingSlideIds?.has(slide.id) ?? false}
+                                        <LiveSlide
+                                          store={drafts}
+                                          slideId={slide?.id}
                                           slide={slide}
-                                          theme={theme}
-                                          onFocusChange={setCanvasFocused}
-                                          onScaleChange={onScaleChange}
-                                          onInsert={insert}
-                                          images={images}
-                                          lessonId={lessonId}
-                                          bubble={!(chatAvailable && editChat.open)}
-                                          fitInset={hasPane && paneMode === "docked" ? paneW : 0}
-                                          clearRight={paneOpen ? paneW : 0}
+                                          writing={!!slide && !!writingSlideIds?.has(slide.id)}
+                                          render={(shown) => (
+                                            <Canvas
+                                              readOnly={writingSlideIds?.has(slide.id) ?? false}
+                                              slide={shown ?? slide}
+                                              theme={theme}
+                                              onFocusChange={setCanvasFocused}
+                                              onScaleChange={onScaleChange}
+                                              onInsert={insert}
+                                              images={images}
+                                              lessonId={lessonId}
+                                              bubble={!(chatAvailable && editChat.open)}
+                                              fitInset={
+                                                hasPane && paneMode === "docked" ? paneW : 0
+                                              }
+                                              clearRight={paneOpen ? paneW : 0}
+                                            />
+                                          )}
                                         />
                                       </div>
                                     </div>

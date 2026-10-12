@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Id, Lesson } from "@tj/domain/documents";
+import type { DraftStore } from "@tj/editor/live-draft";
 import { type ReactNode, useEffect, useState } from "react";
-import { useJobEvents } from "@/hooks/use-job-events";
+import { useFeedDrafts, useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
@@ -32,6 +33,7 @@ export function GeneratingLesson({
   onStopped,
   onCompleted,
   onViewSlide,
+  drafts,
   exportSlot,
   canvasCompanion,
   themeCallout,
@@ -54,9 +56,12 @@ export function GeneratingLesson({
   onCompleted?: (jobId: string) => void;
   /** The slide the teacher is looking at (`null` = the newest), so the editor opens on it at Ready. */
   onViewSlide?: (slideId: Id | null) => void;
+  /** Live writing (ADR 0039): the job's slide drafts go here, for the canvas to show. */
+  drafts?: DraftStore;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId, queryClient);
+  useFeedDrafts(drafts, stream.drafts, stream.terminal !== null);
   // The last `documentUpdatedAt` the stream carried, whichever event it rode in on: a `progress`
   // without one (a message-only tick) must not reset the value and re-trigger a refetch.
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
@@ -167,6 +172,7 @@ export function GeneratingLesson({
       stop={{ pending: cancel.isPending, sent: cancel.isSuccess, error: cancel.isError }}
       onViewSlide={onViewSlide}
       exportSlot={exportSlot}
+      {...(drafts ? { drafts } : {})}
     />
   );
 }

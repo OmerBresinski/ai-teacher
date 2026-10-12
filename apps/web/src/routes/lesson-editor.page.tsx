@@ -9,6 +9,7 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
+import { draftStoreFor } from "@tj/editor/live-draft";
 import { Button, IconButton, toast } from "@tj/ui";
 import { ArrowLeft, Download, FileText, LockKeyhole } from "lucide-react";
 import {
@@ -402,6 +403,8 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   if (filling && watchedJobId !== null) setWatchedJobId(null);
   const generatingJobId =
     fillingJobId ?? stoppedJobId ?? (watchedJobId !== completedJobId ? watchedJobId : null);
+  // Live writing (ADR 0039): one store of slide drafts per job, fed by whichever view follows it.
+  const draftStore = generatingJobId ? draftStoreFor(generatingJobId) : undefined;
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
@@ -431,6 +434,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onCompleted={setCompletedJobId}
         onViewSlide={setViewedSlideId}
         exportSlot={exportSlot}
+        drafts={draftStore}
       />
     </Suspense>
   ) : anonymous ? (
@@ -471,6 +475,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onPromptEdit={onPromptEdit}
         busySlideIds={proposals.busySlideIds}
         writingSlideIds={writing}
+        drafts={filling ? draftStore : undefined}
         proposalsBusy={proposals.busy}
         images={images}
         exportSlot={
@@ -493,6 +498,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           editorRef={editorRef}
           followerRef={followerRef}
           onStopped={setStoppedJobId}
+          drafts={draftStore}
         />
       ) : null}
     </>

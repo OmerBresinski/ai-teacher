@@ -95,6 +95,7 @@ import {
   teaching,
   words as wordsOfText,
 } from "./guards";
+import { type DraftSizes, layDraft } from "./lay-draft";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -322,6 +323,13 @@ export type WriterRun = {
   onDraft?: (index: number, draft: SlideDraft) => void;
   /** The drafts' throttle and clock (tests pass a fake clock). */
   draft?: DraftOptions;
+  /**
+   * Live writing P6 (TEACH-202 part f, ADR 0039): each draft laid out (`layDraft`), as the slide it
+   * will be (id `s<index + 1>`) with its words so far and open placeholders for its visuals. First
+   * on the template's close, then as the words grow; type only steps down. Same contract as
+   * `onDraft`: read-only, best effort, superseded by the slide's `onSlide`. Not for the title (0).
+   */
+  onDraftSlide?: (index: number, slide: WriterSlide) => void;
   /**
    * Live writing P2 (TEACH-202 part e): hands the caller a function to call when a picture lands
    * while the deck is still read-only. The slide is laid again and handed over (`onSlide`) at
@@ -1031,7 +1039,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (ok) nextOpen = idx === 0 ? 2 : idx + 1;
   });
   // Live writing P4: the open slide's drafts, peeked after each delta (never on a recorded run).
-  const onDraft = run.onDraft;
+  const draftSizes = new Map<number, DraftSizes>();
+  const onDraftSlide = run.onDraftSlide;
+  const onDraft =
+    run.onDraft || onDraftSlide
+      ? (idx: number, d: SlideDraft) => {
+          run.onDraft?.(idx, d);
+          // The title is laid by code until its own words close; a slide already open is done.
+          if (!onDraftSlide || idx < 2 || opened.has(idx)) return;
+          const sizes = draftSizes.get(idx) ?? new Map();
+          draftSizes.set(idx, sizes);
+          const m = layDraft(d, { ...base, index: idx, plan }, sizes, stageKey);
+          if (m) onDraftSlide(idx, { id: `s${idx + 1}`, ...m, notes: "" });
+        }
+      : undefined;
   let drafts = onDraft && streaming ? new SlideDrafts(onDraft, run.draft) : undefined;
   const draftStats = drafts?.stats;
   const main = run.recordedWriter

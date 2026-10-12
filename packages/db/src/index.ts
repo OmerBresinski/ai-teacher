@@ -76,6 +76,7 @@ export {
   type ListJobEventsOptions,
   listJobEvents,
   notifyJobEvent,
+  pruneEphemeralJobEvents,
   terminalJobEventFor,
 } from "./job-events";
 export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";

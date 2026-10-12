@@ -316,6 +316,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       await deps.onProgress(percent, "Writing slides", "generate", updatedAt);
     },
   });
+  /** One slide draft out (ADR 0039); a draft that fails only stops showing (never the lesson). */
+  const draft = (index: number, slide: Laid, final: boolean) => {
+    if (!deps.onDraft || deps.signal.aborted) return;
+    try {
+      deps.onDraft({ index, slideId: slide.id, slide, ...(final ? { final } : {}) });
+    } catch (err) {
+      deps.logger.warn({ stage: "generate", err: String(err).slice(0, 200) }, "slide draft failed");
+    }
+  };
   let out: Awaited<ReturnType<typeof runWriter>>;
   /** Aborted when the stage fails: the writer's diagram jobs start no further call. */
   const failed = new AbortController();
@@ -362,7 +371,26 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         }
         // Off-screen (a resumed run): nothing streams onto the slides the teacher already has.
         if (!offScreen) progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+        // Live writing (ADR 0039): the slide still being written ends its drafts with itself, as
+        // the next save will carry it, so the client hands over with nothing left to swap.
+        if (!offScreen && !closed.has(i)) draft(i, slide, true);
       },
+      ...(deps.onDraft && !offScreen
+        ? {
+            onDraftSlide: (i: number, slide: Laid) => {
+              // The slide joins the deck as soon as it is being written, as a blank `writing` slide
+              // on the next save (no draft words are ever saved), so the editor can open it while
+              // its drafts show; its laid copy replaces the blank when it closes.
+              if (!latest.has(i) && !progressive.patches().has(i))
+                progressive.patch(
+                  i,
+                  { id: slide.id, kind: slide.kind, elements: [], notes: "" } as Laid,
+                  "writing",
+                );
+              draft(i, slide, false);
+            },
+          }
+        : {}),
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
       bindPictureLanded: (fn) => {
