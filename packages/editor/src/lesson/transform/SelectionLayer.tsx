@@ -1,10 +1,12 @@
-import type { Id, Slide, Theme } from "@tj/domain/documents";
+import { type Id, isLayoutGroup, type Slide, type Theme } from "@tj/domain/documents";
 import { slotSideOnDrop } from "@tj/slides";
 import {
   type CSSProperties,
+  lazy,
   type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  Suspense,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -75,6 +77,10 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+
+/** The items panel of an adaptive layout group (TEACH-205 part b): loads the template recipes on first use. */
+const LayoutPanel = lazy(() => import("./LayoutPanel"));
+
 import { useModelStepping } from "./use-model-stepping";
 
 /*
@@ -915,6 +921,16 @@ export function SelectionLayer({
           images={images}
           lessonId={lessonId}
         />
+      ) : null}
+
+      {selected.length === 1 &&
+      first &&
+      isLayoutGroup(first.el) &&
+      !gestureOn &&
+      editingTextId !== first.id ? (
+        <Suspense fallback={null}>
+          <LayoutPanel slideId={slide.id} group={first.el} rect={first.rect} scale={scale} />
+        </Suspense>
       ) : null}
 
       {stepSteppers.map((m) => (
