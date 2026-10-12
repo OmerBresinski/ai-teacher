@@ -42,11 +42,13 @@ import {
 } from "./photo-bank";
 import {
   directedSetJudges,
+  illustratedLook,
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
   type SetAsk,
   type SetPicture,
+  setAfterRealSearch,
   setIsGenerated,
 } from "./picture-set";
 
@@ -933,6 +935,8 @@ export type WriterPictureMiss =
   | "match6"
   /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
   | "history-card-generated"
+  /** Rulings 163 and 209: a named set missed a real picture; it is never part real, part generated. */
+  | "set-real-incomplete"
   /** An ask with no words to search for (no `shows`): nothing is searched. */
   | "malformed-ask";
 
@@ -1015,6 +1019,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   match6: "",
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
+  "set-real-incomplete": "No real photograph was found for every picture in this set.",
   "malformed-ask": "The slide did not say what the picture shows.",
 };
 
@@ -1272,25 +1277,6 @@ export function createWriterPictures(opts: {
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
     }));
-    if (!setIsGenerated(asks, opts.lesson)) {
-      void Promise.all(
-        panels.map(({ ask, slot }) =>
-          slot
-            ? place(
-                slot,
-                group.index,
-                ask,
-                group.slide,
-                realOnly(
-                  ask,
-                  group.asks.map((a) => a.shows),
-                ),
-              )
-            : undefined,
-        ),
-      ).then(finish, finish);
-      return;
-    }
     const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {
       opts.onOutcome?.(ask.key, {
         director: "set",
@@ -1307,32 +1293,65 @@ export function createWriterPictures(opts: {
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
-    makePictureSet(
-      asks,
-      {
-        generator: maker.generator,
-        save: maker.save,
-        ...directedSetJudges(opts.lesson, deps),
-        ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
-        ...(maker.allow ? { allow: maker.allow } : {}),
-        ...(maker.spent ? { spent: maker.spent } : {}),
-        signal: AbortSignal.any([
-          deps.signal,
-          ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
-        ]),
-        log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
-      },
-      setLook,
-    ).then(
-      (made) => {
-        for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
-        finish();
-      },
-      (error: unknown) => {
-        for (const { slot } of panels) if (slot) onError(slot)(error);
-        finish();
-      },
-    );
+    const generateSet = (look: typeof setLook) =>
+      makePictureSet(
+        asks,
+        {
+          generator: maker.generator,
+          save: maker.save,
+          ...directedSetJudges(opts.lesson, deps),
+          ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
+          ...(maker.allow ? { allow: maker.allow } : {}),
+          ...(maker.spent ? { spent: maker.spent } : {}),
+          signal: AbortSignal.any([
+            deps.signal,
+            ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
+          ]),
+          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+        },
+        look,
+      ).then(
+        (made) => {
+          for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
+          finish();
+        },
+        (error: unknown) => {
+          for (const { slot } of panels) if (slot) onError(slot)(error);
+          finish();
+        },
+      );
+    if (!setIsGenerated(asks, opts.lesson)) {
+      // Ruling 209 (with 163): a named or historical set searches real sources for every panel
+      // first (the director's ladder, real only: never a generated panel beside a real one).
+      void Promise.all(
+        panels.map(({ ask, slot }) =>
+          slot ? place(slot, group.index, ask, group.slide, true) : undefined,
+        ),
+      ).then(() => {
+        const how = setAfterRealSearch(
+          panels.map(({ slot }) => slot?.state.status === "photo"),
+          {
+            named: asks.some((a) => a.named),
+            cards: asks.some((a) => a.key.startsWith("card.")),
+          },
+        );
+        deps.logger.info({ stage: "generate", ev: "set-real", set: setId, how }, "picture set");
+        if (how === "real" || how === "cards") return finish();
+        // One source type per set: the real pictures found are not used beside generated ones.
+        for (const { ask, slot } of panels) {
+          if (!slot) continue;
+          if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
+          heldPhotos.delete(id(group.index, ask.key));
+          slot.state = how === "drop" ? { status: "failed" } : { status: "pending" };
+          slot.miss = how === "drop" ? "set-real-incomplete" : undefined;
+        }
+        if (how === "drop") return finish();
+        // Any panel without a real picture: the whole set is illustrated in one drawn style.
+        generateSet(illustratedLook(setLook));
+      }, finish);
+      return;
+    }
+    generateSet(setLook);
   };
 
   /**

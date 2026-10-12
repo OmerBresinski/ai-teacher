@@ -19,6 +19,7 @@ import {
   writerAskBrief,
 } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
+import { setAfterRealSearch } from "./picture-set";
 
 const DIRECTOR_INPUT = DIRECTOR_FIXTURES[0]?.input as never;
 const PNG =
@@ -1144,5 +1145,145 @@ describe("writer pictures: a malformed ask is a miss, never a throw", () => {
       index: 3,
     });
     expect(b.subject).toBe("");
+  });
+});
+
+describe("ruling 209 with 163: one source type per set; a history set is real first", () => {
+  const strip2 = () => {
+    const w = 120;
+    const width = 2 * w + 10;
+    const rgb = new Uint8Array(width * w * 3).fill(236);
+    for (let k = 0; k < 2; k++)
+      for (let y = 0; y < w; y++)
+        for (let x = 0; x < w; x++)
+          if (Math.abs(x - w / 2) < 20 + 10 * k && Math.abs(y - w / 2) < 30) {
+            const o = (y * width + k * (w + 10) + x) * 3;
+            rgb.fill(40, o, o + 3);
+          }
+    for (let y = 0; y < w; y++) rgb.fill(255, (y * width + w) * 3, (y * width + w + 10) * 3);
+    return encodePng({ width, height: w, rgb });
+  };
+  const run = async (opts: {
+    subject: string;
+    hits: (shows: string) => boolean;
+    named?: boolean;
+    script: string[];
+  }) => {
+    const prompts: string[] = [];
+    let saved = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: opts.subject },
+      country: "UK",
+      // Ruling 163: a historical set's real search is Commons.
+      images: images({
+        // Only the director's own query for a hit finds anything; a miss has no candidates.
+        commons: (async (q: unknown) =>
+          (opts.hits(JSON.stringify(q)) ? ["p7", "p8"] : []).map((id) => ({
+            ...photo(id),
+            provider: "commons",
+            licenceClass: "cc0",
+          })) as never) as never,
+      }),
+      deps: recordingDeps(createFakeAi({ script: opts.script })),
+      maker: {
+        bank: STOCK_ONLY_BANK,
+        generator: {
+          model: "fake-image",
+          generate: async (req) => {
+            prompts.push(req.prompt);
+            return { bytes: strip2(), mime: "image/png", costUsd: 0.01, ms: 1 } as never;
+          },
+        },
+        save: async () => {
+          saved += 1;
+          return { id: `g${saved}`, src: `/files/g${saved}.png` };
+        },
+      },
+      direct: async (input) => {
+        const shows = JSON.stringify(input);
+        return opts.hits(shows)
+          ? direction({
+              route: "commons",
+              named: null,
+              pictures: [
+                { shows: "x", mustShow: ["x"], queries: ["canopic jar"], imagePrompt: "x." },
+              ],
+            })
+          : direction({ route: "none", pictures: [] });
+      },
+    });
+    const panels = ["An ancient canopic jar", "Ancient priests drying a body with natron"];
+    for (const [k, shows] of panels.entries())
+      pictures.start(
+        5,
+        ask({
+          key: `seq.${k}`,
+          shows,
+          mustSee: [],
+          named: opts.named ?? false,
+          aspect: 1.1,
+          set: "s5",
+        }),
+        slide,
+      );
+    await pictures.settle(5_000);
+    const states = [0, 1].map((k) => pictures.state(5, `seq.${k}`));
+    const providers = new Set([...pictures.sources().values()].map((x) => x.provider));
+    return { prompts, states, providers };
+  };
+  const pick = (id: string) =>
+    verdict({
+      pick: id,
+      kindMatches: true,
+      onSubject: true,
+      clear: true,
+      fits: true,
+      visible: ["x"],
+      count: "one",
+      boxes: [{ item: "x", left: 0.1, top: 0.2, right: 0.6, bottom: 0.9 }],
+    });
+  const made = (item: string) =>
+    verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: [item] });
+  const same = JSON.stringify({ same: true, odd: [], why: "x" });
+
+  test("the routing rule", () => {
+    const k = { named: false, cards: false };
+    expect(setAfterRealSearch([true, true], k)).toBe("real");
+    expect(setAfterRealSearch([true, false], k)).toBe("illustrate");
+    expect(setAfterRealSearch([true, false], { ...k, named: true })).toBe("drop");
+    expect(setAfterRealSearch([true, false], { ...k, cards: true })).toBe("cards");
+  });
+
+  test("a historical set (ancient, real time) with a partial stock hit is illustrated whole, never photo-style", async () => {
+    const r = await run({
+      subject: "Science",
+      hits: (s) => s.includes("canopic"),
+      script: [pick("p7"), made("jar"), made("body"), same],
+    });
+    // Every generation of the set is painted, never photo-style.
+    expect(r.prompts.length).toBeGreaterThan(0);
+    for (const p of r.prompts) expect(p.split("\n")[0]).toMatch(/illustration.*not a photograph/i);
+    // The real picture found for the jar is not used beside generated ones: no real source left.
+    expect(r.states.some((x) => x.status === "photo" && x.photo.src.includes("p7"))).toBe(false);
+    expect([...r.providers].filter((x) => x !== "generated")).toEqual([]);
+  });
+
+  test("a historical set with a stock hit for every panel is all real", async () => {
+    const r = await run({ subject: "Science", hits: () => true, script: [pick("p7"), pick("p8")] });
+    expect(r.prompts).toHaveLength(0);
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "photo"]);
+    expect([...r.providers]).toEqual(["pexels"]);
+  });
+
+  test("a named set outside history with a partial hit never mixes: the whole set goes", async () => {
+    const r = await run({
+      subject: "Science",
+      named: true,
+      hits: (s) => s.includes("canopic"),
+      script: [pick("p7")],
+    });
+    expect(r.prompts).toHaveLength(0);
+    expect(r.states.map((x) => x.status)).toEqual(["failed", "failed"]);
+    expect(r.providers.size).toBe(0);
   });
 });

@@ -283,6 +283,32 @@ export function panelBrief(ask: SetAsk, aspect: number): ImageBrief {
 
 const dataUrl = (png: Uint8Array) => `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
 
+/**
+ * Ruling 209: a set illustrated after a real-source miss is drawn or painted, never photo-style.
+ * Every panel takes this one look, so the set never mixes styles.
+ */
+export function illustratedLook(look?: LessonLook): LessonLook {
+  return { ...(look ?? {}), style: "illustration" } as LessonLook;
+}
+
+/**
+ * Ruling 209 (with 163): what a named or historical set does once its real search is done.
+ * - `real`: every panel has a real picture; the set ships real.
+ * - `cards`: history activity cards stay real or their word (163, TEACH-101 part c); landed kept.
+ * - `drop`: a named set (people, specific artefacts) is real only (163); with a miss the whole set
+ *   goes, since a caption tile stands only for a generated panel that failed (209).
+ * - `illustrate`: any other miss illustrates the whole set in one drawn style; the real pictures
+ *   found are not used, so a set never mixes real and generated.
+ */
+export function setAfterRealSearch(
+  landed: boolean[],
+  kind: { named: boolean; cards: boolean },
+): "real" | "cards" | "drop" | "illustrate" {
+  if (landed.every(Boolean)) return "real";
+  if (kind.cards) return "cards";
+  return kind.named ? "drop" : "illustrate";
+}
+
 /** The style a set is made in, from the lesson's look. */
 export function setStyle(look?: LessonLook): SetPicture["style"] {
   return look?.style === "illustration"
@@ -552,7 +578,13 @@ export function directedSetJudges(
       const ok = await judgeMadeDirected({
         lesson,
         index: ask.index,
-        brief: panelBrief(ask, aspect),
+        // Ruling 209: an illustrated history set is checked for wrong-period details.
+        brief: {
+          ...panelBrief(ask, aspect),
+          ...((lesson as PeriodFields).historicalPeriod
+            ? { period: (lesson as PeriodFields).historicalPeriod as string }
+            : {}),
+        },
         deps,
         dataUrl: url,
         onVerdict: (v) => {
