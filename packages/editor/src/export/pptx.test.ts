@@ -38,6 +38,7 @@ import {
   pptxDashType,
   pptxFilename,
   pptxShapeName,
+  roundedPictureName,
   slideLabel,
   textBoxOptions,
   trackingToPt,
@@ -1047,10 +1048,37 @@ describe("the emitted slide XML", () => {
       for (const [i, v] of got.entries())
         expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
       expect(xml).toContain('rot="5400000"');
-      // the radius is still PptxGenJS's `rounding` (an ellipse, a known gap, not this change)
-      expect(xml).toContain('prst="ellipse"');
+      // the radius rounds the corners of the contained frame (200x100): 8 / 100 of the short side
+      expect(xml).toContain(
+        '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/>',
+      );
+      expect(xml).not.toContain('prst="ellipse"');
       expect(srcRect(xml)).toBeNull();
     }, 30_000);
+
+    // A rounded picture came out as an oval: PptxGenJS's `rounding` is an ellipse.
+    it("a rounded cover picture is a roundRect sized to its frame, never an ellipse", async () => {
+      const [xml] = await write(deck([picture({ radius: 16, name: "Kitten" })]));
+      expect(xml).not.toContain('prst="ellipse"');
+      // 16 on a 400x200 frame: 16 / 200 of the short side
+      expect(xml).toContain(
+        '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/>',
+      );
+      expect(xml).toContain('name="Kitten"');
+      expect(xml).not.toContain("tj-round:");
+      expect(srcRect(xml)).not.toBeNull();
+    }, 30_000);
+
+    it("an unrounded picture keeps its rectangle", async () => {
+      const [xml] = await write(deck([picture({})]));
+      expect(xml).toContain('<a:prstGeom prst="rect">');
+      expect(xml).not.toContain("roundRect");
+    }, 30_000);
+
+    it("a radius past half the short side caps at a half (a pill, not an oval)", () => {
+      expect(roundedPictureName(500, 400, 200, "p")).toBe("tj-round:50000:p");
+      expect(roundedPictureName(12, 300, 240, "p")).toBe("tj-round:5000:p");
+    });
 
     it("a JPEG with EXIF before its frame header", () => {
       // SOI, an APP1 (EXIF) segment of 3000 bytes, then SOF0 for a 640x480 picture

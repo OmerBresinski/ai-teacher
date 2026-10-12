@@ -1252,7 +1252,15 @@ async function drawImage(
   }
   if (element.alt) options.altText = element.alt;
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
-  if ((element.radius ?? 0) > 0) options.rounding = true;
+  // PptxGenJS's `rounding` writes an ellipse, so a rounded picture came out as an oval in
+  // PowerPoint. The picture carries a marker name instead, and `roundPictureCorners` rewrites its
+  // geometry as a roundRect after the deck is written (TEACH-25 part b).
+  const radius = element.radius ?? 0;
+  if (radius > 0) {
+    const frameW = options.sizing?.type === "crop" ? element.w : (options.w as number) * 72;
+    const frameH = options.sizing?.type === "crop" ? element.h : (options.h as number) * 72;
+    options.objectName = roundedPictureName(radius, frameW, frameH, element.name ?? "Picture");
+  }
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
@@ -1268,6 +1276,53 @@ function exportWindow(element: ImageElement, natural: { w: number; h: number }):
   if (renderedFit(element) !== "cover") return undefined;
   if (normaliseTransform(element.imageTransform)) return undefined;
   return currentCrop(element, natural);
+}
+
+const ROUNDED_PICTURE = /^tj-round:(\d+):/;
+
+/**
+ * The name a rounded picture is written under: its roundRect `adj` (the corner radius as a share
+ * of the frame's shorter side, in 1/100000ths, capped at a half) and the name it keeps.
+ */
+export function roundedPictureName(radius: number, w: number, h: number, name: string): string {
+  const short = Math.min(w, h);
+  const adj = short > 0 ? Math.min(50_000, Math.round((radius / short) * 100_000)) : 0;
+  return `tj-round:${adj}:${name}`;
+}
+
+/**
+ * Rewrites every marked picture's `rect` geometry as a `roundRect` with its `adj`, and gives it back
+ * its own name. PptxGenJS has no rounded-rectangle picture, only `rounding` (an ellipse).
+ */
+export async function roundPictureCorners(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  let changed = false;
+  for (const path of Object.keys(zip.files)) {
+    if (!/^ppt\/(slides|slideLayouts|slideMasters)\/[^/]+\.xml$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    if (!xml.includes('name="tj-round:')) continue;
+    const next = xml.replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (pic) => {
+      const named = /name="(tj-round:(\d+):[^"]*)"/.exec(pic);
+      if (!named?.[1]) return pic;
+      const marker = named[1];
+      const adj = Number(ROUNDED_PICTURE.exec(marker)?.[1] ?? 0);
+      return pic
+        .replace(`name="${marker}"`, `name="${marker.replace(ROUNDED_PICTURE, "")}"`)
+        .replace(
+          /<a:prstGeom prst="rect"><a:avLst\/><\/a:prstGeom>/,
+          `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${adj}"/></a:avLst></a:prstGeom>`,
+        );
+    });
+    if (next !== xml) {
+      zip.file(path, next);
+      changed = true;
+    }
+  }
+  if (!changed) return buffer;
+  return zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
 }
 
 /** A CORS-blocked or missing image leaves a labelled plate, never a broken deck. */
@@ -1434,7 +1489,7 @@ export async function exportLessonPptx(
     const written = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
     // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
     const { withFallbackFaces } = await import("./pptx-fonts");
-    const buffer = await withFallbackFaces(written, theme);
+    const buffer = await roundPictureCorners(await withFallbackFaces(written, theme));
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });
