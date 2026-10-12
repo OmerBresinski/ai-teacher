@@ -196,8 +196,9 @@ export function render(root, P, ctx) {
     h('line', { x1: CX, y1: CY - (R - 12), x2: CX, y2: CY - (R - 34), stroke: 'var(--focus)', 'stroke-width': 'calc(var(--sw-data) * 1.4)', 'stroke-linecap': 'round' }, F.minute);
     const behind = F.g.childNodes[2]; // after the face and its rim: under the ticks, numbers and hands
     if (M.ring) {
-      // the five-minute ring is for counting the minutes; once the time is said in words or digits it steps away
-      const rg = h('g', { s: bi('minute'), hide: kMove < Infinity ? kMove : null, cls: 'rise' }, F.g);
+      // the five-minute ring is for counting the minutes; v2: it stays once the time is said in words or digits,
+      // since the captions after it still count the minutes (45 past, 15 to go)
+      const rg = h('g', { s: bi('minute'), cls: 'rise' }, F.g);
       for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - Math.PI / 2; computed(T(rg, CX + (R + 42) * Math.cos(a), CY + (R + 42) * Math.sin(a) + 10, String(i * 5), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)' }), 'clock'); }
     }
     const sector = (a0, a1, rr) => { // angles in degrees clockwise from 12
