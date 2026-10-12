@@ -3,7 +3,15 @@ import { type Lesson, parseLesson } from "@tj/domain/documents";
 import { FICTION_IN_PERIOD_IS_HISTORICAL, isHistoricalLesson, periodFields } from "./period";
 import { labAi, romansLesson } from "./planner/testing";
 import { checkedWriterObjectives } from "./stages/objectives";
-import { type SetAsk, setIsGenerated } from "./stages/picture-set";
+import { type SetAsk, setLookFor } from "./stages/picture-set";
+
+/** Ruling 210: a historical set is generated, drawn; `isHistoricalLesson` decides the drawn look. */
+const drawn = (panels: SetAsk[], lesson: Parameters<typeof setLookFor>[0]) =>
+  setLookFor(
+    lesson,
+    panels.map((p) => p.shows),
+  )?.style === "illustration";
+
 import { writerBrief } from "./stages/write";
 import { initialState, recordingDeps, sampleBriefLesson } from "./testing";
 import { fromWriterActivity } from "./writer/activities";
@@ -60,7 +68,7 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
     expect(stored[0]).toMatchObject({ historicalPeriod: "Ancient Egypt", fictionInPeriod: false });
     expect(state.lesson.historicalPeriod).toBe("Ancient Egypt");
     expect(isHistoricalLesson(state.lesson)).toBe(true);
-    expect(setIsGenerated(panels, state.lesson)).toBe(false);
+    expect(drawn(panels, state.lesson)).toBe(true);
     // The writer's brief carries it to the activity cards: a real picture or its word.
     const brief = writerBrief(state.lesson);
     const cards = fromWriterActivity(
@@ -80,7 +88,7 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
       ...periodFields({ historical_period: "Roman Pompeii, AD 79", fiction_in_period: false }),
     });
     expect(isHistoricalLesson(pompeii)).toBe(true);
-    expect(setIsGenerated(panels, pompeii)).toBe(false);
+    expect(drawn(panels, pompeii)).toBe(true);
   });
 
   test("fiction set in a period follows FICTION_IN_PERIOD_IS_HISTORICAL", () => {
@@ -90,7 +98,7 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
       fictionInPeriod: true,
     });
     expect(isHistoricalLesson(carol)).toBe(FICTION_IN_PERIOD_IS_HISTORICAL);
-    expect(setIsGenerated(panels, carol)).toBe(!FICTION_IN_PERIOD_IS_HISTORICAL);
+    expect(drawn(panels, carol)).toBe(FICTION_IN_PERIOD_IS_HISTORICAL);
     // A History subject stays historical whatever the fiction flag says.
     expect(isHistoricalLesson({ ...carol, subject: "History" })).toBe(true);
   });
@@ -102,7 +110,7 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
     expect(isHistoricalLesson(state.lesson)).toBe(false);
     const science = { ...state.lesson, subject: "Science" };
     expect(isHistoricalLesson(science)).toBe(false);
-    expect(setIsGenerated(panels, science)).toBe(true);
+    expect(drawn(panels, science)).toBe(false);
     expect(writerBrief(science)).not.toHaveProperty("historicalPeriod");
   });
 
@@ -114,8 +122,8 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
     expect(history.fictionInPeriod).toBeUndefined();
     expect(isHistoricalLesson(history)).toBe(true);
     expect(isHistoricalLesson(science)).toBe(false);
-    expect(setIsGenerated(panels, history)).toBe(false);
-    expect(setIsGenerated(panels, science)).toBe(true);
+    expect(drawn(panels, history)).toBe(true);
+    expect(drawn(panels, science)).toBe(false);
     // A check answer from before v5 (no period fields) stores nothing.
     expect(periodFields({})).toEqual({});
     // Stored fields round-trip through the document schema.
@@ -147,7 +155,7 @@ describe("isHistoricalLesson (ruling 163, B1)", () => {
     expect(stored[0]).not.toHaveProperty("historicalPeriod");
     expect(stored[0]).not.toHaveProperty("fictionInPeriod");
     expect(isHistoricalLesson(state.lesson)).toBe(false);
-    expect(setIsGenerated(panels, state.lesson)).toBe(true);
+    expect(drawn(panels, state.lesson)).toBe(false);
   });
 
   test("a pinned re-plan takes the latest check's period, null included", async () => {
