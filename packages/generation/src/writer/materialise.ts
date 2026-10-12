@@ -434,7 +434,13 @@ export function toInput(
       // points as key cards (ruling 194); other big visuals' points are read in the notes.
       const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
       return f
-        ? { template, heading, lead, figure: f, ...(cards.length ? { points: cards } : {}) }
+        ? {
+            template,
+            heading,
+            lead,
+            figure: f,
+            ...(cards.length ? { points: cards, across: true } : {}),
+          }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {
