@@ -170,7 +170,7 @@ function plan(P) {
   P.coast.forEach(c => items.push({ key: `f:${c.feature}`, caption: C[c.feature] }));
   // the time arrow is its own build: one idea (older further out) after the features it orders
   if (P.coast.length > 1) items.push({ key: 'older', caption: 'The further out to sea a feature is, the older it is.' });
-  return { items, summary: 'The further out to sea a feature is, the older it is.' };
+  return { items, summary: P.coast.length > 1 ? 'Waves wear a headland back, one feature after another, over thousands of years.' : 'The further out to sea a feature is, the older it is.' };
 }
 export function builds(P) { const { items, summary } = plan(P); return { steps: items.map(({ key, caption }) => ({ key, caption })), summary: { caption: summary } }; }
 
@@ -527,12 +527,10 @@ function renderMeander(root, P, ctx) {
       const tb = textBlock(tg, 0, 0, s, { cls: 'ts-small', maxW: 220, maxLines: 3, lh: 26, anchor: 'middle', edit: path, a: { cls: 'strong', fill: 'var(--ink)' } });
       const hh = tb.h + 14, w = Math.max(hh, tb.w + 20); const box = { x: -w / 2, y: -20 - 7, w, hh };
       gr.setAttribute('x', box.x); gr.setAttribute('y', box.y); gr.setAttribute('width', w); gr.setAttribute('height', hh); tg.box = { x: box.x, y: box.y, w, h: hh };
-      const cands = []; for (const d of [0, 16, 40, 70, 100, 130, 160]) { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 6 + d; cands.push([p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2]); }
-      // A sits inside the bend and B outside it, right at their ends of the line: on its own side, a
-      // tag is never moved across the river (that would put both ends on the outside bank)
-      { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 4; const [tx, ty] = [p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2];
-        tg.setAttribute('transform', `translate(${tx} ${ty})`); obstacles.push({ x: tx + box.x, y: ty + box.y, w, h: hh }); return; }
-      const bb = placeBlock(ctx, tg, cands.concat(around(p[0], p[1], tg.box, 10)), obstacles, s, undefined, true) || placeBlock(ctx, tg, sweep(tg.box, GRID.left, GRID.right - tg.box.w, GRID.top, GRID.bottom - tg.box.h, p[0], p[1], 10), obstacles, s, undefined, false, leaderClear(p, obstacles));
+      // A sits inside the bend and B outside it, so every candidate runs out along the tag's own
+      // direction: the first hugs its end of the line, and a tag is never moved across the river
+      const cands = []; for (const d of [-2, 0, 16, 40, 70, 100, 130, 160]) { const r = Math.abs(dir[0]) * w / 2 + Math.abs(dir[1]) * hh / 2 + 6 + d; cands.push([p[0] + dir[0] * r - box.x - w / 2, p[1] + dir[1] * r - box.y - hh / 2]); }
+      const bb = placeBlock(ctx, tg, cands, obstacles, s, undefined, true) || placeBlock(ctx, tg, sweep(tg.box, GRID.left, GRID.right - tg.box.w, GRID.top, GRID.bottom - tg.box.h, p[0], p[1], 10), obstacles, s, undefined, false, leaderClear(p, obstacles));
       if (bb) { const qx = clamp(p[0], bb.x, bb.x + bb.w), qy = clamp(p[1], bb.y, bb.y + bb.h); if (Math.hypot(qx - p[0], qy - p[1]) > 4) sg.insertBefore(h('line', { x1: p[0], y1: p[1], x2: qx, y2: qy, stroke: 'var(--ink)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '5 5' }), sg.firstChild); }
     };
     obstacles.push(...Array.from({ length: 9 }, (_, i) => { const t = i / 8; return { cx: lerp(pin[0], pout[0], t), cy: lerp(pin[1], pout[1], t), r: 6 }; }));

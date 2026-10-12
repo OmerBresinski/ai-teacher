@@ -5,8 +5,8 @@
 //   daylength plus the Sun's path on the season's solstice or equinox day: the arc's width is the
 //             hours of daylight (24 h = the full arc track) and its height follows the Sun's noon
 //             height, both worked out from the place's latitude.
-// Truth: season months follow the hemisphere; northern trees are deciduous so they are bare in winter,
-// southern (Australian) trees are evergreen
+// Truth: season months follow the hemisphere; trees are deciduous so they are bare in winter, except in a
+// place marked evergreen in PLACES (Sydney's native eucalypts and wattles keep their leaves)
 // (drawn from the season, not a setting); no snow in summer, nor in places where it hardly snows.
 import { TOWNS } from '../kit/facts.js'; import { gazPlace } from '../kit/geo.js'; // libdata
 import {
@@ -32,7 +32,7 @@ const WEATHER_LABELS = { sun: 'Sunny', cloud: 'Cloudy', rain: 'Rainy', snow: 'Sn
 const PLACES = {
   london: { name: 'London', lat: 51.5, snows: true }, edinburgh: { name: 'Edinburgh', lat: 55.95, snows: true },
   cardiff: { name: 'Cardiff', lat: 51.48, snows: true }, belfast: { name: 'Belfast', lat: 54.6, snows: true },
-  'new-york': { name: 'New York', lat: 40.7, snows: true }, sydney: { name: 'Sydney', lat: -33.87, snows: false },
+  'new-york': { name: 'New York', lat: 40.7, snows: true }, sydney: { name: 'Sydney', lat: -33.87, snows: false, evergreen: true },
   melbourne: { name: 'Melbourne', lat: -37.81, snows: false }, auckland: { name: 'Auckland', lat: -36.85, snows: false },
   'cape-town': { name: 'Cape Town', lat: -33.92, snows: false },
 };
@@ -337,7 +337,7 @@ function fitColumns(p, P, S, hrs, hemi, span, ph) {
 
 /* ------------------------------------------------------------------ render */
 export function render(root, P, ctx) {
-  const { S, sun, hrs, hemi } = plan(P); const b = ctx.b, N = ctx.N;
+  const { S, sun, hrs, hemi, place: home } = plan(P); const b = ctx.b, N = ctx.N;
   const bi = k => b[k] ?? 0;
   // dark rooms: faded panels step back less, or they vanish into the background
   const dark = ctx.name === 'night', rq = dark ? 'soft' : 'quiet';
@@ -359,9 +359,9 @@ export function render(root, P, ctx) {
   // the four empty frames are there from the first build, so the year reads as one grid that fills
   // in season by season (and the opening frame is the first season, not a lone corner)
   slots.forEach(({ x, y }) => h('rect', { x, y, width: pw, height: ph, rx: 'var(--r-card)', fill: 'none', stroke: 'var(--rule)', 'stroke-width': 'var(--sw-hair)', 'stroke-dasharray': '6 8' }, root));
-  // the southern half of the world: the native trees (eucalypts, wattles) are evergreen, so the tree
-  // keeps its leaves all year and the weather tells the seasons apart
-  const evergreen = hemi === 'south';
+  // a place whose own trees are evergreen (Sydney: eucalypts and wattles) keeps its tree in leaf all
+  // year, so the weather tells the seasons apart; everywhere else, south of the equator too, the tree is deciduous
+  const evergreen = home.evergreen === true;
   S.forEach((s, i) => {
     const { c, x, y } = slots[i]; const k = bi(`season:${s.season}`);
     // each panel steps back after its build; for "again" all four step back so the arrows lead;

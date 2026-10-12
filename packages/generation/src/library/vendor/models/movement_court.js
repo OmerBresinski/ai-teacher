@@ -12,7 +12,7 @@ import {
 import { court, player, ball, SPORT_DIMS, NETBALL_POSITIONS, NETBALL_ALLOWED, netballAllowed } from '../kit/batch-H.js';
 
 export const meta = {
-  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 2,
+  id: 'movement_court', name: 'Movement and space', kind: 'scene', version: 1,
   subjects: ['PE'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How a skill is made of phases in order, and how passing and moving into space beats defenders on a real court.',
@@ -533,8 +533,6 @@ function renderTactics(root, P, ctx) {
     const [runoff, inner] = C.g.querySelectorAll('rect'); runoff.style.setProperty('fill', 'none'); inner.style.setProperty('fill', 'var(--mc-court)');
     if (P.sport === 'netball') for (const gx of [0, C.L]) h('circle', { cx: C.mx(gx), cy: C.my(C.Wd / 2), r: 11, fill: 'none', stroke: 'var(--counter)', 'stroke-width': 'var(--sw-struct)' }, C.g);
   }
-  // an open space is named with its cones, so the first build (the area alone) is its own frame
-  if (P.sport === 'open') T(h('g', { s: kC, cls: 'rise' }, root), C.box.x, C.box.y - 14, 'Playing area', 'ts-small', { fill: 'var(--ink-2)', cls: 'strong' });
   // netball thirds named in the run-off above the court
   if (P.sport === 'netball') {
     const names = [txt(P, 'label:third1', 'Goal third'), txt(P, 'label:third2', 'Centre third'), txt(P, 'label:third3', 'Goal third')];

@@ -275,9 +275,6 @@ export function render(root, P, ctx) {
     obstacles.push({ x: 1020, y: 148, w: 66, h: 40 });
   }
   obstacles.push({ x: 1086, y: 104, w: 128, h: 128 });
-  // the Sun is named from the first build: the cycle starts with it, and the opening frame has a word
-  T(g, 1076, 176, 'Sun', 'ts-label', { 'text-anchor': 'end', fill: 'var(--ink)' });
-  obstacles.push({ x: 1010, y: 148, w: 70, h: 40 });
 
   // vapour: invisible, so it is drawn as dotted arrows (where it goes, not what it looks like)
   const vapour = (paths, id) => {
