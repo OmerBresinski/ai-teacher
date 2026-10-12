@@ -77,6 +77,7 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+import { useLayoutDetachNotice } from "./use-layout-detach-notice";
 
 /** The items panel of an adaptive layout group (TEACH-205 part b): loads the template recipes on first use. */
 const LayoutPanel = lazy(() => import("./LayoutPanel"));
@@ -165,6 +166,7 @@ export function SelectionLayer({
   scaleRef.current = scale;
 
   const history = useHistory();
+  useLayoutDetachNotice(slide);
   /** The slide as it stood when the gesture began: pointer moves never write it. */
   const slideRef = useRef(slide);
   slideRef.current = slide;

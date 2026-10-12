@@ -107,9 +107,9 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 /* Input paths                                                         */
 /* ------------------------------------------------------------------ */
 
-import { getAtPath } from "@tj/domain/documents";
+import { getAtPath } from "./layout-paths";
 
-export { getAtPath, setAtPath } from "@tj/domain/documents";
+export { getAtPath, setAtPath } from "./layout-paths";
 
 /** The ref's item list (empty when the input has none). */
 export function itemsOf(ref: LayoutRef): unknown[] {

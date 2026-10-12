@@ -8,7 +8,6 @@
 import type { Id, Lesson, Slide, SlideElement } from "@tj/domain/documents";
 import { produce } from "immer";
 import { now } from "../factories";
-import { syncLayoutGroups } from "./layout-sync";
 
 /** A reducer result that also reports the id(s) it minted. */
 export type WithId<K extends string, V> = { lesson: Lesson } & { [P in K]: V };
@@ -40,8 +39,7 @@ export function edit(lesson: Lesson, fn: (draft: Lesson) => void): Lesson {
     fn(draft);
   });
   if (next === lesson) return lesson;
-  // A teacher's edit inside an adaptive layout group writes its words through, or detaches it.
-  return { ...syncLayoutGroups(lesson, next), updatedAt: now() };
+  return { ...next, updatedAt: now() };
 }
 
 /** Like `edit`, without the `updatedAt` stamp — for silent bookkeeping writes. */

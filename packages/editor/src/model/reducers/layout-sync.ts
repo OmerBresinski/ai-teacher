@@ -1,6 +1,7 @@
 /**
- * Teacher edits inside an adaptive layout group (TEACH-205 part b). Run after every edit (`edit`
- * in `core.ts`), so it lands in the same undo step:
+ * Teacher edits inside an adaptive layout group (TEACH-205 part b). The lesson history runs it on
+ * every teacher edit before writing (`useDocumentHistory`'s `settle`), so it lands in the same undo
+ * step; silent measurements skip it:
  *
  * - new words in a child bound to a field (`<groupId>:<path>`, written by `relayout`) write
  *   through to the group's `layout.input`, so the next re-lay keeps them;
@@ -11,14 +12,13 @@
  * A layout reducer replaces `layout` itself, so a group whose ref changed in the edit is left alone.
  */
 import {
-  boundPath,
   type GroupElement,
   type LayoutRef,
   type Lesson,
   richDocToPlainText,
   type SlideElement,
-  setAtPath,
 } from "@tj/domain/documents";
+import { boundPath, setAtPath } from "@tj/slides/layout-paths";
 import { produce } from "immer";
 
 /** Keys a text edit may change: the words, their provenance, and the height auto-height measures. */

@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { GroupElement, LayoutRef, Lesson } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
+import * as reducers from "../../model/reducers";
+import { syncLayoutGroups } from "../../model/reducers/layout-sync";
 import { renderTheme } from "../../model/themes";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
+import { DETACH_NOTICE } from "./use-layout-detach-notice";
 
 /*
  * TEACH-205 part b (UX rulings 215, 199): selecting an adaptive layout group shows its items; add,
@@ -11,7 +14,17 @@ import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
  * one past the layout's hard maximum is marked over with Split and Shorten.
  */
 
-afterEach(cleanup);
+const toastSpy = Object.assign(
+  mock((..._args: unknown[]) => {}),
+  { error: mock(), dismiss: mock() },
+);
+const actualUi = await import("@tj/ui");
+mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
+
+afterEach(() => {
+  cleanup();
+  toastSpy.mockReset();
+});
 
 const cards = (n: number, text = (l: string) => `The ${l.toLowerCase()} do one job.`) =>
   ["Roots", "Stem", "Leaves", "Flower"].slice(0, n).map((label) => ({ label, text: text(label) }));
@@ -92,6 +105,11 @@ describe("LayoutPanel", () => {
     expect(cardCount(read(), 1)).toBe(2);
     const moved = kit.itemsOf(group(read(), 1).layout as LayoutRef);
     expect(moved).toEqual(cards(4, huge).slice(2));
+    // Selection stays on the head: its panel is still open, now with the two items it kept.
+    const panel = await screen.findByRole("region", { name: "Layout items" });
+    await waitFor(() =>
+      expect(within(panel).getAllByRole("group", { name: /^Item \d$/ })).toHaveLength(2),
+    );
   });
 
   test("a layout too small to split offers Shorten only, which goes to the over field", async () => {
@@ -102,5 +120,86 @@ describe("LayoutPanel", () => {
     expect(within(alert).queryByRole("button", { name: "Split onto a second slide" })).toBeNull();
     act(() => within(alert).getByRole("button", { name: "Shorten" }).click());
     expect(document.activeElement?.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  test("Escape drops the draft; remove moves focus to the next item", async () => {
+    const { container, read } = renderEditor(seeded(cards(3)));
+    await selectLayout(container);
+    const box = screen.getByRole("textbox", { name: "Item 1 text" }) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "Something else" } });
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(box.value).toBe("The roots do one job.");
+    fireEvent.blur(box);
+    expect(kit.getAtPath(group(read()).layout as LayoutRef, "grid.0.text")).toBe(
+      "The roots do one job.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove item 2" }));
+    await waitFor(() => expect(cardCount(read())).toBe(2));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Item 2 /),
+    );
+  });
+
+  test("a draft resets when undo changes the words under it", async () => {
+    const { container, read } = renderEditor(seeded(cards(3)));
+    await selectLayout(container);
+    const box = () => screen.getByRole("textbox", { name: "Item 1 text" }) as HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: "First words." } });
+    fireEvent.blur(box());
+    await waitFor(() =>
+      expect(kit.getAtPath(group(read()).layout as LayoutRef, "grid.0.text")).toBe("First words."),
+    );
+    fireEvent.change(box(), { target: { value: "A draft not yet kept" } });
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(box().value).toBe("The roots do one job."));
+  });
+
+  test("a template that cannot lay out yet: the commit is refused, the draft is kept", async () => {
+    const lesson = seededLesson();
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    const items = ["a", "b", "c"].map((title) => ({ title, text: "words" }));
+    first.elements = [
+      {
+        id: "g1",
+        type: "group",
+        x: 100,
+        y: 200,
+        w: 300,
+        h: 200,
+        layout: { template: "items-row", input: { heading: "Row", items } },
+        children: [{ id: "g1:0", type: "shape", shape: "rect", x: 0, y: 0, w: 300, h: 200 }],
+      },
+    ];
+    const { container, read } = renderEditor(lesson);
+    await selectLayout(container);
+    const box = screen.getByRole("textbox", { name: "Item 1 text" }) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "New words" } });
+    fireEvent.blur(box);
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+    expect(toastSpy.mock.calls[0]?.[0]).toBe(reducers.NOT_LIVE_REASON);
+    expect(box.value).toBe("New words");
+    expect(kit.getAtPath(group(read()).layout as LayoutRef, "items.0.text")).toBe("words");
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    expect(toastSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test("an edit that fixes the layout tells the teacher once", async () => {
+    const { container, read, client } = renderEditor(seeded(cards(3)));
+    await selectLayout(container);
+    const slideId = read().slides[0]?.id as string;
+    const card = group(read()).children.find((c) => c.name === "Card")?.id as string;
+    act(() => {
+      client.setQueryData(
+        ["library", "documents", "L1"],
+        syncLayoutGroups(
+          read(),
+          reducers.updateElement(read(), slideId, card, { fill: "#00ff00" }),
+        ),
+      );
+    });
+    await waitFor(() => expect(toastSpy).toHaveBeenCalledWith(DETACH_NOTICE));
+    expect(group(read()).layout).toBeUndefined();
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Layout items" })).toBeNull());
   });
 });

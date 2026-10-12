@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LayoutRef } from "@tj/domain/documents";
+import { boundPath } from "./layout-paths";
 import {
   addItem,
   canSplit,
@@ -156,5 +157,13 @@ describe("item operations", () => {
     expect(stageOf(theme, "post16")).toBe("ks5");
     expect(stageOf(theme, "eyfs")).toBe("ks1");
     expect(stageOf(theme, undefined)).toBe("ks3");
+  });
+});
+
+describe("layout paths", () => {
+  test("boundPath reads a child's field from its id", () => {
+    expect(boundPath("g1", "g1:grid.1.text")).toBe("grid.1.text");
+    expect(boundPath("g1", "g1:4")).toBeUndefined();
+    expect(boundPath("g1", "other")).toBeUndefined();
   });
 });

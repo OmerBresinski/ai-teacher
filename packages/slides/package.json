@@ -15,6 +15,7 @@
     "./layouts": "./src/layouts.ts",
     "./reflow": "./src/reflow.ts",
     "./relayout": "./src/relayout.ts",
+    "./layout-paths": "./src/layout-paths.ts",
     "./answers-slide": "./src/answers-slide.ts",
     "./worksheet": "./src/worksheet/index.ts",
     "./diagrams": "./src/diagrams/index.ts",

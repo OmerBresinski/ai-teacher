@@ -1,7 +1,7 @@
 import type { GroupElement, Id, LayoutRef } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
 import { Button, toast } from "@tj/ui";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Rect } from "../../model/geometry";
 import * as reducers from "../../model/reducers";
 import { renderTheme } from "../../model/themes";
@@ -32,26 +32,62 @@ export default function LayoutPanel({
   const history = useHistory();
   const ref = group.layout;
   const spec = kit.ADAPTIVE_SPECS[ref.template];
+  // `renderTheme` hands back one cached theme per id and stage, so this re-lays only when the ref
+  // or the lesson's look changes, never on an unrelated edit.
+  const theme = renderTheme(lesson);
+  const ageBand = lesson.ageBand;
   const fields = useMemo(() => {
-    const theme = renderTheme(lesson);
     try {
-      return kit.relayout(ref, theme, kit.stageOf(theme, lesson.ageBand)).fields;
+      return kit.relayout(ref, theme, kit.stageOf(theme, ageBand)).fields;
     } catch {
       return [];
     }
-  }, [ref, lesson]);
+  }, [ref, theme, ageBand]);
   const byPath = new Map(fields.map((f) => [f.path, f]));
   const items = kit.itemsOf(ref);
   const over = fields.filter((f) => f.state === "over");
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
+  const panelRef = useRef<HTMLDivElement>(null);
+  /** Where to move focus once a removal has re-laid the items (the next item, or the new last). */
+  const [focusItem, setFocusItem] = useState<number | null>(null);
+  /** Slide units the panel moves so it stays inside the window. */
+  const [nudge, setNudge] = useState({ x: 0, y: 0 });
 
-  const report = (out: { refused?: string } | undefined) => {
+  // Clamp to the viewport: measured after layout, moved up or left by what spills over.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the frame or the item count moves the panel
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el || typeof window === "undefined") return;
+    const box = el.getBoundingClientRect();
+    const margin = 8;
+    const overY = box.bottom - nudge.y * scale - (window.innerHeight - margin);
+    const overX = box.right - nudge.x * scale - (window.innerWidth - margin);
+    const y = overY > 0 ? -overY / scale : 0;
+    const x = overX > 0 ? -overX / scale : 0;
+    if (Math.abs(y - nudge.y) > 0.5 || Math.abs(x - nudge.x) > 0.5) setNudge({ x, y });
+  }, [rect.x, rect.y, rect.h, scale, items.length]);
+
+  useEffect(() => {
+    if (focusItem === null) return;
+    const prefix = `${spec.items}.${focusItem}.`;
+    for (const [path, el] of inputs.current)
+      if (path.startsWith(prefix)) {
+        el.focus();
+        break;
+      }
+    setFocusItem(null);
+  }, [focusItem, spec.items]);
+
+  const report = (out: { refused?: string } | undefined): string | undefined => {
     if (out?.refused) toast(out.refused);
+    return out?.refused;
   };
   const add = () =>
     report(history.dispatch(reducers.addLayoutItem, slideId, group.id, items.length, kit));
-  const remove = (n: number) =>
-    report(history.dispatch(reducers.removeLayoutItem, slideId, group.id, n, kit));
+  const remove = (n: number) => {
+    const refused = report(history.dispatch(reducers.removeLayoutItem, slideId, group.id, n, kit));
+    if (!refused) setFocusItem(Math.min(n, items.length - 2));
+  };
   const split = () => report(history.dispatch(reducers.splitLayout, slideId, group.id, kit));
   const shorten = () => {
     const first = over[0];
@@ -62,16 +98,20 @@ export default function LayoutPanel({
     // biome-ignore lint/a11y/noStaticElementInteractions: stops a press in the panel from starting a canvas drag; the controls inside are the interactive ones
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: as above
     <div
+      ref={panelRef}
+      data-layout-panel-frame
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       style={{
         position: "absolute",
-        left: rect.x,
-        top: rect.y + rect.h + 8 / scale,
+        left: rect.x + nudge.x,
+        top: rect.y + rect.h + 8 / scale + nudge.y,
         transform: `scale(${1 / scale})`,
         transformOrigin: "0 0",
         pointerEvents: "auto",
         width: 320,
+        maxHeight: "calc(100vh - 16px)",
+        overflowY: "auto",
       }}
     >
       <section
@@ -113,7 +153,16 @@ export default function LayoutPanel({
                       else inputs.current.delete(path);
                     }}
                     onCommit={(text) =>
-                      history.dispatch(reducers.editLayoutItem, slideId, group.id, path, text, kit)
+                      report(
+                        history.dispatch(
+                          reducers.editLayoutItem,
+                          slideId,
+                          group.id,
+                          path,
+                          text,
+                          kit,
+                        ),
+                      )
                     }
                   />
                 );
@@ -143,7 +192,11 @@ export default function LayoutPanel({
   );
 }
 
-/** One item field: words commit on blur or Enter; the counter follows the typing (ruling 215). */
+/**
+ * One item field (ruling 215): the counter follows the typing; the words commit on blur or Enter,
+ * Escape drops the draft. A refused commit keeps the draft; a draft started from words that have
+ * since changed (undo, redo, another edit) is dropped, so the field always shows the document.
+ */
 function ItemField({
   path,
   label,
@@ -157,16 +210,20 @@ function ItemField({
   value: string;
   field: kit.LayoutField | undefined;
   inputRef: (el: HTMLTextAreaElement | null) => void;
-  onCommit: (text: string) => void;
+  onCommit: (text: string) => string | undefined;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const text = draft ?? value;
+  const [draft, setDraft] = useState<{ base: string; text: string } | null>(null);
+  const live = draft && draft.base === value ? draft : null;
+  const text = live?.text ?? value;
   const chars = text.trim().length;
-  const isOver = field?.state === "over" && draft === null;
+  const isOver = field?.state === "over" && live === null;
   const showCount = !!field && (isOver || chars > field.cap);
   const commit = () => {
-    if (draft !== null && draft !== value) onCommit(draft);
-    setDraft(null);
+    if (!live || live.text === value) {
+      setDraft(null);
+      return;
+    }
+    if (onCommit(live.text) === undefined) setDraft(null);
   };
   return (
     <label className="flex flex-col gap-0.5" data-field={path}>
@@ -181,12 +238,16 @@ function ItemField({
           isOver ? "border-destructive outline outline-2 outline-destructive" : "border-input"
         }`}
         value={text}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => setDraft({ base: value, text: e.target.value })}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setDraft(null);
           }
         }}
       />
