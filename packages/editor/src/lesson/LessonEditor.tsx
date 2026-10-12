@@ -50,7 +50,7 @@ import { FollowMarkContext } from "./follow-mark";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
-import { type DraftStore, LiveSlide } from "./live-draft";
+import { type DraftStore, LiveSlide, useDraftLead } from "./live-draft";
 import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
@@ -493,7 +493,9 @@ export function LessonEditor({
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
+  const lead = useDraftLead(drafts);
   const follow = useFollowWriting({
+    lead,
     slides: lesson?.slides,
     writingSlideIds,
     activeSlideId: session.state.activeSlideId,

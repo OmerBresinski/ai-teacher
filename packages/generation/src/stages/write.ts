@@ -311,7 +311,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         states[slide.id] = own?.state ?? "writing";
       }
       const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned", states));
-      const written = [...patches.keys()].filter((i) => i >= 2).length;
+      // Blank slides waiting for their words (live writing) are not written yet.
+      const written = [...patches.keys()].filter((i) => i >= 2 && latest.has(i)).length;
       const percent = Math.min(65, 20 + Math.round((45 * written) / range.max));
       await deps.onProgress(percent, "Writing slides", "generate", updatedAt);
     },
@@ -325,6 +326,20 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       deps.logger.warn({ stage: "generate", err: String(err).slice(0, 200) }, "slide draft failed");
     }
   };
+  /** Live writing (ADR 0039): a blank `writing` slide for index i, until its words close. */
+  const blank = (i: number, id: string) => {
+    if (latest.has(i) || progressive.patches().has(i)) return;
+    progressive.patch(
+      i,
+      { id, kind: "content", elements: [], notes: "" } as unknown as Laid,
+      "writing",
+    );
+  };
+  // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
+  // so the editor opens on it while the writer thinks; each later slide joins as a blank.
+  const live = !!deps.onDraft && !offScreen;
+  if (live && lesson.slides[0])
+    progressive.patch(0, lesson.slides[0] as unknown as Laid, "writing");
   let out: Awaited<ReturnType<typeof runWriter>>;
   /** Aborted when the stage fails: the writer's diagram jobs start no further call. */
   const failed = new AbortController();
@@ -375,18 +390,18 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         // the next save will carry it, so the client hands over with nothing left to swap.
         if (!offScreen && !closed.has(i)) draft(i, slide, true);
       },
-      ...(deps.onDraft && !offScreen
+      ...(live
         ? {
+            // The flow names every slide: each joins the deck as a blank at once, so the strip
+            // shows the whole lesson before its first words.
+            onFlow: (flow: { slide?: number }[] | undefined) => {
+              for (const f of flow ?? [])
+                if (typeof f.slide === "number" && f.slide >= 3) blank(f.slide - 1, `s${f.slide}`);
+            },
             onDraftSlide: (i: number, slide: Laid) => {
               // The slide joins the deck as soon as it is being written, as a blank `writing` slide
-              // on the next save (no draft words are ever saved), so the editor can open it while
-              // its drafts show; its laid copy replaces the blank when it closes.
-              if (!latest.has(i) && !progressive.patches().has(i))
-                progressive.patch(
-                  i,
-                  { id: slide.id, kind: slide.kind, elements: [], notes: "" } as Laid,
-                  "writing",
-                );
+              // (no draft words are ever saved); its laid copy replaces the blank when it closes.
+              blank(i, slide.id);
               draft(i, slide, false);
             },
           }

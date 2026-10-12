@@ -100,7 +100,7 @@ describe.each(LESSONS)("laid drafts of %s", (b) => {
     expect(drafts.size).toBeGreaterThan(3);
     for (const [i, laid] of drafts) {
       expect(order.indexOf(`draft:${i}`)).toBeLessThan(order.indexOf(`slide:${i}`));
-      expect(i).toBeGreaterThanOrEqual(2);
+      expect(i).not.toBe(1);
       // Words grow: the last draft holds at least as many words as the first.
       expect(wordsOf(laid.at(-1) ?? [])).toBeGreaterThanOrEqual(wordsOf(laid[0] ?? []));
       // Type never steps back up within a slide.

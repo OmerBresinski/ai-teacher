@@ -9,7 +9,14 @@
  * untouched. The saved slide always wins: once the slide is not writing, the draft is ignored.
  */
 import type { Slide } from "@tj/domain/documents";
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 
 export type LiveDraft = { index: number; slideId: string; slide: Slide; final?: boolean };
@@ -46,6 +53,44 @@ export function createDraftStore(): DraftStore {
       byId = next;
       for (const fn of subs) fn();
     },
+  };
+}
+
+const NO_SUBSCRIBE = () => () => {};
+/** The id of the slide being written now (its drafts streaming); re-renders only when it moves. */
+export function useDraftLead(store: DraftStore | undefined): string | undefined {
+  return useSyncExternalStore(
+    store?.subscribe ?? NO_SUBSCRIBE,
+    () => store?.latest()?.slideId,
+    () => undefined,
+  );
+}
+
+/**
+ * A slide waiting for its words (live writing): a soft heading bar and three text lines, so the
+ * canvas shows where the slide will be rather than an empty page. Never saved.
+ */
+export function skeletonSlide(slide: Slide): Slide {
+  const bar = (id: string, y: number, w: number, h: number) =>
+    ({
+      id: `skeleton-${id}`,
+      type: "shape",
+      shape: "rounded",
+      x: 64,
+      y,
+      w,
+      h,
+      radius: h / 2,
+      fill: "rgba(128, 128, 128, 0.14)",
+    }) as Slide["elements"][number];
+  return {
+    ...slide,
+    elements: [
+      bar("h", 56, 520, 44),
+      bar("l1", 160, 760, 18),
+      bar("l2", 200, 700, 18),
+      bar("l3", 240, 560, 18),
+    ],
   };
 }
 
@@ -317,8 +362,10 @@ export function LiveSlide({
   const target = draft ? wordCount(draft.slide) : 0;
   const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced);
   const host = useRef<HTMLDivElement | null>(null);
+  // A writing slide with nothing on it yet and no draft: a skeleton, until its layout arrives.
+  const waiting = writing && !draft && slide !== undefined && slide.elements.length === 0;
   const shown = !draft
-    ? { slide }
+    ? { slide: waiting && slide ? skeletonSlide(slide) : slide }
     : reduced
       ? { slide: draft.slide }
       : revealSlide(draft.slide, words);

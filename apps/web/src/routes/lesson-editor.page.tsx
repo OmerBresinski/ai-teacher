@@ -392,7 +392,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       anonymous,
       stopped: !!stoppedJobId,
       proposed: data.plan?.state === "proposed",
-      editableSlides: hasEditableSlides(data),
+      // Live writing (ADR 0039): the editor opens as soon as the job owns the deck (its slides
+      // `writing`), not at the first done slide, so the lesson is watched taking shape in it.
+      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0,
     })
   ) {
     setUnlocked({ jobId: fillingJobId, base: data });

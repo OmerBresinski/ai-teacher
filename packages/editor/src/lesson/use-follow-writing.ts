@@ -20,8 +20,14 @@ export function useFollowWriting({
   setActiveSlide,
   startFollowing,
   canvasFocused,
+  lead,
 }: {
-  slides: readonly { id: Id }[] | undefined;
+  slides: readonly { id: Id; elements?: readonly unknown[] }[] | undefined;
+  /**
+   * Live writing (ADR 0039): the slide whose drafts are streaming now. The writer's later slides
+   * wait as blank `writing` slides, so the newest writing slide is not the one being written.
+   */
+  lead?: Id;
   writingSlideIds: ReadonlySet<Id> | undefined;
   activeSlideId: Id | null;
   setActiveSlide: (id: Id) => void;
@@ -36,12 +42,26 @@ export function useFollowWriting({
   const [following, setFollowing] = useState(startFollowing);
   const target = useMemo(() => {
     if (!writingSlideIds || !slides) return undefined;
-    for (let i = slides.length - 1; i >= 0; i--) {
-      const id = slides[i]?.id;
-      if (id !== undefined && writingSlideIds.has(id)) return id;
+    // The writer goes in order, and its later slides wait as blanks: the slide being written is
+    // the first blank after the last writing slide with something on it (else the newest).
+    let target: Id | undefined;
+    let blank: Id | undefined;
+    for (const s of slides) {
+      if (!writingSlideIds.has(s.id)) continue;
+      if (s.elements !== undefined && s.elements.length === 0) blank ??= s.id;
+      else {
+        target = s.id;
+        blank = undefined;
+      }
     }
-    return undefined;
-  }, [slides, writingSlideIds]);
+    const fallback = blank ?? target;
+    // The streaming slide leads, but never back past the slide the writer is on (a late draft of
+    // an earlier slide would pull the view back for a moment).
+    const at = (id: Id | undefined) => slides.findIndex((s) => s.id === id);
+    if (lead !== undefined && writingSlideIds.has(lead) && at(lead) >= Math.max(0, at(fallback)))
+      return lead;
+    return fallback;
+  }, [slides, writingSlideIds, lead]);
   /** The slide the follow is opening, until the session reports it open. */
   const mark = useRef<Id | null>(null);
   const previous = useRef(activeSlideId);

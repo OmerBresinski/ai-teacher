@@ -30,6 +30,11 @@ export function useSaveWithConflictToast(
     async (document: LibraryDocument) => {
       const refuse = (error: unknown): never => {
         if (error instanceof ApiError && error.status === 409) {
+          // Live writing (ADR 0039): a filling lesson's editor opens before any slide is done, and
+          // a save then is refused as `generating` by design; the next save after a slide is done
+          // carries the whole document, so the refusal is not the teacher's to see.
+          if (error.reason === "generating" && onStale)
+            throw new SaveRefusedError(error.message, { cause: error });
           const stale = error.reason === "stale";
           toast(error.message, {
             duration: stale ? Number.POSITIVE_INFINITY : undefined,

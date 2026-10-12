@@ -327,9 +327,15 @@ export type WriterRun = {
    * Live writing P6 (TEACH-202 part f, ADR 0039): each draft laid out (`layDraft`), as the slide it
    * will be (id `s<index + 1>`) with its words so far and open placeholders for its visuals. First
    * on the template's close, then as the words grow; type only steps down. Same contract as
-   * `onDraft`: read-only, best effort, superseded by the slide's `onSlide`. Not for the title (0).
+   * `onDraft`: read-only, best effort, superseded by the slide's `onSlide`. Not for the objectives
+   * slide (1), which code lays.
    */
   onDraftSlide?: (index: number, slide: WriterSlide) => void;
+  /**
+   * Live writing (ADR 0039): the writer's `flow` as soon as it closes in the stream (before any
+   * slide): every slide it will write, in order. Best effort; a throw is logged and ignored.
+   */
+  onFlow?: (flow: Plan["flow"]) => void;
   /**
    * Live writing P2 (TEACH-202 part e): hands the caller a function to call when a picture lands
    * while the deck is still read-only. The slide is laid again and handed over (`onSlide`) at
@@ -1019,6 +1025,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     if (key === "flow") {
       plan.flow = value as Plan["flow"];
+      // Live writing (ADR 0039): the deck's slide count is known; the caller may show them all.
+      nonFatalSync(
+        () => run.onFlow?.(plan.flow),
+        (e) => log({ ev: "on-flow-failed", err: String(e).slice(0, 200) }),
+      );
       return;
     }
     const idx = key === "title" ? 0 : key === "slides" && typeof k === "number" ? k + 2 : -1;
@@ -1045,8 +1056,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     run.onDraft || onDraftSlide
       ? (idx: number, d: SlideDraft) => {
           run.onDraft?.(idx, d);
-          // The title is laid by code until its own words close; a slide already open is done.
-          if (!onDraftSlide || idx < 2 || opened.has(idx)) return;
+          // The objectives slide is laid by code (never written); a slide already open is done.
+          if (!onDraftSlide || idx === 1 || opened.has(idx)) return;
           const sizes = draftSizes.get(idx) ?? new Map();
           draftSizes.set(idx, sizes);
           const m = layDraft(d, { ...base, index: idx, plan }, sizes, stageKey);
