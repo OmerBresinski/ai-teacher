@@ -30,10 +30,10 @@ export interface JobEventsState {
    * `events` (a lesson streams a few hundred); a replay after a reconnect only overwrites them, and
    * the job's end clears them (the saved slides are the record).
    */
-  drafts: Readonly<Record<string, SlideDraftPayload>>;
+  drafts: Readonly<Record<string, SlideDraftPayload & { seq?: number }>>;
 }
 
-const NO_DRAFTS: Readonly<Record<string, SlideDraftPayload>> = {};
+const NO_DRAFTS: Readonly<Record<string, SlideDraftPayload & { seq?: number }>> = {};
 const INITIAL: JobEventsState = {
   events: [],
   status: "idle",
@@ -60,7 +60,9 @@ export function reduceJobEvents(state: JobEventsState, action: Action): JobEvent
       const { event } = action;
       if (event.type === "slide-draft") {
         if (state.terminal) return state;
-        return { ...state, drafts: { ...state.drafts, [event.draft.slideId]: event.draft } };
+        const seq = Number(action.id) || undefined;
+        const draft = { ...event.draft, ...(seq ? { seq } : {}) };
+        return { ...state, drafts: { ...state.drafts, [event.draft.slideId]: draft } };
       }
       const terminal = isTerminalJobEvent(event) ? event : state.terminal;
       const percent =
@@ -176,7 +178,15 @@ export function useFeedDrafts(
     if (!store) return;
     const list = Object.values(drafts);
     if (!ended) {
-      if (list.length > 0) store.set(list);
+      if (list.length === 0) return;
+      // A fresh stream replays oldest first: a draft the store already holds a newer copy of (a
+      // later row) keeps the newer one, so the slide on screen never steps back.
+      const merged = new Map<string, (typeof list)[number]>();
+      for (const d of list) {
+        const held = store.get(d.slideId);
+        merged.set(d.slideId, held && (held.seq ?? 0) > (d.seq ?? 0) ? held : d);
+      }
+      store.set(merged.values());
       return;
     }
     // The job's end lands a moment before its last save reaches the open document: the drafts

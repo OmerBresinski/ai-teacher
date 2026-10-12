@@ -83,4 +83,21 @@ describe("slide drafts on the job stream", () => {
     await new Promise((r) => setTimeout(r, DRAFTS_AFTER_END_MS + 50));
     expect(store.latest()).toBeUndefined();
   });
+
+  it("a replay that arrives oldest first never steps the store back to an older draft", () => {
+    const store = createDraftStore();
+    store.set([{ ...draft(2, "newest words"), seq: 40 }]);
+    renderHook(() => useFeedDrafts(store, { s3: { ...draft(2, "old"), seq: 12 } }, false));
+    expect(store.get("s3")?.slide.notes).toBe("newest words");
+    let s = reduceJobEvents(
+      start,
+      ev({ type: "slide-draft", ...base, draft: draft(2, "a") } as JobEvent, "7"),
+    );
+    expect(s.drafts.s3?.seq).toBe(7);
+    s = reduceJobEvents(
+      s,
+      ev({ type: "slide-draft", ...base, draft: draft(2, "a b") } as JobEvent, "9"),
+    );
+    expect(s.drafts.s3?.seq).toBe(9);
+  });
 });

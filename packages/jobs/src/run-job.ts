@@ -187,10 +187,20 @@ async function runJobAttempt<N extends JobName, D = unknown>(
 
   // Pre-run guard: a job already settled by an earlier attempt never runs (or emits) again.
   const terminal = await getTerminalJobEvent(ctx.db, base);
+  // Drafts an earlier attempt left behind (a worker killed before its prune) go first (ADR 0039).
+  await pruneDrafts();
   if (terminal) {
     logger.info({ type: terminal.type, eventId: terminal.id }, "job already terminal, skipping");
     await notifyJobEvent(ctx.sql, { id: terminal.id, ...base });
     return dispositionForTerminal(bossJob.id, terminal);
+  }
+
+  async function pruneDrafts(): Promise<void> {
+    try {
+      await pruneEphemeralJobEvents(ctx.db, base);
+    } catch (err) {
+      logger.warn({ err: safeError(err) }, "slide draft prune failed");
+    }
   }
 
   /**
@@ -301,11 +311,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
 
   // Drafts end with the handler: nothing pending is written, and what was written goes (ADR 0039).
   await drafts.stop();
-  try {
-    await pruneEphemeralJobEvents(ctx.db, base);
-  } catch (err) {
-    logger.warn({ err: safeError(err) }, "slide draft prune failed");
-  }
+  await pruneDrafts();
 
   // Flush any coalesced progress before the terminal event so ordering is preserved.
   await progress.flush();

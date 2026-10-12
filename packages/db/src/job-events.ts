@@ -141,7 +141,12 @@ export async function pruneEphemeralJobEvents(
   db: ScopableDb,
   { workspaceId, jobId }: { workspaceId: WorkspaceId; jobId: JobId },
 ): Promise<number> {
-  const rows = await forWorkspace(db, workspaceId)
+  return pruneEphemeralEventsOf(forWorkspace(db, workspaceId), jobId);
+}
+
+/** `pruneEphemeralJobEvents` inside a workspace scope (the stale-lock release path uses it). */
+export async function pruneEphemeralEventsOf(ws: WorkspaceDb, jobId: JobId): Promise<number> {
+  const rows = await ws
     .delete(
       jobEvents,
       and(eq(jobEvents.jobId, jobId), inArray(jobEvents.type, [...JOB_EPHEMERAL_EVENT_TYPES])),

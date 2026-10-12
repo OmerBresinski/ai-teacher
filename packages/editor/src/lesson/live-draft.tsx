@@ -19,7 +19,14 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-export type LiveDraft = { index: number; slideId: string; slide: Slide; final?: boolean };
+export type LiveDraft = {
+  index: number;
+  slideId: string;
+  slide: Slide;
+  final?: boolean;
+  /** The event's order on the job stream (its row id): a replayed older draft never wins. */
+  seq?: number;
+};
 
 /** The drafts of one generating job, newest per slide. Stable for the job; components subscribe. */
 export type DraftStore = {

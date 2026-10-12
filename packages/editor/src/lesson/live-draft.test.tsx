@@ -153,4 +153,33 @@ describe("the editor shows a writing slide's drafts and hands over to the saved 
     expect(canvasText(r.container)).toContain("My own words");
     expect(canvasText(r.container)).not.toContain("A stale draft");
   });
+
+  test("reduced motion: the whole draft shows at once, with no caret", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("reduce"),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const lesson = seededLesson();
+      const id = lesson.slides[1]?.id as Id;
+      const { store, tree } = setup(lesson);
+      store.set([{ index: 1, slideId: id, slide: slideOf(id, "Arteries carry blood away") }]);
+      const r = render(tree(new Set([id])));
+      await act(() => new Promise<void>((done) => setTimeout(done, 50)));
+      expect(canvasText(r.container)).toContain("Arteries carry blood away");
+      act(() =>
+        store.set([
+          { index: 1, slideId: id, slide: slideOf(id, "Arteries carry blood away from the heart") },
+        ]),
+      );
+      // No typing: the newer draft's words are all there on the next render.
+      expect(canvasText(r.container)).toContain("away from the heart");
+      expect(document.querySelector("[data-live-caret]")).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

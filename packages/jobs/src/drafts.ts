@@ -23,8 +23,9 @@ export interface DraftEmitter {
  * goes at once; inside the window only the newest draft per slide is kept, and when the window
  * closes the kept drafts are written in slide order, as one burst. A `final` draft is never
  * replaced by a later words draft of the same slide (the words are done; only a newer final
- * replaces it). Writes are serial, so row order follows slide order. Drafts are best effort: a
- * failed write is reported to `onError` and the next draft carries on.
+ * replaces it). Writes are serial, so row order follows slide order, and a burst waits while the
+ * last one is still being written (a slow database gets fewer, newer drafts, never a growing
+ * queue). Drafts are best effort: a failed write is reported to `onError` and the next carries on.
  */
 export function createDraftEmitter(opts: DraftEmitterOptions): DraftEmitter {
   const now = opts.now ?? Date.now;
@@ -34,13 +35,27 @@ export function createDraftEmitter(opts: DraftEmitterOptions): DraftEmitter {
   let chain: Promise<void> = Promise.resolve();
   let stopped = false;
 
+  /** Writes not yet done: while any is, the next burst waits (the newest drafts keep coalescing). */
+  let inflight = 0;
   const flush = () => {
     timer = null;
     if (stopped || pending.size === 0) return;
+    if (inflight > 0) {
+      timer = setTimeout(flush, Math.max(1, opts.minIntervalMs));
+      return;
+    }
     const batch = [...pending.values()].sort((a, b) => a.index - b.index);
     pending.clear();
     lastAt = now();
-    for (const d of batch) chain = chain.then(() => opts.emit(d)).catch(opts.onError);
+    for (const d of batch) {
+      inflight++;
+      chain = chain
+        .then(() => opts.emit(d))
+        .catch(opts.onError)
+        .finally(() => {
+          inflight--;
+        });
+    }
   };
 
   return {

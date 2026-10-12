@@ -73,8 +73,36 @@ describe("createDraftEmitter", () => {
     });
     emitter.emit(draft(2, "a"));
     emitter.emit(draft(2, "b"));
+    await new Promise((r) => setTimeout(r, 20));
     await emitter.stop();
     expect(errors.length).toBe(1);
     expect(n).toBe(2);
+  });
+
+  test("a burst waits while the last is still being written: a slow database gets the newest", async () => {
+    const written: string[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const emitter = createDraftEmitter({
+      minIntervalMs: 5,
+      emit: async (d) => {
+        if (written.length === 0) await gate;
+        written.push(String(d.slide.notes));
+      },
+      onError: (e) => {
+        throw e;
+      },
+    });
+    emitter.emit(draft(2, "first"));
+    for (const w of ["a", "a b", "a b c", "a b c d"]) {
+      await new Promise((r) => setTimeout(r, 8));
+      emitter.emit(draft(2, w));
+    }
+    release();
+    await new Promise((r) => setTimeout(r, 40));
+    await emitter.stop();
+    expect(written).toEqual(["first", "a b c d"]);
   });
 });

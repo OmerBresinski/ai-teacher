@@ -18,7 +18,9 @@ in complete.
 1. **A new job event, `slide-draft`** (`JobSlideDraftEventSchema` in `@tj/domain`):
    `{ index, slideId, slide, final? }`. `slide` is a laid `Slide` (validated by `SlideSchema`);
    `slideId` is the id the slide has in the lesson (`s<index + 1>`). It is the only event that
-   carries content. It is scoped to the workspace like every job event.
+   carries content. It is scoped to the workspace like every job event, so the per-job stream and
+   the workspace firehose (`GET /events`) both carry slide words to every open tab of that
+   workspace while the job runs.
 2. **Never the document.** Drafts never touch the lesson row, the editor's document, its undo
    history or a save. The web keeps them in a `DraftStore` beside the document
    (`@tj/editor/live-draft`), newest per slide id, not appended to the event log.
@@ -31,6 +33,8 @@ in complete.
    200 ms, newest per slide, a `final` never replaced by a words draft, serial writes.
    When the handler settles, pending drafts are dropped and the job's `slide-draft` rows are
    deleted (`pruneEphemeralJobEvents`, `JOB_EPHEMERAL_EVENT_TYPES`) before the terminal event.
+   Drafts a killed worker left behind are deleted when the job starts again (before `started`),
+   and when the API releases a dead job's stale lock (`releaseStaleLock`).
    This is the one exception to "job event rows are immutable". The SSE stream reads rows after
    its cursor, so a pruned row is simply never sent; a replay after a reconnect sends the newest
    drafts again and the client keeps only the latest per slide.
@@ -38,13 +42,21 @@ in complete.
    every visual a `pending` placeholder; no asks, diagrams, checks, table split or repairs. Ids are
    stable per slide (`d-<name>-<n>`) so the renderer updates boxes in place, type sizes only step
    down while a slide is written, and answer data is left off.
-6. **The writing slide joins the deck early as a blank.** On its first draft the stage patches a
-   blank `writing` slide (no elements, no words) into the next progressive save, so the editor can
-   open it and show its drafts. Its laid copy replaces the blank when it closes; on a failure it is
-   rolled back like any writing slide.
-7. **Typing is client-side.** Between two drafts the browser types the new words out over about
-   240 ms, one to three words per step, with a caret after the last word; with
-   `prefers-reduced-motion` each draft shows at once with no caret.
+6. **The editor opens at once, with the whole lesson as placeholders.** When the writer starts,
+   the stage saves the deck as the job's (title and objectives `writing`), so the editor opens on
+   it (`opensFillingEditor` accepts a lesson whose slides are `writing`, not only one with a done
+   slide; this amends the open rule of ADR 0037 §5). As each `flow` entry closes in the stream, its
+   slide joins the next progressive save as a planned blank: `writing`, no words of its own, one
+   muted "Planned" line with the flow's `does`. A slide's first draft adds the blank if the flow
+   did not. The laid copy replaces the blank when the slide closes; on a failure it is rolled back
+   like any writing slide. While no slide is done the server refuses saves, so the page holds a
+   save and saves the editor's copy once a slide is done (`useHeldSave`).
+7. **Typing is client-side.** The browser types a draft's new words out at a steady pace (a word
+   about every 70 ms, two or three a step only when far behind), with a caret after the last word;
+   the view moves on with the next slide, so typing is never more than a slide behind, and a slide
+   that turns done mid-typing finishes fast before its saved copy shows. With
+   `prefers-reduced-motion` each draft shows at once with no caret. A replayed older draft never
+   replaces a newer one (drafts carry their row id).
 
 ## Consequences
 
@@ -52,6 +64,7 @@ in complete.
   No extra document writes, merges or HTTP requests; drafts ride the SSE stream already open.
 - A draft can differ from the final lay (table split, repairs, diagram restage run only at close),
   so a slide may settle once when it closes; the `final` draft makes that the last change.
-- The editor reaches a new slide only on the next progressive save after its template closes
-  (≤ 1 s plus the 250 ms refetch debounce), so a short slide may show only its last draft or two
-  being typed. Opening the editor before the first slide is done is a separate decision.
+- Planned slides reach the editor on the next progressive save after their flow entry closes
+  (≤ 1 s plus the 250 ms refetch debounce), well before their own words.
+- Superseded draft rows stay until the job ends (a reconnect replays them all); compacting them
+  and a global cap across concurrent jobs are tracked as later parts of TEACH-202.

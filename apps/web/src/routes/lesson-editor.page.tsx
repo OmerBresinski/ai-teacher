@@ -46,6 +46,7 @@ import {
 } from "@/components/sign-in/sign-in-copy";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
+import { useHeldSave } from "@/hooks/use-held-save";
 import { usePromptEdit } from "@/hooks/use-prompt-edit";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
@@ -176,32 +177,26 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   if (openedTheme.current === undefined && data && isFullDocument(data) && "slides" in data)
     openedTheme.current = data.themeId;
   /** The row and job as the page last read them: whose slides are whose while a job fills. */
-  const rowRef = useRef<{ row: typeof data; generating: boolean; drafts?: DraftStore }>({
-    row: data,
-    generating: false,
+  /** The job's draft store, kept past the job's end for the last slide's hand-over. */
+  const rowRef = useRef<{ drafts?: DraftStore }>({});
+  // Live writing (ADR 0039): a save while every slide is still the job's waits for the first done
+  // slide, then the editor's copy is saved (`useHeldSave`).
+  const heldSave = useHeldSave<Parameters<typeof saveDocument>[0]>({
+    save: saveDocument,
+    row:
+      data && isFullDocument(data) ? (data as Parameters<typeof useHeldSave>[0]["row"]) : undefined,
+    generating: !!meta?.generatingJobId,
+    pull: onStale,
   });
-  rowRef.current.row = data;
   const save = useCallback(
     (lesson: Parameters<typeof saveDocument>[0]) => {
       if ("themeId" in lesson && lesson.themeId && lesson.themeId !== openedTheme.current) {
         openedTheme.current = lesson.themeId;
         rememberTheme(lesson.themeId);
       }
-      // Live writing (ADR 0039): the editor opens while every slide is still the job's. Nothing in
-      // it is the teacher's to save yet (the server refuses until a slide is done), so a save
-      // waits; the next save after a slide is done carries the whole document.
-      const { row, generating } = rowRef.current;
-      if (
-        generating &&
-        row &&
-        "slides" in row &&
-        !hasEditableSlides(row) &&
-        !("slides" in lesson && hasEditableSlides(lesson))
-      )
-        return Promise.resolve();
-      return saveDocument(lesson);
+      return heldSave(lesson);
     },
-    [saveDocument],
+    [heldSave],
   );
   const [destination, setDestination] = useState<HTMLDivElement | null>(null);
   const [storyStarted, setStoryStarted] = useState(false);
@@ -424,7 +419,6 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const generatingJobId =
     fillingJobId ?? stoppedJobId ?? (watchedJobId !== completedJobId ? watchedJobId : null);
   // Live writing (ADR 0039): one store of slide drafts per job, fed by whichever view follows it.
-  rowRef.current.generating = !!meta?.generatingJobId;
   const draftStore = generatingJobId ? draftStoreFor(generatingJobId) : undefined;
   // The job's store outlives its end by a moment: the last slide finishes typing over the hand-over
   // (the store empties itself shortly after the job ends).
