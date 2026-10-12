@@ -8,14 +8,15 @@ import { layoutTemplate, type TemplateInput } from "./index";
  * than laying the slide out without it.
  */
 describe("a planned visual is never lost to warnings", () => {
-  // Six long labels all naming one small square: no placement clears them in any room at KS1.
+  // Six long labels all naming one small square: no placement clears them in any room at KS1,
+  // the open 440 panel beside short words included (FIDELITY VT-1).
   const crowded = {
     kind: "labelled-diagram",
     alt: "A small square with six labels",
     canvas: "square",
     shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }],
     labels: Array.from({ length: 6 }, (_, k) => ({
-      text: `Label number ${k + 1} words`,
+      text: `Label number ${k + 1} with many more words`,
       at: [50, 50],
     })),
   };

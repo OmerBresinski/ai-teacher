@@ -217,6 +217,15 @@ function luminance(hex: string): number {
 }
 
 /** WCAG contrast ratio between two `#rrggbb` colours. */
+/**
+ * A slide whose ground is darker than mid-grey (FIDELITY VT-1): a drawing's dark ink needs a light
+ * panel behind it there; on a light ground it stands on the slide itself.
+ */
+export function darkGround(t: { colors: { background: string } }): boolean {
+  const bg = t.colors.background;
+  return contrastRatio(bg, "#FFFFFF") > contrastRatio(bg, "#000000");
+}
+
 export function contrastRatio(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);

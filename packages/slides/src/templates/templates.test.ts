@@ -162,7 +162,7 @@ describe("round 1: text fit and fallbacks", () => {
     // A blank label is no label.
     expect(cards(lay([{ label: " ", text: "Particles vibrate." }]))).toBe(0);
   });
-  test("drawDiagram failure: no panel, no wash, words-only sibling; a readable spec keeps its panel", () => {
+  test("drawDiagram failure: no panel, no wash, words-only sibling; a readable spec keeps its drawing", () => {
     const flow = (labels: string[]) => ({
       kind: "flow",
       alt: "steps",
@@ -186,7 +186,8 @@ describe("round 1: text fit and fallbacks", () => {
     expect(failed.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(false);
     const ok = lay(["Egg", "Chick", "Hen"]);
     expect(ok.some((e) => e.type === "image")).toBe(true);
-    expect(ok.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(true);
+    // FIDELITY VT-1: on a light slide the drawing stands on the slide, with no wash panel.
+    expect(ok.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(false);
   });
 });
 

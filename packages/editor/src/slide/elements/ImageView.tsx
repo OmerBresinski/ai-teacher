@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { isOpenPhotoSlot, PHOTO_NAME } from "@tj/slides";
+import { darkGround, isOpenPhotoSlot, PHOTO_NAME } from "@tj/slides";
 import {
   builtSvgDataUrl,
   hasAnswerPart,
@@ -133,6 +133,7 @@ function Picture({
     img.addEventListener("load", remember);
     return () => img.removeEventListener("load", remember);
   }, [src]);
+  const drawing = !!element.diagram || element.src.startsWith("data:image/svg");
   const style = pictureStyle(
     { w: element.w, h: element.h },
     element.crop,
@@ -149,7 +150,9 @@ function Picture({
         height: "100%",
         overflow: "hidden",
         borderRadius: radius || undefined,
-        background: theme.colors.surface,
+        // A drawn diagram stands on the slide itself (FIDELITY VT-1, BV-1): no white card behind
+        // it, unless the slide is dark and its ink needs the light ground.
+        background: drawing && !darkGround(theme) ? undefined : theme.colors.surface,
       }}
     >
       <div style={{ position: "absolute", ...style.wrapper }}>

@@ -23,6 +23,7 @@ import type {
 } from "@tj/domain/documents";
 import { drawDiagram } from "../diagrams";
 import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../point-kinds";
+import { darkGround, svgText, themedCanvas, trimToInk } from "./figure-fit";
 import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
@@ -466,6 +467,11 @@ export type Placement =
   | { mode: "contain" };
 /** A centred crop may lose at most this share of the picture's width or height when no subject boxes are known. */
 export const BLIND_CROP_KEEP = 0.85;
+/**
+ * FIDELITY VT-3 (Greg, 12 Oct): a photo beside the words fills its panel when the blind crop keeps
+ * at least this share of each side; a 3:2 photo in the 392 x 328 panel keeps 0.797 of its width.
+ */
+export const SIDE_CROP_KEEP = 0.8;
 
 /**
  * PICTURE-FIT (Greg, 6 Oct: animals cropped out of compare cards). How a photo of `photoAspect`
@@ -478,6 +484,7 @@ export function placePhoto(
   photoAspect: number,
   slotAspect: number,
   subjects?: SubjectBox[],
+  keep = BLIND_CROP_KEEP,
 ): Placement {
   const k = photoAspect / slotAspect;
   if (Math.abs(k - 1) < 0.03) return { mode: "cover" };
@@ -485,7 +492,7 @@ export function placePhoto(
   const wide = k > 1;
   const span = wide ? 1 / k : k;
   if (!subjects?.length) {
-    if (span < BLIND_CROP_KEEP) return { mode: "contain" };
+    if (span < keep - 1e-6) return { mode: "contain" };
     const off = (1 - span) / 2;
     return {
       mode: "cover",
@@ -572,6 +579,7 @@ function photoBox(
   cover = true,
   range?: AspectRange,
   align: "center" | "bottom" = "center",
+  keep = BLIND_CROP_KEEP,
 ) {
   const rect = range && f.photo && f.aspect ? rangeBox(box0, f.aspect, range, align) : box0;
   let r = rect;
@@ -585,7 +593,7 @@ function photoBox(
   if (f.photo && f.aspect) {
     if (!cover) r = contain(rect);
     else {
-      const p = placePhoto(f.aspect, rect.w / rect.h, f.subjects);
+      const p = placePhoto(f.aspect, rect.w / rect.h, f.subjects, keep);
       if (p.mode === "contain") {
         // The whole picture on a soft panel the box's size, so a row of cards stays even.
         box(c, rect, wash(c.t), { name: "Photo panel" });
@@ -727,18 +735,27 @@ function figurePanel(
   /** Frameless (TEACH-75 part d review): a diagram in a compare card fills the card's visual
    * area like a photo, with no wash panel or inset of its own inside the card's border. */
   bare = false,
+  /** FIDELITY VT-1 / BV-1: a drawing beside the words or across the slide stands on the slide,
+   * trimmed to its ink, with no wash panel or inset unless the ground is dark (contrast). */
+  open = false,
 ): boolean {
   if (!f) return false;
   if ("photo" in f && f.tiles?.length)
     return tilePanel(c, [{ ...f, tiles: undefined }, ...f.tiles], rect, f.tileMode ?? "grid");
   if ("drawn" in f) {
     if (!svgDrawsSomething(f.drawn.src)) return false;
-    // A library model's own cream canvas is its panel: a wash and inset round it doubled the margin.
-    const noFrame = bare || f.drawn.bare;
+    // A library model brings its own canvas, now in the slide's ground (BV-3): no wash or inset.
+    const lib = !!f.drawn.bare;
+    const noFrame = bare || lib || (open && !darkGround(c.t));
+    const drawn = lib
+      ? { ...f.drawn, src: themedCanvas(f.drawn.src, c.t, wash(c.t)) }
+      : open
+        ? trimToInk(f.drawn)
+        : f.drawn;
     if (!noFrame) box(c, rect, wash(c.t));
     const i = noFrame ? 0 : G.inset;
     const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
-    const a = f.drawn.aspect || inner.w / inner.h;
+    const a = drawn.aspect || inner.w / inner.h;
     const w = Math.min(inner.w, Math.round(inner.h * a));
     const h = Math.min(inner.h, Math.round(w / a));
     c.els.push({
@@ -749,7 +766,7 @@ function figurePanel(
       y: Math.round(inner.y + (inner.h - h) / 2),
       w,
       h,
-      src: f.drawn.src,
+      src: drawn.src,
       alt: f.drawn.alt ?? "",
       fit: "contain",
       ...(f.drawn.source ? { diagram: f.drawn.source } : {}),
@@ -779,7 +796,8 @@ function figurePanel(
   // A diagram the drawer (or the spec call) reports as failed, or one that draws nothing but its
   // title, is no diagram: the caller lays the slide out without the panel (no empty panels ever).
   if (diagramFailed(f.diagram)) return false;
-  const i = bare ? 0 : G.inset;
+  const frame = !bare && !(open && !darkGround(c.t));
+  const i = frame ? G.inset : 0;
   const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
   // drawDiagram (round 1, DIAGRAMS.md) tries the spec, then each simpler form, from the stage's
   // small size down to its floor, and answers ok only for a drawing with no readability fault.
@@ -800,7 +818,7 @@ function figurePanel(
   };
   const d = draw();
   if (!d || !elementDrawsSomething(d.el)) return false;
-  if (!bare) box(c, rect, wash(c.t));
+  if (frame) box(c, rect, wash(c.t));
   if (d.note) c.over.push(d.note);
   c.els.push(d.el);
   return true;
@@ -842,10 +860,173 @@ function figureDraws(
   rect?: Parameters<typeof figurePanel>[2],
   fails?: string[],
   bare = false,
+  open = false,
 ) {
   if (!f) return false;
   if ("photo" in f) return true;
-  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect, bare);
+  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect, bare, open);
+}
+
+type Box = { x: number; y: number; w: number; h: number };
+/** What an element shows: a contained SVG's drawing inside its frame, else its box. */
+function inkOf(e: SlideElement): Box {
+  const b = e as unknown as Box;
+  const img = e as ImageElement;
+  if (e.type !== "image" || img.fit !== "contain") return { x: b.x, y: b.y, w: b.w, h: b.h };
+  const vb = svgText(String(img.src ?? ""))
+    ?.match(/<svg[^>]*\sviewBox="([^"]+)"/)?.[1]
+    ?.split(/[\s,]+/)
+    .map(Number);
+  const a = vb && (vb[2] ?? 0) > 0 && (vb[3] ?? 0) > 0 ? (vb[2] ?? 1) / (vb[3] ?? 1) : b.w / b.h;
+  const w = Math.min(b.w, b.h * a);
+  const h = Math.min(b.h, w / a);
+  return { x: b.x + (b.w - w) / 2, y: b.y + (b.h - h) / 2, w, h };
+}
+/** The box round what `els` show (rounded), or undefined for none. */
+function inkBounds(els: SlideElement[]): Box | undefined {
+  if (!els.length) return undefined;
+  const bs = els.map(inkOf);
+  const x = Math.min(...bs.map((b) => b.x));
+  const y = Math.min(...bs.map((b) => b.y));
+  const r = Math.max(...bs.map((b) => b.x + b.w));
+  const f = Math.max(...bs.map((b) => b.y + b.h));
+  return { x: Math.round(x), y: Math.round(y), w: Math.round(r - x), h: Math.round(f - y) };
+}
+function shiftY(els: SlideElement[], dy: number) {
+  if (dy) for (const e of els) (e as unknown as Box).y += dy;
+}
+
+/**
+ * FIDELITY VT-1 / VT-3: the text column and the figure panel beside it. Words short enough to take
+ * under 75 % of the band at full size in a 360 column give a figure that gains from width the
+ * wider 440 panel. A photo fills its panel, cropped, when the crop keeps 0.80 of each side (or its
+ * subjects); one too tall for that takes a narrower panel and the words take the freed width.
+ */
+const SIDE_NARROW = { textW: 360, panel: { x: 456, y: G.band.y, w: 440, h: G.band.h } } as const;
+function sidePlan(
+  c: Ctx,
+  input: TemplateInput,
+  points: TemplatePoint[],
+): { textW: number; panel: Box; photo?: Extract<Figure, { photo: string }> } {
+  const f = input.figure;
+  let plan: { textW: number; panel: Box } = {
+    textW: G.left.w,
+    panel: { x: G.panel.x, y: G.band.y, w: G.panel.w, h: G.band.h },
+  };
+  if (!f || ("photo" in f && f.tiles?.length)) return plan;
+  const a =
+    "drawn" in f
+      ? f.drawn.bare
+        ? f.drawn.aspect
+        : trimToInk(f.drawn).aspect
+      : "photo" in f
+        ? f.aspect
+        : undefined;
+  if (a === undefined || a > G.panel.w / G.band.h) {
+    const d: Ctx = { ...c, els: [], over: [], fullSize: true };
+    leadAndPoints(d, input.lead, points, G.left.x, SIDE_NARROW.textW, "probe");
+    const b = inkBounds(d.els);
+    if (!d.over.length && b && b.h < 0.75 * G.band.h)
+      plan = { textW: SIDE_NARROW.textW, panel: { ...SIDE_NARROW.panel } };
+  }
+  if (!("photo" in f)) return plan;
+  const gap = plan.panel.x - G.left.x - plan.textW;
+  const box = sidePhotoBox(f, plan.panel);
+  return { textW: box.x - gap - G.left.x, panel: box, photo: f };
+}
+function sidePhotoBox(
+  f: { photo: string; aspect?: number; subjects?: SubjectBox[] },
+  panel: Box,
+): Box {
+  const a = f.aspect;
+  if (!f.photo || !a) return panel;
+  const covers = (b: Box) => placePhoto(a, b.w / b.h, f.subjects, SIDE_CROP_KEEP).mode === "cover";
+  if (covers(panel)) return panel;
+  const shaped =
+    a > panel.w / panel.h
+      ? { ...panel, h: Math.floor(panel.w / (a * SIDE_CROP_KEEP)) }
+      : (() => {
+          const w = Math.floor((panel.h * a) / SIDE_CROP_KEEP);
+          return { ...panel, x: panel.x + panel.w - w, w };
+        })();
+  if (covers(shaped)) return shaped;
+  // Its subjects do not fit that window: the whole picture at its own shape.
+  const w = Math.min(panel.w, Math.round(panel.h * a));
+  const h = Math.min(panel.h, Math.round(w / a));
+  return { x: panel.x + panel.w - w, y: panel.y, w, h };
+}
+/**
+ * FIDELITY VT-2: the words and the figure beside them share one top line; the pair sits as one
+ * block a little above the band's middle, as a lone column did.
+ */
+function alignSide(c: Ctx, mark: number, figMark: number) {
+  const words = c.els.slice(mark, figMark);
+  const fig = c.els.slice(figMark);
+  const a = inkBounds(words);
+  const b = inkBounds(fig);
+  if (!a || !b) return;
+  const h = Math.max(a.h, b.h);
+  const top =
+    h >= G.band.h
+      ? G.band.y
+      : Math.max(G.band.y, Math.min(bandBottom - h, Math.round(bandMid - G.band.h * 0.06 - h / 2)));
+  shiftY(words, top - a.y);
+  shiftY(fig, top - b.y);
+}
+/**
+ * FIDELITY BV-2: a full-zone figure with its one line under it, the line on the figure's edges (at
+ * least 60 % of the content width, centred on the figure) in ink, the pair centred in `zone`. A
+ * caption that takes more lines at the figure's width takes them from the figure, unless `keep`
+ * (a library model at its type floor), when it runs at the content width centred on the figure.
+ */
+function figureWithCaption(
+  c: Ctx,
+  line: string | undefined,
+  zone: Box,
+  draw: (r: Box) => boolean,
+  opts: { gap?: number; keep?: boolean } = {},
+): boolean {
+  const mark = c.els.length;
+  const gap = line ? (opts.gap ?? 12) : 0;
+  let ch = line ? measure(c, line, "body", G.width) : 0;
+  const span = (fw: number, fx: number) => {
+    const w = Math.max(fw, Math.round(G.width * 0.6));
+    return { x: Math.round(Math.min(Math.max(fx + (fw - w) / 2, 16), 944 - w)), w };
+  };
+  let cap: { x: number; w: number } = { x: G.margin, w: G.width };
+  for (let k = 0; k < 3; k++) {
+    c.els.splice(mark);
+    if (!draw({ ...zone, h: zone.h - ch - gap })) return false;
+    const fig = inkBounds(c.els.slice(mark));
+    if (!line || !fig) break;
+    cap = span(fig.w, fig.x);
+    const need = measure(c, line, "body", cap.w);
+    if (need <= ch) break;
+    if (opts.keep) {
+      // Still on the figure's left edge, running on to the margin; else the content width.
+      const w = Math.max(G.right, fig.x + fig.w) - fig.x;
+      cap = measure(c, line, "body", w) <= ch ? { x: fig.x, w } : { x: G.margin, w: G.width };
+      break;
+    }
+    ch = need;
+  }
+  const fig = inkBounds(c.els.slice(mark));
+  if (!fig) return true;
+  const h = fig.h + gap + ch;
+  const top = Math.max(
+    zone.y,
+    Math.min(zone.y + zone.h - h, Math.round(zone.y + (zone.h - h) / 2)),
+  );
+  shiftY(c.els.slice(mark), top - fig.y);
+  if (line)
+    text(
+      c,
+      line,
+      "body",
+      { x: cap.x, y: top + fig.h + gap, w: cap.w },
+      { color: c.t.colors.ink, name: "Caption" },
+    );
+  return true;
 }
 
 /** A column of blocks, centred on the band (or top-aligned at `top`), each measured first. */
@@ -1418,7 +1599,7 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
       if (below.h < 140 || !figureDraws(d, f, below, [])) return false;
     }
   }
-  if (!figurePanel(d, f, rect)) return false;
+  if (!figurePanel(d, f, rect, false, true)) return false;
   if (lead)
     text(
       d,
@@ -1443,10 +1624,19 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   };
   // Round 6 (r5 y12 s4 table, s7 graph): a big figure is tried in the big panel, not the side
   // panel (it was judged by the side panel's size and dropped although it drew full width).
-  const big = input.template === "big-diagram" ? bigRect(c, input) : undefined;
+  // FIDELITY VT-1: beside the words the figure is tried in the panel the layout will give it.
+  const side = input.template === "picture-text" || input.template === "diagram-text";
+  const big =
+    input.template === "big-diagram"
+      ? bigRect(c, input)
+      : side
+        ? sidePlan(c, input, input.points ?? []).panel
+        : undefined;
   // The side panel's reasons are kept only when the figure goes (they are the harness's fault).
   const sideFails: string[] = [];
-  const dropped = !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
+  const open = side || input.template === "big-diagram";
+  const dropped =
+    !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails, false, open) && !below();
   if (dropped) c.fails?.push(...sideFails);
   if (dropped) {
     const { figure: _, ...rest } = input;
@@ -1719,8 +1909,19 @@ function layoutOnce(
       const mark = c.els.length;
       const overMark = c.over.length;
       const failMark = c.fails?.length ?? 0;
-      leadAndPoints(c, input.lead, raw, G.left.x, G.left.w, "text column");
-      if (figurePanel(c, input.figure)) break;
+      const plan = sidePlan(c, input, raw);
+      leadAndPoints(c, input.lead, raw, G.left.x, plan.textW, "text column");
+      const figMark = c.els.length;
+      if (plan.photo) {
+        photoBox(c, plan.photo, plan.panel, true, undefined, "center", SIDE_CROP_KEEP);
+        alignSide(c, mark, figMark);
+        break;
+      }
+      if (figurePanel(c, input.figure, plan.panel, false, true)) {
+        if (!(input.figure && "photo" in input.figure && input.figure.tiles?.length))
+          alignSide(c, mark, figMark);
+        break;
+      }
       const f = input.figure;
       if (tpl !== "diagram-text" || !f || !("diagram" in f)) break;
       // Round 6 (r5 y9 s5, y12 s4 tables and y12 s7 graph lost in the side panel): a diagram
@@ -1751,15 +1952,14 @@ function layoutOnce(
       if (fb && "drawn" in fb && fb.drawn.body) {
         // The slide's own line stays: it is reserved at the foot and the drawing fits what is left.
         const r = modelBodyIn(c, head, input.lead);
-        figurePanel(c, fb, r);
-        if (input.lead)
-          text(
-            c,
-            input.lead,
-            "body",
-            { x: G.margin, y: r.y + r.h + MODEL_BODY.gap, w: G.width },
-            { color: c.t.colors.muted, name: "Caption" },
-          );
+        const below = input.lead ? measure(c, input.lead, "body", G.width) + MODEL_BODY.gap : 0;
+        figureWithCaption(
+          c,
+          input.lead,
+          { ...r, h: r.h + below },
+          (z) => figurePanel(c, fb, z, false, true),
+          { gap: MODEL_BODY.gap, keep: true },
+        );
         break;
       }
       const line = input.lead;
@@ -1781,7 +1981,7 @@ function layoutOnce(
         const top = line ? Math.min(bandBottom + 10, foot - ch) : bandBottom + 10;
         const ph = top - 10 - G.band.y;
         if (ph < Math.round(G.band.h * 0.85)) c.over.push("plot under 85% of the zone height");
-        figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: ph });
+        figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: ph }, false, true);
         if (line)
           text(
             c,
@@ -1792,22 +1992,9 @@ function layoutOnce(
           );
         break;
       }
-      const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
-      const ph = G.band.h - lh;
-      figurePanel(c, input.figure, {
-        x: G.margin + Math.round((G.width - pw) / 2),
-        y: G.band.y,
-        w: pw,
-        h: ph,
-      });
-      if (line)
-        text(
-          c,
-          line,
-          "body",
-          { x: G.margin, y: bandBottom - lh + 14, w: G.width },
-          { color: c.t.colors.muted, name: "Caption" },
-        );
+      figureWithCaption(c, line, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h }, (z) =>
+        figurePanel(c, input.figure, z, false, true),
+      );
       break;
     }
     case "compare": {
