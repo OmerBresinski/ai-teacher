@@ -962,6 +962,8 @@ export interface WriterPictures {
   drawAs(index: number, key: string): string | undefined;
   /** The ask failed for a reason a second placement can fix (the deadline or an error). */
   retryable(index: number, key: string): boolean;
+  /** True while `start` would place this key again (once per round after settle). */
+  canReask(index: number, key: string): boolean;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
   /**
@@ -1615,6 +1617,11 @@ export function createWriterPictures(opts: {
     drawAs(index, key) {
       const slot = slots.get(id(index, key));
       return slot?.miss === "director-code" ? slot.draw : undefined;
+    },
+    canReask(index, key) {
+      const k = id(index, key);
+      const prev = slots.get(k);
+      return !prev || (settled && prev.state.status === "failed" && !reasked.has(k));
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;

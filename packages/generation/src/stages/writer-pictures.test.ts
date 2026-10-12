@@ -7,6 +7,7 @@ import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
 import { BudgetExceeded } from "../types";
 import type { DirectedPlacer } from "./illustrate";
+import { mustShowOf } from "./photo-bank";
 import {
   createDirectorBatcher,
   createWriterPictures,
@@ -1163,28 +1164,63 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     for (let y = 0; y < w; y++) rgb.fill(255, (y * width + w) * 3, (y * width + w + 10) * 3);
     return encodePng({ width, height: w, rgb });
   };
+  const yes = (extra: Record<string, unknown> = {}) =>
+    verdict({
+      onSubject: true,
+      kindMatches: true,
+      clear: true,
+      fits: true,
+      visible: ["x"],
+      count: "one",
+      boxes: [{ item: "x", left: 0.1, top: 0.2, right: 0.6, bottom: 0.9 }],
+      ...extra,
+    });
+  /** Panels: [real-search hit?, its words]. */
+  const JAR = "An ancient canopic jar";
+  const BODY = "Ancient priests drying a body with natron";
+  const COIN = "An ancient Roman coin";
+  const HELMET = "An ancient Roman helmet";
   const run = async (opts: {
-    subject: string;
-    hits: (shows: string) => boolean;
+    lesson: Partial<Lesson>;
+    panels: string[];
+    hit: (words: string) => boolean;
+    /** A made (generated) panel the judge refuses, by its words. */
+    refuseMade?: (words: string) => boolean;
     named?: boolean;
-    script: string[];
+    key?: (k: number) => string;
   }) => {
     const prompts: string[] = [];
     let saved = 0;
+    // The fake judge answers by the panel it is shown, never by call order.
+    const ai = createFakeAi({
+      fallback: (c) => {
+        const text = `${c.systemText}\n${c.promptText}`;
+        const words = opts.panels.find((w) => c.promptText.includes(w)) ?? "";
+        // The set judge is shown every panel; a panel judge, one.
+        if (opts.panels.every((w) => c.promptText.includes(w)))
+          return JSON.stringify({ same: true, odd: [], why: "x" });
+        if (text.includes("Photo p")) {
+          if (!opts.hit(words)) return verdict({});
+          return yes({ pick: words === opts.panels[0] ? "p7" : "p8" });
+        }
+        return opts.refuseMade?.(words)
+          ? verdict({})
+          : yes({ pick: "made", visible: mustShowOf(words).slice(0, 1) });
+      },
+    });
     const pictures = createWriterPictures({
-      lesson: { ...sampleBriefLesson(), subject: opts.subject },
+      lesson: { ...sampleBriefLesson(), ...opts.lesson } as Lesson,
       country: "UK",
-      // Ruling 163: a historical set's real search is Commons.
+      // Ruling 163: a historical set's real search is Commons; a miss has no candidates.
       images: images({
-        // Only the director's own query for a hit finds anything; a miss has no candidates.
         commons: (async (q: unknown) =>
-          (opts.hits(JSON.stringify(q)) ? ["p7", "p8"] : []).map((id) => ({
-            ...photo(id),
-            provider: "commons",
-            licenceClass: "cc0",
-          })) as never) as never,
+          opts.panels.some(
+            (w) => opts.hit(w) && JSON.stringify(q).includes(w.split(" ").at(-1) ?? ""),
+          )
+            ? ["p7", "p8"].map((id) => ({ ...photo(id), provider: "commons", licenceClass: "cc0" }))
+            : []) as never,
       }),
-      deps: recordingDeps(createFakeAi({ script: opts.script })),
+      deps: recordingDeps(ai),
       maker: {
         bank: STOCK_ONLY_BANK,
         generator: {
@@ -1200,24 +1236,27 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         },
       },
       direct: async (input) => {
-        const shows = JSON.stringify(input);
-        return opts.hits(shows)
-          ? direction({
-              route: "commons",
-              named: null,
-              pictures: [
-                { shows: "x", mustShow: ["x"], queries: ["canopic jar"], imagePrompt: "x." },
-              ],
-            })
-          : direction({ route: "none", pictures: [] });
+        const words = opts.panels.find((w) => JSON.stringify(input).includes(w)) ?? "";
+        return direction({
+          route: opts.hit(words) ? "commons" : "none",
+          named: null,
+          pictures: [
+            {
+              shows: words,
+              mustShow: ["x"],
+              queries: [words.split(" ").at(-1) ?? "x"],
+              imagePrompt: `${words}.`,
+            },
+          ],
+        });
       },
     });
-    const panels = ["An ancient canopic jar", "Ancient priests drying a body with natron"];
-    for (const [k, shows] of panels.entries())
+    const key = opts.key ?? ((k: number) => `seq.${k}`);
+    for (const [k, shows] of opts.panels.entries())
       pictures.start(
         5,
         ask({
-          key: `seq.${k}`,
+          key: key(k),
           shows,
           mustSee: [],
           named: opts.named ?? false,
@@ -1227,24 +1266,16 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         slide,
       );
     await pictures.settle(5_000);
-    const states = [0, 1].map((k) => pictures.state(5, `seq.${k}`));
+    const states = opts.panels.map((_, k) => pictures.state(5, key(k)));
     const providers = new Set([...pictures.sources().values()].map((x) => x.provider));
-    return { prompts, states, providers };
+    return { ai, prompts, states, providers };
   };
-  const pick = (id: string) =>
-    verdict({
-      pick: id,
-      kindMatches: true,
-      onSubject: true,
-      clear: true,
-      fits: true,
-      visible: ["x"],
-      count: "one",
-      boxes: [{ item: "x", left: 0.1, top: 0.2, right: 0.6, bottom: 0.9 }],
-    });
-  const made = (item: string) =>
-    verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: [item] });
-  const same = JSON.stringify({ same: true, odd: [], why: "x" });
+  const painted = (prompts: string[]) => {
+    expect(prompts.length).toBeGreaterThan(0);
+    for (const p of prompts) expect(p.split("\n")[0]).toMatch(/illustration.*not a photograph/i);
+  };
+  const generatedPhoto = (x: { status: string; photo?: { src: string } }) =>
+    x.status === "photo" && /\/files\/g\d+\.png$/.test(x.photo?.src ?? "");
 
   test("the routing rule", () => {
     const k = { named: false, cards: false };
@@ -1254,36 +1285,76 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     expect(setAfterRealSearch([true, false], { ...k, cards: true })).toBe("cards");
   });
 
-  test("a historical set (ancient, real time) with a partial stock hit is illustrated whole, never photo-style", async () => {
+  test("a historical set (ancient, real time) with a partial hit: every panel illustrated", async () => {
     const r = await run({
-      subject: "Science",
-      hits: (s) => s.includes("canopic"),
-      script: [pick("p7"), made("jar"), made("body"), same],
+      lesson: { subject: "Science" },
+      panels: [JAR, BODY],
+      hit: (w) => w === JAR,
     });
-    // Every generation of the set is painted, never photo-style.
-    expect(r.prompts.length).toBeGreaterThan(0);
-    for (const p of r.prompts) expect(p.split("\n")[0]).toMatch(/illustration.*not a photograph/i);
-    // The real picture found for the jar is not used beside generated ones: no real source left.
-    expect(r.states.some((x) => x.status === "photo" && x.photo.src.includes("p7"))).toBe(false);
-    expect([...r.providers].filter((x) => x !== "generated")).toEqual([]);
+    painted(r.prompts);
+    expect(r.states.every(generatedPhoto)).toBe(true);
+    expect([...r.providers]).toEqual(["generated"]);
   });
 
-  test("a historical set with a stock hit for every panel is all real", async () => {
-    const r = await run({ subject: "Science", hits: () => true, script: [pick("p7"), pick("p8")] });
+  test("a History lesson (its stored period) with a partial hit: every panel illustrated, the period judged", async () => {
+    const r = await run({
+      lesson: { subject: undefined, historicalPeriod: "Ancient Egypt" },
+      panels: ["A canopic jar", "Priests drying a body with natron"],
+      hit: (w) => w === "A canopic jar",
+    });
+    painted(r.prompts);
+    expect(r.states.every(generatedPhoto)).toBe(true);
+    expect([...r.providers]).toEqual(["generated"]);
+    // Ruling 209: the made panels are checked against the lesson's period.
+    const madeJudged = r.ai.calls.filter((c) => !c.promptText.includes("Photo p"));
+    expect(madeJudged.some((c) => c.promptText.includes("Ancient Egypt"))).toBe(true);
+  });
+
+  test("a historical set with a hit for every panel is all real", async () => {
+    const r = await run({ lesson: { subject: "Science" }, panels: [JAR, BODY], hit: () => true });
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["photo", "photo"]);
-    expect([...r.providers]).toEqual(["pexels"]);
+    // A real (stored stock or Commons) picture for every panel; nothing generated.
+    expect(r.providers.has("generated")).toBe(false);
+    expect(
+      r.states.every((x) => x.status === "photo" && x.photo.src.startsWith("/files/ws/")),
+    ).toBe(true);
+  });
+
+  test("an illustrated panel that still fails after its retry is a tile: no real picture beside it", async () => {
+    const r = await run({
+      lesson: { subject: "Science" },
+      panels: [JAR, BODY],
+      hit: (w) => w === JAR,
+      refuseMade: (w) => w === BODY,
+    });
+    painted(r.prompts);
+    expect(generatedPhoto(r.states[0] as never)).toBe(true);
+    expect(r.states[1]?.status).toBe("failed");
+    expect([...r.providers]).toEqual(["generated"]);
   });
 
   test("a named set outside history with a partial hit never mixes: the whole set goes", async () => {
     const r = await run({
-      subject: "Science",
+      lesson: { subject: "Science" },
+      panels: [JAR, BODY],
+      hit: (w) => w === JAR,
       named: true,
-      hits: (s) => s.includes("canopic"),
-      script: [pick("p7")],
     });
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["failed", "failed"]);
     expect(r.providers.size).toBe(0);
+  });
+
+  test("history compare cards end to end: real or their word (163), never generated", async () => {
+    const r = await run({
+      lesson: { subject: "History" },
+      panels: [COIN, HELMET],
+      hit: (w) => w === COIN,
+      key: (k) => `card.${k}`,
+    });
+    expect(r.prompts).toHaveLength(0);
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
+    expect(r.providers.has("generated")).toBe(false);
   });
 });

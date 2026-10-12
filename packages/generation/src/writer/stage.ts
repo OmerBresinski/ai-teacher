@@ -5,6 +5,7 @@ import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
+import { isHistoricalLesson } from "../period";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import {
   ACTIVITIES_DEFAULT,
@@ -301,6 +302,8 @@ export type WriterRun = {
   drawAs?: (index: number, key: string) => string | undefined;
   /** The failed photo ask may land if placed again (it ran out of time or its placement failed). */
   retryable?: (index: number, key: string) => boolean;
+  /** False when this key was already asked again this round (the director re-asks a key once). */
+  canReask?: (index: number, key: string) => boolean;
   /**
    * A slide as soon as it is laid out while the deck is still being made (TEACH-110 part h, C2):
    * each slide the writer's stream closes, and again when its diagram is drawn. Read-only: the
@@ -478,8 +481,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     if (!s0 || !ask) return;
     const topic = brief.topic.trim();
-    if (visualState(0)(ask.key).status === "failed" && run.placeMore && topic) {
-      const again = { ...ask, shows: topic, mustSee: [topic] };
+    const failed = visualState(0)(ask.key).status === "failed";
+    // The director re-asks a key once per round; a title already re-asked is laid out without.
+    if (failed && run.canReask && !run.canReask(0, ask.key))
+      log({ ev: "title-retry", slide: 1, ok: false, skipped: "already-reasked" });
+    else if (failed && run.placeMore && topic) {
+      // Rulings 163 and 209: `named` comes from the lesson, never the failed ask. A history
+      // lesson's title is a named (real-only) ask, so its retry can never come back generated;
+      // otherwise the director decides named and period from the topic itself.
+      const again = { ...ask, shows: topic, mustSee: [topic], named: isHistoricalLesson(brief) };
       asks.set(
         0,
         (asks.get(0) ?? []).map((a) => (a === ask ? again : a)),
@@ -495,6 +505,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ev: "title-retry",
         slide: 1,
         shows: topic,
+        named: again.named,
         ok: visualState(0)(ask.key).status === "photo",
       });
     }

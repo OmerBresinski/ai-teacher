@@ -108,8 +108,8 @@ describe("a failed title picture: one search for the topic, then no picture slot
   const DIR = join(import.meta.dir, "fixtures/replay", B);
   const read = (f: string) => readFileSync(join(DIR, f), "utf8");
 
-  async function run(lands: boolean) {
-    const brief = JSON.parse(read("brief.json")) as Brief;
+  async function run(lands: boolean, over: { brief?: Partial<Brief>; canReask?: boolean } = {}) {
+    const brief = { ...(JSON.parse(read("brief.json")) as Brief), ...over.brief } as Brief;
     const objectives = (
       JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
     ).objectives.map((o) => o.teacher);
@@ -132,6 +132,7 @@ describe("a failed title picture: one search for the topic, then no picture slot
           : { status: "failed" },
       recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
       beforeEditable: async () => {},
+      ...(over.canReask === undefined ? {} : { canReask: () => over.canReask as boolean }),
       placeMore: async (i, more) => {
         if (i === 0) {
           asked.push(...more);
@@ -146,7 +147,8 @@ describe("a failed title picture: one search for the topic, then no picture slot
   test("the retry asks for the lesson's topic itself, and its picture is shown", async () => {
     const { els, asked, events, topic } = await run(true);
     expect(asked).toHaveLength(1);
-    expect(asked[0]).toMatchObject({ type: "photo", shows: topic, mustSee: [topic] });
+    // `named` is the lesson's, not the failed ask's: a present-day maths lesson's title is not.
+    expect(asked[0]).toMatchObject({ type: "photo", shows: topic, mustSee: [topic], named: false });
     expect(els.find((e) => e.type === "image")?.src).toBe("/files/test/title.png");
     expect(events).toContainEqual(expect.objectContaining({ ev: "title-retry", ok: true }));
   });
@@ -155,5 +157,19 @@ describe("a failed title picture: one search for the topic, then no picture slot
     const { els, asked } = await run(false);
     expect(asked).toHaveLength(1);
     expect(els.some((e) => e.type === "image")).toBe(false);
+  });
+
+  test("a history lesson's retry is a named (real-only) ask, whatever the failed ask said", async () => {
+    const { asked } = await run(false, { brief: { historicalPeriod: "Ancient Egypt" } });
+    expect(asked[0]).toMatchObject({ named: true });
+  });
+
+  test("a title already re-asked this round is laid out with no picture, and says so", async () => {
+    const { els, asked, events } = await run(true, { canReask: false });
+    expect(asked).toHaveLength(0);
+    expect(els.some((e) => e.type === "image")).toBe(false);
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "title-retry", ok: false, skipped: "already-reasked" }),
+    );
   });
 });
