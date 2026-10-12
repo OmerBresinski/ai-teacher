@@ -52,6 +52,17 @@ async function selectLayout(container: HTMLElement) {
 }
 
 describe("LayoutPanel", () => {
+  test("the panel docks in the right-hand pane, off the slide", async () => {
+    const { container } = renderEditor(seeded(cards(3)));
+    const panel = await selectLayout(container);
+    expect(panel.closest("[data-layout-dock]")).not.toBeNull();
+    expect(panel.closest("[data-selection-layer]")).toBeNull();
+    // Clicking off the layout closes it.
+    fireEvent.pointerDown(catcher(container), pointer(940, 530));
+    fireEvent.pointerUp(window, pointer(940, 530));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Layout items" })).toBeNull());
+  });
+
   test("add and remove re-lay the group from its template", async () => {
     const { container, read } = renderEditor(seeded(cards(3)));
     const panel = await selectLayout(container);
@@ -84,6 +95,10 @@ describe("LayoutPanel", () => {
       return el;
     });
     expect(counter.textContent).toMatch(new RegExp(`^${long.trim().length}/\\d+$`));
+    // Past the cap: amber, not grey; red is kept for past the hard maximum.
+    expect(counter.getAttribute("data-state")).toBe("tight");
+    expect(counter.className).toContain("text-warning");
+    expect(box.className).toContain("border-warning");
     fireEvent.blur(box);
     await waitFor(() =>
       expect(kit.getAtPath(group(read()).layout as LayoutRef, "grid.0.text")).toBe(long),
@@ -98,6 +113,8 @@ describe("LayoutPanel", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Nothing is cut");
     expect(container.querySelector("textarea[aria-invalid='true']")).not.toBeNull();
+    const red = container.querySelector("[data-counter][data-state='over']");
+    expect(red?.className).toContain("text-destructive");
     const before = read().slides.length;
     fireEvent.click(within(alert).getByRole("button", { name: "Split onto a second slide" }));
     await waitFor(() => expect(read().slides.length).toBe(before + 1));

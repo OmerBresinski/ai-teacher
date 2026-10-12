@@ -41,6 +41,14 @@ export type AdaptiveSpec = {
    * ref). Without it only the heading and lead are bound; cards-grid is bound by its card names.
    */
   paths?: (els: SlideElement[]) => (string | undefined)[];
+  /**
+   * The neutral icon a blank item carries (items-row: `PLACEHOLDER_ICON`), so adding an item to an
+   * icon row keeps every icon. An item still on it is re-resolved from its name when the name is
+   * committed (`iconFor`), and keeps the placeholder until the name matches a concept.
+   */
+  placeholderIcon?: string;
+  /** The library concept a name matches, if any (items-row: the icon library's `matchIcon`). */
+  iconFor?: (name: string) => string | null | undefined;
 };
 
 /**
@@ -60,7 +68,8 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     items: "items",
     min: 2,
     max: (stage) => (stage === "ks1" ? 4 : 6),
-    blank: () => ({ title: "New item", text: "Add a sentence here." }),
+    blank: () => ({ title: "New item", text: "Add a sentence here.", icon: "placeholder" }),
+    placeholderIcon: "placeholder",
     continuation: true,
     noun: "items",
   },
@@ -107,9 +116,9 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 /* Input paths                                                         */
 /* ------------------------------------------------------------------ */
 
-import { getAtPath } from "./layout-paths";
+import { getAtPath, setAtPath } from "./layout-paths";
 
-export { getAtPath, setAtPath } from "./layout-paths";
+export { fitInto, getAtPath, setAtPath } from "./layout-paths";
 
 /** The ref's item list (empty when the input has none). */
 export function itemsOf(ref: LayoutRef): unknown[] {
@@ -123,6 +132,21 @@ const withItems = (ref: LayoutRef, items: unknown[]): LayoutRef => ({
 });
 
 export type ItemChange = { ok: true; ref: LayoutRef } | { ok: false; reason: string };
+
+/**
+ * New words at `path`. A name committed on an item that still carries the template's placeholder
+ * icon re-resolves the icon from the name (`iconFor`); no match keeps the placeholder.
+ */
+export function editItem(ref: LayoutRef, path: string, text: string): LayoutRef {
+  const next = setAtPath(ref, path, text);
+  const spec = ADAPTIVE_SPECS[ref.template];
+  const m = new RegExp(`^${spec.items}\\.(\\d+)\\.(name|title|label)$`).exec(path);
+  if (!m || !spec.placeholderIcon) return next;
+  const iconPath = `${spec.items}.${m[1]}.icon`;
+  if (getAtPath(ref, iconPath) !== spec.placeholderIcon) return next;
+  const concept = spec.iconFor?.(text.trim());
+  return concept ? setAtPath(next, iconPath, concept) : next;
+}
 
 /** Insert a blank item at `at` (clamped); refused at the template's max for the stage. */
 export function addItem(ref: LayoutRef, at: number, stage: Stage): ItemChange {

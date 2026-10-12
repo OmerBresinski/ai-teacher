@@ -2,9 +2,13 @@ import { describe, expect, test } from "bun:test";
 import type { LayoutRef } from "@tj/domain/documents";
 import { boundPath } from "./layout-paths";
 import {
+  ADAPTIVE_SPECS,
   addItem,
   canSplit,
+  editItem,
   fieldStates,
+  fitInto,
+  getAtPath,
   itemsOf,
   layoutGroup,
   NotAdaptiveError,
@@ -165,5 +169,53 @@ describe("layout paths", () => {
     expect(boundPath("g1", "g1:grid.1.text")).toBe("grid.1.text");
     expect(boundPath("g1", "g1:4")).toBeUndefined();
     expect(boundPath("g1", "other")).toBeUndefined();
+  });
+});
+
+describe("blank items keep the icon row (placeholder)", () => {
+  const spec = ADAPTIVE_SPECS["items-row"];
+  const row = (icon: string): LayoutRef => ({
+    template: "items-row",
+    input: {
+      heading: "H",
+      items: [
+        { name: "Heart", text: "t", icon: "heart" },
+        { name: "New item", text: "t", icon },
+      ],
+    },
+  });
+
+  test("a blank item carries the placeholder icon", () => {
+    expect((spec.blank() as { icon?: string }).icon).toBe(spec.placeholderIcon);
+  });
+
+  test("a committed name re-resolves a placeholder icon; no match keeps the placeholder", () => {
+    const was = spec.iconFor;
+    spec.iconFor = (name) => (name.toLowerCase() === "lungs" ? "lungs" : null);
+    try {
+      const hit = editItem(row("placeholder"), "items.1.name", "Lungs");
+      expect(getAtPath(hit, "items.1.icon")).toBe("lungs");
+      const miss = editItem(row("placeholder"), "items.1.name", "Spleen-ish");
+      expect(getAtPath(miss, "items.1.icon")).toBe("placeholder");
+      // An icon the teacher or writer chose is never replaced by a rename.
+      const chosen = editItem(row("heart"), "items.1.name", "Lungs");
+      expect(getAtPath(chosen, "items.1.icon")).toBe("heart");
+    } finally {
+      spec.iconFor = was;
+    }
+  });
+});
+
+describe("fitInto (a resized layout group)", () => {
+  test("one scale for boxes and type, centred; nothing squashed", () => {
+    const els = [
+      { x: 0, y: 0, w: 400, h: 50, style: { fontSize: 40 } },
+      { x: 0, y: 60, w: 400, h: 40, style: { fontSize: 20 } },
+    ];
+    const out = fitInto(els, { x: 0, y: 0, w: 400, h: 100 }, { x: 100, y: 0, w: 200, h: 200 });
+    // k = min(0.5, 2) = 0.5, centred vertically in the 200 tall box.
+    expect(out[0]).toMatchObject({ x: 100, y: 75, w: 200, h: 25, style: { fontSize: 20 } });
+    expect(out[1]).toMatchObject({ x: 100, y: 105, w: 200, h: 20, style: { fontSize: 10 } });
+    expect((out[0]?.y ?? 0) + (out[0]?.h ?? 0)).toBeLessThanOrEqual(out[1]?.y ?? 0);
   });
 });

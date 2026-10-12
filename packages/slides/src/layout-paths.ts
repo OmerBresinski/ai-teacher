@@ -44,3 +44,42 @@ export function boundPath(groupId: string, childId: string): string | undefined 
   const path = childId.slice(prefix.length);
   return /^\d+$/.test(path) || !path ? undefined : path;
 }
+
+type Box = { x: number; y: number; w: number; h: number };
+type Scalable = Box & {
+  style?: { fontSize?: number };
+  textStyle?: { fontSize?: number };
+  strokeWidth?: number;
+  radius?: number;
+  children?: Scalable[];
+};
+
+/**
+ * Elements laid out in `from`, fitted whole into `to` (a resized layout group, TEACH-205 part b):
+ * one scale for every box, type size, stroke and radius, centred in `to`, so nothing is squashed
+ * and no text overlaps what sits under it. Pure; group children (local space) are scaled, not moved.
+ */
+export function fitInto<T extends Scalable>(els: readonly T[], from: Box, to: Box): T[] {
+  const k = Math.min(to.w / (from.w || 1), to.h / (from.h || 1));
+  const ox = to.x + (to.w - from.w * k) / 2;
+  const oy = to.y + (to.h - from.h * k) / 2;
+  const size = (v: number | undefined) => (v === undefined ? v : Math.round(v * k * 2) / 2);
+  const scale = (e: Scalable, local: boolean): Scalable => {
+    const next: Scalable = {
+      ...e,
+      x: local ? e.x * k : ox + (e.x - from.x) * k,
+      y: local ? e.y * k : oy + (e.y - from.y) * k,
+      w: e.w * k,
+      h: e.h * k,
+    };
+    if (e.style?.fontSize !== undefined)
+      next.style = { ...e.style, fontSize: size(e.style.fontSize) };
+    if (e.textStyle?.fontSize !== undefined)
+      next.textStyle = { ...e.textStyle, fontSize: size(e.textStyle.fontSize) };
+    if (e.strokeWidth !== undefined) next.strokeWidth = e.strokeWidth * k;
+    if (e.radius !== undefined) next.radius = e.radius * k;
+    if (e.children) next.children = e.children.map((c) => scale(c, true));
+    return next;
+  };
+  return els.map((e) => scale(e, false) as T);
+}

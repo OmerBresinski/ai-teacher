@@ -34,12 +34,18 @@ export type LayoutRef = {
   template: AdaptiveTemplateId;
   input: Record<string, unknown>;
   frame?: LayoutFrame;
+  /**
+   * The size the teacher resized the group to. The layout is laid out, then fitted into it whole
+   * (one scale for every box and type size, centred), never squashed; absent, it keeps its own size.
+   */
+  fit?: { w: number; h: number };
 };
 
 export const LayoutRefSchema = z.object({
   template: AdaptiveTemplateIdSchema,
   input: z.record(z.string(), z.unknown()),
   frame: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+  fit: z.object({ w: z.number(), h: z.number() }).optional(),
 });
 
 /** A group laid out from an adaptive template (it carries a `layout`). */

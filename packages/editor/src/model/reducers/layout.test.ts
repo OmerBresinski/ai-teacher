@@ -303,12 +303,43 @@ describe("teacher edits inside a layout group", () => {
     expect(groupOf(out).layout).toBeUndefined();
   });
 
-  test("moving the group keeps it a layout; resizing it detaches (it cannot lay into a box)", () => {
+  test("moving the group keeps it a layout", () => {
     const { lesson, slideId } = seeded(3);
     const moved = settle(lesson, r.transformElements(lesson, slideId, ["g1"], { dx: 10 }));
     expect(groupOf(moved).layout).toBeDefined();
-    const resized = settle(lesson, r.transformElements(lesson, slideId, ["g1"], { scale: 0.8 }));
-    expect(groupOf(resized).layout).toBeUndefined();
+    expect(groupOf(moved).layout?.fit).toBeUndefined();
+    // A keyboard or toolbar scale (frame only, children untouched) re-lays as well.
+    const scaled = settle(lesson, r.transformElements(lesson, slideId, ["g1"], { scale: 0.8 }));
+    expect(groupOf(scaled).layout?.fit).toEqual({ w: groupOf(scaled).w, h: groupOf(scaled).h });
+  });
+
+  test("resizing re-lays into the new size: one scale, nothing squashed, kept for later re-lays", () => {
+    const { lesson, slideId } = seeded(3);
+    const g0 = groupOf(lesson);
+    // What the resize gesture writes (`patchFor`): the frame, and children stretched to it.
+    const w = g0.w * 0.6;
+    const h = g0.h;
+    const stretched = g0.children.map((c) => ({ ...c, x: c.x * 0.6, w: c.w * 0.6 }));
+    const out = settle(
+      lesson,
+      r.updateElement(lesson, slideId, "g1", { w, h, children: stretched } as never),
+    );
+    const g = groupOf(out);
+    expect(g.layout?.fit).toEqual({ w, h });
+    const label = g.children.find((c) => c.id === "g1:grid.0.label") as TextElement;
+    const body = g.children.find((c) => c.id === "g1:grid.0.text") as TextElement;
+    const label0 = g0.children.find((c) => c.id === "g1:grid.0.label") as TextElement;
+    // The type shrank with the boxes (uniformly), so the label still clears its body.
+    expect(label.style.fontSize ?? 0).toBeLessThan(label0.style.fontSize ?? 0);
+    expect(label.w / label0.w).toBeCloseTo(label.h / label0.h, 2);
+    expect(label.y + label.h).toBeLessThanOrEqual(body.y + 0.01);
+    // Every box inside the new size.
+    for (const c of g.children) expect(c.x + c.w).toBeLessThanOrEqual(w + 0.01);
+    // A later item change re-lays into the same size.
+    const added = r.addLayoutItem(out, slideId, "g1", 3, kit).lesson;
+    expect(groupOf(added).w).toBeCloseTo(w, 5);
+    expect(groupOf(added).h).toBeCloseTo(h, 5);
+    expect(named(groupOf(added), "Card")).toHaveLength(4);
   });
 
   test("detaching is one undo step with the edit", () => {

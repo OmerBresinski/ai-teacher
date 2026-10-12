@@ -5,9 +5,10 @@
  *
  * - new words in a child bound to a field (`<groupId>:<path>`, written by `relayout`) write
  *   through to the group's `layout.input`, so the next re-lay keeps them;
- * - any other change to a child (restyle, move, size, delete, link, alt) or a resize of the group
- *   **detaches** it: the `layout` ref goes and the elements stay exactly as they are. Re-laying
- *   would otherwise throw the teacher's change away. Moving the whole group keeps the ref.
+ * - a resize of the group re-lays it into the new size (`layout.fit`): fitted whole, never squashed;
+ * - any other change to a child (restyle, move, size, delete, link, alt) **detaches** the group:
+ *   the `layout` ref goes and the elements stay exactly as they are. Re-laying would otherwise
+ *   throw the teacher's change away. Moving the whole group keeps the ref.
  *
  * A layout reducer replaces `layout` itself, so a group whose ref changed in the edit is left alone.
  */
@@ -18,18 +19,36 @@ import {
   richDocToPlainText,
   type SlideElement,
 } from "@tj/domain/documents";
-import { boundPath, setAtPath } from "@tj/slides/layout-paths";
+import { boundPath, fitInto, setAtPath } from "@tj/slides/layout-paths";
 import { produce } from "immer";
 
 /** Keys a text edit may change: the words, their provenance, and the height auto-height measures. */
 const TEXT_EDIT_KEYS = new Set(["doc", "authoredBy", "generatedFrom", "h"]);
 
-type Verdict = { kind: "keep" } | { kind: "detach" } | { kind: "write"; ref: LayoutRef };
+type Verdict =
+  | { kind: "keep" }
+  | { kind: "detach" }
+  | { kind: "write"; ref: LayoutRef; children?: SlideElement[] };
 
 function judge(prev: GroupElement & { layout: LayoutRef }, next: GroupElement): Verdict {
-  if (Math.abs(prev.w - next.w) > 0.5 || Math.abs(prev.h - next.h) > 0.5) return { kind: "detach" };
+  // A child added, removed or swapped (a delete re-fits the group too): detach, never re-lay.
+  if (
+    prev.children.length !== next.children.length ||
+    prev.children.some((c, i) => c.id !== next.children[i]?.id)
+  )
+    return { kind: "detach" };
+  if (Math.abs(prev.w - next.w) > 0.5 || Math.abs(prev.h - next.h) > 0.5) {
+    // A resize re-lays into the new size: the layout as it was, fitted whole (one scale, centred),
+    // never the gesture's stretched boxes. The size is kept on the ref for every later re-lay.
+    const fit = { w: next.w, h: next.h };
+    const children = fitInto(
+      prev.children,
+      { x: 0, y: 0, w: prev.w, h: prev.h },
+      { x: 0, y: 0, ...fit },
+    );
+    return { kind: "write", ref: { ...prev.layout, fit }, children };
+  }
   if (prev.children === next.children) return { kind: "keep" };
-  if (prev.children.length !== next.children.length) return { kind: "detach" };
   let ref = prev.layout;
   for (let i = 0; i < next.children.length; i++) {
     const a = prev.children[i] as SlideElement;
@@ -75,7 +94,10 @@ export function syncLayoutGroups(before: Lesson, after: Lesson): Lesson {
       const g = d.slides[slide]?.elements[el] as GroupElement | undefined;
       if (!g) continue;
       if (verdict.kind === "detach") delete g.layout;
-      else if (verdict.kind === "write") g.layout = verdict.ref;
+      else if (verdict.kind === "write") {
+        g.layout = verdict.ref;
+        if (verdict.children) g.children = verdict.children;
+      }
     }
   });
 }

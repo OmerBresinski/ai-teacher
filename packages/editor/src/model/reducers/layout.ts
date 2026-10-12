@@ -11,6 +11,7 @@
  */
 
 import type { GroupElement, Id, LayoutRef, Lesson, Slide } from "@tj/domain/documents";
+import { fitInto } from "@tj/slides/layout-paths";
 import type * as RelayoutKit from "@tj/slides/relayout";
 import { uid } from "../factories";
 import { renderTheme } from "../themes";
@@ -20,6 +21,7 @@ export type LayoutKit = Pick<
   typeof RelayoutKit,
   | "relayout"
   | "stageOf"
+  | "editItem"
   | "setAtPath"
   | "getAtPath"
   | "addItem"
@@ -57,6 +59,16 @@ function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Re
 /** Put a laid-out `ref` into the group's place: children in group space, the group re-fitted. */
 function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid) {
   const { elements, frame } = relaid;
+  if (ref.fit) {
+    // Resized by the teacher: laid out, then fitted whole into the size they chose, where it is.
+    const local = elements.map((e) => ({ ...e, x: e.x - frame.x, y: e.y - frame.y }));
+    const natural = { x: 0, y: 0, w: frame.w, h: frame.h };
+    g.children = fitInto(local, natural, { x: 0, y: 0, ...ref.fit });
+    g.w = ref.fit.w;
+    g.h = ref.fit.h;
+    g.layout = { ...ref, frame: { ...frame, x: g.x, y: g.y } };
+    return;
+  }
   const old = g.layout?.frame ?? { x: g.x, y: g.y };
   const dx = g.x - old.x;
   const dy = g.y - old.y;
@@ -104,7 +116,7 @@ export const editLayoutItem = (
   kit: LayoutKit,
 ): LayoutChange =>
   change(lesson, slideId, groupId, kit, (ref) =>
-    kit.getAtPath(ref, path) === text ? null : { ok: true, ref: kit.setAtPath(ref, path, text) },
+    kit.getAtPath(ref, path) === text ? null : { ok: true, ref: kit.editItem(ref, path, text) },
   );
 
 /** A blank item at `at`; refused at the template's max for the lesson's stage. */

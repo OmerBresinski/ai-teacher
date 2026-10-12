@@ -2,6 +2,7 @@ import type { QueryKey } from "@tanstack/react-query";
 import type { Proposal } from "@tj/domain";
 import {
   type Id,
+  isLayoutGroup,
   type Lesson,
   mergeJobLesson,
   type RichDoc,
@@ -12,8 +13,10 @@ import {
 } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import {
+  lazy,
   type ReactNode,
   type Ref,
+  Suspense,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -60,6 +63,10 @@ import { SidePaneDock, usePaneWidth } from "./SidePaneDock";
 import { paneMode as shellPaneMode } from "./shell-layout";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
+
+/** The items of a selected adaptive layout group (TEACH-205 part b): loads the template recipes on first use. */
+const LayoutPanel = lazy(() => import("./transform/LayoutPanel"));
+
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import {
   EditorSessionProvider,
@@ -273,10 +280,28 @@ export function LessonEditor({
   const factsAvailable =
     Boolean(lesson?.facts) &&
     (onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined);
+  // One selected adaptive layout group docks its items panel in the right-hand pane, so the slide
+  // stays in view while the teacher edits it (TEACH-205 part b).
+  const selectedLayout = useMemo(() => {
+    if (mobile || !lesson || session.state.selection.length !== 1) return null;
+    const active = resolveActiveSlide(lesson.slides, session.state.activeSlideId);
+    const el = active?.elements.find((e) => e.id === session.state.selection[0]);
+    return active && el && isLayoutGroup(el) ? { slideId: active.id, group: el } : null;
+  }, [mobile, lesson, session.state.selection, session.state.activeSlideId]);
   const hasPane =
-    !mobile && (chatAvailable || factsAvailable || sidePane !== undefined || Boolean(companion));
+    !mobile &&
+    (chatAvailable ||
+      factsAvailable ||
+      sidePane !== undefined ||
+      Boolean(companion) ||
+      selectedLayout !== null);
   const paneOpen =
-    !mobile && (Boolean(sidePane?.open) || Boolean(companion) || editChat.open || factsOpen);
+    !mobile &&
+    (Boolean(sidePane?.open) ||
+      Boolean(companion) ||
+      editChat.open ||
+      factsOpen ||
+      selectedLayout !== null);
   const proposalsEnabled =
     onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined;
   // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
@@ -712,6 +737,16 @@ export function LessonEditor({
                                   onClose={() => setFactsOpen(false)}
                                   pane={mobile ? undefined : { mode: paneMode, width: paneW }}
                                 />
+                              ) : null}
+                              {selectedLayout ? (
+                                <SidePaneDock open label="Layout" mode={paneMode} data-layout-dock>
+                                  <Suspense fallback={null}>
+                                    <LayoutPanel
+                                      slideId={selectedLayout.slideId}
+                                      group={selectedLayout.group}
+                                    />
+                                  </Suspense>
+                                </SidePaneDock>
                               ) : null}
                               {!mobile && sidePane ? (
                                 <SidePaneDock
