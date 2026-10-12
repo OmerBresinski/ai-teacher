@@ -128,8 +128,7 @@ interface AgeTokens {
 /**
  * The icon style (TEACH-310 part b, Greg's review of 12 Oct 2026 against the gold heart slide):
  * - "soft" (the default): no dark outline, soft radial gradients and a highlight on the full
- *   palette, a faint thin outline for early years only; body and organ concepts are tinted to the
- *   theme's red family (`tint`);
+ *   palette, a faint thin outline for early years only;
  * - "pilot": the pilot's cartoon look, a thick dark outline at early and primary, flat fills.
  */
 export type IconStyle = "soft" | "pilot";
@@ -289,8 +288,6 @@ export interface TreatmentOptions {
   age?: IconAge;
   /** "soft" (default) or "pilot" */
   style?: IconStyle;
-  /** soft style: map the drawing's colours onto the theme's red family (body and organ icons) */
-  tint?: boolean;
 }
 
 const styleOf = (s: unknown): IconStyle => (s === "pilot" ? "pilot" : "soft");
@@ -337,14 +334,13 @@ export function resolveSlots(opts: TreatmentOptions = {}): Record<string, string
 }
 
 /** The colours an icon may contain for these options: each slot and #fff, after the age filter,
- * then (soft style) the tint and each colour's gradient stops. */
+ * then (soft style) each colour's gradient stops. */
 export function iconColourSet(opts: TreatmentOptions = {}): Set<string> {
   const style = styleOf(opts.style);
   const filter = ageTokens(opts.age, style).filter;
   const base = [...Object.values(resolveSlots(opts)), "#ffffff"].map((h) => applyFilter(h, filter));
   if (style === "pilot") return new Set(base);
-  const tint = opts.tint ? tinter(resolveSlots(opts)["icon-primary"] as string) : (c: string) => c;
-  return new Set(base.map(tint).flatMap((c) => [c, ...gradientStops(c)]));
+  return new Set(base.flatMap((c) => [c, ...gradientStops(c)]));
 }
 
 // ---------- soft style ----------
@@ -355,34 +351,6 @@ export const gradientStops = (c: string): [string, string] => [
   mixOklab(c, WHITE, 0.72),
   mixOklab(c, "#000000", 0.78),
 ];
-
-/** Hue (radians) and chroma of a colour in OKLCH. */
-function lch(hex: string): [number, number, number] {
-  const [L, a, b] = toOklab(parseHex(hex));
-  return [L, Math.hypot(a, b), Math.atan2(b, a)];
-}
-/** The default flesh red: the tint for a theme whose accent is not in the red family. */
-const FLESH = "#E0343F";
-
-/**
- * Maps every colour onto one hue family at its own lightness, greys onto one faintly tinted
- * neutral: the gold heart slide's reds and pinks. The family is the theme's accent when that is
- * a red, pink or orange; otherwise the default flesh red (a heart is never green).
- */
-export function tinter(accent: string): (c: string) => string {
-  const [, ac, ah] = lch(accent);
-  const deg = ((ah * 180) / Math.PI + 360) % 360;
-  const warm = ac > 0.08 && (deg < 50 || deg > 330);
-  const [, fc, fh] = warm ? [0, ac, ah] : lch(FLESH);
-  return (c: string) => {
-    if (c === WHITE) return c;
-    const [L, C] = lch(c);
-    const Lm = Math.min(0.97, Math.max(0.4, L));
-    if (C < 0.045) return toHex(fromOklab([Lm, 0.012 * Math.cos(fh), 0.012 * Math.sin(fh)]));
-    const Cm = fc * Math.min(1, 0.5 + C / 0.25) * (Lm > 0.88 ? 0.6 : 1);
-    return toHex(fromOklab([Lm, Cm * Math.cos(fh), Cm * Math.sin(fh)]));
-  };
-}
 
 /** Soft style: each solid fill (white aside) becomes a radial gradient, highlight top left. */
 function soften(svg: string, idPrefix: string): string {
@@ -559,10 +527,6 @@ export function flatten(markup: string, opts: FlattenOptions): string {
   };
   let out = parseMarkup(markup).map(visit).join("");
   if (style === "soft") {
-    if (opts.tint) {
-      const tint = tinter(slots["icon-primary"] as string);
-      out = out.replace(/#[0-9a-f]{6}\b/g, tint);
-    }
     out = soften(out, opts.idPrefix);
   }
   // a clip path or marker whose user was dropped at this size goes too

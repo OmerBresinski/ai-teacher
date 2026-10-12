@@ -15,32 +15,6 @@ import type { IconAge, IconColours, IconDrawing, IconSize } from "./types";
 export type { IconStyle } from "./treatment";
 export { COOL_ICON_COLOURS, DEFAULT_ICON_COLOURS, ICON_STYLES, iconColourSet } from "./treatment";
 
-/**
- * Body and organ concepts: in the soft style they take the theme's red family, as the gold heart
- * slide's heart, blood drop and vessels do. Everything else keeps its real colours (a plant stays
- * green, a mummy stays linen).
- */
-export const TINTED_ICONS: ReadonlySet<string> = new Set([
-  "heart",
-  "blood",
-  "blood-vessels",
-  "artery",
-  "vein",
-  "capillary",
-  "heart-chambers",
-  "lungs",
-  "lungs-oxygen",
-  "pulse",
-  "heart-rate",
-  "healthy-heart",
-  "harm",
-  "blood-pressure",
-  "body-cells",
-  "liver",
-  "stomach",
-  "intestines",
-  "heart-left-inside",
-]);
 export type { IconAge, IconColours, IconDrawing, IconSize } from "./types";
 
 /** Assembled as the pilot's library.js did: the reused v1 drawings, then each set (later wins). */
@@ -70,8 +44,6 @@ export interface IconSvgOptions {
   px?: number;
   /** "soft" (default: no outline, gradients) or "pilot" (the pilot's outlined cartoon look). */
   style?: IconStyle;
-  /** Soft style: tint to the theme's red family; defaults to membership of TINTED_ICONS. */
-  tint?: boolean;
 }
 
 let calls = 0;
@@ -88,8 +60,7 @@ export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
   // ids and sizes reach attributes, so only safe characters and finite positive numbers pass
   const prefix = String(opts.idPrefix ?? "").replace(/[^A-Za-z0-9_-]/g, "");
   const idPrefix = /^[A-Za-z]/.test(prefix) ? prefix : `tji${++calls}${prefix}`;
-  const tint = opts.tint ?? TINTED_ICONS.has(id);
-  const body = flatten(markup, { ...opts, size, idPrefix, tint });
+  const body = flatten(markup, { ...opts, size, idPrefix });
   const px = Number(opts.px);
   const box =
     Number.isFinite(px) && px > 0

@@ -211,10 +211,10 @@ export const PLANTS: Record<string, IconDrawing> = {
     svg: () => {
       const body =
         "M60 100 L156 100 L162 196 C162 204 156 208 148 208 L68 208 C60 208 54 204 54 196Z";
-      return `${L("M60 112 C30 112 30 176 58 176", "var(--icon-primary-dark)", 14)}${L("M156 182 L210 98", "var(--icon-primary)", 14)}
-      ${RR(196, 82, 30, 22, "var(--icon-primary-dark)", "rr2")}
-      ${F(body, "var(--icon-primary)")}${SH(body, "M120 96 L170 96 L170 212 L120 212Z", "var(--icon-primary-dark)")}
-      ${L("M80 100 C80 64 136 64 136 100", "var(--icon-primary-dark)", 12)}
+      return `${L("M60 112 C30 112 30 176 58 176", "var(--roman-d)", 14)}${L("M156 182 L210 98", "var(--roman)", 14)}
+      ${RR(196, 82, 30, 22, "var(--roman-d)", "rr2")}
+      ${F(body, "var(--roman)")}${SH(body, "M120 96 L170 96 L170 212 L120 212Z", "var(--roman-d)")}
+      ${L("M80 100 C80 64 136 64 136 100", "var(--roman-d)", 12)}
       ${drop(214, 140, 0.07)}${drop(226, 166, 0.06)}${drop(204, 172, 0.06)}
       ${H("M70 120 L70 186", 9)}`;
     },

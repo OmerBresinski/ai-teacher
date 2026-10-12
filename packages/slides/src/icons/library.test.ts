@@ -12,7 +12,6 @@ import {
   iconImageSrc,
   iconSizeFor,
   iconSvg,
-  TINTED_ICONS,
 } from "./library";
 
 const THEMES = { warm: DEFAULT_ICON_COLOURS, cool: COOL_ICON_COLOURS };
@@ -34,7 +33,7 @@ describe("iconSvg: every drawing, size, age and theme", () => {
               expect(/\bclass=/.test(svg), `${where}: class`).toBe(false);
               expect(/--[a-z]/.test(svg), `${where}: custom property`).toBe(false);
               expect(/color-mix|calc\(|filter:/.test(svg), `${where}: css function`).toBe(false);
-              const allowed = iconColourSet({ colours, age, style, tint: TINTED_ICONS.has(id) });
+              const allowed = iconColourSet({ colours, age, style });
               for (const c of svg.match(HEX) ?? []) {
                 expect(allowed.has(c.toLowerCase()), `${where}: stray colour ${c}`).toBe(true);
               }
@@ -124,21 +123,27 @@ describe("soft style (the default)", () => {
     expect(early).toContain("stroke-opacity:0.45");
   });
 
-  test("organ icons take the theme's red family; other icons keep their colours", () => {
-    const hue = (hex: string) => {
-      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-      return { r: r as number, g: g as number, b: b as number };
-    };
-    const fills = (svg: string) =>
-      [...svg.matchAll(/stop-color="(#[0-9a-f]{6})"/g)].map((m) => hue(m[1] as string));
-    // a pink accent tints the heart pink-red; a green accent leaves it red, never green
-    for (const accent of ["#C2185B", "#1F7A5C"]) {
-      const heart = iconSvg("heart", { colours: { primary: accent } });
-      for (const c of fills(heart)) expect(c.r).toBeGreaterThanOrEqual(c.g);
+  test("core colours are natural and fixed; only accent parts take the theme (Greg: hearts aren't green)", () => {
+    const red = { ...DEFAULT_ICON_COLOURS, primary: "#D7263D", secondary: "#2F7FD1" };
+    const green = { ...COOL_ICON_COLOURS, primary: "#1F7A5C", secondary: "#E8A33A" };
+    for (const id of [
+      "heart",
+      "blood",
+      "lungs",
+      "seedling",
+      "lava",
+      "pyramid",
+      "mummy",
+      "watering-can",
+    ]) {
+      expect(iconSvg(id, { colours: green, idPrefix: "t" }), id).toBe(
+        iconSvg(id, { colours: red, idPrefix: "t" }),
+      );
     }
-    const leafy = fills(iconSvg("seedling", { colours: { primary: "#D7263D" } }));
-    expect(leafy.some((c) => c.g > c.r)).toBe(true);
-    expect(TINTED_ICONS.has("seedling")).toBe(false);
+    // symbolic parts (room-to-grow's arrows) follow the theme
+    expect(iconSvg("room-to-grow", { colours: green, idPrefix: "t" })).not.toBe(
+      iconSvg("room-to-grow", { colours: red, idPrefix: "t" }),
+    );
   });
 
   test("the pilot style is still available", () => {

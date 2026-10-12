@@ -201,7 +201,7 @@ export const HEART: Record<string, IconDrawing> = {
   timer: {
     name: "Count for one minute",
     svg: () => `${RR(106, 22, 28, 22, "var(--metal-d)", "rr2")}${L("M168 66 L180 54", "var(--metal-d)", 14)}
-      ${C(120, 132, 82, "var(--icon-primary)")}${C(120, 132, 64, "#fff", false)}
+      ${C(120, 132, 82, "var(--roman)")}${C(120, 132, 64, "#fff", false)}
       ${IL("M120 76 L120 88 M176 132 L164 132 M120 188 L120 176 M64 132 L76 132", "var(--icon-ink)", 6)}
       ${P("M120 132 L120 76 A56 56 0 0 1 168 106 Z", "var(--icon-tint)")}
       ${L("M120 132 L150 92", "var(--icon-ink)", 8)}${C(120, 132, 9, "var(--icon-ink)", false)}
@@ -231,7 +231,7 @@ export const HEART: Record<string, IconDrawing> = {
         );
       };
       return `${C(120, 120, 96, "#fff")}${C(120, 120, 80, "var(--metal)", false)}
-      ${seg(-90, 30, "var(--leaf)")}${seg(30, 140, "var(--sun)")}${seg(140, 205, "var(--pink)")}${seg(205, 240, "var(--water)")}${seg(240, 270, "var(--icon-secondary-dark)")}
+      ${seg(-90, 30, "var(--leaf)")}${seg(30, 140, "var(--sun)")}${seg(140, 205, "var(--pink)")}${seg(205, 240, "var(--water)")}${seg(240, 270, "var(--clay-d)")}
       ${IL("M120 120 L120 50 M120 120 L180.6 155 M120 120 L66.4 165 M120 120 L56.6 90.4 M120 120 L85 59.4", "#fff", 5)}
       ${C(150, 80, 9, "var(--flesh)", false)}${C(160, 98, 7, "var(--leaf-d)", false)}
       ${H("M44 96 C52 72 70 52 94 42", 8)}`;
