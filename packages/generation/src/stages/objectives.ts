@@ -3,6 +3,7 @@ import { isThemeId, liveThemeId } from "@tj/slides";
 import { callStructured } from "../call";
 import { curriculumBlock, curriculumFor } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
+import { periodOf, withoutPeriod } from "../period";
 import {
   type PlanRetrievalQuestion,
   planObjectivesOutputSchemaFor,
@@ -354,14 +355,15 @@ export async function runObjectivesStep(
     },
   };
   // Ruling 163 (B1): the check's period goes onto the plan, so it is stored once, at `planned`.
-  if (options.gate) {
-    const { historicalPeriod, fictionInPeriod } = (await options.gate).lesson;
-    if (historicalPeriod) Object.assign(planned, { historicalPeriod, fictionInPeriod });
-  }
-  const { updatedAt } = await deps.persist(planned);
+  // Always overwritten from the latest check, so a re-plan (pinned or a new topic) never keeps a
+  // stale period.
+  const stored: Lesson = options.gate
+    ? { ...withoutPeriod(planned), ...periodOf((await options.gate).lesson) }
+    : planned;
+  const { updatedAt } = await deps.persist(stored);
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
   return {
-    state: { ...state, lesson: planned },
+    state: { ...state, lesson: stored },
     report: { objectives, ...(retrieval ? { retrieval } : {}), calls, objectivesMs },
   };
 }

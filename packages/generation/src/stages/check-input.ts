@@ -1,6 +1,6 @@
 import { type Finding, findNamePatterns } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
-import { periodFields } from "../period";
+import { periodFields, withoutPeriod } from "../period";
 import { checkInputPrompt } from "../prompts";
 import { CheckInputOutputSchema } from "../specs";
 import {
@@ -79,5 +79,6 @@ export async function checkInput(state: PipelineState, deps: PipelineDeps): Prom
   if (findings.length > 0) throw new InputRejected(findings);
   // Ruling 163 (B1): the lesson's past period, stored once here on the lesson the later steps
   // read (the writer's objectives step copies it onto the plan it persists).
-  return { ...state, lesson: { ...state.lesson, ...period } };
+  // Always overwritten: a re-plan whose check names no period clears the old one.
+  return { ...state, lesson: { ...withoutPeriod(state.lesson), ...period } };
 }

@@ -107,6 +107,17 @@ export function fixtureSlideScript(skeleton: PlanSkeleton = FIXTURES.planSkeleto
 
 /** The input check's one answer (a clean brief), then Plan's three: skeleton, facts, verify. */
 export const CHECK_INPUT_CALLS = 1;
+/** The input check's clean answer: no findings and no past period (both fields are required). */
+export const CHECK_INPUT_CLEAR = {
+  findings: [],
+  historical_period: null,
+  fiction_in_period: false,
+};
+/** An input check answer: the clear answer under the test's own fields. */
+export const checkInputAnswer = (answer?: unknown) => ({
+  ...CHECK_INPUT_CLEAR,
+  ...(answer as Record<string, unknown> | undefined),
+});
 export const PLAN_CALLS = 3;
 /** Script index of the first Plan answer. */
 export const PLAN_INDEX = CHECK_INPUT_CALLS;
@@ -136,7 +147,7 @@ export function pipelineScript(
 ): FakeScriptEntry[] {
   const skeleton = options.skeleton ?? FIXTURES.planSkeleton;
   const script: FakeScriptEntry[] = [
-    json(options.checkInput ?? { findings: [] }),
+    json(checkInputAnswer(options.checkInput)),
     json(skeleton),
     json(FIXTURES.planFacts),
     // The facts fixture has no figures (TEACH-253): with a diagram in the skeleton the facts call

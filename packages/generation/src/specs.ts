@@ -117,9 +117,9 @@ export const InputFindingSchema = z.strictObject({
 export const CheckInputOutputSchema = z.strictObject({
   findings: z.array(InputFindingSchema).max(3),
   /** The real past the content is set in ("Ancient Egypt"); null for present-day or timeless. */
-  historical_period: z.string().min(1).max(80).nullable().default(null),
+  historical_period: z.string().min(1).nullable(),
   /** A story, play or poem set in that period (policy unruled; code decides). */
-  fiction_in_period: z.boolean().default(false),
+  fiction_in_period: z.boolean(),
 });
 export type CheckInputOutput = z.infer<typeof CheckInputOutputSchema>;
 

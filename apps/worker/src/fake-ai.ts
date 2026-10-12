@@ -112,7 +112,8 @@ function pipelineAnswer(
   selectedOutlineByJob: Map<string, readonly number[]>,
 ): string {
   const version = call.context?.promptVersion ?? "";
-  if (version.startsWith("check-input")) return JSON.stringify({ findings: [] });
+  if (version.startsWith("check-input"))
+    return JSON.stringify({ findings: [], historical_period: null, fiction_in_period: false });
   if (version.startsWith("plan-skeleton")) {
     const requested = Number(/outline has exactly (\d+) slides/.exec(call.promptText)?.[1] ?? 10);
     const indices = OUTLINE_INDICES_BY_COUNT[requested as keyof typeof OUTLINE_INDICES_BY_COUNT];

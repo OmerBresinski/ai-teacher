@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { labAi, romansLesson } from "../planner/testing";
-import { initialState, recordingDeps } from "../testing";
+import { CHECK_INPUT_CLEAR, checkInputAnswer, initialState, recordingDeps } from "../testing";
 import { InputRejected } from "../types";
 import { WRITER_VERSION, writerRoute } from "../writer/ai-services";
 import { checkedWriterObjectives } from "./objectives";
@@ -30,7 +30,7 @@ function run(checkAnswer: unknown, checkMs = 40, objectives = OBJECTIVES) {
         return new Promise<string>((resolve) =>
           setTimeout(() => {
             events.push("check:end");
-            resolve(JSON.stringify(checkAnswer));
+            resolve(JSON.stringify(checkInputAnswer(checkAnswer)));
           }, checkMs),
         ) as never;
       }
@@ -120,7 +120,7 @@ describe("the planner's theme (UX ruling 202)", () => {
       route: writerRoute,
       extra: (call) => {
         const v = call.context?.promptVersion ?? "";
-        if (v.startsWith("check-input")) return JSON.stringify({ findings: [] });
+        if (v.startsWith("check-input")) return JSON.stringify(CHECK_INPUT_CLEAR);
         if (v === `${WRITER_VERSION}/objectives`) return withTheme("treehouse");
         return undefined;
       },

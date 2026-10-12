@@ -38,3 +38,24 @@ export function periodFields(output: {
     fictionInPeriod: output.fiction_in_period === true,
   };
 }
+
+/** The lesson without its period fields (before the latest check's answer is written). */
+export function withoutPeriod<L extends PeriodFields>(
+  lesson: L,
+): Omit<L, "historicalPeriod" | "fictionInPeriod"> {
+  const { historicalPeriod: _p, fictionInPeriod: _f, ...rest } = lesson;
+  return rest;
+}
+
+/** A lesson's stored period fields only (unset when it has no period). */
+export function periodOf(lesson: PeriodFields): {
+  historicalPeriod?: string;
+  fictionInPeriod?: boolean;
+} {
+  return lesson.historicalPeriod
+    ? {
+        historicalPeriod: lesson.historicalPeriod,
+        fictionInPeriod: lesson.fictionInPeriod === true,
+      }
+    : {};
+}

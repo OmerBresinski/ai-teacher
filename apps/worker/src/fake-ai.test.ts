@@ -30,9 +30,14 @@ describe("createPerJobFakeAi", () => {
       });
       return text;
     };
-    // The script's first answer is the input check's clean `{ findings: [] }` for both jobs.
-    expect(await first("job-a")).toBe(JSON.stringify({ findings: [] }));
-    expect(await first("job-b")).toBe(JSON.stringify({ findings: [] }));
+    // The script's first answer is the input check's clean answer (no findings, no period) for both.
+    const clear = JSON.stringify({
+      findings: [],
+      historical_period: null,
+      fiction_in_period: false,
+    });
+    expect(await first("job-a")).toBe(clear);
+    expect(await first("job-b")).toBe(clear);
     // The same job's second call moves on to Plan's skeleton.
     const { text } = await generateText({
       model: ai.model("standard", {
