@@ -32,8 +32,8 @@ import { contrastRatio } from "../look";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
-import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
+import { type GridCard, layoutCardsGrid } from "./cards-grid";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export type { ActivityCard, ActivityId, GridCard };

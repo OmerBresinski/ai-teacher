@@ -322,9 +322,6 @@ export const BANNER_TEXT_DEFAULT = false;
 /** Most bullets under a banner's lead (the renderer's `BANNER_POINTS`). */
 export const BANNER_TEXT_POINTS = 3;
 
-/** A string held to `n` characters (strict mode takes `pattern`, not `maxLength`). */
-const capped = (n: number): J => ({ type: "string", pattern: `^.{1,${n}}$` });
-
 /** Its caps come from the renderer's measured fit (`bannerCaps`, the fit table's banner entry). */
 function withBannerText(schema: J, stage: WriterStage): J {
   const caps = bannerCaps(stage);
