@@ -143,7 +143,7 @@ export function asPicture(raw: S): S | undefined {
     if (!shows) return undefined;
     const pic: PictureField = {
       shows,
-      must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
+      must_see: labels.filter((l) => l.trim()),
       subject: "generic",
       ask: alone,
       ask_without: alone,
@@ -180,7 +180,7 @@ export function tilesAsPictures(raw: S, keys: string[]): S | undefined {
     const alone = f.ask_without ?? null;
     const pic: S = {
       shows: str(f.shows) || str(host.label) || str(host.caption),
-      must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
+      must_see: labels.filter((l) => l.trim()),
       subject: "generic",
       ...(m?.[1] === "col" ? { ask: alone, ask_without: alone } : {}),
     };

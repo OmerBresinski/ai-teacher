@@ -1,0 +1,1389 @@
+[
+  {
+    "shows": "A diagram of the human heart showing its main chambers and blood vessels",
+    "labels": [
+      "Aorta",
+      "Vena cava",
+      "Right atrium",
+      "Right ventricle",
+      "Left atrium",
+      "Left ventricle"
+    ]
+  },
+  {
+    "shows": "A simplified human outline with a heart in the chest and branching blood vessels extending through the body. An enlarged vessel inset shows blood within the tube.",
+    "labels": ["Heart", "Blood vessels", "Blood"]
+  },
+  {
+    "shows": "the human heart showing chambers and connected blood vessels",
+    "labels": ["heart", "arteries", "veins"]
+  },
+  {
+    "shows": "A simplified human outline with a heart in the chest and a continuous network of blood vessels reaching the arms, legs and head; an enlarged vessel section shows blood inside.",
+    "labels": ["Heart", "Blood vessels", "Blood"]
+  },
+  {
+    "shows": "A relaxed hand and inner wrist, with two fingertips gently placed on the thumb side to feel the pulse.",
+    "labels": ["Two fingertips", "Inner wrist", "Relaxed hand"]
+  },
+  {
+    "shows": "finding a pulse at the wrist",
+    "labels": ["wrist", "radial artery", "two fingers"]
+  },
+  {
+    "shows": "the human circulatory system with heart and major vessels",
+    "labels": ["heart", "arteries", "veins"]
+  },
+  {
+    "shows": "gas and nutrient exchange between a capillary and body cells",
+    "labels": ["capillary", "oxygen out", "carbon dioxide in", "body cell"]
+  },
+  {
+    "shows": "human body showing the heart and main blood vessels",
+    "labels": ["Heart", "Blood vessels", "Blood"]
+  },
+  {
+    "shows": "A flask of marble chips and acid on a digital balance, with a loose cotton-wool plug allowing carbon dioxide to escape and a stopwatch beside it",
+    "labels": [
+      "Escaping carbon dioxide",
+      "Loose cotton wool",
+      "Acid and marble",
+      "Balance",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A flask on a digital balance, with a short plug and carbon dioxide escaping",
+    "labels": ["CO₂", "Plug", "Flask", "Balance"]
+  },
+  {
+    "shows": "Three memory-store boxes left to right: sensory register, STM and LTM. An attention arrow leads from the sensory register to STM; a maintenance rehearsal loop returns to STM; a prolonged rehearsal arrow leads from STM to LTM; a retrieval arrow returns from LTM to STM",
+    "labels": [
+      "Sensory register",
+      "Attention",
+      "STM",
+      "Maintenance rehearsal",
+      "Prolonged rehearsal",
+      "LTM",
+      "Retrieval"
+    ]
+  },
+  {
+    "shows": "Three memory-store boxes left to right: sensory register, STM and LTM. An attention arrow leads from the sensory register to STM; a rehearsal loop returns to STM; a prolonged rehearsal arrow leads from STM to LTM; a retrieval arrow returns from LTM to STM",
+    "labels": [
+      "Sensory register",
+      "Attention",
+      "STM",
+      "Rehearsal loop",
+      "Prolonged rehearsal",
+      "LTM",
+      "Retrieval"
+    ]
+  },
+  {
+    "shows": "A family tree viewed from a central child marked moi: a grandfather and grandmother above a father and mother, with the child, a brother and a sister below. Brackets group the grandparents and parents.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "A family tree viewed from a central child marked moi: a grandfather and grandmother above a father and mother, with the child, a brother and a sister below. Brackets group the grandparents and parents. Place every label in clear space beside the person or group it names; connector lines must not run through labels.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "An imaginary family tree centred on a child, with father and mother above, brother and sister beside the child, grandparents above the parents, and brackets identifying the two parent groups; English support accompanies the French labels",
+    "labels": [
+      "mes grands-parents / grandparents",
+      "mon père / father",
+      "ma mère / mother",
+      "mes parents / parents",
+      "mon frère / brother",
+      "ma sœur / sister"
+    ]
+  },
+  {
+    "shows": "A simple family tree centred on a child. Place each label in a separate box, with connecting lines joining the boxes only at their edges: grandparents at the top, parents below them, and the child with brother and sister alongside. Add brackets around the two parent groups. Keep all lines clear of the label boxes.",
+    "labels": [
+      "mes grands-parents / grandparents",
+      "mon père / father",
+      "ma mère / mother",
+      "mes parents / parents",
+      "mon frère / brother",
+      "ma sœur / sister"
+    ]
+  },
+  {
+    "shows": "two identical squares: the first divided vertically into two equal parts with one shaded; the second divided into a two-by-two grid with one part shaded",
+    "labels": ["one half", "one quarter"]
+  },
+  {
+    "shows": "12 counters shared into four outlined groups, each containing three counters",
+    "labels": ["3", "3", "3", "3", "12 altogether"]
+  },
+  {
+    "shows": "An eye and an ear receiving separate inputs, leading to separate visual and auditory sensory stores",
+    "labels": ["Eye", "Iconic memory", "Ear", "Echoic memory"]
+  },
+  {
+    "shows": "A conical flask containing acid and magnesium, sealed with a bung and connected through a delivery tube to a horizontally clamped gas syringe with a freely moving plunger",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A family tree viewed from a central child, with grandparents above two parents and a brother and sister beside the child; brackets label the parent pair and grandparent pair",
+    "labels": ["mes grands-parents", "mon père", "ma mère", "mes parents", "mon frère", "ma sœur"]
+  },
+  {
+    "shows": "A simple family tree viewed from a central child: grandparents above the two parents, and a brother and sister beside the child. Place each label beside its person without crossing any lines; place the parent-pair label and grandparent-pair label separately, clear of the connecting lines.",
+    "labels": ["grands-parents", "père", "mère", "parents", "frère", "sœur"]
+  },
+  {
+    "shows": "ten identical counters arranged in two equal group circles, five counters in each, with a central collection of ten shown above and arrows towards the groups",
+    "labels": ["10 counters", "5 counters", "5 counters"]
+  },
+  {
+    "shows": "two equal group circles, each containing exactly five identical counters",
+    "labels": ["10 counters", "5 counters", "5 counters"]
+  },
+  {
+    "shows": "Two matching rectangles: one split into two equal parts and one split into four equal parts, with one part shaded in each",
+    "labels": ["½: one of two equal parts", "¼: one of four equal parts"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung; a delivery tube connects it to a horizontal clamped gas syringe whose plunger can move freely.",
+    "labels": [
+      "Gas syringe",
+      "Clamp stand",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal, clamped gas syringe. Show a stopwatch alongside it.",
+    "labels": [
+      "hydrochloric acid",
+      "magnesium ribbon",
+      "bung",
+      "delivery tube",
+      "gas syringe",
+      "clamp stand",
+      "stopwatch"
+    ]
+  },
+  {
+    "shows": "An airtight conical flask containing magnesium and hydrochloric acid, connected by a bung and delivery tube to a horizontally clamped graduated gas syringe. The plunger can move freely.",
+    "labels": [
+      "Gas syringe (cm³)",
+      "Delivery tube",
+      "Airtight bung",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A conical flask attached through an airtight bung and delivery tube to a freely moving, clamped gas syringe. Magnesium ribbon of fixed mass and dimensions sits in a fixed volume of hydrochloric acid. A thermometer beside the flask represents checking the initial temperature.",
+    "labels": [
+      "Gas syringe (cm³)",
+      "Airtight bung",
+      "25 cm³ acid",
+      "Fixed magnesium mass",
+      "Check temperature"
+    ]
+  },
+  {
+    "shows": "A family tree centred on Camille, with her brother and sister alongside her, her father and mother above, and her two paternal grandparents above her father. Use a small English gloss beneath each French label. Camille is the speaker.",
+    "labels": [
+      "Camille : moi / me",
+      "mon père / father",
+      "ma mère / mother",
+      "mon frère / brother",
+      "ma sœur / sister",
+      "mes parents / parents",
+      "mes grands-parents / grandparents"
+    ]
+  },
+  {
+    "shows": "Two same-sized rectangles. The first is split into 2 equal parts with 1 part shaded. The second is split into 4 equal parts with 1 part shaded.",
+    "labels": ["½", "¼"]
+  },
+  {
+    "shows": "An airtight conical flask containing hydrochloric acid and magnesium ribbon, connected through a bung and delivery tube to a horizontally clamped gas syringe. Hydrogen moves the plunger outwards; the syringe plunger is free to move.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A simple apparatus drawing: a conical flask containing acid and magnesium ribbon is sealed with a bung and connected by a tube to a gas syringe. The syringe plunger moves outwards as hydrogen is produced.",
+    "labels": ["Syringe", "Tube", "Bung", "Acid", "Mg ribbon"]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. The syringe scale measures volume in cm³.",
+    "labels": [
+      "Gas syringe",
+      "Volume scale (cm³)",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A family tree with Camille as a girl at the bottom centre, her brother and sister beside her, her mother and father above, and four grandparents above them. Lines show parent–child relationships. Each French expression identifies the relationship to Camille.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mon frère",
+      "Camille (moi)",
+      "ma sœur",
+      "mes parents"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe with a volume scale.",
+    "labels": ["Syringe", "Scale (cm³)", "Clamp", "Tube", "Bung", "Acid", "Magnesium"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed by a bung with a delivery tube leading to a horizontally clamped graduated gas syringe. Show a stopwatch alongside, with no flame.",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A family tree centred on Alex, with grandparents above parents and Alex beside a brother and sister; bracket labels group the two parents and the grandparents",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "Alex",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "Two matching rectangles side by side. The first is split into four equal vertical strips, with one strip shaded. The second is split into four vertical strips of widths one tenth, two tenths, three tenths and four tenths of the whole; the narrowest strip is shaded.",
+    "labels": ["four equal parts", "four unequal parts"]
+  },
+  {
+    "shows": "A clamped horizontal gas syringe connected through a delivery tube and airtight bung to a flask containing acid and magnesium; the syringe plunger can move freely",
+    "labels": [
+      "Gas syringe",
+      "Volume scale (cm³)",
+      "Clamp",
+      "Delivery tube",
+      "Airtight bung",
+      "Reaction flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A conical flask containing acid and magnesium, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe with a freely moving plunger",
+    "labels": [
+      "gas syringe",
+      "hydrogen",
+      "delivery tube",
+      "bung",
+      "conical flask",
+      "hydrochloric acid",
+      "magnesium"
+    ]
+  },
+  {
+    "shows": "An English park in summer during a rain shower",
+    "labels": ["leafy tree", "falling rain", "puddles on path"]
+  },
+  {
+    "shows": "Two identical rectangles side by side. A is divided vertically into a narrow part occupying one quarter and a wide part occupying three quarters. B is divided vertically into two equal parts. Shade only the left part of each. Put labels A and B beneath their rectangles.",
+    "labels": ["A", "B"]
+  },
+  {
+    "shows": "A gas-tight conical flask containing hydrochloric acid and magnesium, joined by a delivery tube to a horizontally clamped gas syringe; the syringe collects hydrogen as its plunger moves out",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A gas-tight conical flask containing acid and magnesium, joined by a delivery tube to a horizontally clamped gas syringe; the syringe collects hydrogen as its plunger moves out",
+    "labels": ["Gas syringe", "Clamp", "Tube", "Bung", "Flask", "Acid", "Magnesium"]
+  },
+  {
+    "shows": "A simple schematic: a conical flask containing hydrochloric acid and magnesium, with a thermometer beside it, is sealed by a bung and connected by a delivery tube to a clamped gas syringe. Place each label beside its own part, with no labels crossing lines or overlapping.",
+    "labels": [
+      "Gas syringe (cm³)",
+      "Airtight bung",
+      "25 cm³ acid",
+      "Fixed magnesium mass",
+      "Check temperature"
+    ]
+  },
+  {
+    "shows": "A conical flask containing magnesium and hydrochloric acid, sealed with a bung connected by a delivery tube to a freely moving gas syringe held horizontally by a clamp; no flame nearby",
+    "labels": ["Gas syringe", "Hydrogen", "Delivery tube", "Bung", "Hydrochloric acid", "Magnesium"]
+  },
+  {
+    "shows": "a sealed conical flask containing magnesium and hydrochloric acid connected by a delivery tube to a horizontally clamped gas syringe",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A simple family tree viewed by a central child: father and mother above, brother and sister beside the child, two grandparents at the top. Individual labels include English translations; bracket labels identify parents and grandparents together.",
+    "labels": [
+      "mes grands-parents / grandparents",
+      "mon père / father",
+      "ma mère / mother",
+      "mes parents / parents",
+      "mon frère / brother",
+      "ma sœur / sister"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung and delivery tube connected to a horizontal clamped gas syringe. Show a stopwatch beside the apparatus and an unobstructed syringe plunger.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung and delivery tube connected to a horizontal clamped gas syringe. Show a stopwatch beside the apparatus and an unobstructed syringe plunger. Place labels clear of the drawing and each other.",
+    "labels": ["Gas syringe", "Delivery tube", "Bung", "Acid", "Mg", "Timer"]
+  },
+  {
+    "shows": "A simple family tree with a child narrator, a brother and sister, their father and mother, and a pair of grandparents above the parents; brackets group the parents and grandparents",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal gas syringe secured in a clamp. Show gas passing into the syringe and its freely moving plunger.",
+    "labels": ["Gas syringe", "Clamp", "Delivery tube", "Bung", "Hydrochloric acid", "Magnesium"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal gas syringe. Show gas passing into the syringe and its freely moving plunger.",
+    "labels": ["Gas syringe", "Delivery tube", "Bung", "Hydrochloric acid", "Magnesium"]
+  },
+  {
+    "shows": "Shape A is a circle split into four equal parts with one part shaded. Shape B is a square split into two equal parts with one part shaded.",
+    "labels": ["A", "B"]
+  },
+  {
+    "shows": "Four separate family portraits: an adult father, an adult mother, a boy brother and a girl sister, read from left to right. Labels give the French family noun and its English meaning.",
+    "labels": ["père — father", "mère — mother", "frère — brother", "sœur — sister"]
+  },
+  {
+    "shows": "Four separate illustrated family portraits, labelled with the French family terms and their English meanings. Use adult portraits for father and mother and teenage portraits for brother and sister. Do not imply that mon or ma depends on the speaker.",
+    "labels": [
+      "mon père — my father",
+      "ma mère — my mother",
+      "mon frère — my brother",
+      "ma sœur — my sister"
+    ]
+  },
+  {
+    "shows": "Two separate arrangements of twelve counters: the first has two rings of six, the second has four rings of three. Label each arrangement and the count in one ring.",
+    "labels": ["2 equal groups", "6 in each", "4 equal groups", "3 in each"]
+  },
+  {
+    "shows": "Twelve counters in four equally sized rings containing three counters each. An outer bracket encloses the first two rings together. Beneath this, the same twelve counters are arranged in two rings of six, with one ring selected. Keep selected counters the same colour in both arrangements.",
+    "labels": ["one quarter", "two quarters", "one half"]
+  },
+  {
+    "shows": "Two separate worked sharing diagrams, each containing exactly twelve counters. Top: two rings containing six counters each. Bottom: four rings containing three counters each. Clearly separate the two copies of the twelve counters.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "6 in each",
+      "12 counters",
+      "4 equal groups",
+      "3 in each"
+    ]
+  },
+  {
+    "shows": "Exactly twenty counters in four rings of five. A bracket joins the first two rings and another joins the last two rings, showing two equal larger groups of ten without duplicating counters.",
+    "labels": ["Quarter: 5", "Quarter: 5", "Quarter: 5", "Quarter: 5", "Half: 10", "Half: 10"]
+  },
+  {
+    "shows": "Two rows of three same-sized shapes: circle, square and rectangle. In the top row each shape is divided into two equal parts with one shaded. In the second row each is divided into four equal parts with one shaded. Beneath these, a rectangle is divided into two obviously unequal parts, the smaller part shaded. Keep labels outside the shapes.",
+    "labels": ["One half", "One quarter", "Not halves"]
+  },
+  {
+    "shows": "A wide rectangle divided into four equal vertical strips, with the left two shaded identically. A brace above each strip identifies one quarter; a brace below the left two identifies one half. Below it, twelve counters form four aligned columns of three. An outline surrounds each column and a larger outline surrounds the first two columns, linking two groups of three to six of twelve. Use identical colours for corresponding quarters and groups.",
+    "labels": ["One quarter", "One half", "3", "3", "6", "12 altogether"]
+  },
+  {
+    "shows": "Four separate family portraits, each with its French term and English meaning: father, mother, brother and sister.",
+    "labels": [
+      "mon père — my father",
+      "ma mère — my mother",
+      "mon frère — my brother",
+      "ma sœur — my sister"
+    ]
+  },
+  {
+    "shows": "Two panels, each containing exactly twelve counters. The first has two rings of six counters. The second has four rings of three counters. Clearly distinguish the panels and show every counter.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "6 in each",
+      "12 counters",
+      "4 equal groups",
+      "3 in each"
+    ]
+  },
+  {
+    "shows": "Four panels: a square split into four equal smaller squares with its left two quarters shaded; an identical square split into two equal vertical halves with its left half shaded; twelve counters in four groups of three with the first two groups highlighted; twelve counters in two groups of six with the first group highlighted. Match highlighted areas and counter totals across each pair.",
+    "labels": ["two quarters", "one half", "3 + 3 counters", "6 counters"]
+  },
+  {
+    "shows": "Four identical rectangles in a two-by-two arrangement. Top left is divided into two equal parts; top right into a narrow and a wide part. Bottom left is divided into four equal strips; bottom right into four strips of unequal widths. Shade one part in each.",
+    "labels": ["Halves", "Not halves", "Quarters", "Not quarters"]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. The syringe plunger can move freely. Include a separate stopwatch beside the flask.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "Two schematic collision examples side by side: a low-energy pair collides and separates unchanged; a sufficiently energetic pair collides and forms products. Different product shapes distinguish reaction from mere contact.",
+    "labels": ["Low-energy collision", "Unchanged particles", "High-energy collision", "Products"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and delivery tube connected to a horizontally clamped gas syringe. The syringe plunger is free to move.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "An airtight conical flask containing dilute hydrochloric acid and a short magnesium ribbon, connected through a bung and delivery tube to a horizontal clamped gas syringe with a freely moving plunger and a visible volume scale",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung connected by a delivery tube to a horizontally clamped gas syringe. The syringe plunger is free to move and its scale is visible.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "Two same-sized rectangles. Rectangle A is split into two equal parts, with one part shaded. Rectangle B is split into four equal parts, with one part shaded.",
+    "labels": ["A: one half shaded", "B: one quarter shaded"]
+  },
+  {
+    "shows": "A square split into one narrow shaded strip and one wide rectangle.",
+    "labels": ["narrow shaded part", "wide part"]
+  },
+  {
+    "shows": "a conical flask containing acid and magnesium, sealed with a bung and connected by a delivery tube to a horizontal clamped gas syringe",
+    "labels": [
+      "gas syringe",
+      "hydrogen",
+      "delivery tube",
+      "bung",
+      "conical flask",
+      "hydrochloric acid",
+      "magnesium"
+    ]
+  },
+  {
+    "shows": "Twelve counters arranged inside four separate group circles, with exactly three counters in each circle",
+    "labels": ["Group 1", "Group 2", "Group 3", "Group 4"]
+  },
+  {
+    "shows": "A conical flask with a tight bung and delivery tube leading to a horizontal gas syringe held in a clamp stand; a stopwatch and thermometer sit alongside",
+    "labels": [
+      "Clamp stand",
+      "Gas syringe",
+      "Delivery tube",
+      "Tight bung",
+      "Acid and magnesium",
+      "Stopwatch",
+      "Thermometer"
+    ]
+  },
+  {
+    "shows": "A rectangle split into two equal parts with one part shaded, and a square split into four equal parts with one part shaded",
+    "labels": ["½", "¼"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. Show the syringe scale and freely moving plunger.",
+    "labels": [
+      "Gas syringe",
+      "Scale in cm³",
+      "Delivery tube",
+      "Airtight bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A girl and a boy each using mon père and ma mère. Underneath, both use mes parents. Show identical expressions for the two speakers to demonstrate that the noun, not the speaker, determines the possessive.",
+    "labels": [
+      "girl: mon père",
+      "girl: ma mère",
+      "boy: mon père",
+      "boy: ma mère",
+      "both: mes parents"
+    ]
+  },
+  {
+    "shows": "A simple family tree from a child's viewpoint. Draw two grandparents above two parents, with the child, a brother and a sister below. Brackets identify the parent pair and grandparent pair. Include English support directly beneath each French label.",
+    "labels": [
+      "mes grands-parents (my grandparents)",
+      "mon père (my father)",
+      "ma mère (my mother)",
+      "mes parents (my parents)",
+      "moi (me)",
+      "mon frère (my brother)",
+      "ma sœur (my sister)"
+    ]
+  },
+  {
+    "shows": "An illustrated family portrait with four distinct people, each labelled from the speaker’s perspective: father, mother, brother and sister.",
+    "labels": ["mon père", "ma mère", "mon frère", "ma sœur"]
+  },
+  {
+    "shows": "Two worked sharing models, each containing twelve counters. The upper model has two rings of six counters, with one ring highlighted. The lower model has four rings of three counters, with one ring highlighted. All counters and rings are visible.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "one half: 6",
+      "12 counters",
+      "4 equal groups",
+      "one quarter: 3"
+    ]
+  },
+  {
+    "shows": "An equivalence worked example in two rows. Top: two identical rectangles, one divided into four equal vertical strips with the first two shaded, the other divided into two equal vertical strips with the first shaded. Bottom: two copies of twelve counters, one in four rings of three with two rings highlighted, the other in two rings of six with one ring highlighted.",
+    "labels": ["two quarters", "one half", "3 + 3 = 6", "half of 12 is 6"]
+  },
+  {
+    "shows": "Two unhighlighted models for independent reasoning: a square divided into four equal smaller squares, and sixteen counters shared into four rings of four. Nothing is shaded or marked as an answer.",
+    "labels": ["square", "16 counters"]
+  },
+  {
+    "shows": "Two identical horizontal rectangles. A is divided vertically into two equal parts, with one shaded. B is divided vertically into a narrow quarter-width part and a wide three-quarter-width part, with the narrow part shaded. This corrects the belief that splitting a shape into any two pieces makes halves.",
+    "labels": ["A: one half", "B: not one half"]
+  },
+  {
+    "shows": "Three identical rectangles: the first split vertically into one small and one large part, the second split vertically into two equal parts, and the third split diagonally corner to corner into two equal triangles. Shade one part of each.",
+    "labels": ["Not halves", "Halves", "Halves"]
+  },
+  {
+    "shows": "Two identical rectangles, one divided into four equal vertical strips with two shaded and one divided into two equal vertical parts with one shaded. Below, show twelve counters in four equal rings with two rings highlighted, beside twelve counters in two equal rings with one ring highlighted. Align the highlighted totals to show six counters in each.",
+    "labels": ["Two quarters", "One half", "3 + 3 = 6", "6"]
+  },
+  {
+    "shows": "An airtight conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal, securely clamped gas syringe with a freely moving plunger",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Conical flask"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and a short magnesium ribbon, sealed with a bung and delivery tube connected to a horizontal clamped gas syringe. Show an unobstructed moving plunger, a water bath around the flask and a separate timer.",
+    "labels": [
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Airtight bung",
+      "Gas syringe",
+      "Water bath",
+      "Timer"
+    ]
+  },
+  {
+    "shows": "A simple human outline with the heart in the chest, connected branching blood vessels reaching the arms, trunk and legs, and a magnified vessel containing blood. Use leader lines to identify the three parts; avoid suggesting blood sits freely inside the body.",
+    "labels": ["Heart", "Blood vessels", "Blood"]
+  },
+  {
+    "shows": "A healthy plant rooted in soil in a wide pot, with sunlight reaching its leaves, water entering its soil, air surrounding it, nutrients indicated within the soil and clear space around its roots and leaves. Label the five needs without adding other labels.",
+    "labels": ["Air", "Light", "Water", "Nutrients from soil", "Room to grow"]
+  },
+  {
+    "shows": "Two family members with their French introductions",
+    "labels": ["Mon père", "Ma mère"]
+  },
+  {
+    "shows": "Six same-size examples arranged in two rows. Top row: a circle, square and rectangle each divided into two equal parts with one shaded. Bottom row: a circle divided into four equal sectors, a square into a two-by-two grid, and a rectangle into four equal strips, each with one part shaded. Use matching colours for the shaded parts and place the relevant fraction label beside each example.",
+    "labels": ["one half", "one half", "one half", "one quarter", "one quarter", "one quarter"]
+  },
+  {
+    "shows": "Two identical rectangles side by side. Rectangle A is divided vertically into two equal parts, one shaded. Rectangle B is divided vertically into a narrow part and a wide part, with the narrow part shaded. Below them, show rectangle B repaired by moving its dividing line to the middle, producing two equal parts. Do not label the unequal parts as fractions.",
+    "labels": ["A", "B", "Equal parts"]
+  },
+  {
+    "shows": "Two separate arrangements of twelve counters. The upper arrangement has two outlined groups of six counters, with one group highlighted. The lower arrangement has four outlined groups of three counters, with one group highlighted. Every counter is visible and identical in size.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "6 in one group",
+      "12 counters",
+      "4 equal groups",
+      "3 in one group"
+    ]
+  },
+  {
+    "shows": "Upper row: two identical squares. The first is divided into four equal small squares with both left-hand parts shaded; the second is divided into two equal vertical halves with its left half shaded. Align them to show the shaded regions match. Lower row: twelve counters in four equal groups of three, the first two groups highlighted together; beside this, twelve counters in two equal groups of six, the first group highlighted. Use matching colours and spacing to make the same six counters evident.",
+    "labels": ["two quarters", "one half", "3 and 3 make 6", "6 is half of 12"]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. Show gas entering the syringe and its freely moving plunger.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A human body outline with a heart in the chest and branching blood vessels through the arms, trunk and legs. A magnified vessel inset shows blood inside the tube. Labels distinguish the pump, the tubes and their contents.",
+    "labels": ["Heart", "Blood", "Blood vessels"]
+  },
+  {
+    "shows": "A family around a teenage speaker: father and brother in a masculine singular group, mother and sister in a feminine singular group, and a bracket joining both parents for the plural. Labels include English meanings.",
+    "labels": [
+      "mon père — my father",
+      "mon frère — my brother",
+      "ma mère — my mother",
+      "ma sœur — my sister",
+      "mes parents — my parents"
+    ]
+  },
+  {
+    "shows": "A simple family diagram around a teenage speaker, with father and brother in one group, mother and sister in another, and both parents bracketed together. Place each short label beside its person, clear of all lines and other labels.",
+    "labels": [
+      "père / father",
+      "frère / brother",
+      "mère / mother",
+      "sœur / sister",
+      "parents / parents"
+    ]
+  },
+  {
+    "shows": "Top row: a circle split into four equal sectors, a square split into a two-by-two grid and a rectangle split into four equal strips, each with one part shaded. Bottom row: two identical rectangles, one split into four equal strips and one into four visibly unequal strips. Shade one strip in each. Equal refers to equal area.",
+    "labels": ["circle", "square", "rectangle", "equal parts", "unequal parts"]
+  },
+  {
+    "shows": "A side-on puppy and the same dog as an adult on one ground line, at the same scale. Vertical height markers from the ground to each dog's shoulder show that the adult is taller. The adult also has a larger body, not merely a wider belly.",
+    "labels": ["puppy", "adult dog", "height", "height"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. The syringe plunger can move freely. Hydrogen passes through the tube into the syringe.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung. A delivery tube connects the flask to a horizontal graduated gas syringe held securely by a clamp. The syringe plunger can move freely as hydrogen enters.",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "Two columns compare equal wholes. On the left, a rectangle has four equal vertical parts with the first two shaded; below it, sixteen counters form four equal rings of four, with two rings highlighted. On the right, an identical rectangle has two equal vertical parts with the first shaded; below it, sixteen counters form two equal rings of eight, with one ring highlighted. The shaded areas match, and each highlighted collection contains eight counters.",
+    "labels": ["2 quarters", "1 half", "8 counters", "8 counters"]
+  },
+  {
+    "shows": "Two panels of counters: on the left, twelve counters shared into two equal rings of six; on the right, twelve counters shared into four equal rings of three. Highlight one ring in each panel.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "6 in each",
+      "12 counters",
+      "4 equal groups",
+      "3 in each"
+    ]
+  },
+  {
+    "shows": "Three identical rectangles stacked vertically. The first is split into two equal parts with the left half shaded. The second is split into four equal vertical parts with the left two shaded, matching the first shaded area exactly. The third is split into four visibly unequal vertical strips, with no shading.",
+    "labels": ["One half", "Two quarters", "Not quarters"]
+  },
+  {
+    "shows": "Two panels containing the same total of twelve counters. The first shows four equal rings of three, with the first two rings highlighted together. The second shows two equal rings of six, with the first ring highlighted. The highlighted counters total six in each panel.",
+    "labels": ["Four equal groups", "Two quarters", "Two equal groups", "One half"]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal graduated gas syringe secured in a clamp. The syringe plunger is free to move. All connections are airtight.",
+    "labels": [
+      "Gas syringe",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "Four simple portraits arranged as a family vocabulary diagram: father, mother, brother and sister, with the corresponding French labels.",
+    "labels": ["mon père", "ma mère", "mon frère", "ma sœur"]
+  },
+  {
+    "shows": "Two panels, each containing exactly 12 counters. Left: two rings of six counters. Right: four rings of three counters. Highlight one ring in each panel.",
+    "labels": [
+      "12 counters",
+      "2 equal groups",
+      "6 in one group",
+      "12 counters",
+      "4 equal groups",
+      "3 in one group"
+    ]
+  },
+  {
+    "shows": "Top: identical rectangles, one split into four equal vertical strips with two adjacent strips shaded, the other split into two equal vertical parts with one shaded. Bottom: eight counters in four rings of two, with the first two rings enclosed together; alongside, eight counters in two rings of four with one ring highlighted.",
+    "labels": ["two quarters", "one half", "quarter of 8 = 2", "two quarters = 4", "half of 8 = 4"]
+  },
+  {
+    "shows": "A conical flask containing dilute hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontal gas syringe. The syringe barrel is securely supported by a clamp, with its plunger free to move. Show visible gas bubbles in the flask and a graduated syringe scale without supplying an experimental reading.",
+    "labels": [
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Airtight bung",
+      "Delivery tube",
+      "Gas syringe",
+      "Clamp"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected through a delivery tube to a horizontally clamped gas syringe. The syringe plunger can move freely. Label the hydrogen collected in the syringe. Add a small separate inset showing a thermometer checking acid temperature before reaction.",
+    "labels": [
+      "Gas syringe",
+      "Hydrogen",
+      "Delivery tube",
+      "Bung",
+      "Acid and magnesium",
+      "Thermometer"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe. The syringe plunger can move freely and its volume scale is visible.",
+    "labels": [
+      "Gas syringe",
+      "Clamp stand",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "Three identical wide rectangles stacked vertically. A is split vertically into two equal parts. B is split vertically into a small and a large part. C is split into four equal vertical strips with one shaded. Include an inset square split into four equal smaller squares with one shaded. Label the inset and C as quarter examples.",
+    "labels": ["A", "B", "one quarter", "one quarter"]
+  },
+  {
+    "shows": "Two panels, each containing exactly twelve counters. The top panel has two rings with six counters in each. The bottom panel has four rings with three counters in each. Highlight just one ring in each panel.",
+    "labels": ["one half: 6", "one quarter: 3"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung and connected by a delivery tube to a horizontally clamped graduated gas syringe; a stopwatch alongside",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A rectangle split into two unequal parts; the smaller part is shaded.",
+    "labels": ["whole rectangle", "small shaded part", "large part"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed by a bung. A delivery tube leads to a horizontally clamped graduated gas syringe. Show a timer separately beside the apparatus, clear of all lines, with no flame.",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium",
+      "Timer"
+    ]
+  },
+  {
+    "shows": "Twelve counters arranged inside four equal-sized group circles, three counters in each; one circle outlined more strongly to identify the group being counted",
+    "labels": ["3", "3", "3", "3"]
+  },
+  {
+    "shows": "A conical flask containing acid and magnesium, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe with visible graduations",
+    "labels": [
+      "gas syringe",
+      "volume (cm³)",
+      "delivery tube",
+      "bung",
+      "hydrochloric acid",
+      "magnesium"
+    ]
+  },
+  {
+    "shows": "A simple family tree with two grandparents above a father and mother, and their three children below; the central child is the speaker. Brackets identify the grandparents and parents as pairs.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "A simple family tree: two grandparents above a father and mother, with three children below; the central child is the speaker. Place each label beside its person, clear of all connecting lines.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "a family map centred on a child marked moi, with father, mother, brother, sister, a bracket around both parents and a bracket around two grandparents",
+    "labels": [
+      "moi",
+      "mon père",
+      "ma mère",
+      "mon frère",
+      "ma sœur",
+      "mes parents",
+      "mes grands-parents"
+    ]
+  },
+  {
+    "shows": "a boy and a girl each pointing to the same father and mother, with identical phrase labels for both speakers",
+    "labels": ["garçon : mon père", "garçon : ma mère", "fille : mon père", "fille : ma mère"]
+  },
+  {
+    "shows": "Two teenage boys standing together: the speaker and his slightly older brother, smiling.",
+    "labels": ["moi (me)", "mon frère Hugo", "15 ans (years old)", "amusant (funny)"]
+  },
+  {
+    "shows": "Two equal-sized rectangles side by side. The first is divided vertically into one narrow piece occupying one quarter and one wide piece occupying three quarters. The second is divided vertically into two equal pieces. Shade the left piece of each. Place labels beneath the rectangles.",
+    "labels": ["Unequal pieces", "Equal halves"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed by a bung and connected by a delivery tube to a horizontal gas syringe. The syringe barrel has a readable volume scale and its plunger can move freely.",
+    "labels": [
+      "Gas syringe",
+      "Volume scale / cm³",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, closed by a bung with a delivery tube leading to a horizontally clamped graduated gas syringe. Gas can push the syringe plunger freely; there is no flame.",
+    "labels": [
+      "Gas syringe",
+      "Volume scale: cm³",
+      "Delivery tube",
+      "Airtight bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium ribbon"
+    ]
+  },
+  {
+    "shows": "A conical flask with acid and magnesium ribbon, sealed by a bung and connected by a delivery tube to a horizontally clamped graduated gas syringe. The plunger moves freely; there is no flame.",
+    "labels": ["Syringe", "Scale (cm³)", "Tube", "Bung", "Flask", "Acid", "Mg ribbon"]
+  },
+  {
+    "shows": "A simple family tree centred on Camille, with her brother and sister beside her, her parents above, and her grandparents above her father. Keep labels clear of the connecting lines and each other. Camille is the speaker.",
+    "labels": [
+      "Camille / me",
+      "mon père / dad",
+      "ma mère / mum",
+      "mon frère / brother",
+      "ma sœur / sister",
+      "mes parents / parents",
+      "mes grands-parents / grandparents"
+    ]
+  },
+  {
+    "shows": "A conical flask containing acid and magnesium, sealed with a bung and delivery tube leading to a horizontally clamped gas syringe; a stopwatch sits beside it",
+    "labels": [
+      "gas syringe",
+      "clamp",
+      "delivery tube",
+      "airtight bung",
+      "hydrochloric acid",
+      "magnesium ribbon",
+      "stopwatch"
+    ]
+  },
+  {
+    "shows": "An imaginary child's family tree with grandparents above parents and a brother and sister below; French labels have English support. No label for the child is needed.",
+    "labels": [
+      "mes grands-parents / grandparents",
+      "mon père / father",
+      "ma mère / mother",
+      "mes parents / parents",
+      "mon frère / brother",
+      "ma sœur / sister"
+    ]
+  },
+  {
+    "shows": "A boy and a girl each pointing towards their own father and mother. Both children use mon père and ma mère, demonstrating that the speaker's gender does not change the possessive.",
+    "labels": ["boy: mon père", "boy: ma mère", "girl: mon père", "girl: ma mère"]
+  },
+  {
+    "shows": "Two simple teenage figures side by side: a boy and a girl.",
+    "labels": ["boy", "Il = he", "girl", "Elle = she"]
+  },
+  {
+    "shows": "A conical flask containing magnesium and hydrochloric acid, sealed by a bung and connected through a delivery tube to a horizontal gas syringe secured in a clamp, with its plunger free to move",
+    "labels": [
+      "gas syringe",
+      "clamp",
+      "delivery tube",
+      "bung",
+      "conical flask",
+      "hydrochloric acid",
+      "magnesium"
+    ]
+  },
+  {
+    "shows": "A conical flask containing magnesium and hydrochloric acid, sealed by a bung and connected by a tube to a horizontal gas syringe secured in a clamp, with its plunger free to move",
+    "labels": ["gas syringe", "clamp", "bung", "conical flask", "hydrochloric acid", "magnesium"]
+  },
+  {
+    "shows": "a teenage boy and girl, each with two speech bubbles reading mon père and ma mère; both speakers use exactly the same phrases",
+    "labels": ["mon père", "ma mère", "mon père", "ma mère"]
+  },
+  {
+    "shows": "A conical flask containing magnesium ribbon and dilute hydrochloric acid, sealed with a bung and connected by a delivery tube to a horizontal, clamped gas syringe. The gas syringe has a readable mL scale and a freely moving plunger.",
+    "labels": [
+      "Magnesium ribbon",
+      "Dilute hydrochloric acid",
+      "Bung",
+      "Delivery tube",
+      "Gas syringe",
+      "Volume (mL)"
+    ]
+  },
+  {
+    "shows": "A sealed conical flask connected to a clamped 100 mL gas syringe. Calcium carbonate chips are initially kept separate from hydrochloric acid in a small inner container; tilting the sealed flask mixes them without losing early gas. Show a stopwatch beside the apparatus.",
+    "labels": [
+      "Calcium carbonate",
+      "Acid in inner container",
+      "Sealed flask",
+      "Delivery tube",
+      "100 mL gas syringe",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "A sealed conical flask with calcium carbonate chips kept separate from hydrochloric acid in a small inner container. The flask connects by a delivery tube to a clamped 100 mL gas syringe. Tilting the sealed flask mixes the reactants without losing early gas. Show a stopwatch beside the apparatus.",
+    "labels": ["Flask", "Chips", "Acid cup", "Tube", "Gas syringe", "Stopwatch"]
+  },
+  {
+    "shows": "A pedestrian facing a busy street, with visual and acoustic sensory inputs",
+    "labels": [
+      "Passing red bus (visual)",
+      "Ringing bicycle bell (acoustic)",
+      "Pedestrian facing street"
+    ]
+  },
+  {
+    "shows": "A family tree centred on a child labelled moi, with a father, mother, brother, sister, parents bracket and grandparents bracket",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "mon frère",
+      "moi",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "a square divided into four identical smaller squares in a two-by-two grid, with only the top-left square shaded; the label names the whole square",
+    "labels": ["whole"]
+  },
+  {
+    "shows": "a square divided into four identical smaller squares in a two-by-two grid, with only the top-left square shaded",
+    "labels": []
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium, sealed with a bung and delivery tube leading to a horizontally clamped gas syringe",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Conical flask",
+      "Hydrochloric acid",
+      "Magnesium"
+    ]
+  },
+  {
+    "shows": "A family tree from Camille’s viewpoint: two grandparents above two parents, with Camille, a brother and a sister below. Each relationship label points to the appropriate person or pair.",
+    "labels": [
+      "mes grands-parents",
+      "mon père",
+      "ma mère",
+      "mes parents",
+      "Camille",
+      "mon frère",
+      "ma sœur"
+    ]
+  },
+  {
+    "shows": "A simpler family tree from Camille’s viewpoint: grandparents above parents, with Camille, a brother and a sister below. Each label points to the appropriate person or pair.",
+    "labels": ["mes grands-parents", "mes parents", "Camille", "mon frère", "ma sœur"]
+  },
+  {
+    "shows": "Show two same-sized rectangles. Split the first into two equal parts and shade one part. Split the second into four equal parts and shade one part.",
+    "labels": ["one half", "one quarter"]
+  },
+  {
+    "shows": "A conical flask containing hydrochloric acid and magnesium ribbon, sealed by a bung with a delivery tube leading to a horizontally clamped gas syringe. Show hydrogen bubbles, the syringe scale and a stopwatch alongside the apparatus.",
+    "labels": [
+      "Gas syringe",
+      "Clamp",
+      "Delivery tube",
+      "Bung",
+      "Hydrochloric acid",
+      "Magnesium ribbon",
+      "Hydrogen bubbles",
+      "Stopwatch"
+    ]
+  },
+  {
+    "shows": "Four shapes labelled A to D, each divided into equal parts. A: a rectangle divided into 2 equal parts, with 1 shaded. B: a circle divided into 4 equal parts, with 1 shaded. C: a rectangle divided into 4 equal parts, with 3 shaded. D: a bar divided into 2 equal parts, with both parts shaded.",
+    "labels": [
+      "A: 1 of 2 parts shaded",
+      "B: 1 of 4 parts shaded",
+      "C: 3 of 4 parts shaded",
+      "D: 2 of 2 parts shaded"
+    ]
+  },
+  {
+    "shows": "The multi-store model: sensory register on the left, STM in the centre and LTM on the right; attention arrow from sensory register to STM, maintenance rehearsal loop at STM, rehearsal arrow from STM to LTM and retrieval arrow back from LTM to STM",
+    "labels": [
+      "Sensory register",
+      "Attention",
+      "Short-term memory",
+      "Maintenance rehearsal",
+      "Rehearsal",
+      "Long-term memory",
+      "Retrieval"
+    ]
+  },
+  {
+    "shows": "Two matching rectangles: the first divided into two equal parts with one shaded; the second divided into four equal parts with one shaded",
+    "labels": ["one half", "one quarter"]
+  },
+  {
+    "shows": "Twenty counters arranged in four separate equal groups of five, with one group outlined; labels identify the whole collection and the outlined group",
+    "labels": ["20 counters", "one quarter: 5"]
+  },
+  {
+    "shows": "Four shapes labelled A to D: A rectangle split into two equal parts; B rectangle split into two unequal parts; C square split into four equal parts; D square split into four unequal parts. In each, one part is shaded.",
+    "labels": ["A", "B", "C", "D"]
+  },
+  {
+    "shows": "An imaginary family tree: the child is central, with parents grouped together and grandparents shown as the older generation.",
+    "labels": ["moi", "mon père", "ma mère", "mon frère", "ma sœur", "mes grands-parents"]
+  },
+  {
+    "shows": "Two same-sized squares: one divided into 2 equal parts with 1 part shaded; one divided into 4 equal parts with 1 part shaded",
+    "labels": ["1 of 2 equal parts: one half", "1 of 4 equal parts: one quarter"]
+  },
+  {
+    "shows": "A simple family tree with Camille at the bottom beside a brother and sister, two parents above and four grandparents at the top; English meanings accompany French relationship labels",
+    "labels": [
+      "mes grands-parents (grandparents)",
+      "mon père (father)",
+      "ma mère (mother)",
+      "mes parents (parents)",
+      "mon frère (brother)",
+      "Camille",
+      "ma sœur (sister)"
+    ]
+  },
+  {
+    "shows": "A conical flask containing magnesium and acid, sealed with a bung and connected by a delivery tube to a horizontally clamped gas syringe whose plunger can move freely",
+    "labels": [
+      "gas syringe",
+      "delivery tube",
+      "bung",
+      "conical flask",
+      "hydrochloric acid",
+      "magnesium"
+    ]
+  },
+  {
+    "shows": "A square divided into a two-by-two grid of equal squares; only the upper-left square is shaded and labelled",
+    "labels": ["one quarter"]
+  },
+  {
+    "shows": "A rectangle split into four equal vertical parts; the two parts on the left are shaded together, and a bracket marks the shaded area as one half",
+    "labels": ["1", "1", "1", "1", "½"]
+  },
+  {
+    "shows": "A family tree from a central child's viewpoint: maternal grandparents above mother, mother and father above the child and two siblings; the six relative labels include their English meanings",
+    "labels": [
+      "ma grand-mère (grandmother)",
+      "mon grand-père (grandfather)",
+      "ma mère (mother)",
+      "mon père (father)",
+      "mon frère (brother)",
+      "ma sœur (sister)"
+    ]
+  },
+  {
+    "shows": "Six separate, clearly spaced family portraits arranged in two rows, with each label placed beside its portrait and no connecting lines",
+    "labels": [
+      "ma grand-mère (grandmother)",
+      "mon grand-père (grandfather)",
+      "ma mère (mother)",
+      "mon père (father)",
+      "mon frère (brother)",
+      "ma sœur (sister)"
+    ]
+  },
+  {
+    "shows": "three unshaded worksheet shapes: A is a circle divided into two equal semicircles, B is a square divided into four equal small squares, C is a rectangle divided into four equal strips",
+    "labels": ["A", "B", "C"]
+  },
+  {
+    "shows": "Three unshaded shapes, with each letter placed above and clear of its shape: A is a circle divided into two equal semicircles; B is a square divided into four equal small squares; C is a rectangle divided into four equal strips.",
+    "labels": ["A", "B", "C"]
+  },
+  {
+    "shows": "two identical squares side by side: the left square is divided into four equal small squares with both left-hand quarters shaded; the right square is divided vertically into halves with the left half shaded",
+    "labels": ["two quarters", "one half"]
+  },
+  {
+    "shows": "a historically grounded reconstruction of a Roman legionary around AD 43, holding a curved rectangular shield and a javelin, with a short sword at his side",
+    "labels": ["Helmet", "Body armour", "Javelin", "Shield", "Short sword"]
+  },
+  {
+    "shows": "Four equal boxes, each containing five counters; each box represents one quarter of the full collection of 20",
+    "labels": ["20 counters altogether", "¼", "¼", "¼", "¼"]
+  },
+  {
+    "shows": "A cleared slope during heavy rainfall, with cut stumps, exposed soil, remaining roots and downhill runoff carrying soil into a stream",
+    "labels": [
+      "Heavy rain",
+      "Cut stump",
+      "Exposed soil",
+      "Remaining roots",
+      "Runoff",
+      "Carried soil",
+      "Stream"
+    ]
+  },
+  {
+    "shows": "A cleared slope during heavy rainfall, with exposed soil and downhill runoff carrying soil into a stream",
+    "labels": ["Heavy rain", "Exposed soil", "Runoff", "Stream"]
+  },
+  {
+    "shows": "A relationship map with Prospero above Ariel and Caliban; connecting lines distinguish magical service from forced labour",
+    "labels": ["Prospero", "Magical service", "Forced labour", "Ariel", "Caliban"]
+  },
+  {
+    "shows": "An area-model rectangle split into widths x and 3 and heights x and 2, with four regions of areas x², 3x, 2x and 6; variable lengths represent positive x for this illustration",
+    "labels": ["x", "3", "x", "2", "x²", "3x", "2x", "6"]
+  },
+  {
+    "shows": "A sealed flask containing magnesium and hydrochloric acid connected by a delivery tube to a horizontal gas syringe; hydrogen pushes the plunger out",
+    "labels": ["gas syringe", "hydrogen", "delivery tube", "bung", "hydrochloric acid", "magnesium"]
+  },
+  {
+    "shows": "One rectangle split vertically into two identical halves, with the left half shaded; labels point to each part",
+    "labels": ["one half", "one half"]
+  },
+  {
+    "shows": "Twelve counters enclosed in two equally sized group outlines, with six counters in each; a bracket spans both groups to label the total",
+    "labels": ["12 altogether", "6", "6"]
+  },
+  {
+    "shows": "Twelve counters enclosed in four equally sized group outlines, with three counters in each; a bracket spans all groups to label the total",
+    "labels": ["12 altogether", "3", "3", "3", "3"]
+  },
+  {
+    "shows": "Four separate family portraits: a father, mother, brother and sister; each portrait has its own bilingual relationship label",
+    "labels": [
+      "mon père — my father",
+      "ma mère — my mother",
+      "mon frère — my brother",
+      "ma sœur — my sister"
+    ]
+  },
+  {
+    "shows": "an airtight conical flask containing reacting solid and acid, connected by a delivery tube to a horizontally clamped gas syringe; a stopwatch sits alongside",
+    "labels": [
+      "gas syringe",
+      "gas volume (cm³)",
+      "delivery tube",
+      "airtight bung",
+      "acid and solid",
+      "stopwatch"
+    ]
+  },
+  {
+    "shows": "a circle, square and rectangle, each divided into two equal parts with one part shaded; the square is divided diagonally",
+    "labels": ["circle", "square", "rectangle"]
+  },
+  {
+    "shows": "a circle divided by perpendicular diameters, a square divided into a two-by-two grid and a rectangle divided into four equal strips; one part of each is shaded",
+    "labels": ["circle", "square", "rectangle"]
+  },
+  {
+    "shows": "12 counters arranged in two separate equal group rings, each containing six counters in two rows of three",
+    "labels": ["6", "6"]
+  },
+  {
+    "shows": "12 counters arranged in four separate equal group rings, each containing three counters",
+    "labels": ["3", "3", "3", "3"]
+  },
+  {
+    "shows": "two identical rectangles each divided into four equal vertical strips: A has two strips shaded and B has one strip shaded",
+    "labels": ["A", "B"]
+  },
+  {
+    "shows": "an oblique view of a Roman testudo with overlapping overhead shields and outward-facing shields at the front and sides",
+    "labels": ["Overhead shields", "Front shields", "Side shields", "Soldiers"]
+  },
+  {
+    "shows": "a simplified overhead model of six Roman soldiers in two close rows, each with a shield facing the same direction; a commander stands behind the rows",
+    "labels": ["Front rank", "Shields", "Second rank", "Commander"]
+  },
+  {
+    "shows": "Four separate family portraits: a father, mother, brother and sister, with short bilingual labels placed outside the drawings",
+    "labels": ["père / father", "mère / mother", "frère / brother", "sœur / sister"]
+  },
+  {
+    "shows": "An enlarged capillary beside body cells. Blood flows along the capillary. Separate arrows cross its thin wall: oxygen and nutrients towards the cells, carbon dioxide towards the blood. Keep the substance labels on their arrows.",
+    "labels": ["blood", "thin wall", "oxygen", "nutrients", "body cells", "carbon dioxide"]
+  },
+  {
+    "shows": "An enlarged capillary beside cells. Blood flows along the capillary. Separate arrows cross its thin wall: O₂ and nutrients towards the cells, CO₂ towards the blood. Put each short substance label beside its arrow.",
+    "labels": ["blood", "thin wall", "O₂", "nutrients", "cells", "CO₂"]
+  },
+  {
+    "shows": "A simple circulation model connecting lungs, heart and leg muscle, with separate arrows for heart to lungs to heart and heart to leg muscle to heart. At the muscle, show oxygen and nutrients moving from a capillary into muscle cells and carbon dioxide moving into blood. At the lungs show oxygen entering and carbon dioxide leaving blood.",
+    "labels": [
+      "lungs",
+      "oxygen enters blood",
+      "heart",
+      "leg muscle",
+      "oxygen and nutrients delivered",
+      "carbon dioxide collected",
+      "carbon dioxide leaves blood"
+    ]
+  },
+  {
+    "shows": "A simple circulation model connecting lungs, heart and leg muscle. Arrows show blood travelling between the heart and lungs and between the heart and leg muscle. At the muscle, oxygen and nutrients move from a capillary into muscle cells, and carbon dioxide moves into the blood. At the lungs, oxygen enters and carbon dioxide leaves the blood.",
+    "labels": [
+      "lungs",
+      "oxygen in",
+      "heart",
+      "leg muscle",
+      "nutrients delivered",
+      "carbon dioxide collected",
+      "carbon dioxide out"
+    ]
+  }
+]
