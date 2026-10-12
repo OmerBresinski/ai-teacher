@@ -30,6 +30,7 @@ export function GeneratingLesson({
   estimate,
   onBack,
   onStopped,
+  onCompleted,
   onViewSlide,
   exportSlot,
   canvasCompanion,
@@ -49,6 +50,8 @@ export function GeneratingLesson({
   onBack: () => void;
   /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
   onStopped: (jobId: string) => void;
+  /** The job completed and its finished row is in the cache: the page may open the editor. */
+  onCompleted?: (jobId: string) => void;
   /** The slide the teacher is looking at (`null` = the newest), so the editor opens on it at Ready. */
   onViewSlide?: (slideId: Id | null) => void;
 }) {
@@ -120,14 +123,22 @@ export function GeneratingLesson({
     if (ended !== "completed") onStopped(jobId);
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
-      .then(() => {
-        if (sessionIsCurrent(queryClient))
+      .then(
+        () => {
+          if (!sessionIsCurrent(queryClient)) return;
+          if (ended === "completed") onCompleted?.(jobId);
           return queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments });
-      })
+        },
+        () => {
+          // The read failed: the job still completed, so the page still opens the editor, on the
+          // copy it holds. Nothing to do once the session has ended.
+          if (sessionIsCurrent(queryClient) && ended === "completed") onCompleted?.(jobId);
+        },
+      )
       .catch(() => {
         /* The session may have ended while handing over the document. */
       });
-  }, [ended, lesson.id, jobId, queryClient, onStopped]);
+  }, [ended, lesson.id, jobId, queryClient, onStopped, onCompleted]);
 
   const cancel = useMutation(
     sessionMutation(queryClient, {

@@ -83,7 +83,11 @@ test.describe("lesson generation over the fake worker", () => {
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic", exact: true }).fill("Forces and motion");
+    // "held at review" (the e2e fake's `FAKE_HOLD_TOPIC`) keeps the job in its review until it is
+    // cancelled, so Stop always lands on a running job instead of racing the paced run's end.
+    await page
+      .getByRole("textbox", { name: "Topic", exact: true })
+      .fill("Forces and motion held at review");
     // Skip planning is the one-job path this spec follows; planning first is `intake-live`.
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);

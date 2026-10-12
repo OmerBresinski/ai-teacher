@@ -135,8 +135,9 @@ export async function runJob<N extends JobName, D = unknown>(
   bossJob: JobWithMetadata<unknown>,
   opts: RunJobOptions<D>,
 ): Promise<RunJobOutcome> {
+  const afterSettle: (() => Promise<void>)[] = [];
   try {
-    return await runJobAttempt(ctx, name, registry, bossJob, opts);
+    return await runJobAttempt(ctx, name, registry, bossJob, opts, afterSettle);
   } catch (error) {
     // Event persistence/notification and pre-run failures also escape to pg-boss. Its error
     // output serializer must never see SQL parameters, provider bodies or nested causes.
@@ -145,6 +146,16 @@ export async function runJob<N extends JobName, D = unknown>(
       "job infrastructure failed",
     );
     throw new Error(JOB_FAILURE_MESSAGE);
+  } finally {
+    // After the terminal event, never before it (TEACH-202 part j): see `JobContext.afterSettle`.
+    for (const hook of afterSettle) {
+      await hook().catch((err: unknown) =>
+        opts.logger.error(
+          { err: safeError(err), job: name, bossJobId: bossJob.id },
+          "after-settle hook failed",
+        ),
+      );
+    }
   }
 }
 
@@ -154,6 +165,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
   registry: JobRegistry<D>,
   bossJob: JobWithMetadata<unknown>,
   opts: RunJobOptions<D>,
+  afterSettle: (() => Promise<void>)[],
 ): Promise<RunJobOutcome> {
   const envelope = JobDataEnvelope.safeParse(bossJob.data);
   if (!envelope.success) {
@@ -250,6 +262,9 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     logger,
     deps: opts.deps,
     attemptsLeft: bossJob.retryCount < bossJob.retryLimit,
+    afterSettle: (hook) => {
+      afterSettle.push(hook);
+    },
   };
 
   let thrown: unknown;
