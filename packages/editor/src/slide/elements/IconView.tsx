@@ -126,9 +126,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import { clamp, type ElementViewProps } from "./kit";
-import { iconLibraryIfLoaded, libraryIconSvg, loadIconLibrary, svgDataUrl } from "./library-icon";
 
 /**
  * A curated classroom set: 124 icons a lesson actually reaches for, every one a named
@@ -288,35 +286,8 @@ export const ICON_NAMES = Object.keys(ICONS);
 /** What an unknown icon name renders as. */
 const FALLBACK_ICON: LucideIcon = Square;
 
-/**
- * The drawn library icon for `concept` as an SVG data URL, or null: no concept, the library still
- * loading, or a concept it does not have (the lucide `icon` draws then, TEACH-310 part b).
- */
-function useLibraryIcon(
-  concept: string | undefined,
-  theme: ElementViewProps["theme"],
-  size: number,
-): string | null {
-  const [icons, setIcons] = useState(iconLibraryIfLoaded);
-  useEffect(() => {
-    if (!concept || icons) return;
-    let live = true;
-    loadIconLibrary()
-      .then((m) => live && setIcons(m))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [concept, icons]);
-  return useMemo(() => {
-    const svg = concept && icons ? libraryIconSvg(icons, concept, theme, size) : null;
-    return svg ? svgDataUrl(svg) : null;
-  }, [concept, icons, theme, size]);
-}
-
 export function IconView({ element, theme }: ElementViewProps<IconElement>) {
   const size = Math.max(8, Math.min(element.w, element.h));
-  const drawn = useLibraryIcon(element.concept, theme, size);
   // absoluteStrokeWidth keeps the stroke at this many points whatever the icon's size,
   // so a 140pt icon does not turn into a slab.
   const strokeWidth = element.strokeWidth ?? clamp(size / 28, 2, 6);
@@ -334,11 +305,7 @@ export function IconView({ element, theme }: ElementViewProps<IconElement>) {
         color,
       }}
     >
-      {drawn ? (
-        <img src={drawn} alt="" width={size} height={size} draggable={false} />
-      ) : (
-        <Glyph size={size} strokeWidth={strokeWidth} absoluteStrokeWidth aria-hidden />
-      )}
+      <Glyph size={size} strokeWidth={strokeWidth} absoluteStrokeWidth aria-hidden />
     </div>
   );
 }

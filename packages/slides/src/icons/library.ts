@@ -56,3 +56,13 @@ export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
   const box = opts.px ? ` width="${opts.px}" height="${opts.px}"` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${box}>${body}</svg>`;
 }
+
+/**
+ * The icon as an SVG data URL for an image element's `src`: the carrier a layout uses until icon
+ * elements take a concept. Literal colours throughout, so PPTX export rasterises it like a drawn
+ * diagram (`drawImage` in `@tj/editor`'s pptx.ts). "" for an unknown id.
+ */
+export function iconImageSrc(id: string, opts: IconSvgOptions = {}): string {
+  const svg = iconSvg(id, opts);
+  return svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : "";
+}

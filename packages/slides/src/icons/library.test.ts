@@ -8,6 +8,7 @@ import {
   ICON_LIBRARY,
   ICON_SIZES,
   iconColourSet,
+  iconImageSrc,
   iconSizeFor,
   iconSvg,
 } from "./library";
@@ -48,6 +49,15 @@ describe("iconSvg: every drawing, size, age and theme", () => {
 
   test("an unknown id gives an empty string", () => {
     expect(iconSvg("kitten")).toBe("");
+    expect(iconImageSrc("kitten")).toBe("");
+  });
+
+  test("iconImageSrc is the same SVG as a data URL", () => {
+    const src = iconImageSrc("heart", { idPrefix: "d", px: 96 });
+    expect(src.startsWith("data:image/svg+xml;charset=utf-8,")).toBe(true);
+    expect(decodeURIComponent(src.split(",")[1] ?? "")).toBe(
+      iconSvg("heart", { idPrefix: "d", px: 96 }),
+    );
   });
 
   test("theme slots reach the drawing as literal colours", () => {

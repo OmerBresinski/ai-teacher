@@ -10,6 +10,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
+import { iconImageSrc } from "@tj/slides/icons";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -560,51 +561,43 @@ describe("exportLessonPptx", () => {
     expect(failed.warnings).toEqual(["A diagram could not be drawn as a picture: A square"]);
   }, 30_000);
 
-  it("draws a library icon from its SVG in literal colours (TEACH-310 part b)", async () => {
+  it("exports a library icon carried as an SVG image as a PNG in literal colours (TEACH-310 part b)", async () => {
     const [water] = demoLibrary();
     const first = water?.slides[0];
     if (!water || !first) throw new Error("fixture");
-    const icon = (concept: string) =>
-      ({
-        id: `ic-${concept}`,
-        type: "icon",
-        icon: "sparkles",
-        concept,
-        x: 100,
-        y: 100,
-        w: 120,
-        h: 120,
-      }) as SlideElement;
-    const lesson: Lesson = {
-      ...water,
-      slides: [{ ...first, elements: [icon("canopic-jar"), icon("kitten")] }],
-    };
+    const icon = {
+      id: "ic1",
+      type: "image",
+      name: "Item icon",
+      x: 100,
+      y: 100,
+      w: 120,
+      h: 120,
+      src: iconImageSrc("canopic-jar", { age: "early", px: 480 }),
+      alt: "",
+      fit: "contain",
+    } as SlideElement;
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [icon] }] };
     const png =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-    const asked: { svg: string; w: number; h: number }[] = [];
+    const asked: string[] = [];
+    const warnings: string[] = [];
     const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
-      rasteriseSvg: async (src, w, h) => {
-        asked.push({
-          svg: decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")),
-          w,
-          h,
-        });
+      rasteriseSvg: async (src) => {
+        asked.push(decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
         return png;
       },
+      onWarning: (m) => warnings.push(m),
     });
-    // only the library concept goes through the rasteriser; the unknown one stays a lucide glyph
     expect(asked).toHaveLength(1);
-    const [only] = asked;
-    expect(only?.svg).toStartWith("<svg");
-    expect(only?.svg).toContain('viewBox="0 0 240 240"');
-    expect(only?.svg).not.toContain("var(");
-    expect(only?.svg).toMatch(/fill:#[0-9a-f]{6}/);
-    // twice the box, which the rasteriser draws at 2x: 4x pixels, as the lucide icons get
-    expect([only?.w, only?.h]).toEqual([240, 240]);
+    expect(asked[0]).toContain('viewBox="0 0 240 240"');
+    expect(asked[0]).not.toContain("var(");
+    expect(asked[0]).toMatch(/fill:#[0-9a-f]{6}/);
+    expect(warnings).toEqual([]);
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-    expect(
-      Object.keys(zip.files).some((f) => f.startsWith("ppt/media/") && f.endsWith(".png")),
-    ).toBe(true);
+    const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"));
+    expect(media.some((f) => f.endsWith(".png"))).toBe(true);
+    expect(media.some((f) => f.endsWith(".svg"))).toBe(false);
   }, 30_000);
 
   it("exports an image-match slide without throwing", async () => {
