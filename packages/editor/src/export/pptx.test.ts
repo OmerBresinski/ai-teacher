@@ -9,7 +9,7 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
+import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -30,6 +30,7 @@ import {
   lessonAnswers,
   maxRevealStep,
   optionTextFrame,
+  PPTX_FALLBACK_FACE,
   paragraphsToTextProps,
   place,
   pptxDashType,
@@ -119,6 +120,25 @@ describe("fontFaceFor", () => {
     expect(fontFaceFor('var(--font-unknown), "Trebuchet MS", sans-serif')).toBe("Trebuchet MS");
     expect(fontFaceFor("sans-serif")).toBe("Arial");
     expect(fontFaceFor(undefined)).toBe("Arial");
+  });
+
+  it("names the theme v2 faces, and maps each to its measured fallback (ruling 213)", () => {
+    expect(fontFaceFor(FONT_STACKS.andika)).toBe("Andika");
+    expect(fontFaceFor(FONT_STACKS.schibsted)).toBe("Schibsted Grotesk");
+    expect(fontFaceFor(FONT_STACKS.sourceSerif)).toBe("Source Serif 4");
+    const paper = getTheme("paper");
+    for (const profile of Object.values(paper.v2?.ages ?? {})) {
+      for (const key of Object.values(profile.fonts)) {
+        const face = fontFaceFor(FONT_STACKS[key as keyof typeof FONT_STACKS]);
+        expect([face, PPTX_FALLBACK_FACE[face] !== undefined]).toEqual([face, true]);
+      }
+    }
+    expect(PPTX_FALLBACK_FACE.Andika).toEqual({ body: "Comic Sans MS", display: "Comic Sans MS" });
+    expect(PPTX_FALLBACK_FACE.Lexend).toEqual({ body: "Trebuchet MS", display: "Arial Bold" });
+    expect(PPTX_FALLBACK_FACE["Schibsted Grotesk"]?.display).toBe("Arial Bold");
+    expect(PPTX_FALLBACK_FACE["Source Serif 4"]?.italic).toBe("Georgia Italic");
+    const all = Object.values(PPTX_FALLBACK_FACE).flatMap((f) => Object.values(f));
+    expect(all.some((f) => /verdana/i.test(f ?? ""))).toBe(false);
   });
 });
 

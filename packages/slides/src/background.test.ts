@@ -176,7 +176,9 @@ describe("theme art per slide role (UX ruling 107)", () => {
       expect(themeArt(t, "content")).toEqual([]);
       expect(themeArt(t, "picture")).toEqual([]);
     }
-    for (const t of THEMES) expect(hasArtVariants(t)).toBe(true);
+    for (const t of THEMES.filter((x) => !x.v2)) expect(hasArtVariants(t)).toBe(true);
+    // Theme v2 is the golds' plain paper (TEACH-152 part b): no art on any role.
+    expect(hasArtVariants(getTheme("paper"))).toBe(false);
   });
 
   test("slideBackground: role art, the override, and the slide's own colour or image", () => {

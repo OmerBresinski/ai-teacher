@@ -37,5 +37,7 @@ export * from "./structure";
 export * from "./text-measure";
 export * from "./text-style";
 export { themedColour, withThemeColours } from "./theme-colours";
+export * from "./theme-v2";
+export { pxToPt, V2_AGE_PROFILES } from "./theme-v2-paper";
 export * from "./themes";
 export * from "./worksheet";

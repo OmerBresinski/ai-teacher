@@ -65,7 +65,8 @@ describe("the lesson look", () => {
     });
   }
 
-  for (const theme of THEMES) {
+  // Theme v2 has no art; its title takes the accent cover above (TEACH-152 part b).
+  for (const theme of THEMES.filter((t) => !t.v2)) {
     test(`${theme.id}: the title is a cover on the ground under the theme's title art (ruling 107)`, () => {
       const slide = materialiseSlide(
         { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },

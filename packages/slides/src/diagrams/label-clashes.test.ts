@@ -40,7 +40,8 @@ describe("REGISTER diagrams-02: labels on drawer drawings read clear", () => {
   });
   test("label clashes on shipped drawings never grow past the ceiling", () => {
     const bad: string[] = [];
-    for (const theme of THEMES.filter((_, i) => i % 3 === 0))
+    // The v1 sweep the ceiling was counted on; theme v2 (TEACH-152 part b) is outside the ratchet.
+    for (const theme of THEMES.filter((t, i) => !t.v2 && i % 3 === 0))
       for (const ks of ["ks1", "ks2", "ks3", "ks4"]) {
         const t = atKeyStage(theme, ks);
         for (const [name, spec] of corpus)

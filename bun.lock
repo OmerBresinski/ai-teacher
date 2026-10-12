@@ -206,6 +206,7 @@
         "@fontsource-variable/public-sans": "5.3.0",
         "@fontsource-variable/schibsted-grotesk": "5.3.0",
         "@fontsource-variable/source-serif-4": "5.3.0",
+        "@fontsource/andika": "5.3.0",
         "@tanstack/react-virtual": "3.14.13",
         "@tiptap/core": "3.31.3",
         "@tiptap/extension-color": "3.31.3",
@@ -657,6 +658,8 @@
     "@fontsource-variable/schibsted-grotesk": ["@fontsource-variable/schibsted-grotesk@5.3.0", "", {}, "sha512-ndS6H/KICWANchlHF3q4UdZD+xrZ3Ji0rUobIuXlgvDUzDfqZDsVuXPXZb636nJZMHE9zZ9Fmwgqazm8hMB50Q=="],
 
     "@fontsource-variable/source-serif-4": ["@fontsource-variable/source-serif-4@5.3.0", "", {}, "sha512-9vch9WqxjaaA+1o9Ur8pOgIGbCYLjRReOUel23A6lOpD1syptgjtkORevvNmldJ5kGXQL29onQUqI5Ltz0s3bQ=="],
+
+    "@fontsource/andika": ["@fontsource/andika@5.3.0", "", {}, "sha512-m15/VavWcrOhTJr4xXVKTKrJgI8Ny4fI52ZwcoYH3kH6IyLpAfuYUuFouI223WFbDP0kwvKsOOankklFNyMvNw=="],
 
     "@fontsource/lora": ["@fontsource/lora@5.3.0", "", {}, "sha512-OK1g1z01rHVPqO5aw/FOIoDqc46KKYZdgL3NOLkxLWDk6QhDHhdr/h2BV1cke6gTvR1tzpDfdKyUkGsC+sQLeQ=="],
 
