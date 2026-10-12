@@ -33,6 +33,8 @@ export type DraftStore = {
   get: (slideId: string) => LiveDraft | undefined;
   /** The draft of the slide with the highest index (the one being written now). */
   latest: () => LiveDraft | undefined;
+  /** The highest-index draft with words on it: the slide the view can open without a blank. */
+  latestReady: () => LiveDraft | undefined;
   subscribe: (fn: () => void) => () => void;
   set: (drafts: Iterable<LiveDraft>) => void;
 };
@@ -45,6 +47,12 @@ export function createDraftStore(): DraftStore {
     latest: () => {
       let best: LiveDraft | undefined;
       for (const d of byId.values()) if (!best || d.index > best.index) best = d;
+      return best;
+    },
+    latestReady: () => {
+      let best: LiveDraft | undefined;
+      for (const d of byId.values())
+        if ((!best || d.index > best.index) && wordCount(d.slide) > 0) best = d;
       return best;
     },
     subscribe: (fn) => {
@@ -64,11 +72,14 @@ export function createDraftStore(): DraftStore {
 }
 
 const NO_SUBSCRIBE = () => () => {};
-/** The id of the slide being written now (its drafts streaming); re-renders only when it moves. */
+/**
+ * The id of the slide being written now, once it has words to show (a draft with only its layout
+ * would open on an empty slide); re-renders only when it moves.
+ */
 export function useDraftLead(store: DraftStore | undefined): string | undefined {
   return useSyncExternalStore(
     store?.subscribe ?? NO_SUBSCRIBE,
-    () => store?.latest()?.slideId,
+    () => store?.latestReady()?.slideId,
     () => undefined,
   );
 }
@@ -79,14 +90,20 @@ export function useDraftLead(store: DraftStore | undefined): string | undefined 
  */
 export function isPlannedBlank(slide: { elements?: readonly unknown[] }): boolean {
   const els = (slide.elements ?? []) as { name?: string }[];
-  return els.every((e) => e.name === "Planned");
+  return els.every((e) => e.name === "Planned" || e.name === PLANNED_VISUAL);
 }
+/** The planned slide's visual column (the flow said the slide shows a picture or a diagram). */
+const PLANNED_VISUAL = "Planned visual";
 
 /**
  * A slide waiting for its words (live writing): a soft heading bar and three text lines, so the
  * canvas shows where the slide will be rather than an empty page. Never saved.
  */
 export function skeletonSlide(slide: Slide): Slide {
+  // A slide that will show a picture or a diagram keeps its text to the left of that column, as its
+  // layout will: the skeleton has the slide's shape, so the words arrive into it without a jump.
+  const visual = slide.elements.find((e) => (e as { name?: string }).name === PLANNED_VISUAL);
+  const room = visual ? Math.max(200, visual.x - 64 - 48) : Number.POSITIVE_INFINITY;
   const bar = (id: string, y: number, w: number, h: number) =>
     ({
       id: `skeleton-${id}`,
@@ -102,11 +119,11 @@ export function skeletonSlide(slide: Slide): Slide {
   return {
     ...slide,
     elements: [
-      ...slide.elements.filter((e) => (e as { name?: string }).name === "Planned"),
+      ...slide.elements.filter((e) => isPlannedBlank({ elements: [e] })),
       bar("h", 56, 520, 44),
-      bar("l1", 160, 760, 18),
-      bar("l2", 200, 700, 18),
-      bar("l3", 240, 560, 18),
+      bar("l1", 160, Math.min(760, room), 18),
+      bar("l2", 200, Math.min(700, room - 30), 18),
+      bar("l3", 240, Math.min(560, room - 80), 18),
     ],
   };
 }
@@ -228,7 +245,7 @@ function useTypewriter(target: number, key: string, reduced: boolean, rush = fal
     // A new slide starts from its first draft's words, never from another slide's count.
     if (s.key !== key) {
       s.key = key;
-      s.shown = reduced ? target : (typed.current.get(key) ?? 0);
+      s.shown = reduced ? target : (typed.current.get(key) ?? Math.min(target, 1));
       setShown(s.shown);
     }
     if (reduced || s.shown >= target) {
@@ -262,7 +279,7 @@ function useTypewriter(target: number, key: string, reduced: boolean, rush = fal
   // On the render where the slide changes the effect has not run yet: never show the last slide's
   // count for the new one (that flashed the new slide's whole text for a frame).
   if (ref.current.key !== key)
-    return reduced ? target : Math.min(typed.current.get(key) ?? 0, target);
+    return reduced ? target : Math.min(typed.current.get(key) ?? 1, target);
   return Math.min(shown, target);
 }
 
@@ -405,6 +422,32 @@ export function LiveSlide({
       ? { slide: draft.slide }
       : revealSlide(draft.slide, words);
   const at = draft && !reduced && "at" in shown ? shown.at : undefined;
+  // A card or line that joins a slide already on screen slides in gently; a slide's first draft
+  // shows at once (fading it in would read as a blank canvas when the view moves on).
+  const joined = useRef<{ slide?: string; ids: Set<string> }>({ ids: new Set() });
+  useLayoutEffect(() => {
+    const root = host.current;
+    if (!root) return;
+    const seen = joined.current;
+    if (seen.slide !== slideId) {
+      seen.slide = slideId;
+      seen.ids = new Set();
+    }
+    const first = seen.ids.size === 0;
+    for (const el of root.querySelectorAll<HTMLElement>('[data-element-id^="d-"]')) {
+      const id = el.dataset.elementId ?? "";
+      if (seen.ids.has(id)) continue;
+      seen.ids.add(id);
+      if (!first && !reduced)
+        el.animate?.(
+          [
+            { opacity: 0, translate: "0 6px" },
+            { opacity: 1, translate: "0 0" },
+          ],
+          { duration: 240, easing: "ease-out" },
+        );
+    }
+  });
   // One tree whatever is shown, so the canvas never remounts when the saved slide takes over.
   return (
     <div ref={host} data-live-slide={draft ? slideId : undefined} className="contents">

@@ -43,25 +43,23 @@ export function useFollowWriting({
   const [following, setFollowing] = useState(startFollowing);
   const target = useMemo(() => {
     if (!writingSlideIds || !slides) return undefined;
-    // The writer goes in order, and its later slides wait as blanks: the slide being written is
-    // the first blank after the last writing slide with something on it (else the newest).
-    let target: Id | undefined;
-    let blank: Id | undefined;
-    for (const s of slides) {
-      if (!writingSlideIds.has(s.id)) continue;
-      if (s.elements !== undefined && isPlannedBlank(s)) blank ??= s.id;
-      else {
-        target = s.id;
-        blank = undefined;
-      }
+    // The writer goes in order, and its later slides wait as planned blanks. The view never opens
+    // a slide with nothing on it (TEACH-202 part f): it stays on the last slide with something to
+    // show (its saved copy) until the next slide's draft has words (`lead`, ready drafts only).
+    let last = -1;
+    for (const [i, s] of slides.entries()) if (writingSlideIds.has(s.id)) last = i;
+    let shown: Id | undefined;
+    for (const s of slides.slice(0, last + 1)) {
+      const waiting = writingSlideIds.has(s.id) && s.elements !== undefined && isPlannedBlank(s);
+      if (!waiting) shown = s.id;
+      else if (shown !== undefined) break;
     }
-    const fallback = blank ?? target;
-    // The streaming slide leads, but never back past the slide the writer is on (a late draft of
-    // an earlier slide would pull the view back for a moment).
+    const first = slides[0]?.id;
+    // The streaming slide leads, but never back past the slide already shown (a late draft of an
+    // earlier slide would pull the view back for a moment).
     const at = (id: Id | undefined) => slides.findIndex((s) => s.id === id);
-    if (lead !== undefined && writingSlideIds.has(lead) && at(lead) >= Math.max(0, at(fallback)))
-      return lead;
-    return fallback;
+    if (lead !== undefined && at(lead) >= Math.max(0, at(shown))) return lead;
+    return shown ?? first;
   }, [slides, writingSlideIds, lead]);
   /** The slide the follow is opening, until the session reports it open. */
   const mark = useRef<Id | null>(null);
@@ -80,9 +78,12 @@ export function useFollowWriting({
       }
     }
     if (!following || !target || target === activeSlideId) return;
+    // Forward only: the follow never takes the view back to an earlier slide.
+    const at = (id: Id | null) => (slides ?? []).findIndex((s) => s.id === id);
+    if (activeSlideId !== null && at(target) < at(activeSlideId)) return;
     mark.current = target;
     setActiveSlide(target);
-  }, [activeSlideId, following, target, setActiveSlide]);
+  }, [activeSlideId, following, target, setActiveSlide, slides]);
 
   // A click or key press anywhere is the teacher acting (the chip itself excepted).
   const writing = writingSlideIds !== undefined;

@@ -7,6 +7,7 @@ import type { Slide } from "@tj/domain/documents";
 import { fromWriterActivity, isWriterActivity } from "./activities";
 import { slideNoEmDash } from "./checks";
 import type { SlideDraft } from "./draft";
+import { asksVisual, lookOf, withLook } from "./fixes";
 import { type MaterialiseCtx, type Materialised, materialise } from "./materialise";
 import { nonFatalSync } from "./services";
 
@@ -74,11 +75,66 @@ export function layDraft(
     () => {
       const { fit: _fit, ...fields } = draft.fields;
       let s: S = slideNoEmDash({ template: draft.template, ...fields } as S) as S;
-      if (isWriterActivity(s.template))
-        s = fromWriterActivity(s, stageKey, ctx.brief.subject).slide;
-      const m = materialise(s, { ...ctx, visual: () => ({ status: "pending" }) });
+      if (isWriterActivity(s.template)) s = fromWriterActivity(s, stageKey, ctx.brief).slide;
+      const look = lookOf(ctx.plan.flow?.find((x) => x.slide === ctx.index + 1));
+      s = reserveLook(s, look);
+      const lay = (x: S) => materialise(x, { ...ctx, visual: () => ({ status: "pending" }) });
+      let m = lay(s);
+      // A figure half streamed may not lay out yet: its planned slot holds until it does.
+      const field = VISUAL_FIELD[String(s.template)];
+      if (field && s[field] != null && !hasVisual(m.slide.elements)) {
+        const held = lay(reserveLook({ ...s, [field]: undefined }, look));
+        if (hasVisual(held.slide.elements)) m = held;
+      }
       return holdTypeSizes(stableDraftIds(m.slide), sizes);
     },
     () => undefined,
+  );
+}
+
+/** Layouts with one visual of their own, by the field it streams in. */
+const VISUAL_FIELD: Record<string, string> = {
+  "visual-text": "figure",
+  "big-visual": "figure",
+  "equation-hero": "figure",
+  steps: "figure",
+  "question-set": "figure",
+  practice: "figure",
+  "exit-ticket": "figure",
+  discussion: "picture",
+  title: "picture",
+};
+
+/**
+ * The slide's structure comes first (TEACH-202 part f): the writer streams a slide's figure after
+ * its words, but the flow already said whether the slide shows a picture or a diagram. Until the
+ * figure's field arrives, a draft holds an open slot where the flow put one, so the visual column
+ * is there from the first word and nothing changes shape when the figure (or the closed slide)
+ * lands. A field the writer has written, even as null, is its own decision and is left alone; a
+ * picture look then goes through `withLook`, exactly as the closed slide will.
+ */
+export function reserveLook(s: S, look: { kind: string; shows: string | null } | undefined): S {
+  if (!look || (look.kind !== "picture" && look.kind !== "diagram") || asksVisual(s)) return s;
+  if (look.kind === "picture") {
+    const added = withLook(s, look).slide;
+    if (added !== s) return added;
+  }
+  const field = VISUAL_FIELD[String(s.template)];
+  // An explicit null is the writer saying "no visual"; a half-streamed figure still holds the slot.
+  if (!field || s[field] === null) return s;
+  if (s[field] !== undefined && asksVisual(s)) return s;
+  const shows = look.shows?.trim() || "planned visual";
+  return {
+    ...s,
+    [field]: { shows, must_see: [shows], subject: "generic", ask: null, ask_without: null },
+  };
+}
+
+/** The laid slide shows a picture, a diagram or their open slot (anything but words and shapes). */
+function hasVisual(els: readonly El[]): boolean {
+  return els.some(
+    (e) =>
+      (e.type !== "text" && e.type !== "shape") ||
+      hasVisual(((e as { children?: El[] }).children ?? []) as El[]),
   );
 }

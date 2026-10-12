@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 
@@ -234,8 +234,15 @@ export async function startTimeline(
   await page.evaluate(wordSampler, t0);
   const frames: { t: number; file: string }[] = [];
   let running = true;
-  const framesDir = opts.outDir ? join(opts.outDir, "frames") : undefined;
-  if (framesDir) mkdirSync(framesDir, { recursive: true });
+  // Each run gets its own new frames folder (named by its start time): frames are named by their
+  // time from t0, so two runs in one folder interleave and a gif made from it jumps between runs.
+  const framesDir = opts.outDir
+    ? join(opts.outDir, `frames-${new Date(t0).toISOString().replace(/[:.]/g, "-")}`)
+    : undefined;
+  if (framesDir) {
+    if (existsSync(framesDir)) throw new Error(`frames folder already exists: ${framesDir}`);
+    mkdirSync(framesDir, { recursive: true });
+  }
   const capture = (async () => {
     while (running && framesDir) {
       const t = Date.now() - t0;
@@ -253,14 +260,15 @@ export async function startTimeline(
       const samples = await page.evaluate(() => window.__liveTimeline ?? []);
       const words = await page.evaluate(() => window.__liveWords ?? []);
       const result = {
+        framesDir,
         samples,
         words,
         frames,
         metrics: timelineMetrics(samples),
         wordMetrics: wordMetrics(words),
       };
-      if (opts.outDir)
-        writeFileSync(join(opts.outDir, "timeline.json"), JSON.stringify(result, null, 2));
+      if (opts.outDir && framesDir)
+        writeFileSync(join(framesDir, "timeline.json"), JSON.stringify(result, null, 2));
       return result;
     },
   };

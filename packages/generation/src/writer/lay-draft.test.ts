@@ -117,3 +117,38 @@ describe.each(LESSONS)("laid drafts of %s", (b) => {
     expect(growing).toBeGreaterThanOrEqual(Math.floor(drafts.size / 2));
   }, 60_000);
 });
+
+describe("the slide's structure comes first (TEACH-202 part f)", () => {
+  test("a slide the flow gives a visual holds its visual column from the first draft to its close", async () => {
+    const b = "y5-maths-fractions-of-amounts";
+    const flow = (
+      JSON.parse(
+        (JSON.parse(await Bun.file(join(DIR, b, "main.json")).text()) as { text: string }).text,
+      ) as { flow: { slide: number; look_at: { kind: string } }[] }
+    ).flow;
+    const visual = new Set(flow.filter((f) => f.look_at.kind !== "none").map((f) => f.slide - 1));
+    const shows = (els: El[]): boolean =>
+      els.some(
+        (e) =>
+          (e.type !== "text" && e.type !== "shape") ||
+          shows((e.children as El[] | undefined) ?? []),
+      );
+    const seen = new Map<number, boolean[]>();
+    await replayRun(b, {
+      stream: pieces(4000, 9),
+      // No picture placer: a diagram slot stays open until the deck is editable.
+      visual: (_i, _k, a) => (a.type === "diagram" ? { status: "pending" } : { status: "failed" }),
+      hooks: {
+        draft: { ms: 0 },
+        onDraftSlide: (i, s) => seen.set(i, [...(seen.get(i) ?? []), shows(s.elements as El[])]),
+        onSlide: (i, s) => seen.set(i, [...(seen.get(i) ?? []), shows(s.elements as El[])]),
+      },
+    });
+    expect(visual.size).toBeGreaterThan(2);
+    for (const i of visual) {
+      const laid = seen.get(i) ?? [];
+      expect(laid.length).toBeGreaterThan(2);
+      expect(laid.every(Boolean)).toBe(true);
+    }
+  }, 60_000);
+});

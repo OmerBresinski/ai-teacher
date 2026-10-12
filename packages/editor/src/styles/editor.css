@@ -6,3 +6,19 @@
 @import "./fonts-playful.css";
 @import "./slide.css";
 @import "./present.css";
+
+/*
+ * Live writing (TEACH-202 part f): within a slide's fixed structure, a draft's boxes settle into
+ * their new size and place (`LiveSlide` fades in a card or line that joins). Only draft elements
+ * (`d-…` ids) move: the saved copy that takes over at the hand-over lands where the last draft
+ * stood, so nothing animates then.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-live-slide] [data-element-id^="d-"] {
+    transition:
+      left 220ms ease,
+      top 220ms ease,
+      width 220ms ease,
+      height 220ms ease;
+  }
+}

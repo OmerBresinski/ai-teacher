@@ -174,34 +174,59 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
  * while it is `writing`: blank but for one muted line saying what it will do (the flow's `does`),
  * named "Planned" so the editor knows it for a placeholder. Its laid copy replaces it at close.
  */
-export function plannedSlide(id: string, does?: string) {
+export function plannedSlide(id: string, does?: string, look?: string) {
   const text = (does ?? "").trim().slice(0, 140);
+  // The flow says whether the slide shows a picture or a diagram: its skeleton holds the visual
+  // column where the slide's layout will put it (live writing, TEACH-202 part f), so the slide's
+  // shape is there before its words and never changes when they arrive.
+  const visual =
+    look === "picture" || look === "diagram" || look === "picture-sequence"
+      ? [
+          {
+            id: `${id}-planned-visual`,
+            type: "shape",
+            name: "Planned visual",
+            shape: "rounded",
+            x: 504,
+            y: 136,
+            w: 392,
+            h: 300,
+            radius: 16,
+            fill: "rgba(128, 128, 128, 0.10)",
+          },
+        ]
+      : [];
   return {
     id,
     kind: "content",
     notes: "",
-    elements: text
-      ? [
-          {
-            id: `${id}-planned`,
-            type: "text",
-            name: "Planned",
-            x: 64,
-            y: 470,
-            w: 832,
-            h: 36,
-            doc: {
-              type: "doc",
-              content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    elements: [
+      ...visual,
+      ...(text
+        ? [
+            {
+              id: `${id}-planned`,
+              type: "text",
+              name: "Planned",
+              x: 64,
+              y: 470,
+              w: 832,
+              h: 36,
+              doc: {
+                type: "doc",
+                content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+              },
+              style: { preset: "small", fontSize: 18, color: "#8A8F98" },
             },
-            style: { preset: "small", fontSize: 18, color: "#8A8F98" },
-          },
-        ]
-      : [],
+          ]
+        : []),
+    ],
   };
 }
 const plannedOf = (slide: unknown) =>
-  ((slide as { elements?: { name?: string }[] }).elements ?? []).some((e) => e.name === "Planned");
+  ((slide as { elements?: { name?: string }[] }).elements ?? []).some(
+    (e) => e.name === "Planned" || e.name === "Planned visual",
+  );
 
 export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): Promise<Lesson> {
   const brief = lesson.brief;
@@ -296,6 +321,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const images = deps.images as DirectedPlacer | undefined;
   /** The stage's re-lay for a slide whose picture just landed (`bindPictureLanded`). */
   let landed: ((index: number) => void) | undefined;
+  /** No image placer: open diagram slots close (failed) once the deck turns editable. */
+  let noPicturesSettled = false;
   const pictures = images
     ? createWriterPictures({
         lesson,
@@ -361,10 +388,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
   };
   /** Live writing (ADR 0039): a blank `writing` slide for index i, until its words close. */
-  const blank = (i: number, id: string, does?: string) => {
+  const blank = (i: number, id: string, does?: string, look?: string) => {
     const was = progressive.patches().get(i);
     if (latest.has(i) || (was && (!does || plannedOf(was.slide)))) return;
-    progressive.patch(i, plannedSlide(id, does) as unknown as Laid, "writing");
+    progressive.patch(i, plannedSlide(id, does, look) as unknown as Laid, "writing");
   };
   // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
   // so the editor opens on it while the writer thinks; each later slide joins as a blank.
@@ -400,7 +427,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       libraryPanelsOff: true,
       libraryLabelOverlap: false,
       libraryLabelFloor: false,
-      visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
+      // With no image placer a photo is failed (text-only), but a diagram is drawn by the stage
+      // itself: it stays an open slot until the deck is editable, so a slide never loses its
+      // figure column at the hand-over and gets it back when the drawing lands (TEACH-202 part f).
+      visual: (i, key, ask) =>
+        pictures
+          ? pictures.state(i, key)
+          : ask?.type === "diagram" && !noPicturesSettled
+            ? { status: "pending" }
+            : { status: "failed" },
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       // Ruling 189 (ADR 0037): a slide's words are done once the writer has moved past it, so it
       // turns `done` (editable) then; the newest slide stays `writing` until the next one opens or
@@ -425,15 +460,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         ? {
             // The flow names every slide: each joins the deck as a blank at once, so the strip
             // shows the whole lesson before its first words.
-            onFlow: (flow: { slide?: number; does?: string }[] | undefined) => {
+            onFlow: (
+              flow: { slide?: number; does?: string; look_at?: { kind: string } }[] | undefined,
+            ) => {
               for (const f of flow ?? [])
                 if (typeof f.slide === "number" && f.slide >= 3)
-                  blank(f.slide - 1, `s${f.slide}`, f.does);
+                  blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
             },
             // Each planned slide joins as its flow entry closes, labelled with what it does.
-            onFlowItem: (f: { slide?: number; does?: string }) => {
+            onFlowItem: (f: { slide?: number; does?: string; look_at?: { kind: string } }) => {
               if (typeof f.slide === "number" && f.slide >= 3)
-                blank(f.slide - 1, `s${f.slide}`, f.does);
+                blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
             },
             onDraftSlide: (i: number, slide: Laid) => {
               // The slide joins the deck as soon as it is being written, as a blank `writing` slide
@@ -458,6 +495,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
       beforeEditable: async () => {
         await pictures?.settle();
+        noPicturesSettled = true;
       },
       // lostPic: single pictures for a lost compound picture, placed and settled after editable.
       // Only this slide's pictures are waited for: the slides' tails run in parallel.
