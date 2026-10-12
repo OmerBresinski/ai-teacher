@@ -17,7 +17,7 @@ const DIR = join(import.meta.dir, "fixtures/replay", B);
 const read = (f: string) => JSON.parse(readFileSync(join(DIR, f), "utf8"));
 
 describe("lostPic: a drawing the drawer cannot draw, and a second failed ask, keep their pictures", () => {
-  test("drawer fails, then every retryable failed ask on the slide is placed again, once each", async () => {
+  test("a body drawing skips the drawer, then every retryable failed ask is placed again, once each", async () => {
     const rec = recordedVisuals(B);
     const placed = new Set<string>();
     const placeCalls: string[][] = [];
@@ -60,8 +60,9 @@ describe("lostPic: a drawing the drawer cannot draw, and a second failed ask, ke
         for (const a of more) placed.add(`${i}:${a.key}`);
       },
     });
-    // The director's drawing went to the drawer first, as a labelled diagram.
-    expect(drawerCalls.some((r) => r.includes("labelled-diagram"))).toBe(true);
+    // The director chose a labelled drawing of six animals: a living body is never drawn freehand
+    // (TEACH-247 part ad), so no drawer call; the ask is placed again as a picture.
+    expect(drawerCalls.some((r) => r.includes("labelled-diagram"))).toBe(false);
     // Then each ask was placed again exactly once (one round per slide).
     expect(placeCalls.filter((c) => c.includes("4:picture"))).toEqual([["4:picture"]]);
     expect(placeCalls.filter((c) => c.includes("5:picture"))).toEqual([["5:picture"]]);
