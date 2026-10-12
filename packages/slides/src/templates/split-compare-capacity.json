@@ -4,13 +4,13 @@
       "picture": {
         "title": {
           "cap": 13,
-          "hardMax": 56,
+          "hardMax": 18,
           "words": 2
         },
         "text": {
-          "cap": 22,
+          "cap": 69,
           "hardMax": 80,
-          "words": 4
+          "words": 14
         }
       },
       "quote": {
@@ -46,14 +46,14 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 5,
-          "hardMax": 22,
-          "words": 1
+          "cap": 13,
+          "hardMax": 13,
+          "words": 2
         },
         "text": {
-          "cap": 0,
+          "cap": 22,
           "hardMax": 29,
-          "words": 0
+          "words": 4
         }
       },
       "quote": {
@@ -96,9 +96,9 @@
           "words": 3
         },
         "text": {
-          "cap": 56,
-          "hardMax": 88,
-          "words": 11
+          "cap": 80,
+          "hardMax": 114,
+          "words": 16
         }
       },
       "quote": {
@@ -139,9 +139,9 @@
           "words": 2
         },
         "text": {
-          "cap": 13,
-          "hardMax": 32,
-          "words": 2
+          "cap": 29,
+          "hardMax": 51,
+          "words": 5
         }
       },
       "quote": {
@@ -184,9 +184,9 @@
           "words": 3
         },
         "text": {
-          "cap": 88,
-          "hardMax": 137,
-          "words": 17
+          "cap": 114,
+          "hardMax": 174,
+          "words": 21
         }
       },
       "quote": {
@@ -227,9 +227,9 @@
           "words": 3
         },
         "text": {
-          "cap": 32,
-          "hardMax": 64,
-          "words": 6
+          "cap": 51,
+          "hardMax": 80,
+          "words": 10
         }
       },
       "quote": {

@@ -44,7 +44,9 @@ import {
 } from "./index";
 import CAPACITY from "./split-compare-capacity.json" with { type: "json" };
 import {
+  extOf,
   type FitPicture,
+  type PictureFacts,
   pairCrops,
   quoteVoice,
   SHAPES,
@@ -60,7 +62,8 @@ export type SplitSide = {
   title: string;
   text: string;
   quote?: string | null;
-  picture?: Figure | null;
+  /** With T5's placement facts (`backdrop`, `kind`) when the picture director wrote them. */
+  picture?: (Figure & PictureFacts) | null;
   /** Hidden behind a "?" until the presenter's first click. */
   reveal?: boolean;
 };
@@ -93,7 +96,10 @@ const H = 540;
 const SEAM = 5;
 const UNDER_HEADING = 35;
 const STAGE_TOP = 40;
-/** Words only: no zone between the title and the words, so they start nearer the field's top. */
+/**
+ * Words only, or pictures that take the spare height: the content starts nearer the field's top (a
+ * bubble's tail keeps the pilot's room).
+ */
 const TEXT_TOP = 24;
 const TEXT_UNDER_HEADING = 26;
 const STAGE_FOOT = 43;
@@ -111,6 +117,8 @@ const COMFORT_FILL = 0.85;
  */
 const TEXT_FILL = 0.9;
 const PIC_SHARE = 0.52;
+/** Short words leave spare height: the pictures take it, up to this share of the field. */
+const PIC_GROW = 0.62;
 const PIC_LOW = 0.25;
 const PIC_MIN_W = 0.4;
 
@@ -141,7 +149,13 @@ function pictureOf(s: SplitSide): Pic | null {
   if (!f) return null;
   if ("photo" in f) {
     const aspect = f.aspect && f.aspect > 0 ? f.aspect : 4 / 3;
-    return { aspect, ...(f.photo && f.subjects ? { subjects: f.subjects } : {}), figure: f };
+    const ext = f.photo ? extOf(f) : undefined;
+    return {
+      aspect,
+      ...(f.photo && f.subjects ? { subjects: f.subjects } : {}),
+      ...(ext ? { ext } : {}),
+      figure: f,
+    };
   }
   if ("drawn" in f && f.drawn?.src)
     return { aspect: f.drawn.aspect || 4 / 3, diagram: true, figure: f };
@@ -193,14 +207,14 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
     top = el.y + el.h;
   }
   c.bodyFromHeading = true;
-  // Words only: the fields start a little nearer the heading, so the words have the zone's height.
-  const ft = Math.round(top + (zoneOf(sides) === "text" ? TEXT_UNDER_HEADING : UNDER_HEADING));
+  // Words only and pictures: the fields start a little nearer the heading, for the height it gives.
+  const ft = Math.round(top + (zoneOf(sides) === "quote" ? UNDER_HEADING : TEXT_UNDER_HEADING));
   const fh = H - ft;
   const fw = fieldW(n);
   const pad = sidePad(n);
   const cellW = Math.floor(fw - pad - Math.max(pad, EDGE));
   const zone = zoneOf(sides);
-  const stageTop = zone === "text" ? TEXT_TOP : STAGE_TOP;
+  const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
   const stageH = fh - stageTop - STAGE_FOOT;
   const pics = zone === "picture" ? sides.map((s) => pictureOf(s) as Pic) : [];
 
@@ -233,33 +247,42 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
           kit.wordsFit(quoteCtx, s.quote ?? "", "body", cellW - 2 * BUBBLE.x, z.quote, 500)),
     );
 
-  // The picture's steps: the shared shape that shows the subjects largest at 52% of the field, then
-  // wider shared shapes, then that shape shrinking to 40% of the field's width.
+  // The picture's steps, largest first: the shared shape that shows the subjects largest, from the
+  // spare height down to 52% of the field ("short text, bigger pictures"); then wider shared shapes;
+  // then that shape shrinking to 40% of the field's width. A shape counts as shared when every
+  // picture can crop to it or extend its plain backdrop to it. No standard shape: the shape of a
+  // picture that cannot extend, if the others can reach it; else each its own shape at one height.
   type Step = { ratios: number[]; h: number };
   const steps: Step[] = [];
+  const wFloor = PIC_MIN_W * fw;
   if (zone === "picture") {
     const hMax = Math.round(PIC_SHARE * fh);
+    const hGrow = Math.round(PIC_GROW * fh);
     const hLow = Math.round(PIC_LOW * fh);
-    const wFloor = PIC_MIN_W * fw;
     const boxOf = (r: number, h: number) => ({
       w: Math.round(Math.min(cellW, h * r)),
       h: Math.round(Math.min(h, cellW / r)),
     });
-    const shared = SHAPES.filter(([, r]) => pics.every((p) => shapeSafe(p, r)));
-    if (shared.length) {
+    const fixed = pics.filter((p) => !p.ext && !p.diagram).map((p) => p.aspect);
+    const candidates: number[] = SHAPES.map(([, r]) => r).filter((r) =>
+      pics.every((p) => shapeSafe(p, r)),
+    );
+    if (!candidates.length)
+      for (const r of fixed) if (pics.every((p) => shapeSafe(p, r))) candidates.push(r);
+    if (candidates.length) {
       const area = (r: number) => {
         const b = boxOf(r, hMax);
         return pics.reduce((t, p) => t + subjectArea(p, b.w, b.h), 0) + b.w * b.h * 1e-3;
       };
-      const start = [...shared].sort(
-        (a, b) => area(b[1]) - area(a[1]),
-      )[0] as (typeof SHAPES)[number];
-      const hStart = boxOf(start[1], hMax).h;
-      const wider = shared
-        .filter((s) => s !== start && boxOf(s[1], hMax).h < hStart)
-        .sort((a, b) => boxOf(b[1], hMax).h - boxOf(a[1], hMax).h);
-      for (const s of [start, ...wider])
-        steps.push({ ratios: pics.map(() => s[1]), h: boxOf(s[1], hMax).h });
+      const start = [...candidates].sort((a, b) => area(b) - area(a))[0] as number;
+      const hStart = boxOf(start, hMax).h;
+      for (let h = boxOf(start, hGrow).h; h > hStart; h -= 6)
+        steps.push({ ratios: pics.map(() => start), h });
+      const wider = candidates
+        .filter((r) => r !== start && boxOf(r, hMax).h < hStart)
+        .sort((a, b) => boxOf(b, hMax).h - boxOf(a, hMax).h);
+      for (const r of [start, ...wider])
+        steps.push({ ratios: pics.map(() => r), h: boxOf(r, hMax).h });
       const last = steps[steps.length - 1] as Step;
       const r = last.ratios[0] as number;
       // An upright shape is narrower than the width floor from the start: it gives way to 60% of
@@ -271,7 +294,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
       // No shape suits every picture: each takes its own shape at one shared height.
       const rs = pics.map((p) => p.aspect);
       const widest = (h: number) => Math.max(...rs.map((r) => boxOf(r, h).w));
-      for (let h = hMax; h >= hLow && (h === hMax || widest(h) >= wFloor); h -= 6)
+      for (let h = hGrow; h >= hLow && (h >= hMax || widest(h) >= wFloor); h -= 6)
         steps.push({ ratios: rs, h });
     }
     for (const st of steps) Object.assign(st, { boxes: st.ratios.map((r) => boxOf(r, st.h)) });
@@ -295,7 +318,9 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
     const fits = p.total <= stageH && wordsOk(z);
     const fill =
       (p.total - (zone === "picture" ? p.zone : 0)) / (stageH - (zone === "picture" ? p.zone : 0));
-    return { fits, comfy: fits && fill <= (zone === "text" ? TEXT_FILL : COMFORT_FILL) };
+    // Beside pictures the words may fill what the picture leaves: the picture gives way first.
+    const room = zone === "text" ? TEXT_FILL : zone === "picture" ? 1 : COMFORT_FILL;
+    return { fits, comfy: fits && fill <= room };
   };
 
   let k = 1;
@@ -324,7 +349,15 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
     p = plan(z, si);
     j = judge(p, z);
   }
-  const comfy = j.comfy && typeComfy(z);
+  // A picture narrower than 40% of its field (or than a 3:4 box of its height, for an upright pair)
+  // is a sliver: the slide does not suit these pictures, so it is reported and the writer moves it.
+  const narrow =
+    zone === "picture"
+      ? boxesOf(steps[si] as Step).flatMap((b, i) =>
+          b.w < Math.min(wFloor, 0.75 * b.h) - 1 ? [i] : [],
+        )
+      : [];
+  const comfy = j.comfy && typeComfy(z) && !narrow.length;
 
   // Fields, then the content centred in each field's stage.
   for (let i = 0; i < n; i++)
@@ -380,9 +413,11 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
     }
   }
 
-  const fit = { fits: j.fits, comfy };
+  const fit = { fits: j.fits && !narrow.length, comfy };
   if (!useTable) return fit;
-  report(c, sides, n, zone, fit);
+  report(c, sides, n, zone, { ...fit, fits: j.fits });
+  for (const i of narrow) c.over.push(`sides[${i}].picture`);
+  if (narrow.length) c.tight = true;
   return fit;
 }
 

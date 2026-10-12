@@ -6,9 +6,10 @@
  *   `theme.fonts` (ruling 211: the layout never hard-codes a colour, font or radius), so the 9
  *   current themes draw with these fallbacks.
  * - **Picture fit** (TEACH-25 part b, T5): standard shapes, subject-safe crops and one shared crop
- *   scale for a matched pair (ruling 216). The stand-in below is the pilot's `picture.js` without
- *   its pixel work: no edge-stretch extension and no automatic subject box (the product knows a
- *   photo's `aspect` and its `subjects`, not its pixels).
+ *   scale for a matched pair (ruling 216). The stand-in below is the pilot's `picture.js` on the
+ *   facts T5 writes at placement (`backdrop.plain` per edge, `kind`), without its pixel work: an
+ *   extended crop runs past 0..1 and is baked by the picture director (TEACH-84 part d) with T5's
+ *   `extendRaster`; there is no automatic subject box.
  *
  * When T1 and T5 land on master, point these exports at the real modules; the template imports
  * nothing else from them.
@@ -105,7 +106,25 @@ const MAX_ZOOM = 2;
 const MARGIN = 0.025;
 
 /** A picture as the fit sees it: its own shape and its must-see subjects (fractions 0..1). */
-export type FitPicture = { aspect: number; subjects?: SubjectBox[]; diagram?: boolean };
+export type FitPicture = {
+  aspect: number;
+  subjects?: SubjectBox[];
+  diagram?: boolean;
+  /** Axes whose two edges are a plain backdrop, so the canvas may grow by edge-stretch (T5). */
+  ext?: { h: boolean; v: boolean };
+};
+/** T5's placement facts, as the picture director writes them (`ImageElement.backdrop`, `.kind`). */
+export type PictureFacts = {
+  backdrop?: { plain: { top: boolean; right: boolean; bottom: boolean; left: boolean } };
+  kind?: "object" | "scene";
+};
+/** Which axes may extend: both edges plain, never a scene, nothing without facts. */
+export function extOf(f: PictureFacts): FitPicture["ext"] {
+  const p = f.backdrop?.plain;
+  if (!p || f.kind === "scene") return undefined;
+  const ext = { h: p.left && p.right, v: p.top && p.bottom };
+  return ext.h || ext.v ? ext : undefined;
+}
 export type Crop = { x: number; y: number; w: number; h: number };
 
 const unionOf = (s: SubjectBox[]) => {
@@ -131,12 +150,29 @@ function need(p: FitPicture) {
 /** The largest crop of shape `r` inside the picture, in picture units. */
 const maxCropW = (p: FitPicture, r: number) => Math.min(p.aspect, r);
 
-/** Whether shape `r` shows the whole subject (plus margin) by cropping inside the picture. */
-export function shapeSafe(p: FitPicture, r: number): boolean {
-  if (p.diagram) return true;
+/**
+ * The widest crop of shape `r` the picture allows, past its edges where they may extend, but never
+ * more than twice its own size on an axis: past that the stretched backdrop is the picture (the
+ * pilot's tall jar stretched to a valley's 3.4:1 read as streaks round a sliver).
+ */
+const MAX_EXTEND = 2;
+const allowedW = (p: FitPicture, r: number) =>
+  Math.min(p.ext?.h ? p.aspect * MAX_EXTEND : p.aspect, (p.ext?.v ? MAX_EXTEND : 1) * r);
+
+/**
+ * How shape `r` shows the picture's whole subject (plus margin): by cropping inside it, by
+ * extending its plain backdrop, or not at all.
+ */
+export function shapeMode(p: FitPicture, r: number): "crop" | "extend" | null {
+  if (p.diagram) return "crop";
   const n = need(p);
-  return Math.max(n.w, n.h * r) <= maxCropW(p, r) + 1e-6;
+  const cw = Math.max(n.w, n.h * r);
+  if (cw <= maxCropW(p, r) + 1e-6) return "crop";
+  if (cw <= allowedW(p, r) + 1e-6) return "extend";
+  return null;
 }
+/** Whether shape `r` can show the picture (cropped, or extended past a plain backdrop). */
+export const shapeSafe = (p: FitPicture, r: number): boolean => shapeMode(p, r) !== null;
 
 /**
  * The crop of shape `r` for a picture, zoomed so the subject fills about 72% of the crop's limiting
@@ -147,19 +183,25 @@ export function cropFor(
   p: FitPicture,
   r: number,
   cropW?: number,
-): Crop & { zoom: number; zoomed: boolean } {
+): Crop & { zoom: number; zoomed: boolean; extended: boolean } {
   const n = need(p);
-  const most = maxCropW(p, r);
-  const least = Math.max(n.w, n.h * r, most / MAX_ZOOM);
+  const inside = maxCropW(p, r);
+  const fit = Math.max(n.w, n.h * r);
+  // Past the picture's edges only as far as the subject needs (the pilot: extend as little as possible).
+  const most = fit > inside + 1e-6 ? Math.min(fit, allowedW(p, r)) : inside;
+  const least = Math.max(fit, inside / MAX_ZOOM);
   let cw = most;
-  if (n.s && n.s.w <= 0.9) {
+  if (n.s && n.s.w <= 0.9 && most <= inside) {
     const want = Math.max((n.s.w * p.aspect) / ZOOM_FILL, (n.s.h * r) / ZOOM_FILL);
     cw = Math.min(most, Math.max(least, want));
   }
   if (cropW !== undefined) cw = Math.min(most, Math.max(least, cropW * p.aspect));
   const ch = cw / r;
+  // Inside the picture: clamped to it. Past it (extended): the picture stays whole inside the crop.
   const place = (centre: number, size: number, full: number) =>
-    Math.min(Math.max(centre - size / 2, 0), full - size);
+    size <= full
+      ? Math.min(Math.max(centre - size / 2, 0), full - size)
+      : Math.min(0, Math.max(full - size, centre - size / 2));
   const x = place(n.cx * p.aspect, cw, p.aspect) / p.aspect;
   const y = place(n.cy, ch, 1);
   return {
@@ -167,18 +209,23 @@ export function cropFor(
     y,
     w: cw / p.aspect,
     h: ch,
-    zoom: Math.round((most / cw) * 100) / 100,
+    zoom: Math.round((inside / cw) * 100) / 100,
     zoomed: cw < most - 1e-6,
+    extended: cw > p.aspect + 1e-6 || ch > 1 + 1e-6,
   };
 }
 
 /** How big a picture's subjects show in a box of `w` x `h` (a diagram counts half its box). */
 export function subjectArea(p: FitPicture, w: number, h: number): number {
-  if (p.diagram || !p.subjects?.length) return w * h * 0.5;
+  if (p.diagram) return w * h * 0.5;
   const c = cropFor(p, w / h);
+  // No subject known: the picture's own share of the box (less where the backdrop is stretched).
+  if (!p.subjects?.length)
+    return w * h * 0.5 * Math.min(1, 1 / c.w) * Math.min(1, 1 / c.h) * (c.extended ? 0.92 : 1);
   const k = w / (c.w * p.aspect);
   const s = unionOf(p.subjects);
-  return s.w * p.aspect * k * s.h * k;
+  // A stretched backdrop counts 8% less, so at equal size the shape that needs no extension wins.
+  return s.w * p.aspect * k * s.h * k * (c.extended ? 0.92 : 1);
 }
 
 /**
