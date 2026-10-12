@@ -255,6 +255,8 @@ export function createPerJobFakeAi(
                   call.context?.promptVersion?.startsWith("evaluate")
                 ) {
                   await waitForAbort(call.abortSignal, holdMaxMs);
+                  // Cancelled (or given up on): a later run of this lesson is not held.
+                  heldLessons.delete(lessonId);
                 }
                 if (delay > 0) await sleep(delay);
                 return pipelineAnswer(call, selectedOutlineByJob);

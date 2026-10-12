@@ -257,8 +257,13 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     } else if (handedOff) {
       logger.debug({ lessonId }, "generating lock handed to the next job");
     } else {
-      await clearGenerating(ws, lessonId, jobId);
-      logger.debug({ lessonId }, "generating lock released");
+      // Released after `runJob` writes the terminal event (TEACH-202 part j).
+      const release = async () => {
+        await clearGenerating(ws, lessonId, jobId);
+        logger.debug({ lessonId }, "generating lock released");
+      };
+      if (ctx.afterSettle) ctx.afterSettle(release);
+      else await release();
     }
   }
 }

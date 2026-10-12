@@ -34,6 +34,7 @@ import {
 import {
   type BossJob,
   createBoss,
+  emitJobEvent,
   enqueue,
   ensureQueues,
   type JobsContext,
@@ -76,6 +77,20 @@ describeDb("lesson.plan on pg-boss", () => {
     storage: memoryStorage(),
   };
   const QUEUES = ["lesson.plan", "lesson.generate"] as const satisfies readonly JobName[];
+  /** The lesson lock as it stood when each terminal event was written (TEACH-202 part j). */
+  const lockAtTerminal = new Map<string, string | null>();
+  const probingEmit: typeof emitJobEvent = async (c, event) => {
+    if (
+      ["completed", "failed", "cancelled"].includes(event.type) &&
+      event.workspaceId === workspaceId
+    ) {
+      const rows = await sql<{ jobId: string | null }[]>`
+        select generating_job_id as "jobId" from documents
+        where workspace_id = ${workspaceId} and kind = 'lesson'`;
+      lockAtTerminal.set(event.jobId, rows[0]?.jobId ?? null);
+    }
+    return emitJobEvent(c, event);
+  };
 
   async function waitFor(pred: () => Promise<boolean>, timeoutMs: number): Promise<boolean> {
     const start = Date.now();
@@ -109,6 +124,7 @@ describeDb("lesson.plan on pg-boss", () => {
               // The fake answers in microseconds; without this the 250 ms coalescing window folds
               // the per-slide progress events into two. A real slide takes seconds (§7).
               progressMinIntervalMs: 0,
+              emit: probingEmit,
             });
             outcomes.push(outcome);
             results.push(outcome);
@@ -327,6 +343,19 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(parseLesson(row?.body).generation?.stage).toBe("repaired");
     const stages = new Set((await expectStagedProgress(jobId)).map((p) => p.stage));
     expect(stages.has("plan") && stages.has("generate")).toBe(true);
+  }, 60_000);
+
+  test("the terminal event is written before the lock is released (TEACH-202 part j)", async () => {
+    // A page that reads the row unlocked must be able to find how the job ended.
+    const { ws, jobId, lessonId } = await createAndQueue({ skipPlanning: true });
+    expect(
+      await waitFor(
+        async () => (await getDocument(ws, lessonId))?.generatingJobId === null,
+        30_000,
+      ),
+    ).toBe(true);
+    expect((await settledEvent(jobId))?.type).toBe("completed");
+    expect(lockAtTerminal.get(jobId)).toBe(jobId);
   }, 60_000);
 
   test("a re-plan supersedes the running plan job: its next write is lost_lock and it fails", async () => {

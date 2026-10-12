@@ -77,6 +77,7 @@ function renderPage(
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const DOCUMENT_KEY = ["library", "document", "demo-water-cycle"];
+const META_KEY = ["library", "document-meta", "demo-water-cycle"];
 /** Every `invalidateQueries` on the working copy (not the meta or the lists). */
 const documentInvalidations = (spy: ReturnType<typeof mock>) =>
   spy.mock.calls.filter(
@@ -415,18 +416,15 @@ describe("LessonEditorPage", () => {
   });
 
   it("a lock released before the cancelled event arrives keeps the generating view and says stopped", async () => {
-    // TEACH-202 part j: the worker releases the lock, then writes `cancelled`. A body refetch that
-    // lands between the two must not swap the view for the editor before the outcome is known.
+    // TEACH-202 part j: the body and the job's events reach the page on two channels, so a
+    // refetch can show the lock gone before `cancelled` arrives. The view must wait for it.
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
-    renderPage();
+    const { queryClient } = renderPage();
     const banner = await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
     fakeApi.setGenerating("demo-water-cycle", null);
-    const reads = () =>
-      fakeApi.requests.filter((r) => r.method === "GET" && r.path.startsWith("/documents/")).length;
-    const before = reads();
     act(() =>
       source.emit(
         "progress",
@@ -436,12 +434,33 @@ describe("LessonEditorPage", () => {
         "1",
       ),
     );
-    await waitFor(() => expect(reads()).toBeGreaterThan(before));
-    await wait(50);
+    // The page now holds the unlocked row: the view is still there, still following the job.
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<{ generatingJobId: string | null }>(META_KEY)?.generatingJobId,
+      ).toBeNull(),
+    );
     expect(screen.getByTestId("generating-shell")).toBe(banner);
     act(() => source.emit("cancelled", jobEvent("cancelled"), "2"));
     await waitFor(() => expect(banner).toHaveAttribute("data-state", "cancelled"));
     expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
+  });
+
+  it("a completed job opens the editor even when the hand-over read fails", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    await screen.findByTestId("generating-shell");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
+    fakeApi.failNext(
+      (r) => r.method === "GET" && r.path === "/documents/demo-water-cycle",
+      () => new Response("down", { status: 503 }),
+    );
+    act(() => source.emit("completed", jobEvent("completed"), "1"));
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
   });
 
   it("row 4: Stop posts one cancel for the job", async () => {

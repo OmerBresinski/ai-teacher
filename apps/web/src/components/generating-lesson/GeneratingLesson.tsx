@@ -123,11 +123,18 @@ export function GeneratingLesson({
     if (ended !== "completed") onStopped(jobId);
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
-      .then(() => {
-        if (!sessionIsCurrent(queryClient)) return;
-        if (ended === "completed") onCompleted?.(jobId);
-        return queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments });
-      })
+      .then(
+        () => {
+          if (!sessionIsCurrent(queryClient)) return;
+          if (ended === "completed") onCompleted?.(jobId);
+          return queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments });
+        },
+        () => {
+          // The read failed: the job still completed, so the page still opens the editor, on the
+          // copy it holds. Nothing to do once the session has ended.
+          if (sessionIsCurrent(queryClient) && ended === "completed") onCompleted?.(jobId);
+        },
+      )
       .catch(() => {
         /* The session may have ended while handing over the document. */
       });
