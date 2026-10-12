@@ -4,13 +4,13 @@
       "picture": {
         "title": {
           "cap": 18,
-          "hardMax": 41,
+          "hardMax": 64,
           "words": 3
         },
         "text": {
-          "cap": 47,
-          "hardMax": 80,
-          "words": 9
+          "cap": 69,
+          "hardMax": 125,
+          "words": 14
         }
       },
       "quote": {
@@ -46,14 +46,14 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 18,
-          "hardMax": 37,
-          "words": 3
+          "cap": 13,
+          "hardMax": 51,
+          "words": 2
         },
         "text": {
-          "cap": 13,
-          "hardMax": 29,
-          "words": 2
+          "cap": 22,
+          "hardMax": 59,
+          "words": 4
         }
       },
       "quote": {
@@ -92,13 +92,13 @@
       "picture": {
         "title": {
           "cap": 18,
-          "hardMax": 22,
+          "hardMax": 69,
           "words": 3
         },
         "text": {
-          "cap": 80,
-          "hardMax": 94,
-          "words": 16
+          "cap": 101,
+          "hardMax": 180,
+          "words": 19
         }
       },
       "quote": {
@@ -135,13 +135,13 @@
       "picture": {
         "title": {
           "cap": 18,
-          "hardMax": 22,
+          "hardMax": 51,
           "words": 3
         },
         "text": {
-          "cap": 29,
-          "hardMax": 37,
-          "words": 5
+          "cap": 41,
+          "hardMax": 80,
+          "words": 8
         }
       },
       "quote": {
@@ -180,12 +180,12 @@
       "picture": {
         "title": {
           "cap": 22,
-          "hardMax": 22,
+          "hardMax": 74,
           "words": 4
         },
         "text": {
           "cap": 114,
-          "hardMax": 137,
+          "hardMax": 247,
           "words": 21
         }
       },
@@ -223,13 +223,13 @@
       "picture": {
         "title": {
           "cap": 22,
-          "hardMax": 29,
+          "hardMax": 69,
           "words": 4
         },
         "text": {
-          "cap": 51,
-          "hardMax": 69,
-          "words": 10
+          "cap": 59,
+          "hardMax": 125,
+          "words": 12
         }
       },
       "quote": {

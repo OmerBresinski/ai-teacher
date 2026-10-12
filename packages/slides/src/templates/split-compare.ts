@@ -120,7 +120,6 @@ const COMFORT_FILL = 0.85;
  * the zone's height too, so they may fill 90% of the stage; the field's own margins are the room.
  */
 const TEXT_FILL = 0.9;
-const PIC_SHARE = 0.52;
 /** Short words leave spare height: the pictures take it, up to this share of the field. */
 const PIC_GROW = 0.62;
 const PIC_LOW = 0.25;
@@ -251,118 +250,107 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
           kit.wordsFit(quoteCtx, s.quote ?? "", "body", cellW - 2 * BUBBLE.x, z.quote, 500)),
     );
 
-  // The picture's steps, largest first: the shared shape that shows the subjects largest, from the
-  // spare height down to 52% of the field ("short text, bigger pictures"); then wider shared shapes;
-  // then that shape shrinking to 40% of the field's width. A shape counts as shared when every
-  // picture can crop to it or extend its plain backdrop to it. No standard shape: the shape of a
-  // picture that cannot extend, if the others can reach it; else each its own shape at one height.
-  type Step = { ratios: number[]; h: number };
-  const steps: Step[] = [];
+  // Pictures are sized width first (Greg, 12 Oct: photos sat small beside an empty band): each
+  // candidate shape fills the side's width, capped by the height the title and words leave (and
+  // 62% of the field). The candidates are the standard shapes every picture can crop or extend
+  // to; else the shape of a picture that cannot extend, if the others reach it; else each its own
+  // shape at one shared height. The one that shows the subjects largest wins (ties: the wider).
+  type Pick = { ratios: number[]; boxes: { w: number; h: number }[] };
   const wFloor = PIC_MIN_W * fw;
+  const hGrow = Math.round(PIC_GROW * fh);
+  const hLow = Math.round(PIC_LOW * fh);
+  const cands: number[][] = [];
   if (zone === "picture") {
-    const hMax = Math.round(PIC_SHARE * fh);
-    const hGrow = Math.round(PIC_GROW * fh);
-    const hLow = Math.round(PIC_LOW * fh);
-    const boxOf = (r: number, h: number) => ({
-      w: Math.round(Math.min(cellW, h * r)),
-      h: Math.round(Math.min(h, cellW / r)),
-    });
+    const shared = SHAPES.map(([, r]) => r).filter((r) => pics.every((p) => shapeSafe(p, r)));
     const fixed = pics.filter((p) => !p.ext && !p.diagram).map((p) => p.aspect);
-    const candidates: number[] = SHAPES.map(([, r]) => r).filter((r) =>
-      pics.every((p) => shapeSafe(p, r)),
-    );
-    if (!candidates.length)
-      for (const r of fixed) if (pics.every((p) => shapeSafe(p, r))) candidates.push(r);
-    if (candidates.length) {
-      const area = (r: number) => {
-        const b = boxOf(r, hMax);
-        return pics.reduce((t, p) => t + subjectArea(p, b.w, b.h), 0) + b.w * b.h * 1e-3;
-      };
-      const start = [...candidates].sort((a, b) => area(b) - area(a))[0] as number;
-      const hStart = boxOf(start, hMax).h;
-      for (let h = boxOf(start, hGrow).h; h > hStart; h -= 6)
-        steps.push({ ratios: pics.map(() => start), h });
-      const wider = candidates
-        .filter((r) => r !== start && boxOf(r, hMax).h < hStart)
-        .sort((a, b) => boxOf(b, hMax).h - boxOf(a, hMax).h);
-      for (const r of [start, ...wider])
-        steps.push({ ratios: pics.map(() => r), h: boxOf(r, hMax).h });
-      const last = steps[steps.length - 1] as Step;
-      const r = last.ratios[0] as number;
-      // An upright shape is narrower than the width floor from the start: it gives way to 60% of
-      // its own width instead.
-      const wMin = Math.min(wFloor, boxOf(r, last.h).w * 0.6);
-      for (let h = last.h - 6; boxOf(r, h).w >= wMin && h >= hLow; h -= 6)
-        steps.push({ ratios: last.ratios, h });
-    } else {
-      // No shape suits every picture: each takes its own shape at one shared height.
-      const rs = pics.map((p) => p.aspect);
-      const widest = (h: number) => Math.max(...rs.map((r) => boxOf(r, h).w));
-      for (let h = hGrow; h >= hLow && (h >= hMax || widest(h) >= wFloor); h -= 6)
-        steps.push({ ratios: rs, h });
-    }
-    for (const st of steps) Object.assign(st, { boxes: st.ratios.map((r) => boxOf(r, st.h)) });
+    for (const r of shared.length
+      ? shared
+      : fixed.filter((r) => pics.every((p) => shapeSafe(p, r))))
+      cands.push(pics.map(() => r));
+    if (!cands.length) cands.push(pics.map((p) => p.aspect));
   }
-  const boxesOf = (st: Step) => (st as Step & { boxes: { w: number; h: number }[] }).boxes;
+  const pick = (room: number): Pick => {
+    const cap = Math.max(1, Math.min(room, hGrow));
+    let best: Pick | null = null;
+    let bestScore = -1;
+    for (const ratios of cands) {
+      const h = Math.min(cap, ...ratios.map((r) => cellW / r));
+      const boxes = ratios.map((r) => ({
+        w: Math.round(Math.min(cellW, h * r)),
+        h: Math.round(h),
+      }));
+      const score =
+        pics.reduce(
+          (t, p, i) => t + subjectArea(p, (boxes[i] as { w: number }).w, Math.round(h)),
+          0,
+        ) +
+        boxes.reduce((t, b) => t + b.w, 0) * 1e-3;
+      if (score > bestScore + 1e-6) {
+        best = { ratios, boxes };
+        bestScore = score;
+      }
+    }
+    return best as Pick;
+  };
 
-  type Plan = { name: number; zone: number; picH: number; body: number; total: number };
-  const plan = (z: SplitSizes, si: number): Plan => {
+  type Plan = { name: number; zone: number; picH: number; body: number; total: number; pic?: Pick };
+  const plan = (z: SplitSizes): Plan => {
     const name = Math.max(0, ...sides.map((s) => nameH(s, z)));
+    const words = Math.max(0, ...sides.map((s) => textH(s, z)));
     let zoneH = 0;
     let picH = 0;
+    let pic: Pick | undefined;
     if (zone === "picture") {
-      picH = Math.max(...boxesOf(steps[si] as Step).map((b) => b.h));
+      const room = stageH - name - (name ? TITLE_GAP : 0) - (words ? words + BODY_GAP : 0);
+      pic = pick(room);
+      picH = Math.max(...pic.boxes.map((b) => b.h));
       zoneH = picH + (name ? TITLE_GAP : 0);
     } else if (zone === "quote")
       zoneH = (name ? TAIL_GAP : 0) + TAIL_ROOM + Math.max(...sides.map((s) => quoteH(s, z)));
-    const words = Math.max(0, ...sides.map((s) => textH(s, z)));
     const gap = zoneH ? BODY_GAP : name ? TITLE_GAP : 0;
     const body = words ? words + gap : 0;
-    return { name, zone: zoneH, picH, body, total: name + zoneH + body };
+    return { name, zone: zoneH, picH, body, total: name + zoneH + body, ...(pic ? { pic } : {}) };
   };
+  // A picture narrower than 40% of its field (or than a 3:4 box of its height, for an upright pair)
+  // is a sliver; one under a quarter of the field's height is too small to read.
+  const narrowOf = (p: Plan) =>
+    p.pic ? p.pic.boxes.flatMap((b, i) => (b.w < Math.min(wFloor, 0.75 * b.h) - 1 ? [i] : [])) : [];
   const judge = (p: Plan, z: SplitSizes) => {
-    const fits = p.total <= stageH && wordsOk(z);
-    const fill =
-      (p.total - (zone === "picture" ? p.zone : 0)) / (stageH - (zone === "picture" ? p.zone : 0));
-    // Beside pictures the words may fill what the picture leaves: the picture gives way first.
+    // Past the floors a picture may shrink, but not under half the comfortable minimum: words that
+    // need more squeeze it out, and the slide is over.
+    const fits = p.total <= stageH && wordsOk(z) && (!p.pic || p.picH >= hLow / 2);
+    const fill = p.total / stageH;
     const room = zone === "text" ? TEXT_FILL : zone === "picture" ? 1 : COMFORT_FILL;
-    return { fits, comfy: fits && fill <= room };
+    const picOk = !p.pic || (p.picH >= hLow && !narrowOf(p).length);
+    // Full size: the shape at the side's full width (or at 62% of the field, if that is less).
+    const full =
+      !p.pic ||
+      p.pic.ratios.every((r, i) => (p.pic?.boxes[i]?.h ?? 0) >= Math.min(hGrow, cellW / r) - 2);
+    return { fits, comfy: fits && fill <= room && picOk, full };
   };
 
   let k = 1;
-  let si = 0;
   let z = at(k);
-  let p = plan(z, si);
+  let p = plan(z);
   let j = judge(p, z);
-  while (zone === "picture" && !j.comfy && si < steps.length - 1) {
-    si++;
-    p = plan(z, si);
-    j = judge(p, z);
-  }
-  // Type down to the comfort sizes while it is not comfortable...
-  while (!j.comfy && k > kMin) {
+  // Type down to the comfort sizes while it is not comfortable, or while the pictures are under their
+  // full width (width first: the words give way before the pictures do)...
+  while (!(j.comfy && j.full) && k > kMin) {
     const next = Math.round((k - 0.025) * 1000) / 1000;
     if (!typeComfy(at(next))) break;
     k = next;
     z = at(k);
-    p = plan(z, si);
+    p = plan(z);
     j = judge(p, z);
   }
   // ...then, tight, on to the floors until it fits.
   while (!j.fits && k > kMin) {
     k = Math.max(kMin, Math.round((k - 0.025) * 1000) / 1000);
     z = at(k);
-    p = plan(z, si);
+    p = plan(z);
     j = judge(p, z);
   }
-  // A picture narrower than 40% of its field (or than a 3:4 box of its height, for an upright pair)
-  // is a sliver: the slide does not suit these pictures, so it is reported and the writer moves it.
-  const narrow =
-    zone === "picture"
-      ? boxesOf(steps[si] as Step).flatMap((b, i) =>
-          b.w < Math.min(wFloor, 0.75 * b.h) - 1 ? [i] : [],
-        )
-      : [];
+  const narrow = narrowOf(p);
   const comfy = j.comfy && typeComfy(z) && !narrow.length;
 
   // Fields, then the content centred in each field's stage.
@@ -392,8 +380,8 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
       voice,
       quoteCtx,
       pics,
-      step: steps[si],
-      boxes: zone === "picture" ? boxesOf(steps[si] as Step) : [],
+      ...(p.pic ? { step: { ratios: p.pic.ratios, h: p.picH } } : {}),
+      boxes: p.pic ? p.pic.boxes : [],
       n,
       quoteH,
       textH,
