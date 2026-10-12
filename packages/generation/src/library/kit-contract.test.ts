@@ -60,8 +60,6 @@ const SHARED_FRAME: Record<string, Owned> = {
   "body_map/reception-my-body": "body_map", // 9 captions, 8 frames
   "body_map/y1-senses": "body_map", // 6 captions, 5 frames
   "body_map/y3-skeleton-muscles": "body_map", // 8 captions, 7 frames
-  "mixtures_separating/y3-magnet": "mixtures_separating", // 4 captions, 3 frames
-  "circuits/y4-broken": "circuits", // 3 captions, 2 frames
   "forces_magnets/y5-parachutes": "forces_magnets", // 5 captions, 3 frames
   "seasons_weather/reception-four-seasons": "seasons_weather", // 5 captions, 4 frames
   "seasons_weather/y1-weather": "seasons_weather", // 5 captions, 4 frames
@@ -86,10 +84,10 @@ const LAST_CLICK_DROPS: Record<string, Owned> = {
   "equal_groups/y3-13-div-4": "equal_groups", // drops 13 counters
   "clock_time/y2-quarter-to": "clock_time", // drops 15, 45 (part y: the five-minute ring steps away)
   "data_chart/y3-sport": "data_chart", // drops 12, 12 children (part y: the key card becomes a key line)
+  "evolution_adaptation/y6-giraffe-fossils": "evolution_adaptation", // drops Longer-necked, 2 of 7, 7 of 7 (part z ends on the fossils)
   "data_chart/y1-fruit": "data_chart", // drops 5 children
   "data_chart/y2-books": "data_chart", // drops 4 × 2 + 1 = 9
   "data_chart/y6-travel": "data_chart", // drops 360° ÷ 30 = 12°
-  "food_chain/y4-pond-web": "food_chain", // drops prey, prey, predator, predator
   "mixtures_separating/y3-magnet": "mixtures_separating", // drops A magnet
   "mixtures_separating/y5-filter": "mixtures_separating", // drops Filter paper in a funnel
   "volcano_earthquake/y3-inside": "volcano_earthquake", // drops Lava

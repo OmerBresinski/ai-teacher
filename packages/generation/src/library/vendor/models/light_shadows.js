@@ -10,7 +10,7 @@ import { apparatus, rays } from '../kit/batch-E.js';
 import { SHAPES, OBJECT_KINDS, OBJECT_NAMES, outline, hull, rayPoly, drawObject } from './light_shadows/objects.js';
 
 export const meta = {
-  id: 'light_shadows', name: 'Light and shadows', kind: 'scene', version: 1,
+  id: 'light_shadows', name: 'Light and shadows', kind: 'scene', version: 2,
   subjects: ['Science'], years: ['Y3', 'Y6', 'KS3'],
   teaches: 'Light travels in straight lines: shadows form where it is blocked, mirrors reflect it at equal angles, and we see when light enters our eyes.',
 };
@@ -190,7 +190,9 @@ function renderShadow(root, P, ctx) {
   h('rect', { x: GRID.left - 24, y: FY, width: GRID.right - GRID.left + 48, height: 14, fill: 'var(--bench-top)' }, root);
   h('line', { x1: GRID.left - 24, x2: GRID.right + 24, y1: FY, y2: FY, stroke: 'var(--bench-edge)', 'stroke-width': 'var(--sw-rule)' }, root);
   const beam = h('polygon', { fill: 'color-mix(in oklab,var(--energy) 14%,transparent)', s: b.rays }, root);
-  const umbra = mat === 'transparent' ? null : h('polygon', { fill: `color-mix(in oklab,var(--shade) ${mat === 'opaque' ? 14 : 6}%,transparent)`, s: b.shadow }, root);
+  // v2: the air behind the object is not shaded; it only loses the beam's light (opaque: none of it,
+  // translucent: some), so the only dark shape is the shadow on the screen
+  const umbra = mat === 'transparent' ? null : h('polygon', { fill: mat === 'opaque' ? 'var(--wall-top)' : 'color-mix(in oklab,var(--wall-top) 55%,transparent)', s: b.shadow }, root);
   apparatus(root, 'screen', SX, FY, 1, {}, { w: SW, h: 440 });
   const lit = h('rect', { x: FX, width: SW, fill: 'color-mix(in oklab,var(--energy) 50%,var(--paper))', s: b.rays }, root);
   const shadowFill = `color-mix(in oklab,var(--shade) ${mat === 'opaque' ? 72 : 30}%,var(--paper))`;
@@ -208,21 +210,15 @@ function renderShadow(root, P, ctx) {
   // ghost of where the light started (the move build)
   let ghost = null;
   if (moving) {
+    // v2: no ghost light is left floating. The light itself moves; the first shadow stays on the
+    // screen as a dashed outline, named beside the screen's foot with its size
     const gg = h('g', { s: kMove, c: `${kMove}:soft` }, root);
-    h('g', { opacity: .4 }, gg).appendChild(source(h('g', {}), P.source, lxA, YC).g);
-    h('rect', { x: FX - 4, y: M.A.top, width: SW + 8, height: M.A.hU, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 'var(--sw-lead)', 'stroke-dasharray': '6 6' }, gg);
-    // "shadow from here" sits under the ghost light, but never behind the moved light's stand: after a
-    // short move it narrows to fit left of the stand, or (moving away) goes right of it, below the beam
-    const [sL, sR] = P.source === 'lamp' ? [M.B.lx - 18, M.B.lx + 18] : [M.B.lx - 92, M.B.lx - 32];
-    let gw = 250, gx = Math.max(lxA - 40, GRID.left + gw / 2), gy = YC + 66;
-    if (gx + gw / 2 + 12 > sL && gx - gw / 2 - 12 < sR) {
-      if (sL - 12 - GRID.left >= 120) { gw = Math.min(250, sL - 12 - GRID.left); gx = sL - 12 - gw / 2; }
-      else gx = sR + 12 + gw / 2;
-    }
-    // after a move away the ghost sits inside the new beam: drop the label below its lower edge
-    if (M.B.lx < lxA) gy = Math.max(gy, YC + BEAM * (gx + gw / 2 - M.B.lx) / (FX - M.B.lx) + 50);
-    const gl = textBlock(gg, gx, gy, txt(P, 'label:before', 'Shadow from here'), { cls: 'ts-label', maxW: gw, maxLines: 3, anchor: 'middle', edit: 'text.label:before', a: { cls: 'halo', fill: 'var(--ink)' } });
-    computed(T(gg, gx, gy + gl.h + 4, fmtCm(M.A.cm), 'ts-label', { 'text-anchor': 'middle', cls: 'strong halo', fill: 'var(--ink)' }), 'sourcePosition'); ghost = gg;
+    // a pale underlay keeps the dashed outline visible on the dark new shadow and on the lit screen
+    h('rect', { x: FX - 4, y: M.A.top, width: SW + 8, height: M.A.hU, fill: 'none', stroke: 'var(--paper)', 'stroke-width': 6 }, gg);
+    h('rect', { x: FX - 4, y: M.A.top, width: SW + 8, height: M.A.hU, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 'var(--sw-lead)', 'stroke-dasharray': '8 6' }, gg);
+    const gx = FR + 16, gw = GRID.right - gx, gy = FACE_B - 78;
+    const gl = textBlock(gg, gx, gy, txt(P, 'label:before', 'Shadow before'), { cls: 'ts-label', maxW: gw, maxLines: 2, anchor: 'start', edit: 'text.label:before', a: { fill: 'var(--ink-2)' } });
+    computed(T(gg, gx, gy + gl.h + 4, fmtCm(M.A.cm), 'ts-label', { cls: 'strong', fill: 'var(--ink-2)' }), 'sourcePosition'); ghost = gg;
   }
   // the light source moves as one group
   const srcG = h('g', {}, root); const S = source(srcG, P.source, lxA, YC);

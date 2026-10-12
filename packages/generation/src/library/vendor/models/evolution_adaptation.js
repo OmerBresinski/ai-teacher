@@ -27,7 +27,7 @@ export const meta = {
   id: "evolution_adaptation",
   name: "Adaptation and evolution",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Y6", "KS3"],
   teaches:
@@ -512,7 +512,7 @@ const GROUND = {
   giraffe: "color-mix(in oklab, var(--hue-brown) 45%, var(--cloud))",
 };
 // chips mix into --cloud, which stays light in every theme (Night too), so dark and pale both read
-const CHIP_FAV = "color-mix(in oklab, var(--focus) 24%, var(--cloud))";
+const CHIP_FAV = "color-mix(in oklab, var(--ink-2) 16%, var(--cloud))"; // v2: neutral, not a meaningless hue
 const CHIP_OTHER = "color-mix(in oklab, var(--hue-grey) 12%, var(--cloud))";
 const CHIP_EDGE = "color-mix(in oklab, var(--hue-grey) 45%, var(--cloud))";
 // a head-band label at label size, or at caption size (wider) when a long edit would not fit
@@ -536,7 +536,8 @@ export function render(root, P, ctx) {
   const pitch = Math.min(170, (L.bot - L.top) / R);
   const fos = P.showFossils && O.fossils && b.fossils != null;
   // the whole population stage steps aside for the fossil build, and comes back for the summary
-  const stage = h("g", fos ? { c: `${b.fossils}-${N}:off` } : {}, root);
+  // v2: and the drawing ends on the fossils (the evidence), instead of returning to the grid
+  const stage = h("g", fos ? { hide: b.fossils } : {}, root);
   /* generation labels: the label column widens (and the population narrows) until every label
      fits its row, wrapped and at most shrunk to the minimum size */
   const isManyRow = (i) => M.many && i === R - 1;
@@ -590,7 +591,7 @@ export function render(root, P, ctx) {
         height: hh,
         rx: "var(--r-card)",
         fill: isFav(v) ? CHIP_FAV : CHIP_OTHER,
-        stroke: isFav(v) ? "var(--focus)" : CHIP_EDGE,
+        stroke: isFav(v) ? "var(--ink-2)" : CHIP_EDGE,
         "stroke-width": isFav(v) ? "var(--sw-struct)" : "var(--sw-rule)",
         ...a,
       },
@@ -666,7 +667,7 @@ export function render(root, P, ctx) {
         maxLines: 2,
         anchor: "end",
         edit: `text.label:end${M.f}`,
-        a: { "font-weight": "var(--w-strong)", fill: "var(--focus-text)" },
+        a: { "font-weight": "var(--w-strong)", fill: "var(--ink)" },
       },
       hdW - 48,
     );
@@ -680,7 +681,7 @@ export function render(root, P, ctx) {
         height: 34,
         rx: "var(--r-mark)",
         fill: CHIP_FAV,
-        stroke: "var(--focus)",
+        stroke: "var(--ink-2)",
         "stroke-width": "var(--sw-struct)",
       },
       stage,
@@ -803,7 +804,7 @@ export function render(root, P, ctx) {
           width: Math.max(0.01, (L.cntW * c) / n),
           height: 8,
           rx: "var(--r-mark)",
-          fill: "var(--focus)",
+          fill: "var(--ink-2)",
         },
         cg,
       );
@@ -889,10 +890,25 @@ export function render(root, P, ctx) {
   );
   if (ly + 10 > L.bot)
     ctx.warn("the pressure wording is too long for the space under the first row");
+  // v2: once the young arrive the big panel goes, but a small cause badge and the faded key stay in
+  // the header on every later stage, so the pupil can still see why the faded ones did not survive
+  {
+    const bg = h("g", { s: b.breed, cls: "rise" }, stage);
+    // under a "not to scale" note the badge takes its own line above it
+    const by = subR > L.popL ? L.head - 92 : L.head - 30;
+    let bx = subR > L.popL ? GRID.left : L.popL;
+    if (env)
+      h("rect", { x: bx, y: by - 16, width: 30, height: 30, rx: "var(--r-mark)", fill: env[1], stroke: "var(--ink-3)", "stroke-width": "var(--sw-hair)" }, bg);
+    const cw = textBlock(bg, bx + (env ? 40 : 0), by + 9, txt(P, "label:pressure", Pr.label).length <= 34 ? txt(P, "label:pressure", Pr.label) : Pr.label, { cls: "ts-cap", maxW: 300, maxLines: 1, lh: 30, a: { fill: "var(--ink)" } });
+    bx += (env ? 40 : 0) + cw.w + 28;
+    const ks = Math.min(s, 30 / Z.h);
+    ghost(bg, M.rows[0].find((x) => x.eaten)?.v ?? (M.f ? 0.1 : 0.9), bx, by - 18, Z.w * ks + 8, Z.h * ks + 10);
+    textBlock(bg, bx + Z.w * ks + 18, by + 9, "Did not survive", { cls: "ts-cap", maxW: 220, maxLines: 1, lh: 30, a: { fill: "var(--ink)" } });
+  }
 
   /* fossils: one rock column over the stage, oldest layer at the bottom; gone for the summary */
   if (fos) {
-    const fg = h("g", { s: b.fossils, hide: N, cls: "rise" }, root);
+    const fg = h("g", { s: b.fossils, cls: "rise" }, root);
     const fx0 = GRID.left - 4,
       fx1 = GRID.right + 4;
     // the rock column is scenery: it never takes clicks meant for the labels under it in other builds

@@ -31,7 +31,7 @@ export const meta = {
   id: "forces_magnets",
   name: "Forces and magnets",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Y3", "Y4", "Y5", "Y6"],
   teaches:
@@ -1653,7 +1653,8 @@ function renderMagnets(root, P, ctx, bi, N, dur) {
       );
       const dir = att ? (side < 0 ? "right" : "left") : side < 0 ? "left" : "right";
       // the push or pull shows only while this pair is the one being shown
-      const ag = h("g", { s: kr, hide: ctx.b[`pair:${i + 1}`] ?? N, delay: 200 }, mg);
+      // v2: the last pair keeps its push or pull arrows in the final view
+      const ag = h("g", { s: kr, hide: ctx.b[`pair:${i + 1}`] ?? null, delay: 200 }, mg);
       forceArrow(ctx, ag, [cx - (dir === "right" ? 48 : -48), y - MH / 2 - 30], dir, 6, null, {
         unit: 16,
         col: "var(--focus)",
