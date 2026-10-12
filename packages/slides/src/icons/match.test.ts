@@ -65,6 +65,8 @@ describe("no ambiguity", () => {
       "Mask",
       "Gas",
       "Chamber",
+      "Shield",
+      "Composite",
       "Plates",
       "Layers",
       "Brain",
@@ -83,6 +85,9 @@ describe("no ambiguity", () => {
     expect(matchIcon("Magma chamber")).toBe("magma-chamber");
     expect(matchIcon("Heart chambers")).toBe("heart-chambers");
     expect(matchIcon("Volcanic gas")).toBe("volcanic-gas");
+    expect(matchIcon("Shield volcano")).toBe("shield-volcano");
+    expect(matchIcon("Composite volcano")).toBe("composite-volcano");
+    expect(resolveIcon("shield-volcano")).toBe("shield-volcano");
     expect(matchIcon("Intestine")).toBe("intestines"); // once also digestion's synonym
   });
 });
@@ -105,8 +110,9 @@ describe("matchIcon", () => {
     for (const row of pilotRuns) {
       expect(`${row.label} -> ${matchIcon(row.label)}`).toBe(`${row.label} -> ${row.id}`);
     }
-    // 36 of the pilot's 37 hits: "Support" no longer matches healthy-heart (generic, pruned)
-    expect(pilotRuns.filter((r) => r.id)).toHaveLength(36);
+    // 34 of the pilot's 37 hits: "Support", "Shield" and "Composite" are generic, so pruned;
+    // pilot slides reach those icons through an explicit key (resolveIcon takes an exact id first)
+    expect(pilotRuns.filter((r) => r.id)).toHaveLength(34);
   });
 
   test("folds a trailing plural and needs a synonym for an irregular one", () => {

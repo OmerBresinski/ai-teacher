@@ -44,6 +44,8 @@ const DROP_SYNONYMS: Record<string, string[]> = {
   "growth-over-time": ["growing", "growth"],
   windowsill: ["window"],
   bee: ["insects"],
+  "shield-volcano": ["shield"],
+  "composite-volcano": ["composite"],
   "explosive-eruption": ["explosive"],
   "gentle-eruption": ["gentle"],
   "magma-chamber": ["chamber", "reservoir"],

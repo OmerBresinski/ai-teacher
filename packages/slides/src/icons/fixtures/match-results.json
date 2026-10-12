@@ -183,12 +183,14 @@
   {
     "lesson": "volcanoes",
     "label": "Shield",
-    "id": "shield-volcano"
+    "id": null,
+    "note": "pruned 12 Oct: generic across subjects; pilot slides use the explicit icon key"
   },
   {
     "lesson": "volcanoes",
     "label": "Composite",
-    "id": "composite-volcano"
+    "id": null,
+    "note": "pruned 12 Oct: generic across subjects; pilot slides use the explicit icon key"
   },
   {
     "lesson": "egypt",

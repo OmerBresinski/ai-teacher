@@ -535,14 +535,14 @@ export const ICON_CONCEPTS: readonly IconConcept[] = [
   {
     id: "shield-volcano",
     label: "Shield volcano",
-    synonyms: ["shield", "broad volcano", "gentle slopes"],
+    synonyms: ["broad volcano", "gentle slopes"],
     lesson: "volcanoes",
     keyStage: "KS3",
   },
   {
     id: "composite-volcano",
     label: "Composite volcano",
-    synonyms: ["composite", "stratovolcano", "steep volcano", "cone volcano"],
+    synonyms: ["stratovolcano", "steep volcano", "cone volcano"],
     lesson: "volcanoes",
     keyStage: "KS3",
   },
