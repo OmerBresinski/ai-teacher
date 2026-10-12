@@ -276,6 +276,8 @@ export type Ctx = {
   processLine?: boolean;
   /** `LayoutOptions.objectiveCards` (UX ruling 203). */
   objectiveCards?: boolean;
+  /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
+  panelNoVisual?: "narrow" | "icon";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1553,6 +1555,8 @@ export type LayoutOptions = {
   processLine?: boolean;
   /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
   objectiveCards?: boolean;
+  /** Panel list with no visual: a narrower panel (the default) or the group's icon large in it. */
+  panelNoVisual?: "narrow" | "icon";
 };
 
 /**
@@ -1659,6 +1663,7 @@ function layoutOnce(
     ...(opts.optionColours ? { optionColours: true } : {}),
     ...(opts.processLine ? { processLine: true } : {}),
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
+    ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the

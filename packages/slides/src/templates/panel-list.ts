@@ -5,8 +5,8 @@
  * the pilot's `northstars/components/panel-list.js` (Greg's gold 2, "The five food groups"); the
  * pilot draws at 1440 x 810 px, so every pilot length here is x 2/3 (slide points).
  *
- * - Comfortable to 4 rows, 3 at early, at the sizes the renderer draws (`PANEL_COMFORT`); 6 rows are
- *   always `tight`. 2-line rows at 4+ are `tight`.
+ * - Comfortable up to the measured `PANEL_COMFORT` rows, at the sizes the renderer draws. 2-line
+ *   rows at 4+ are `tight`.
  * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
  *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
  *   Words are never cut: a field past its measured hard maximum is named in `over`.
@@ -58,11 +58,10 @@ export const PANEL_MAX = 6;
 export const PANEL_MIN = 2;
 /** The most rows that can be comfortable at each age. */
 /**
- * The pilot holds 5 (4 at early); measured at the sizes the product draws (the deck's key-stage
- * scale snaps body to 25pt at KS2, 28pt at KS1), one row fewer is comfortable on the v1 themes.
- * Re-measure when theme v2 (TEACH-152 part b) gives the v2 sizes their own steps.
+ * The most rows that are comfortable at each age: the largest count whose measured name and text
+ * caps are above 0 in `panel-list-capacity.json` (filled below, once the table is read).
  */
-export const PANEL_COMFORT: Record<AgeKey, number> = { early: 3, primary: 4, secondary: 4 };
+export const PANEL_COMFORT = {} as Record<AgeKey, number>;
 /** Element names, as a teacher sees them in the editor's selection and layers. */
 export const PANEL_NAMES = {
   panel: "Title panel",
@@ -77,6 +76,7 @@ export const PANEL_NAMES = {
   figure: "Panel diagram",
   halo: "Pie chart back",
   wedge: "Pie slice",
+  groupIcon: "Panel icon",
 } as const;
 
 /**
@@ -98,12 +98,23 @@ export const PANEL_LIST_WRITER_MENU = {
 /* Geometry (960 x 540; the pilot's 1440 px x 2/3). */
 const SLIDE_H = 540;
 export const PANEL_W = 313;
+/** The panel with no visual (option A, the default): about 28% of the slide, the title at its top. */
+export const PANEL_W_NARROW = 269;
 const TITLE_X = 48;
-const TITLE_W = 244;
+/** The title's right margin inside the panel (pilot 470 - 72 - 366 px). */
+const TITLE_RIGHT = 21;
 const TITLE_TOP = 64;
-const TITLE_FOOT = 64;
-const ROWS_X = 360;
-const ROWS_W = 960 - 64 - ROWS_X;
+/** The gap between the panel and the rows column (pilot 70 px). */
+const ROWS_GAP = 47;
+const ROWS_RIGHT = 960 - 64;
+/**
+ * Display text (titles, row names) is measured 6% narrower than its box, the repo's measured
+ * cushion for a browser break the ruler missed (`FIT_CUSHION`, text-measure.ts); at 800 it is also
+ * heavier than the ruler's 700 metrics. y3 s3's heading ran off the slide by one line without it.
+ */
+export const DISPLAY_CUSHION = 0.94;
+/** Option B: the group's icon under the title, at most this big. */
+const GROUP_ICON = 150;
 const ROWS_TOP = 43;
 const ROWS_FOOT = 43;
 const COL_GAP = 23;
@@ -124,7 +135,8 @@ const CHART_GAP = 27;
 const INSET = 48;
 
 /* Caps (the measured table, `panel-list-capacity.json`). */
-export type Cap = { cap: number; hardMax: number };
+/** A field's limits in characters, and `words`: the cap's measured text in words (mean-length words). */
+export type Cap = { cap: number; hardMax: number; words?: number };
 export type PanelCaps = {
   heading: Cap;
   lead: Cap;
@@ -133,6 +145,13 @@ export type PanelCaps = {
   withLead: { name: Cap; text: Cap };
 };
 const TABLE = CAPACITY as unknown as Partial<Record<AgeKey, Record<string, PanelCaps>>>;
+for (const age of ["early", "primary", "secondary"] as const)
+  PANEL_COMFORT[age] = Math.max(
+    PANEL_MIN,
+    ...Object.entries(TABLE[age] ?? {})
+      .filter(([, c]) => c.text.cap > 0 && c.name.cap > 0)
+      .map(([n]) => Number(n)),
+  );
 /** The caps for `count` rows at `age` (the nearest measured count at or over it). */
 export function panelCapsFor(age: AgeKey, count: number): PanelCaps | undefined {
   const byCount = TABLE[age];
@@ -182,19 +201,27 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const photo = figure && "photo" in figure ? figure : null;
   const cat = icons || !!shares;
 
-  // Panel and title.
-  kit.box(c, { x: 0, y: 0, w: PANEL_W, h: SLIDE_H }, L.deep, {
+  // Panel and title. With no visual the panel narrows (A, the default), or keeps its width and
+  // shows the group's icon large (B, `panelNoVisual: "icon"`, when the first row's icon resolves).
+  const head = clean(input.heading);
+  const visual = !!(shares || figure);
+  const groupIcon = !visual && c.panelNoVisual === "icon" && icons ? (matched[0] ?? null) : null;
+  const panelW = visual || groupIcon ? PANEL_W : PANEL_W_NARROW;
+  const TITLE_W = panelW - TITLE_X - TITLE_RIGHT;
+  const ROWS_X = panelW + ROWS_GAP;
+  const ROWS_W = ROWS_RIGHT - ROWS_X;
+  kit.box(c, { x: 0, y: 0, w: panelW, h: SLIDE_H }, L.deep, {
     shape: "rect",
     radius: 0,
     name: PANEL_NAMES.panel,
   });
-  const head = clean(input.heading);
-  const visual = !!(shares || figure);
   const titleRoom = photo
     ? SLIDE_H - TITLE_TOP - PHOTO_ROOM - PHOTO_GAP
     : visual
       ? SLIDE_H - TITLE_TOP - CHART_ROOM - CHART_GAP
-      : SLIDE_H - TITLE_TOP - TITLE_FOOT;
+      : groupIcon
+        ? SLIDE_H - TITLE_TOP - GROUP_ICON - 2 * PHOTO_GAP
+        : SLIDE_H - 2 * TITLE_TOP;
   // The title takes the deck's type-scale step the renderer draws for the wanted size: a title
   // step while one sits at or under it, else a heading step (the title role stops at subtitle).
   const titleAt = (tk: number) => {
@@ -204,7 +231,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const size = preset === "title" ? asTitle : drawn(c.t, "heading", want);
     const lines = head ? lines_(c.t, head, preset, L.displayWeight, size, TITLE_W) : 0;
     const h = Math.ceil(lines * size * L.lineHeights.title);
-    const whole = !head || kit.wordsFit(c, head, preset, TITLE_W, size, L.displayWeight);
+    const whole = !head || kit.wordsFit(c, head, preset, cushioned(TITLE_W), size, L.displayWeight);
     return { size, preset, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
   };
   let tk = 1;
@@ -257,7 +284,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
 
   // Title: under the panel's top with a visual, at its foot without one.
   if (head) {
-    const y = visual ? TITLE_TOP : SLIDE_H - TITLE_FOOT - title.h;
+    const y = TITLE_TOP;
     put(c, head, title.preset, { x: TITLE_X, y, w: TITLE_W }, title.size, {
       weight: L.displayWeight,
       lh: L.lineHeights.title,
@@ -266,6 +293,22 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     });
   }
 
+  if (groupIcon) {
+    const top = TITLE_TOP + title.h + PHOTO_GAP;
+    const g = Math.max(0, Math.min(GROUP_ICON, panelW - 2 * TITLE_X, SLIDE_H - PHOTO_GAP - top));
+    c.els.push({
+      id: uid(),
+      type: "icon",
+      x: Math.round((panelW - g) / 2),
+      y: Math.round(top + (SLIDE_H - PHOTO_GAP - top - g) / 2),
+      w: Math.round(g),
+      h: Math.round(g),
+      icon: groupIcon,
+      color: L.onDeep,
+      strokeWidth: 1.5,
+      name: PANEL_NAMES.groupIcon,
+    } as IconElement);
+  }
   if (photo && picBox) {
     const crop =
       photo.photo && photo.aspect
@@ -340,7 +383,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         : 0;
       const th = nh + (nh && lh ? NAME_GAP : 0) + lh;
       const whole =
-        (!r.name || kit.wordsFit(c, r.name, "heading", tw, s.name, L.displayWeight)) &&
+        (!r.name || kit.wordsFit(c, r.name, "heading", cushioned(tw), s.name, L.displayWeight)) &&
         (!r.text || kit.wordsFit(c, r.text, "body", tw, s.body, L.bodyWeight));
       return { nh, lh, th, rh: Math.max(d + 4, th), whole };
     });
@@ -365,7 +408,8 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
       const bTop = (ys[i] ?? 0) + (b.rh - b.th) / 2;
       minGap = Math.min(minGap, bTop - (aTop + a.th));
     }
-    const fill = (blocks.reduce((a, b) => a + b.th, 0) + (n - 1) * bodyLH) / Math.max(1, H);
+    // 85% of the column for the text alone; the gaps are judged by minGap (CAPS-AUDIT: one margin).
+    const fill = blocks.reduce((a, b) => a + b.th, 0) / Math.max(1, H);
     const comfy = fits && fill <= COMFORT_FILL + 0.005 && (n < 2 || minGap >= bodyLH - 1);
     const typeOk = s.name >= comfortName - TOL && s.body >= comfortBody - TOL;
     return { s, d, tw, blocks, ys, gap, fits, comfy, typeOk };
@@ -389,14 +433,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
       m = measureAt(k, df);
     }
 
-  const tight =
-    n < PANEL_MIN ||
-    n > PANEL_COMFORT[L.age] ||
-    !m.comfy ||
-    !m.typeOk ||
-    tk < 0.8 ||
-    !titleFits ||
-    leadLines > 1;
+  const tight = n < PANEL_MIN || !m.comfy || !m.typeOk || tk < 0.8 || !titleFits || leadLines > 1;
   if (!titleFits) geomOver.push("heading");
 
   // Draw the rows.
@@ -544,8 +581,10 @@ function lines_(
   size: number,
   w: number,
 ) {
-  return countLines(text, preset, t, w, weight, size);
+  // Display text (title and heading presets) is measured narrower (DISPLAY_CUSHION).
+  return countLines(text, preset, t, preset === "body" ? w : w * DISPLAY_CUSHION, weight, size);
 }
+const cushioned = (w: number) => w * DISPLAY_CUSHION;
 
 /** A text box at an explicit size, weight and line height (the profile's, not the template scale's). */
 function put(

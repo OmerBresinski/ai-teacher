@@ -9,18 +9,19 @@ import type {
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
-import { sample as sampleOf } from "./capacity";
 import { cutSubjects, type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
+  DISPLAY_CUSHION,
   PANEL_COMFORT,
   PANEL_NAMES,
   PANEL_W,
+  PANEL_W_NARROW,
   type PanelRow,
   panelCapsFor,
   panelListFits,
   panelListPaths,
 } from "./panel-list";
-import { measurePanelCaps } from "./panel-list-capacity";
+import { measurePanelCaps, panelSample as sampleOf } from "./panel-list-capacity";
 import CAPACITY from "./panel-list-capacity.json";
 import { ageOf } from "./panel-list-deps";
 
@@ -92,11 +93,7 @@ describe("panel-list", () => {
         expect(faults).toEqual([]);
       });
 
-  test("six rows are always tight; two-line rows at four and over are tight", () => {
-    for (const stage of STAGES) {
-      const six = layoutTemplate(input(6, "none"), T0, stage);
-      expect(six.tight, stage).toBe(true);
-    }
+  test("two-line rows at four are tight", () => {
     const long = ROWS.map((r) => ({
       ...r,
       text: "Gives us the vitamins and the fibre a growing body needs to stay well every day.",
@@ -104,18 +101,14 @@ describe("panel-list", () => {
     expect(layoutTemplate(input(4, "none", undefined, long), T0, "ks2").tight).toBe(true);
   });
 
-  test("a panel and its heading: the panel is full height, the title sits low with no visual", () => {
+  test("a panel and its heading: the panel is full height, the title at its top", () => {
     const r = layoutTemplate(input(3, "none"), T0, "ks2");
     const [panel] = named(r.slide.elements, PANEL_NAMES.panel) as ShapeElement[];
     expect(panel).toMatchObject({ x: 0, y: 0, h: 540, shape: "rect" });
-    expect(panel?.w).toBe(PANEL_W);
     const [title] = named(r.slide.elements, PANEL_NAMES.title) as TextElement[];
-    expect(title).toBeDefined();
-    if (!title) return;
-    expect(title.y + title.h).toBeGreaterThan(400);
+    expect(title?.y).toBeLessThan(100);
     const withPhoto = layoutTemplate(input(3, "photo"), T0, "ks2");
-    const [t2] = named(withPhoto.slide.elements, PANEL_NAMES.title) as TextElement[];
-    expect(t2?.y).toBeLessThan(100);
+    expect((named(withPhoto.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
   });
 
   test("a wide and a tall photo: a safe standard shape keeping the subject, else its own shape inset; never matted", () => {
@@ -246,6 +239,83 @@ describe("panel-list", () => {
         if (!r.over.includes("heading"))
           expect(bottom, tag).toBeLessThanOrEqual((ground?.y ?? 540) + 0.5);
       }
+  });
+
+  test("no visual (option A, the default): the panel narrows and the title sits near the top", () => {
+    const r = layoutTemplate(input(4, "none"), T0, "ks2");
+    const [panel] = named(r.slide.elements, PANEL_NAMES.panel) as ShapeElement[];
+    expect(panel?.w).toBe(PANEL_W_NARROW);
+    expect(PANEL_W_NARROW / 960).toBeCloseTo(0.28, 2);
+    const title = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+    expect(title.y).toBeLessThan(100);
+    expect(title.x + title.w).toBeLessThanOrEqual(PANEL_W_NARROW);
+    // The rows move left with the panel.
+    const disc = named(r.slide.elements, PANEL_NAMES.disc)[0] as ShapeElement;
+    expect(disc.x).toBeLessThan(PANEL_W_NARROW + 60);
+    // With a visual the panel keeps its full width.
+    const pie = layoutTemplate(input(4, "pie"), T0, "ks2");
+    expect((named(pie.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
+  });
+
+  test("no visual, option B: the full panel shows the group's icon large under the title", () => {
+    const r = layoutTemplate(input(4, "none"), T0, "ks2", { panelNoVisual: "icon" });
+    const [panel] = named(r.slide.elements, PANEL_NAMES.panel) as ShapeElement[];
+    expect(panel?.w).toBe(PANEL_W);
+    const big = named(r.slide.elements, PANEL_NAMES.groupIcon);
+    expect(big).toHaveLength(1);
+    const title = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+    const icon = big[0] as { y: number; h: number; w: number };
+    expect(icon.y).toBeGreaterThanOrEqual(title.y + title.h);
+    expect(icon.w).toBeGreaterThan(100);
+    // No icon resolves: option B falls back to A.
+    const plain = ROWS.slice(0, 4).map((x) => ({ ...x, icon: null }));
+    const b = layoutTemplate(input(4, "none", undefined, plain), T0, "ks2", {
+      panelNoVisual: "icon",
+    });
+    expect((named(b.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W_NARROW);
+  });
+
+  test("the heading is measured with the display-weight margin and reported when it cannot hold", () => {
+    // y3 s3: five rows, no visual; the heading must never run off the slide.
+    const heading = "Five needs for healthy growth";
+    for (const theme of THEMES)
+      for (const stage of STAGES)
+        for (const visual of ["none", "pie", "photo"]) {
+          const r = layoutTemplate({ ...input(5, visual), heading }, theme, stage);
+          const t = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+          const st = atKeyStage(theme, stage);
+          const shown = resolveTextStyle(t.style ?? {}, st, t.style?.preset ?? "title");
+          const lines = countLines(
+            heading,
+            shown.preset,
+            st,
+            t.w * DISPLAY_CUSHION,
+            shown.fontWeight,
+            shown.fontSize,
+          );
+          expect(t.h, `${theme.id} ${stage} ${visual}`).toBeGreaterThanOrEqual(
+            Math.floor(lines * shown.fontSize * (t.style?.lineHeight ?? 1)),
+          );
+          expect(t.y + t.h).toBeLessThanOrEqual(540);
+          expect(r.fields?.find((f) => f.field === "heading")).toBeDefined();
+        }
+    // A heading that cannot hold even at its smallest step is over, and its field says so.
+    const r = layoutTemplate({ ...input(3, "pie"), heading: "word ".repeat(40) }, T0, "ks2");
+    expect(r.over).toContain("heading");
+    expect(r.fields?.find((f) => f.field === "heading")?.over).toBe(true);
+  });
+
+  test("five rows are measured, not zeroed: one-line rows at KS3 are comfortable", () => {
+    // At KS2 five rows stay uncomfortable: body draws at 25pt and the gaps fall under a body line.
+    for (const age of ["secondary"] as const) {
+      const caps = panelCapsFor(age, 5);
+      expect(caps?.text.cap, age).toBeGreaterThan(0);
+      expect(caps?.text.words, age).toBeGreaterThan(0);
+    }
+    // The audit's KS2 targets: heading about 7 words, 3 rows about 11, 4 rows about 6.
+    expect(panelCapsFor("primary", 3)?.text.words).toBeGreaterThanOrEqual(11);
+    expect(panelCapsFor("primary", 4)?.text.words).toBeGreaterThanOrEqual(6);
+    expect(panelCapsFor("primary", 3)?.heading.words).toBeGreaterThanOrEqual(6);
   });
 
   test("odd input never throws", () => {

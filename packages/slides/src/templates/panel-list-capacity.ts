@@ -11,7 +11,6 @@
 import { writeFileSync } from "node:fs";
 import type { Theme } from "@tj/domain/documents";
 import { THEMES } from "../themes";
-import { sample } from "./capacity";
 import type { Stage, TemplateInput } from "./index";
 import { type Cap, type PanelCaps, type PanelRow, panelListFits } from "./panel-list";
 import type { AgeKey } from "./panel-list-deps";
@@ -28,6 +27,29 @@ const SHORT: PanelRow[] = [
   { name: "Sun", text: "Gives vitamin D.", icon: "sun" },
   { name: "Heart", text: "Pumps the blood.", icon: "heart" },
 ];
+
+/**
+ * Measuring text: classroom sentences at about 5.6 characters a word with the space (the writers'
+ * mean, CAPS-AUDIT), so a cap in characters and its `words` agree with real writing.
+ */
+const PASSAGE =
+  "Plants need light and water to grow strong roots and green leaves. The heart pumps blood through arteries to every part of the body. Volcanoes erupt when melted rock rises through cracks in the crust. Ancient Egyptians preserved bodies so the spirit could live forever. Animals change as they grow from babies into adults.";
+
+/** About `n` characters of the passage from word `seed`, cut at a word, capitalised. */
+export function panelSample(n: number, seed = 0): string {
+  const words = PASSAGE.split(" ");
+  const rot = [...words.slice(seed % words.length), ...words.slice(0, seed % words.length)];
+  let out = "";
+  for (const w of [...rot, ...rot, ...rot]) {
+    const next = out ? `${out} ${w}` : w;
+    if (next.length > n) break;
+    out = next;
+  }
+  const s = out || "Word";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const sample = panelSample;
+const wordsIn = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
 const inputOf = (rows: PanelRow[], heading = HEADING, lead?: string): TemplateInput => ({
   template: "panel-list",
@@ -63,14 +85,17 @@ function capOf(
   seed: number,
 ): Cap {
   const len = (ch: number) => (ch ? sample(ch, seed).length : 0);
+  const cap = longest((ch) => panelListFits(make(ch), themes, stage).comfortable);
   return {
-    cap: len(longest((ch) => panelListFits(make(ch), themes, stage).comfortable)),
+    cap: len(cap),
     hardMax: len(longest((ch) => panelListFits(make(ch), themes, stage).fits)),
+    words: cap ? wordsIn(sample(cap, seed)) : 0,
   };
 }
 const minCap = (a: Cap, b: Cap): Cap => ({
   cap: Math.min(a.cap, b.cap),
   hardMax: Math.min(a.hardMax, b.hardMax),
+  words: Math.min(a.words ?? 0, b.words ?? 0),
 });
 
 /** A list field's limit: every row long, and row 0 long beside short siblings, the smaller. */
