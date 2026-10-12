@@ -55,6 +55,13 @@ export interface JobContext<K extends JobName, D = unknown> {
   logger: Logger;
   /** App-owned dependencies supplied at worker boot; never import app modules from `@tj/jobs`. */
   deps: D;
+  /**
+   * Whether pg-boss will run this job again if this attempt throws a retryable error
+   * (`retryCount < retryLimit`). `runJob` always sets it; a handler that keeps a lock for the
+   * retry must check it, because on the last attempt the failure is terminal and nothing else
+   * releases the lock. Hand-built test contexts may leave it out: `undefined` reads as `true`.
+   */
+  attemptsLeft?: boolean;
 }
 
 /** The optional fields of a `progress` event beyond `percent` and `message`. */

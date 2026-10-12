@@ -17,12 +17,12 @@ import {
   type WorksheetGeneration,
 } from "@tj/domain/documents";
 import {
-  BudgetExceeded,
   buildFrame,
   checkWorksheet,
   type FillDeps,
   fillFrame,
   generateWorksheetFillPrompt,
+  isBudgetRefusal,
   repairPrompt,
   StageFailure,
 } from "@tj/generation";
@@ -60,10 +60,12 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
     const { lessonId, worksheetId, revision, recipeId, practiceMinutes } = payload;
     const ws = forWorkspace(deps.db, workspaceId);
+    // Kept only for a retry pg-boss will run (TEACH-202 part g); the last attempt releases it.
+    const attemptsLeft = ctx.attemptsLeft !== false;
     let keepLockForRetry = false;
     try {
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
       const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
@@ -197,11 +199,13 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       // What was persisted stays (item 9). A cancel is terminal (`runJob` records `cancelled`);
       // a shutdown is retried by pg-boss, so the next attempt needs the lock.
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
-      if (error instanceof BudgetExceeded) {
-        throw new NonRetryableError(error.message, { cause: error });
+      if (isBudgetRefusal(error)) {
+        throw new NonRetryableError(error instanceof Error ? error.message : "budget refused", {
+          cause: error,
+        });
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
         throw new NonRetryableError(error.message, { cause: error });
@@ -210,7 +214,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       if (error instanceof StageFailure) {
         throw new NonRetryableError(error.message, { cause: error });
       }
-      if (!(error instanceof NonRetryableError)) keepLockForRetry = true;
+      if (!(error instanceof NonRetryableError)) keepLockForRetry = attemptsLeft;
       throw error;
     } finally {
       if (keepLockForRetry) {
