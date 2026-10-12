@@ -1,0 +1,134 @@
+{
+  "KS1": [
+    {
+      "cards": 2,
+      "heading": false,
+      "words": 44,
+      "chars": 216,
+      "label": 20
+    },
+    {
+      "cards": 2,
+      "heading": true,
+      "words": 27,
+      "chars": 136,
+      "label": 38
+    },
+    {
+      "cards": 3,
+      "heading": false,
+      "words": 21,
+      "chars": 110,
+      "label": 12
+    },
+    {
+      "cards": 3,
+      "heading": true,
+      "words": 15,
+      "chars": 86,
+      "label": 12
+    },
+    {
+      "cards": 4,
+      "heading": false,
+      "words": 14,
+      "chars": 72,
+      "label": 20
+    },
+    {
+      "cards": 4,
+      "heading": true,
+      "words": 5,
+      "chars": 28,
+      "label": 20
+    }
+  ],
+  "KS2": [
+    {
+      "cards": 2,
+      "heading": false,
+      "words": 55,
+      "chars": 272,
+      "label": 40
+    },
+    {
+      "cards": 2,
+      "heading": true,
+      "words": 38,
+      "chars": 188,
+      "label": 40
+    },
+    {
+      "cards": 3,
+      "heading": false,
+      "words": 32,
+      "chars": 154,
+      "label": 12
+    },
+    {
+      "cards": 3,
+      "heading": true,
+      "words": 22,
+      "chars": 112,
+      "label": 12
+    },
+    {
+      "cards": 4,
+      "heading": false,
+      "words": 18,
+      "chars": 92,
+      "label": 22
+    },
+    {
+      "cards": 4,
+      "heading": true,
+      "words": 13,
+      "chars": 66,
+      "label": 22
+    }
+  ],
+  "KS3-5": [
+    {
+      "cards": 2,
+      "heading": false,
+      "words": 60,
+      "chars": 388,
+      "label": 40
+    },
+    {
+      "cards": 2,
+      "heading": true,
+      "words": 60,
+      "chars": 292,
+      "label": 40
+    },
+    {
+      "cards": 3,
+      "heading": false,
+      "words": 46,
+      "chars": 224,
+      "label": 22
+    },
+    {
+      "cards": 3,
+      "heading": true,
+      "words": 35,
+      "chars": 166,
+      "label": 22
+    },
+    {
+      "cards": 4,
+      "heading": false,
+      "words": 27,
+      "chars": 130,
+      "label": 40
+    },
+    {
+      "cards": 4,
+      "heading": true,
+      "words": 17,
+      "chars": 86,
+      "label": 26
+    }
+  ]
+}

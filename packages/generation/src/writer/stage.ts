@@ -254,6 +254,11 @@ export type WriterRun = {
    * `features.slotFill` (base4g on), else off (schema unchanged).
    */
   slotFill?: boolean;
+  /**
+   * Cards grid (ruling 203, P3): the menu offers a grid of 2-4 icon cards. Absent:
+   * `CARDS_GRID_DEFAULT` (off, master's schema byte for byte).
+   */
+  cardsGrid?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -516,6 +521,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       objectives: run.objectives.length,
       ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
       ...(run.callouts !== undefined ? { callouts: run.callouts } : {}),
+      ...(run.cardsGrid !== undefined ? { cardsGrid: run.cardsGrid } : {}),
     }),
     models.map((m) => m.id),
   );
@@ -1988,16 +1994,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "point-guard", slide: i + 1, removed, how: left ? "left" : "point-strip" });
   };
   // Ruling 195: a matching task's card pictures that failed are asked once more before the slide
-  // settles; any still missing turn the task into a plain question (materialise).
+  // settles; any still missing turn the task into a plain question (materialise). A cards grid's
+  // icons (ruling 203) get the same one retry; any still missing show the theme's glyph.
   const cardRetry = async (i: number) => {
+    const s = plan.slides[i] as S | undefined;
+    const icons = s?.template === "cards-grid";
     const failed = (asks.get(i) ?? []).filter(
       (a) =>
         a.type === "photo" &&
-        /^card\.\d+$/.test(a.key) &&
+        (icons ? /^icon\.\d+$/ : /^card\.\d+$/).test(a.key) &&
         visualState(i)(a.key).status === "failed",
     );
-    const s = plan.slides[i] as S | undefined;
-    if (!failed.length || !s || s.template !== "pair" || !run.placeMore) return;
+    if (!failed.length || !s || !(s.template === "pair" || icons) || !run.placeMore) return;
     await run.placeMore(i, failed, {
       heading: String(s.heading ?? ""),
       text: wordsOf(s),

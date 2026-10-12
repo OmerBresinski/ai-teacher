@@ -70,9 +70,10 @@ describe("slot schema generation per layout", () => {
         for (const v of vs) {
           const name = variantDefName(layout, fitKey(v));
           const d = defs[name];
-          // "with a figure" ways of a layout with no figure slot (exit-ticket) are not offered.
+          // "with a figure" ways of a layout with no figure slot (exit-ticket) are not offered, and
+          // the cards grid is measured but has no def unless the writer offers it (cardsGrid off).
           if (!d) {
-            expect(layout).toBe("exit-ticket");
+            expect(["exit-ticket", "cards-grid"]).toContain(layout);
             continue;
           }
           expect(refs).toContain(name);

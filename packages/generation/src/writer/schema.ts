@@ -1,4 +1,5 @@
 import { type WriterBundle, writerBundle } from "./bundle";
+import { gridCaps } from "./cards-grid-fits";
 import { freeformLabels, teachesSchema, writerCaps } from "./contract";
 
 /*
@@ -276,6 +277,40 @@ function withCallouts(schema: J): J {
 }
 
 /**
+ * Cards grid (UX ruling 203, Chalkie layout parity P3; TEACH-75 part j): 2-4 cards, each a
+ * short label, a body and an optional small icon picture (`icon`, asked as a square cut-out). Added
+ * to the slide menu as one more teaching layout; every older output still parses. Off by default
+ * (`CARDS_GRID_DEFAULT`) until the writer's menu names it; a caller turns it on with
+ * `cardsGrid: true`.
+ */
+export const CARDS_GRID_DEFAULT = false;
+/** Most cards a grid holds (the renderer's 2x2). */
+export const CARDS_GRID_MAX = 4;
+
+/** A string held to `n` characters (strict mode takes `pattern`, not `maxLength`). */
+const capped = (n: number): J => ({ type: "string", pattern: `^.{1,${n}}$` });
+
+/** Its caps come from the renderer's measured fit (`gridCaps`, the fit table's cards-grid entry). */
+function withCardsGrid(schema: J, stage: WriterStage): J {
+  const caps = gridCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  defs["cards-grid"] = obj({
+    template: { type: "string", enum: ["cards-grid"] },
+    heading: S(),
+    lead: NUL(S()),
+    grid: arr(
+      obj({ label: capped(caps.label), text: capped(caps.text), icon: NUL(REF("picture")) }),
+      2,
+      CARDS_GRID_MAX,
+    ),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("cards-grid")] };
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
  * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
@@ -286,12 +321,19 @@ export function writerSchema(
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
-  opts: { objectives?: number; pinned?: boolean; tileVisuals?: boolean; callouts?: boolean } = {},
+  opts: {
+    objectives?: number;
+    pinned?: boolean;
+    tileVisuals?: boolean;
+    callouts?: boolean;
+    cardsGrid?: boolean;
+  } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
   if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
+  if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
