@@ -34,6 +34,7 @@ import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
+import { asPrompt, hookOk, layoutHook } from "./hook";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export type { ActivityCard, ActivityId, GridCard };
@@ -140,6 +141,7 @@ export type TemplateId =
   | "equation-hero"
   | "cards-grid"
   | "banner-text"
+  | "hook"
   | ActivityId;
 
 export type TemplateInput = {
@@ -1180,6 +1182,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "equation-hero": "worked-example",
   "cards-grid": "content",
   "banner-text": "image-text",
+  hook: "image-text",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -1616,6 +1619,8 @@ function layoutOnce(
   // Ruling 203 (P4): a photo that cannot fill the banner strip without a blind cut goes beside the
   // words instead; a banner whose picture failed is the words alone. Never an empty strip.
   if (input.template === "banner-text" && !bannerOk(input)) input = asSidePanel(input);
+  // Ruling 203 (P5): a hook whose picture failed is a discussion prompt, never an empty dark slide.
+  if (input.template === "hook" && !hookOk(input)) input = asPrompt(input);
   const tpl = input.template;
   let background: Slide["background"];
   const raw = input.points ?? [];
@@ -2222,6 +2227,9 @@ function layoutOnce(
       break;
     case "banner-text":
       layoutBanner(c, input);
+      break;
+    case "hook":
+      layoutHook(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

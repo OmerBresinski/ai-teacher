@@ -264,6 +264,11 @@ export type WriterRun = {
    * `BANNER_TEXT_DEFAULT` (off, master's schema byte for byte).
    */
   bannerText?: boolean;
+  /**
+   * Full-bleed hook (ruling 203, P5): the menu offers a photo hook under a dark scrim. Absent:
+   * `HOOK_DEFAULT` (off, master's schema byte for byte).
+   */
+  hook?: boolean;
   /** A diagram's alt and shows rewritten from its spec when they disagree (figure-text.ts). */
   figureTextFromSpec?: boolean;
   /** A diagram spec that cannot be drawn (16 in 10 groups) corrected from its words. */
@@ -528,6 +533,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ...(run.callouts !== undefined ? { callouts: run.callouts } : {}),
       ...(run.cardsGrid !== undefined ? { cardsGrid: run.cardsGrid } : {}),
       ...(run.bannerText !== undefined ? { bannerText: run.bannerText } : {}),
+      ...(run.hook !== undefined ? { hook: run.hook } : {}),
     }),
     models.map((m) => m.id),
   );

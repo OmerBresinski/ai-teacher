@@ -597,6 +597,15 @@ export function toInput(
           }
         : { template: "explain", heading, lead, points: pts(s.points) };
     }
+    case "hook": {
+      // Ruling 203 (P5): the photo full bleed under the scrim. A picture that could not be made
+      // (after the same retries and lostPic ladder as any picture slot) makes the slide a
+      // discussion prompt, never an empty dark slide.
+      const f = fig("picture");
+      return f
+        ? { template, heading, lead: lead ?? "", figure: f }
+        : { template: "discussion", heading, lead: lead ?? "" };
+    }
     case "discussion":
       return {
         template,
