@@ -115,12 +115,14 @@ describe("library models play their builds in Present", () => {
     const d = await renderLibraryModel("number_bonds", await params("number_bonds"));
     // The swap: the parts in their first order step aside for the swap frame only, then return.
     expect(d.svg).toMatch(/data-x="\d+"/);
-    // number_bonds v2 ends on the "Bonds to 5" list: the tree gives way to it and does not come back.
+    // number_bonds v2 ends on the "Bonds to 5" list, and the list keeps the bond's words: the last
+    // click still names the whole and the parts the captions talk about.
     const all = [...Array(d.builds + 1).keys()].map((k) => frame(d.svg, k));
     const list = all.findIndex((f) => f.words.some((w) => w.startsWith("Bonds to")));
     expect(list).toBe(d.builds);
     expect(all[list - 1]?.words).toContain("whole");
-    expect(all[list]?.words).not.toContain("whole");
+    expect(all[list]?.words).toContain("whole");
+    expect(all[list]?.words.some((w) => /part/.test(w))).toBe(true);
   });
 
   test("no kit class shares a mark with the attribute Present hides it by (column_methods)", async () => {

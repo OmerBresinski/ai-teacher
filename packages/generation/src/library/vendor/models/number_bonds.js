@@ -526,22 +526,30 @@ export function render(root, P0, ctx) {
       const t = headAt(mw);
       if (t.lines.length === 2 && t.cls === head.cls && !/…$/.test(t.lines[1])) { head.el.remove(); head = t; } else { t.el.remove(); break; }
     }
-    const rowsN = w / st + 1, lh = 58, maxRows = Math.max(1, Math.floor((GRID.bottom - GRID.top - 10 - head.h - 30) / lh));
+    // the list keeps the bond's words: "whole" under the whole number, "part + part" over each column of rows
+    const TAG = 'ts-tiny', tagH = 34;
+    const rowsN = w / st + 1, lh = 58, maxRows = Math.max(1, Math.floor((GRID.bottom - GRID.top - 10 - head.h - 30 - tagH) / lh));
     const colsN = Math.ceil(rowsN / maxRows), perCol = Math.ceil(rowsN / colsN);
     const sumW = measure(gText, `${fmtNum(w)} + ${fmtNum(w)}`, 'ts-num');
     const CG = 110, colW = sumW + CG, blockW = colsN * colW - CG;
-    const blockH = head.h + 30 + perCol * lh;
+    const blockH = head.h + 30 + tagH + perCol * lh;
     const top = GRID.top + 10 + Math.max(0, (GRID.bottom - GRID.top - 10 - blockH) / 2);
     // the heading lines end flush right, so the whole number follows the last line as its next
     // word, at the heading's size, and never sits inside the heading
     const numCls = head.cls === LBL ? LBL : 'ts-tiny', numW2 = measure(gText, fmtNum(w), numCls), gapW = head.cls === LBL ? 12 : 8;
     const hx = CX - (head.w + gapW + numW2) / 2;
     hg.setAttribute('transform', `translate(${hx + head.w} ${top + 32})`);
-    computed(T(gT, hx + head.w + gapW, top + 32 + (head.lines.length - 1) * head.lh, fmtNum(w), numCls, { fill: 'var(--ink)', s: kA, cls: 'rise' }), 'whole');
-    const y0 = top + head.h + 30;
+    const numX = hx + head.w + gapW, numY = top + 32 + (head.lines.length - 1) * head.lh;
+    computed(T(gT, numX, numY, fmtNum(w), numCls, { fill: 'var(--ink)', s: kA, cls: 'rise' }), 'whole');
+    const tagWhole = T(gT, numX + numW2 / 2, numY + 30, wordWhole, TAG, { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kA, cls: 'rise' });
+    editable(tagWhole, 'text.label:whole');
+    const y0 = top + head.h + 30 + tagH;
     if (y0 + perCol * lh > GRID.bottom + 8) ctx.warn('The list of bonds is too tall for the slide.');
     if (blockW > zW) ctx.warn('The list of bonds is too wide for the slide.');
     const mine = n === 2 ? M.parts[0] : -1, lx0 = CX - blockW / 2;
+    for (let col = 0; col < colsN; col++) {
+      factText(gT, lx0 + col * colW, y0 - 8, [{ s: wordPart(0), k: 0 }, { s: ' + ' }, { s: wordPart(1), k: 1 }], TAG, { 'text-anchor': 'start', s: kA, cls: 'rise' });
+    }
     for (let a = 0; a <= w; a += st) {
       const col = Math.floor(a / st / perCol), rw = (a / st) % perCol;
       const x = lx0 + col * colW, y = y0 + rw * lh + 40;

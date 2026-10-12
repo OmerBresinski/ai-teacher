@@ -64,6 +64,17 @@ describe("a library model on a question slide", () => {
     );
   });
 
+  test("equal_groups, 3 groups of 5: the opening total line does not give the 15 away", async () => {
+    const P = await params("equal_groups", { groups: 3, size: 5, division: "none" });
+    const step = await questionStep("equal_groups", P);
+    expect(step).toBeDefined();
+    const d = await renderLibraryModel("equal_groups", P, { step });
+    expect(hasRevealPart(d.svg)).toBe(true);
+    const s = seen(d.svg);
+    expect(hasNumber(s.open, 15)).toBe(false);
+    expect(hasNumber(s.reveal, 15)).toBe(true);
+  });
+
   test("bar_model, 3/5 of 40: opens on the bar and what is known, the answer 24 only at the reveal", async () => {
     const P = await params("bar_model", {}, 2);
     const step = await questionStep("bar_model", P);

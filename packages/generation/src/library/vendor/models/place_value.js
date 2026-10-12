@@ -273,12 +273,8 @@ function crisp(el, e, u) {
 // a digit card at any size: the kit card (88 tall) scaled as a whole, so the digit grows with the card
 function bigCard(p, x, y, d, col, { w, ht, ...o }) {
   const k = ht / 88, g = h('g', { transform: `translate(${x} ${y}) scale(${k})` }, p);
-  const out = digitCard(g, 0, 0, d, col, Object.assign({}, o, { w: w / k, h: 88 }));
-  if (col < 0) { // a decimal column's card takes that column's own hue (see colour)
-    const was = pvColour(col), now = decColour(col);
-    for (const el of [g, ...g.querySelectorAll('*')]) { const st = el.getAttribute('style'); if (st) el.setAttribute('style', st.split(was.text).join(now.text).split(was.pale).join(now.pale).split(was.fill).join(now.fill)); }
-  }
-  return out;
+  // a decimal column's card takes that column's own hue (see colour)
+  return digitCard(g, 0, 0, d, col < 0 ? decColour(col) : col, Object.assign({}, o, { w: w / k, h: 88 }));
 }
 
 export function render(root, P, ctx) {

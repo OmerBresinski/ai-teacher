@@ -382,9 +382,11 @@ function renderGroups(root, P, ctx) {
   }
   const EQ = eqs(P);
   let eqCls = null;
-  // the whole amount, said before anything is grouped: it holds the sentence row until a sentence takes its place
+  // the whole amount, said before anything is grouped. In a division the whole is given, so it holds the sentence
+  // row until a sentence takes its place. In a multiplication the whole is the answer: it leaves as the groups form,
+  // and is marked as saying the answer (data-ans), so a question slide never restores it before the reveal
   const firstEq = M.add ? b.add : b.sentence;
-  computed(T(root, 640, EQ_Y, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: firstEq, cls: 'rise' }), M.array ? 'size' : 'groups');
+  computed(T(root, 640, EQ_Y, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: M.div ? firstEq : (kMove ?? firstEq), cls: 'rise', 'data-ans': M.div ? null : '1' }), M.array ? 'size' : 'groups');
   if (M.add) {
     // repeated addition first, on its own centred line; it leaves when the multiplication takes its place
     const ap = addParts(M); eqCls = EQ_CLS.find(c => measure(root, ap.join(''), c) <= ZONE.w) || EQ_CLS[EQ_CLS.length - 1];
