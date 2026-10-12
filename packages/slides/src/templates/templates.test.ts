@@ -73,6 +73,25 @@ describe("round 1: text fit and fallbacks", () => {
     expect(r.over).toEqual([]);
     expect(t && s && s.y >= t.y + t.h).toBe(true);
   });
+  test("paper's title template is the deep wine with its paper ink, not the bright red", () => {
+    const paper = getTheme("paper");
+    const r = layoutTemplate(
+      { template: "title", heading: "Coastal erosion", lead: "How fast does the coast retreat?" },
+      paper,
+      "ks3",
+    );
+    expect(r.slide.background?.color).toBe("#5A1530");
+    expect(r.slide.background?.color).not.toBe(paper.colors.accent);
+    for (const name of ["Title", "Subtitle"]) {
+      const el = r.slide.elements.find((e) => e.name === name);
+      expect(el?.type === "text" && el.style.color).toBe("#FFF6E8");
+    }
+    // A v1 theme keeps its accent cover.
+    expect(
+      layoutTemplate({ template: "title", heading: "Heating" }, studio, "ks3").slide.background
+        ?.color,
+    ).toBe(studio.colors.accent);
+  });
   test("a diagram that fails leaves no panel: the slide is words only", () => {
     const r = layoutTemplate(
       {

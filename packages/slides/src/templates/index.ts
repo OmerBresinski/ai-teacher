@@ -28,7 +28,7 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
-import { contrastRatio } from "../look";
+import { contrastRatio, coverColours } from "../look";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
@@ -1655,8 +1655,10 @@ function layoutOnce(
     case "title": {
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
-      background = { color: c.t.colors.accent };
-      const on = c.t.colors.onAccent;
+      // The ground is the look's cover colour: the accent, or a v2 theme's deep (Paper's wine).
+      const cover = coverColours(c.t);
+      background = { color: cover.fill };
+      const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
       let ph = 444;
