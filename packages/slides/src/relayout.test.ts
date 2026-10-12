@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LayoutRef } from "@tj/domain/documents";
+import { ADAPTIVE_TEMPLATE_IDS, type LayoutRef } from "@tj/domain/documents";
 import { boundPath } from "./layout-paths";
 import {
   ADAPTIVE_SPECS,
@@ -11,6 +11,7 @@ import {
   getAtPath,
   itemsOf,
   layoutGroup,
+  minFitScale,
   NotAdaptiveError,
   relayout,
   removeItem,
@@ -217,5 +218,66 @@ describe("fitInto (a resized layout group)", () => {
     expect(out[0]).toMatchObject({ x: 100, y: 75, w: 200, h: 25, style: { fontSize: 20 } });
     expect(out[1]).toMatchObject({ x: 100, y: 105, w: 200, h: 20, style: { fontSize: 10 } });
     expect((out[0]?.y ?? 0) + (out[0]?.h ?? 0)).toBeLessThanOrEqual(out[1]?.y ?? 0);
+  });
+});
+
+describe("integration round 3", () => {
+  test("a field whose count is never comfortable (cap 0) counts against its hard max, never n/0", () => {
+    const row: LayoutRef = { template: "items-row", input: { items: [{ name: "a".repeat(30) }] } };
+    const bare = { slide: { kind: "content" as const, elements: [] }, over: [] };
+    const zero = { ...bare, fields: [{ path: "items.0.name", cap: 0, hardMax: 20 }] };
+    expect(fieldStates(row, zero, "ks3")).toEqual([
+      { path: "items.0.name", chars: 30, cap: 20, hardMax: 20, state: "over" },
+    ]);
+    const none = { ...bare, fields: [{ path: "items.0.name", cap: 0, hardMax: 0 }] };
+    expect(fieldStates(row, none, "ks3")).toEqual([]);
+  });
+
+  test("the frame never runs off the slide: words a layout cannot hold stay inside, clipped", () => {
+    const huge = setAtPath(ref(4), "grid.3.text", "word ".repeat(300).trim());
+    const { frame, elements } = relayout(huge, theme, "ks3");
+    expect(Math.max(...elements.map((e) => e.y + e.h))).toBeGreaterThan(540);
+    expect(frame.y + frame.h).toBeLessThanOrEqual(540 - 19);
+    expect(frame.x).toBeGreaterThanOrEqual(0);
+    expect(frame.x + frame.w).toBeLessThanOrEqual(960);
+  });
+
+  test("minFitScale: type that may shrink lets the layout shrink; type held at a step does not", () => {
+    const els = [{ x: 0, y: 0, w: 100, h: 30, style: { preset: "body", fontSize: 25 } }];
+    // An unstaged theme sets 25 pt body down to its 20 pt floor: 0.8 of the size.
+    expect(minFitScale(els, getTheme("reading-room"))).toBeCloseTo(0.8, 2);
+    // A theme read at a key stage holds body at its step: nothing may shrink.
+    expect(minFitScale(els, getTheme("reading-room", "ks2"))).toBe(1);
+  });
+});
+
+describe("caps at every count", () => {
+  test("every live adaptive template has non-zero caps at each count from its min to its max", () => {
+    for (const stage of ["ks1", "ks2", "ks3"] as const)
+      for (const template of ADAPTIVE_TEMPLATE_IDS) {
+        const spec = ADAPTIVE_SPECS[template];
+        for (let n = spec.min; n <= spec.max(stage); n++) {
+          const items = Array.from({ length: n }, (_, i) => ({
+            ...(spec.blank() as object),
+            n: i,
+          }));
+          const r: LayoutRef = { template, input: { heading: "Heading", [spec.items]: items } };
+          let fields: ReturnType<typeof relayout>["fields"];
+          try {
+            fields = relayout(r, theme, stage).fields;
+          } catch (e) {
+            if (e instanceof NotAdaptiveError) continue; // not live on this branch
+            throw e;
+          }
+          for (const f of fields)
+            expect({ template, n, stage, path: f.path, cap: f.cap > 0 }).toEqual({
+              template,
+              n,
+              stage,
+              path: f.path,
+              cap: true,
+            });
+        }
+      }
   });
 });

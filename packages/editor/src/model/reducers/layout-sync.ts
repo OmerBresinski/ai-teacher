@@ -18,9 +18,11 @@ import {
   type Lesson,
   richDocToPlainText,
   type SlideElement,
+  type Theme,
 } from "@tj/domain/documents";
-import { boundPath, fitInto, setAtPath } from "@tj/slides/layout-paths";
+import { boundPath, fitInto, minLayoutSize, setAtPath } from "@tj/slides/layout-paths";
 import { produce } from "immer";
+import { renderTheme } from "../themes";
 
 /** Keys a text edit may change: the words, their provenance, and the height auto-height measures. */
 const TEXT_EDIT_KEYS = new Set(["doc", "authoredBy", "generatedFrom", "h"]);
@@ -30,7 +32,11 @@ type Verdict =
   | { kind: "detach" }
   | { kind: "write"; ref: LayoutRef; children?: SlideElement[] };
 
-function judge(prev: GroupElement & { layout: LayoutRef }, next: GroupElement): Verdict {
+function judge(
+  prev: GroupElement & { layout: LayoutRef },
+  next: GroupElement,
+  theme: Theme,
+): Verdict {
   // A child added, removed or swapped (a delete re-fits the group too): detach, never re-lay.
   if (
     prev.children.length !== next.children.length ||
@@ -40,7 +46,10 @@ function judge(prev: GroupElement & { layout: LayoutRef }, next: GroupElement): 
   if (Math.abs(prev.w - next.w) > 0.5 || Math.abs(prev.h - next.h) > 0.5) {
     // A resize re-lays into the new size: the layout as it was, fitted whole (one scale, centred),
     // never the gesture's stretched boxes. The size is kept on the ref for every later re-lay.
-    const fit = { w: next.w, h: next.h };
+    // Never below the size where its words still shrink with it: there it stops, as a resize
+    // stops at an element's minimum elsewhere (the gesture clamps the same way).
+    const min = minLayoutSize(prev, theme);
+    const fit = { w: Math.max(next.w, min.w), h: Math.max(next.h, min.h) };
     const children = fitInto(
       prev.children,
       { x: 0, y: 0, w: prev.w, h: prev.h },
@@ -76,6 +85,7 @@ function judge(prev: GroupElement & { layout: LayoutRef }, next: GroupElement): 
 export function syncLayoutGroups(before: Lesson, after: Lesson): Lesson {
   if (before === after) return after;
   const plan: { slide: number; el: number; verdict: Verdict }[] = [];
+  const theme = renderTheme(after);
   after.slides.forEach((slide, si) => {
     const old = before.slides.find((s) => s.id === slide.id);
     if (!old || old === slide) return;
@@ -84,7 +94,7 @@ export function syncLayoutGroups(before: Lesson, after: Lesson): Lesson {
       const prev = old.elements.find((e) => e.id === el.id);
       if (prev === el || prev?.type !== "group" || !prev.layout) return;
       if (prev.layout !== el.layout) return;
-      const verdict = judge(prev as GroupElement & { layout: LayoutRef }, el);
+      const verdict = judge(prev as GroupElement & { layout: LayoutRef }, el, theme);
       if (verdict.kind !== "keep") plan.push({ slide: si, el: ei, verdict });
     });
   });
@@ -97,6 +107,10 @@ export function syncLayoutGroups(before: Lesson, after: Lesson): Lesson {
       else if (verdict.kind === "write") {
         g.layout = verdict.ref;
         if (verdict.children) g.children = verdict.children;
+        if (verdict.ref.fit) {
+          g.w = verdict.ref.fit.w;
+          g.h = verdict.ref.fit.h;
+        }
       }
     }
   });

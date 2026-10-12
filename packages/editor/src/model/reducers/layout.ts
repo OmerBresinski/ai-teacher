@@ -10,8 +10,8 @@
  * pass the module itself.
  */
 
-import type { GroupElement, Id, LayoutRef, Lesson, Slide } from "@tj/domain/documents";
-import { fitInto } from "@tj/slides/layout-paths";
+import type { GroupElement, Id, LayoutRef, Lesson, Slide, Theme } from "@tj/domain/documents";
+import { fitInto, minFitScale } from "@tj/slides/layout-paths";
 import type * as RelayoutKit from "@tj/slides/relayout";
 import { uid } from "../factories";
 import { renderTheme } from "../themes";
@@ -57,15 +57,23 @@ function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Re
 }
 
 /** Put a laid-out `ref` into the group's place: children in group space, the group re-fitted. */
-function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid) {
+function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid, theme: Theme) {
   const { elements, frame } = relaid;
   if (ref.fit) {
+    // The resized size, never below where the words still shrink with it (an added item may
+    // need a larger minimum than the teacher's size).
+    const k = minFitScale(elements, theme);
+    ref = {
+      ...ref,
+      fit: { w: Math.max(ref.fit.w, frame.w * k), h: Math.max(ref.fit.h, frame.h * k) },
+    };
+    const fit = ref.fit as { w: number; h: number };
     // Resized by the teacher: laid out, then fitted whole into the size they chose, where it is.
     const local = elements.map((e) => ({ ...e, x: e.x - frame.x, y: e.y - frame.y }));
     const natural = { x: 0, y: 0, w: frame.w, h: frame.h };
-    g.children = fitInto(local, natural, { x: 0, y: 0, ...ref.fit });
-    g.w = ref.fit.w;
-    g.h = ref.fit.h;
+    g.children = fitInto(local, natural, { x: 0, y: 0, ...fit });
+    g.w = fit.w;
+    g.h = fit.h;
     g.layout = { ...ref, frame: { ...frame, x: g.x, y: g.y } };
     return;
   }
@@ -101,7 +109,7 @@ function change(
   return {
     lesson: editSlide(lesson, slideId, (s) => {
       const g = layoutGroupOf(s, groupId);
-      if (g) placeInto(g, out.ref, relaid);
+      if (g) placeInto(g, out.ref, relaid, renderTheme(lesson));
     }),
   };
 }
@@ -173,7 +181,7 @@ export function splitLayout(
     ...tailLaid.frame,
     children: [],
   };
-  placeInto(moved, tail, tailLaid);
+  placeInto(moved, tail, tailLaid, renderTheme(lesson));
   const copy: Slide = {
     id: tailId,
     kind: slide.kind,
@@ -184,7 +192,7 @@ export function splitLayout(
   const next = editSlide(lesson, slideId, (s, l) => {
     const g = layoutGroupOf(s, groupId);
     if (!g) return;
-    placeInto(g, head, headLaid);
+    placeInto(g, head, headLaid, renderTheme(lesson));
     l.slides.splice(l.slides.findIndex((x) => x.id === slideId) + 1, 0, copy);
   });
   return { lesson: next, id: next === lesson ? null : tailId };

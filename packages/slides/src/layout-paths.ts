@@ -4,7 +4,8 @@
  * the ref. Kept out of `@tj/domain`'s barrel and `@tj/slides`' index so they load only with the
  * editor, not on every lesson page.
  */
-import type { LayoutRef } from "@tj/domain/documents";
+import type { LayoutRef, TextPreset, Theme } from "@tj/domain/documents";
+import { resolveFontSize } from "./text-style";
 
 const segs = (path: string) => path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s));
 
@@ -82,4 +83,48 @@ export function fitInto<T extends Scalable>(els: readonly T[], from: Box, to: Bo
     return next;
   };
   return els.map((e) => scale(e, false) as T);
+}
+
+type TextLike = {
+  style?: { preset?: string; fontSize?: number };
+  textStyle?: { fontSize?: number };
+};
+
+/**
+ * The smallest uniform scale a laid-out layout takes before its words stop shrinking with it: the
+ * renderer holds type at the theme's steps and floors (`resolveFontSize`), so below this scale the
+ * words keep their size while their boxes shrink, and they overlap. 1 when nothing may shrink.
+ */
+export function minFitScale(
+  els: readonly (Box & TextLike & { children?: unknown[] })[],
+  theme: Theme,
+): number {
+  const sizes: { preset: string; fs: number }[] = [];
+  const walk = (list: readonly (TextLike & { children?: unknown[] })[]) => {
+    for (const e of list) {
+      const fs = e.style?.fontSize ?? e.textStyle?.fontSize;
+      if (fs) sizes.push({ preset: e.style?.preset ?? "body", fs });
+      if (Array.isArray(e.children)) walk(e.children as TextLike[]);
+    }
+  };
+  walk(els);
+  const holds = (k: number) =>
+    sizes.every(
+      ({ preset, fs }) => resolveFontSize(theme, preset as TextPreset, fs * k) <= fs * k + 0.05,
+    );
+  let k = 1;
+  for (let t = 0.99; t >= 0.3; t -= 0.01) {
+    if (!holds(t)) break;
+    k = t;
+  }
+  return k;
+}
+
+/** The smallest size a layout group may be resized to (`minFitScale` of what it shows now). */
+export function minLayoutSize(
+  group: Box & { children: readonly (Box & TextLike)[] },
+  theme: Theme,
+) {
+  const k = minFitScale(group.children, theme);
+  return { w: group.w * k, h: group.h * k };
 }

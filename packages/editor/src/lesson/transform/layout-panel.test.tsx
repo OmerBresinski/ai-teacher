@@ -6,6 +6,7 @@ import * as reducers from "../../model/reducers";
 import { syncLayoutGroups } from "../../model/reducers/layout-sync";
 import { renderTheme } from "../../model/themes";
 import { catcher, pointer, renderEditor, seededLesson } from "../test-harness";
+import { clampToMin } from "./gesture-maths";
 import { DETACH_NOTICE } from "./use-layout-detach-notice";
 
 /*
@@ -218,5 +219,21 @@ describe("LayoutPanel", () => {
     await waitFor(() => expect(toastSpy).toHaveBeenCalledWith(DETACH_NOTICE));
     expect(group(read()).layout).toBeUndefined();
     await waitFor(() => expect(screen.queryByRole("region", { name: "Layout items" })).toBeNull());
+  });
+
+  test("a layout group never draws outside its frame (words past it are hidden at the edge)", async () => {
+    const { container } = renderEditor(seeded(cards(3)));
+    await waitFor(() => expect(container.querySelector("[data-layout-frame]")).not.toBeNull());
+    const frame = container.querySelector<HTMLElement>("[data-layout-frame]");
+    expect(frame?.style.overflow).toBe("hidden");
+  });
+});
+
+describe("clampToMin (the resize gesture on a layout group)", () => {
+  const rect = { x: 100, y: 100, w: 50, h: 40 };
+  test("the moving edges stop at the minimum; the fixed ones stay put", () => {
+    expect(clampToMin(rect, { w: 80, h: 60 }, "se")).toEqual({ x: 100, y: 100, w: 80, h: 60 });
+    expect(clampToMin(rect, { w: 80, h: 60 }, "nw")).toEqual({ x: 70, y: 80, w: 80, h: 60 });
+    expect(clampToMin(rect, { w: 20, h: 20 }, "e")).toEqual(rect);
   });
 });

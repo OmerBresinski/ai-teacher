@@ -296,9 +296,9 @@ export function SelectionLayer({
     (ids: Id[]) =>
       ids.flatMap((id) => {
         const b = byId.get(id);
-        return b ? [startBoxOf(b)] : [];
+        return b ? [startBoxOf(b, theme)] : [];
       }),
-    [byId],
+    [byId, theme],
   );
 
   const rebuildTargets = useCallback(
@@ -367,7 +367,7 @@ export function SelectionLayer({
           });
           if (els.length === copies.length && els.length > 0) {
             g.ids = copies;
-            g.boxes = boxesOf(els).map(startBoxOf);
+            g.boxes = boxesOf(els).map((b) => startBoxOf(b));
             g.bounds = boundsOfBoxes(g.boxes);
             actions.select(copies);
           }

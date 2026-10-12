@@ -116,9 +116,11 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 /* Input paths                                                         */
 /* ------------------------------------------------------------------ */
 
+import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { TRIM } from "./grid";
 import { getAtPath, setAtPath } from "./layout-paths";
 
-export { fitInto, getAtPath, setAtPath } from "./layout-paths";
+export { fitInto, getAtPath, minFitScale, minLayoutSize, setAtPath } from "./layout-paths";
 
 /** The ref's item list (empty when the input has none). */
 export function itemsOf(ref: LayoutRef): unknown[] {
@@ -247,11 +249,15 @@ export function fieldStates(ref: LayoutRef, result: TemplateResult, stage: Stage
   return reported.flatMap((f) => {
     const path = f.path ?? f.key;
     if (!path || typeof f.cap !== "number") return [];
+    // A layout that is never comfortable at this count (items-row at 5-6) publishes a cap of 0:
+    // its limit is the hard maximum. With neither, no limit is known: no counter, never "n/0".
+    const cap = f.cap > 0 ? f.cap : (f.hardMax ?? 0);
+    if (cap <= 0) return [];
     const value = getAtPath(ref, path);
     const chars = typeof value === "string" ? value.trim().length : 0;
     const state: LayoutField["state"] =
-      f.hardMax !== undefined && chars > f.hardMax ? "over" : chars > f.cap ? "tight" : "ok";
-    return [{ path, chars, cap: f.cap, hardMax: f.hardMax, state }];
+      f.hardMax !== undefined && chars > f.hardMax ? "over" : chars > cap ? "tight" : "ok";
+    return [{ path, chars, cap, hardMax: f.hardMax, state }];
   });
 }
 
@@ -299,7 +305,13 @@ const boundsOf = (els: SlideElement[]): LayoutFrame => {
   const y = Math.min(...els.map((e) => e.y));
   const r = Math.max(...els.map((e) => e.x + e.w));
   const b = Math.max(...els.map((e) => e.y + e.h));
-  return { x, y, w: r - x, h: b - y };
+  // Never past the slide's edges or its trim at the foot: the group is clipped to its frame, so
+  // words a layout cannot hold are hidden at the edge (and marked over), never drawn off the slide.
+  const x0 = Math.max(0, x);
+  const y0 = Math.max(0, y);
+  const r0 = Math.min(SLIDE_W, r);
+  const b0 = Math.max(y0, Math.min(SLIDE_H - TRIM, b));
+  return { x: x0, y: y0, w: r0 - x0, h: b0 - y0 };
 };
 
 /**

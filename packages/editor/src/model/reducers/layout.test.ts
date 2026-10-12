@@ -9,7 +9,7 @@ import {
   type ShapeElement,
   type TextElement,
 } from "@tj/domain/documents";
-import { measureHeadless } from "@tj/slides";
+import { measureHeadless, resolveFontSize } from "@tj/slides";
 import * as kit from "@tj/slides/relayout";
 import { createElement, type ReactNode } from "react";
 import { rethemeLesson } from "../../layout/retheme";
@@ -317,29 +317,48 @@ describe("teacher edits inside a layout group", () => {
     const { lesson, slideId } = seeded(3);
     const g0 = groupOf(lesson);
     // What the resize gesture writes (`patchFor`): the frame, and children stretched to it.
-    const w = g0.w * 0.6;
-    const h = g0.h;
-    const stretched = g0.children.map((c) => ({ ...c, x: c.x * 0.6, w: c.w * 0.6 }));
-    const out = settle(
-      lesson,
-      r.updateElement(lesson, slideId, "g1", { w, h, children: stretched } as never),
-    );
+    const resize = (w: number, h: number) =>
+      settle(
+        lesson,
+        r.updateElement(lesson, slideId, "g1", {
+          w,
+          h,
+          children: g0.children.map((c) => ({ ...c, x: (c.x * w) / g0.w, w: (c.w * w) / g0.w })),
+        } as never),
+      );
+    const out = resize(g0.w * 1.2, g0.h * 1.2);
     const g = groupOf(out);
-    expect(g.layout?.fit).toEqual({ w, h });
+    expect(g.layout?.fit).toEqual({ w: g0.w * 1.2, h: g0.h * 1.2 });
     const label = g.children.find((c) => c.id === "g1:grid.0.label") as TextElement;
     const body = g.children.find((c) => c.id === "g1:grid.0.text") as TextElement;
     const label0 = g0.children.find((c) => c.id === "g1:grid.0.label") as TextElement;
-    // The type shrank with the boxes (uniformly), so the label still clears its body.
-    expect(label.style.fontSize ?? 0).toBeLessThan(label0.style.fontSize ?? 0);
+    // One scale for boxes and type: the label still clears its body.
     expect(label.w / label0.w).toBeCloseTo(label.h / label0.h, 2);
     expect(label.y + label.h).toBeLessThanOrEqual(body.y + 0.01);
-    // Every box inside the new size.
-    for (const c of g.children) expect(c.x + c.w).toBeLessThanOrEqual(w + 0.01);
+    for (const c of g.children) expect(c.x + c.w).toBeLessThanOrEqual(g.w + 0.01);
     // A later item change re-lays into the same size.
     const added = r.addLayoutItem(out, slideId, "g1", 3, kit).lesson;
-    expect(groupOf(added).w).toBeCloseTo(w, 5);
-    expect(groupOf(added).h).toBeCloseTo(h, 5);
+    expect(groupOf(added).w).toBeCloseTo(g0.w * 1.2, 5);
     expect(named(groupOf(added), "Card")).toHaveLength(4);
+  });
+
+  test("a resize stops at the layout's minimum: below it the words would stop shrinking", () => {
+    const { lesson, slideId } = seeded(3);
+    const g0 = groupOf(lesson);
+    const min = kit.minLayoutSize(g0, renderTheme(lesson));
+    expect(min.w).toBeGreaterThan(g0.w * 0.3);
+    const out = settle(lesson, r.transformElements(lesson, slideId, ["g1"], { scale: 0.3 }));
+    const g = groupOf(out);
+    expect(g.w).toBeCloseTo(min.w, 5);
+    expect(g.h).toBeCloseTo(min.h, 5);
+    expect(g.layout?.fit).toEqual({ w: g.w, h: g.h });
+    // Every word renders at the size it is stored at: none is held up by a floor.
+    const theme = renderTheme(lesson);
+    for (const c of g.children)
+      if (c.type === "text" && c.style.fontSize)
+        expect(
+          resolveFontSize(theme, c.style.preset ?? "body", c.style.fontSize),
+        ).toBeLessThanOrEqual(c.style.fontSize + 0.5);
   });
 
   test("detaching is one undo step with the edit", () => {
