@@ -108,7 +108,7 @@ export const COOL_ICON_COLOURS: Readonly<IconColours> = {
   stroke: "#14262E",
 };
 
-type Filter = readonly ["saturate" | "brightness" | "sepia", number][];
+type Filter = readonly ["saturate" | "brightness" | "sepia" | "chroma", number][];
 interface AgeTokens {
   /** outline width (px); the drawn outline is twice this, over the per-element scale `--k` */
   sw: number;
@@ -123,6 +123,10 @@ interface AgeTokens {
   outlineMix?: { with: string; share: number };
   /** the outline's stroke-opacity (the soft style's faint early-years line) */
   outlineOpacity?: number;
+  /** soft style: the gradient's spread (1 = the full soft gradient, 0 = flat fills) */
+  gradient?: number;
+  /** drop `dt` detail at size m too (the small drawing's level of detail on the full drawing) */
+  calm?: boolean;
 }
 
 /**
@@ -134,7 +138,14 @@ interface AgeTokens {
 export type IconStyle = "soft" | "pilot";
 export const ICON_STYLES: readonly IconStyle[] = ["soft", "pilot"];
 
-/** The soft style's age tokens: the age shows in radius, gloss and a faint early outline. */
+/**
+ * The soft style's age tokens (Greg, 13 Oct: "ks1-3 are soo similar ... adult it up a bit for the
+ * latter"). Same drawings, ruled by age:
+ * - early (EYFS-KS1): the full soft gradient and gloss, a faint thin outline, round corners;
+ * - primary (KS2): a gentler gradient (55%), less gloss, colours 10% calmer (OKLab chroma);
+ * - secondary (KS3 on): flat fills with one flat shade, no gloss, no `dt` detail at size m, colours
+ *   28% calmer, square-ish corners. Still no outline (Greg's 12 Oct ruling).
+ */
 export const SOFT_AGE_TOKENS: Readonly<Record<IconAge, AgeTokens>> = {
   early: {
     sw: 1.6,
@@ -146,15 +157,26 @@ export const SOFT_AGE_TOKENS: Readonly<Record<IconAge, AgeTokens>> = {
     filter: [],
     outlineOpacity: 0.45,
   },
-  primary: { sw: 0, gloss: 0.7, glossK: 1.15, shade: 0.35, r: 14, spark: 0, filter: [] },
+  primary: {
+    sw: 0,
+    gloss: 0.45,
+    glossK: 1,
+    shade: 0.32,
+    r: 10,
+    spark: 0,
+    filter: [["chroma", 0.9]],
+    gradient: 0.55,
+  },
   secondary: {
     sw: 0,
-    gloss: 0.5,
+    gloss: 0,
     glossK: 1,
-    shade: 0.3,
-    r: 6,
+    shade: 0.22,
+    r: 4,
     spark: 0,
-    filter: [["saturate", 0.92]],
+    filter: [["chroma", 0.72]],
+    gradient: 0,
+    calm: true,
   },
 };
 
@@ -245,7 +267,12 @@ const FILTER_MATRIX = {
 
 function applyFilter(hex: string, filter: Filter): string {
   let c = parseHex(hex);
-  for (const [fn, v] of filter) c = mul(FILTER_MATRIX[fn](v), c);
+  for (const [fn, v] of filter) {
+    if (fn === "chroma") {
+      const [L, a, b] = toOklab(c);
+      c = fromOklab([L, a * v, b * v]);
+    } else c = mul(FILTER_MATRIX[fn](v), c);
+  }
   return toHex(c);
 }
 
@@ -339,27 +366,28 @@ export function iconColourSet(opts: TreatmentOptions = {}): Set<string> {
   const style = styleOf(opts.style);
   const filter = ageTokens(opts.age, style).filter;
   const base = [...Object.values(resolveSlots(opts)), "#ffffff"].map((h) => applyFilter(h, filter));
-  if (style === "pilot") return new Set(base);
-  return new Set(base.flatMap((c) => [c, ...gradientStops(c)]));
+  const spread = ageTokens(opts.age, style).gradient ?? 1;
+  if (style === "pilot" || spread === 0) return new Set(base);
+  return new Set(base.flatMap((c) => [c, ...gradientStops(c, spread)]));
 }
 
 // ---------- soft style ----------
 
 const WHITE = "#ffffff";
 /** The light and dark ends of a fill's soft radial gradient (the middle is the fill itself). */
-export const gradientStops = (c: string): [string, string] => [
-  mixOklab(c, WHITE, 0.72),
-  mixOklab(c, "#000000", 0.78),
+export const gradientStops = (c: string, spread = 1): [string, string] => [
+  mixOklab(c, WHITE, 1 - 0.28 * spread),
+  mixOklab(c, "#000000", 1 - 0.22 * spread),
 ];
 
 /** Soft style: each solid fill (white aside) becomes a radial gradient, highlight top left. */
-function soften(svg: string, idPrefix: string): string {
+function soften(svg: string, idPrefix: string, spread = 1): string {
   const defs = new Map<string, string>();
   const body = svg.replace(/fill:(#[0-9a-f]{6})/g, (whole, c: string) => {
     if (c === WHITE) return whole;
     const id = `${idPrefix}-g${c.slice(1)}`;
     if (!defs.has(id)) {
-      const [light, dark] = gradientStops(c);
+      const [light, dark] = gradientStops(c, spread);
       defs.set(
         id,
         `<radialGradient id="${id}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="${light}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${dark}"/></radialGradient>`,
@@ -434,7 +462,7 @@ export function flatten(markup: string, opts: FlattenOptions): string {
   const sw = size === "s" ? 0 : age.sw;
   const slots = resolveSlots(opts);
   const outline = slots["icon-outline"] as string;
-  const hidden = HIDDEN_AT[size];
+  const hidden = age.calm && size === "m" ? new Set(["dt", "dl"]) : HIDDEN_AT[size];
   const ids = new Map<string, string>();
   const colourCache = new Map<string, string>();
   const colour = (hex: string) => {
@@ -462,6 +490,7 @@ export function flatten(markup: string, opts: FlattenOptions): string {
     attrs.delete("class");
     if (classes.some((c) => hidden.has(c))) return "";
     if (classes.includes("sp") && age.spark === 0) return "";
+    if (classes.includes("hl") && age.gloss === 0) return "";
     if (classes.includes("lu") && sw === 0) return "";
 
     const inline = new Map<string, string>();
@@ -526,8 +555,9 @@ export function flatten(markup: string, opts: FlattenOptions): string {
       : `<${node.tag}${out.join("")}/>`;
   };
   let out = parseMarkup(markup).map(visit).join("");
-  if (style === "soft") {
-    out = soften(out, opts.idPrefix);
+  const spread = age.gradient ?? 1;
+  if (style === "soft" && spread > 0) {
+    out = soften(out, opts.idPrefix, spread);
   }
   // a clip path or marker whose user was dropped at this size goes too
   return out.replace(

@@ -66,7 +66,10 @@ describe("iconSvg: every drawing, size, age and theme", () => {
   test("theme slots reach the drawing as literal colours", () => {
     const pink = { ...DEFAULT_ICON_COLOURS, primary: "#ff00aa" };
     // "quarter"-style slot users: the healthy-heart drawing uses the primary slot.
-    const users = ICON_IDS.filter((id) => iconSvg(id, { colours: pink }).includes("#ff00aa"));
+    // early: the one age with no colour filter, so a slot arrives as given
+    const users = ICON_IDS.filter((id) =>
+      iconSvg(id, { colours: pink, age: "early" }).includes("#ff00aa"),
+    );
     expect(users.length).toBeGreaterThan(0);
     expect(iconSvg(users[0] as string)).not.toContain("#ff00aa");
   });
@@ -108,13 +111,53 @@ describe("hostile input", () => {
 });
 
 describe("soft style (the default)", () => {
-  test("no dark outline at primary and secondary; soft gradients and a highlight", () => {
+  test("no dark outline at primary and secondary", () => {
     for (const age of ["primary", "secondary"] as const) {
-      const svg = iconSvg("volcano", { age });
-      expect(svg).not.toMatch(/paint-order/);
+      expect(iconSvg("volcano", { age })).not.toMatch(/paint-order/);
+    }
+  });
+
+  test("early and primary: soft gradients and a highlight; primary's gradient is gentler", () => {
+    for (const age of ["early", "primary"] as const) {
+      const svg = iconSvg("blood-vessels", { age });
       expect(svg).toContain("<radialGradient");
       expect(svg).toMatch(/stroke:#ffffff/); // the highlight
     }
+    const lightStop = (svg: string) =>
+      /<stop offset="0" stop-color="(#[0-9a-f]{6})"/.exec(svg)?.[1];
+    const flesh = "#e0343f";
+    expect(lightStop(iconSvg("heart", { age: "early", idPrefix: "a" }))).not.toBe(
+      lightStop(iconSvg("heart", { age: "primary", idPrefix: "a" })),
+    );
+    expect(iconSvg("heart", { age: "early" })).toContain(flesh); // early keeps the full palette
+  });
+
+  test("secondary (KS3 on) is flat and calm: no gradient, no gloss, muted colour, less detail", () => {
+    for (const id of ICON_IDS) {
+      const svg = iconSvg(id, { age: "secondary", idPrefix: "s" });
+      expect(svg, id).not.toContain("radialGradient");
+      expect(svg, id).not.toContain("url(#s-g");
+    }
+    const chroma = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+      return (
+        Math.max(r as number, g as number, b as number) -
+        Math.min(r as number, g as number, b as number)
+      );
+    };
+    // the first fill: a literal colour, or the colour a soft gradient is named after
+    const mainFill = (svg: string) => {
+      const m = /fill:(?:#([0-9a-f]{6})|url\(#[\w-]*-g([0-9a-f]{6})\))/.exec(svg);
+      return `#${m?.[1] ?? m?.[2]}`;
+    };
+    const heart = (age: "early" | "primary" | "secondary") => mainFill(iconSvg("heart", { age }));
+    expect(chroma(heart("secondary"))).toBeLessThan(chroma(heart("primary")));
+    expect(chroma(heart("primary"))).toBeLessThan(chroma(heart("early")));
+    // `dt` detail drops at size m: the artery's inner wall line is gone
+    expect(iconSvg("artery", { age: "secondary" }).length).toBeLessThan(
+      iconSvg("artery", { age: "primary" }).length,
+    );
+    expect(iconSvg("artery", { age: "secondary" })).not.toContain('opacity=".35"');
   });
 
   test("early years only: a faint thin outline", () => {
