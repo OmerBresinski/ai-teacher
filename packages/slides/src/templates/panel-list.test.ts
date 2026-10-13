@@ -3,6 +3,7 @@ import type {
   ImageElement,
   PathElement,
   ShapeElement,
+  SlideElement,
   TextElement,
   Theme,
 } from "@tj/domain/documents";
@@ -19,6 +20,7 @@ import {
   PANEL_W,
   PANEL_W_NARROW,
   type PanelRow,
+  PENDING_ICON,
   panelCapsFor,
   panelListFits,
   panelListPaths,
@@ -159,6 +161,28 @@ describe("panel-list", () => {
     for (const w of wedges) expect(w.closed).toBe(true);
     // The biggest share is the biggest wedge: more arc points.
     expect(wedges[0]?.points.length).toBeGreaterThan(wedges[2]?.points.length ?? 0);
+  });
+
+  test("a draft's held icon: an empty disc, no number, no drawing, nothing moves when it lands", () => {
+    for (const stage of ["ks2", "ks3"] as Stage[]) {
+      const whole = layoutTemplate(input(3, "none"), T0, stage);
+      const rows = ROWS.slice(0, 3).map((r, i) => (i === 0 ? r : { ...r, icon: PENDING_ICON }));
+      const held = layoutTemplate(input(3, "none", undefined, rows), T0, stage);
+      expect(held.iconMisses ?? []).toEqual([]);
+      expect(named(held.slide.elements, PANEL_NAMES.icon)).toHaveLength(1);
+      const discs = named(held.slide.elements, PANEL_NAMES.disc) as ShapeElement[];
+      expect(discs.every((d) => d.doc === undefined)).toBe(true);
+      const box = (e: SlideElement) => [
+        e.name,
+        e.x,
+        e.y,
+        e.w,
+        e.h,
+        (e as ShapeElement).fill ?? null,
+      ];
+      const keep = (els: SlideElement[]) => els.filter((e) => e.name !== PANEL_NAMES.icon).map(box);
+      expect(keep(held.slide.elements)).toEqual(keep(whole.slide.elements));
+    }
   });
 
   test("shares that do not match the rows are reported and no pie is drawn", () => {

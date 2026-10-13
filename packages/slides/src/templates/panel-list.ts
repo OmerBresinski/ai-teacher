@@ -231,6 +231,15 @@ const GEOMETRY = new WeakMap<object, Geometry>();
 const clean = (s: string | null | undefined) => (s ?? "").trim();
 
 /**
+ * A live draft's held icon (TEACH-75 part v, Greg 14 Oct: "without showing numbers if icons are
+ * inbound"): while the writer is still writing a list that will have icons, a row whose icon has
+ * not resolved yet carries this label. It counts as an icon for all or none and for the disc's
+ * look, but nothing is drawn on it: no number, no drawing. The same string as items-row's
+ * `PENDING_ICON`; never written by the writer or the editor, and a closed slide never carries it.
+ */
+export const PENDING_ICON = "(icon pending)";
+
+/**
  * What sits behind a row's icon (`LayoutOptions.panelIconBack`; unset `soft`,
  * Greg's y/n 14 Oct: a pale disc at KS1 and KS2, a pale tile from KS3 as icon option 2 shipped): `ring` a category-coloured disc round the drawing; `none` the drawing alone at the disc's
  * size; `soft` a pale disc of the category colour, no ring, the drawing a little smaller in it.
@@ -274,7 +283,9 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const rowPics = n > 0 && rows.every((r) => !!r.picture);
 
   // Icons: all or none, never drawn live. A miss is reported, and the rows take numbers.
-  const matched = rows.map((r) => (r.icon && !rowPics ? matchIcon(r.icon) : null));
+  const matched = rows.map((r) =>
+    r.icon && !rowPics ? (r.icon === PENDING_ICON ? PENDING_ICON : matchIcon(r.icon)) : null,
+  );
   const misses = rowPics ? [] : rows.filter((r, i) => r.icon && !matched[i]).map((r) => r.icon);
   if (misses.length) c.iconMisses = misses;
   const icons = !rowPics && n > 0 && matched.every(Boolean);
@@ -384,7 +395,8 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     });
   }
 
-  if (groupIcon) {
+  // A held first icon keeps the panel's room for it; the drawing lands when it resolves.
+  if (groupIcon && groupIcon !== PENDING_ICON) {
     const top = TITLE_TOP + title.h + PHOTO_GAP;
     const g = Math.max(0, Math.min(GROUP_ICON, panelW - 2 * TITLE_X, SLIDE_H - PHOTO_GAP - top));
     c.els.push({
@@ -593,7 +605,8 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
               },
             }),
       } as ShapeElement);
-    if (icons) {
+    // A draft's held icon: the empty disc or tile only, until it resolves.
+    if (icons && matched[i] !== PENDING_ICON) {
       const g = Math.round(m.d * (back === "none" ? 1 : back === "soft" ? SOFT_ICON : L.discIcon));
       c.els.push({
         id: uid(),
