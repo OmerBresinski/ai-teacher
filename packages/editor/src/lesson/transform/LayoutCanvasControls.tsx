@@ -3,7 +3,13 @@ import { boundPath } from "@tj/slides/layout-paths";
 import * as kit from "@tj/slides/relayout";
 import { toast } from "@tj/ui";
 import { Plus, X } from "lucide-react";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Point, Rect } from "../../model/geometry";
 import { setLayoutKit } from "../../model/layout-kit";
 import * as reducers from "../../model/reducers";
@@ -89,12 +95,15 @@ export default function LayoutCanvasControls({
   scale,
   toSlide,
   onEditText,
+  onPointerFocus,
 }: {
   slideId: Id;
   group: GroupElement & { layout: LayoutRef };
   scale: number;
   toSlide: (clientX: number, clientY: number) => Point;
   onEditText: (id: Id) => void;
+  /** Focus the stage as a pointer does, so a press on a control draws no keyboard focus ring. */
+  onPointerFocus?: () => void;
 }) {
   const lesson = useLesson();
   const history = useHistory();
@@ -139,6 +148,12 @@ export default function LayoutCanvasControls({
     return () => window.removeEventListener("pointermove", onMove);
   }, [items, toSlide, scale]);
 
+  const press = (e: ReactPointerEvent) => {
+    e.stopPropagation();
+    // The press stays a pointer press: the stage keeps focus (its keys keep working) and no ring.
+    e.preventDefault();
+    onPointerFocus?.();
+  };
   const report = (out: { refused?: string } | undefined) => {
     if (out?.refused) toast(out.refused);
   };
@@ -177,7 +192,7 @@ export default function LayoutCanvasControls({
       title={label}
       data-layout-control={icon}
       data-shown={shown || undefined}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={press}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -235,6 +250,18 @@ export default function LayoutCanvasControls({
             };
         return (
           <div key={n} data-layout-item={n}>
+            {/* Which item the controls belong to: a faint outline round it while pointed at. */}
+            {shown ? (
+              <div
+                data-layout-item-outline
+                style={{
+                  ...box(rect),
+                  outline: "1px dashed var(--color-border-strong)",
+                  outlineOffset: 6,
+                  borderRadius: 6,
+                }}
+              />
+            ) : null}
             {canRemove
               ? button(
                   `Delete item ${n + 1}`,
@@ -259,7 +286,7 @@ export default function LayoutCanvasControls({
             left: (group.x + firstOver.child.x) * scale,
             top: (group.y + group.h) * scale + 8,
           }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={press}
         >
           <span>Too long: the end is hidden</span>
           <button

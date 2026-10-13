@@ -940,6 +940,7 @@ export function SelectionLayer({
               scale={scale}
               toSlide={toSlide}
               onEditText={(id) => actions.setEditingText(id)}
+              onPointerFocus={focusStage}
             />
           </Suspense>
         );
