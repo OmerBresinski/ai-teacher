@@ -10,8 +10,17 @@
  * pass the module itself.
  */
 
-import type { GroupElement, Id, LayoutRef, Lesson, Slide, Theme } from "@tj/domain/documents";
-import { fitInto, minFitScale } from "@tj/slides/layout-paths";
+import {
+  type GroupElement,
+  type Id,
+  type LayoutRef,
+  type Lesson,
+  richDocToPlainText,
+  type Slide,
+  type SlideElement,
+  type Theme,
+} from "@tj/domain/documents";
+import { boundPath, fitInto, minFitScale } from "@tj/slides/layout-paths";
 import type * as RelayoutKit from "@tj/slides/relayout";
 import { uid } from "../factories";
 import { renderTheme } from "../themes";
@@ -47,7 +56,7 @@ export const NOT_LIVE_REASON = "This layout cannot be re-arranged yet.";
 type Relaid = ReturnType<LayoutKit["relayout"]>;
 
 /** Run the template for `ref`, or `null` when it cannot lay out: a reducer never throws. */
-function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Relaid | null {
+export function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Relaid | null {
   const theme = renderTheme(lesson);
   try {
     return kit.relayout(ref, theme, kit.stageOf(theme, lesson.ageBand), id);
@@ -57,7 +66,7 @@ function tryRelayout(ref: LayoutRef, lesson: Lesson, kit: LayoutKit, id: Id): Re
 }
 
 /** Put a laid-out `ref` into the group's place: children in group space, the group re-fitted. */
-function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid, theme: Theme) {
+export function placeInto(g: GroupElement, ref: LayoutRef, relaid: Relaid, theme: Theme) {
   const { elements, frame } = relaid;
   if (ref.fit) {
     // The resized size, never below where the words still shrink with it (an added item may
@@ -196,4 +205,90 @@ export function splitLayout(
     l.slides.splice(l.slides.findIndex((x) => x.id === slideId) + 1, 0, copy);
   });
   return { lesson: next, id: next === lesson ? null : tailId };
+}
+
+/**
+ * "Free layout" on (TEACH-205 part b): the layout group becomes ordinary boxes, each exactly where
+ * it was, as the Ungroup command makes them, and the group (without its children) is kept on the
+ * slide so the teacher can turn Free layout off again. One slide holds one freed layout: freeing a
+ * second one is refused until the first is tidied.
+ */
+export function freeLayout(lesson: Lesson, slideId: Id, groupId: Id): LayoutChange & { ids: Id[] } {
+  const slide = lesson.slides.find((s) => s.id === slideId);
+  const g0 = layoutGroupOf(slide, groupId);
+  if (!slide || !g0) return { lesson, ids: [] };
+  if (slide.freeLayout)
+    return { lesson, ids: [], refused: "Tidy this slide's other free layout first." };
+  const ids = g0.children.map((c) => c.id);
+  const next = editSlide(lesson, slideId, (s) => {
+    const idx = s.elements.findIndex((e) => e.id === groupId);
+    const g = s.elements[idx] as GroupElement & { layout: LayoutRef };
+    const freed: SlideElement[] = g.children.map((c) => ({ ...c, x: c.x + g.x, y: c.y + g.y }));
+    s.elements.splice(idx, 1, ...freed);
+    s.freeLayout = {
+      id: g.id,
+      ...(g.name ? { name: g.name } : {}),
+      x: g.x,
+      y: g.y,
+      w: g.w,
+      h: g.h,
+      layout: g.layout,
+    };
+  });
+  return { lesson: next, ids };
+}
+
+/**
+ * "Free layout" off: the freed layout is laid out again from its template where it was. The words
+ * typed into its freed boxes are kept (each box still has its `<groupId>:<path>` id); moves, sizes
+ * and restyles go, and a box deleted from it comes back with the words it last had. Boxes the
+ * teacher added stay where they are. Refused when the template cannot lay out (nothing changes).
+ */
+export function tidyLayout(
+  lesson: Lesson,
+  slideId: Id,
+  kit: LayoutKit,
+): LayoutChange & { id: Id | null } {
+  const slide = lesson.slides.find((s) => s.id === slideId);
+  const stash = slide?.freeLayout;
+  if (!slide || !stash) return { lesson, id: null };
+  let ref = stash.layout;
+  const own = (e: SlideElement) => e.id.startsWith(`${stash.id}:`);
+  const plain = (e: SlideElement | undefined) => {
+    const doc = (e as { doc?: unknown } | undefined)?.doc;
+    return doc ? richDocToPlainText(doc as never) : undefined;
+  };
+  // A box's words count as typed only when they differ from what the template drew for them: a
+  // template may draw a word differently from how it stores it (a card label in capitals).
+  const drawn = tryRelayout(stash.layout, lesson, kit, stash.id);
+  if (!drawn) return { lesson, id: null, refused: NOT_LIVE_REASON };
+  const before = new Map(drawn.elements.map((e) => [e.id, plain(e)]));
+  for (const el of slide.elements) {
+    const path = boundPath(stash.id, el.id);
+    const words = plain(el);
+    if (!path || words === undefined || words === before.get(el.id)) continue;
+    ref = kit.editItem(ref, path, words);
+  }
+  const relaid = tryRelayout(ref, lesson, kit, stash.id);
+  if (!relaid) return { lesson, id: null, refused: NOT_LIVE_REASON };
+  const next = editSlide(lesson, slideId, (s) => {
+    const first = s.elements.findIndex(own);
+    const at = first < 0 ? s.elements.length : first;
+    const group: GroupElement = {
+      id: stash.id,
+      type: "group",
+      ...(stash.name ? { name: stash.name } : {}),
+      x: stash.x,
+      y: stash.y,
+      w: stash.w,
+      h: stash.h,
+      children: [],
+      layout: stash.layout,
+    };
+    placeInto(group, ref, relaid, renderTheme(lesson));
+    s.elements = s.elements.filter((e) => !own(e));
+    s.elements.splice(Math.min(at, s.elements.length), 0, group);
+    delete s.freeLayout;
+  });
+  return { lesson: next, id: stash.id };
 }

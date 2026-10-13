@@ -1,10 +1,19 @@
-import type { Id, Slide, Theme } from "@tj/domain/documents";
+import {
+  type GroupElement,
+  type Id,
+  isLayoutGroup,
+  type LayoutRef,
+  type Slide,
+  type Theme,
+} from "@tj/domain/documents";
 import { slotSideOnDrop } from "@tj/slides";
 import {
   type CSSProperties,
+  lazy,
   type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  Suspense,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -75,6 +84,11 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+
+/** An adaptive layout's on-canvas add, delete and over-limit marks: brings the template code. */
+const LayoutCanvasControls = lazy(() => import("./LayoutCanvasControls"));
+
+import { layoutChildBox, layoutGroupOfChild, layoutTextAt } from "./layout-children";
 import { useLayoutDetachNotice } from "./use-layout-detach-notice";
 import { useModelStepping } from "./use-model-stepping";
 
@@ -685,6 +699,13 @@ export function SelectionLayer({
       actions.enterCrop(hit.el);
       return;
     }
+    // A layout's words are typed on the slide (TEACH-205 part b): into the bound text under the
+    // pointer; the group stays the selection, so its add/delete controls stay in view.
+    const inLayout = layoutTextAt(hit.el, at);
+    if (inLayout) {
+      actions.setEditingText(inLayout.id);
+      return;
+    }
     // SPEC §7 scopes this to shape-*with-label*; a hairline rule must not drop into a text editor.
     if (!isTextEditable(hit.el)) return;
     actions.setEditingText(hit.id);
@@ -777,7 +798,11 @@ export function SelectionLayer({
   // While a text editor is mounted, the stage catcher opens a hole over that element so every
   // pointer event inside it reaches Tiptap. The "Why?" panel grows and shrinks under the caret, so
   // its hole is the whole lane it may occupy rather than the box it happens to fill this frame.
-  const editingBox = editingTextId ? byId.get(editingTextId) : undefined;
+  const editingBox = editingTextId
+    ? (byId.get(editingTextId) ?? layoutChildBox(boxes, editingTextId))
+    : undefined;
+  /** The layout group whose words are being typed into, if any. */
+  const typingIn = layoutGroupOfChild(boxes, editingTextId);
   const hole = editingBox
     ? rotatedBounds(editingBox.rect, editingBox.rotation)
     : editingExplanation === slide.id && showingAnswer
@@ -896,12 +921,29 @@ export function SelectionLayer({
           rotation={first.rotation}
           scale={scale}
           locked={first.locked}
-          handles={editingTextId !== first.id && !gestureOn}
+          handles={editingTextId !== first.id && typingIn?.id !== first.id && !gestureOn}
           coarsePointer={coarse}
           onHandleDown={onHandleDown}
           onRotateDown={onRotateDown}
         />
       ) : null}
+
+      {(() => {
+        // The layout being worked on: selected, or having its words typed into on the slide.
+        const on = selected.length === 1 && first && isLayoutGroup(first.el) ? first : typingIn;
+        if (!on || gestureOn || cropping || !isLayoutGroup(on.el)) return null;
+        return (
+          <Suspense fallback={null}>
+            <LayoutCanvasControls
+              slideId={slide.id}
+              group={on.el as GroupElement & { layout: LayoutRef }}
+              scale={scale}
+              toSlide={toSlide}
+              onEditText={(id) => actions.setEditingText(id)}
+            />
+          </Suspense>
+        );
+      })()}
 
       {selected.length === 1 &&
       first &&

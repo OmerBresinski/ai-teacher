@@ -81,6 +81,23 @@ export type Slide = {
    * layout space; the editor shows it beside the canvas, and present and export never do.
    */
   diagram?: { instruction: string };
+  /**
+   * A layout the teacher turned into free boxes ("Free layout", TEACH-205 part b): the group it
+   * was, without its children. Turning Free layout off re-lays it from here, keeping the words
+   * typed into its freed boxes (each still carries its `<id>:<path>` id).
+   */
+  freeLayout?: FreeLayout;
+};
+
+/** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
+export type FreeLayout = {
+  id: Id;
+  name?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  layout: LayoutRef;
 };
 
 /* ------------------------------------------------------------------ */
@@ -804,6 +821,17 @@ export const SlideSchema = z
     transition: z.enum(["none", "fade", "push", "morph"]).optional(),
     question: QuestionDataSchema.optional(),
     diagram: z.object({ instruction: z.string().max(400) }).optional(),
+    freeLayout: z
+      .object({
+        id: z.string(),
+        name: z.string().optional(),
+        x: z.number(),
+        y: z.number(),
+        w: z.number(),
+        h: z.number(),
+        layout: LayoutRefSchema,
+      })
+      .optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential

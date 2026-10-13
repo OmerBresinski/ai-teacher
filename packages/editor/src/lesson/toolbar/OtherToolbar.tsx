@@ -1,10 +1,11 @@
-import type {
-  EmbedElement,
-  IconElement,
-  SlideElement,
-  TableElement,
-  Theme,
-  TimerElement,
+import {
+  type EmbedElement,
+  type IconElement,
+  isLayoutGroup,
+  type SlideElement,
+  type TableElement,
+  type Theme,
+  type TimerElement,
 } from "@tj/domain/documents";
 import { IconButton, Input, Switch, Tooltip } from "@tj/ui";
 import { Ungroup } from "lucide-react";
@@ -13,8 +14,10 @@ import { ColorPicker } from "../../kit/Color";
 import { NumberInput } from "../../kit/NumberInput";
 import { Panel, PanelLabel, PanelSeparator } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
+import { useLesson } from "../document-context";
 import { hint } from "../keys";
 import { useSessionActions } from "../use-editor-session";
+import { FreeLayoutSwitch } from "./FreeLayoutSwitch";
 import { MoreDrawer } from "./MoreDrawer";
 import { SlotSideControl, type SlotSideProps } from "./SlotSideControl";
 import { ICON, OpacityControl, useElementWrites, useThemePalette } from "./shared";
@@ -39,11 +42,14 @@ export const OtherToolbar = memo(function OtherToolbar({
   const { select } = useSessionActions();
   const palette = useThemePalette(theme);
   const id = useId();
+  const lesson = useLesson();
+  const slide = isLayoutGroup(element) ? lesson.slides.find((s) => s.id === slideId) : undefined;
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Element" data-other-toolbar>
       {slot ? <SlotSideControl slideId={slideId} {...slot} /> : null}
-      {element.type === "group" ? (
+      {slide ? <FreeLayoutSwitch slide={slide} /> : null}
+      {element.type === "group" && !slide ? (
         <>
           <Tooltip label="Ungroup" shortcut={hint("$mod+Shift+g")}>
             <IconButton

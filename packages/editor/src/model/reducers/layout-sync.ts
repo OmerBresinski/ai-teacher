@@ -4,7 +4,9 @@
  * step; silent measurements skip it:
  *
  * - new words in a child bound to a field (`<groupId>:<path>`, written by `relayout`) write
- *   through to the group's `layout.input`, so the next re-lay keeps them;
+ *   through to the group's `layout.input` and, once the template code has loaded
+ *   (`layout-kit.ts`), re-lay the group at once: typing on the slide re-flows the layout. The box
+ *   being typed into keeps the teacher's own doc, so the caret never jumps;
  * - a resize of the group re-lays it into the new size (`layout.fit`): fitted whole, never squashed;
  * - any other change to a child (restyle, move, size, delete, link, alt) **detaches** the group:
  *   the `layout` ref goes and the elements stay exactly as they are. Re-laying would otherwise
@@ -22,7 +24,9 @@ import {
 } from "@tj/domain/documents";
 import { boundPath, fitInto, minLayoutSize, setAtPath } from "@tj/slides/layout-paths";
 import { produce } from "immer";
+import { layoutKit } from "../layout-kit";
 import { renderTheme } from "../themes";
+import { placeInto, tryRelayout } from "./layout";
 
 /** Keys a text edit may change: the words, their provenance, and the height auto-height measures. */
 const TEXT_EDIT_KEYS = new Set(["doc", "authoredBy", "generatedFrom", "h"]);
@@ -30,7 +34,7 @@ const TEXT_EDIT_KEYS = new Set(["doc", "authoredBy", "generatedFrom", "h"]);
 type Verdict =
   | { kind: "keep" }
   | { kind: "detach" }
-  | { kind: "write"; ref: LayoutRef; children?: SlideElement[] };
+  | { kind: "write"; ref: LayoutRef; children?: SlideElement[]; typed?: SlideElement[] };
 
 function judge(
   prev: GroupElement & { layout: LayoutRef },
@@ -59,6 +63,8 @@ function judge(
   }
   if (prev.children === next.children) return { kind: "keep" };
   let ref = prev.layout;
+  const kit = layoutKit();
+  const typed: SlideElement[] = [];
   for (let i = 0; i < next.children.length; i++) {
     const a = prev.children[i] as SlideElement;
     const b = next.children[i] as SlideElement;
@@ -76,9 +82,11 @@ function judge(
     if (da === db || !db) continue;
     const path = boundPath(next.id, b.id);
     if (!path) return { kind: "detach" };
-    ref = setAtPath(ref, path, richDocToPlainText(db as never));
+    const words = richDocToPlainText(db as never);
+    ref = kit ? kit.editItem(ref, path, words) : setAtPath(ref, path, words);
+    typed.push(b);
   }
-  return ref === prev.layout ? { kind: "keep" } : { kind: "write", ref };
+  return ref === prev.layout ? { kind: "keep" } : { kind: "write", ref, typed };
 }
 
 /** `after` with every layout group the edit touched written through or detached (see above). */
@@ -104,7 +112,20 @@ export function syncLayoutGroups(before: Lesson, after: Lesson): Lesson {
       const g = d.slides[slide]?.elements[el] as GroupElement | undefined;
       if (!g) continue;
       if (verdict.kind === "detach") delete g.layout;
-      else if (verdict.kind === "write") {
+      else if (verdict.kind === "write" && verdict.typed) {
+        // Typing: re-lay from the new words when the template code is here, else write them only.
+        const kit = layoutKit();
+        const relaid = kit ? tryRelayout(verdict.ref, after, kit, g.id) : null;
+        if (!relaid) {
+          g.layout = verdict.ref;
+          continue;
+        }
+        placeInto(g, verdict.ref, relaid, theme);
+        for (const own of verdict.typed) {
+          const c = g.children.find((x) => x.id === own.id) as { doc?: unknown } | undefined;
+          if (c && "doc" in own) c.doc = (own as { doc?: unknown }).doc;
+        }
+      } else if (verdict.kind === "write") {
         g.layout = verdict.ref;
         if (verdict.children) g.children = verdict.children;
         if (verdict.ref.fit) {
