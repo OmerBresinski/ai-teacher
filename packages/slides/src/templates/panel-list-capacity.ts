@@ -6,7 +6,8 @@
  * it the field is named in `over`), on every theme. Measured as the pilot's `caps.mjs` does: with
  * icons and a pie; each list field is the smaller of two runs, every row long and one row long
  * beside short siblings; `withLead` holds the row caps beside a one-line lead. A cap of 0 means
- * that count is never comfortable. Regenerate: `bun packages/slides/src/templates/panel-list-capacity.ts`.
+ * that count is never comfortable. `pictures` is the same table measured with a 4:3 photo on every
+ * row (Greg's D1 pick, 14 Oct): the panel then narrows and each row's words sit beside a tile. Regenerate: `bun packages/slides/src/templates/panel-list-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
 import type { Theme } from "@tj/domain/documents";
@@ -51,12 +52,15 @@ export function panelSample(n: number, seed = 0): string {
 const sample = panelSample;
 const wordsIn = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
+/** The row picture every `pictures` cell is measured with: a landscape photo, no subjects. */
+const ROW_PICTURE = { photo: "https://x.test/row.jpg", aspect: 4 / 3, alt: "" } as const;
+let withPictures = false;
 const inputOf = (rows: PanelRow[], heading = HEADING, lead?: string): TemplateInput => ({
   template: "panel-list",
   heading,
-  rows,
+  rows: withPictures ? rows.map((r) => ({ ...r, icon: null, picture: ROW_PICTURE })) : rows,
   ...(lead ? { lead } : {}),
-  panel: { shares: rows.map((_, i) => rows.length - i) },
+  panel: withPictures ? null : { shares: rows.map((_, i) => rows.length - i) },
 });
 
 /** The longest `chars` (step 1) for which `ok` holds, by binary search on [0, max]. */
@@ -127,6 +131,21 @@ export function measurePanelCaps(
   n: number,
   themes: readonly Theme[] = THEMES,
 ): PanelCaps {
+  withPictures = false;
+  const plain = measureCells(age, n, themes);
+  withPictures = true;
+  try {
+    return { ...plain, pictures: measureCells(age, n, themes) };
+  } finally {
+    withPictures = false;
+  }
+}
+
+function measureCells(
+  age: AgeKey,
+  n: number,
+  themes: readonly Theme[],
+): Omit<PanelCaps, "pictures"> {
   const stage = PANEL_AGES[age];
   const rows = SHORT.slice(0, n);
   return {

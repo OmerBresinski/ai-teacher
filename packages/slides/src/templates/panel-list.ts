@@ -10,6 +10,10 @@
  * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
  *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
  *   Words are never cut: a field past its measured hard maximum is named in `over`.
+ * - Row pictures (Greg's D1 pick, 14 Oct): a row may lead with a small rounded photo tile in
+ *   place of its disc. All rows or none; a row whose picture is still being made shows the empty
+ *   slot (`PLACEHOLDER_IMAGE`), so nothing vanishes. With row pictures the panel takes no picture,
+ *   pie or icon of its own (it narrows), and row icons are not drawn: pictures win over icons.
  * - Icons are all or none (matched through the icon library); any miss draws numbers and is
  *   reported in `iconMisses`. With icons or a pie the discs take the category colours, so each
  *   row's disc is the swatch of its wedge.
@@ -26,6 +30,7 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import {
@@ -49,8 +54,39 @@ import {
   shapeMode,
 } from "./panel-list-deps";
 
-/** One row: a short name, one line, and an optional icon label (a library concept). */
-export type PanelRow = { name: string; text: string; icon?: string | null };
+/**
+ * One row: a short name, one line, an optional icon label (a library concept) and an optional
+ * picture (a photo, or the empty slot while it is made). Pictures are all or none across rows.
+ */
+export type PanelRow = {
+  name: string;
+  text: string;
+  icon?: string | null;
+  picture?: Figure | null;
+};
+type Photo = Extract<Figure, { photo: string }>;
+/** A row's picture when it is one a tile can show: a photo, or the empty slot (any `photo` string). */
+const rowPhoto = (r: { picture?: Figure | null } | null | undefined): Photo | null =>
+  r?.picture &&
+  typeof r.picture === "object" &&
+  "photo" in r.picture &&
+  typeof r.picture.photo === "string"
+    ? r.picture
+    : null;
+/**
+ * A row picture's tile height by row count (slide points), before the column's room caps it. The
+ * tile is 4:3 landscape; it gives way with the discs (to 75%) before type does. Measured on the D1
+ * renders (13 Oct): a 2-row tile at 176 still leaves the line beside it its full measure.
+ */
+export const ROW_PIC_H: Readonly<Record<number, number>> = {
+  1: 176,
+  2: 176,
+  3: 116,
+  4: 92,
+  5: 76,
+  6: 64,
+};
+export const ROW_PIC_ASPECT = 4 / 3;
 /** The panel's visual: a picture (photo or diagram), or a pie of one share per row. */
 export type PanelVisual = { picture: Figure } | { shares: number[] };
 
@@ -77,6 +113,7 @@ export const PANEL_NAMES = {
   halo: "Pie chart back",
   wedge: "Pie slice",
   groupIcon: "Panel icon",
+  rowPicture: "Row picture",
 } as const;
 
 /**
@@ -146,6 +183,8 @@ export type PanelCaps = {
   name: Cap;
   text: Cap;
   withLead: { name: Cap; text: Cap };
+  /** The same fields when every row carries a picture (the narrow panel, a tile per row). */
+  pictures?: Omit<PanelCaps, "pictures">;
 };
 const TABLE = CAPACITY as unknown as Partial<Record<AgeKey, Record<string, PanelCaps>>>;
 for (const age of ["early", "primary", "secondary"] as const)
@@ -206,18 +245,23 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     name: clean(r.name),
     text: clean(r.text),
     icon: clean(r.icon),
+    picture: rowPhoto(r),
   }));
   const n = rows.length;
   const geomOver: string[] = [];
 
-  // Icons: all or none, never drawn live. A miss is reported, and the rows take numbers.
-  const matched = rows.map((r) => (r.icon ? matchIcon(r.icon) : null));
-  const misses = rows.filter((r, i) => r.icon && !matched[i]).map((r) => r.icon);
-  if (misses.length) c.iconMisses = misses;
-  const icons = n > 0 && matched.every(Boolean);
+  // Row pictures: all or none (a slot still being made counts). They win over icons, and the
+  // panel then holds no visual of its own (one set of pictures per slide, never both).
+  const rowPics = n > 0 && rows.every((r) => !!r.picture);
 
-  // The panel's visual.
-  const panel = input.panel ?? null;
+  // Icons: all or none, never drawn live. A miss is reported, and the rows take numbers.
+  const matched = rows.map((r) => (r.icon && !rowPics ? matchIcon(r.icon) : null));
+  const misses = rowPics ? [] : rows.filter((r, i) => r.icon && !matched[i]).map((r) => r.icon);
+  if (misses.length) c.iconMisses = misses;
+  const icons = !rowPics && n > 0 && matched.every(Boolean);
+
+  // The panel's visual (none beside row pictures).
+  const panel = rowPics ? null : (input.panel ?? null);
   let shares: number[] | null = null;
   let figure: Figure | null = null;
   if (panel && "shares" in panel) {
@@ -398,9 +442,12 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   });
   const comfortName = drawn(c.t, "heading", L.comfort.name);
   const comfortBody = drawn(c.t, "body", L.comfort.body);
+  // A row picture's tile: the count's height, capped so n tiles and the least gaps fit the column.
+  const picH0 = Math.min(ROW_PIC_H[n] ?? 64, (H - (n - 1) * gapMin) / Math.max(1, n));
   const measureAt = (k: number, df: number) => {
     const s = sizesAt(k);
-    const d = Math.round(d0 * df);
+    const ph = rowPics ? Math.round(picH0 * df) : 0;
+    const d = rowPics ? Math.round(ph * ROW_PIC_ASPECT) : Math.round(d0 * df);
     const tw = ROWS_W - d - COL_GAP;
     const blocks = rows.map((r) => {
       const nh = r.name
@@ -413,7 +460,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
       const whole =
         (!r.name || kit.wordsFit(c, r.name, "heading", cushioned(tw), s.name, L.displayWeight)) &&
         (!r.text || kit.wordsFit(c, r.text, "body", tw, s.body, L.bodyWeight));
-      return { nh, lh, th, rh: Math.max(d + 4, th), whole };
+      return { nh, lh, th, rh: Math.max(rowPics ? ph : d + 4, th), whole };
     });
     const sum = blocks.reduce((a, b) => a + b.rh, 0);
     const fits = n === 0 || (sum + (n - 1) * gapMin <= H + 0.5 && blocks.every((b) => b.whole));
@@ -440,7 +487,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const fill = blocks.reduce((a, b) => a + b.th, 0) / Math.max(1, H);
     const comfy = fits && fill <= COMFORT_FILL + 0.005 && (n < 2 || minGap >= bodyLH - 1);
     const typeOk = s.name >= comfortName - TOL && s.body >= comfortBody - TOL;
-    return { s, d, tw, blocks, ys, gap, fits, comfy, typeOk };
+    return { s, d, ph, tw, blocks, ys, gap, fits, comfy, typeOk };
   };
   let df = 1;
   let m = measureAt(1, df);
@@ -471,12 +518,33 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const y = m.ys[i];
     if (!b || y === undefined) return;
     const fill = fills[i] as string;
+    const pic = rowPics ? r.picture : null;
+    if (pic) {
+      // The tile, centred on the row's text block; cover-cropped by the picture fit (TEACH-25 b).
+      const box = { x: ROWS_X, y: Math.round(y + (b.rh - m.ph) / 2), w: m.d, h: m.ph };
+      const real = !!pic.photo && pic.photo !== PLACEHOLDER_IMAGE;
+      const crop = real && pic.aspect ? cropFor(factsOf(pic.aspect, pic.subjects), box) : undefined;
+      c.els.push({
+        id: uid(),
+        type: "image",
+        name: PANEL_NAMES.rowPicture,
+        ...box,
+        src: pic.photo || PLACEHOLDER_IMAGE,
+        alt: pic.alt ?? r.name,
+        ...(pic.request ? { request: pic.request } : {}),
+        ...(pic.subjects ? { subjects: pic.subjects } : {}),
+        ...(pic.source ? { source: pic.source } : {}),
+        ...(crop ? { crop } : {}),
+        fit: "cover",
+        radius: L.radiusPicture,
+      } as SlideElement);
+    }
     const dy = y + (b.rh - m.d) / 2;
     const numeral = drawn(c.t, "heading", Math.max(20, m.d * 0.48));
     const back: PanelIconBack = icons ? (c.panelIconBack ?? "ring") : "ring";
     // From KS3 an icon's back is a rounded square (icon option 2); numbers stay on a disc.
     const tile = icons && L.medalShape === "tile";
-    if (back !== "none")
+    if (back !== "none" && !pic)
       c.els.push({
         id: uid(),
         type: "shape",
@@ -556,11 +624,13 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
 
   // Fields, the live counters, against the measured caps (ruling 215).
   const caps = panelCapsFor(L.age, Math.max(PANEL_MIN, n));
+  // Beside row pictures the rows are narrower and the panel narrow: their own measured caps.
+  const table = rowPics ? (caps?.pictures ?? caps) : caps;
   const capOf = (key: "heading" | "lead" | "name" | "text") =>
-    caps
+    table
       ? lead && (key === "name" || key === "text")
-        ? caps.withLead[key]
-        : caps[key]
+        ? table.withLead[key]
+        : table[key]
       : undefined;
   const fields: FieldReport[] = [];
   const add = (field: string, key: "heading" | "lead" | "name" | "text", s: string) => {
@@ -741,7 +811,7 @@ export function panelListPaths(els: readonly { name?: string }[]): (string | und
   return els.map((el) => {
     if (el.name === PANEL_NAMES.title) return "heading";
     if (el.name === PANEL_NAMES.lead) return "lead";
-    if (el.name === PANEL_NAMES.disc) row++;
+    if (el.name === PANEL_NAMES.disc || el.name === PANEL_NAMES.rowPicture) row++;
     if (el.name === PANEL_NAMES.name) return `rows.${row}.name`;
     if (el.name === PANEL_NAMES.line) return `rows.${row}.text`;
     return undefined;

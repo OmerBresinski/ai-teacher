@@ -6,6 +6,7 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
+import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
@@ -437,4 +438,167 @@ describe("panel-list", () => {
     expect(measurePanelCaps("early", 3)).toEqual(table.early?.["3"] as never);
     expect(measurePanelCaps("primary", 5)).toEqual(table.primary?.["5"] as never);
   }, 60_000);
+});
+
+/*
+ * Row pictures (Greg's D1 pick, 14 Oct): a set of examples, each with its own picture. A rounded
+ * 4:3 tile leads each row in place of its disc; all rows or none; a slot still being made shows
+ * empty and never vanishes; the panel then holds no visual of its own; pictures win over icons.
+ */
+describe("panel-list row pictures", () => {
+  const photo = (i: number): Figure => ({
+    photo: `https://x.test/row${i}.jpg`,
+    aspect: i % 2 ? 3 / 4 : 3 / 2,
+    alt: `Row ${i}`,
+    subjects: [{ name: "thing", x: 0.3, y: 0.2, w: 0.4, h: 0.5 }],
+  });
+  const pictured = (n: number, lead?: string, rows = ROWS): TemplateInput => ({
+    ...input(n, "none", lead, rows),
+    rows: rows.slice(0, n).map((r, i) => ({ ...r, picture: photo(i) })),
+  });
+  const tiles = (els: { name?: string }[]) => named(els, PANEL_NAMES.rowPicture) as ImageElement[];
+
+  for (const stage of STAGES)
+    test(`${stage}: a tile per row at every count, beside its words, inside the column`, () => {
+      const faults: string[] = [];
+      for (let n = 2; n <= 6; n++) {
+        const r = layoutTemplate(pictured(n), T0, stage);
+        const els = r.slide.elements;
+        const ts = tiles(els);
+        const names = named(els, PANEL_NAMES.name) as TextElement[];
+        const lines = named(els, PANEL_NAMES.line) as TextElement[];
+        if (ts.length !== n) faults.push(`${n}: ${ts.length} tiles`);
+        if (named(els, PANEL_NAMES.disc).length) faults.push(`${n}: discs drawn`);
+        if (named(els, PANEL_NAMES.icon).length) faults.push(`${n}: icons drawn`);
+        ts.forEach((t, i) => {
+          if (Math.abs(t.w / t.h - 4 / 3) > 0.03) faults.push(`${n}.${i}: tile ${t.w}x${t.h}`);
+          if (t.fit !== "cover" || !t.radius) faults.push(`${n}.${i}: not a rounded cover`);
+          if (!t.crop) faults.push(`${n}.${i}: no crop`);
+          if (t.y < 0 || t.y + t.h > 540.5 || t.x + t.w > 960.5) faults.push(`${n}.${i}: off`);
+          const name = names[i];
+          const line = lines[i];
+          if (!name || !line) return;
+          // Words start after the tile and share one left edge; the block is centred on the tile.
+          if (name.x < t.x + t.w + 10 || line.x !== name.x) faults.push(`${n}.${i}: words x`);
+          const mid = (name.y + line.y + line.h) / 2;
+          if (Math.abs(mid - (t.y + t.h / 2)) > 3) faults.push(`${n}.${i}: off centre ${mid}`);
+          const next = ts[i + 1];
+          if (next && next.y < t.y + t.h + 8) faults.push(`${n}.${i}: tiles touch`);
+        });
+        // Tiles shrink with the count, never grow.
+        if (n > 2) {
+          const prev = tiles(layoutTemplate(pictured(n - 1), T0, stage).slide.elements)[0];
+          if (prev && (ts[0]?.h ?? 0) > prev.h) faults.push(`${n}: tile grew`);
+        }
+      }
+      expect(faults).toEqual([]);
+    });
+
+  for (const theme of THEMES)
+    test(`${theme.id}: comfortable with pictures up to the measured count at every age`, () => {
+      const faults: string[] = [];
+      for (const stage of STAGES) {
+        const by = (
+          CAPACITY as Record<string, Record<string, { pictures: { text: { cap: number } } }>>
+        )[ageOf(stage)];
+        for (let n = 2; n <= 6; n++) {
+          if (!(by?.[String(n)]?.pictures.text.cap ?? 0)) continue;
+          const r = layoutTemplate(pictured(n), theme, stage);
+          if (r.over.length || r.tight) faults.push(`${stage} ${n}: ${r.over.join(",")} tight`);
+        }
+      }
+      expect(faults).toEqual([]);
+    });
+
+  test("the panel drops its own picture, pie and icon beside row pictures, and narrows", () => {
+    for (const visual of ["photo", "pie"]) {
+      const r = layoutTemplate({ ...pictured(3), panel: input(3, visual).panel }, T0, "ks2");
+      const els = r.slide.elements;
+      expect(named(els, PANEL_NAMES.photo)).toHaveLength(0);
+      expect(named(els, PANEL_NAMES.wedge)).toHaveLength(0);
+      expect((named(els, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W_NARROW);
+      expect(r.over).toEqual([]);
+    }
+    const icon = layoutTemplate(pictured(3), T0, "ks2", { panelNoVisual: "icon" });
+    expect(named(icon.slide.elements, PANEL_NAMES.groupIcon)).toHaveLength(0);
+  });
+
+  test("pictures win over icons: no icon is drawn or reported missing", () => {
+    const rows = ROWS.map((r, i) => (i === 1 ? { ...r, icon: "kitten" } : r));
+    const r = layoutTemplate(pictured(3, undefined, rows), T0, "ks3");
+    expect(tiles(r.slide.elements)).toHaveLength(3);
+    expect(named(r.slide.elements, PANEL_NAMES.icon)).toHaveLength(0);
+    expect(r.iconMisses ?? []).toEqual([]);
+  });
+
+  test("all or none: a row with no picture numbers every row; an explicit null is none", () => {
+    for (const gap of [undefined, null]) {
+      const inp = pictured(3);
+      const rows = (inp.rows ?? []).map((r, i) => (i === 2 ? { ...r, picture: gap } : r));
+      const r = layoutTemplate({ ...inp, rows }, T0, "ks2");
+      expect(tiles(r.slide.elements)).toHaveLength(0);
+      expect(named(r.slide.elements, PANEL_NAMES.disc)).toHaveLength(3);
+    }
+  });
+
+  test("a picture still being made keeps an empty slot of the same size: nothing moves when it lands", () => {
+    for (const pending of [PLACEHOLDER_IMAGE, ""]) {
+      const inp = pictured(4);
+      const rows = (inp.rows ?? []).map((r, i) =>
+        i === 1 ? { ...r, picture: { photo: pending, alt: "a cactus" } } : r,
+      );
+      const r = layoutTemplate({ ...inp, rows }, T0, "ks3");
+      const ts = tiles(r.slide.elements);
+      expect(ts).toHaveLength(4);
+      expect(ts[1]?.src).toBe(PLACEHOLDER_IMAGE);
+      expect(ts[1]?.crop).toBeUndefined();
+      const landed = tiles(layoutTemplate(pictured(4), T0, "ks3").slide.elements);
+      expect(ts.map((t) => [t.x, t.y, t.w, t.h])).toEqual(landed.map((t) => [t.x, t.y, t.w, t.h]));
+    }
+  });
+
+  test("the crop keeps the subject (picture fit, TEACH-25 b) and the tile carries the request", () => {
+    const fig: Figure = {
+      photo: "https://x.test/wide.jpg",
+      aspect: 16 / 9,
+      alt: "A tractor",
+      request: "A tractor in a field",
+      subjects: [{ name: "tractor", x: 0.7, y: 0.4, w: 0.2, h: 0.3 }],
+    };
+    const inp = pictured(3);
+    const rows = (inp.rows ?? []).map((r) => ({ ...r, picture: fig }));
+    const t = must(tiles(layoutTemplate({ ...inp, rows }, T0, "ks2").slide.elements)[0]);
+    const crop = must(t.crop);
+    expect((t as ImageElement & { request?: string }).request).toBe("A tractor in a field");
+    // The subject (x 0.7 to 0.9) stays inside the crop window.
+    expect(crop.x).toBeLessThanOrEqual(0.7 + 1e-6);
+    expect(crop.x + crop.w).toBeGreaterThanOrEqual(0.9 - 1e-6);
+  });
+
+  test("the editor's addresses count rows by their tiles", () => {
+    const r = layoutTemplate(pictured(3), T0, "ks2");
+    const paths = panelListPaths(r.slide.elements).filter(Boolean);
+    expect(paths).toEqual([
+      "heading",
+      "rows.0.name",
+      "rows.0.text",
+      "rows.1.name",
+      "rows.1.text",
+      "rows.2.name",
+      "rows.2.text",
+    ]);
+  });
+
+  test("fields carry the row-picture caps", () => {
+    const r = layoutTemplate(pictured(2), T0, "ks2");
+    const caps = must(panelCapsFor("primary", 2)?.pictures);
+    const f = must(r.fields?.find((x) => x.field === "rows[0].name"));
+    expect(f.cap).toBe(caps.name.cap);
+    expect(must(r.fields?.find((x) => x.field === "heading")).cap).toBe(caps.heading.cap);
+  });
+
+  test("regenerating the row-picture caps gives the committed table (one cell re-measured)", () => {
+    const table = CAPACITY as unknown as Record<string, Record<string, unknown>>;
+    expect(measurePanelCaps("secondary", 4)).toEqual(table.secondary?.["4"] as never);
+  });
 });
