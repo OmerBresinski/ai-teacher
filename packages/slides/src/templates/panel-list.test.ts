@@ -131,9 +131,10 @@ describe("panel-list", () => {
     expect((named(withPhoto.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
   });
 
-  test("a wide and a tall photo: a safe standard shape keeping the subject, else its own shape inset; never matted", () => {
-    for (const fig of [wide, tall])
-      for (const stage of STAGES) {
+  test("the panel picture's frame is the layout's: pending, wide and tall photos draw the same box (Greg 15 Oct: nothing reshapes on landing)", () => {
+    const pending = { photo: PLACEHOLDER_IMAGE, alt: "" } as typeof wide;
+    for (const stage of STAGES) {
+      const boxes = [pending, wide, tall].map((fig) => {
         const r = layoutTemplate({ ...input(3, "none"), panel: { picture: fig } }, T0, stage);
         const imgs = r.slide.elements.filter((e) => e.type === "image") as ImageElement[];
         expect(imgs).toHaveLength(1);
@@ -141,14 +142,18 @@ describe("panel-list", () => {
         expect(named(r.slide.elements, "Photo panel")).toHaveLength(0);
         expect(img.x + img.w).toBeLessThanOrEqual(PANEL_W);
         expect(img.y + img.h).toBeLessThanOrEqual(540);
-        if ("photo" in fig) expect(cutSubjects(img.crop, fig.subjects)).toEqual([]);
         const ratio = img.w / img.h;
-        const standard = [16 / 9, 4 / 3, 1, 3 / 4].some((s) => Math.abs(ratio - s) < 0.02);
-        const own = Math.abs(ratio - (("photo" in fig && fig.aspect) || 1)) < 0.02;
-        expect(standard || own, `${stage} ratio ${ratio}`).toBe(true);
+        const standard = [16 / 9, 3 / 2, 4 / 3, 1, 3 / 4].some((x) => Math.abs(ratio - x) < 0.02);
+        expect(standard, `${stage} ratio ${ratio}`).toBe(true);
         const title = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
         expect(img.y).toBeGreaterThanOrEqual(title.y + title.h);
-      }
+        // A landed photo is cover-cropped into the frame, never matted.
+        if (img.src !== PLACEHOLDER_IMAGE) expect(img.crop).toBeDefined();
+        return [img.x, img.y, img.w, img.h];
+      });
+      expect(boxes[1], stage).toEqual(boxes[0]);
+      expect(boxes[2], stage).toEqual(boxes[0]);
+    }
   });
 
   test("a pie: one wedge per row in category colours that match the rows' discs", () => {

@@ -104,6 +104,13 @@ export const ROW_PIC_H: Readonly<Record<number, number>> = {
   6: 64,
 };
 export const ROW_PIC_ASPECT = 4 / 3;
+/**
+ * The title panel's picture frame is the layout's, not the photo's (Greg 15 Oct: nothing reshapes
+ * when a photo lands): the zone is chosen for a 3:2 picture, the shape most stock and generated
+ * photos come in, so a pending slot already has its final shape and the landed photo is
+ * cover-cropped into it (`cropFor`, subjects kept in view where they fit).
+ */
+export const PANEL_PIC_ASPECT = 3 / 2;
 /** A row tile's corner radius at most, as a share of its height. */
 const ROW_PIC_RADIUS = 0.14;
 /** The panel's visual: a picture (photo or diagram), or a pie of one share per row. */
@@ -347,8 +354,9 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   // The photo zone: the tallest safe standard shape that fits under the title.
   let picBox: { x: number; y: number; w: number; h: number; inset: boolean } | null = null;
   if (photo) {
-    const aspect = photo.aspect && photo.aspect > 0 ? photo.aspect : 4 / 3;
-    const facts = factsOf(aspect, photo.subjects);
+    // The frame never depends on the photo, so pending and landed draw the same box.
+    const aspect = PANEL_PIC_ASPECT;
+    const facts = factsOf(aspect);
     const avail = () => SLIDE_H - (TITLE_TOP + title.h + PHOTO_GAP);
     const tk0 = tk;
     const shapes = [...SHAPES].filter(([, r]) => shapeMode(facts, r)).sort((a, b) => a[1] - b[1]);
