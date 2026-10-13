@@ -1,0 +1,164 @@
+{
+  "KS1": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 18,
+          "hardMax": 37,
+          "words": 3
+        },
+        "text": {
+          "cap": 69,
+          "hardMax": 88,
+          "words": 14
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 18,
+          "hardMax": 37,
+          "words": 3
+        },
+        "text": {
+          "cap": 108,
+          "hardMax": 132,
+          "words": 20
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 13,
+          "hardMax": 22,
+          "words": 2
+        },
+        "text": {
+          "cap": 22,
+          "hardMax": 41,
+          "words": 4
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 13,
+          "hardMax": 22,
+          "words": 2
+        },
+        "text": {
+          "cap": 56,
+          "hardMax": 69,
+          "words": 11
+        }
+      }
+    }
+  },
+  "KS2": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 37,
+          "hardMax": 56,
+          "words": 7
+        },
+        "text": {
+          "cap": 80,
+          "hardMax": 125,
+          "words": 16
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 18,
+          "hardMax": 37,
+          "words": 3
+        },
+        "text": {
+          "cap": 151,
+          "hardMax": 174,
+          "words": 26
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 18,
+          "hardMax": 32,
+          "words": 3
+        },
+        "text": {
+          "cap": 41,
+          "hardMax": 59,
+          "words": 8
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 18,
+          "hardMax": 32,
+          "words": 3
+        },
+        "text": {
+          "cap": 74,
+          "hardMax": 88,
+          "words": 15
+        }
+      }
+    }
+  },
+  "KS3-5": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 22,
+          "hardMax": 74,
+          "words": 4
+        },
+        "text": {
+          "cap": 125,
+          "hardMax": 184,
+          "words": 22
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 22,
+          "hardMax": 47,
+          "words": 4
+        },
+        "text": {
+          "cap": 220,
+          "hardMax": 255,
+          "words": 39
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 13,
+          "hardMax": 41,
+          "words": 2
+        },
+        "text": {
+          "cap": 74,
+          "hardMax": 88,
+          "words": 15
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 22,
+          "hardMax": 41,
+          "words": 4
+        },
+        "text": {
+          "cap": 101,
+          "hardMax": 125,
+          "words": 19
+        }
+      }
+    }
+  }
+}

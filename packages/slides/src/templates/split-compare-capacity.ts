@@ -11,7 +11,9 @@
  * so the words get the room and a slide with every field at its cap is comfortable. Every side holds the same length (the
  * binding case: the rows line up across the fields). Pictures are an upright photo of one subject,
  * the tightest realistic pair (it gives way only by shrinking). `words` is the cap in words, for the
- * writer's `Fits:` line. Regenerate: `bun packages/slides/src/templates/split-compare-capacity.ts`.
+ * writer's `Fits:` line. Regenerate: `bun packages/slides/src/templates/split-compare-capacity.ts`
+ * (both looks: split compare's fields, and side by side's narrower cards into
+ * `side-by-side-capacity.json`).
  */
 import { writeFileSync } from "node:fs";
 import { atKeyStage, THEMES } from "../themes";
@@ -19,6 +21,7 @@ import { sample } from "./capacity";
 import { type Ctx, type Figure, type Stage, templateScale } from "./index";
 import {
   type SplitGroup,
+  type SplitLook,
   type SplitSide,
   type SplitZone,
   splitFit,
@@ -56,7 +59,7 @@ const sidesOf = (n: number, zone: SplitZone, len: Partial<Record<Field, number>>
   }));
 
 /** Whether these sides fit (`comfy`: comfortably) on every theme and stage of the group. */
-function allFit(group: SplitGroup, sides: SplitSide[], comfy: boolean): boolean {
+function allFit(group: SplitGroup, sides: SplitSide[], comfy: boolean, look: SplitLook): boolean {
   return THEMES.every((theme) =>
     SPLIT_GROUPS[group].every((stage) => {
       const c: Ctx = {
@@ -65,7 +68,7 @@ function allFit(group: SplitGroup, sides: SplitSide[], comfy: boolean): boolean 
         over: [],
         els: [],
       };
-      const f = splitFit(c, { template: "split-compare", heading: SPLIT_FIT_HEADING, sides });
+      const f = splitFit(c, { template: look, heading: SPLIT_FIT_HEADING, sides }, look);
       return comfy ? f.comfy : f.fits;
     }),
   );
@@ -87,8 +90,13 @@ function longest(test: (chars: number) => boolean, max: number): number {
 }
 
 /** The sides used for a check: every side at the given lengths. */
-export function splitSides(group: SplitGroup, n: 2 | 3, zone: SplitZone): SplitSide[] {
-  const t = splitTable(group, n, zone);
+export function splitSides(
+  group: SplitGroup,
+  n: 2 | 3,
+  zone: SplitZone,
+  look: SplitLook = "split-compare",
+): SplitSide[] {
+  const t = splitTable(group, n, zone, look);
   return sidesOf(n, zone, {
     title: t.title.cap,
     text: t.text.cap,
@@ -96,13 +104,18 @@ export function splitSides(group: SplitGroup, n: 2 | 3, zone: SplitZone): SplitS
   });
 }
 
-export function measureSplitCell(group: SplitGroup, n: 2 | 3, zone: SplitZone) {
+export function measureSplitCell(
+  group: SplitGroup,
+  n: 2 | 3,
+  zone: SplitZone,
+  look: SplitLook = "split-compare",
+) {
   const len: Partial<Record<Field, number>> = {};
   const out: Partial<SplitMeasured> = {};
   const fields = ORDER.filter((f) => f !== "quote" || zone === "quote");
   for (const f of fields) {
     const at = (comfy: boolean) => (chars: number) =>
-      allFit(group, sidesOf(n, zone, { ...len, [f]: chars }), comfy);
+      allFit(group, sidesOf(n, zone, { ...len, [f]: chars }), comfy, look);
     const cap = longest(at(true), LIMITS[f]);
     const hardMax = Math.max(cap, longest(at(false), LIMITS[f]));
     out[f] = { cap, hardMax, words: cap ? sample(cap).split(" ").length : 0 };
@@ -113,24 +126,31 @@ export function measureSplitCell(group: SplitGroup, n: 2 | 3, zone: SplitZone) {
   ) as SplitMeasured;
 }
 
-if (import.meta.main) {
-  const table: Record<string, Record<number, Record<string, SplitMeasured>>> = {};
-  for (const group of Object.keys(SPLIT_GROUPS) as SplitGroup[]) {
-    table[group] = {};
-    for (const n of [2, 3] as const) {
-      (table[group] as Record<number, Record<string, SplitMeasured>>)[n] = {};
-      for (const zone of ["picture", "quote", "text"] as SplitZone[])
-        (
-          (table[group] as Record<number, Record<string, SplitMeasured>>)[n] as Record<
-            string,
-            SplitMeasured
-          >
-        )[zone] = measureSplitCell(group, n, zone);
+/** Side by side holds examples with pictures, or words while they arrive (no quotes). */
+const ZONES: Record<SplitLook, SplitZone[]> = {
+  "split-compare": ["picture", "quote", "text"],
+  "side-by-side": ["picture", "text"],
+};
+
+if (import.meta.main)
+  for (const look of ["split-compare", "side-by-side"] as SplitLook[]) {
+    const table: Record<string, Record<number, Record<string, SplitMeasured>>> = {};
+    for (const group of Object.keys(SPLIT_GROUPS) as SplitGroup[]) {
+      table[group] = {};
+      for (const n of [2, 3] as const) {
+        (table[group] as Record<number, Record<string, SplitMeasured>>)[n] = {};
+        for (const zone of ZONES[look])
+          (
+            (table[group] as Record<number, Record<string, SplitMeasured>>)[n] as Record<
+              string,
+              SplitMeasured
+            >
+          )[zone] = measureSplitCell(group, n, zone, look);
+      }
     }
+    writeFileSync(
+      new URL(`./${look}-capacity.json`, import.meta.url),
+      `${JSON.stringify(table, null, 2)}\n`,
+    );
+    console.log(JSON.stringify(table));
   }
-  writeFileSync(
-    new URL("./split-compare-capacity.json", import.meta.url),
-    `${JSON.stringify(table, null, 2)}\n`,
-  );
-  console.log(JSON.stringify(table));
-}

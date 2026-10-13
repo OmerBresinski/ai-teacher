@@ -36,7 +36,7 @@ import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
-import { layoutSplitCompare, type SplitSide } from "./split-compare";
+import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual, SplitSide };
@@ -148,6 +148,7 @@ export type TemplateId =
   | "hook"
   | "panel-list"
   | "split-compare"
+  | "side-by-side"
   | ActivityId;
 
 export type TemplateInput = {
@@ -1259,6 +1260,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "banner-text": "image-text",
   hook: "image-text",
   "split-compare": "content",
+  "side-by-side": "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2339,6 +2341,9 @@ function layoutOnce(
       break;
     case "split-compare":
       layoutSplitCompare(c, input);
+      break;
+    case "side-by-side":
+      layoutSideBySide(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

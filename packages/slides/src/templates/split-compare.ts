@@ -21,6 +21,13 @@
  *   age's comfort sizes; past that the slide is `tight` and type goes on to the floors. A field past
  *   its measured hard maximum (`split-compare-capacity.json`), or the field furthest past its cap
  *   when the slide still overflows, is named in `over`.
+ *
+ * **Side by side** (TEACH-75 part w, Greg 14 Oct: "the compare without VS variant for variety"):
+ * the same fit, sizes and zones for 2 or 3 examples of one idea, drawn so it never reads as a
+ * contrast. Every side is a card in one and the same tint, inset from the slide's edges with a
+ * plain gap between, and nothing on the gaps (no "vs"). The writer never picks it: code lays a set
+ * of 2-3 pictured examples (panel-list input) this way for variety, and the teacher can flip it
+ * back. Its caps are its own (`side-by-side-capacity.json`, the cards are narrower).
  */
 import type {
   ImageElement,
@@ -43,6 +50,7 @@ import {
   type Stage,
   type TemplateInput,
 } from "./index";
+import SET_CAPACITY from "./side-by-side-capacity.json" with { type: "json" };
 import CAPACITY from "./split-compare-capacity.json" with { type: "json" };
 import {
   extOf,
@@ -88,6 +96,9 @@ export const SPLIT_NAMES = {
   zoneOf: { picture: "Side picture", quote: "Quote bubble", text: "Side words" },
 } as const;
 
+/** How the sides are drawn: split compare's contrast fields, or side by side's matching cards. */
+export type SplitLook = "split-compare" | "side-by-side";
+
 export const SPLIT_MIN = 2;
 export const SPLIT_MAX = 3;
 
@@ -132,6 +143,43 @@ const sidePad = (n: number) => (n === 3 ? 37 : 53);
 const EDGE = SAFE.x;
 const medalSize = (n: number) => (n === 3 ? 100 : 120);
 const fieldW = (n: number) => (W - (n - 1) * SEAM) / n;
+/* Side by side: cards inset from the slide's sides and foot, a plain gap between (grid `SPACE`). */
+const SET_GAP = SPACE[4];
+const SET_EDGE = SPACE[5];
+const SET_FOOT = SPACE[5];
+/** A card's inner padding, and its content's foot room (the card's own margin is the room). */
+const setPad = (n: number) => (n === 3 ? SPACE[4] : SPACE[5]);
+const SET_STAGE_FOOT = SPACE[4];
+const setW = (n: number) => (W - 2 * SET_EDGE - (n - 1) * SET_GAP) / n;
+/** Where each field (or card) starts, its width and its inner column, for either look. */
+type Frame = { x: (i: number) => number; w: number; cellW: number; left: (i: number) => number };
+function frameOf(look: SplitLook, n: number): Frame {
+  if (look === "side-by-side") {
+    const w = setW(n);
+    const pad = setPad(n);
+    return {
+      x: (i) => SET_EDGE + i * (w + SET_GAP),
+      w,
+      cellW: Math.floor(w - 2 * pad),
+      left: () => pad,
+    };
+  }
+  const fw = fieldW(n);
+  const pad = sidePad(n);
+  const cellW = Math.floor(fw - pad - Math.max(pad, EDGE));
+  return {
+    x: (i) => i * (fw + SEAM),
+    w: fw,
+    cellW,
+    // Outer fields keep the safe margin on the slide's edge; a middle field centres its column.
+    left: (i) =>
+      i === 0
+        ? Math.max(pad, EDGE)
+        : i === n - 1
+          ? fw - cellW - Math.max(pad, EDGE)
+          : (fw - cellW) / 2,
+  };
+}
 
 /** The key-stage group a stage's caps are measured for (the pilot's early, primary, secondary). */
 export type SplitGroup = "KS1" | "KS2" | "KS3-5";
@@ -141,8 +189,16 @@ export const splitGroupOf = (s: Stage): SplitGroup =>
 export type SplitLimit = { cap: number; hardMax: number };
 export type SplitCell = { title: SplitLimit; text: SplitLimit; quote?: SplitLimit };
 /** The measured limits for a group, side count and zone (`split-compare-capacity.json`). */
-export function splitTable(group: SplitGroup, n: 2 | 3, zone: SplitZone): SplitCell {
-  const t = CAPACITY as unknown as Record<string, Record<string, Record<string, SplitCell>>>;
+export function splitTable(
+  group: SplitGroup,
+  n: 2 | 3,
+  zone: SplitZone,
+  look: SplitLook = "split-compare",
+): SplitCell {
+  const t = (look === "side-by-side" ? SET_CAPACITY : CAPACITY) as unknown as Record<
+    string,
+    Record<string, Record<string, SplitCell>>
+  >;
   return t[group]?.[n]?.[zone] ?? { title: { cap: 0, hardMax: 0 }, text: { cap: 0, hardMax: 0 } };
 }
 
@@ -176,15 +232,25 @@ export function zoneOf(sides: SplitSide[]): SplitZone {
 export type SplitFit = { fits: boolean; comfy: boolean };
 
 export function layoutSplitCompare(c: Ctx, input: TemplateInput) {
-  run(c, input, true);
+  run(c, input, true, "split-compare");
+}
+
+/** Side by side: 2 or 3 examples of one idea as matching cards, no seam marker. */
+export function layoutSideBySide(c: Ctx, input: TemplateInput) {
+  run(c, input, true, "side-by-side");
 }
 
 /** The fit alone, without the published table (the capacity script measures that table). */
-export function splitFit(c: Ctx, input: TemplateInput): SplitFit {
-  return run(c, input, false);
+export function splitFit(
+  c: Ctx,
+  input: TemplateInput,
+  look: SplitLook = "split-compare",
+): SplitFit {
+  return run(c, input, false, look);
 }
 
-function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
+function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): SplitFit {
+  const set = look === "side-by-side";
   const all = input.sides ?? [];
   if (all.length < SPLIT_MIN) c.over.push(`sides ${all.length}/${SPLIT_MIN}`);
   if (all.length > SPLIT_MAX) c.over.push(`sides ${all.length}/${SPLIT_MAX}`);
@@ -213,13 +279,17 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
   c.bodyFromHeading = true;
   // Words only and pictures: the fields start a little nearer the heading, for the height it gives.
   const ft = Math.round(top + UNDER_HEADING);
-  const fh = H - ft;
-  const fw = fieldW(n);
-  const pad = sidePad(n);
-  const cellW = Math.floor(fw - pad - Math.max(pad, EDGE));
+  const fh = H - ft - (set ? SET_FOOT : 0);
+  const frame = frameOf(look, n);
+  const fw = frame.w;
+  const cellW = frame.cellW;
   const zone = zoneOf(sides);
   const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
-  const stageH = fh - stageTop - STAGE_FOOT;
+  const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);
+  // Side by side: every card in one tint (the sides are alike, not opposed).
+  const fills = Array.from({ length: n }, (_, i) =>
+    set ? (tones.fields[0] as string) : (tones.fields[i] as string),
+  );
   const pics = zone === "picture" ? sides.map((s) => pictureOf(s) as Pic) : [];
 
   // Sizes on the stage's scale, scaled by k; never under the floors.
@@ -358,18 +428,21 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
   const narrow = narrowOf(p);
   const comfy = j.comfy && typeComfy(z) && !narrow.length;
 
-  // Fields, then the content centred in each field's stage.
+  // Fields (side by side: cards), then the content centred in each field's stage.
+  const radius = Math.min(c.t.radius, 14);
   for (let i = 0; i < n; i++)
     kit.box(
       c,
       {
-        x: Math.round(i * (fw + SEAM)),
+        x: Math.round(frame.x(i)),
         y: ft,
-        w: Math.round((i + 1) * (fw + SEAM) - SEAM) - Math.round(i * (fw + SEAM)),
+        w: Math.round(frame.x(i) + fw) - Math.round(frame.x(i)),
         h: fh,
       },
-      tones.fields[i] as string,
-      { shape: "rect", radius: 0, name: SPLIT_NAMES.field },
+      fills[i] as string,
+      set
+        ? { shape: "rounded", radius: Math.max(radius, 8), name: SPLIT_NAMES.field }
+        : { shape: "rect", radius: 0, name: SPLIT_NAMES.field },
     );
   if (sides.length)
     drawSides(c, sides, {
@@ -377,8 +450,8 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
       z,
       p,
       ft,
-      fw,
-      pad,
+      frame,
+      fills,
       cellW,
       y0: ft + stageTop + Math.max(0, Math.round((stageH - p.total) / 2)),
       tones,
@@ -391,9 +464,9 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
       quoteH,
       textH,
     });
-  // A marker on each seam, level with the fields' middle.
+  // A marker on each seam, level with the fields' middle (side by side: none, only the gap).
   const label = input.marker ?? "vs";
-  for (let i = 1; i < n; i++) {
+  for (let i = 1; i < (set ? 0 : n); i++) {
     const cx = (i * (W + SEAM)) / n - SEAM / 2;
     const cy = ft + fh / 2;
     disc(c, cx, cy, MARKER + 2 * SEAM, tones.paper, SPLIT_NAMES.markerRing);
@@ -414,16 +487,23 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
 
   const fit = { fits: j.fits && !narrow.length, comfy };
   if (!useTable) return fit;
-  report(c, sides, n, zone, { ...fit, fits: j.fits });
+  report(c, sides, n, zone, { ...fit, fits: j.fits }, look);
   for (const i of narrow) c.over.push(`sides[${i}].picture`);
   if (narrow.length) c.tight = true;
   return fit;
 }
 
 /** The fields report, `over` past a hard maximum (or the worst field when it overflows), `tight`. */
-function report(c: Ctx, sides: SplitSide[], n: number, zone: SplitZone, fit: SplitFit) {
+function report(
+  c: Ctx,
+  sides: SplitSide[],
+  n: number,
+  zone: SplitZone,
+  fit: SplitFit,
+  look: SplitLook,
+) {
   const stage = stageOf(c);
-  const cell = splitTable(splitGroupOf(stage), (n === 3 ? 3 : 2) as 2 | 3, zone);
+  const cell = splitTable(splitGroupOf(stage), (n === 3 ? 3 : 2) as 2 | 3, zone, look);
   const fields: FieldCount[] = [];
   sides.forEach((s, i) => {
     const row = (key: "title" | "quote" | "text", v: string) => {
@@ -462,8 +542,8 @@ type Draw = {
   z: SplitSizes;
   p: { name: number; zone: number; picH: number; body: number };
   ft: number;
-  fw: number;
-  pad: number;
+  frame: Frame;
+  fills: string[];
   cellW: number;
   y0: number;
   tones: ReturnType<typeof splitTones>;
@@ -483,15 +563,8 @@ function drawSides(c: Ctx, sides: SplitSide[], d: Draw) {
   const ownCrops = d.zone === "picture" && d.step && new Set(d.step.ratios).size > 1;
   const radius = Math.min(c.t.radius, 14);
   sides.forEach((s, i) => {
-    // Outer fields keep the safe margin on the slide's edge; a middle field centres its column.
-    const left =
-      i === 0
-        ? Math.max(d.pad, EDGE)
-        : i === d.n - 1
-          ? d.fw - d.cellW - Math.max(d.pad, EDGE)
-          : (d.fw - d.cellW) / 2;
-    const x = Math.round(i * (d.fw + SEAM) + left);
-    const field = d.tones.fields[i] as string;
+    const x = Math.round(d.frame.x(i) + d.frame.left(i));
+    const field = d.fills[i] as string;
     const hide = s.reveal === true;
     const later: (() => void)[] = [];
     const now = (f: () => void) => (hide ? later.push(f) : f());
