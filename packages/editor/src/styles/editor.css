@@ -23,8 +23,9 @@
   }
 }
 
-/* A layout's over-long words are marked by the layout's own on-canvas controls (outline, chip and
-   a badge outside the box, TEACH-205 part b); the frame clips, so the text box's own mark is off. */
-[data-layout-frame] [data-overflow-glyph] {
-  display: none;
+/* While a layout is selected its own on-canvas controls mark over-long words (outline, chip and a
+   badge outside the box that the frame cannot clip, TEACH-205 part b), so the text box's own mark
+   steps aside; unselected, the box's mark (outside its corner) is the only sign. */
+body:has([data-layout-controls]) [data-layout-frame] [data-overflow-glyph] {
+  display: none !important; /* over the glyph's inline display */
 }
