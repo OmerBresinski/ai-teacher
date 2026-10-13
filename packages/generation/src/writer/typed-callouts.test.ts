@@ -30,9 +30,11 @@ describe("typed callouts in the writer schema", () => {
     // Pinned from master, not from this code: the default production schema is unchanged. Note
     // `toInput` reads `{kind}` whatever the flag; off only keeps the field out of the model's schema.
     const MASTER: Record<string, string> = {
-      KS1: "72261a17d2fedb36e0b1e60a15fc532c6830d8b6",
-      KS2: "7ae811703c84bf7905a254d8918bf10eed3d42b9",
-      "KS3-5": "04108708d68931af60385c452d8424ef8282869c",
+      // Answer first (ANSWER-BUG.md): the hinge def lost `correct` and its options say the
+      // answer comes first. Before: KS1 72261a17, KS2 7ae81170, KS3-5 04108708.
+      KS1: "f35e8ce96ffd3f764a063af7358db5b6c4a691b7",
+      KS2: "24f12da01ed84ef7b68c98731abef050e1a30426",
+      "KS3-5": "3fa5a5e39812271137e826d5da7bbf62dd09ee53",
     };
     for (const [stage, hash] of Object.entries(MASTER))
       expect({

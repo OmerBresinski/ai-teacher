@@ -1,0 +1,51 @@
+{
+  "note": "The hinge each master writer run wrote in the TEACH-110 s proof. Sol counted `correct` from 0; the intended option is judged from content.",
+  "hinges": [
+    {
+      "brief": "y6-heart",
+      "source": "pilot/build/proof/old/y6-heart.writer-raw.txt (origin/master 9ec55cbf3 writer, gpt-6.1-sol low, 13 Oct 2026)",
+      "raw": {
+        "template": "hinge",
+        "heading": "Choose the correct statement",
+        "stem": "Which statement about circulation is correct?",
+        "options": [
+          "All arteries carry oxygen-rich blood.",
+          "Veins carry blood away from the heart.",
+          "Blood carries carbon dioxide to the lungs.",
+          "Capillaries pump blood around the body."
+        ],
+        "correct": 2
+      },
+      "intended": "Blood carries carbon dioxide to the lungs."
+    },
+    {
+      "brief": "y3-rocks",
+      "source": "pilot/build/proof/old/y3-rocks.writer-raw.txt (origin/master 9ec55cbf3 writer, gpt-6.1-sol low, 13 Oct 2026)",
+      "raw": {
+        "template": "hinge",
+        "heading": "Choose the best answer",
+        "stem": "A rock changes under heat and pressure but does not melt. What type forms?",
+        "options": ["Igneous", "Sedimentary", "Metamorphic"],
+        "correct": 2
+      },
+      "intended": "Metamorphic"
+    },
+    {
+      "brief": "y7-biomes",
+      "source": "pilot/build/proof/old/y7-biomes.writer-raw.txt (origin/master 9ec55cbf3 writer, gpt-6.1-sol low, 13 Oct 2026)",
+      "raw": {
+        "template": "hinge",
+        "heading": "Choose the best answer",
+        "stem": "Which climate feature makes a place a desert?",
+        "options": [
+          "Very high temperatures",
+          "Very little precipitation",
+          "Cold winters",
+          "A long dry season followed by heavy rain"
+        ],
+        "correct": 1
+      },
+      "intended": "Very little precipitation"
+    }
+  ]
+}

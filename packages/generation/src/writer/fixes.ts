@@ -81,6 +81,77 @@ export function fnv(x: string) {
   return h;
 }
 
+/** The single-answer templates whose key is an index into the writer's own list. */
+const KEYED = new Set(["hinge", "choose", "odd-one-out"]);
+
+/**
+ * The writer writes the correct option (hinge) or card (choose, odd-one-out) first and gives no
+ * index: a counted `correct` was read from 1 but written from 0 by gpt-6.1-sol on 5 of 6 proof
+ * keys (pilot build/ANSWER-BUG.md). The key is fixed at 1 here, before `shuffleHinge` or the
+ * activity template's seeded shuffle moves it. A slide that already has `correct` (a saved or
+ * replayed writer output from before the change) keeps it, read from 1 as before.
+ */
+export function answerFirst(slide: S): S {
+  if (!KEYED.has(String(slide.template)) || slide.correct !== undefined) return slide;
+  return { ...slide, correct: 1 };
+}
+
+/**
+ * An older writer slide (counted `correct`, read from 1) in the answer-first shape: the keyed
+ * option or card moved to the front and `correct` dropped. For fixtures and replays of outputs
+ * written before the change; other slides pass through.
+ */
+export function toAnswerFirst(slide: S): S {
+  const list = slide.template === "hinge" ? "options" : "cards";
+  const items = slide[list];
+  const c = Number(slide.correct);
+  if (!KEYED.has(String(slide.template)) || !Array.isArray(items) || !Number.isInteger(c))
+    return slide;
+  const { correct: _, ...rest } = slide;
+  if (c < 1 || c > items.length) return rest;
+  return { ...rest, [list]: [items[c - 1], ...items.filter((_, i) => i !== c - 1)] };
+}
+
+/** A whole older writer output (`{ slides }`) in the answer-first shape (`toAnswerFirst`). */
+export function answerFirstMain(main: unknown): unknown {
+  const m = main as { slides?: unknown };
+  if (!m || !Array.isArray(m.slides)) return main;
+  return { ...m, slides: m.slides.map((s) => toAnswerFirst(s as S)) };
+}
+
+/** A schema whose `$defs.hinge` drops the counted `correct` (the repair schema; see keepAnswerKey). */
+export function withoutHingeKey<T extends S>(schema: T): T {
+  const defs = schema.$defs as Record<string, S> | undefined;
+  const hinge = defs?.hinge;
+  if (!defs || !hinge || !(hinge.properties as S | undefined)?.correct) return schema;
+  const { correct: _, ...props } = hinge.properties as S;
+  const required = (hinge.required as string[]).filter((k) => k !== "correct");
+  return { ...schema, $defs: { ...defs, hinge: { ...hinge, required, properties: props } } };
+}
+
+/**
+ * A repaired or restaged hinge's key, found by the answer's words: the option the pre-repair key
+ * named, matched (trimmed, case and spacing folded) in the new options. The repair's own
+ * `correct` is never used (the repair schema no longer asks for it). Returns null when the answer
+ * is gone, so the caller keeps the pre-repair slide. Other slides pass through.
+ */
+export function keepAnswerKey(before: S, after: S): S | null {
+  // A repair that turns another slide into a hinge would bring a counted key: refused.
+  if (before.template !== "hinge") return after.template === "hinge" ? null : after;
+  const b = before.options;
+  const c = Number(before.correct);
+  if (!Array.isArray(b) || !Number.isInteger(c) || c < 1 || c > b.length) return after;
+  if (after.template !== "hinge" || !Array.isArray(after.options)) return null;
+  const norm = (x: unknown) =>
+    String(x ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  const want = norm(b[c - 1]);
+  const at = (after.options as unknown[]).findIndex((o) => norm(o) === want);
+  return at < 0 ? null : { ...after, correct: at + 1 };
+}
+
 /**
  * Seeded hinge shuffle: the writer put the answer at B on 76% of hinges. The options are permuted
  * by a seeded Fisher-Yates (same seed, same order), so the correct option's position is uniform

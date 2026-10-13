@@ -5,6 +5,7 @@ import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { withActivities } from "./activities";
 import { tilesAsPictures } from "./fallbacks";
+import { answerFirstMain, toAnswerFirst } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { materialise, type Plan, tileDiagramKeys, type VisualState } from "./materialise";
 import { TILE_VISUALS_DEFAULT, writerSchema } from "./schema";
@@ -75,7 +76,9 @@ describe("the tile-visual schema", () => {
   });
 
   test("older outputs still validate (round trip)", () => {
-    expect(validate(withActivities(on, "KS1"), (fixture as { main: unknown }).main)).toEqual([]);
+    expect(
+      validate(withActivities(on, "KS1"), answerFirstMain((fixture as { main: unknown }).main)),
+    ).toEqual([]);
     expect(
       validate(
         defs.compare as J,
@@ -108,7 +111,7 @@ describe("the tile-visual schema", () => {
     expect(validate(defs.compare as J, compare, on)).toEqual([]);
     expect(validate(defs["picture-sequence"] as J, sequence, on)).toEqual([]);
     for (const f of [null, pic, flow("a", "b")])
-      expect(validate(defs.hinge as J, hinge(f), on)).toEqual([]);
+      expect(validate(defs.hinge as J, toAnswerFirst(hinge(f)), on)).toEqual([]);
   });
 });
 

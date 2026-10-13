@@ -167,10 +167,15 @@ function variantDef(
       };
       it = seq.anyOf ? { anyOf: (seq.anyOf as J[]).map(capCaption) } : capCaption(seq);
     } else it = capped(item);
-    p[k] = { type: "array", items: it, minItems: n, maxItems: n };
+    const description = (p[k] as J | undefined)?.description;
+    p[k] = {
+      type: "array",
+      items: it,
+      minItems: n,
+      maxItems: n,
+      ...(description ? { description } : {}),
+    };
   }
-  if (layout === "hinge" && v.counts.options)
-    p.correct = { type: "integer", minimum: 1, maximum: v.counts.options };
   const { template, ...rest } = p;
   const props = { template, fit: { type: "string", enum: [fitKey(v)] }, ...rest };
   return { ...base, required: Object.keys(props), properties: props };

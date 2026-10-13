@@ -56,6 +56,7 @@ import {
   figureTextFix,
 } from "./figure-text";
 import {
+  answerFirst,
   applyRepair,
   asksVisual,
   type Brief,
@@ -64,6 +65,7 @@ import {
   fillTemplate,
   fitTable,
   fixedFallback,
+  keepAnswerKey,
   keepAsksHonest,
   layoutsFor,
   linkSteps,
@@ -80,6 +82,7 @@ import {
   titleOneThing,
   withCorrectLetter,
   withLook,
+  withoutHingeKey,
   writerIncomplete,
 } from "./fixes";
 import { gasFaults, rescaleGas } from "./gas";
@@ -396,9 +399,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const { brief } = run;
   const P = writerBundle(run.bundle);
+  // The pinned repair schema without the hinge's counted `correct`: code finds the key by the
+  // answer's words (`keepAnswerKey`), so the model is not asked to count (ANSWER-BUG.md).
   const repairSchemaFor = (k: string) =>
-    JSON.parse(
-      k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
+    withoutHingeKey(
+      JSON.parse(
+        k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
+      ),
     );
   // The repair's layouts menu: the one the lab's repair calls sent (BAKEOFF prompts/T, heading
   // room in characters), not the arm's menu the system text was built from (TEACH-110 part f).
@@ -918,8 +925,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ...(a.fields.length ? { fields: a.fields } : {}),
       });
     }
-    // No em dashes on slides.
-    let s = slideNoEmDash(raw);
+    // No em dashes on slides. The writer's answer is its first option or card (key 1).
+    let s = answerFirst(slideNoEmDash(raw));
     const figOpts = {
       fromSpec: run.figureTextFromSpec ?? FIGURE_TEXT_FROM_SPEC_DEFAULT,
       specRepair: run.figureSpecRepair ?? FIGURE_SPEC_REPAIR_DEFAULT,
@@ -1507,7 +1514,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       return false;
     }
     const before = plan.slides[i] as S;
-    o2.slide = keepAsksHonest(before, o2.slide);
+    const keyed = keepAnswerKey(before, keepAsksHonest(before, o2.slide));
+    o2.slide = keyed ?? before;
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     // The pinned repair prompt may move one whole unit to the notes or split: it is judged by the
     // word-loss rule, not the fit-only rule.
@@ -1519,7 +1527,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ...(mode !== "fit" ? { restage: true, exempt: ro.exempt ?? POINTING_WORDS } : {}),
     });
     const guarded = ro.guard?.(o2.slide);
-    const why = [...(verdict.ok ? [] : verdict.why), ...(guarded ? [guarded] : [])];
+    const why = [
+      ...(verdict.ok ? [] : verdict.why),
+      ...(guarded ? [guarded] : []),
+      // The hinge's answer option did not survive the repair word for word: keep the slide.
+      ...(keyed ? [] : ["answer option lost"]),
+    ];
     if (why.length) {
       log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
       return false;
