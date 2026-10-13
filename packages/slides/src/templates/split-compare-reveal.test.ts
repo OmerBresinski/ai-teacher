@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
 import { THEMES } from "../themes";
 import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { SPLIT_NAMES, type SplitSide } from "./split-compare";
+import { SPLIT_NAMES, type SplitSide, splitGroupOf, splitTable } from "./split-compare";
 
 /*
  * Split compare's reveal (TEACH-75 part w, row 3): the first template that writes `revealStep`
@@ -65,7 +65,11 @@ describe("split-compare reveal (row 3)", () => {
         test(`${zone}, ${n} sides, side 2 hidden, ${stage}`, () => {
           const r = laid(zone, n, 1, stage);
           const els = r.slide.elements;
-          expect(r.over).toEqual([]);
+          // Over only in a field that holds no words at this age (hard maximum 0: KS1's three quotes).
+          const none = Object.entries(splitTable(splitGroupOf(stage), n as 2 | 3, zone))
+            .filter(([, l]) => !l.hardMax)
+            .map(([f]) => f);
+          expect(r.over.filter((o) => !none.some((f) => o.endsWith(`.${f}`)))).toEqual([]);
           expect(steps(els)).toBe(1);
 
           const medal = els.find((e) => e.name === SPLIT_NAMES.medal) as SlideElement;

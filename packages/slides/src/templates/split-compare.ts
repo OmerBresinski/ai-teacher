@@ -32,6 +32,7 @@ import type {
 } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { SAFE, SPACE } from "../grid";
+import { resolveFontSize } from "../text-style";
 import { MIN_FONT_SIZE, typeScale } from "../themes";
 import {
   type Ctx,
@@ -223,14 +224,18 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean): SplitFit {
 
   // Sizes on the stage's scale, scaled by k; never under the floors.
   const base = splitSizes(full.body, MIN_FONT_SIZE.body, typeScale(c.t)?.heading);
+  // Each size is the step the renderer draws: the key stage snaps a stored size onto its scale (up
+  // to the role's smallest step), so a size between steps wrapped differently in the browser.
+  const on = (role: "heading" | "body", size: number) => resolveFontSize(c.t, role, size);
   const at = (k: number): SplitSizes => ({
     ...base,
-    name: Math.max(base.floor.name, Math.round(base.name * k)),
-    body: Math.max(base.floor.body, Math.round(base.body * k)),
-    quote: Math.max(base.floor.body, Math.round(base.quote * k)),
+    name: on("heading", Math.max(base.floor.name, Math.round(base.name * k))),
+    body: on("body", Math.max(base.floor.body, Math.round(base.body * k))),
+    quote: on("body", Math.max(base.floor.body, Math.round(base.quote * k))),
   });
   const kMin = Math.max(base.floor.name / base.name, base.floor.body / base.body);
-  const typeComfy = (z: SplitSizes) => z.name >= base.comfort.name && z.body >= base.comfort.body;
+  const typeComfy = (z: SplitSizes) =>
+    z.name >= on("heading", base.comfort.name) && z.body >= on("body", base.comfort.body);
 
   const quoteCtx: Ctx = { ...c, t: { ...c.t, fonts: { ...c.t.fonts, body: voice.family } } };
   const nameH = (s: SplitSide, z: SplitSizes) =>

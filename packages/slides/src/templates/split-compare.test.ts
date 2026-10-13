@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { ImageElement, SlideElement, TextElement } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
-import { MIN_FONT_SIZE, THEMES } from "../themes";
+import { resolveTextStyle } from "../text-style";
+import { getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { sample } from "./capacity";
 import { cutSubjects, type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
@@ -68,7 +69,13 @@ describe("split-compare at its measured caps (row 1)", () => {
               stage,
             );
             const tag = `${n} ${zone}`;
-            for (const o of r.over) faults.push(`${tag} over ${o}`);
+            // A field whose hard maximum is 0 holds no words at that age at the drawn sizes (KS1's
+            // three quoted sides: the bubbles take the room), so its words are over by design.
+            const none = Object.entries(splitTable(splitGroupOf(stage), n, zone))
+              .filter(([, l]) => !l.hardMax)
+              .map(([f]) => f);
+            for (const o of r.over)
+              if (!none.some((f) => o.endsWith(`.${f}`))) faults.push(`${tag} over ${o}`);
             // A cap of 0 means that count and zone is never comfortable at this age (CAPS.md).
             const never = Object.values(splitTable(splitGroupOf(stage), n, zone)).some(
               (l) => !l.cap,
@@ -469,4 +476,30 @@ describe("split-compare never throws", () => {
       const many = layoutTemplate(odd[2] as TemplateInput, THEMES[0] as never, stage);
       expect(many.over).toContain("sides 5/3");
     });
+});
+
+describe("split-compare measured at the size the browser draws", () => {
+  // The renderer snaps a stored size onto the key stage's scale (up to the role's smallest step):
+  // a side title stored at 28 drew at 33 at KS1, so the browser wrapped what the layout had not.
+  test("every text box stores the size the renderer draws, on every theme, age, count and zone", () => {
+    const faults: string[] = [];
+    for (const theme of THEMES)
+      for (const stage of STAGES) {
+        const drawnTheme = getTheme(theme.id, stage);
+        for (const n of [2, 3] as const)
+          for (const zone of ZONES) {
+            const sides = splitSides(splitGroupOf(stage), n, zone);
+            const r = layoutTemplate(input(sides, SPLIT_FIT_HEADING), theme, stage);
+            for (const e of texts(r.slide.elements)) {
+              if (e.style.fontSize === undefined || e.name === "Heading") continue;
+              const drawn = resolveTextStyle(e.style, drawnTheme, e.style.preset).fontSize;
+              if (Math.abs(drawn - e.style.fontSize) > 0.05)
+                faults.push(
+                  `${theme.id} ${stage} ${n} ${zone} ${e.name} ${e.style.fontSize}->${drawn}`,
+                );
+            }
+          }
+      }
+    expect(faults.slice(0, 10)).toEqual([]);
+  });
 });
