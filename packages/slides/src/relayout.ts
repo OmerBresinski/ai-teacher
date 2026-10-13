@@ -299,6 +299,9 @@ export type Relaid = {
 
 export class NotAdaptiveError extends Error {}
 
+/** Points of room the frame keeps round the laid boxes, inside the slide. */
+export const FRAME_MARGIN = 8;
+
 const boundsOf = (els: SlideElement[]): LayoutFrame => {
   if (!els.length) return { x: 0, y: 0, w: 0, h: 0 };
   const x = Math.min(...els.map((e) => e.x));
@@ -307,10 +310,12 @@ const boundsOf = (els: SlideElement[]): LayoutFrame => {
   const b = Math.max(...els.map((e) => e.y + e.h));
   // Never past the slide's edges or its trim at the foot: the group is clipped to its frame, so
   // words a layout cannot hold are hidden at the edge (and marked over), never drawn off the slide.
-  const x0 = Math.max(0, x);
-  const y0 = Math.max(0, y);
-  const r0 = Math.min(SLIDE_W, r);
-  const b0 = Math.max(y0, Math.min(SLIDE_H - TRIM, b));
+  // A margin round the boxes keeps the clip off glyphs that overhang their measured box (a last
+  // word drawn a few points wider than measured) and the selection off the outer discs.
+  const x0 = Math.max(0, x - FRAME_MARGIN);
+  const y0 = Math.max(0, y - FRAME_MARGIN);
+  const r0 = Math.min(SLIDE_W, r + FRAME_MARGIN);
+  const b0 = Math.max(y0, Math.min(SLIDE_H - TRIM, b + FRAME_MARGIN));
   return { x: x0, y: y0, w: r0 - x0, h: b0 - y0 };
 };
 

@@ -6,6 +6,7 @@ import {
   addItem,
   canSplit,
   editItem,
+  FRAME_MARGIN,
   fieldStates,
   fitInto,
   getAtPath,
@@ -48,12 +49,16 @@ describe("relayout", () => {
     expect(three.result.over).toEqual([]);
   });
 
-  test("the frame is the elements' bounds on the slide", () => {
+  test("the frame is the elements' bounds plus a margin, inside the slide", () => {
     const { elements, frame } = relayout(ref(3), theme, "ks3");
     const minX = Math.min(...elements.map((e) => e.x));
+    const minY = Math.min(...elements.map((e) => e.y));
+    const maxX = Math.max(...elements.map((e) => e.x + e.w));
     const maxY = Math.max(...elements.map((e) => e.y + e.h));
-    expect(frame.x).toBe(minX);
-    expect(frame.y + frame.h).toBe(maxY);
+    expect(frame.x).toBe(Math.max(0, minX - FRAME_MARGIN));
+    expect(frame.y).toBe(Math.max(0, minY - FRAME_MARGIN));
+    expect(frame.x + frame.w).toBe(Math.min(960, maxX + FRAME_MARGIN));
+    expect(frame.y + frame.h).toBe(Math.min(540 - 19, maxY + FRAME_MARGIN));
   });
 
   test("text children get stable ids from the group id and their input path", () => {
@@ -70,8 +75,15 @@ describe("relayout", () => {
     expect(g.type).toBe("group");
     expect(g.layout?.template).toBe("cards-grid");
     expect(g.layout?.frame).toEqual({ x: g.x, y: g.y, w: g.w, h: g.h });
-    expect(Math.min(...g.children.map((c) => c.x))).toBe(0);
-    expect(Math.min(...g.children.map((c) => c.y))).toBe(0);
+    // Children sit where the template put them, inside the frame's margin.
+    const { elements } = relayout(ref(3), theme, "ks3");
+    expect(g.x + Math.min(...g.children.map((c) => c.x))).toBe(
+      Math.min(...elements.map((e) => e.x)),
+    );
+    expect(g.y + Math.min(...g.children.map((c) => c.y))).toBe(
+      Math.min(...elements.map((e) => e.y)),
+    );
+    expect(Math.min(...g.children.map((c) => c.x))).toBeGreaterThanOrEqual(0);
   });
 });
 

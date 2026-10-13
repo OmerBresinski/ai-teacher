@@ -112,7 +112,8 @@ describe("LayoutPanel", () => {
     const { container, read } = renderEditor(lesson);
     await selectLayout(container);
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Nothing is cut");
+    expect(alert.textContent).toContain("hidden on the slide");
+    expect(alert.textContent).not.toContain("Nothing is cut");
     expect(container.querySelector("textarea[aria-invalid='true']")).not.toBeNull();
     const red = container.querySelector("[data-counter][data-state='over']");
     expect(red?.className).toContain("text-destructive");

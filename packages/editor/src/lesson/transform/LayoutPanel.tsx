@@ -1,7 +1,7 @@
 import type { GroupElement, Id, LayoutRef } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
 import { Button, toast } from "@tj/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as reducers from "../../model/reducers";
 import { renderTheme } from "../../model/themes";
 import { useHistory, useLesson } from "../document-context";
@@ -127,7 +127,11 @@ export default function LayoutPanel({
       </Button>
       {over.length > 0 ? (
         <div role="alert" className="flex flex-col gap-2 border-t border-border pt-2">
-          <p>Too many words to fit this layout. Nothing is cut.</p>
+          {/* The group clips to its frame, so words past the hard maximum are hidden, not deleted. */}
+          <p>
+            Too many words to fit this layout. The words that don&apos;t fit are hidden on the
+            slide. Your text is kept.
+          </p>
           <div className="flex gap-2">
             {kit.canSplit(ref) ? (
               <Button size="sm" variant="primary" onClick={split}>
@@ -171,6 +175,15 @@ function ItemField({
   const isOver = field?.state === "over" && live === null;
   const isTight = !isOver && !!field && chars > field.cap;
   const showCount = isOver || isTight;
+  // The field grows with its words, so long text is never scrolled out of sight inside it.
+  const own = useRef<HTMLTextAreaElement | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure whenever the words change
+  useLayoutEffect(() => {
+    const el = own.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`;
+  }, [text]);
   const commit = () => {
     if (!live || live.text === value) {
       setDraft(null);
@@ -182,12 +195,15 @@ function ItemField({
     <label className="flex flex-col gap-0.5" data-field={path}>
       <span className="sr-only">{label}</span>
       <textarea
-        ref={inputRef}
+        ref={(el) => {
+          own.current = el;
+          inputRef(el);
+        }}
         aria-label={label}
         aria-invalid={isOver || undefined}
         data-over={isOver || undefined}
         rows={key(path) === "text" ? 2 : 1}
-        className={`w-full resize-none rounded border bg-background px-2 py-1 ${
+        className={`w-full resize-none overflow-hidden rounded border bg-background px-2 py-1 ${
           isOver
             ? "border-destructive outline outline-2 outline-destructive"
             : isTight
@@ -210,11 +226,21 @@ function ItemField({
       />
       {showCount && field ? (
         <span
-          data-counter
-          data-state={isOver ? "over" : "tight"}
-          className={`self-end text-xs ${isOver ? "text-destructive" : "text-warning"}`}
+          className={`flex items-baseline justify-between gap-2 text-sm ${isOver ? "text-destructive" : "text-warning"}`}
         >
-          {chars}/{field.cap}
+          <span data-counter-note>
+            {isOver
+              ? "Too long: the end is hidden on the slide"
+              : "Longer than this layout holds well"}
+          </span>
+          <span
+            data-counter
+            data-state={isOver ? "over" : "tight"}
+            title={`${chars} characters; this layout holds about ${field.cap}`}
+            className={`shrink-0 font-medium tabular-nums ${isOver ? "text-destructive" : "text-warning"}`}
+          >
+            {chars}/{field.cap}
+          </span>
         </span>
       ) : null}
     </label>
