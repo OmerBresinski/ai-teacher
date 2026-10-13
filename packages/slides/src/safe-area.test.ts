@@ -3,7 +3,7 @@ import { SAFE } from "./grid";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { layoutTemplate, type Stage } from "./templates";
-import { SPLIT_NAMES } from "./templates/split-compare";
+import { SPLIT_NAMES, splitGroupOf } from "./templates/split-compare";
 import { splitSides } from "./templates/split-compare-capacity";
 import { THEMES } from "./themes";
 
@@ -42,7 +42,8 @@ describe("safe area", () => {
               {
                 template: "split-compare",
                 heading: "Two kinds",
-                sides: splitSides("KS2", n, zone),
+                // Each stage at its own caps: KS2-length words are over at KS1, whose type is larger.
+                sides: splitSides(splitGroupOf(stage), n, zone),
               },
               t,
               stage,
