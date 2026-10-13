@@ -20,6 +20,7 @@ import {
   splitItems,
   stageOf,
 } from "./relayout";
+import { resolveTextStyle } from "./text-style";
 import { getTheme } from "./themes";
 
 /*
@@ -247,9 +248,22 @@ describe("integration round 3", () => {
 
   test("the frame never runs off the slide: words a layout cannot hold stay inside, clipped", () => {
     const huge = setAtPath(ref(4), "grid.3.text", "word ".repeat(300).trim());
-    const { frame, elements } = relayout(huge, theme, "ks3");
-    expect(Math.max(...elements.map((e) => e.y + e.h))).toBeGreaterThan(540);
+    const { frame, elements, result } = relayout(huge, theme, "ks3");
+    // The template laid the words past the slide; the frame stops at the trim.
+    expect(Math.max(...result.slide.elements.map((e) => e.y + e.h))).toBeGreaterThan(540);
     expect(frame.y + frame.h).toBeLessThanOrEqual(540 - 19);
+    // UX ruling 215: never a sliced line. A box held at the frame's foot keeps whole lines only.
+    const foot = frame.y + frame.h;
+    const held = elements.filter((e) => e.type === "text" && e.style.autoHeight === false);
+    expect(held.length).toBeGreaterThan(0);
+    for (const e of elements) expect(e.y + e.h).toBeLessThanOrEqual(foot + 0.5);
+    for (const e of held) {
+      if (e.type !== "text") continue;
+      const r = resolveTextStyle(e.style, theme, e.style.preset ?? "body");
+      const lines = (e.h - 2 * r.padding) / (r.fontSize * r.lineHeight);
+      expect(lines - Math.floor(lines)).toBeLessThan(0.05);
+      expect(e.style.autoFit).toBe(false);
+    }
     expect(frame.x).toBeGreaterThanOrEqual(0);
     expect(frame.x + frame.w).toBeLessThanOrEqual(960);
   });

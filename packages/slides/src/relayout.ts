@@ -21,6 +21,7 @@ import type {
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
+import { resolveTextStyle } from "./text-style";
 
 /** How one adaptive template's items behave in the editor. */
 export type AdaptiveSpec = {
@@ -324,6 +325,28 @@ const boundsOf = (els: SlideElement[]): LayoutFrame => {
  * for a text bound to an input path, `<prefix>:<n>` otherwise), so a selection survives a re-lay.
  * Throws `NotAdaptiveError` for a template `layoutTemplate` does not lay out yet.
  */
+/**
+ * Words a layout cannot hold run past the frame, which clips. Cut there, a line was sliced through
+ * its middle ("and back again" half drawn, UX ruling 215: over-limit text is never shown clipped).
+ * A text box that runs past the frame's foot is held to the whole lines that fit inside it, so the
+ * clip falls between lines; the words stay in the box, and the panel says the end is hidden.
+ */
+function wholeLines(els: SlideElement[], frame: LayoutFrame, theme: Theme): SlideElement[] {
+  const foot = frame.y + frame.h;
+  return els.map((el) => {
+    if (el.type !== "text" || el.y + el.h <= foot + 0.5) return el;
+    const r = resolveTextStyle(el.style, theme, el.style?.preset ?? "body");
+    const line = r.fontSize * r.lineHeight;
+    const room = foot - el.y - 2 * r.padding;
+    const lines = Math.max(0, Math.floor((room + 0.5) / line));
+    return {
+      ...el,
+      h: lines * line + 2 * r.padding,
+      style: { ...el.style, autoHeight: false, autoFit: false, valign: "top" },
+    };
+  });
+}
+
 export function relayout(ref: LayoutRef, theme: Theme, stage: Stage, idPrefix?: string): Relaid {
   const input = { ...ref.input, template: ref.template } as TemplateInput;
   if (typeof input.heading !== "string") input.heading = "";
@@ -338,9 +361,10 @@ export function relayout(ref: LayoutRef, theme: Theme, stage: Stage, idPrefix?: 
     if (path) paths[id] = path;
     return id === el.id ? el : { ...el, id };
   });
+  const frame = boundsOf(elements);
   return {
-    elements,
-    frame: boundsOf(elements),
+    elements: wholeLines(elements, frame, theme),
+    frame,
     result,
     fields: fieldStates(ref, result, stage),
     paths,
