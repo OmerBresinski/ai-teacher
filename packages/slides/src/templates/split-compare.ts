@@ -151,7 +151,7 @@ const SET_FOOT = SPACE[4];
 const setPad = (n: number) => (n === 3 ? SPACE[4] : SPACE[5]);
 const SET_STAGE_FOOT = SPACE[3];
 /** The widest strip a card's picture widens to, to span its column. */
-const SET_PIC_WIDEST = 2.2;
+const SET_PIC_WIDEST = 2.4;
 const setW = (n: number) => (W - 2 * SET_EDGE - (n - 1) * SET_GAP) / n;
 /** Where each field (or card) starts, its width and its inner column, for either look. */
 type Frame = { x: (i: number) => number; w: number; cellW: number; left: (i: number) => number };
@@ -587,7 +587,7 @@ function drawSides(c: Ctx, sides: SplitSide[], d: Draw) {
     if (d.zone === "picture") {
       const b0 = d.boxes[i] as { w: number; h: number };
       // Side by side: a card's picture spans its column, edge to edge with the words (the shared
-      // height stays, so the crop widens), up to a 2.2:1 strip; past that it keeps its shape, centred.
+      // height stays, so the crop widens), up to a 2.4:1 strip; past that it keeps its shape, centred.
       const pic = d.pics[i] as Pic;
       const wide =
         d.set && !pic.diagram ? Math.min(d.cellW, Math.round(b0.h * SET_PIC_WIDEST)) : b0.w;

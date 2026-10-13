@@ -128,7 +128,7 @@ describe("side by side never reads as a contrast", () => {
 });
 
 describe("side by side pictures span their card's column", () => {
-  test("each picture has its words' left and right edges (a 2.2:1 strip at most), every theme and age", () => {
+  test("each picture has its words' left and right edges (a 2.4:1 strip at most), every theme and age", () => {
     const faults: string[] = [];
     for (const theme of THEMES)
       for (const stage of STAGES)
@@ -138,8 +138,8 @@ describe("side by side pictures span their card's column", () => {
           const words = els.filter((e) => e.name === SPLIT_NAMES.text);
           pics.forEach((p, i) => {
             const t = words[i] as SlideElement;
-            // A very short picture (KS1, three cards) stops at a 2.2:1 strip, centred on the column.
-            const strip = p.w / p.h >= 2.18;
+            // A very short picture (KS1, three cards) stops at a 2.4:1 strip, centred on the column.
+            const strip = p.w / p.h >= 2.38;
             const centred = Math.abs(p.x + p.w / 2 - (t.x + t.w / 2)) <= 1;
             if (strip ? !centred : Math.abs(p.x - t.x) > 1 || Math.abs(p.x + p.w - (t.x + t.w)) > 1)
               faults.push(`${theme.id} ${stage} ${n} card ${i}: ${p.x}+${p.w} vs ${t.x}+${t.w}`);
