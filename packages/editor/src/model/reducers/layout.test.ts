@@ -190,7 +190,8 @@ describe("splitLayout (ruling 215)", () => {
     expect(kit.itemsOf(head.layout as LayoutRef)).toHaveLength(2);
     expect(kit.itemsOf(tail.layout as LayoutRef)).toHaveLength(2);
     expect(tail.layout?.template).toBe("cards-grid");
-    expect(tail.layout?.input.heading).toBe("Parts of a plant");
+    expect(tail.layout?.input.heading).toBe("Parts of a plant (continued)");
+    expect(head.layout?.input.heading).toBe("Parts of a plant");
     // Every word kept, in order, across the two slides.
     expect([
       ...kit.itemsOf(head.layout as LayoutRef),
@@ -201,11 +202,37 @@ describe("splitLayout (ruling 215)", () => {
     expect(() => parseLesson(JSON.parse(JSON.stringify(out.lesson)))).not.toThrow();
   });
 
-  test("too few items to split: refused, Shorten is the way", () => {
+  test("three cards split too (Greg, 14 Oct): two stay, one moves, both re-laid", () => {
     const { lesson, slideId } = seeded(3);
     const out = r.splitLayout(lesson, slideId, "g1", kit);
-    expect(out.lesson).toBe(lesson);
-    expect(out.refused).toMatch(/shorten/i);
+    expect(out.refused).toBeUndefined();
+    const head = groupOf(out.lesson);
+    const tail = out.lesson.slides[1]?.elements.find((e) => e.type === "group") as GroupElement;
+    expect(named(head, "Card")).toHaveLength(2);
+    expect(named(tail, "Card")).toHaveLength(1);
+    expect([
+      ...kit.itemsOf(head.layout as LayoutRef),
+      ...kit.itemsOf(tail.layout as LayoutRef),
+    ]).toEqual(cards(3));
+  });
+
+  test("split is one undo step; undo restores the slide exactly", () => {
+    const { lesson: seed, slideId } = seeded(3);
+    const KEY = ["library", "documents", "split"] as const;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(KEY, seed);
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result } = renderHook(
+      () => useDocumentHistory({ queryKey: KEY, queryFn: () => Promise.resolve(seed) }),
+      { wrapper },
+    );
+    act(() => {
+      result.current.dispatch(r.splitLayout, slideId, "g1", kit);
+    });
+    expect((result.current.lesson as Lesson).slides).toHaveLength(seed.slides.length + 1);
+    act(() => result.current.undo());
+    expect(result.current.lesson).toBe(seed);
   });
 });
 

@@ -158,9 +158,22 @@ describe("item operations", () => {
     const { head, tail } = splitItems(r);
     expect(itemsOf(head)).toHaveLength(2);
     expect(itemsOf(tail)).toHaveLength(2);
-    expect(tail.input.heading).toBe("Parts of a plant");
+    expect(tail.input.heading).toBe("Parts of a plant (continued)");
+    expect(head.input.heading).toBe("Parts of a plant");
     expect([...itemsOf(head), ...itemsOf(tail)]).toEqual(itemsOf(r));
-    expect(canSplit(ref(3))).toBe(false);
+    // A second split of the continuation does not stack the word.
+    expect(splitItems(tail).tail.input.heading).toBe("Parts of a plant (continued)");
+  });
+
+  test("split is offered from two items up, below twice the min too (Greg, 14 Oct)", () => {
+    expect(canSplit(ref(3))).toBe(true);
+    expect(canSplit(ref(2))).toBe(true);
+    const { head, tail } = splitItems(ref(3));
+    expect(itemsOf(head)).toHaveLength(2);
+    expect(itemsOf(tail)).toHaveLength(1);
+    expect(ADAPTIVE_SPECS["split-compare"].continuation).toBe(true);
+    expect(ADAPTIVE_SPECS["items-row"].continuation).toBe(true);
+    expect(ADAPTIVE_SPECS["panel-list"].continuation).toBe(true);
   });
 
   test("setAtPath edits one value without touching the source", () => {

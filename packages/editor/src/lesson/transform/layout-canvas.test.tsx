@@ -172,6 +172,27 @@ describe("a layout edited on the slide", () => {
     ).not.toBeNull();
   });
 
+  test("three cards (below twice the min): the chip still offers Split slide, and it splits", async () => {
+    const long = "Roots hold the plant firmly in the soil and take in water and minerals. ".repeat(
+      6,
+    );
+    const lesson = seeded(cards(3, (l) => (l === "Roots" ? long : `The ${l} do one job.`)));
+    const { container } = renderEditor(lesson);
+    await selectLayout(container, lesson);
+    await waitFor(() => expect(container.querySelector("[data-layout-over]")).not.toBeNull());
+    // The warning badge sits outside the long box's right edge, not over its words.
+    const mark = container.querySelector("[data-layout-mark='over']") as HTMLElement;
+    const badge = container.querySelector("[data-layout-over-badge]") as HTMLElement;
+    expect(Number.parseFloat(badge.style.left)).toBeGreaterThan(
+      Number.parseFloat(mark.style.left) + Number.parseFloat(mark.style.width),
+    );
+    const before = container.querySelectorAll("[aria-label^='Slide ']").length;
+    fireEvent.click(screen.getByRole("button", { name: "Split slide" }));
+    await waitFor(() =>
+      expect(container.querySelectorAll("[aria-label^='Slide ']").length).toBeGreaterThan(before),
+    );
+  });
+
   test("item boxes run across a grid row in reading order", () => {
     const lesson = seeded(cards(3));
     const rects = itemRects(group(lesson));

@@ -87,7 +87,9 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     min: 2,
     max: () => 3,
     blank: () => ({ label: "New side", text: "Add a sentence here." }),
-    continuation: false,
+    // A compare splits like the others (each side keeps its words and picture): Split is offered
+    // wherever the over chip is.
+    continuation: true,
     noun: "sides",
   },
 };
@@ -179,22 +181,31 @@ export function removeItem(ref: LayoutRef, index: number): ItemChange {
 }
 
 /**
- * Ruling 215's split: the layout's own continuation. Both halves keep at least the template's min,
- * so a layout with fewer than twice its min items cannot split (Shorten is the only action).
+ * Ruling 215's split: the layout's own continuation. Offered wherever words are over (Greg, 14 Oct
+ * 2026: the chip showed no Split on a three-item row), so any layout with two or more items splits,
+ * even when a half then holds fewer than the template's min: each half has the room the long words
+ * need, and every template lays out a single item. Remove still stops at the min.
  */
 export function canSplit(ref: LayoutRef): boolean {
-  const spec = ADAPTIVE_SPECS[ref.template];
-  return spec.continuation && itemsOf(ref).length >= spec.min * 2;
+  return ADAPTIVE_SPECS[ref.template].continuation && itemsOf(ref).length >= 2;
 }
 
-/** The leading items stay (the larger half), the trailing ones move; every word is kept. */
+const CONTINUED = " (continued)";
+
+/**
+ * The leading items stay (the larger half), the trailing ones move; every word is kept. The moved
+ * half's heading is the first's with " (continued)" after it (UX ruling 91's continuation).
+ */
 export function splitItems(ref: LayoutRef): { head: LayoutRef; tail: LayoutRef } {
   const items = itemsOf(ref);
   const keep = Math.ceil(items.length / 2);
   const { frame: _frame, ...bare } = ref;
+  const heading = String(ref.input.heading ?? "").trim();
+  const base = heading.endsWith(CONTINUED) ? heading.slice(0, -CONTINUED.length) : heading;
+  const tail = withItems(bare, items.slice(keep));
   return {
     head: withItems(ref, items.slice(0, keep)),
-    tail: withItems(bare, items.slice(keep)),
+    tail: heading ? { ...tail, input: { ...tail.input, heading: `${base}${CONTINUED}` } } : tail,
   };
 }
 

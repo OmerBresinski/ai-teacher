@@ -46,7 +46,7 @@ export function TextShell({
   children: ReactNode;
   style?: CSSProperties;
 }) {
-  return (
+  const shell = (
     <div
       style={{
         position: "relative",
@@ -63,19 +63,37 @@ export function TextShell({
       }}
     >
       {children}
-      {overflowing && mode === "edit" ? <OverflowGlyph theme={theme} /> : null}
     </div>
+  );
+  // The mark sits outside the box's bottom-right corner, never on the words (Greg, 14 Oct 2026:
+  // it covered the last letter). A sibling of the clipped box, so its overflow rule cannot hide it.
+  return overflowing && mode === "edit" ? (
+    <>
+      {shell}
+      <OverflowGlyph theme={theme} outside />
+    </>
+  ) : (
+    shell
   );
 }
 
-export function OverflowGlyph({ theme, title }: { theme: Theme; title?: string }) {
+export function OverflowGlyph({
+  theme,
+  title,
+  outside,
+}: {
+  theme: Theme;
+  title?: string;
+  /** Beside the box's bottom-right corner (a text box), not inside it. */
+  outside?: boolean;
+}) {
   return (
     <span
       title={title ?? "Text does not fit this fixed-height box"}
+      data-overflow-glyph=""
       style={{
         position: "absolute",
-        right: 2,
-        bottom: 2,
+        ...(outside ? { left: "calc(100% + 4px)", bottom: 0 } : { right: 2, bottom: 2 }),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

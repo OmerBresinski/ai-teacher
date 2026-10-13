@@ -8,7 +8,7 @@ import {
 import { boundPath } from "@tj/slides/layout-paths";
 import * as kit from "@tj/slides/relayout";
 import { toast } from "@tj/ui";
-import { Plus, X } from "lucide-react";
+import { Plus, TriangleAlert, X } from "lucide-react";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -259,6 +259,31 @@ export default function LayoutCanvasControls({
           }}
         />
       ))}
+      {/* The over badge sits outside the box's bottom-right corner, never on its words. */}
+      {marked
+        .filter(({ field }) => field.state === "over")
+        .map(({ field, child }) => {
+          const r = childRect(group, child);
+          return (
+            <span
+              key={`badge-${field.path}`}
+              data-layout-over-badge
+              aria-hidden
+              className="absolute flex items-center justify-center rounded-md bg-surface text-destructive shadow-sm"
+              style={{
+                left: r.x + r.w + 6 / k,
+                top: r.y + r.h - 22 / k,
+                width: 22,
+                height: 22,
+                transform: `scale(${1 / k})`,
+                transformOrigin: "left top",
+                border: "1px solid color-mix(in srgb, var(--color-destructive) 40%, transparent)",
+              }}
+            >
+              <TriangleAlert size={14} strokeWidth={2} />
+            </span>
+          );
+        })}
       {items.map(({ n, rect }, i) => {
         const next = items[i + 1]?.rect;
         const shown = hover === n;

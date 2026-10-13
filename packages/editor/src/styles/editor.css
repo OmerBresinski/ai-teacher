@@ -22,3 +22,9 @@
       height 220ms ease;
   }
 }
+
+/* A layout's over-long words are marked by the layout's own on-canvas controls (outline, chip and
+   a badge outside the box, TEACH-205 part b); the frame clips, so the text box's own mark is off. */
+[data-layout-frame] [data-overflow-glyph] {
+  display: none;
+}
