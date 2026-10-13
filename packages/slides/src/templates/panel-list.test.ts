@@ -474,6 +474,8 @@ describe("panel-list row pictures", () => {
         ts.forEach((t, i) => {
           if (Math.abs(t.w / t.h - 4 / 3) > 0.03) faults.push(`${n}.${i}: tile ${t.w}x${t.h}`);
           if (t.fit !== "cover" || !t.radius) faults.push(`${n}.${i}: not a rounded cover`);
+          if ((t.radius ?? 0) > t.h * 0.14 + 0.5)
+            faults.push(`${n}.${i}: radius ${t.radius} on ${t.h}`);
           if (!t.crop) faults.push(`${n}.${i}: no crop`);
           if (t.y < 0 || t.y + t.h > 540.5 || t.x + t.w > 960.5) faults.push(`${n}.${i}: off`);
           const name = names[i];

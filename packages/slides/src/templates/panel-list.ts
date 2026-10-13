@@ -104,6 +104,8 @@ export const ROW_PIC_H: Readonly<Record<number, number>> = {
   6: 64,
 };
 export const ROW_PIC_ASPECT = 4 / 3;
+/** A row tile's corner radius at most, as a share of its height. */
+const ROW_PIC_RADIUS = 0.14;
 /** The panel's visual: a picture (photo or diagram), or a pie of one share per row. */
 export type PanelVisual = { picture: Figure } | { shares: number[] };
 
@@ -553,7 +555,9 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         ...(pic.source ? { source: pic.source } : {}),
         ...(crop ? { crop } : {}),
         fit: "cover",
-        radius: L.radiusPicture,
+        // The age's picture radius, but never past 14% of a small tile (a KS1 radius on a 76 pt
+        // tile read as a pill).
+        radius: Math.min(L.radiusPicture, Math.round(m.ph * ROW_PIC_RADIUS)),
       } as SlideElement);
     }
     const dy = y + (b.rh - m.d) / 2;
