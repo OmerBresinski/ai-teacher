@@ -75,3 +75,29 @@ describe("split-compare reveal in PowerPoint (TEACH-75 part w)", () => {
       expect(second.indexOf(">?<")).toBeLessThan(second.indexOf(hidden));
     }, 30_000);
 });
+
+describe("side-by-side cards in PowerPoint (TEACH-75 part w, Greg 14 Oct)", () => {
+  // The slide draws its cards in the theme's sand (pinned in side-by-side.test.ts); PowerPoint
+  // writes that same colour.
+  it("the cards export in the theme's sand, the colour the slide draws", async () => {
+    for (const id of ["splash", "exam-hall", "night-lab"]) {
+      const t = atKeyStage(getTheme(id, null), "ks2");
+      const sides = SIDES.picture.map(({ reveal: _r, ...s }) => s);
+      const r = layoutTemplate({ template: "side-by-side", heading: "Two kinds", sides }, t, "ks2");
+      const cards = r.slide.elements.filter((e) => e.name === "Side field");
+      expect(cards.length).toBe(2);
+      const fills = new Set(cards.map((c) => (c as { fill: string }).fill.toUpperCase()));
+      expect(fills.size).toBe(1);
+      const sand = [...fills][0]?.replace("#", "") as string;
+      const slide = { ...r.slide, id: "sbs", notes: "" } as unknown as Slide;
+      const base = creditedLesson();
+      const lesson = { ...base, themeId: id, slides: [slide] } as Lesson;
+      const blob = await exportLessonPptx(lesson, t, { onWarning: () => {} });
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const xml = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+      const n =
+        xml.match(/<a:prstGeom prst="roundRect">[\s\S]*?<a:srgbClr val="([0-9A-F]{6})"/g) ?? [];
+      expect(n.filter((m) => m.endsWith(`"${sand}"`)).length, id).toBeGreaterThanOrEqual(2);
+    }
+  }, 30_000);
+});

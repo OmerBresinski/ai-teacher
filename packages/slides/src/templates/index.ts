@@ -1580,7 +1580,7 @@ export type LayoutOptions = {
   panelNoVisual?: "narrow" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
   panelIconBack?: "ring" | "none" | "soft";
-  /** Side by side: the cards in the accent's soft tint (the default) or the theme's soft neutral. */
+  /** Side by side: the cards in the theme's soft neutral, its sand (the default), or the accent's soft tint. */
   setTint?: "accent" | "neutral";
 };
 

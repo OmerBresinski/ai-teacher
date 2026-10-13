@@ -24,7 +24,7 @@
  *
  * **Side by side** (TEACH-75 part w, Greg 14 Oct: "the compare without VS variant for variety"):
  * the same fit, sizes and zones for 2 or 3 examples of one idea, drawn so it never reads as a
- * contrast. Every side is a card in one and the same tint, inset from the slide's edges with a
+ * contrast. Every side is a card in the theme's sand (its soft neutral surface), inset from the slide's edges with a
  * plain gap between, and nothing on the gaps (no "vs"). The writer never picks it: code lays a set
  * of 2-3 pictured examples (panel-list input) this way for variety, and the teacher can flip it
  * back. Its caps are its own (`side-by-side-capacity.json`, the cards are narrower).
@@ -288,10 +288,10 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const zone = zoneOf(sides);
   const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
   const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);
-  // Side by side: every card in one tint (the sides are alike, not opposed).
-  const fills = Array.from({ length: n }, (_, i) =>
-    set ? (tones.fields[c.setTint === "neutral" ? 1 : 0] as string) : (tones.fields[i] as string),
-  );
+  // Side by side: every card in the theme's sand (the sides are alike, not opposed; Greg, 14 Oct),
+  // or the accent's tint on `setTint: "accent"`.
+  const card = c.setTint === "accent" ? (tones.fields[0] as string) : tones.sand;
+  const fills = Array.from({ length: n }, (_, i) => (set ? card : (tones.fields[i] as string)));
   const pics = zone === "picture" ? sides.map((s) => pictureOf(s) as Pic) : [];
 
   // Sizes on the stage's scale, scaled by k; never under the floors.

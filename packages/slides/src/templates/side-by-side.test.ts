@@ -21,6 +21,7 @@ import {
   type SplitGroup,
   splitSides,
 } from "./split-compare-capacity";
+import { splitTones } from "./split-compare-deps";
 
 /*
  * Side by side (TEACH-75 part w, Greg 14 Oct: "the compare without VS variant for variety"): 2 or
@@ -83,18 +84,39 @@ describe("side by side never reads as a contrast", () => {
         }
   });
 
-  test("setTint neutral: every card in the theme's soft neutral, words still at 4.5:1", () => {
-    for (const theme of THEMES) {
-      const r = layoutTemplate(set(examples(3)), theme, "ks2", { setTint: "neutral" });
-      const fills = fieldsOf(r.slide.elements).map((f) => (f as { fill: string }).fill);
-      expect(new Set(fills).size).toBe(1);
-      const accent = fieldsOf(layoutTemplate(set(examples(3)), theme, "ks2").slide.elements);
-      expect(fills[0]).not.toBe((accent[0] as { fill: string }).fill);
-      for (const e of texts(r.slide.elements).filter((e) => e.name === SPLIT_NAMES.text))
+  test("the cards default to the theme's sand, read from the theme (Greg 14 Oct), distinct from the ground and lighter than the vs tint, words at 4.5:1", () => {
+    for (const theme of THEMES)
+      for (const stage of STAGES) {
+        const t = getTheme(theme.id, stage);
+        const tones = splitTones(t);
+        const r = layoutTemplate(set(examples(3)), t, stage);
+        const fills = fieldsOf(r.slide.elements).map((f) => (f as { fill: string }).fill);
+        expect(new Set(fills).size, theme.id).toBe(1);
+        expect(fills[0], `${theme.id} ${stage}`).toBe(tones.sand);
         expect(
-          contrastRatio(e.style.color ?? theme.colors.ink, fills[0] as string),
-        ).toBeGreaterThanOrEqual(4.5);
-    }
+          layoutTemplate(set(examples(3)), t, stage, { setTint: "neutral" })
+            .slide.elements.filter((e) => e.name === SPLIT_NAMES.field)
+            .map((f) => (f as { fill: string }).fill),
+        ).toEqual(fills);
+        // Visibly a card on the slide's ground, and nearer the ground than the vs slide's tint.
+        expect(fills[0], theme.id).not.toBe(tones.paper);
+        expect(contrastRatio(fills[0] as string, tones.paper), theme.id).toBeGreaterThanOrEqual(
+          1.05,
+        );
+        expect(contrastRatio(fills[0] as string, tones.paper), theme.id).toBeLessThan(
+          contrastRatio(tones.fields[0], tones.paper),
+        );
+        for (const e of texts(r.slide.elements).filter((e) => e.name === SPLIT_NAMES.text))
+          expect(
+            contrastRatio(e.style.color ?? t.colors.ink, fills[0] as string),
+            theme.id,
+          ).toBeGreaterThanOrEqual(4.5);
+        // setTint "accent" keeps the old pink look.
+        const acc = fieldsOf(
+          layoutTemplate(set(examples(3)), t, stage, { setTint: "accent" }).slide.elements,
+        );
+        expect((acc[0] as { fill: string }).fill).toBe(tones.fields[0]);
+      }
   });
 
   test("split compare with the same sides still draws its contrast (fields edge to edge, vs)", () => {

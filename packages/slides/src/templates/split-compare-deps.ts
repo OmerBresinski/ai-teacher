@@ -34,6 +34,11 @@ export type SplitTones = {
   paper: string;
   /** The medal's face. */
   face: string;
+  /**
+   * The theme's soft neutral surface (v2 `sand`): every side-by-side card (Greg, 14 Oct: "prefer
+   * sand - the lighter colour. but assume it'll vary by theme"). Read from the theme, never a literal.
+   */
+  sand: string;
 };
 
 /** The split fields and marker colours of a theme (v2 tokens, else derived from `colors`). */
@@ -53,6 +58,7 @@ export function splitTones(t: Theme): SplitTones {
     onDeep,
     paper: c.background,
     face: c.surface,
+    sand: mix(c.ink, c.background, 0.06),
   };
 }
 
