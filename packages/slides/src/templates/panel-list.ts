@@ -231,8 +231,8 @@ const GEOMETRY = new WeakMap<object, Geometry>();
 const clean = (s: string | null | undefined) => (s ?? "").trim();
 
 /**
- * What sits behind a row's icon (`LayoutOptions.panelIconBack`; unset, the age decides:
- * `soft` at KS1 and KS2, Greg's y/n 14 Oct, `ring` from KS3 on its tile): `ring` a category-coloured disc round the drawing; `none` the drawing alone at the disc's
+ * What sits behind a row's icon (`LayoutOptions.panelIconBack`; unset `soft`,
+ * Greg's y/n 14 Oct: a pale disc at KS1 and KS2, a pale tile from KS3 as icon option 2 shipped): `ring` a category-coloured disc round the drawing; `none` the drawing alone at the disc's
  * size; `soft` a pale disc of the category colour, no ring, the drawing a little smaller in it.
  */
 export type PanelIconBack = "ring" | "none" | "soft";
@@ -563,9 +563,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const dy = y + (b.rh - m.d) / 2;
     const numeral = drawn(c.t, "heading", Math.max(20, m.d * 0.48));
     // Beside a pie the disc is its wedge's swatch, so it keeps the full colour unless asked.
-    const back: PanelIconBack = icons
-      ? (c.panelIconBack ?? (shares ? "ring" : L.iconBack))
-      : "ring";
+    const back: PanelIconBack = icons ? (c.panelIconBack ?? (shares ? "ring" : "soft")) : "ring";
     // From KS3 an icon's back is a rounded square (icon option 2); numbers stay on a disc.
     const tile = icons && L.medalShape === "tile";
     if (back !== "none" && !pic)

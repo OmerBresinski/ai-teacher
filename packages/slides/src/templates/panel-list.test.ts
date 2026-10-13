@@ -75,6 +75,18 @@ const input = (n: number, visual: string, lead?: string, rows = ROWS): TemplateI
 });
 const named = (els: { name?: string }[], name: string) => els.filter((e) => e.name === name);
 
+const mix = (a: string, b: string, k: number) => {
+  const p = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return `#${x
+    .map((v, i) =>
+      Math.round(v * k + (y[i] as number) * (1 - k))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+};
+
 describe("panel-list", () => {
   for (const theme of THEMES)
     for (const stage of STAGES)
@@ -308,21 +320,35 @@ describe("panel-list", () => {
     expect(named(numbers, PANEL_NAMES.disc)).toHaveLength(4);
   });
 
-  test("unset, a row icon's back is the soft pale disc at KS1 and KS2 and the solid tile from KS3", () => {
-    const fillsAt = (stage: Stage, panelIconBack?: "ring" | "soft") =>
-      (
-        named(
-          layoutTemplate(input(4, "none"), T0, stage, panelIconBack ? { panelIconBack } : {}).slide
-            .elements,
-          PANEL_NAMES.disc,
-        ) as ShapeElement[]
-      ).map((d) => [d.shape, d.fill]);
+  test("unset, a row icon's back is pale: a soft disc at KS1 and KS2, a pale tinted tile from KS3", () => {
+    const backs = (stage: Stage, panelIconBack?: "ring" | "soft") =>
+      named(
+        layoutTemplate(input(4, "none"), T0, stage, panelIconBack ? { panelIconBack } : {}).slide
+          .elements,
+        PANEL_NAMES.disc,
+      ) as ShapeElement[];
+    const lum = (h: string) =>
+      [1, 3, 5].reduce((a, i) => a + Number.parseInt(h.slice(i, i + 2), 16), 0) / 3;
     for (const stage of ["ks1", "ks2", "ks3", "ks5"] as Stage[]) {
-      const secondary = ageOf(stage) === "secondary";
-      expect(fillsAt(stage), stage).toEqual(fillsAt(stage, secondary ? "ring" : "soft"));
-      expect(fillsAt(stage), stage).not.toEqual(fillsAt(stage, secondary ? "soft" : "ring"));
-      if (secondary) for (const [shape] of fillsAt(stage)) expect(shape).toBe("rounded");
+      const tile = ageOf(stage) === "secondary";
+      const now = backs(stage);
+      const ring = backs(stage, "ring");
+      expect(
+        now.map((d) => [d.shape, d.fill]),
+        stage,
+      ).toEqual(backs(stage, "soft").map((d) => [d.shape, d.fill]));
+      now.forEach((d, i) => {
+        expect(d.shape, stage).toBe(tile ? "rounded" : "ellipse");
+        // The category colour 16% over the background: far paler than the solid colour.
+        expect(lum(d.fill as string), stage).toBeGreaterThan(
+          lum(must(ring[i]).fill as string) + 60,
+        );
+      });
     }
+    // KS3 pinned: the tile is the first category colour 16% over the theme's background.
+    expect(backs("ks3")[0]?.fill?.toString().toLowerCase()).toBe(
+      mix(must(backs("ks3", "ring")[0]).fill as string, T0.colors.background, 0.16),
+    );
   });
 
   test("a row icon's back follows the age: round at KS1 and KS2, a rounded square from KS3", () => {

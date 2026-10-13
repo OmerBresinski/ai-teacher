@@ -58,11 +58,6 @@ export type PanelLook = {
    * 14 Oct). A row of numbers keeps its disc at every age.
    */
   medalShape: "disc" | "tile";
-  /**
-   * What sits behind a row icon unless the layout options say otherwise: a pale soft disc at KS1
-   * and KS2 (Greg's option B, 14 Oct), the solid tile from KS3 (icon option 2).
-   */
-  iconBack: "ring" | "soft";
   radiusPicture: number;
 };
 
@@ -157,7 +152,6 @@ export function panelLook(theme: Theme): PanelLook {
     disc: px(p.disc),
     discIcon: p.icon,
     medalShape: age === "secondary" ? "tile" : "disc",
-    iconBack: age === "secondary" ? "ring" : "soft",
     radiusPicture: px(p.pic),
   };
 }
