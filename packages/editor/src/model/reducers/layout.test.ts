@@ -264,7 +264,9 @@ describe("a template that is not live yet (never throws)", () => {
     const lesson = newLesson("Row");
     const first = lesson.slides[0];
     if (!first) throw new Error("seed");
-    const items = ["a", "b", "c", "d"].map((title) => ({ title, text: "words" }));
+    // Three items, under every age's most (items-row holds 4 since TEACH-75 part u), so the add
+    // reaches the not-live check rather than the count limit.
+    const items = ["a", "b", "c"].map((title) => ({ title, text: "words" }));
     first.elements = [
       {
         id: "g1",
