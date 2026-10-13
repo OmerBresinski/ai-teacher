@@ -74,6 +74,23 @@ const rowPhoto = (r: { picture?: Figure | null } | null | undefined): Photo | nu
     ? r.picture
     : null;
 /**
+ * Draft mode (streaming, DRAFT-MODE.md): the writer streams each row's picture after its words, so
+ * a list laid as it stands would drop every tile while a later row's picture is still arriving and
+ * bring them back when it lands. Once any row has a picture, a row whose picture is not there yet
+ * (`undefined`, or not yet a photo) holds the empty slot. An explicit `null` is the writer's "no
+ * picture" and is left alone, so the closed slide still follows all or none. For the draft path
+ * only (TEACH-110 s calls it before laying a draft); the closed slide never holds.
+ */
+export function holdRowPictures<R extends { picture?: Figure | null }>(rows: readonly R[]): R[] {
+  const donor = rows.map(rowPhoto).find(Boolean);
+  if (!donor) return [...rows];
+  return rows.map((r) =>
+    r.picture === null || rowPhoto(r)
+      ? r
+      : { ...r, picture: { photo: PLACEHOLDER_IMAGE, aspect: ROW_PIC_ASPECT, alt: "" } },
+  );
+}
+/**
  * A row picture's tile height by row count (slide points), before the column's room caps it. The
  * tile is 4:3 landscape; it gives way with the discs (to 75%) before type does. Measured on the D1
  * renders (13 Oct): a 2-row tile at 176 still leaves the line beside it its full measure.

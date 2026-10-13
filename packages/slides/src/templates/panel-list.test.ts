@@ -13,6 +13,7 @@ import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
 import { cutSubjects, type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
   DISPLAY_CUSHION,
+  holdRowPictures,
   PANEL_COMFORT,
   PANEL_NAMES,
   PANEL_W,
@@ -555,6 +556,54 @@ describe("panel-list row pictures", () => {
       const landed = tiles(layoutTemplate(pictured(4), T0, "ks3").slide.elements);
       expect(ts.map((t) => [t.x, t.y, t.w, t.h])).toEqual(landed.map((t) => [t.x, t.y, t.w, t.h]));
     }
+  });
+
+  test("streamed row by row, a tile once shown never vanishes, and the last draft is the closed slide", () => {
+    // The writer streams each row's name, then its line, then its picture (DRAFT-MODE.md). Each
+    // prefix is laid through the draft hold; pictures land as the empty slot until made.
+    for (const stage of STAGES)
+      for (const n of [2, 3, 4, 5]) {
+        const full = pictured(n).rows ?? [];
+        const drafts: TemplateInput[] = [];
+        for (let i = 0; i < n; i++)
+          for (const step of ["name", "text", "picture"] as const) {
+            const rows = full.slice(0, i + 1).map((r, j) =>
+              j < i
+                ? r
+                : {
+                    name: r.name,
+                    text: step === "name" ? "" : r.text,
+                    ...(step === "picture" ? { picture: r.picture } : {}),
+                  },
+            );
+            drafts.push({ ...pictured(n), rows: holdRowPictures(rows) });
+          }
+        let shown = 0;
+        const faults: string[] = [];
+        for (const [k, d] of drafts.entries()) {
+          const count = tiles(layoutTemplate(d, T0, stage).slide.elements).length;
+          if (count < shown) faults.push(`${stage} ${n} draft ${k}: ${shown} -> ${count} tiles`);
+          shown = Math.max(shown, count);
+        }
+        expect(faults).toEqual([]);
+        const last = layoutTemplate(drafts[drafts.length - 1] as TemplateInput, T0, stage);
+        const closed = layoutTemplate(pictured(n), T0, stage);
+        const box = (e: { x: number; y: number; w: number; h: number }) => [e.x, e.y, e.w, e.h];
+        expect(last.slide.elements.map(box)).toEqual(closed.slide.elements.map(box));
+      }
+  });
+
+  test("the draft hold: an explicit null stays none; with no picture yet nothing is held", () => {
+    const pic = photo(0);
+    const held = holdRowPictures([
+      { name: "a", text: "", picture: pic },
+      { name: "b", text: "" },
+      { name: "c", text: "", picture: null },
+    ]);
+    expect(held[0]?.picture).toBe(pic);
+    expect((must(held[1]).picture as { photo: string }).photo).toBe(PLACEHOLDER_IMAGE);
+    expect(held[2]?.picture).toBeNull();
+    expect(holdRowPictures<PanelRow>([{ name: "a", text: "" }])[0]?.picture).toBeUndefined();
   });
 
   test("the crop keeps the subject (picture fit, TEACH-25 b) and the tile carries the request", () => {
