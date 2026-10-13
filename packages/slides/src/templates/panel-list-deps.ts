@@ -53,6 +53,11 @@ export type PanelLook = {
   comfort: { body: number; name: number };
   disc: number;
   discIcon: number;
+  /**
+   * A row icon's back: round ("disc"), or from KS3 a rounded square ("tile"; Greg's icon option 2,
+   * 14 Oct). A row of numbers keeps its disc at every age.
+   */
+  medalShape: "disc" | "tile";
   radiusPicture: number;
 };
 
@@ -146,6 +151,7 @@ export function panelLook(theme: Theme): PanelLook {
     },
     disc: px(p.disc),
     discIcon: p.icon,
+    medalShape: age === "secondary" ? "tile" : "disc",
     radiusPicture: px(p.pic),
   };
 }

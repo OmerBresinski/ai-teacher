@@ -306,6 +306,26 @@ describe("panel-list", () => {
     expect(named(numbers, PANEL_NAMES.disc)).toHaveLength(4);
   });
 
+  test("a row icon's back follows the age: round at KS1 and KS2, a rounded square from KS3", () => {
+    for (const stage of ["ks1", "ks2", "ks3", "ks5"] as Stage[]) {
+      const tile = ageOf(stage) === "secondary";
+      for (const panelIconBack of ["ring", "soft"] as const) {
+        const els = layoutTemplate(input(4, "none"), T0, stage, { panelIconBack }).slide.elements;
+        const backs = named(els, PANEL_NAMES.disc) as ShapeElement[];
+        expect(backs).toHaveLength(4);
+        for (const b of backs) {
+          expect(b.shape, `${stage} ${panelIconBack}`).toBe(tile ? "rounded" : "ellipse");
+          if (tile) expect(b.radius).toBe(Math.round(b.w * 0.22));
+        }
+      }
+    }
+    // A row of numbers keeps its disc at every age.
+    const plain = ROWS.slice(0, 4).map((x) => ({ ...x, icon: null }));
+    const numbers = layoutTemplate({ ...input(4, "none"), rows: plain }, T0, "ks3").slide.elements;
+    for (const b of named(numbers, PANEL_NAMES.disc) as ShapeElement[])
+      expect(b.shape).toBe("ellipse");
+  });
+
   test("no visual, option B: the full panel shows the group's icon large under the title", () => {
     const r = layoutTemplate(input(4, "none"), T0, "ks2", { panelNoVisual: "icon" });
     const [panel] = named(r.slide.elements, PANEL_NAMES.panel) as ShapeElement[];

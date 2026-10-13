@@ -194,6 +194,9 @@ const hexMix = (a: string, b: string, k: number) => {
     .join("")}`.toUpperCase();
 };
 
+/** A KS3 icon tile's corner radius, as a share of its side. */
+const TILE_RADIUS = 0.22;
+
 export function layoutPanelList(c: Ctx, input: TemplateInput) {
   c.bodyFromHeading = true;
   const L = panelLook(c.t);
@@ -471,11 +474,14 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const dy = y + (b.rh - m.d) / 2;
     const numeral = drawn(c.t, "heading", Math.max(20, m.d * 0.48));
     const back: PanelIconBack = icons ? (c.panelIconBack ?? "ring") : "ring";
+    // From KS3 an icon's back is a rounded square (icon option 2); numbers stay on a disc.
+    const tile = icons && L.medalShape === "tile";
     if (back !== "none")
       c.els.push({
         id: uid(),
         type: "shape",
-        shape: "ellipse",
+        shape: tile ? "rounded" : "ellipse",
+        ...(tile ? { radius: Math.round(m.d * TILE_RADIUS) } : {}),
         x: ROWS_X,
         y: Math.round(dy),
         w: m.d,
