@@ -150,6 +150,8 @@ const SET_FOOT = SPACE[4];
 /** A card's inner padding, and its content's foot room (the card's own margin is the room). */
 const setPad = (n: number) => (n === 3 ? SPACE[4] : SPACE[5]);
 const SET_STAGE_FOOT = SPACE[3];
+/** The widest strip a card's picture widens to, to span its column. */
+const SET_PIC_WIDEST = 2.2;
 const setW = (n: number) => (W - 2 * SET_EDGE - (n - 1) * SET_GAP) / n;
 /** Where each field (or card) starts, its width and its inner column, for either look. */
 type Frame = { x: (i: number) => number; w: number; cellW: number; left: (i: number) => number };
@@ -288,7 +290,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);
   // Side by side: every card in one tint (the sides are alike, not opposed).
   const fills = Array.from({ length: n }, (_, i) =>
-    set ? (tones.fields[0] as string) : (tones.fields[i] as string),
+    set ? (tones.fields[c.setTint === "neutral" ? 1 : 0] as string) : (tones.fields[i] as string),
   );
   const pics = zone === "picture" ? sides.map((s) => pictureOf(s) as Pic) : [];
 
@@ -450,6 +452,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
       z,
       p,
       ft,
+      set,
       frame,
       fills,
       cellW,
@@ -542,6 +545,7 @@ type Draw = {
   z: SplitSizes;
   p: { name: number; zone: number; picH: number; body: number };
   ft: number;
+  set: boolean;
   frame: Frame;
   fills: string[];
   cellW: number;
@@ -581,11 +585,22 @@ function drawSides(c: Ctx, sides: SplitSide[], d: Draw) {
     y += d.p.name;
     let box: { x: number; y: number; w: number; h: number } | null = null;
     if (d.zone === "picture") {
-      const b = d.boxes[i] as { w: number; h: number };
-      const r = { x, y: y + (d.p.name ? TITLE_GAP : 0), w: b.w, h: b.h };
-      box = r;
+      const b0 = d.boxes[i] as { w: number; h: number };
+      // Side by side: a card's picture spans its column, edge to edge with the words (the shared
+      // height stays, so the crop widens), up to a 2.2:1 strip; past that it keeps its shape, centred.
       const pic = d.pics[i] as Pic;
-      now(() => picture(c, pic, r, ownCrops ? pairCrops([pic], b.w / b.h)[0] : crops[i], radius));
+      const wide =
+        d.set && !pic.diagram ? Math.min(d.cellW, Math.round(b0.h * SET_PIC_WIDEST)) : b0.w;
+      const b = { w: Math.max(b0.w, wide), h: b0.h };
+      const r = {
+        x: x + Math.round((d.cellW - b.w) * (d.set ? 0.5 : 0)),
+        y: y + (d.p.name ? TITLE_GAP : 0),
+        w: b.w,
+        h: b.h,
+      };
+      box = r;
+      const own = ownCrops || b.w !== b0.w;
+      now(() => picture(c, pic, r, own ? pairCrops([pic], b.w / b.h)[0] : crops[i], radius));
     } else if (d.zone === "quote") {
       const bh = d.quoteH(s, d.z);
       const r = { x, y: y + (d.p.name ? TAIL_GAP : 0) + TAIL_ROOM, w: d.cellW, h: bh };

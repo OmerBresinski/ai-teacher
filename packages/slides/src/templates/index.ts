@@ -295,6 +295,8 @@ export type Ctx = {
   panelNoVisual?: "narrow" | "icon";
   /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
   panelIconBack?: "ring" | "none" | "soft";
+  /** `LayoutOptions.setTint` (TEACH-75 part w). */
+  setTint?: "accent" | "neutral";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1578,6 +1580,8 @@ export type LayoutOptions = {
   panelNoVisual?: "narrow" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
   panelIconBack?: "ring" | "none" | "soft";
+  /** Side by side: the cards in the accent's soft tint (the default) or the theme's soft neutral. */
+  setTint?: "accent" | "neutral";
 };
 
 /**
@@ -1686,6 +1690,7 @@ function layoutOnce(
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
     ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
     ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
+    ...(opts.setTint ? { setTint: opts.setTint } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
