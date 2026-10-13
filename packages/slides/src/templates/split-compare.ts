@@ -146,10 +146,10 @@ const fieldW = (n: number) => (W - (n - 1) * SEAM) / n;
 /* Side by side: cards inset from the slide's sides and foot, a plain gap between (grid `SPACE`). */
 const SET_GAP = SPACE[4];
 const SET_EDGE = SPACE[5];
-const SET_FOOT = SPACE[5];
+const SET_FOOT = SPACE[4];
 /** A card's inner padding, and its content's foot room (the card's own margin is the room). */
 const setPad = (n: number) => (n === 3 ? SPACE[4] : SPACE[5]);
-const SET_STAGE_FOOT = SPACE[4];
+const SET_STAGE_FOOT = SPACE[3];
 const setW = (n: number) => (W - 2 * SET_EDGE - (n - 1) * SET_GAP) / n;
 /** Where each field (or card) starts, its width and its inner column, for either look. */
 type Frame = { x: (i: number) => number; w: number; cellW: number; left: (i: number) => number };
