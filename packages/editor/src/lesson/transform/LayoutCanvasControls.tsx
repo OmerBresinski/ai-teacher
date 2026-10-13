@@ -1,4 +1,10 @@
-import type { GroupElement, Id, LayoutRef, SlideElement } from "@tj/domain/documents";
+import {
+  type GroupElement,
+  type Id,
+  type LayoutRef,
+  SLIDE_W,
+  type SlideElement,
+} from "@tj/domain/documents";
 import { boundPath } from "@tj/slides/layout-paths";
 import * as kit from "@tj/slides/relayout";
 import { toast } from "@tj/ui";
@@ -163,13 +169,29 @@ export default function LayoutCanvasControls({
     report(history.dispatch(reducers.removeLayoutItem, slideId, group.id, n, kit));
   const split = () => report(history.dispatch(reducers.splitLayout, slideId, group.id, kit));
 
+  // The selection layer is drawn in slide space (it scales with the slide): boxes are placed in
+  // slide points, and chrome that must stay a fixed screen size is divided by the zoom.
+  const k = scale || 1;
   const box = (r: Rect): CSSProperties => ({
     position: "absolute",
-    left: r.x * scale,
-    top: r.y * scale,
-    width: r.w * scale,
-    height: r.h * scale,
+    left: r.x,
+    top: r.y,
+    width: r.w,
+    height: r.h,
   });
+  /** Under the layout, lined up with the long words: from their left, or their right edge when
+   *  they sit in the slide's right half, so the chip never runs off the slide. */
+  const chipPlace = (r: Rect): CSSProperties => {
+    const top = group.y + group.h + 8 / k;
+    return r.x + r.w / 2 > SLIDE_W / 2
+      ? {
+          top,
+          right: SLIDE_W - (r.x + r.w),
+          transform: `scale(${1 / k})`,
+          transformOrigin: "right top",
+        }
+      : { top, left: r.x, transform: `scale(${1 / k})`, transformOrigin: "left top" };
+  };
   const childOf = (path: string): SlideElement | undefined =>
     group.children.find((c) => c.id === `${group.id}:${path}`);
   const marked = fields.flatMap((f) => {
@@ -201,10 +223,11 @@ export default function LayoutCanvasControls({
         shown ? "opacity-100" : "opacity-0"
       }`}
       style={{
-        left: at.x * scale - BUTTON / 2,
-        top: at.y * scale - BUTTON / 2,
+        left: at.x,
+        top: at.y,
         width: BUTTON,
         height: BUTTON,
+        transform: `translate(-50%, -50%) scale(${1 / k})`,
       }}
     >
       {icon === "add" ? (
@@ -228,11 +251,11 @@ export default function LayoutCanvasControls({
           }
           style={{
             ...box(childRect(group, child)),
-            outline: `1.5px ${field.state === "over" ? "solid" : "dashed"} var(${
+            outline: `${1.5 / k}px ${field.state === "over" ? "solid" : "dashed"} var(${
               field.state === "over" ? "--color-destructive" : "--color-warning"
             })`,
-            outlineOffset: 2,
-            borderRadius: 3,
+            outlineOffset: 2 / k,
+            borderRadius: 3 / k,
           }}
         />
       ))}
@@ -256,9 +279,9 @@ export default function LayoutCanvasControls({
                 data-layout-item-outline
                 style={{
                   ...box(rect),
-                  outline: "1px dashed var(--color-border-strong)",
-                  outlineOffset: 6,
-                  borderRadius: 6,
+                  outline: `${1 / k}px dashed var(--color-border-strong)`,
+                  outlineOffset: 6 / k,
+                  borderRadius: 6 / k,
                 }}
               />
             ) : null}
@@ -281,11 +304,8 @@ export default function LayoutCanvasControls({
         <div
           role="status"
           data-layout-over
-          className="pointer-events-auto absolute flex items-center gap-2 rounded-full border border-destructive/40 bg-surface px-3 py-1 text-sm text-destructive shadow-sm"
-          style={{
-            left: (group.x + firstOver.child.x) * scale,
-            top: (group.y + group.h) * scale + 8,
-          }}
+          className="pointer-events-auto absolute flex items-center gap-3 whitespace-nowrap rounded-full border border-destructive/40 bg-surface px-3 py-1 text-sm text-destructive shadow-sm"
+          style={chipPlace(childRect(group, firstOver.child))}
           onPointerDown={press}
         >
           <span>Too long: the end is hidden</span>
