@@ -278,11 +278,11 @@ describe("panel-list", () => {
         }
   });
 
-  test("behind a row's icon: a coloured ring by default, nothing, or a soft pale disc", () => {
+  test("behind a row's icon: a coloured ring, nothing, or a soft pale disc", () => {
     const at = (panelIconBack?: "ring" | "none" | "soft") =>
       layoutTemplate(input(4, "none"), T0, "ks2", panelIconBack ? { panelIconBack } : {}).slide
         .elements;
-    const ring = at();
+    const ring = at("ring");
     const discs = named(ring, PANEL_NAMES.disc) as ShapeElement[];
     const icons = named(ring, PANEL_NAMES.icon) as { w: number }[];
     expect(discs).toHaveLength(4);
@@ -306,6 +306,23 @@ describe("panel-list", () => {
       panelIconBack: "none",
     }).slide.elements;
     expect(named(numbers, PANEL_NAMES.disc)).toHaveLength(4);
+  });
+
+  test("unset, a row icon's back is the soft pale disc at KS1 and KS2 and the solid tile from KS3", () => {
+    const fillsAt = (stage: Stage, panelIconBack?: "ring" | "soft") =>
+      (
+        named(
+          layoutTemplate(input(4, "none"), T0, stage, panelIconBack ? { panelIconBack } : {}).slide
+            .elements,
+          PANEL_NAMES.disc,
+        ) as ShapeElement[]
+      ).map((d) => [d.shape, d.fill]);
+    for (const stage of ["ks1", "ks2", "ks3", "ks5"] as Stage[]) {
+      const secondary = ageOf(stage) === "secondary";
+      expect(fillsAt(stage), stage).toEqual(fillsAt(stage, secondary ? "ring" : "soft"));
+      expect(fillsAt(stage), stage).not.toEqual(fillsAt(stage, secondary ? "soft" : "ring"));
+      if (secondary) for (const [shape] of fillsAt(stage)) expect(shape).toBe("rounded");
+    }
   });
 
   test("a row icon's back follows the age: round at KS1 and KS2, a rounded square from KS3", () => {
