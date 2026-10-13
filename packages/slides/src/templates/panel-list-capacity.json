@@ -2,9 +2,9 @@
   "early": {
     "2": {
       "heading": {
-        "cap": 30,
+        "cap": 23,
         "hardMax": 40,
-        "words": 6
+        "words": 5
       },
       "lead": {
         "cap": 38,
@@ -36,9 +36,9 @@
     },
     "3": {
       "heading": {
-        "cap": 30,
+        "cap": 23,
         "hardMax": 40,
-        "words": 6
+        "words": 5
       },
       "lead": {
         "cap": 38,
@@ -70,9 +70,9 @@
     },
     "4": {
       "heading": {
-        "cap": 30,
+        "cap": 23,
         "hardMax": 40,
-        "words": 6
+        "words": 5
       },
       "lead": {
         "cap": 0,

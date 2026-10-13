@@ -32,6 +32,10 @@ import { ageOf } from "./panel-list-deps";
  */
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
 const T0 = THEMES[0] as Theme;
+const must = <T>(x: T | undefined | null): T => {
+  if (x === undefined || x === null) throw new Error("missing");
+  return x;
+};
 const ROWS: PanelRow[] = [
   { name: "Fruit", text: "Gives us vitamins.", icon: "apple" },
   { name: "Fish", text: "Builds strong muscles.", icon: "fish" },
@@ -255,6 +259,51 @@ describe("panel-list", () => {
     // With a visual the panel keeps its full width.
     const pie = layoutTemplate(input(4, "pie"), T0, "ks2");
     expect((named(pie.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
+  });
+
+  test("the title keeps the same inner padding on both sides of the panel, at every stage", () => {
+    // Greg's y/n (13 Oct): "Volcano hazards" ran to within 21 pt of the narrow panel's edge.
+    for (const theme of THEMES)
+      for (const stage of STAGES)
+        for (const visual of ["none", "photo", "pie"]) {
+          const els = layoutTemplate(input(4, visual), theme, stage).slide.elements;
+          const panel = must(named(els, PANEL_NAMES.panel)[0]) as { x: number; w: number };
+          const title = must(named(els, PANEL_NAMES.title)[0]) as { x: number; w: number };
+          const left = title.x - panel.x;
+          const right = panel.x + panel.w - (title.x + title.w);
+          expect(right, `${theme.id} ${stage} ${visual}`).toBe(left);
+          expect(left).toBeGreaterThanOrEqual(40);
+        }
+  });
+
+  test("behind a row's icon: a coloured ring by default, nothing, or a soft pale disc", () => {
+    const at = (panelIconBack?: "ring" | "none" | "soft") =>
+      layoutTemplate(input(4, "none"), T0, "ks2", panelIconBack ? { panelIconBack } : {}).slide
+        .elements;
+    const ring = at();
+    const discs = named(ring, PANEL_NAMES.disc) as ShapeElement[];
+    const icons = named(ring, PANEL_NAMES.icon) as { w: number }[];
+    expect(discs).toHaveLength(4);
+    expect(icons).toHaveLength(4);
+    // None: no disc at all, the drawing takes the disc's whole size.
+    const none = at("none");
+    expect(named(none, PANEL_NAMES.disc)).toHaveLength(0);
+    for (const e of named(none, PANEL_NAMES.icon) as { w: number }[])
+      expect(e.w).toBe(must(discs[0]).w);
+    // Soft: the same discs, each far paler than the ring's colour, the drawing inside it.
+    const soft = named(at("soft"), PANEL_NAMES.disc) as ShapeElement[];
+    expect(soft).toHaveLength(4);
+    const lum = (h: string) =>
+      [1, 3, 5].reduce((a, i) => a + Number.parseInt(h.slice(i, i + 2), 16), 0) / 3;
+    soft.forEach((d, i) => {
+      expect(lum(d.fill as string)).toBeGreaterThan(lum(must(discs[i]).fill as string) + 60);
+    });
+    // A row of numbers keeps its coloured disc whatever the option.
+    const plain = ROWS.slice(0, 4).map((x) => ({ ...x, icon: null }));
+    const numbers = layoutTemplate({ ...input(4, "none"), rows: plain }, T0, "ks2", {
+      panelIconBack: "none",
+    }).slide.elements;
+    expect(named(numbers, PANEL_NAMES.disc)).toHaveLength(4);
   });
 
   test("no visual, option B: the full panel shows the group's icon large under the title", () => {

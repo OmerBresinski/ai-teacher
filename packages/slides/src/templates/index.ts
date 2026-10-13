@@ -278,6 +278,8 @@ export type Ctx = {
   objectiveCards?: boolean;
   /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
   panelNoVisual?: "narrow" | "icon";
+  /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
+  panelIconBack?: "ring" | "none" | "soft";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1557,6 +1559,8 @@ export type LayoutOptions = {
   objectiveCards?: boolean;
   /** Panel list with no visual: a narrower panel (the default) or the group's icon large in it. */
   panelNoVisual?: "narrow" | "icon";
+  /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
+  panelIconBack?: "ring" | "none" | "soft";
 };
 
 /**
@@ -1664,6 +1668,7 @@ function layoutOnce(
     ...(opts.processLine ? { processLine: true } : {}),
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
     ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
+    ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the

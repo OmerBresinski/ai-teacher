@@ -100,9 +100,12 @@ const SLIDE_H = 540;
 export const PANEL_W = 313;
 /** The panel with no visual (option A, the default): about 28% of the slide, the title at its top. */
 export const PANEL_W_NARROW = 269;
-const TITLE_X = 48;
-/** The title's right margin inside the panel (pilot 470 - 72 - 366 px). */
-const TITLE_RIGHT = 21;
+const TITLE_X = 40;
+/**
+ * The title's right margin inside the panel: the same as its left (Greg's y/n, 13 Oct: the pilot's
+ * 21 put "Volcano hazards" against the narrow panel's edge).
+ */
+const TITLE_RIGHT = TITLE_X;
 const TITLE_TOP = 64;
 /** The gap between the panel and the rows column (pilot 70 px). */
 const ROWS_GAP = 47;
@@ -168,6 +171,28 @@ type Geometry = { fits: boolean; comfortable: boolean };
 const GEOMETRY = new WeakMap<object, Geometry>();
 
 const clean = (s: string | null | undefined) => (s ?? "").trim();
+
+/**
+ * What sits behind a row's icon (`LayoutOptions.panelIconBack`, Greg's y/n 13 Oct, open): `ring`
+ * (the pilot) a category-coloured disc round the drawing; `none` the drawing alone at the disc's
+ * size; `soft` a pale disc of the category colour, no ring, the drawing a little smaller in it.
+ */
+export type PanelIconBack = "ring" | "none" | "soft";
+/** The soft disc: the category colour this much over the slide's background. */
+const SOFT_TINT = 0.16;
+/** The drawing's share of a soft disc. */
+const SOFT_ICON = 0.78;
+const hexMix = (a: string, b: string, k: number) => {
+  const p = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return `#${x
+    .map((v, i) =>
+      Math.round(v * k + (y[i] as number) * (1 - k))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`.toUpperCase();
+};
 
 export function layoutPanelList(c: Ctx, input: TemplateInput) {
   c.bodyFromHeading = true;
@@ -445,33 +470,35 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const fill = fills[i] as string;
     const dy = y + (b.rh - m.d) / 2;
     const numeral = drawn(c.t, "heading", Math.max(20, m.d * 0.48));
-    c.els.push({
-      id: uid(),
-      type: "shape",
-      shape: "ellipse",
-      x: ROWS_X,
-      y: Math.round(dy),
-      w: m.d,
-      h: m.d,
-      fill,
-      name: PANEL_NAMES.disc,
-      ...(icons
-        ? {}
-        : {
-            doc: kit.doc(String(i + 1)),
-            textStyle: {
-              preset: "heading",
-              fontSize: numeral,
-              fontWeight: L.displayWeight,
-              color: cat ? L.onCategory(fill) : L.onWash,
-              align: "center",
-              valign: "middle",
-              padding: 0,
-            },
-          }),
-    } as ShapeElement);
+    const back: PanelIconBack = icons ? (c.panelIconBack ?? "ring") : "ring";
+    if (back !== "none")
+      c.els.push({
+        id: uid(),
+        type: "shape",
+        shape: "ellipse",
+        x: ROWS_X,
+        y: Math.round(dy),
+        w: m.d,
+        h: m.d,
+        fill: back === "soft" ? hexMix(fill, c.t.colors.background, SOFT_TINT) : fill,
+        name: PANEL_NAMES.disc,
+        ...(icons
+          ? {}
+          : {
+              doc: kit.doc(String(i + 1)),
+              textStyle: {
+                preset: "heading",
+                fontSize: numeral,
+                fontWeight: L.displayWeight,
+                color: cat ? L.onCategory(fill) : L.onWash,
+                align: "center",
+                valign: "middle",
+                padding: 0,
+              },
+            }),
+      } as ShapeElement);
     if (icons) {
-      const g = Math.round(m.d * L.discIcon);
+      const g = Math.round(m.d * (back === "none" ? 1 : back === "soft" ? SOFT_ICON : L.discIcon));
       c.els.push({
         id: uid(),
         type: "icon",
