@@ -4,7 +4,6 @@
  */
 import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { richDocToPlainText as docToPlainText } from "@tj/domain/documents";
-import { surfaceStyle } from "@tj/slides/surfaces";
 
 /**
  * The words that name a choice or answer element: its own text, or, for a card or option box drawn
@@ -58,11 +57,8 @@ const HINGE_ICON = "Option icon";
 const HINGE_STAGE = "surface:field-b";
 
 export type HingeMark = {
-  ring: string;
   wash: string;
   radius: number;
-  keyFill: string;
-  keyInk: string;
   key: {
     x: number;
     y: number;
@@ -76,8 +72,8 @@ export type HingeMark = {
 };
 
 /**
- * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring and tick in the theme's
- * `verdict-right`, the right card's key in `key:right`, a wrong card faded to about a third into
+ * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring, tick and the right card's
+ * key in the theme's correct colour (`verdict-right` and `key:right` are built from it), a wrong card faded to about a third into
  * the sand stage. Null for any other choice card, which keeps the generic marks.
  */
 export function hingeMarkOf(slide: Slide, theme: Theme, id: string): HingeMark | null {
@@ -87,8 +83,6 @@ export function hingeMarkOf(slide: Slide, theme: Theme, id: string): HingeMark |
     e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
   const keyEl = slide.elements.find((e) => e.name === HINGE_KEY && inside(e));
   if (!keyEl) return null;
-  const right = surfaceStyle(theme, "verdict-right");
-  const keyRight = surfaceStyle(theme, "key", "right");
   const stage = slide.elements.find((e) => e.name === HINGE_STAGE);
   const ground =
     stage && "fill" in stage && typeof stage.fill === "string"
@@ -99,15 +93,12 @@ export function hingeMarkOf(slide: Slide, theme: Theme, id: string): HingeMark |
   const radius = keyEl.type === "shape" && keyEl.radius ? keyEl.radius : Math.round(keyEl.w * 0.24);
   const fontSize = keyEl.type === "shape" ? Number(keyEl.textStyle?.fontSize ?? 20) : 20;
   return {
-    ring: right.fill,
     // 66% of the stage over the card: the card reads at about a third (the gold's 0.34).
     wash: `${ground.slice(0, 7)}A8`,
     radius:
       "radius" in card && typeof card.radius === "number"
         ? card.radius
         : Math.min(theme.radius, 16),
-    keyFill: keyRight.fill,
-    keyInk: keyRight.ink ?? theme.colors.onAccent,
     key: {
       x: keyEl.x,
       y: keyEl.y,

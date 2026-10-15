@@ -492,76 +492,7 @@ function ChoiceMarks({
         // The hinge (TEACH-256 part b): ring and tick in `verdict-right`, the key in `key:right`,
         // the others faded into the sand stage, as in the v13 gold.
         const hinge = hingeMarkOf(slide, theme, id);
-        if (hinge) {
-          const key = hinge.key;
-          return (
-            <div
-              key={id}
-              data-answer-anim=""
-              data-choice-mark={state}
-              data-hinge-mark=""
-              style={{
-                position: "absolute",
-                left: r.x,
-                top: r.y,
-                width: r.w,
-                height: r.h,
-                zIndex: 800,
-                pointerEvents: "none",
-                borderRadius: hinge.radius,
-                background: right ? undefined : hinge.wash,
-                boxShadow: right ? `0 0 0 3px ${hinge.ring}` : undefined,
-              }}
-            >
-              {right && key ? (
-                <span
-                  style={{
-                    position: "absolute",
-                    left: key.x - r.x,
-                    top: key.y - r.y,
-                    width: key.w,
-                    height: key.h,
-                    borderRadius: key.radius,
-                    background: hinge.keyFill,
-                    color: hinge.keyInk,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    fontSize: key.fontSize,
-                    lineHeight: 1,
-                  }}
-                >
-                  {key.letter}
-                </span>
-              ) : null}
-              {right ? (
-                <span
-                  role="img"
-                  aria-label="Correct answer"
-                  style={{
-                    position: "absolute",
-                    right: hinge.tick.right,
-                    top: hinge.tick.top,
-                    width: hinge.tick.d,
-                    height: hinge.tick.d,
-                    borderRadius: hinge.tick.d,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: hinge.ring,
-                    color: hinge.keyInk,
-                    fontWeight: 700,
-                    fontSize: Math.round(hinge.tick.d * 0.6),
-                    lineHeight: 1,
-                  }}
-                >
-                  ✓
-                </span>
-              ) : null}
-            </div>
-          );
-        }
+        const key = right ? hinge?.key : null;
         return (
           <div
             key={id}
@@ -575,21 +506,44 @@ function ChoiceMarks({
               height: r.h,
               zIndex: 800,
               pointerEvents: "none",
-              borderRadius: Math.min(theme.radius, 16),
-              background: right ? undefined : withAlpha(theme.colors.background, 0.62),
-              boxShadow: right ? `0 0 0 4px ${theme.colors.correct}` : undefined,
+              borderRadius: hinge?.radius ?? Math.min(theme.radius, 16),
+              background: right
+                ? undefined
+                : (hinge?.wash ?? withAlpha(theme.colors.background, 0.62)),
+              boxShadow: right ? `0 0 0 ${hinge ? 3 : 4}px ${theme.colors.correct}` : undefined,
             }}
           >
+            {key ? (
+              <span
+                style={{
+                  position: "absolute",
+                  left: key.x - r.x,
+                  top: key.y - r.y,
+                  width: key.w,
+                  height: key.h,
+                  borderRadius: key.radius,
+                  background: theme.colors.correct,
+                  color: theme.colors.onAccent,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 700,
+                  fontSize: key.fontSize,
+                }}
+              >
+                {key.letter}
+              </span>
+            ) : null}
             {right ? (
               <span
                 role="img"
                 aria-label="Correct answer"
                 style={{
                   position: "absolute",
-                  right: 10,
-                  top: 10,
-                  width: 36,
-                  height: 36,
+                  right: hinge?.tick.right ?? 10,
+                  top: hinge?.tick.top ?? 10,
+                  width: hinge?.tick.d ?? 36,
+                  height: hinge?.tick.d ?? 36,
                   borderRadius: 36,
                   display: "flex",
                   alignItems: "center",
@@ -597,7 +551,7 @@ function ChoiceMarks({
                   background: theme.colors.correct,
                   color: theme.colors.surface,
                   fontWeight: 700,
-                  fontSize: 22,
+                  fontSize: hinge ? Math.round(hinge.tick.d * 0.6) : 22,
                   lineHeight: 1,
                 }}
               >
