@@ -63,7 +63,7 @@
         },
         "text": {
           "cap": 101,
-          "hardMax": 125,
+          "hardMax": 114,
           "words": 19
         }
       },
@@ -74,9 +74,9 @@
           "words": 3
         },
         "text": {
-          "cap": 151,
-          "hardMax": 174,
-          "words": 26
+          "cap": 144,
+          "hardMax": 165,
+          "words": 25
         }
       }
     },
@@ -101,7 +101,7 @@
         },
         "text": {
           "cap": 74,
-          "hardMax": 88,
+          "hardMax": 80,
           "words": 15
         }
       }

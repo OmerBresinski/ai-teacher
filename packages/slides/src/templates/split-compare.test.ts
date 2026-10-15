@@ -411,10 +411,11 @@ describe("split-compare capacity (row 7)", () => {
   test("words-only sides take the zone's height: 2 sides hold 25+ words at KS2 and over", () => {
     const words = (g: SplitGroup, n: 2 | 3) =>
       (splitTable(g, n, "text").text as { words?: number }).words ?? 0;
-    // Measured, not targeted: 26 at KS2 since the 12 Oct spacing (31 before); the table holds the truth.
-    expect(words("KS2", 2)).toBeGreaterThanOrEqual(25);
-    expect(words("KS3-5", 2)).toBeGreaterThanOrEqual(30);
-    expect(words("KS1", 2)).toBeGreaterThanOrEqual(20);
+    // Measured, not targeted: re-measured on theme v2 and the real picture fit (15 Oct). The
+    // table holds the truth; these floors are its figures, so a shrink shows up here.
+    expect(words("KS2", 2)).toBeGreaterThanOrEqual(27);
+    expect(words("KS3-5", 2)).toBeGreaterThanOrEqual(47);
+    expect(words("KS1", 2)).toBeGreaterThanOrEqual(22);
     // And 25 words are comfortable on every theme, not just in the table.
     const words25 =
       "Weather is what the air is doing today or this week, the rain and the sun and the wind, and it can change by the hour.";
