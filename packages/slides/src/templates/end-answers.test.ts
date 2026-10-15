@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { type Slide, type SlideElement, TEACHER_ONLY_MARK } from "@tj/domain/documents";
+import {
+  type Slide,
+  type SlideElement,
+  slideStepCount,
+  TEACHER_ONLY_MARK,
+} from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { THEMES } from "../themes";
 import { surfacesOf } from "../themes/surfaces";
@@ -152,7 +157,13 @@ describe("fit: type from the age ceiling, never under comfort; nothing over", ()
   });
 
   test("stored sizes: answers and lines at or over the body floor (20); labels over the caption floor", () => {
-    const LABELS = new Set(["Kicker", "Verdict", "surface:badge", TEACHER_ONLY_MARK]);
+    const LABELS = new Set([
+      "Kicker",
+      "Verdict",
+      "surface:badge",
+      "Hidden answer",
+      TEACHER_ONLY_MARK,
+    ]);
     for (const t of THEMES)
       for (const c of Object.values(cases))
         for (const s of endAnswerSlides(c.groups, t, c.stage))
@@ -390,5 +401,43 @@ describe("the deck builder", () => {
     });
     expect(answerItem(3, "Through its roots")).toEqual({ n: 3, a: "Through its roots" });
     expect(answerItem(4, SENTENCE)).toEqual({ n: 4, s: SENTENCE });
+  });
+});
+
+describe("reveal states (gold `&reveal=`: hidden behind a soft ? disc, nothing moves)", () => {
+  const c = cases.ks2 as Case;
+  const page = paginateAnswers(paper, c.stage, c.groups)[0] as Parameters<
+    typeof layoutAnswersPage
+  >[0];
+  const at = (reveal: "all" | "group" | "answer") =>
+    layoutAnswersPage(page, paper, c.stage, { reveal }).slide;
+  const placed = (s: Slide) =>
+    s.elements
+      .filter((e) => !["Hidden answer", "Revealed"].includes(e.name ?? ""))
+      .map((e) => [e.name, e.x, e.y, e.w, e.h]);
+
+  test("by group by default: one click per group, a ? disc and its cover per answer", () => {
+    const s = layoutAnswersPage(page, paper, c.stage).slide;
+    expect(slideStepCount(s)).toBe(2);
+    expect(s.elements.filter((e) => e.name === "Hidden answer")).toHaveLength(9);
+    const covers = s.elements.filter((e) => e.name === "Revealed").map((e) => e.revealStep);
+    expect(covers).toEqual([1, 1, 1, 1, 1, 1, 2, 2, 2]);
+    // Badges and the rail never hide: the teacher can say "number 4".
+    for (const e of s.elements)
+      if (["surface:badge", "Kicker", "Source title"].includes(e.name ?? ""))
+        expect(e.revealStep).toBeUndefined();
+  });
+
+  test("by answer: one click per answer in deck order; all: no steps, no discs", () => {
+    expect(slideStepCount(at("answer"))).toBe(9);
+    expect(slideStepCount(at("all"))).toBe(0);
+    expect(at("all").elements.some((e) => e.name === "Hidden answer")).toBe(false);
+  });
+
+  test("nothing moves when an answer appears: the same boxes hidden or shown", () => {
+    expect(placed(at("group")).length).toBe(placed(at("all")).length);
+    expect(placed(at("answer")).map((p) => p.slice(1))).toEqual(
+      placed(at("all")).map((p) => p.slice(1)),
+    );
   });
 });

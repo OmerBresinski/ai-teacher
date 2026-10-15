@@ -28,6 +28,7 @@ import {
   type SurfaceRole,
   type SurfaceState,
   surfaceStyle,
+  surfacesOf,
 } from "../themes/surfaces";
 import { type Ctx, G, kit, type Stage, templateScale } from "./index";
 
@@ -71,6 +72,8 @@ export const ANSWERS_NAMES = {
   guardTick: "Guard tick",
   guardTitle: "Heading",
   guardLine: "Guard line",
+  hidden: "Hidden answer",
+  cover: "Revealed",
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -91,8 +94,8 @@ const labelSize = (stage: Stage) => (stage === "ks1" ? 17 : 15);
 const BODY_TOP = 146;
 const FOOT = 512;
 const BODY_H = FOOT - BODY_TOP;
-const RAIL = { x: G.margin, w: 184 } as const;
-const ANS = { x: 284, w: G.right - 284 } as const;
+const RAIL = { x: G.margin, w: 190 } as const;
+const ANS = { x: 301, w: G.right - 301 } as const;
 const COL_GAP = 36;
 const BADGE_GAP = 16;
 const WORK_GAP = 21;
@@ -100,8 +103,6 @@ const WORK_GAP = 21;
 const snap = (v: number) => Math.max(4, Math.round(v / 5.33) * 5.33);
 /** Fill target: leftover height spreads the gaps until the body is about this full. */
 const FILL = 0.75;
-/** See `measureAt`. */
-const WRAP_MARGIN = 0.04;
 
 /* ------------------------------------------------------------------ */
 /* Measuring                                                           */
@@ -162,7 +163,9 @@ const chipWidth = (t: Theme, size: number, yes = false) => {
   return Math.round(k * 0.62 + k * 0.9 + k * 0.38 + widthAt(t, word, k, 700) + k * 0.78);
 };
 
-type Laid = { h: number; draw: (y: number) => void };
+/** Each answer's reveal step (1-based), or none: every answer shown from the start. */
+type StepOf = (item: number) => number | undefined;
+type Laid = { h: number; draw: (y: number, stepOf?: StepOf) => void };
 
 /** A group's band at `z`: the rail and the answers side by side, drawn from `y`. */
 function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
@@ -200,7 +203,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   for (let i = 0; i < heights.length; i += cols) rows.push(Math.max(...heights.slice(i, i + cols)));
   const ansH = rows.reduce((a, b) => a + b, 0) + Math.max(0, rows.length - 1) * z.rowGap;
   const h = Math.max(railH, ansH);
-  const draw = (y: number) => {
+  const draw = (y: number, stepOf: StepOf = () => undefined) => {
     text(c, kickerWord(g), { x: RAIL.x, y, w: RAIL.w }, kick, 700, 1.2, {
       color: t.colors.accent,
       name: ANSWERS_NAMES.kicker,
@@ -219,6 +222,11 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
       const by = rowY + Math.round((line - z.badge) / 2);
       badge(c, String(it.n), x, by, z.badge, z.size);
       const tx = x + textX;
+      // Hidden until its step: the soft "?" disc on the answer's first line, then the answer over
+      // a ground patch that covers the disc. Nothing moves when it appears.
+      const step = stepOf(i);
+      if (step !== undefined) hiddenDisc(c, tx, by, z.badge, step);
+      const from = c.els.length;
       if ("s" in it) {
         text(c, it.s, { x: tx, y: rowY, w: textW }, z.size, 500, 1.3, {
           color: t.colors.ink,
@@ -262,6 +270,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
             { color: t.colors.muted, name: ANSWERS_NAMES.work },
           );
       }
+      if (step !== undefined) for (const e of c.els.slice(from)) e.revealStep = step;
     });
   };
   return { h, draw };
@@ -273,10 +282,7 @@ const kickerWord = (g: AnswerGroup) =>
 function measureAt(c: Ctx, value: string, w: number, size: number, weight: number, lh: number) {
   const s = c.s;
   c.s = { ...s, body: size };
-  // Measured 4% narrower than drawn: the browser can wrap a line the headless ruler fits by a
-  // hair, and the ledger's rows are placed absolutely, so a short count would overlap the next.
-  const room = Math.floor(w * (1 - WRAP_MARGIN));
-  const lines = Math.round(kit.measure(c, value, "body", room, weight) / (size * kit.LH.body));
+  const lines = Math.round(kit.measure(c, value, "body", w, weight) / (size * kit.LH.body));
   c.s = s;
   return Math.ceil(Math.max(1, lines) * size * lh);
 }
@@ -395,6 +401,43 @@ function chip(
     1.2,
     { color: ink, name: ANSWERS_NAMES.chip },
   );
+}
+
+/** The approved soft "?" disc (sand on paper) and, at `step`, a ground patch that hides it. */
+function hiddenDisc(c: Ctx, x: number, y: number, d: number, step: number) {
+  c.els.push({
+    id: uid(),
+    type: "shape",
+    shape: "ellipse",
+    x,
+    y: Math.round(y),
+    w: d,
+    h: d,
+    fill: surfaceStyle(c.t, "field-b").fill.slice(0, 7),
+    name: ANSWERS_NAMES.hidden,
+    doc: kit.doc("?"),
+    textStyle: {
+      preset: "body",
+      fontSize: Math.max(14, Math.round(d * 0.56)),
+      fontWeight: 700,
+      color: c.t.colors.muted,
+      align: "center",
+      valign: "middle",
+      padding: 0,
+    },
+  } as SlideElement);
+  c.els.push({
+    id: uid(),
+    type: "shape",
+    shape: "rect",
+    x: x - 1,
+    y: Math.round(y) - 1,
+    w: d + 2,
+    h: d + 2,
+    fill: surfacesOf(c.t).ground.slice(0, 7),
+    name: ANSWERS_NAMES.cover,
+    revealStep: step,
+  } as SlideElement);
 }
 
 /** The "Teacher only" pill on the title line: drawn for the teacher, never projected (r2 marker). */
@@ -519,6 +562,8 @@ export function paginateAnswers(
 /* Slides                                                              */
 /* ------------------------------------------------------------------ */
 
+/** How an Answers slide reveals in present: all at once, a group per click, or an answer per click. */
+export type AnswersReveal = "all" | "group" | "answer";
 export type AnswersLayout = { slide: Slide; over: string[]; fill: number; size: number };
 
 /** One Answers slide: the ledger at the largest size that fits, gaps spread to about 75% full. */
@@ -526,8 +571,14 @@ export function layoutAnswersPage(
   page: AnswersPage,
   t: Theme,
   stage: Stage,
-  opts: { teacherOnly?: boolean } = {},
+  opts: {
+    teacherOnly?: boolean;
+    /** Gold `&reveal=`: answers start hidden and show a group or an answer per click; `all` shows them. */
+    reveal?: AnswersReveal;
+  } = {},
 ): AnswersLayout {
+  const reveal = opts.reveal ?? "group";
+  let shown = 0;
   const c = freshCtx(t, stage);
   const title = page.of > 1 ? ANSWERS_WORDS.page(page.page, page.of) : ANSWERS_WORDS.title;
   const head = kit.heading(c, title);
@@ -560,7 +611,12 @@ export function layoutAnswersPage(
       y += 1 + z.groupGap;
     }
     const band = groupBand(c, stage, g, z);
-    band.draw(Math.round(y));
+    const base = shown;
+    band.draw(
+      Math.round(y),
+      reveal === "all" ? undefined : reveal === "group" ? () => i + 1 : (k) => base + k + 1,
+    );
+    shown += g.items.length;
     y += band.h;
   });
   return {
