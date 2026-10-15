@@ -84,6 +84,16 @@ export const isOpenPhotoSlot = (el: SlideElement): boolean =>
   el.type === "image" && el.name === PHOTO_NAME && (el.src === PLACEHOLDER_IMAGE || el.src === "");
 
 /**
+ * The editor's placeholder icon (items-row `PLACEHOLDER_ICON`, `data-icon="placeholder"`) on an
+ * item a teacher added blank: it tells the teacher an icon goes there, so only the editor draws
+ * it. Present, the viewer, thumbnails and every export take it away (`withoutDiagramSlot`) and
+ * leave the medal empty, as a draft's held icon is.
+ */
+const PLACEHOLDER_ICON_MARK = encodeURIComponent('data-icon="placeholder"');
+export const isPlaceholderIcon = (el: SlideElement): boolean =>
+  el.type === "image" && el.src.includes(PLACEHOLDER_ICON_MARK);
+
+/**
  * What the slide is for, in the words a class sees on the tag. Only an activity, or a slide with a
  * specific job, takes one (Greg, 26 Sept 2026: "it should only be there if it's an exercise or
  * something specific"); teaching slides and the objectives go untagged (`UNTAGGED_HEADED`).

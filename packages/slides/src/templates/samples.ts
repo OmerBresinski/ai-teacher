@@ -156,5 +156,15 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         { title: "Chick", text: "A chick is small.", picture: ph("a chick") },
       ],
     },
+    {
+      template: "items-row",
+      heading: "Three parts work together",
+      accentWord: "work together",
+      items: [
+        { name: "Heart", text: "A muscle that pumps blood.", icon: "heart" },
+        { name: "Blood", text: "Carries oxygen and nutrients.", icon: "blood" },
+        { name: "Blood vessels", text: "Tubes that blood travels through.", icon: "vessels" },
+      ],
+    },
   ];
 }

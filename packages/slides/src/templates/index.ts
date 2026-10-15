@@ -35,11 +35,24 @@ import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
+import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual, SplitSide };
+export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+export type {
+  ActivityCard,
+  ActivityId,
+  GridCard,
+  PanelRow,
+  PanelVisual,
+  RowItem,
+  RowMotif,
+  SplitSide,
+};
+/** items-row's name for a FieldReport. */
+export type RowField = FieldReport;
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -149,6 +162,7 @@ export type TemplateId =
   | "panel-list"
   | "split-compare"
   | "side-by-side"
+  | "items-row"
   | ActivityId;
 
 export type TemplateInput = {
@@ -178,6 +192,12 @@ export type TemplateInput = {
   rows?: PanelRow[];
   /** Panel list: the title panel's visual, a picture or a pie of one share per row; none: the title sits low. */
   panel?: PanelVisual | null;
+  /** Items row (TEACH-75 part u): 2-4 named items on a connecting line, each a name, a line and an optional icon label. */
+  items?: RowItem[];
+  /** Items row: the numbers read as stages (a number badge on each icon). Default true. */
+  ordered?: boolean;
+  /** Items row: the connecting line's look: "dots" (default), "plain" (the band alone) or "none". */
+  motif?: RowMotif;
   /** The one quiet line under a question list. */
   instruction?: string;
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
@@ -1259,6 +1279,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "equation-hero": "worked-example",
   "cards-grid": "content",
   "panel-list": "content",
+  "items-row": "content",
   "banner-text": "image-text",
   hook: "image-text",
   "split-compare": "content",
@@ -2337,6 +2358,9 @@ function layoutOnce(
       break;
     case "panel-list":
       layoutPanelList(c, input);
+      break;
+    case "items-row":
+      layoutItemsRow(c, input);
       break;
     case "banner-text":
       layoutBanner(c, input);

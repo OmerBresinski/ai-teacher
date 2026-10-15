@@ -520,21 +520,22 @@ describe("the writer stage on a fake model", () => {
    * [system, schema] sha256 as master sent them before answer first (ANSWER-BUG.md), then as
    * sent now. The system text differs only by the hinge line: swapping it back gives master's.
    */
+  // Schema repinned for TEACH-75 part u: the items row is live (no off switch).
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
       "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
-      "c2c4ddf387fb6363071343e83a974514c44a76cb91bac2cc67c0172e797c75c5",
+      "cfce3e5da32beda52a8017ac0f1dde93bed38d5f6edf7e514df3300d341608ec",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
       "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
-      "ae02b04e227938f895bd49da46ae4e14af65c632edb4bb2fa86977e5e6a03480",
+      "b66ddbbf8b1dc5f825809fe4b02d802f144bcac31195a615d2963e7f945bb8e2",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
       "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
-      "1f3e9541137608f2abb48fc9d7ac250ad6f624299acb961e6b5c4d89e8656867",
+      "f5912eaaaf157a6517470e2ee74dfafa0d0c1e2915e185b775af76c7c95019b9",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");

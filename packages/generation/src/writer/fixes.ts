@@ -4,6 +4,7 @@ import { gridFit } from "./cards-grid-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
+import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
@@ -285,6 +286,7 @@ const baseFit = (): Record<string, FitGroup> => {
 function extraLayouts(group: string): FitGroup["layouts"] {
   return {
     "cards-grid": gridFit(group),
+    "items-row": rowFit(group),
     "banner-text": bannerFit(group),
     hook: hookFit(group),
   };
@@ -332,8 +334,8 @@ export function charsOver(slide: unknown, stage: string): string[] {
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return [];
-  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
-    Array.isArray(s[k]),
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
+    (k) => Array.isArray(s[k]),
   );
   const items = listKey ? (s[listKey] as unknown[]) : [];
   const fig = !!(s.figure ?? s.picture);
@@ -374,6 +376,8 @@ export function charsOver(slide: unknown, stage: string): string[] {
     over(`${listKey}[${k + 1}]`, text, lim.item);
     if (typeof o.label === "string")
       over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel, false);
+    if (typeof o.name === "string")
+      over(`${listKey}[${k + 1}].name`, o.name, v.keyLabel ?? v.columnLabel, false);
   });
   // The figure's ask, or its ask_without when the figure is not shown, is on the slide too.
   all += Math.max(
@@ -458,8 +462,8 @@ export function roomLine(slide: unknown, stage: string): string {
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return "";
-  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
-    Array.isArray(s[k]),
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
+    (k) => Array.isArray(s[k]),
   );
   const n = listKey ? (s[listKey] as unknown[]).length : 0;
   const v = L.variants

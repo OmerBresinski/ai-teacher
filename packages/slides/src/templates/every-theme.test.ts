@@ -29,6 +29,7 @@ const ALL: TemplateId[] = [
   "equation-hero",
   "panel-list",
   "split-compare",
+  "items-row",
 ];
 
 type Sized = {

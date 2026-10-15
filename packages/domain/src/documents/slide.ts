@@ -324,6 +324,8 @@ export type PathElement = ElementBase & {
   stroke?: string;
   strokeWidth?: number;
   dash?: "solid" | "dashed" | "dotted";
+  /** The gap between dots or dashes, as a multiple of `strokeWidth` (default 2.2). */
+  dashGap?: number;
   arrowStart?: boolean;
   arrowEnd?: boolean;
 };
@@ -635,6 +637,7 @@ const PathElementSchema = z.object({
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   dash: z.enum(["solid", "dashed", "dotted"]).optional(),
+  dashGap: z.number().positive().optional(),
   arrowStart: z.boolean().optional(),
   arrowEnd: z.boolean().optional(),
 });
