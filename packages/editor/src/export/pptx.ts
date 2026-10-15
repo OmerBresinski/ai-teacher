@@ -82,6 +82,7 @@ import { licenceCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
 import { dataUrlImageSize } from "./image-size";
 import { slugify } from "./json";
+import { addGroundArt } from "./pptx-surfaces";
 import { docToRuns, type RunParagraph } from "./runs";
 
 type Pptx = PptxGenJS;
@@ -1457,6 +1458,7 @@ export async function exportLessonPptx(
           });
         }
       }
+      if (art) await addGroundArt(pptxSlide, theme, slide);
 
       const ctx: DrawContext = {
         slide,

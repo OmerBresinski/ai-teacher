@@ -29,7 +29,8 @@
     "./templates/split-compare-capacity.json": "./src/templates/split-compare-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
-    "./picture-fit": "./src/picture-fit.ts"
+    "./picture-fit": "./src/picture-fit.ts",
+    "./surfaces": "./src/themes/surfaces.ts"
   },
   "scripts": {
     "lint": "biome check .",
