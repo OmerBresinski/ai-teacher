@@ -1418,21 +1418,21 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 44
+              "maxCharsPerItem": 98
             },
             {
               "label": "4 questions",
               "counts": {
                 "questions": 4
               },
-              "maxCharsPerItem": 0
+              "maxCharsPerItem": 72
             },
             {
               "label": "3 questions with picture",
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 22
+              "maxCharsPerItem": 66
             }
           ]
         },
@@ -1450,21 +1450,21 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 56
+              "maxCharsPerItem": 132
             },
             {
               "label": "4 questions",
               "counts": {
                 "questions": 4
               },
-              "maxCharsPerItem": 52
+              "maxCharsPerItem": 104
             },
             {
               "label": "3 questions with picture",
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 44
+              "maxCharsPerItem": 80
             }
           ]
         },
@@ -1482,21 +1482,21 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 120
+              "maxCharsPerItem": 160
             },
             {
               "label": "4 questions",
               "counts": {
                 "questions": 4
               },
-              "maxCharsPerItem": 64
+              "maxCharsPerItem": 130
             },
             {
               "label": "3 questions with picture",
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 62
+              "maxCharsPerItem": 132
             }
           ]
         }
@@ -1519,7 +1519,7 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 44
+              "maxCharsPerItem": 48
             },
             {
               "label": "4 questions",
@@ -1544,14 +1544,14 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 56
+              "maxCharsPerItem": 100
             },
             {
               "label": "4 questions",
               "counts": {
                 "questions": 4
               },
-              "maxCharsPerItem": 52
+              "maxCharsPerItem": 0
             }
           ]
         },
@@ -1569,14 +1569,14 @@
               "counts": {
                 "questions": 3
               },
-              "maxCharsPerItem": 120
+              "maxCharsPerItem": 124
             },
             {
               "label": "4 questions",
               "counts": {
                 "questions": 4
               },
-              "maxCharsPerItem": 64
+              "maxCharsPerItem": 0
             }
           ]
         }

@@ -266,3 +266,24 @@ describe("capacity: practice-capacity.json is what the renderer measures", () =>
     expect(r.fields?.every((f) => !f.over)).toBe(true);
   });
 });
+
+describe("answers stay with their tasks", () => {
+  test("a blank task drops its own answer, on practice and the exit ticket", () => {
+    const theme = getTheme("paper");
+    for (const template of ["practice", "exit-ticket"] as const) {
+      const r = layoutTemplate(
+        {
+          template,
+          heading: "Halves",
+          questions: ["Half of 8?", "  ", "Half of 20?"],
+          answers: ["4", "x", "10"],
+        },
+        theme,
+        "ks2",
+      );
+      expect(r.slide.question?.type === "open-response" && r.slide.question.modelAnswer).toBe(
+        "1. 4\n2. 10",
+      );
+    }
+  });
+});

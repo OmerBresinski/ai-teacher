@@ -192,6 +192,8 @@ describe("typed callout card", () => {
         }
   });
 
+  // TEACH-230 part b: practice and the exit ticket are the "work alone" slides by design (ruling
+  // 231), so their hashes were re-pinned to the new layout; stored decks keep their elements.
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;
@@ -200,12 +202,6 @@ describe("typed callout card", () => {
       for (const theme of THEMES.filter((t) => !t.v2))
         OLD_LESSON_INPUTS.forEach((input, i) => {
           const key = `${stage}/${theme.id}/${i}-${input.template}`;
-          // TEACH-230 part b: practice and the exit ticket are re-laid as the "work alone" slides
-          // by design (ruling 231); stored decks keep their elements. Their hashes are not compared.
-          if (input.template === "practice" || input.template === "exit-ticket") {
-            n++;
-            return;
-          }
           const j = JSON.stringify(layoutTemplate(input, theme, stage), (k, v) =>
             k === "id" ? undefined : v,
           );

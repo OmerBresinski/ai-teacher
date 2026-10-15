@@ -427,7 +427,7 @@ export function layoutPractice(c: Ctx, input: TemplateInput) {
       y += WA.rule + pad + rowH + rowGap;
     }
   }
-  c.question = listAnswers(items, input.answers);
+  c.question = listAnswers(items, keptAnswers(input));
   if (!c.question) delete c.question;
 }
 
@@ -512,6 +512,13 @@ export function workPaths(els: SlideElement[]): (string | undefined)[] {
  * squeezed onto one (rulings 141, 231). The visual stays with the first slide; the answers follow
  * their tasks. Returns the input alone when it fits the count.
  */
+/** The answers of the tasks that are drawn: a blank task drops its answer too, so they stay aligned. */
+export function keptAnswers(input: TemplateInput): string[] | undefined {
+  if (!input.answers) return undefined;
+  const qs = input.questions ?? [];
+  return input.answers.filter((_, i) => typeof qs[i] === "string" && !!qs[i]?.trim());
+}
+
 export function splitPractice(input: TemplateInput): TemplateInput[] {
   const qs = input.questions ?? [];
   const max = input.figure ? PRACTICE_VISUAL_MAX : PRACTICE_MAX;

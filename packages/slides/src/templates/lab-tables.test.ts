@@ -33,6 +33,8 @@ type Cat = {
 const LAB = catalogue as Cat;
 const FULL = process.env.LAB_FULL === "1";
 
+// TEACH-230 part b: practice and exit-ticket cells in catalogue.json are re-pinned to the "work
+// alone" layouts (measureTemplate at this commit); the lab's cells were the old numbered list.
 describe("capacities equal the lab's pinned tables (spot check)", () => {
   const cells = TEMPLATE_DOCS.flatMap((doc) =>
     STAGES.flatMap(({ key, stage, theme }) =>
@@ -43,11 +45,7 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
         return { doc, v, key, stage, theme, value: lab?.maxCharsPerItem ?? -1 };
       }),
     ),
-  )
-    .filter((c) => c.value >= 2 && c.value <= 238)
-    // TEACH-230 part b: practice and the exit ticket are the "work alone" layouts now, measured in
-    // practice-capacity.json (practice.test.ts); the lab's pinned cells were the old numbered list.
-    .filter((c) => c.doc.id !== "practice" && c.doc.id !== "exit-ticket");
+  ).filter((c) => c.value >= 2 && c.value <= 238);
   // Every k-th cell: about 20, spread over templates and stages.
   const k = Math.max(1, Math.floor(cells.length / 20));
   const picked = cells.filter((_, i) => i % k === 0);
@@ -59,7 +57,12 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
     expect(picked.length).toBeGreaterThanOrEqual(18);
   });
 
-  for (const { doc, v, key, stage, theme, value } of picked)
+  // The re-pinned work-alone cells are always checked, not only when the spread picks them.
+  const work = cells.filter((c) => c.doc.id === "practice" || c.doc.id === "exit-ticket");
+  for (const { doc, v, key, stage, theme, value } of [
+    ...picked,
+    ...work.filter((c) => !picked.includes(c)),
+  ])
     test(`${doc.id} ${key} "${v.label}": fits at ${value}, over at ${value + 2}`, () => {
       const over = (n: number) =>
         layoutTemplate(inputFor(doc, v, n), getTheme(theme), stage as Stage, { fullSize: true })
