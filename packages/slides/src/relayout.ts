@@ -21,7 +21,10 @@ import type {
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
+import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
+import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 import { resolveTextStyle } from "./text-style";
+import { ageProfileOf } from "./theme-v2";
 
 /** How one adaptive template's items behave in the editor. */
 export type AdaptiveSpec = {
@@ -76,21 +79,24 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
   },
   "panel-list": {
     items: "rows",
-    min: 2,
-    max: () => 6,
-    blank: () => ({ title: "New row", text: "Add a sentence here." }),
+    min: PANEL_MIN,
+    // Six rows never fit at KS1-2 (every field's hard maximum is 0 there), so add stops at five.
+    max: (stage) => (ageProfileOf(stage) === "secondary" ? PANEL_MAX : PANEL_MAX - 1),
+    blank: () => ({ name: "New row", text: "Add a sentence here." }),
     continuation: true,
     noun: "rows",
+    paths: panelListPaths,
   },
   "split-compare": {
     items: "sides",
-    min: 2,
-    max: () => 3,
-    blank: () => ({ label: "New side", text: "Add a sentence here." }),
+    min: SPLIT_MIN,
+    max: () => SPLIT_MAX,
+    blank: () => ({ title: "New side", text: "Add a sentence here." }),
     // A compare splits like the others (each side keeps its words and picture): Split is offered
     // wherever the over chip is.
     continuation: true,
     noun: "sides",
+    paths: splitPaths,
   },
 };
 
@@ -251,16 +257,14 @@ function cardsGridFields(ref: LayoutRef, result: TemplateResult, stage: Stage): 
   return out;
 }
 
-type ReportedField = { path?: string; key?: string; cap?: number; hardMax?: number };
-
 /** The ruling-215 state of every field the template publishes limits for (none: no fields). */
 export function fieldStates(ref: LayoutRef, result: TemplateResult, stage: Stage): LayoutField[] {
   if (ref.template === "cards-grid") return cardsGridFields(ref, result, stage);
-  const reported = (result as TemplateResult & { fields?: ReportedField[] }).fields;
-  if (!Array.isArray(reported)) return [];
+  const reported = result.fields;
+  if (!reported?.length) return [];
   return reported.flatMap((f) => {
-    const path = f.path ?? f.key;
-    if (!path || typeof f.cap !== "number") return [];
+    const path = f.path;
+    if (!path) return [];
     // A layout that is never comfortable at this count (items-row at 5-6) publishes a cap of 0:
     // its limit is the hard maximum. With neither, no limit is known: no counter, never "n/0".
     const cap = f.cap > 0 ? f.cap : (f.hardMax ?? 0);
@@ -268,7 +272,7 @@ export function fieldStates(ref: LayoutRef, result: TemplateResult, stage: Stage
     const value = getAtPath(ref, path);
     const chars = typeof value === "string" ? value.trim().length : 0;
     const state: LayoutField["state"] =
-      f.hardMax !== undefined && chars > f.hardMax ? "over" : chars > cap ? "tight" : "ok";
+      f.hardMax > 0 && chars > f.hardMax ? "over" : chars > cap ? "tight" : "ok";
     return [{ path, chars, cap, hardMax: f.hardMax, state }];
   });
 }

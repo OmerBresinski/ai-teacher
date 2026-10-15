@@ -20,8 +20,20 @@ import {
   splitItems,
   stageOf,
 } from "./relayout";
+import type { FieldReport } from "./templates";
 import { resolveTextStyle } from "./text-style";
 import { getTheme } from "./themes";
+
+/** A template's field report as master's `FieldReport` (only path, cap and hardMax are read here). */
+const report = (path: string, cap: number, hardMax: number): FieldReport => ({
+  field: path,
+  path,
+  chars: 0,
+  cap,
+  hardMax,
+  tight: false,
+  over: false,
+});
 
 /*
  * TEACH-205 part b: re-laying an adaptive group from its LayoutRef. The ref's input goes back
@@ -117,14 +129,14 @@ describe("fields (ruling 215)", () => {
     const row: LayoutRef = { template: "items-row", input: { items: [{ title: "a".repeat(30) }] } };
     const bare = { slide: { kind: "content" as const, elements: [] }, over: [] };
     expect(fieldStates(row, bare, "ks3")).toEqual([]);
-    const reported = { ...bare, fields: [{ path: "items.0.title", cap: 20, hardMax: 40 }] };
+    const reported = { ...bare, fields: [report("items.0.title", 20, 40)] };
     expect(fieldStates(row, reported, "ks3")).toEqual([
       { path: "items.0.title", chars: 30, cap: 20, hardMax: 40, state: "tight" },
     ]);
   });
 
   test("a template layoutTemplate does not lay out yet is refused, not drawn", () => {
-    expect(() => relayout({ template: "split-compare", input: {} }, theme, "ks3")).toThrow(
+    expect(() => relayout({ template: "items-row", input: {} }, theme, "ks3")).toThrow(
       NotAdaptiveError,
     );
   });
@@ -251,11 +263,11 @@ describe("integration round 3", () => {
   test("a field whose count is never comfortable (cap 0) counts against its hard max, never n/0", () => {
     const row: LayoutRef = { template: "items-row", input: { items: [{ name: "a".repeat(30) }] } };
     const bare = { slide: { kind: "content" as const, elements: [] }, over: [] };
-    const zero = { ...bare, fields: [{ path: "items.0.name", cap: 0, hardMax: 20 }] };
+    const zero = { ...bare, fields: [report("items.0.name", 0, 20)] };
     expect(fieldStates(row, zero, "ks3")).toEqual([
       { path: "items.0.name", chars: 30, cap: 20, hardMax: 20, state: "over" },
     ]);
-    const none = { ...bare, fields: [{ path: "items.0.name", cap: 0, hardMax: 0 }] };
+    const none = { ...bare, fields: [report("items.0.name", 0, 0)] };
     expect(fieldStates(row, none, "ks3")).toEqual([]);
   });
 
