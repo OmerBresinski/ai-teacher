@@ -24,48 +24,90 @@ const LENGTHS = [6, 24, 90, 400];
 
 /** Read the drawn arrow back from its SVG string, as the browser check does. */
 function readSvg(svg: string) {
-  const shaftD = svg.match(/class="ashaft" d="([^"]+)"/)?.[1];
+  const sh = svg.match(/class="ashaft" d="([^"]+)" data-end="([^"]+)"/);
   const h = svg.match(/class="ahead" data-tip="([^"]+)" data-dir="([^"]+)" d="([^"]+)"/);
-  expect(shaftD).toBeDefined();
-  expect(h).not.toBeNull();
-  return { shaftD: shaftD!, head: headFromAttrs(h![1]!, h![2]!, h![3]!) };
+  const dash = svg.match(/stroke-dasharray="([\d.]+) ([\d.]+)" stroke-dashoffset="([-\d.]+)"/);
+  if (!sh || !h) throw new Error("no arrow in svg");
+  return {
+    shaftD: sh[1] as string,
+    end: (sh[2] as string).split(",").map(Number) as unknown as Pt,
+    head: headFromAttrs(h[1] as string, h[2] as string, h[3] as string),
+    dash: dash ? dash.slice(1).map(Number) : undefined,
+  };
 }
 
-/** Every rule for one drawn arrow: tip under the shaft end, symmetric arms, nothing past the tip. */
-function expectClean(a: Arrow, sw: number, past = 0.02) {
-  const { shaftD, head } = readSvg(a.svg);
-  const end = pathEnd(shaftD)!.tip;
-  // 1. The shaft ends under the head: its end point is the tip, within the build check's 0.5px.
+/** The chord the head must aim along: from the line's point 1.5 head-lengths back to the tip. */
+function chordDir(line: string, tip: Pt, sw: number): Pt {
+  const reach = sw * ARROW_ARM_K * 1.5;
+  const pts = samplePath(line, 2048);
+  let from = pts[0] as Pt;
+  for (let k = pts.length - 1; k >= 0; k--) {
+    const p = pts[k] as Pt;
+    if (Math.hypot(p[0] - tip[0], p[1] - tip[1]) >= reach) {
+      from = p;
+      break;
+    }
+  }
+  const L = Math.hypot(tip[0] - from[0], tip[1] - from[1]);
+  return [(tip[0] - from[0]) / L, (tip[1] - from[1]) / L];
+}
+
+/** Points of the shaft that carry paint, with their distance along it. */
+function paintedPoints(shaftD: string, dash?: number[]): Pt[] {
+  const pts = samplePath(shaftD, 512);
+  const out: Pt[] = [];
+  let s = 0;
+  for (let k = 0; k < pts.length; k++) {
+    const p = pts[k] as Pt;
+    if (k) s += Math.hypot(p[0] - (pts[k - 1] as Pt)[0], p[1] - (pts[k - 1] as Pt)[1]);
+    if (!dash) out.push(p);
+    else {
+      const [on, off, o] = dash as [number, number, number];
+      const P = on + off;
+      if ((((s + o) % P) + P) % P < on + 0.01) out.push(p);
+    }
+  }
+  return out;
+}
+
+/**
+ * Every rule for one drawn arrow along `line`: the line ends at the tip; the head is symmetric
+ * about the end chord; no shaft paint sits inside the head's V (a solid shaft only along its axis,
+ * a dashed one stopping a clear stroke before the head's ink); nothing pokes past the tip.
+ */
+function expectClean(line: string, a: Arrow, sw: number) {
+  const { shaftD, end, head, dash } = readSvg(a.svg);
   expect(arrowFaults(head, end)).toEqual([]);
-  expect(Math.hypot(end[0] - head.tip[0], end[1] - head.tip[1])).toBeLessThanOrEqual(0.02);
-  // 2. The arms: ±32° about the shaft, each 3.2 × the stroke.
-  const [ux, uy] = head.dir;
-  const tipProj = head.tip[0] * ux + head.tip[1] * uy;
+  const tip = head.tip;
+  // the head is symmetric, within 2°, about the chord the line arrives along
+  const [cx, cy] = chordDir(line, tip, sw);
   for (const arm of head.arms) {
-    const vx = arm[0] - head.tip[0];
-    const vy = arm[1] - head.tip[1];
+    const vx = arm[0] - tip[0];
+    const vy = arm[1] - tip[1];
     const len = Math.hypot(vx, vy);
     expect(len).toBeCloseTo(sw * ARROW_ARM_K, 1);
-    const deg = (Math.acos(-(vx * ux + vy * uy) / len) * 180) / Math.PI;
-    expect(Math.abs(deg - ARROW_ARM_DEG)).toBeLessThanOrEqual(0.5);
-    // the arms sit behind the tip
-    expect(arm[0] * ux + arm[1] * uy).toBeLessThan(tipProj);
+    const deg = (Math.acos(-(vx * cx + vy * cy) / len) * 180) / Math.PI;
+    expect(Math.abs(deg - ARROW_ARM_DEG)).toBeLessThanOrEqual(2);
   }
-  // 3. Nothing pokes past the tip: the shaft near the head never goes beyond it, and its round cap
-  //    reaches no further than the head's own round join at the tip.
-  const reach = sw * ARROW_ARM_K;
-  // the shaft's last run inside the head's reach (walking back from the end until it leaves)
-  const all = samplePath(shaftD, 256);
-  const pts: Pt[] = [];
-  for (let k = all.length - 1; k >= 0; k--) {
-    const p = all[k]!;
-    if (Math.hypot(p[0] - head.tip[0], p[1] - head.tip[1]) > reach) break;
-    pts.push(p);
+  const [ux, uy] = head.dir;
+  const along = (p: Pt) => (p[0] - tip[0]) * ux + (p[1] - tip[1]) * uy;
+  const across = (p: Pt) => Math.abs(-(p[0] - tip[0]) * uy + (p[1] - tip[1]) * ux);
+  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const near = sw * ARROW_ARM_K * 1.5;
+  for (const p of paintedPoints(shaftD, dash)) {
+    // the paint around the head (earlier turns of a long path may lie anywhere)
+    if (Math.hypot(p[0] - tip[0], p[1] - tip[1]) > near) continue;
+    // never past the tip
+    expect(along(p)).toBeLessThanOrEqual(0.02);
+    if (dash) {
+      // a dash or dot ends a clear stroke before the head's ink: its own ink (sw/2) and the arms'
+      // (sw/2) never come within one stroke of each other
+      expect(along(p)).toBeLessThanOrEqual(-depth - 2 * sw + 0.05);
+    } else if (along(p) > -depth) {
+      // inside the V, a solid shaft runs only straight along the head's axis
+      expect(across(p)).toBeLessThanOrEqual(0.05);
+    }
   }
-  expect(pts.length).toBeGreaterThan(0);
-  for (const p of pts) expect(p[0] * ux + p[1] * uy).toBeLessThanOrEqual(tipProj + past);
-  const capReach = Math.max(...pts.map((p) => p[0] * ux + p[1] * uy)) + sw / 2;
-  expect(capReach).toBeLessThanOrEqual(tipProj + sw / 2 + past);
 }
 
 const polar = (o: Pt, deg: number, r: number): Pt => [
@@ -80,7 +122,13 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
       for (const sw of STROKES)
         for (const len of LENGTHS) {
           const a: Pt = [700, 400];
-          expectClean(arrowLine(a, polar(a, deg, len), { ink: "#000", sw }), sw);
+          const b = polar(a, deg, len);
+          const r = (p: Pt) => p.map((v) => Math.round(v * 100) / 100);
+          expectClean(
+            `M${r(a).join(" ")} L${r(b).join(" ")}`,
+            arrowLine(a, b, { ink: "#000", sw }),
+            sw,
+          );
           n++;
         }
     expect(n).toBe(72 * 11 * 4);
@@ -108,22 +156,35 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
       };
       const c1 = ctl(0.1, 0.5);
       const c2 = ctl(0.5, 0.9);
-      expectClean(arrowCubic(p0, c1, c2, p1, { ink: "var(--ink)", sw }), sw, 0.05);
-      expectClean(arrowQuad(p0, ctl(0.2, 0.8), p1, { ink: "var(--ink)", sw }), sw, 0.05);
+      const q = ctl(0.2, 0.8);
+      const r = (p: Pt) => p.map((v) => Math.round(v * 100) / 100).join(" ");
+      for (const dash of [undefined, "0.1 16", "10 9"]) {
+        expectClean(
+          `M${r(p0)} C${r(c1)} ${r(c2)} ${r(p1)}`,
+          arrowCubic(p0, c1, c2, p1, { ink: "var(--ink)", sw, dash }),
+          sw,
+        );
+        expectClean(
+          `M${r(p0)} Q${r(q)} ${r(p1)}`,
+          arrowQuad(p0, q, p1, { ink: "var(--ink)", sw, dash }),
+          sw,
+        );
+      }
     }
   });
 
   test("a curve whose last control point sits on the tip still points along the curve", () => {
     const a = arrowCubic([0, 0], [100, 0], [200, 100], [200, 100], { ink: "#000", sw: 4 });
-    expectClean(a, 4);
+    expectClean("M0 0 C100 0 200 100 200 100", a, 4);
     // the head follows where the shaft comes from: down and to the right
     expect(a.head.dir[0]).toBeGreaterThan(0.6);
     expect(a.head.dir[1]).toBeGreaterThan(0.6);
   });
 
   test("an arrow along any path (lines, curves, H/V) takes its head from the last segment", () => {
-    const a = arrowPath("M10 10 L200 10 Q260 10 260 80 V200 H120", { ink: "#000", sw: 5 })!;
-    expectClean(a, 5, 0.02);
+    const line = "M10 10 L200 10 Q260 10 260 80 V200 H120";
+    const a = arrowPath(line, { ink: "#000", sw: 5 }) as Arrow;
+    expectClean(line, a, 5);
     expect(a.head.dir[0]).toBeCloseTo(-1, 5);
   });
 
@@ -170,18 +231,16 @@ describe("arrow primitive: dashed and dotted shafts end with a dash under the he
       }
   });
 
-  test("the water cycle's dotted vapour arrow: a dot under the head, no gap", () => {
-    const vapour = arrowCubic([860, 536], [860, 420], [790, 304], [694, 268], {
-      ink: "var(--vapour)",
-      sw: 7,
-      dash: "0.1 18",
-    });
-    expectClean(vapour, 7);
-    const off = Number(vapour.svg.match(/stroke-dashoffset="([^"]+)"/)?.[1]);
-    const L = pathLength(vapour.shaft);
-    expect(on(L - 0.05, 0.1, 18, off)).toBe(true);
-    // the old drawing (no offset) left most of a period of empty shaft before the head
-    expect(on(L - 0.05, 0.1, 18, 0)).toBe(false);
+  test("the water cycle's dotted vapour and transpiration arrows: a clear gap, a straight head", () => {
+    const vapour = "M860 536 C860 420 790 304 694 268";
+    expectClean(
+      vapour,
+      arrowPath(vapour, { ink: "var(--vapour)", sw: 6, dash: "0.1 16" }) as Arrow,
+      6,
+    );
+    // transpiration: a short S that leaves a leaf straight up (the skewed-head case)
+    const leaf = "M64 538 C52 514 76 492 64 468";
+    expectClean(leaf, arrowPath(leaf, { ink: "var(--vapour)", sw: 6, dash: "0.1 16" }) as Arrow, 6);
   });
 });
 
@@ -191,8 +250,12 @@ describe("diagram arrows use the primitive", () => {
       for (const sw of [1.5, 2, 2.5, 3]) {
         const b = polar([300, 300], deg, 120);
         const svg = diagramArrow(300, 300, b[0], b[1], "#123", sw);
-        const { shaftD, head } = readSvg(svg);
-        expect(arrowFaults(head, pathEnd(shaftD)!.tip)).toEqual([]);
+        expectClean(
+          `M300 300 L${b.map((v) => Math.round(v * 100) / 100).join(" ")}`,
+          { svg } as Arrow,
+          sw,
+        );
+        const { head } = readSvg(svg);
         expect(Math.hypot(head.tip[0] - b[0], head.tip[1] - b[1])).toBeLessThan(0.01);
       }
   });

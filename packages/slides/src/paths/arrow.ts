@@ -98,96 +98,86 @@ export function endDashOffset(length: number, dash: number, gap: number): number
   return Math.round(o * 1000) / 1000;
 }
 
-/** The shaft as SVG: `d` ending exactly at the head's tip. */
-function shaftSvg(d: string, length: number, s: StrokeStyle): string {
-  let dash = "";
-  const pair = s.dash ? dashPair(s.dash) : undefined;
-  if (s.dash) {
-    dash = ` stroke-dasharray="${s.dash}"`;
-    if (pair) dash += ` stroke-dashoffset="${f(endDashOffset(length, pair[0], pair[1]))}"`;
-  }
-  return `<path class="ashaft" d="${d}" fill="none" stroke="${s.ink}" stroke-width="${s.width ?? f(s.sw)}" stroke-linecap="round" stroke-linejoin="round"${dash}${s.shaftAttrs ? ` ${s.shaftAttrs}` : ""}/>`;
+/** How far back the head aims from: 1.5 head-lengths, measured from the tip (Greg, 15 Oct). */
+export const ARROW_AIM_K = 1.5;
+
+export interface ArrowGeometry {
+  /** The drawn shaft. Solid: the line up to the aim point, then straight along the head's axis to
+   *  the tip. Dashed or dotted: the same, but stopping two strokes before the head's base, so a
+   *  clear gap of one stroke separates the last dash from the head's ink. */
+  shaft: string;
+  /** For a dashed shaft: the `stroke-dashoffset` that ends its last dash where it stops. */
+  offset?: number;
+  head: ArrowHead;
+}
+
+/**
+ * The geometry of an arrow along any absolute path `d` (M, L, H, V, Q, C) whose last point is the
+ * tip. The head aims along the chord from the point 1.5 head-lengths back to the tip, so it is
+ * symmetric about where the line actually comes from and a curve never crosses an arm.
+ */
+export function arrowGeometry(d: string, sw: number, dash?: string): ArrowGeometry | undefined {
+  const segs = segments(d);
+  if (!segs?.length) return undefined;
+  const last = segs[segs.length - 1]!.p;
+  const tip = last[last.length - 1]!;
+  const reach = sw * ARROW_ARM_K * ARROW_AIM_K;
+  const cut = cutBack(segs, tip, reach);
+  const aim = cut ? cut.at : segs[0]!.p[0]!;
+  if (near(aim, tip)) return undefined;
+  const head = arrowHead(tip, aim, sw);
+  const prefix = cut ? cut.prefix : `M${f(aim[0])} ${f(aim[1])}`;
+  const pair = dash ? dashPair(dash) : undefined;
+  if (!pair) return { shaft: `${prefix} L${f(tip[0])} ${f(tip[1])}`, head };
+  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const stop = depth + 2 * sw;
+  const L = Math.hypot(tip[0] - aim[0], tip[1] - aim[1]);
+  const end: Pt = L > stop ? [tip[0] - head.dir[0] * stop, tip[1] - head.dir[1] * stop] : aim;
+  const shaft = L > stop ? `${prefix} L${f(end[0])} ${f(end[1])}` : prefix;
+  return { shaft, offset: endDashOffset(pathLength(shaft), pair[0], pair[1]), head };
+}
+
+/** The shaft and head as SVG; the shaft is tagged with the tip it leads to (`data-end`). */
+function arrowSvg(d: string, s: StrokeStyle): Arrow | undefined {
+  const g = arrowGeometry(d, s.sw, s.dash);
+  if (!g) return undefined;
+  const dash = s.dash
+    ? ` stroke-dasharray="${s.dash}"${g.offset != null ? ` stroke-dashoffset="${f(g.offset)}"` : ""}`
+    : "";
+  const shaftSvg = `<path class="ashaft" d="${g.shaft}" data-end="${f(g.head.tip[0])},${f(g.head.tip[1])}" fill="none" stroke="${s.ink}" stroke-width="${s.width ?? f(s.sw)}" stroke-linecap="round" stroke-linejoin="round"${dash}${s.shaftAttrs ? ` ${s.shaftAttrs}` : ""}/>`;
+  return { shaft: g.shaft, head: g.head, svg: shaftSvg + arrowHeadSvg(g.head, s.ink, s.width) };
 }
 
 export interface Arrow {
-  /** The shaft's path, ending at the tip. */
+  /** The drawn shaft (see `ArrowGeometry.shaft`). */
   shaft: string;
   head: ArrowHead;
   /** Shaft then head, as SVG. */
   svg: string;
 }
 
+const P = (p: Pt) => `${f(p[0])} ${f(p[1])}`;
+
 /** A straight line arrow from `a` to its tip `b`. */
-export function arrowLine(a0: Pt, b0: Pt, s: StrokeStyle): Arrow {
-  const [a, b] = [r2(a0), r2(b0)];
-  const head = arrowHead(b, a, s.sw);
-  const shaft = `M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}`;
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  return { shaft, head, svg: shaftSvg(shaft, len, s) + arrowHeadSvg(head, s.ink, s.width) };
+export function arrowLine(a: Pt, b: Pt, s: StrokeStyle): Arrow {
+  const [p, q] = [r2(a), r2(b)];
+  return arrowSvg(`M${P(p)} L${P(near(p, q) ? [q[0] - 1, q[1]] : q)}`, s) as Arrow;
 }
 
 /** A quadratic arrow from `a`, bowed through control `c`, to its tip `b`. */
-export function arrowQuad(a0: Pt, c0: Pt, b0: Pt, s: StrokeStyle): Arrow {
-  const [a, c, b] = [r2(a0), r2(c0), r2(b0)];
-  const shaft = `M${f(a[0])} ${f(a[1])} Q${f(c[0])} ${f(c[1])} ${f(b[0])} ${f(b[1])}`;
-  const head = arrowHead(b, approach(shaft, b, s.sw) ?? (near(c, b) ? a : c), s.sw);
-  return {
-    shaft,
-    head,
-    svg: shaftSvg(shaft, pathLength(shaft), s) + arrowHeadSvg(head, s.ink, s.width),
-  };
+export function arrowQuad(a: Pt, c: Pt, b: Pt, s: StrokeStyle): Arrow {
+  return (arrowSvg(`M${P(r2(a))} Q${P(r2(c))} ${P(r2(b))}`, s) ?? arrowLine(a, b, s)) as Arrow;
 }
 
-/** A cubic arrow p0 → c1, c2 → tip p1; the head follows the end tangent (p1 − c2). */
-export function arrowCubic(q0: Pt, q1: Pt, q2: Pt, q3: Pt, s: StrokeStyle): Arrow {
-  // the head is built from the same rounded points the shaft is written with
-  const [p0, c1, c2, p1] = [r2(q0), r2(q1), r2(q2), r2(q3)];
-  const shaft = `M${f(p0[0])} ${f(p0[1])} C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(p1[0])} ${f(p1[1])}`;
-  const tangent = !near(c2, p1) ? c2 : !near(c1, p1) ? c1 : p0;
-  const head = arrowHead(p1, approach(shaft, p1, s.sw) ?? tangent, s.sw);
-  return {
-    shaft,
-    head,
-    svg: shaftSvg(shaft, pathLength(shaft), s) + arrowHeadSvg(head, s.ink, s.width),
-  };
+/** A cubic arrow p0 → c1, c2 → tip p1. */
+export function arrowCubic(p0: Pt, c1: Pt, c2: Pt, p1: Pt, s: StrokeStyle): Arrow {
+  return (arrowSvg(`M${P(r2(p0))} C${P(r2(c1))} ${P(r2(c2))} ${P(r2(p1))}`, s) ??
+    arrowLine(p0, p1, s)) as Arrow;
 }
 
-/**
- * An arrow along any absolute path `d` (M, L, H, V, Q, C) whose last point is the tip; the head
- * follows the path's end tangent.
- */
+/** An arrow along any absolute path `d` (M, L, H, V, Q, C) whose last point is the tip. */
 export function arrowPath(d: string, s: StrokeStyle): Arrow | undefined {
-  const end = pathEnd(d);
-  if (!end) return undefined;
-  const head = arrowHead(end.tip, approach(d, end.tip, s.sw) ?? end.from, s.sw);
-  return {
-    shaft: d,
-    head,
-    svg: shaftSvg(d, pathLength(d), s) + arrowHeadSvg(head, s.ink, s.width),
-  };
-}
-
-/**
- * Where a curved shaft comes from as it reaches the head: the point on it one head-depth back
- * from the tip. On a curve the head follows this chord rather than the bare end tangent, so it sits
- * on the line the eye sees (the two agree on any gentle curve; they differ only when the last
- * control point all but touches the tip, where the tangent points somewhere the shaft does not go).
- */
-function approach(d: string, tip: Pt, sw: number): Pt | undefined {
-  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
-  const pts = samplePath(d, 256);
-  for (let k = pts.length - 2; k >= 0; k--) {
-    const p = pts[k]!;
-    const dist = Math.hypot(p[0] - tip[0], p[1] - tip[1]);
-    if (dist >= depth) {
-      // interpolate to exactly one head-depth back
-      const q = pts[k + 1]!;
-      const dq = Math.hypot(q[0] - tip[0], q[1] - tip[1]);
-      const t = dist === dq ? 0 : (dist - depth) / (dist - dq);
-      return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-    }
-  }
-  return undefined;
+  return arrowSvg(d, s);
 }
 
 const r2 = (p: Pt): Pt => [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100];
@@ -278,6 +268,58 @@ function at(s: Seg, t: number): Pt {
   ];
 }
 
+/** Split segment `s` at t, keeping the first part. */
+function headPart(s: Seg, t: number): Seg {
+  const lerp = (a: Pt, b: Pt): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const [a, b, c, d] = s.p as [Pt, Pt, Pt?, Pt?];
+  if (s.k === "L") return { k: "L", p: [a, lerp(a, b)] };
+  if (s.k === "Q") {
+    const ab = lerp(a, b);
+    return { k: "Q", p: [a, ab, lerp(ab, lerp(b, c!))] };
+  }
+  const ab = lerp(a, b);
+  const bc = lerp(b, c!);
+  const cd = lerp(c!, d!);
+  const abc = lerp(ab, bc);
+  return { k: "C", p: [a, ab, abc, lerp(abc, lerp(bc, cd))] };
+}
+
+const write = (segs: Seg[]) =>
+  segs.map((s, i) => (i ? "" : `M${P(s.p[0]!)} `) + s.k + s.p.slice(1).map(P).join(" ")).join(" ");
+
+/**
+ * Walk back from the tip to the last point of the path `reach` away (straight-line distance):
+ * that point, and the path up to it (curves cut exactly, by de Casteljau).
+ */
+function cutBack(segs: Seg[], tip: Pt, reach: number): { at: Pt; prefix: string } | undefined {
+  const dist = (p: Pt) => Math.hypot(p[0] - tip[0], p[1] - tip[1]);
+  for (let k = segs.length - 1; k >= 0; k--) {
+    const s = segs[k]!;
+    const N = s.k === "L" ? 64 : 256;
+    let prevT = 1;
+    for (let j = N - 1; j >= 0; j--) {
+      const t = j / N;
+      if (dist(at(s, t)) >= reach) {
+        // refine between t and prevT
+        let lo = t;
+        let hi = prevT;
+        for (let it = 0; it < 30; it++) {
+          const m = (lo + hi) / 2;
+          if (dist(at(s, m)) >= reach) lo = m;
+          else hi = m;
+        }
+        const pt = at(s, lo);
+        // a straight segment needs no cut point: the shaft runs on along it to the tip
+        if (s.k === "L")
+          return { at: pt, prefix: k ? write(segs.slice(0, k)) : `M${P(s.p[0] as Pt)}` };
+        return { at: pt, prefix: write([...segs.slice(0, k), headPart(s, lo)]) };
+      }
+      prevT = t;
+    }
+  }
+  return undefined;
+}
+
 /** Points along an absolute path, `n` per curve: for length and for tests. */
 export function samplePath(d: string, n = 64): Pt[] {
   const segs = segments(d) ?? [];
@@ -360,4 +402,22 @@ export function headFromAttrs(
 /** The head as a PPTX custom-geometry polyline (arm, tip, arm), from the same points as the SVG. */
 export function arrowHeadPolyline(head: ArrowHead): Pt[] {
   return [head.arms[0], head.tip, head.arms[1]];
+}
+
+/**
+ * For parity fixtures saved before the primitive (TEACH-75 part x): each line arrow, in either
+ * markup (the old shortened shaft plus filled polygon head, or the primitive's shaft plus open
+ * head), becomes `ARROW(tip)`, so a saved drawing still compares exactly everywhere else and every
+ * arrow still points at the same tip.
+ */
+export function canonicalArrows(svg: string): string {
+  return svg
+    .replace(
+      /<path class="ashaft"[^<]*?\/><path class="ahead" data-tip="([^"]+)"[^<]*?\/>/g,
+      "ARROW($1)",
+    )
+    .replace(
+      /<(?:line|path)\b[^<]*?\/><polygon points="(-?[\d.]+,-?[\d.]+) [^"]*" fill="[^"]*"\/>/g,
+      "ARROW($1)",
+    );
 }

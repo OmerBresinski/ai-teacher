@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { canonicalArrows } from "@tj/slides/arrow";
 import { stripBuilds, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
@@ -64,7 +65,7 @@ for (const b of [
       const svgs = (els: El[]) =>
         els
           .filter((e) => e.name === "Diagram" && typeof e.src === "string")
-          .map((e) => stripBuilds(svgOfDataUrl(String(e.src)) ?? ""));
+          .map((e) => canonicalArrows(stripBuilds(svgOfDataUrl(String(e.src)) ?? "")));
       // G3 (FAULT-ORIGINS): the lab drew these slides' two hidden-count rings as one unshared pile,
       // because "Find the number in one ring" in the alt matched the pile rule. They are drawn
       // again as the writer's spec asked (two rings, "?" in each), not as the lab's wrong pile.

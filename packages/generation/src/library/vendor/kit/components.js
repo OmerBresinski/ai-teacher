@@ -5,7 +5,7 @@
 import { niceTicks } from "./axis.js";
 import { GRID } from "./layout.js";
 import { noteCut } from "./pictures.js";
-import { arrowHead, endDashOffset, pathLength } from "@tj/slides/arrow";
+import { arrowGeometry } from "@tj/slides/arrow";
 import { clamp, fmtInt, h, lines, measure, overlaps, rng, T, W, wrap } from "./svg.js";
 
 export { niceTicks };
@@ -144,6 +144,8 @@ function strokePx(ctx, w) {
   let px = v ? (ctx.tok ? ctx.tok(v[1]) : NaN) : parseFloat(s);
   const plus = s.match(/[+-]\s*([\d.]+)px\s*\)?\s*$/);
   if (v && plus) px += (s.includes("- " + plus[1]) ? -1 : 1) * parseFloat(plus[1]);
+  const times = s.match(/\*\s*([\d.]+)\s*\)?\s*$/);
+  if (v && times) px *= parseFloat(times[1]);
   return Number.isFinite(px) && px > 0 ? px : 5;
 }
 /**
@@ -158,13 +160,19 @@ export function arrow(ctx, p, d, ex, ey, ang, col, w, opts = {}) {
   const g = h("g", opts.g || {}, p);
   const width = w || "var(--sw-arrow)";
   const sw = strokePx(ctx, width);
-  const reach = opts.reach != null ? opts.reach : ctx.tk.head * (opts.k || 1) * 0.72;
+  // the head's round join reaches half a stroke past its tip, so the tip sits half a stroke short of
+  // the point the arrow aims at: the drawn ink ends on that point, never past it
+  const reach = (opts.reach != null ? opts.reach : ctx.tk.head * (opts.k || 1) * 0.72) - sw / 2;
   const c = Math.cos(ang),
     sn = Math.sin(ang);
   const tip = [+(ex + c * reach).toFixed(2), +(ey + sn * reach).toFixed(2)];
-  const shaft = reach > 0.01 ? `${d} L${tip[0]} ${tip[1]}` : d;
+  const line = reach > 0.01 ? `${d} L${tip[0]} ${tip[1]}` : d;
+  // the primitive aims the head along the chord 1.5 head-lengths back, runs a solid shaft straight
+  // along that axis to the tip, and stops a dashed or dotted one a clear stroke before the head
+  const geo = arrowGeometry(line, sw, opts.dash && opts.draw == null ? String(opts.dash) : undefined) ||
+    arrowGeometry(`M${ex} ${ey} L${tip[0]} ${tip[1]}`, sw);
   const a = {
-    d: shaft,
+    d: geo.shaft,
     fill: "none",
     stroke: col,
     "stroke-width": width,
@@ -174,18 +182,10 @@ export function arrow(ctx, p, d, ex, ey, ang, col, w, opts = {}) {
     cls: [opts.draw != null ? "draw" : null, opts.cls].filter(Boolean).join(" ") || null,
   };
   if (opts.dash) a["stroke-dasharray"] = opts.dash;
+  if (geo.offset != null) a["stroke-dashoffset"] = String(geo.offset);
   if (opts.draw != null) Object.assign(a, { pathLength: 1, s: opts.draw, delay: opts.delay || 0 });
-  const el = h("path", a, g);
-  const pair = opts.dash ? String(opts.dash).split(/[\s,]+/).map(Number) : null;
-  if (pair && pair.length === 2 && opts.draw == null) {
-    let len = NaN;
-    try {
-      len = el.getTotalLength();
-    } catch {}
-    if (!Number.isFinite(len) || len <= 0) len = pathLength(shaft);
-    if (len > 0) el.setAttribute("stroke-dashoffset", String(endDashOffset(len, pair[0], pair[1])));
-  }
-  const head = arrowHead(tip, [tip[0] - c, tip[1] - sn], sw);
+  h("path", a, g);
+  const head = geo.head;
   h(
     "path",
     {

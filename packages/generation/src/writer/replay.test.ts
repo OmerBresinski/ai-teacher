@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { canonicalArrows } from "@tj/slides/arrow";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 import { slideRoles } from "./role";
 
@@ -75,9 +76,14 @@ const headingOf = (els: El[]) => {
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 const LESSONS = readdirSync(DIR).sort();
+const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const stable = (e: El) => {
   // `diagram` (TEACH-97 part h): what a drawing was drawn from; the lab's elements predate it.
   const { id: _i, source: _s, style: _t, period: _p, diagram: _d, ...rest } = e;
+  // Line arrows are drawn by the arrow primitive since TEACH-75 part x: compare each arrow by its
+  // tip, and the rest of the drawing byte for byte.
+  if (rest.name === "Diagram" && typeof rest.src === "string" && rest.src.startsWith(SVG_URL))
+    rest.src = canonicalArrows(decodeURIComponent(rest.src.slice(SVG_URL.length)));
   // A list marker's numeral is laid at master's badge sizes (TEACH-110 part a), not the lab's.
   if (rest.name === "Marker" && rest.textStyle) {
     const { fontSize: _f, ...ts } = rest.textStyle as El;
