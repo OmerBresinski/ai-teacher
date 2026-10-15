@@ -858,7 +858,52 @@ describe("exportLessonPptx", () => {
     expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
     expect(xml).toContain("<a:moveTo>");
     expect(xml).not.toMatch(/<a:close ?\/>/);
-    expect(xml).toContain('<a:tailEnd type="triangle"');
+    expect(xml).toContain('<a:tailEnd type="arrow" w="med" len="med"/>');
+  }, 30_000);
+
+  const lineElement = (extra: Partial<SlideElement> = {}): SlideElement =>
+    ({
+      id: "ln1",
+      type: "line",
+      x: 100,
+      y: 100,
+      w: 400,
+      h: 20,
+      from: { x: 0, y: 0.5 },
+      to: { x: 1, y: 0.5 },
+      stroke: "#000000",
+      strokeWidth: 4,
+      arrowEnd: true,
+      ...extra,
+    }) as SlideElement;
+
+  it("a line arrow gets an open head sized from its stroke, like the editor (TEACH-75 part x)", async () => {
+    const xml = await slideXml([lineElement()]);
+    expect(xml).toContain('<a:tailEnd type="arrow" w="med" len="med"/>');
+    expect(xml).not.toContain('type="triangle"');
+  }, 30_000);
+
+  it("a dotted arrow stops its dots two strokes short of a solid stub that carries the head", async () => {
+    const xml = await slideXml([lineElement({ dash: "dotted" } as Partial<SlideElement>)]);
+    const shapes = xml.split(/<p:(?:sp|cxnSp)>/).slice(1);
+    const dotted = shapes.filter((x) => /<a:prstDash val="sysDot"/.test(x));
+    const stub = shapes.filter((x) => x.includes('<a:tailEnd type="arrow"'));
+    expect(dotted).toHaveLength(1);
+    expect(stub).toHaveLength(1);
+    expect(dotted[0]).not.toContain('type="arrow"');
+    expect(stub[0]).not.toContain("sysDot");
+    // the dotted run ends before the stub begins: off.x + ext.cx (EMU) of each
+    const span = (x: string) => {
+      const off = Number(/<a:off x="(\d+)"/.exec(x)?.[1]);
+      const ext = Number(/<a:ext cx="(\d+)"/.exec(x)?.[1]);
+      return [off, off + ext];
+    };
+    const [, dotEnd] = span(dotted[0] as string);
+    const [stubStart, stubEnd] = span(stub[0] as string);
+    expect(dotEnd as number).toBeLessThan(stubStart as number);
+    // 4 pt stroke: the gap is two strokes, 8 pt = 101600 EMU
+    expect((stubStart as number) - (dotEnd as number)).toBeGreaterThanOrEqual(101600 - 2);
+    expect(Math.abs((stubEnd as number) - (500 / 72) * 914400)).toBeLessThan(10);
   }, 30_000);
 
   it("a closed path ends in a close and carries its fill", async () => {
@@ -918,9 +963,10 @@ describe("exportLessonPptx", () => {
     expect(xml.split("<a:custGeom>").length - 1).toBe(1);
     expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
     expect(xml).not.toMatch(/<a:close ?\/>/);
-    // The axes, the guide and the two arrows are lines; the arrows and axes end in a triangle.
+    // The axes, the guide and the two arrows are lines; the arrows and axes end in an open
+    // arrowhead, as the editor draws them (TEACH-75 part x).
     expect(xml.split('prst="line"').length - 1).toBe(5);
-    expect(xml.split('<a:tailEnd type="triangle"').length - 1).toBe(4);
+    expect(xml.split('<a:tailEnd type="arrow" w="med" len="med"/>').length - 1).toBe(4);
     for (const label of ["Energy", "Progress of reaction", "Ea", "ΔH"])
       expect(xml).toContain(`<a:t>${label}</a:t>`);
     // Every label is a text box, and nothing in the figure is rotated.

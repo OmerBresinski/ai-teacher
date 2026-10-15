@@ -33,7 +33,8 @@
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
-    "./surfaces": "./src/themes/surfaces.ts"
+    "./surfaces": "./src/themes/surfaces.ts",
+    "./arrow": "./src/paths/arrow.ts"
   },
   "scripts": {
     "lint": "biome check .",

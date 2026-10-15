@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { canonicalArrows } from "@tj/slides/arrow";
 import { stripBuilds, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { DIAGRAM_SAMPLES, MEANING_SAMPLES, openaiSchemaFaults } from "@tj/slides/diagrams";
 
@@ -33,6 +34,8 @@ type Fixture = {
     rect: { x: number; y: number; w: number; h: number };
     specs: unknown[];
     sha256: string;
+    /** The same drawing with each line arrow as its tip (`canonicalArrows`, TEACH-75 part x). */
+    sha256Arrows?: string;
   }[];
   figures: {
     lesson: string;
@@ -308,7 +311,14 @@ describe("replay: saved base4 writer outputs (lab/ab 92f1b36d)", () => {
       const hit = row.specs.some((spec) => {
         const el = writerDiagramElement(spec, getTheme(row.theme), row.stage, row.rect, () => "x");
         const svg = el && svgOfDataUrl(el.src);
-        return !!svg && createHash("sha256").update(stripBuilds(svg)).digest("hex") === row.sha256;
+        // Line arrows are drawn by the arrow primitive since TEACH-75 part x: each arrow compares
+        // by its tip, and the rest of the drawing byte for byte.
+        const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+        return (
+          !!svg &&
+          (sha(stripBuilds(svg)) === row.sha256 ||
+            sha(canonicalArrows(stripBuilds(svg))) === row.sha256Arrows)
+        );
       });
       if (hit) same += 1;
       // readGraph and labels3 (TEACH-110 part e) redraw measured line graphs and particle keys on

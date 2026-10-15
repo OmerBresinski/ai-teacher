@@ -61,6 +61,7 @@ import {
   slideBackground,
   v2Profile,
 } from "@tj/slides";
+import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -1071,6 +1072,12 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
   }
 }
 
+/**
+ * Lines with arrowheads match the editor's arrow primitive (TEACH-75 part x): an open arrowhead
+ * (OOXML `arrow`, sized med × med: about 3 strokes long and 3 wide, the nearest preset to the
+ * primitive's 3.2-stroke arms at ±32°). A dashed or dotted shaft stops two strokes short of the
+ * head, which is carried by a short solid stub along the shaft, so no dot sits inside the head.
+ */
 function drawLine(pptxSlide: PptxGenJS.Slide, element: LineElement, theme: Theme): void {
   // Every other element maps opacity through `transparencyOf`; so does this one.
   const transparency = transparencyOf(element.opacity);
@@ -1078,23 +1085,82 @@ function drawLine(pptxSlide: PptxGenJS.Slide, element: LineElement, theme: Theme
   const y1 = element.y + element.from.y * element.h;
   const x2 = element.x + element.to.x * element.w;
   const y2 = element.y + element.to.y * element.h;
-  pptxSlide.addShape("line", {
-    x: inches(Math.min(x1, x2)),
-    y: inches(Math.min(y1, y2)),
-    w: inches(Math.max(Math.abs(x2 - x1), 0.01)),
-    h: inches(Math.max(Math.abs(y2 - y1), 0.01)),
-    flipH: x2 < x1,
-    flipV: y2 < y1,
-    ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
-    line: {
-      color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
-      width: element.strokeWidth ?? 3,
-      dashType: pptxDashType(element.dash),
-      beginArrowType: element.arrowStart ? "triangle" : "none",
-      endArrowType: element.arrowEnd ? "triangle" : "none",
-      ...(transparency != null ? { transparency } : {}),
-    },
-  });
+  const sw = element.strokeWidth ?? 3;
+  const color = hexColor(element.stroke ?? theme.colors.ink) ?? "000000";
+  const rotate = element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {};
+  const add = (
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    dashType: ReturnType<typeof pptxDashType>,
+    begin: boolean,
+    end: boolean,
+  ) =>
+    pptxSlide.addShape("line", {
+      x: inches(Math.min(ax, bx)),
+      y: inches(Math.min(ay, by)),
+      w: inches(Math.max(Math.abs(bx - ax), 0.01)),
+      h: inches(Math.max(Math.abs(by - ay), 0.01)),
+      flipH: bx < ax,
+      flipV: by < ay,
+      ...rotate,
+      line: {
+        color,
+        width: sw,
+        dashType,
+        beginArrowType: begin ? "arrow" : "none",
+        endArrowType: end ? "arrow" : "none",
+        ...(transparency != null ? { transparency } : {}),
+      },
+    });
+  const dashed = !!element.dash && element.dash !== "solid";
+  const L = Math.hypot(x2 - x1, y2 - y1);
+  if (!dashed || (!element.arrowStart && !element.arrowEnd) || L === 0) {
+    add(x1, y1, x2, y2, pptxDashType(element.dash), !!element.arrowStart, !!element.arrowEnd);
+    return;
+  }
+  const ux = (x2 - x1) / L;
+  const uy = (y2 - y1) / L;
+  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const stop = Math.min(depth + 2 * sw, L / 2);
+  const s0 = element.arrowStart ? stop : 0;
+  const s1 = element.arrowEnd ? stop : 0;
+  if (L - s0 - s1 > 0)
+    add(
+      x1 + ux * s0,
+      y1 + uy * s0,
+      x2 - ux * s1,
+      y2 - uy * s1,
+      pptxDashType(element.dash),
+      false,
+      false,
+    );
+  const stub = Math.min(depth, L / 2);
+  if (element.arrowEnd) add(x2 - ux * stub, y2 - uy * stub, x2, y2, "solid", false, true);
+  if (element.arrowStart) add(x1 + ux * stub, y1 + uy * stub, x1, y1, "solid", false, true);
+}
+
+/** Every open arrowhead sized med × med (pptxgenjs writes the type only). */
+export async function sizeArrowEnds(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  let changed = false;
+  for (const path of Object.keys(zip.files)) {
+    if (!/^ppt\/slides\/[^/]+\.xml$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const next = xml.replace(
+      /<a:(head|tail)End type="arrow"\/>/g,
+      '<a:$1End type="arrow" w="med" len="med"/>',
+    );
+    if (next !== xml) {
+      zip.file(path, next);
+      changed = true;
+    }
+  }
+  return changed ? zip.generateAsync({ type: "arraybuffer" }) : buffer;
 }
 
 type PptxPoint = NonNullable<ShapeOptions["points"]>[number];
@@ -1145,8 +1211,8 @@ function drawPath(pptxSlide: PptxGenJS.Slide, element: PathElement, theme: Theme
       color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
       width: element.strokeWidth ?? 3,
       dashType: pptxDashType(element.dash),
-      beginArrowType: element.arrowStart ? "triangle" : "none",
-      endArrowType: element.arrowEnd ? "triangle" : "none",
+      beginArrowType: element.arrowStart ? "arrow" : "none",
+      endArrowType: element.arrowEnd ? "arrow" : "none",
       ...(transparency != null ? { transparency } : {}),
     },
   });
@@ -1595,7 +1661,7 @@ export async function exportLessonPptx(
     // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
     const { withFallbackFaces } = await import("./pptx-fonts");
     const buffer = await shareMedia(
-      await roundPictureCorners(await withFallbackFaces(written, theme)),
+      await sizeArrowEnds(await roundPictureCorners(await withFallbackFaces(written, theme))),
     );
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",

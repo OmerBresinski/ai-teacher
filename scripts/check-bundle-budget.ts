@@ -144,7 +144,8 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   // print 92.9, worksheet editor 198.6 KB.
   // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
   { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 315 },
-  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
+  // 16 Oct 2026: present 160→210 (about 30% headroom, Greg 15 Oct standing rule)
+  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 210 },
   // Re-pinned 2026-10-15: Paper theme font and age-size tables (TEACH-152 part b), about 2.5 KB; approved by Greg
   // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
   { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 200 },
