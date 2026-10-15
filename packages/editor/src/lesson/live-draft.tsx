@@ -11,6 +11,7 @@
 import type { Slide } from "@tj/domain/documents";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import "./live-draft.css";
 import {
   type DraftStore,
   isPlannedBlank,
