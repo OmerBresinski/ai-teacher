@@ -305,7 +305,7 @@ function stackHeight(c: Ctx, items: string[], q: number, visW: number): number |
 }
 
 /** The visual card's height at width `visW` (a 4:3 picture, the figure's caption above it). */
-function cardHeight(c: Ctx, v: Visual, visW: number): number {
+function cardHeight(v: Visual, visW: number): number {
   const inner = visW - 2 * WA.visPad;
   if (v.failed) return Math.round(visW * 0.75);
   return Math.round(2 * WA.visPad + inner * 0.75);
@@ -331,7 +331,7 @@ export function planPractice(c: Ctx, input: TemplateInput, stageTop: number): Pr
     for (const visW of vis) {
       for (const q of steps) {
         const h = v ? stackHeight(c, items, q, visW) : gridHeight(c, items, q, col);
-        const card = v ? cardHeight(c, v, visW) : 0;
+        const card = v ? cardHeight(v, visW) : 0;
         if (h === null || h > room || card > room) continue;
         const comfortable = comfortAt(c, q);
         if (!best || (!best.comfortable && q > best.q))
@@ -433,7 +433,7 @@ export function layoutPractice(c: Ctx, input: TemplateInput) {
 
 /** The picture or figure in its white card; a failed one is a 4:3 caption card in the quote voice. */
 function drawCard(c: Ctx, v: Visual, at: { x: number; y: number; w: number }) {
-  const h = cardHeight(c, v, at.w);
+  const h = cardHeight(v, at.w);
   const rect = { ...at, h };
   const card = paintSurface({ role: "card", box: rect, own: cornersOf(c), id: uid() }, c.t);
   const inner = { x: at.x + WA.visPad, w: at.w - 2 * WA.visPad };
