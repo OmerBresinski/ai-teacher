@@ -75,10 +75,68 @@ export const WA_NAMES = {
   floor: "surface:field-b",
 } as const;
 
-/** `{a/b}` is written inline as a/b in this batch (the stacked form is Tech debt, as in B1). */
-export const plainTask = (s: string) => s.replace(/\{(\d+)\/(\d+)\}/g, "$1/$2").trim();
+/** Precomposed fraction glyphs: every font the themes use draws these as one built fraction. */
+const VULGAR: Record<string, string> = {
+  "1/2": "½",
+  "1/3": "⅓",
+  "2/3": "⅔",
+  "1/4": "¼",
+  "3/4": "¾",
+  "1/5": "⅕",
+  "2/5": "⅖",
+  "3/5": "⅗",
+  "4/5": "⅘",
+  "1/6": "⅙",
+  "5/6": "⅚",
+  "1/7": "⅐",
+  "1/8": "⅛",
+  "3/8": "⅜",
+  "5/8": "⅝",
+  "7/8": "⅞",
+  "1/9": "⅑",
+  "1/10": "⅒",
+};
+const SUP: Record<string, string> = {
+  0: "⁰",
+  1: "¹",
+  2: "²",
+  3: "³",
+  4: "⁴",
+  5: "⁵",
+  6: "⁶",
+  7: "⁷",
+  8: "⁸",
+  9: "⁹",
+};
+const SUB: Record<string, string> = {
+  0: "₀",
+  1: "₁",
+  2: "₂",
+  3: "₃",
+  4: "₄",
+  5: "₅",
+  6: "₆",
+  7: "₇",
+  8: "₈",
+  9: "₉",
+};
+const digits = (n: string, map: Record<string, string>) => [...n].map((d) => map[d] ?? d).join("");
+/**
+ * `{a/b}` is the gold's built fraction. The slide's rich text has no fraction node (the RichDoc
+ * schema, Tiptap, the headless measure and PPTX would all need one), so it is set as a built
+ * fraction glyph: a precomposed one where Unicode has it (⅙, ⅘, ⅜), else superscript, fraction
+ * slash and subscript digits (⁵⁄₁₂). Plain text everywhere, so edit, measure and export agree.
+ */
+export const plainTask = (s: string) =>
+  s
+    .replace(
+      /\{(\d+)\/(\d+)\}/g,
+      (_, a: string, b: string) =>
+        VULGAR[`${a}/${b}`] ?? `${digits(a, SUP)}\u2044${digits(b, SUB)}`,
+    )
+    .trim();
 /** A bare calculation (digits and operators only) stays on one line. */
-export const isCalc = (s: string) => /\d/.test(s) && /^[\d,.\s+−×÷=\-?/()]+$/.test(plainTask(s));
+export const isCalc = (s: string) => /\d/.test(s) && /^[\d,.\s+−×÷=\-?/()]+$/.test(s.trim());
 
 /**
  * Comfortable, as the gold defines it: the task type stays at or above the age's comfortable body

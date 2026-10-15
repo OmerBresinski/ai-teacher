@@ -10,6 +10,7 @@
  * - Fit: the body step, then the one step under it (`tight`); more than 3 questions is over
  *   (ruling 108), drawn at the floor.
  */
+import type { PathElement, ShapeElement } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { resolveFontSize } from "../text-style";
 import { v2Profile } from "../theme-v2";
@@ -85,6 +86,17 @@ export function planExit(c: Ctx, items: string[], stageTop: number): ExitPlan {
   return { q, comfortable: false, fits: false, height: ticketHeight(c, items, q) ?? room + 1 };
 }
 
+/**
+ * The floor bleeds off three slide edges, so it has its own corner: square. A theme that rounds
+ * every field (Night Lab's 14 pt) would otherwise round it where it meets the slide's edge.
+ */
+function squareFloor(el: ShapeElement | PathElement): ShapeElement {
+  const { radius: _r, ...rest } = el as ShapeElement;
+  if (el.type === "shape") return { ...rest, shape: "rect" };
+  const { points: _p, closed: _c, ...base } = el as PathElement;
+  return { ...(base as unknown as ShapeElement), type: "shape", shape: "rect" };
+}
+
 export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const top = workHeading(c, input, true);
   const items = (input.questions ?? []).filter(
@@ -101,19 +113,13 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const h = plan.height;
   const x = Math.round((960 - TICKET.w) / 2);
   const y = Math.round(stageTop + Math.max(0, (room - h) / 2));
-  // The sand floor first, rising to behind the ticket's middle, edge to edge and to the foot. It
-  // overhangs the slide by 16 pt, so a theme that rounds every field (Night Lab) rounds off-canvas.
+  // The sand floor first, rising to behind the ticket's middle, edge to edge and to the foot.
   const floorY = Math.round(y + h * TICKET.floorAt);
   const floor = paintSurface(
-    {
-      role: "field-b",
-      box: { x: -16, y: floorY, w: 992, h: 556 - floorY },
-      own: [0, 0, 0, 0],
-      id: uid(),
-    },
+    { role: "field-b", box: { x: 0, y: floorY, w: 960, h: 540 - floorY }, id: uid() },
     c.t,
   );
-  if (floor) c.els.push(floor);
+  if (floor) c.els.push(squareFloor(floor));
   const r = Math.round(v2Profile(c.t).radius.bubble);
   const ticket = paintSurface(
     { role: "card", box: { x, y, w: TICKET.w, h }, own: [r, r, r, r], id: uid() },

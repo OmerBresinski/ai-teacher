@@ -140,9 +140,9 @@ describe("exit ticket", () => {
     expect(ticket.x + ticket.w / 2).toBe(480);
     expect(ticket.w).toBe(TICKET.w);
     const floor = named(r.slide.elements, WA_NAMES.floor)[0] as SlideElement;
-    expect(floor.x).toBeLessThanOrEqual(-16);
-    expect(floor.x + floor.w).toBeGreaterThanOrEqual(976);
-    expect(floor.y + floor.h).toBeGreaterThanOrEqual(556);
+    expect(floor.x).toBe(0);
+    expect(floor.w).toBe(960);
+    expect(floor.y + floor.h).toBe(540);
     expect(Math.abs(floor.y - (ticket.y + ticket.h * 0.4))).toBeLessThanOrEqual(1);
     // Painted first: the floor, then the ticket, then its words.
     const order = r.slide.elements.map((e) => e.name);
@@ -167,6 +167,17 @@ describe("exit ticket", () => {
 });
 
 describe("theme roles", () => {
+  test("the sand floor is square on every theme (its own corner), on the slide", () => {
+    for (const t of THEMES) {
+      const r = lay(caseOf("exit-ks2-3-static").input, "ks2", t);
+      const floor = named(r.slide.elements, WA_NAMES.floor)[0];
+      if (!floor) continue;
+      expect(floor.type === "shape" && floor.shape).toBe("rect");
+      expect(floor.x).toBe(0);
+      expect(floor.x + floor.w).toBe(960);
+    }
+  });
+
   test("badges, rules, cards and the floor are painted through the theme's surface roles, AA on badges", () => {
     for (const t of THEMES)
       for (const k of [caseOf("exit-ks2-3-static"), caseOf("practice-ks1-picture-static")]) {
