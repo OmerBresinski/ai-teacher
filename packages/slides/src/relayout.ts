@@ -21,8 +21,11 @@ import type {
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
+// TEACH-230 part b (B2).
+import { EXIT_MAX } from "./templates/exit-ticket";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
+import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 import { resolveTextStyle } from "./text-style";
 import { ageProfileOf } from "./theme-v2";
@@ -112,6 +115,27 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: true,
     noun: "sides",
     paths: splitPaths,
+  },
+  // TEACH-230 part b (B2): tasks and exit questions are plain strings under `questions`.
+  practice: {
+    items: "questions",
+    min: PRACTICE_MIN,
+    max: () => PRACTICE_MAX,
+    blank: () => "Add a task here.",
+    // More than six tasks carry onto a second practice slide (`splitPractice`).
+    continuation: true,
+    noun: "tasks",
+    paths: workPaths,
+  },
+  "exit-ticket": {
+    items: "questions",
+    min: 1,
+    max: () => EXIT_MAX,
+    blank: () => "Add a question here.",
+    // At most three questions (ruling 108): an exit ticket never continues.
+    continuation: false,
+    noun: "questions",
+    paths: workPaths,
   },
 };
 

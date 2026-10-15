@@ -35,9 +35,12 @@ import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
+// TEACH-230 part b (B2): practice and exit ticket, the calm "work alone" slides.
+import { layoutExitTicket } from "./exit-ticket";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
@@ -233,6 +236,13 @@ export type TemplateInput = {
   marker?: string | null;
   /** An exact substring of the heading shown in the accent (ignored when it is not one). */
   accentWord?: string | null;
+  /**
+   * Practice, exit ticket (TEACH-230 part b): `short` (the default: a question, task or
+   * calculation) or `tf` (statements; no answers are drawn, the title asks for true or false).
+   */
+  kind?: "short" | "tf";
+  /** Practice (TEACH-230 part b): the picture could not be made; its card shows the caption. */
+  tile?: boolean;
 };
 
 /**
@@ -1549,7 +1559,11 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const big = input.template === "big-diagram" ? bigRect(c, input) : undefined;
   // The side panel's reasons are kept only when the figure goes (they are the harness's fault).
   const sideFails: string[] = [];
-  const dropped = !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
+  // TEACH-230 part b: practice keeps a figure that cannot draw and shows its caption card in its
+  // place (the gold's fallback; ruling 215, nothing is lost); the reasons are still reported.
+  const keeps = input.template === "practice";
+  const dropped =
+    !keeps && !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
   if (dropped) c.fails?.push(...sideFails);
   if (dropped) {
     const { figure: _, ...rest } = input;
@@ -2328,11 +2342,9 @@ function layoutOnce(
         };
       break;
     }
-    case "question-set":
-    case "exit-ticket":
-    case "practice": {
+    case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.
-      if (tpl === "question-set" && isQuickCheck(input)) {
+      if (isQuickCheck(input)) {
         layoutQuestionSet(c, input);
         break;
       }
@@ -2352,6 +2364,12 @@ function layoutOnce(
       if (!c.question) delete c.question;
       break;
     }
+    case "practice":
+      layoutPractice(c, input);
+      break;
+    case "exit-ticket":
+      layoutExitTicket(c, input);
+      break;
     case "pair":
     case "group-sort":
     case "sequence":

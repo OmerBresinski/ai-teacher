@@ -192,6 +192,8 @@ describe("typed callout card", () => {
         }
   });
 
+  // TEACH-230 part b: practice and the exit ticket are the "work alone" slides by design (ruling
+  // 231), so their hashes were re-pinned to the new layout; stored decks keep their elements.
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;
@@ -210,7 +212,8 @@ describe("typed callout card", () => {
           n++;
         });
     expect(n).toBe(Object.keys(want).length);
-  });
+    // Every old input on every theme and stage: about 6 s when the turbo run is loaded.
+  }, 30_000);
 
   test("the first typed point goes under the text; a later one stays, labelled with its type", () => {
     expect(

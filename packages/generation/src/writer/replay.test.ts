@@ -29,6 +29,10 @@ import { slideRoles } from "./role";
  *    a "Do now" starter (register prod-11);
  *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
  *    (ruling 198, register layout-06).
+ *
+ * One since (TEACH-230 part b): practice and exit-ticket slides are the "work alone" layouts, a
+ * grid or a ticket of badged tasks, so they keep their heading and kind and are not compared
+ * element by element with the lab's numbered list.
  */
 /** Each deck slide's role from the run's writer slides (title and objectives first). */
 const rolesOf = (b: string) => {
@@ -123,6 +127,11 @@ describe.each(LESSONS)("replay %s", (b) => {
       if (DRAWN_NOW[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        return;
+      }
+      if (got.some((e) => e.name === "surface:badge" && !("icon" in e))) {
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        expect(got.some((e) => e.name === "Task")).toBe(true);
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {

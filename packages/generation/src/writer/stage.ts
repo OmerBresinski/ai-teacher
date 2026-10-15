@@ -124,6 +124,7 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
+import { continuePractice } from "./practice-split";
 import { continueQuickCheck } from "./question-set-split";
 import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
@@ -927,21 +928,26 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
     return tc.first;
   };
-  /** TEACH-101 part g: a quick check past its maximum continues on more quick-check slides. */
+  /**
+   * TEACH-101 part g: a quick check past its maximum continues on more quick-check slides;
+   * TEACH-230 part b: practice past its maximum continues on more practice slides, the same way.
+   */
   const quickRest = new Map<number, S[]>();
   const splitQuick = (idx: number, s: S): S => {
-    const qc = continueQuickCheck(
-      s,
-      (sl) =>
-        !materialise(sl, { ...base, index: idx, plan, visual: () => ({ status: "pending" }) }).over
-          .length,
-    );
+    const fits = (sl: S) =>
+      !materialise(sl, { ...base, index: idx, plan, visual: () => ({ status: "pending" }) }).over
+        .length;
+    const qc = continueQuickCheck(s, fits) ?? continuePractice(s, fits);
     if (!qc) {
       quickRest.delete(idx);
       return s;
     }
     quickRest.set(idx, qc.rest);
-    log({ ev: "quick-check-continued", slide: idx + 1, slides: qc.rest.length + 1 });
+    log({
+      ev: s.template === "practice" ? "practice-continued" : "quick-check-continued",
+      slide: idx + 1,
+      slides: qc.rest.length + 1,
+    });
     return qc.first;
   };
   const openSlide = (idx: number, arrived: S) => {
@@ -1214,7 +1220,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           plan,
           visual: () => ({ status: "pending" }),
         });
-        slides.push({ id: `s${i + 1}q${k + 1}`, ...m.slide, notes: "" });
+        const tag = q.template === "practice" ? "p" : "q";
+        slides.push({ id: `s${i + 1}${tag}${k + 1}`, ...m.slide, notes: "" });
       }
       for (const [k, t] of (tableRest.get(i) ?? []).entries()) {
         const m = materialise(t, {
