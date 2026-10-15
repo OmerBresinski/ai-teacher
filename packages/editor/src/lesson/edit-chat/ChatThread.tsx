@@ -533,7 +533,7 @@ function Composer({ view, empty }: { view: ChatView; empty: boolean }) {
  * importing it from this lazy chunk would split it into a chunk of its own on each route's load
  * (TEACH-104 part d).
  */
-function SendArrow() {
+export function SendArrow() {
   return (
     <svg
       aria-hidden

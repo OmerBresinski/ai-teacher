@@ -1,5 +1,6 @@
 import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
 import { cn } from "@tj/ui";
+import { X } from "lucide-react";
 import {
   createContext,
   type FormEvent,
@@ -25,7 +26,6 @@ import {
   useSessionRead,
 } from "../use-editor-session";
 import type { ChatView } from "./ChatThread";
-import type { ChatThreadPartProps, EditChatBubbleProps } from "./chat-parts";
 import type { BubbleState } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
@@ -38,7 +38,6 @@ import {
   lateIsCurrent,
   readThread,
   resolveFollowUp,
-  type Suggestion,
   scopeLabel,
   scopeOf,
   slideNumber,
@@ -70,11 +69,13 @@ export { EDIT_CHAT_LABEL } from "./edit-chat-context";
 // The thread and the bubble (with the Slides character) load after first paint, from one chunk
 // (TEACH-104 part d, lesson-editor route budget). The controller above them stays static: a request
 // in flight lives there, not in the parts that draw it.
-const thread = lazyLoader<ChatThreadPartProps>(() =>
-  import("./chat-parts").then((m) => m.ChatThreadPart),
+const thread = lazyLoader(
+  () => import("./chat-parts"),
+  (m) => m.ChatThreadPart,
 );
-const bubbleLoader = lazyLoader<EditChatBubbleProps>(() =>
-  import("./chat-parts").then((m) => m.EditChatBubble),
+const bubbleLoader = lazyLoader(
+  () => import("./chat-parts"),
+  (m) => m.EditChatBubble,
 );
 
 /** Starts loading the chat's parts (the pane calls it once it has painted); settles when done. */
@@ -580,6 +581,10 @@ export function EditChatPane({
     if (view.field.current) view.field.current.focus();
     else focusOnMount.current = true;
   }, [focusTick]);
+  // A focus asked for before a load that then failed must not fire on a much later retry.
+  useEffect(() => {
+    if (!open) focusOnMount.current = false;
+  }, [open]);
   const onThreadMounted = useCallback(() => {
     if (!focusOnMount.current) return;
     focusOnMount.current = false;
@@ -623,16 +628,12 @@ export function EditChatPane({
           }
         }}
       >
-        {/* The aside keeps its width while the thread loads, so nothing around it moves. */}
+        {/* While the thread loads (or if it fails), a shell the thread's size holds its place. */}
         <LazyPart
           loader={thread}
           props={{ view, onMounted: onThreadMounted }}
-          fallback={null}
-          failed={(retry) => (
-            <div className="flex flex-1 items-center justify-center p-4">
-              <RetryLoad className="px-3 py-1.5" onRetry={retry} />
-            </div>
-          )}
+          fallback={<ChatPaneShell onClose={close} />}
+          failed={(retry) => <ChatPaneShell onClose={close} onRetry={retry} />}
         />
       </aside>
       {open || bubbleHidden ? null : (
@@ -645,24 +646,78 @@ export function EditChatPane({
             onOpen: () => onReopen?.(),
             host: bubbleHost,
           }}
-          fallback={null}
-          failed={(retry) => <BubbleRetry host={bubbleHost} onRetry={retry} />}
+          fallback={<BubbleShell host={bubbleHost} onOpen={() => onReopen?.()} />}
+          failed={(retry) => (
+            <BubbleShell
+              host={bubbleHost}
+              onOpen={() => {
+                retry();
+                onReopen?.();
+              }}
+            />
+          )}
         />
       )}
     </>
   );
 }
 
-/** The bubble's chunk failed: a retry in the bubble's corner, so the way back in stays. */
-function BubbleRetry({ host, onRetry }: { host?: HTMLElement | null; onRetry: () => void }) {
+/**
+ * The pane while its thread loads, or after the load failed: the thread's header (with its close
+ * button, so the pane can always be closed) and a composer-sized box, so nothing moves when the
+ * thread lands. Failed, the middle says so and offers a retry.
+ */
+export function ChatPaneShell({ onClose, onRetry }: { onClose: () => void; onRetry?: () => void }) {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-edit-chat-shell={onRetry ? "failed" : "loading"}
+    >
+      <div className="flex h-12 shrink-0 items-center gap-2 pr-2 pl-4">
+        <span aria-hidden className="size-6" />
+        <h2 className="m-0 font-semibold text-[15px] text-foreground leading-5">Dayback</h2>
+        <button
+          type="button"
+          aria-label="Close Edit with Dayback"
+          title="Close (Esc)"
+          onClick={onClose}
+          className="ml-auto inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <X aria-hidden size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4">
+        {onRetry ? (
+          <div role="alert" className="flex flex-col items-center gap-2">
+            <p className="m-0 text-ink-3 text-meta">The chat didn't load.</p>
+            <RetryLoad className="px-3 py-1.5" onRetry={onRetry} />
+          </div>
+        ) : null}
+      </div>
+      <div className="shrink-0 px-3 pt-2 pb-3">
+        <div className="h-[76px] rounded-[20px] bg-background shadow-[0_0_0_1px_var(--color-border)]" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The bubble before its chunk (with the Slides character) has landed, or when it failed: the same
+ * round button in the same place, so the way into the chat is there from first paint. Opening the
+ * pane from it shows the pane's shell, which loads (or retries) the thread.
+ */
+export function BubbleShell({ host, onOpen }: { host?: HTMLElement | null; onOpen: () => void }) {
   if (host === null) return null;
   const node = (
-    <RetryLoad
+    <button
+      type="button"
+      data-edit-chat-bubble="idle"
+      aria-label="Open Edit with Dayback"
+      onClick={onOpen}
       className={cn(
-        "z-40 bg-card px-2 py-1",
-        host ? "absolute right-4 bottom-2" : "fixed right-4 bottom-19",
+        "z-40 inline-flex items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        host ? "absolute right-4 bottom-2 size-12" : "fixed right-4 bottom-19 size-14",
       )}
-      onRetry={onRetry}
     />
   );
   return host ? createPortal(node, host) : node;

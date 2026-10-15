@@ -21,8 +21,9 @@ import type { AnswerSelectProps } from "./AnswerSelect";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
 
 // The pickers (a Radix Select) load on the drawer's first hover, focus or open.
-const answerSelect = lazyLoader<AnswerSelectProps>(() =>
-  import("./AnswerSelect").then((m) => m.AnswerSelect),
+const answerSelect = lazyLoader(
+  () => import("./AnswerSelect"),
+  (m) => m.AnswerSelect,
 );
 const preloadAnswerSelect = answerSelect.preload;
 
