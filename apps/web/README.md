@@ -138,7 +138,7 @@ TS imports (follow-up: give `@tj/ui` an importable `theme-init` entry).
 ## Bundle budget (F18-R05)
 
 `vite build` writes `dist/.vite/manifest.json`; from the root, `bun run check:bundle-budget`
-sums the entry chunk + static imports + CSS (gzip) and fails above 250 KB (warns at 200 KB). CI runs
+sums the entry chunk + static imports + CSS (gzip) and fails above 220 KB (warns at 200 KB). CI runs
 it on every PR. Keep it down by:
 
 - route pages via `lazyRouteComponent` (own chunks — see `sign-in.page`, `index.page`,
