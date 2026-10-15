@@ -11,8 +11,7 @@ import { ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
-import { v2Profile } from "./theme-v2";
-import { fontFloor } from "./themes";
+import { fontFloor, keyStageOf } from "./themes";
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before
@@ -30,7 +29,7 @@ import { fontFloor } from "./themes";
  * which is the gap the inset exists to avoid; a short count in a teacher's edit is caught by the
  * editor's own fitting engine.
  */
-const WRAP_SLACK = 0;
+export const WRAP_SLACK = 0;
 
 const KEY_BY_STACK = new Map<string, FontKey>(
   Object.entries(FONT_STACKS).map(([key, stack]) => [stack, key as FontKey]),
@@ -57,43 +56,83 @@ export function charAdvance(code: number, advances: readonly number[] | undefine
   return (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000;
 }
 
-function emWidth(word: string, advances: readonly number[] | undefined, tracking: number): number {
+export function emWidth(
+  word: string,
+  advances: readonly number[] | undefined,
+  tracking: number,
+): number {
   let w = 0;
   for (const ch of word) w += charAdvance(ch.codePointAt(0) ?? 0, advances) + tracking;
   return w;
 }
 
 /** The resolved type a line count depends on. */
-type LineType = Pick<ResolvedText, "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing"> & {
+export type LineType = Pick<
+  ResolvedText,
+  "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing"
+> & {
   /** The stack a `font: "quote"` run is set in (the theme's quote face); body when absent. */
   quoteFamily?: string;
 };
 
 /** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
-const isSpace = (code: number, ch: string): boolean =>
+export const isSpace = (code: number, ch: string): boolean =>
   code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(ch));
 
 /** A run of text: set bold (a chunk's label) and/or in the quote face (`font: "quote"`). */
-type Run = { text: string; bold?: boolean; quote?: boolean; attrs?: RunStyleAttrs };
+export type Run = { text: string; bold?: boolean; quote?: boolean; attrs?: RunStyleAttrs };
 
 /**
- * Where each character landed (only when asked for): its line, its x and advance in ems from the
- * line's start. Offsets are UTF-16 indices into the runs' joined text, as ProseMirror counts them.
+ * How many lines a paragraph's runs take in a column `room` points wide: the one wrap rule. A bold
+ * run is measured at 700, as the renderer sets it: a chunk's bold label is wider than the same
+ * words at 400; a quote run in the theme's quote face. A hard break ("\n") starts a new line. A
+ * word wider than the column breaks inside itself. `./text-lines.ts` (`breakRuns`) walks the same
+ * rule and also records where each line starts; `text-measure.test.ts` holds the two to one count.
  */
-type CharPlaces = { line: Int32Array; x: Float64Array; adv: Float64Array };
+function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
+  const t = tablesFor(runs, type);
+  const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
+  let lines = 1;
+  let used = 0;
+  let word = 0;
+  let space = 0;
+  const place = () => {
+    if (word === 0) return;
+    if (used === 0) used = word;
+    else if (used + space + word <= ems) used += space + word;
+    else {
+      lines += 1;
+      used = word;
+    }
+    // A word wider than the column breaks inside itself.
+    while (used > ems) {
+      lines += 1;
+      used -= ems;
+    }
+    word = 0;
+  };
+  for (const run of runs) {
+    const advances = t.of(run);
+    const spaceWidth = emWidth(" ", advances, t.tracking);
+    for (const ch of run.text) {
+      const code = ch.codePointAt(0) ?? 0;
+      if (code === 10) {
+        place();
+        lines += 1;
+        used = 0;
+      } else if (isSpace(code, ch)) {
+        place();
+        space = spaceWidth;
+      } else word += charAdvance(code, advances) + t.tracking;
+    }
+  }
+  place();
+  return Math.max(1, lines);
+}
 
-/** A paragraph broken into lines: each line's first offset and its set width in ems. */
-type Broken = { starts: number[]; widths: number[]; places?: CharPlaces };
-
-/**
- * Breaks a paragraph's runs into lines in a column `room` points wide: the one wrap rule every
- * count, line lookup and run rect uses. A bold run is measured at 700, as the renderer sets it: a
- * chunk's bold label is wider than the same words at 400. A hard break ("\n") starts a new line. A
- * word wider than the column breaks inside itself. `track` also records every character's place.
- */
-function breakRuns(runs: readonly Run[], type: LineType, room: number, track = false): Broken {
+/** The advance tables a paragraph's runs need (bold and quote only when a run is), and tracking. */
+export function tablesFor(runs: readonly Run[], type: LineType) {
   const regular = advancesFor(type.fontFamily, type.fontWeight);
-  // The bold and quote tables only when a run needs them: most text has neither.
   const bold = runs.some((r) => r.bold)
     ? advancesFor(type.fontFamily, Math.max(700, type.fontWeight))
     : regular;
@@ -103,123 +142,15 @@ function breakRuns(runs: readonly Run[], type: LineType, room: number, track = f
     ? advancesFor(quoteFamily, Math.max(700, type.fontWeight))
     : quote;
   const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
-  const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
-  const total = track ? runs.reduce((n, r) => n + r.text.length, 0) : 0;
-  const places: CharPlaces | undefined = track
-    ? { line: new Int32Array(total), x: new Float64Array(total), adv: new Float64Array(total) }
-    : undefined;
-  const starts = [0];
-  const widths: number[] = [];
-  let used = 0;
-  let word = 0;
-  let space = 0;
-  let wordStart = -1;
-  // The current word's characters and the spaces before it, by offset (tracked runs only).
-  const wordChars: number[] = [];
-  const spaceChars: number[] = [];
-  const newLine = (start: number) => {
-    widths.push(used);
-    starts.push(start);
+  return {
+    tracking,
+    of: (run: Run) => (run.quote ? (run.bold ? quoteBold : quote) : run.bold ? bold : regular),
   };
-  const put = (i: number, line: number, x: number) => {
-    if (!places) return;
-    places.line[i] = line;
-    places.x[i] = x;
-  };
-  const place = () => {
-    if (word === 0) return;
-    if (used === 0) used = word;
-    else if (used + space + word <= ems) {
-      for (const i of spaceChars) put(i, starts.length - 1, used);
-      used += space + word;
-    } else {
-      for (const i of spaceChars) put(i, starts.length - 1, used);
-      newLine(wordStart);
-      used = word;
-    }
-    spaceChars.length = 0;
-    // Where the word's first character sits on its (first) line.
-    const line0 = starts.length - 1;
-    const x0 = used - word;
-    // A word wider than the column breaks inside itself.
-    let cut = 0;
-    while (used > ems) {
-      cut += 1;
-      used -= ems;
-    }
-    if (places) {
-      let into = 0;
-      for (const i of wordChars) {
-        const k = cut === 0 ? 0 : Math.min(cut, Math.floor(into / ems));
-        put(i, line0 + k, k === 0 ? x0 + into : into - k * ems);
-        into += places.adv[i] ?? 0;
-      }
-    }
-    for (let k = 1; k <= cut; k++) {
-      widths.push(ems);
-      // The line starts with the first character past k column widths into the word.
-      let into = 0;
-      let at = wordStart;
-      for (const i of wordChars) {
-        if (into >= k * ems) {
-          at = i;
-          break;
-        }
-        into += places?.adv[i] ?? 0;
-      }
-      starts.push(at);
-    }
-    wordChars.length = 0;
-    word = 0;
-    wordStart = -1;
-  };
-  let offset = 0;
-  for (const run of runs) {
-    const advances = run.quote ? (run.bold ? quoteBold : quote) : run.bold ? bold : regular;
-    const spaceWidth = emWidth(" ", advances, tracking);
-    for (const ch of run.text) {
-      const code = ch.codePointAt(0) ?? 0;
-      const i = offset;
-      offset += ch.length;
-      if (code === 10) {
-        place();
-        for (const j of spaceChars) put(j, starts.length - 1, used);
-        spaceChars.length = 0;
-        put(i, starts.length - 1, used);
-        newLine(offset);
-        used = 0;
-      } else if (isSpace(code, ch)) {
-        place();
-        space = spaceWidth;
-        if (places) {
-          places.adv[i] = spaceWidth;
-          spaceChars.push(i);
-        }
-      } else {
-        const adv = charAdvance(code, advances) + tracking;
-        if (word === 0) wordStart = i;
-        word += adv;
-        if (places) {
-          places.adv[i] = adv;
-          wordChars.push(i);
-        }
-      }
-    }
-  }
-  place();
-  for (const j of spaceChars) put(j, starts.length - 1, used);
-  widths.push(used);
-  return places ? { starts, widths, places } : { starts, widths };
 }
 
 /** How many lines `text` takes in a column `room` points wide, set in `type`. */
 function linesIn(text: string, type: LineType, room: number): number {
   return linesOfRuns([{ text }], type, room);
-}
-
-/** How many lines a paragraph's runs take in a column `room` points wide. */
-function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
-  return breakRuns(runs, type, room).starts.length;
 }
 
 /**
@@ -256,194 +187,35 @@ export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight
   return emWidth(shown, advances, tracking) * r.fontSize + 2 * r.padding;
 }
 
-/* ------------------------------------------------------------------ */
-/* Line lookup and run rects (TEACH-205 part c, S-d2)                   */
-/* ------------------------------------------------------------------ */
-
-/** What a measurement may override: a bold label's weight, a stepped-down size, the quote face. */
-export type MeasureOpts = { weight?: number; fontSize?: number; font?: "quote" };
-
-/** The theme's quote face (its v2 age profile's; a v1 theme quotes in its body face). */
-const quoteFamilyOf = (theme: Theme): string => v2Profile(theme).fonts.quote;
-
-function plainLayout(
-  text: string,
-  preset: TextPreset,
-  theme: Theme,
-  width: number,
-  opts: MeasureOpts,
-  track: boolean,
-): Broken {
-  const r = resolveTextStyle({ preset }, theme);
-  const type: LineType = {
-    ...r,
-    ...(opts.weight === undefined ? {} : { fontWeight: opts.weight }),
-    ...(opts.fontSize === undefined ? {} : { fontSize: opts.fontSize }),
-    quoteFamily: quoteFamilyOf(theme),
-  };
-  const shown = r.textTransform === "uppercase" ? text.toUpperCase() : text;
-  return breakRuns(
-    [{ text: shown, quote: opts.font === "quote" }],
-    type,
-    width - 2 * r.padding,
-    track,
-  );
-}
-
 /**
- * The offset each rendered line starts at (`[0, …]`), for `text` in a `preset` box `width` points
- * wide, by the same wrap rule as `countLines`: `lineBreaks(…).length === countLines(…)`.
+ * The theme's quote face: its v2 age profile's (`v2Profile(theme).fonts.quote`), a v1 theme's body
+ * face. Read from `theme.v2` here rather than through `./theme-v2`, which would put the v2 profile
+ * tables in every chunk that fits text; `text-measure.test.ts` holds the two equal on every theme.
  */
-export function lineBreaks(
-  text: string,
-  preset: TextPreset,
-  theme: Theme,
-  width: number,
-  opts: MeasureOpts = {},
-): number[] {
-  return plainLayout(text, preset, theme, width, opts, true).starts;
-}
-
-/**
- * Which rendered line (0-based) holds the character at `offset` (a UTF-16 index, as ProseMirror
- * and `String#slice` count). A space at a wrap belongs to the line it ends; an offset at or past
- * the end is on the last line. A source's anchor row and the slant check read it.
- */
-export function lineOfOffset(
-  text: string,
-  offset: number,
-  preset: TextPreset,
-  theme: Theme,
-  width: number,
-  opts: MeasureOpts = {},
-): number {
-  const { starts, places } = plainLayout(text, preset, theme, width, opts, true);
-  if (!places || offset >= text.length) return starts.length - 1;
-  return places.line[Math.max(0, Math.floor(offset))] ?? 0;
-}
-
-/**
- * One rect per measured line of a run: element-local points. `x`/`w` span the run's glyph
- * advances on that line, `y`/`h` the line box, `baseline` the text baseline (approximated as
- * `BASELINE_EM` below the line box's middle, as a body face sits in CSS). `line` counts every
- * line of the doc from 0.
- */
-export type RunRect = {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  baseline: number;
-  line: number;
-  fontSize: number;
-  attrs: RunStyleAttrs;
-};
-
-/** Text baseline below the middle of a line box, in ems: a body face's ascent less half its content. */
-const BASELINE_EM = 0.35;
-
-type LaidLine = { y: number; x: number; width: number; room: number; align: string };
-
-/**
- * Where the runs `pick` selects sit in a text element (`doc` in a box `box.w` by `box.h`, styled
- * `style`): the PPTX export draws a highlight wash or a myth strike as a rect per measured line
- * (THEME-FIT PPTX mapping), and a writing form hangs its label chips off them. Lines, gaps,
- * indents, padding, alignment and vertical alignment follow `measureHeadless` and `slide.css`.
- * `fontSize` overrides the resolved size (a fitted box).
- */
-export function runRects(
-  doc: RichDoc,
-  style: Partial<TextStyle> | undefined,
-  theme: Theme,
-  box: { w: number; h: number },
-  pick: (attrs: RunStyleAttrs) => boolean,
-  fontSize?: number,
-): RunRect[] {
-  const r = resolveTextStyle(style, theme, style?.preset ?? "body");
-  const size = fontSize ?? r.fontSize;
-  const type: LineType = { ...r, fontSize: size, quoteFamily: quoteFamilyOf(theme) };
-  const lineH = size * r.lineHeight;
-  const gap = BLOCK_GAP_EM * size;
-  const shown = r.textTransform === "uppercase" ? upperDoc(doc) : doc;
-  const out: RunRect[] = [];
-  const lines: LaidLine[] = [];
-  let y = 0;
-  let first = true;
-  const paragraph = (node: RichNode, indent: number) => {
-    if (!first) y += gap;
-    first = false;
-    const runs = runsOf(node);
-    const room = box.w - 2 * r.padding - indent;
-    const broken = breakRuns(runs, type, room, true);
-    const align = safeAlign(node.attrs?.textAlign) ?? r.align;
-    const base = lines.length;
-    broken.starts.forEach((_, k) => {
-      lines.push({
-        y: y + k * lineH,
-        x: indent,
-        width: (broken.widths[k] ?? 0) * size,
-        room,
-        align,
-      });
-    });
-    y += broken.starts.length * lineH;
-    let offset = 0;
-    for (const run of runs) {
-      const from = offset;
-      offset += run.text.length;
-      if (!run.attrs || !pick(run.attrs) || !broken.places) continue;
-      const byLine = new Map<number, [number, number]>();
-      for (let i = from; i < offset; i++) {
-        // Spaces never widen a rect: one at a wrap hangs past the line's end.
-        const code = run.text.charCodeAt(i - from);
-        if (code === 10 || code === 32 || code === 9) continue;
-        const line = broken.places.line[i] ?? 0;
-        const x0 = broken.places.x[i] ?? 0;
-        const x1 = x0 + (broken.places.adv[i] ?? 0);
-        const span = byLine.get(line);
-        byLine.set(line, span ? [Math.min(span[0], x0), Math.max(span[1], x1)] : [x0, x1]);
-      }
-      for (const [line, [x0, x1]] of byLine) {
-        out.push({
-          x: x0 * size,
-          y: 0,
-          w: (x1 - x0) * size,
-          h: lineH,
-          baseline: 0,
-          line: base + line,
-          fontSize: size,
-          attrs: run.attrs,
-        });
-      }
-    }
-  };
-  const blocks = (nodes: RichNode[], indent: number) => {
-    for (const node of nodes) {
-      if (node.type === "bulletList" || node.type === "orderedList") {
-        const inner =
-          indent + (node.type === "orderedList" ? ORDERED_INDENT_EM : LIST_INDENT_EM) * size;
-        for (const item of node.content ?? []) blocks(item.content ?? [], inner);
-      } else paragraph(node, indent);
-    }
-  };
-  blocks(shown.content ?? [], 0);
-  const inner = box.h - 2 * r.padding;
-  const top =
-    r.padding + (r.valign === "middle" ? (inner - y) / 2 : r.valign === "bottom" ? inner - y : 0);
-  for (const rect of out) {
-    const line = lines[rect.line];
-    if (!line) continue;
-    const slack = line.room - line.width;
-    const shift = line.align === "center" ? slack / 2 : line.align === "right" ? slack : 0;
-    rect.x += r.padding + line.x + shift;
-    rect.y = top + line.y;
-    rect.baseline = rect.y + lineH / 2 + BASELINE_EM * size;
+export function quoteFamilyOf(theme: Theme): string {
+  const ages = theme.v2?.ages;
+  if (!ages) return theme.fonts.body;
+  const stage = keyStageOf(theme)?.toLowerCase() ?? "";
+  const want = /^(eyfs|ks1)$/.test(stage)
+    ? "early"
+    : /^(ks[345]|post16)$/.test(stage)
+      ? "secondary"
+      : "primary";
+  const order =
+    want === "early"
+      ? ["early", "primary", "secondary"]
+      : want === "secondary"
+        ? ["secondary", "primary", "early"]
+        : ["primary", "early", "secondary"];
+  for (const age of order) {
+    const p = theme.v2?.supports.includes(age as never)
+      ? ages[age as keyof typeof ages]
+      : undefined;
+    const key = p?.fonts.quote as FontKey | undefined;
+    if (key && FONT_STACKS[key]) return FONT_STACKS[key];
   }
-  return out;
+  return theme.fonts.body;
 }
-
-const safeAlign = (raw: unknown): string | undefined =>
-  raw === "left" || raw === "center" || raw === "right" ? raw : undefined;
 
 /*
  * The headless ruler (TEACH-28): the `Measurer` the fitting engine (`./reflow.ts`) takes, built
@@ -457,12 +229,12 @@ const safeAlign = (raw: unknown): string | undefined =>
  * `slide.css`: `.td-rt p, li, ul, ol { margin-bottom: 0.35em }`, `ul { padding-left: 1.2em }`,
  * `ol { padding-left: 1.45em }` (the number's disc and a clear gap before the words).
  */
-const BLOCK_GAP_EM = 0.35;
-const LIST_INDENT_EM = 1.2;
-const ORDERED_INDENT_EM = 1.45;
+export const BLOCK_GAP_EM = 0.35;
+export const LIST_INDENT_EM = 1.2;
+export const ORDERED_INDENT_EM = 1.45;
 
 /** A block's text as runs (bold, quote face, run attributes), a hard break as "\n". */
-function runsOf(node: RichNode, bold = false): Run[] {
+export function runsOf(node: RichNode, bold = false): Run[] {
   const b = bold || !!node.marks?.some((m) => m.type === "bold");
   if (node.type === "text") {
     const attrs = runStyleOf(node);
@@ -515,7 +287,7 @@ export const measureHeadless =
     return lines * fontSize * r.lineHeight + gaps * BLOCK_GAP_EM * fontSize + input.chrome;
   };
 
-function upperDoc(doc: RichDoc): RichDoc {
+export function upperDoc(doc: RichDoc): RichDoc {
   const up = (node: RichNode): RichNode =>
     node.type === "text"
       ? { ...node, text: (node.text ?? "").toUpperCase() }

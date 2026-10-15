@@ -1,15 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { HIGHLIGHT_SLOTS, type RichDoc, styledRun } from "@tj/domain/documents";
 import fixtures from "./fixtures/line-of-offset.json";
-import {
-  charAdvance,
-  countLines,
-  lineBreaks,
-  lineOfOffset,
-  measureHeadless,
-  runRects,
-} from "./text-measure";
-import { getTheme } from "./themes";
+import { lineBreaks, lineOfOffset, runRects } from "./text-lines";
+import { charAdvance, countLines, measureHeadless, quoteFamilyOf } from "./text-measure";
+import { v2Profile } from "./theme-v2";
+import { getTheme, THEMES } from "./themes";
 
 /* TEACH-205 part c (S-d2): line lookup and run rects on the headless ruler. */
 
@@ -67,6 +62,14 @@ describe("lineBreaks and lineOfOffset", () => {
     expect(lineBreaks(TEXT, "body", studio, 240, { font: "quote" })).toEqual(
       lineBreaks(TEXT, "body", studio, 240),
     );
+  });
+
+  test("the ruler's quote face is v2Profile's on every theme and stage", () => {
+    for (const t of THEMES)
+      for (const band of ["eyfs", "ks1", "ks2", "ks3", "ks5"]) {
+        const theme = getTheme(t.id, band);
+        expect(quoteFamilyOf(theme)).toBe(v2Profile(theme).fonts.quote);
+      }
   });
 
   test("non-ASCII counts 1em until A7 gives it real metrics (the RTL hook)", () => {
