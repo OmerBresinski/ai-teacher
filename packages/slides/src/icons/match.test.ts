@@ -36,10 +36,7 @@ describe("concepts", () => {
 });
 
 /** Reviewed collisions: the term -> the concept that keeps it (the earlier one in the list). */
-const FIRST_WINS: Record<string, string> = {
-  // papyrus (pilot Egypt) lists "scroll"; the stages set's parchment scroll keeps its id
-  scroll: "papyrus",
-};
+const FIRST_WINS: Record<string, string> = {};
 
 describe("no ambiguity", () => {
   const fold = (t: string) =>
@@ -62,7 +59,7 @@ describe("no ambiguity", () => {
     const clashes = [...owners]
       .filter(([, ids]) => ids.size > 1)
       .map(([k, ids]) => `${k}: ${[...ids]}`);
-    expect(clashes).toEqual(["scroll: papyrus,scroll", "~scroll: papyrus,scroll"]);
+    expect(clashes).toEqual([]);
   });
 
   test("first wins: a term two concepts share goes to the one listed first", () => {
@@ -75,7 +72,14 @@ describe("no ambiguity", () => {
     expect(matchIcon("Shared thing", buildIndex([...list].reverse()))).toBe("b");
     // the real collision: the label goes to the first concept, the exact id still to its own
     for (const [term, id] of Object.entries(FIRST_WINS)) expect(matchIcon(term)).toBe(id);
+  });
+
+  test("scroll draws the stages scroll; papyrus keeps its own words (#527 review)", () => {
+    expect(matchIcon("Scroll")).toBe("scroll");
+    expect(matchIcon("Scrolls")).toBe("scroll");
     expect(resolveIcon("scroll")).toBe("scroll");
+    expect(matchIcon("Papyrus")).toBe("papyrus");
+    expect(matchIcon("Book of the Dead")).toBe("papyrus");
   });
 
   test("a scoped word matches only in its subject (root is a square root in maths)", () => {

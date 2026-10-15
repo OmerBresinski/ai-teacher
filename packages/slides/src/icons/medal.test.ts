@@ -1,24 +1,51 @@
 import { describe, expect, test } from "bun:test";
 import { XMLValidator } from "fast-xml-parser";
-import { ICON_IDS, iconSvg } from "./library";
-import { iconMedalSvg, type MedalThemeInput, medalColoursFor } from "./medal";
-import { toOklch } from "./treatment";
+import { ICON_IDS, iconSignificantColours, iconSvg } from "./library";
+import { iconMedalSvg, type MedalThemeInput, medalColoursFor, medalRim } from "./medal";
+import { iconColoursFor } from "./theme-colours";
+import { contrast, toOklch } from "./treatment";
 
-// theming/final/tokens.json (15 Oct 2026): ground, surface, field a and b, accent, and the medal
-// tokens the final token set computed for them
-const SLATE: MedalThemeInput = {
-  dark: true,
-  colors: { background: "#1E232B", surface: "#262C35", accent: "#9DBBD0" },
-  fields: ["#2A323C", "#262C35"],
-};
-const EMBER: MedalThemeInput = {
-  dark: true,
-  colors: { background: "#1B1B1E", surface: "#252528", accent: "#F2A08C" },
-  fields: ["#2E2725", "#252528"],
-};
-const PAPER: MedalThemeInput = {
-  colors: { background: "#FFFAF4", surface: "#FFFFFF", accent: "#D7263D" },
-};
+// theming/final/tokens.json (15 Oct 2026), the token names TEACH-215 part b reads
+const TOKENS = {
+  "dark-slate": {
+    mode: "dark",
+    bg: "#1E232B",
+    surface: "#262C35",
+    "fa-fill": "#2A323C",
+    "fb-fill": "#262C35",
+    accent: "#9DBBD0",
+    "medal-fill": "#364753",
+    "medal-tint": "#364753",
+    "medal-line": "#445968",
+  },
+  "dark-ember": {
+    mode: "dark",
+    bg: "#1B1B1E",
+    surface: "#252528",
+    "fa-fill": "#2E2725",
+    "fb-fill": "#252528",
+    accent: "#F2A08C",
+    "medal-fill": "#4A3631",
+    "medal-tint": "#4A3631",
+    "medal-line": "#5F4640",
+  },
+  paper: {
+    mode: "light",
+    bg: "#FFFAF4",
+    surface: "#FFFFFF",
+    "fa-fill": "#F9D7D0",
+    "fb-fill": "#F3EADB",
+    accent: "#D7263D",
+    "medal-fill": "#FFFFFF",
+    "medal-tint": "#F3EADB",
+    "medal-line": "#00000000",
+  },
+} as const;
+const without = (t: Record<string, string>) =>
+  Object.fromEntries(Object.entries(t).filter(([k]) => !k.startsWith("medal-")));
+const SLATE: MedalThemeInput = { tokens: TOKENS["dark-slate"] };
+const EMBER: MedalThemeInput = { tokens: TOKENS["dark-ember"] };
+const PAPER: MedalThemeInput = { tokens: TOKENS.paper };
 
 /** OKLab distance, a little over 0.01 is a just-visible difference. */
 function distance(a: string, b: string): number {
@@ -34,42 +61,103 @@ function distance(a: string, b: string): number {
 }
 
 describe("medalColoursFor (rulings 211 and 247)", () => {
-  test("dark themes: a deep face in the accent's hue and a quiet ring, as the final token set", () => {
-    for (const [theme, fill, line] of [
-      [SLATE, "#364753", "#445968"],
-      [EMBER, "#4A3631", "#5F4640"],
-    ] as const) {
-      const m = medalColoursFor(theme);
-      expect(distance(m.fill, fill), `${m.fill} vs ${fill}`).toBeLessThan(0.01);
+  test("the theme's medal tokens come through as they are: dark Slate and Ember", () => {
+    expect(medalColoursFor(SLATE)).toEqual({
+      fill: "#364753",
+      tint: "#364753",
+      line: "#445968",
+      dark: true,
+    });
+    expect(medalColoursFor(EMBER)).toEqual({
+      fill: "#4a3631",
+      tint: "#4a3631",
+      line: "#5f4640",
+      dark: true,
+    });
+    expect(medalColoursFor(PAPER)).toEqual({
+      fill: "#ffffff",
+      tint: "#f3eadb",
+      line: null,
+      dark: false,
+    });
+  });
+
+  test("without medal tokens, the dark fallback derives the same deep face and ring", () => {
+    for (const name of ["dark-slate", "dark-ember"] as const) {
+      const m = medalColoursFor({ tokens: without(TOKENS[name]) });
+      expect(distance(m.fill, TOKENS[name]["medal-fill"]), name).toBeLessThan(0.01);
+      expect(distance(m.line as string, TOKENS[name]["medal-line"]), name).toBeLessThan(0.01);
       expect(m.tint).toBe(m.fill);
-      expect(m.line).not.toBeNull();
-      expect(distance(m.line as string, line), `${m.line} vs ${line}`).toBeLessThan(0.01);
-      // deep: darker than the icon's lightest parts, just above the panels it sits on
-      const L = toOklch(m.fill)[0];
-      expect(L).toBeGreaterThan(toOklch(theme.colors.surface as string)[0]);
-      expect(L).toBeLessThan(0.45);
     }
   });
 
-  test("light themes: a white face, a pale accent tint, no ring", () => {
-    const m = medalColoursFor(PAPER);
-    expect(m.fill).toBe("#ffffff");
+  test("without medal tokens, a light theme's face is its own surface, never a fixed white", () => {
+    const m = medalColoursFor({ tokens: { ...without(TOKENS.paper), surface: "#F3F5F8" } });
+    expect(m.fill).toBe("#f3f5f8");
     expect(m.line).toBeNull();
     expect(toOklch(m.tint)[0]).toBeGreaterThan(0.9);
-    expect(m.tint).not.toBe("#ffffff");
   });
 
-  test("the theme's own medal tokens win; a transparent ring means none", () => {
-    const own = medalColoursFor({
-      ...PAPER,
-      medal: { fill: "#FFFFFF", tint: "#F3EADB", line: "#00000000" },
+  test("a hostile token never reaches the markup; a transparent ring means none", () => {
+    const bad = medalColoursFor({
+      tokens: { ...TOKENS.paper, "medal-fill": '"/><script>', "medal-line": "red" },
     });
-    expect(own).toEqual({ fill: "#ffffff", tint: "#f3eadb", line: null });
-    expect(medalColoursFor({ ...SLATE, medal: { line: "#445968" } }).line).toBe("#445968");
-    // a hostile token never reaches the markup
-    const bad = medalColoursFor({ ...PAPER, medal: { fill: '"/><script>', line: "red" } });
-    expect(bad.fill).toBe("#ffffff");
+    expect(bad.fill).toBe("#ffffff"); // the surface
     expect(bad.line).toBeNull();
+  });
+});
+
+describe("dark-on-dark: every icon reads on both dark medals (3:1)", () => {
+  const themes = {
+    slate: { accent: "#9DBBD0", ink: "#E8ECF0" },
+    ember: { accent: "#F2A08C", ink: "#F1ECE8" },
+  };
+  test("the dominant shape reads at 3:1 on the face, or on the light rim the medal adds", () => {
+    const rimmed: string[] = [];
+    for (const [name, input] of [
+      ["slate", SLATE],
+      ["ember", EMBER],
+    ] as const) {
+      const medal = medalColoursFor(input);
+      const colours = iconColoursFor({ colors: themes[name] });
+      for (const id of ICON_IDS) {
+        for (const age of ["primary", "secondary"] as const) {
+          const opts = { medal, colours, age };
+          const shapes = iconSignificantColours(id, opts);
+          expect(shapes.length, id).toBeGreaterThan(0);
+          const rim = medalRim(id, opts);
+          for (const c of shapes) {
+            // each large shape reads on the face, or on the rim right behind it
+            const best = Math.max(contrast(c, medal.fill), rim ? contrast(c, rim) : 0);
+            expect(
+              best,
+              `${id} ${name} ${age}: ${c} on ${medal.fill}/${rim}`,
+            ).toBeGreaterThanOrEqual(3);
+          }
+          const svg = iconMedalSvg(id, { ...opts, idPrefix: "r" });
+          expect(XMLValidator.validate(svg), id).toBe(true);
+          if (rim) {
+            expect(svg, id).toContain(`stroke:${rim}`);
+            if (age === "secondary") rimmed.push(`${name}:${id}`);
+          }
+        }
+      }
+    }
+    // the reviewer's dark-on-dark list gets the rim
+    for (const k of [
+      "slate:penguin",
+      "ember:penguin",
+      "slate:copper-oxide",
+      "slate:moon-night",
+      "ember:bat",
+    ]) {
+      expect(rimmed, k).toContain(k);
+    }
+  });
+
+  test("light themes add no rim (the drawings are made for a light face)", () => {
+    const medal = medalColoursFor(PAPER);
+    for (const id of ICON_IDS) expect(medalRim(id, { medal }), id).toBeNull();
   });
 });
 
@@ -86,7 +174,7 @@ describe("iconMedalSvg", () => {
         /^<svg[^>]*>|<\/svg>$/g,
         "",
       );
-      expect(svg, id).toContain(`<g transform="translate(24 24) scale(0.8)">${body}</g>`);
+      expect(svg, id).toContain(`${body}</g></svg>`);
     }
   });
 

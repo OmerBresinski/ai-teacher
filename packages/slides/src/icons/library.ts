@@ -20,7 +20,7 @@ import { TASK } from "./set-task";
 import { VOCAB } from "./set-vocab";
 import { VOLCANOES } from "./set-volcanoes";
 import type { IconStyle } from "./treatment";
-import { flatten } from "./treatment";
+import { flatten, significantColours } from "./treatment";
 import type { IconAge, IconColours, IconDrawing, IconSize } from "./types";
 
 export type { IconStyle } from "./treatment";
@@ -86,6 +86,14 @@ export function iconBody(id: string, opts: IconSvgOptions = {}): string {
   const prefix = String(opts.idPrefix ?? "").replace(/[^A-Za-z0-9_-]/g, "");
   const idPrefix = /^[A-Za-z]/.test(prefix) ? prefix : `tji${++calls}${prefix}`;
   return flatten(markup, { ...opts, size, idPrefix });
+}
+
+/** The colours of the drawing's large shapes for these options (`significantColours`). */
+export function iconSignificantColours(id: string, opts: IconSvgOptions = {}): string[] {
+  if (!Object.hasOwn(ICON_LIBRARY, id)) return [];
+  const drawing = ICON_LIBRARY[id] as IconDrawing;
+  const markup = opts.size === "s" && drawing.small ? drawing.small() : drawing.svg();
+  return significantColours(markup, opts);
 }
 
 /** `width` and `height` attributes for a finite positive `px`, else "". */
