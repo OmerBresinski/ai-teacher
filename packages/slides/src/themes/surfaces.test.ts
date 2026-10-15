@@ -9,6 +9,7 @@ import {
   roundRectPoints,
   SHADOW_MAX,
   SURFACE_ROLES,
+  SURFACE_TOKEN_SETS,
   SURFACE_TOKENS,
   SURFACES,
   type SurfaceRole,
@@ -121,16 +122,21 @@ const PAIRS: [string, string, Ground][] = [
     [`cat-${n} ink on own fill`, `cat-${n}-ink`, `cat-${n}-fill`],
   ]),
   ["scrim ink on scrim (over white photo)", "scrim-ink", (t) => over(t.scrim as string, "#FFFFFF")],
+  ["scrim ink on scrim (over black photo)", "scrim-ink", (t) => over(t.scrim as string, "#000000")],
   ["correct verdict ink on ground", "sem-correct-ink", "bg"],
   ["correct verdict ink on surface", "sem-correct-ink", "surface"],
   ["incorrect verdict ink on ground", "sem-incorrect-ink", "bg"],
   ["incorrect verdict ink on surface", "sem-incorrect-ink", "surface"],
 ];
-const LOCKED = new Set(["scrim ink on scrim (over white photo)"]);
+const LOCKED = new Set([
+  "scrim ink on scrim (over white photo)",
+  "scrim ink on scrim (over black photo)",
+]);
 /** Calm keeps its own 7:1 rule; everyone else AA. */
 const MIN: Record<string, number> = { calm: 7 };
-const THEME_IDS = Object.keys(SURFACE_TOKENS);
-const tok = (id: string) => SURFACE_TOKENS[id] as SurfaceTokens;
+/** The 16 final themes and every live theme over its own palette (Night Lab included). */
+const THEME_IDS = Object.keys(SURFACE_TOKEN_SETS);
+const tok = (id: string) => SURFACE_TOKEN_SETS[id] as SurfaceTokens;
 
 describe("contrast: every text/ground pair in every theme meets AA (TEACH-215 part b row 3)", () => {
   for (const id of THEME_IDS) {
@@ -237,6 +243,49 @@ describe("the token file and the side table (row 2)", () => {
     expect(() => surfacesFromTokens(rest)).toThrow(/now-ink/);
   });
 
+  it("the contrast run covers all 16 final themes and every live theme, Night Lab included", () => {
+    for (const id of Object.keys(SURFACE_TOKENS)) expect(THEME_IDS).toContain(id);
+    for (const t of THEMES) expect(THEME_IDS).toContain(t.id);
+    expect(Object.keys(SURFACE_TOKENS)).toHaveLength(16);
+  });
+
+  it("parity: every live theme's surfaces are generated over its own palette", () => {
+    for (const t of THEMES) {
+      const k = tok(t.id);
+      const want = [
+        t.colors.background,
+        t.colors.surface,
+        t.colors.ink,
+        t.colors.muted,
+        t.colors.accent,
+        t.colors.line,
+      ];
+      expect({ id: t.id, got: [k.bg, k.surface, k.ink, k.muted, k.accent, k.rule] }).toEqual({
+        id: t.id,
+        got: want.map((c) => c.toUpperCase()),
+      });
+      expect(SURFACES[t.id]?.ground).toBe(t.colors.background.toUpperCase());
+    }
+  });
+
+  it("parity: tokens.json agrees with themes.ts on every shared theme, bar part c's pending rework", () => {
+    // Reading Room's final palette (round 5) lands with part c, which rewrites themes.ts from this file.
+    const PENDING_PART_C = ["reading-room"];
+    const differ = THEMES.filter((t) => {
+      const k = SURFACE_TOKENS[t.id];
+      if (!k) return false;
+      return [
+        [k.bg, t.colors.background],
+        [k.surface, t.colors.surface],
+        [k.ink, t.colors.ink],
+        [k.muted, t.colors.muted],
+        [k.accent, t.colors.accent],
+        [k.rule, t.colors.line],
+      ].some(([a, b]) => a?.toUpperCase() !== b?.toUpperCase());
+    }).map((t) => t.id);
+    expect(differ).toEqual(PENDING_PART_C);
+  });
+
   it("Paper's surfaces are Paper's own colours", () => {
     const paper = THEMES.find((t) => t.id === "paper");
     const s = SURFACES.paper;
@@ -287,7 +336,12 @@ describe("painting a role", () => {
     const t = paintSurface({ id: "k", role: "track", box: { x: 0, y: 0, w: 600, h: 40 } }, paper);
     expect(t).toMatchObject({ type: "shape", shape: "rect", fill: "#EFE6D8" });
     const s = paintSurface({ id: "s", role: "scrim", box: { x: 0, y: 0, w: 120, h: 28 } }, paper);
-    expect(s).toMatchObject({ type: "shape", shape: "rounded", fill: "#22152B", opacity: 0.659 });
+    expect(s).toMatchObject({
+      type: "shape",
+      shape: "rounded",
+      fill: "rgb(34, 21, 43)",
+      opacity: 0.659,
+    });
   });
 
   it("own corners that differ become one closed path; equal corners stay a native shape", () => {

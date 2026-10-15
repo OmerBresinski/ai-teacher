@@ -123,3 +123,40 @@ export async function addGroundArt(
   const data = await png;
   if (data) pptxSlide.background = { data };
 }
+
+/**
+ * One copy of each picture in the file. pptxgenjs writes a media part per use, so a ground laid
+ * under thirty slides would be thirty identical PNGs. Identical media parts collapse to the first,
+ * and every slide's relationship points at it, so the file grows with the themes and art
+ * variants a deck uses, not with its slide count. Pictures that differ are left alone.
+ */
+export async function shareMedia(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  const first = new Map<string, string>();
+  const alias = new Map<string, string>();
+  for (const path of Object.keys(zip.files).sort()) {
+    if (!/^ppt\/media\/[^/]+$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const ext = path.split(".").pop() ?? "";
+    const key = `${ext}:${await file.async("base64")}`;
+    const kept = first.get(key);
+    if (kept) alias.set(path.slice("ppt/media/".length), kept.slice("ppt/media/".length));
+    else first.set(key, path);
+  }
+  if (!alias.size) return buffer;
+  for (const path of Object.keys(zip.files)) {
+    if (!/^ppt\/.*\.rels$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const next = xml.replace(/Target="\.\.\/media\/([^"]+)"/g, (m, name: string) => {
+      const to = alias.get(name);
+      return to ? `Target="../media/${to}"` : m;
+    });
+    if (next !== xml) zip.file(path, next);
+  }
+  for (const name of alias.keys()) zip.remove(`ppt/media/${name}`);
+  return zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
+}

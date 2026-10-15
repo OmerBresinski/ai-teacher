@@ -1,4 +1,5 @@
 import type { PathElement, ShapeElement, Theme } from "@tj/domain/documents";
+import { THEMES } from "../themes";
 import TOKENS from "./tokens.json";
 
 /*
@@ -206,21 +207,103 @@ export const SURFACE_TOKENS: Readonly<Record<string, SurfaceTokens>> = TOKENS as
 >;
 
 /**
- * Live themes the final set drops read their nearest final theme's surfaces until part c retires
- * them: Chalk (cream paper, one warm accent) reads Paper, Night Lab (dark) reads Slate.
+ * Night Lab is live and has no final tokens (part c retires it from the picker): Slate's set with
+ * Night Lab's own palette, its theme-fit values (`theming/fit/fit.css`) and a deep medal under the
+ * dark medal rule. Its pairs are held to the same contrast test as every other theme.
  */
-export const SURFACE_STAND_IN: Readonly<Record<string, string>> = {
-  chalk: "paper",
-  "night-lab": "dark-slate",
+const NIGHT_LAB: SurfaceTokens = {
+  ...(TOKENS as Record<string, SurfaceTokens>)["dark-slate"],
+  sand: "#22262D",
+  "fa-fill": "#2A2620",
+  "fb-fill": "#22262D",
+  "card-fill": "#1C1F25",
+  "card-line": "#343A44",
+  "plate-fill": "#1C1F25",
+  "plate-line": "#F2B551",
+  "title-ink": "#ECEDEF",
+  "title-accent": "#F2B551",
+  "fa-ink": "#ECEDEF",
+  "fb-ink": "#ECEDEF",
+  "card-ink": "#ECEDEF",
+  "badge-fill": "#ECEDEF",
+  "badge-ink": "#131519",
+  "badge-now": "#F2B551",
+  "marker-fill": "#F2B551",
+  "marker-ink": "#131519",
+  "medal-fill": "#2E3440",
+  "medal-tint": "#2E3440",
+  "medal-line": "#3E4654",
+  "chip-fill": "#22262D",
+  "chip-ink": "#F2B551",
+  "key-ink": "#131519",
+  "sem-correct": "#86C7A8",
+  "sem-incorrect": "#F08A7A",
+  "sem-correct-ink": "#86C7A8",
+  "sem-incorrect-ink": "#F08A7A",
+  dim: "#868D98",
+  "now-ink": "#131519",
+  "title-muted": "#99A0AB",
+  "track-fill": "#22262D",
+  "track-ink": "#ECEDEF",
+  "hl-a": "#3A3122",
+  "hl-b": "#262B33",
+  "set-a": "#3A3122",
+  "set-b": "#23343A",
+  "bubble-a": "#2A2620",
+  "bubble-b": "#22262D",
+  "chip-quiet-fill": "#22262D",
+  "chip-quiet-ink": "#C9CED6",
+  "card-flat-line": "#343A44",
+  corner: "18px",
+};
+
+/** The palette keys a live theme owns: its surfaces are generated over these, never copied. */
+const LIVE_BASE: readonly [string, keyof Theme["colors"]][] = [
+  ["bg", "background"],
+  ["surface", "surface"],
+  ["ink", "ink"],
+  ["muted", "muted"],
+  ["accent", "accent"],
+  ["rule", "line"],
+];
+
+/**
+ * Tokens a live theme's own palette needs retuned: Reading Room's final dim is set for the round 5
+ * ground, which part c ships; on today's warmer ground it is deepened to keep AA.
+ */
+const LIVE_RETUNE: Readonly<Record<string, SurfaceTokens>> = {
+  "reading-room": { dim: "#706A5F" },
+};
+
+/**
+ * The token set a live theme paints with: its final tokens (or Night Lab's) with the theme's own
+ * palette laid over them, so `SURFACES` and `themes.ts` cannot disagree on a ground or an ink.
+ */
+export function liveTokens(theme: Pick<Theme, "id" | "colors">): SurfaceTokens | undefined {
+  const base = theme.id === "night-lab" ? NIGHT_LAB : SURFACE_TOKENS[theme.id];
+  if (!base) return undefined;
+  const own: SurfaceTokens = {};
+  for (const [k, c] of LIVE_BASE) {
+    const v = theme.colors[c];
+    if (typeof v === "string") own[k] = v.toUpperCase();
+  }
+  return { ...base, ...own, ...LIVE_RETUNE[theme.id] };
+}
+
+/** Every token set in force: the 16 final themes, then each live theme over its own palette. */
+export const SURFACE_TOKEN_SETS: Readonly<Record<string, SurfaceTokens>> = {
+  ...SURFACE_TOKENS,
+  ...Object.fromEntries(
+    THEMES.map((t) => [t.id, liveTokens(t)] as const).filter(
+      (e): e is readonly [string, SurfaceTokens] => e[1] != null,
+    ),
+  ),
 };
 
 /** `SURFACES[themeId]`: every final theme and every live theme, one entry each. */
-export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntries([
-  ...Object.entries(SURFACE_TOKENS).map(([id, t]) => [id, surfacesFromTokens(t)] as const),
-  ...Object.entries(SURFACE_STAND_IN).map(
-    ([id, to]) => [id, surfacesFromTokens(SURFACE_TOKENS[to] as SurfaceTokens)] as const,
-  ),
-]);
+export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntries(
+  Object.entries(SURFACE_TOKEN_SETS).map(([id, t]) => [id, surfacesFromTokens(t)] as const),
+);
 
 /** A theme's surfaces; one the table does not know takes Paper's, or Slate's when dark. */
 export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>
@@ -309,6 +392,10 @@ export function splitAlpha(c: string): { color: string; opacity?: number } {
   return { color: (m[1] as string).toUpperCase(), opacity: Math.round(a * 1000) / 1000 };
 }
 
+/** `#RRGGBB` as `rgb(r, g, b)`. */
+export const rgbOf = (hex: string): string =>
+  `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+
 /** Points per quarter arc on an own-corner path: smooth at slide scale, native in PPTX. */
 const ARC_STEPS = 8;
 
@@ -360,7 +447,11 @@ export function paintSurface(
   if (isClear(style.fill) && !style.line) return null;
   const box = { ...spec.box, h: spec.box.h + (spec.role === "title" ? (spec.join ?? 0) : 0) };
   // A clear role (a ghost disc) is filled with the ground: PowerPoint has no "none" a shape keeps.
-  const { color: fill, opacity } = splitAlpha(isClear(style.fill) ? s.ground : style.fill);
+  const split = splitAlpha(isClear(style.fill) ? s.ground : style.fill);
+  const { opacity } = split;
+  // The scrim is locked: written as rgb() so render-time re-theming (`themedColour`, which reads
+  // any hex that is some theme's token as that token) never swaps it for a theme's pale ink.
+  const fill = spec.role === "scrim" ? rgbOf(split.color) : split.color;
   const base = {
     id: spec.id,
     name: surfaceName(spec.role, spec.state),

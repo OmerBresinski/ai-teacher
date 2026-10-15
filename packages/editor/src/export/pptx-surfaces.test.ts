@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
-import { paintSurface, type SurfaceSpec, surfaceStyle } from "@tj/slides/surfaces";
+import {
+  paintSurface,
+  SURFACE_TOKEN_SETS,
+  type SurfaceSpec,
+  surfaceStyle,
+} from "@tj/slides/surfaces";
 import JSZip from "jszip";
 import { exportLessonPptx } from "./pptx";
 import {
@@ -10,6 +15,7 @@ import {
   groundArtSvg,
   groundRaster,
   SURFACE_PPTX,
+  shareMedia,
 } from "./pptx-surfaces";
 
 /*
@@ -92,17 +98,14 @@ describe("a fixture deck per role exports the listed shapes (row 4)", () => {
       for (const [i, [name, spec, want]] of cases.entries()) {
         const x = await xml(i + 1);
         expect({ name, geom: geometries(x) }).toEqual({ name, geom: [want] });
-        // The scrim's locked ink is Paper's ink, which the export re-inks per theme like any Paper
-        // literal; its alpha is what keeps it a scrim (checked below).
-        if (name === "scrim") continue;
         const fill = surfaceStyle(theme, spec.role, spec.state).fill.slice(1, 7).toUpperCase();
         expect({ name, filled: x.includes(`<a:srgbClr val="${fill}"`) }).toEqual({
           name,
           filled: true,
         });
       }
-      // The scrim keeps its alpha: a translucent fill, not a solid block over the photo.
-      expect(await xml(7)).toMatch(/<a:srgbClr val="[0-9A-F]{6}"><a:alpha val="66000"\/>/);
+      // The scrim keeps its locked fill and its alpha: never re-inked to a theme's pale ink.
+      expect(await xml(7)).toContain('<a:srgbClr val="22152B"><a:alpha val="66000"/>');
     }, 30_000);
   }
 });
@@ -204,4 +207,116 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
     const { xml } = await exportDeck(theme, [slide("t", [], { kind: "title" })]);
     expect(await xml(1)).not.toContain("<a:blipFill>");
   }, 30_000);
+});
+
+/* ---- WCAG contrast of the exported pair ---- */
+const lum = (h: string) => {
+  const [r = 0, g = 0, b = 0] = [0, 2, 4]
+    .map((i) => Number.parseInt(h.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+};
+const composite = (hex: string, alpha: number, under: string) =>
+  [0, 2, 4]
+    .map((i) => {
+      const t = Number.parseInt(hex.slice(i, i + 2), 16);
+      const u = Number.parseInt(under.slice(i, i + 2), 16);
+      return Math.round(t * alpha + u * (1 - alpha))
+        .toString(16)
+        .padStart(2, "0");
+    })
+    .join("")
+    .toUpperCase();
+
+describe("the scrim is locked in what ships", () => {
+  it("every theme exports the same scrim fill and alpha, and its label ink reads AA on it over any photo", async () => {
+    for (const theme of THEMES) {
+      const el = paintSurface(
+        { id: "s", role: "scrim", box: { x: 100, y: 100, w: 120, h: 28 } },
+        theme,
+      );
+      if (!el) throw new Error("no scrim");
+      const { xml } = await exportDeck(theme, [slide("s", [el])]);
+      const m = /<a:srgbClr val="([0-9A-F]{6})"><a:alpha val="(\d+)"\/>/.exec(await xml(1));
+      expect({ id: theme.id, fill: m?.[1], alpha: m?.[2] }).toEqual({
+        id: theme.id,
+        fill: "22152B",
+        alpha: "66000",
+      });
+    }
+    // The label colour comes from the same locked pair in all 16 final themes and every live one.
+    for (const [id, t] of Object.entries(SURFACE_TOKEN_SETS)) {
+      const fill = (t.scrim as string).slice(1, 7);
+      const alpha = Number.parseInt((t.scrim as string).slice(7), 16) / 255;
+      const ink = (t["scrim-ink"] as string).slice(1);
+      for (const photo of ["FFFFFF", "000000", "808080"]) {
+        const r = ratio(ink, composite(fill, alpha, photo));
+        expect({ id, photo, aa: r >= 4.5 }).toEqual({ id, photo, aa: true });
+      }
+    }
+  }, 60_000);
+});
+
+describe("ground art size and editability", () => {
+  const words = (id: string, n: number): SlideElement =>
+    ({
+      id,
+      type: "text",
+      x: 80,
+      y: 80,
+      w: 600,
+      h: 60,
+      doc: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: `Live words ${n}` }] }],
+      },
+      style: { preset: "body" },
+    }) as unknown as SlideElement;
+  const deck = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      slide(`s${i}`, [words(`w${i}`, i)], { kind: i === 0 ? "title" : "content" }),
+    );
+
+  for (const id of ["splash", "beacon", "playground"]) {
+    it(`${id}: a 12-slide deck embeds each ground once, and every word stays live text`, async () => {
+      const theme = getTheme(id);
+      const seen: string[] = [];
+      const { zip, xml } = await exportDeck(theme, deck(12), async (src) => {
+        seen.push(decodeURIComponent(src));
+        return PNG;
+      });
+      const pngs = Object.keys(zip.files).filter((f) => /^ppt\/media\/.*\.png$/.test(f));
+      // One media part per distinct ground at most (the stub hands the same PNG for each, so they
+      // share one), never one per slide.
+      expect(seen.length).toBe(new Set(seen).size);
+      expect(pngs.length).toBeGreaterThanOrEqual(1);
+      expect(pngs.length).toBeLessThanOrEqual(new Set(seen).size);
+      for (let i = 1; i <= 12; i++) {
+        const x = await xml(i);
+        expect(x).toContain(`<a:t>Live words ${i - 1}</a:t>`);
+      }
+      // Text is never baked into the ground.
+      for (const svg of seen) expect(svg).not.toContain("Live words");
+      // Every slide relationship that names a picture names one that exists.
+      for (const f of Object.keys(zip.files).filter((p) =>
+        /^ppt\/slides\/_rels\/.*\.rels$/.test(p),
+      )) {
+        const rels = (await zip.file(f)?.async("string")) ?? "";
+        for (const [, t] of rels.matchAll(/Target="\.\.\/media\/([^"]+)"/g))
+          expect(zip.file(`ppt/media/${t}`)).not.toBeNull();
+      }
+    }, 60_000);
+  }
+
+  it("shareMedia leaves a file with no repeated pictures untouched", async () => {
+    const zip = new JSZip();
+    zip.file("ppt/media/a.png", "one");
+    zip.file("ppt/media/b.png", "two");
+    const buf = await zip.generateAsync({ type: "arraybuffer" });
+    expect(await shareMedia(buf)).toBe(buf);
+  });
 });
