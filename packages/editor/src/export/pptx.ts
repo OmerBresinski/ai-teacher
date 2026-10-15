@@ -61,8 +61,8 @@ import {
   slideBackground,
   v2Profile,
 } from "@tj/slides";
-import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
+import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
