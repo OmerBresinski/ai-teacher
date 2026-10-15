@@ -1,7 +1,6 @@
 import { cn } from "@tj/ui";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { SlidesActor } from "./cast/SlidesActor";
 
 /*
  * The collapsed "Edit with Dayback" pane (TEACH-97): closing the pane never cancels a request; it
@@ -33,7 +32,10 @@ export function EditChatBubble({
   onOpen,
   takeFocus = false,
   host,
+  face,
 }: {
+  /** The Slides character, which loads with the chat's chunk; the button itself is there at once. */
+  face: ReactNode;
   /**
    * Layout A: the canvas row; the bubble sits at its bottom right, centred on the zoom row. `null`
    * while the row is not mounted yet: nothing renders, so the bubble mounts once, in place.
@@ -66,11 +68,7 @@ export function EditChatBubble({
           host ? "absolute right-4 bottom-2 size-12" : "fixed right-4 bottom-19 size-14",
         )}
       >
-        <SlidesActor
-          context="bubble"
-          state={state === "reply" ? "done" : state}
-          className={host ? "size-[46px]" : "size-[54px]"}
-        />
+        {face}
         {state === "reply" || state === "failed" ? (
           <span
             aria-hidden

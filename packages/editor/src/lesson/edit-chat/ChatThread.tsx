@@ -1,6 +1,6 @@
 import { type Lesson, richDocToPlainText } from "@tj/domain/documents";
 import { cn } from "@tj/ui";
-import { ArrowUp, ChevronDown, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import {
   type ButtonHTMLAttributes,
   type FormEvent,
@@ -520,10 +520,35 @@ function Composer({ view, empty }: { view: ChatView; empty: boolean }) {
                 : "cursor-default bg-muted text-ink-3",
             )}
           >
-            <ArrowUp aria-hidden size={16} strokeWidth={2.25} />
+            <SendArrow />
           </button>
         </div>
       </div>
     </form>
+  );
+}
+
+/**
+ * Lucide's arrow-up, drawn here: the slide icon set shares lucide's `ArrowUp` with every route, so
+ * importing it from this lazy chunk would split it into a chunk of its own on each route's load
+ * (TEACH-104 part d).
+ */
+export function SendArrow() {
+  return (
+    <svg
+      aria-hidden
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="lucide lucide-arrow-up"
+    >
+      <path d="m5 12 7-7 7 7" />
+      <path d="M12 19V5" />
+    </svg>
   );
 }

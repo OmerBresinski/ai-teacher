@@ -1,5 +1,6 @@
 import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
 import { cn } from "@tj/ui";
+import { X } from "lucide-react";
 import {
   createContext,
   type FormEvent,
@@ -11,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
@@ -22,7 +24,7 @@ import {
   useSessionActions,
   useSessionRead,
 } from "../use-editor-session";
-import { ChatThread, type ChatView } from "./ChatThread";
+import type { ChatView } from "./ChatThread";
 import { type BubbleState, EditChatBubble } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
@@ -35,7 +37,6 @@ import {
   lateIsCurrent,
   readThread,
   resolveFollowUp,
-  type Suggestion,
   scopeLabel,
   scopeOf,
   slideNumber,
@@ -63,6 +64,23 @@ import {
  */
 
 export { EDIT_CHAT_LABEL } from "./edit-chat-context";
+
+// The thread and the bubble (with the Slides character) load after first paint, from one chunk
+// (TEACH-104 part d, lesson-editor route budget). The controller above them stays static: a request
+// in flight lives there, not in the parts that draw it.
+const thread = lazyLoader(
+  () => import("./chat-parts"),
+  (m) => m.ChatThreadPart,
+);
+const bubbleFace = lazyLoader(
+  () => import("./chat-parts"),
+  (m) => m.BubbleFace,
+);
+
+/** Starts loading the chat's parts (the pane calls it once it has painted); settles when done. */
+export async function preloadEditChat(): Promise<void> {
+  await Promise.all([thread.preload(), bubbleFace.preload()]);
+}
 
 const WHOLE_LESSON =
   "I can’t change the whole lesson at once yet. I can change one slide at a time.";
@@ -551,10 +569,26 @@ export function EditChatPane({
   if (!controller) throw new Error("EditChatPane renders inside EditChatProvider");
   const { view, bubble, unread, closedHere } = controller;
   const close = view.close;
+  useEffect(() => {
+    void preloadEditChat();
+  }, []);
+  // A bump before the thread's chunk has landed focuses the composer once it mounts.
+  const focusOnMount = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: focus on each bump only
   useEffect(() => {
-    if (focusTick > 0) view.field.current?.focus();
+    if (focusTick === 0) return;
+    if (view.field.current) view.field.current.focus();
+    else focusOnMount.current = true;
   }, [focusTick]);
+  // A focus asked for before a load that then failed must not fire on a much later retry.
+  useEffect(() => {
+    if (!open) focusOnMount.current = false;
+  }, [open]);
+  const onThreadMounted = useCallback(() => {
+    if (!focusOnMount.current) return;
+    focusOnMount.current = false;
+    view.field.current?.focus();
+  }, [view.field]);
   // Escape from the top bar (where focus lands when ⋯ closes) or from nowhere closes the open pane
   // too, as it does from inside it. The canvas keeps its own Escape (deselect).
   useEffect(() => {
@@ -593,7 +627,13 @@ export function EditChatPane({
           }
         }}
       >
-        <ChatThread view={view} />
+        {/* While the thread loads (or if it fails), a shell the thread's size holds its place. */}
+        <LazyPart
+          loader={thread}
+          props={{ view, onMounted: onThreadMounted }}
+          fallback={<ChatPaneShell onClose={close} />}
+          failed={(retry) => <ChatPaneShell onClose={close} onRetry={retry} />}
+        />
       </aside>
       {open || bubbleHidden ? null : (
         <EditChatBubble
@@ -602,8 +642,57 @@ export function EditChatPane({
           takeFocus={closedHere.current}
           onOpen={() => onReopen?.()}
           host={bubbleHost}
+          face={
+            <LazyPart
+              loader={bubbleFace}
+              props={{ state: bubble, inHost: Boolean(bubbleHost) }}
+              fallback={<span aria-hidden className={bubbleHost ? "size-[46px]" : "size-[54px]"} />}
+              failed={() => (
+                <span aria-hidden className={bubbleHost ? "size-[46px]" : "size-[54px]"} />
+              )}
+            />
+          }
         />
       )}
     </>
+  );
+}
+
+/**
+ * The pane while its thread loads, or after the load failed: the thread's header (with its close
+ * button, so the pane can always be closed) and a composer-sized box, so nothing moves when the
+ * thread lands. Failed, the middle says so and offers a retry.
+ */
+export function ChatPaneShell({ onClose, onRetry }: { onClose: () => void; onRetry?: () => void }) {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-edit-chat-shell={onRetry ? "failed" : "loading"}
+    >
+      <div className="flex h-12 shrink-0 items-center gap-2 pr-2 pl-4">
+        <span aria-hidden className="size-6" />
+        <h2 className="m-0 font-semibold text-[15px] text-foreground leading-5">Dayback</h2>
+        <button
+          type="button"
+          aria-label="Close Edit with Dayback"
+          title="Close (Esc)"
+          onClick={onClose}
+          className="ml-auto inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <X aria-hidden size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4">
+        {onRetry ? (
+          <div role="alert" className="flex flex-col items-center gap-2">
+            <p className="m-0 text-ink-3 text-meta">The chat didn't load.</p>
+            <RetryLoad className="px-3 py-1.5" onRetry={onRetry} />
+          </div>
+        ) : null}
+      </div>
+      <div className="shrink-0 px-3 pt-2 pb-3">
+        <div className="h-[76px] rounded-[20px] bg-background shadow-[0_0_0_1px_var(--color-border)]" />
+      </div>
+    </div>
   );
 }
