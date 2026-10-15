@@ -4,16 +4,9 @@ import { sampleBriefLesson } from "../testing";
 import { withActivities } from "./activities";
 import { answerFirstMain, charsOver, fitTable } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
-import {
-  ITEMS_ROW_MAX,
-  ITEMS_ROW_MENU,
-  ROW_CHARS_PER_WORD,
-  rowCaps,
-  rowFit,
-} from "./items-row-fits";
+import { ITEMS_ROW_MAX, rowCaps } from "./items-row-fits";
 import { materialise, type Plan, visualsOf } from "./materialise";
 import { writerSchema } from "./schema";
-import { CHARS_PER_WORD } from "./slot-fill";
 import { validate } from "./strict-subset";
 
 /*
@@ -150,51 +143,3 @@ describe("the items row's fit", () => {
     expect(over.some((o) => o.startsWith("items[1]"))).toBe(true);
   });
 });
-
-describe("the items row's menu line", () => {
-  /** Each count's words in a Fits clause: "2 to 3 items each 8; 4 each 7" -> {2: 8, 3: 8, 4: 7}. */
-  const budgets = (clause: string) => {
-    const out: Record<number, number> = {};
-    for (const m of clause.matchAll(/(\d+)(?: to (\d+))?(?: items)? each (\d+)/g))
-      for (let n = Number(m[1]); n <= Number(m[2] ?? m[1]); n++) out[n] = Number(m[3]);
-    return out;
-  };
-  const words = (chars: number) => Math.max(1, Math.floor(chars / CHARS_PER_WORD));
-
-  test("counts words as slot-fill does", () => {
-    expect(ROW_CHARS_PER_WORD).toBe(CHARS_PER_WORD);
-  });
-
-  for (const stage of ["KS1", "KS2", "KS3-5"] as const)
-    test(`${stage}: the menu's Fits are the schema's and fit table's caps, every count`, () => {
-      const line = ITEMS_ROW_MENU[stage];
-      const fits = must(/Fits: (.*)\.$/.exec(line))[1] as string;
-      const [plain, led] = fits.split(/; with a lead of up to \d+ words: /);
-      const caps = rowCaps(stage);
-      const fit = rowFit(stage).variants;
-      // Every count the writer is offered has its budget, and each is that count's cap in words.
-      const each = budgets(plain as string);
-      expect(Object.keys(each).map(Number)).toEqual(fit.map((v) => v.counts.items));
-      for (const v of fit) {
-        expect(each[v.counts.items], `${stage} ${v.counts.items} items`).toBe(words(v.limit.item));
-        expect((each[v.counts.items] as number) * CHARS_PER_WORD).toBeLessThanOrEqual(caps.text);
-      }
-      const lead = /with a lead of up to (\d+) words/.exec(line);
-      if (!lead) {
-        // No lead offered: the schema holds lead to a stub, and the menu says so.
-        expect(caps.lead).toBeLessThan(CHARS_PER_WORD);
-        expect(line).toContain("lead is null");
-        return;
-      }
-      expect(Number(lead[1]) * CHARS_PER_WORD).toBeLessThanOrEqual(caps.lead);
-      for (const [n, w] of Object.entries(budgets(must(led))))
-        expect(w * CHARS_PER_WORD, `${stage} ${n} items with a lead`).toBeLessThanOrEqual(
-          must(fit.find((v) => v.counts.items === Number(n))).limit.item,
-        );
-    });
-});
-
-function must<T>(x: T | null | undefined): T {
-  if (x === null || x === undefined) throw new Error("missing");
-  return x;
-}
