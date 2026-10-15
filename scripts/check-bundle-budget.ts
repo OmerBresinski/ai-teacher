@@ -141,13 +141,15 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   // now draw `presentedSlide` / `withoutDiagramSlot`, which relays an open slot's words with the
   // look and fit engine from `@tj/slides`). Measured: editor 254.1, present 132.7, view 125.7,
   // print 92.9, worksheet editor 198.6 KB.
-  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 305 },
+  // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
+  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 315 },
   { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
   // Re-pinned 2026-10-15: Paper theme font and age-size tables (TEACH-152 part b), about 2.5 KB; approved by Greg
   { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 153 },
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
-  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 118 },
+  // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
+  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 125 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
   { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 38 },
 ];
