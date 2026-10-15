@@ -154,6 +154,14 @@ describeDb("lesson.plan on pg-boss", () => {
   const settledEvent = async (jobId: JobId) =>
     (await eventsFor(jobId)).find((e) => ["completed", "failed", "cancelled"].includes(e.type));
 
+  /**
+   * Whether the lesson's lock was released within `timeoutMs`. `runJob` writes the terminal event
+   * first and only then runs the handler's release hook (TEACH-202 part j), so a test that saw
+   * `completed` must wait for the release, not read the row once.
+   */
+  const lockReleased = (ws: ReturnType<typeof forWorkspace>, lessonId: LessonId) =>
+    waitFor(async () => (await getDocument(ws, lessonId))?.generatingJobId === null, 5_000);
+
   /** The row `POST /lessons` writes (plan revision 1, locked), and the job it queues. */
   async function createAndQueue(options: {
     skipPlanning?: boolean;
@@ -204,8 +212,8 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(
       await waitFor(async () => (await settledEvent(jobId))?.type === "completed", 30_000),
     ).toBe(true);
+    expect(await lockReleased(ws, lessonId)).toBe(true);
     const planned = await getDocument(ws, lessonId);
-    expect(planned?.generatingJobId).toBeNull();
     const proposal = parseLesson(planned?.body);
     expect(proposal.generation?.stage).toBe("planned");
     expect(proposal.plan).toEqual({ revision: 1, state: "proposed", jobId });
@@ -237,8 +245,8 @@ describeDb("lesson.plan on pg-boss", () => {
       await waitFor(async () => (await settledEvent(generateJobId))?.type === "completed", 30_000),
     ).toBe(true);
 
+    expect(await lockReleased(ws, lessonId)).toBe(true);
     const row = await getDocument(ws, lessonId);
-    expect(row?.generatingJobId).toBeNull();
     const done = parseLesson(row?.body);
     expect(done.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(done.generation?.stage).toBe("repaired");
@@ -338,8 +346,8 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(
       await waitFor(async () => (await settledEvent(jobId))?.type === "completed", 30_000),
     ).toBe(true);
+    expect(await lockReleased(ws, lessonId)).toBe(true);
     const row = await getDocument(ws, lessonId);
-    expect(row?.generatingJobId).toBeNull();
     expect(parseLesson(row?.body).generation?.stage).toBe("repaired");
     const stages = new Set((await expectStagedProgress(jobId)).map((p) => p.stage));
     expect(stages.has("plan") && stages.has("generate")).toBe(true);
