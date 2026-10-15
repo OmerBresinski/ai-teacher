@@ -41,11 +41,11 @@ const must = <T>(x: T | undefined | null): T => {
   return x;
 };
 const ROWS: PanelRow[] = [
-  { name: "Fruit", text: "Gives us vitamins.", icon: "apple" },
-  { name: "Fish", text: "Builds strong muscles.", icon: "fish" },
+  { name: "Fruit", text: "Gives us vitamins.", icon: "fruit" },
+  { name: "Fish", text: "Builds strong muscles.", icon: "seed" },
   { name: "Water", text: "Keeps us cool.", icon: "water" },
   { name: "Leaves", text: "Give us fibre.", icon: "leaf" },
-  { name: "Sun", text: "Gives vitamin D.", icon: "sun" },
+  { name: "Sun", text: "Gives vitamin D.", icon: "light" },
   { name: "Heart", text: "Pumps the blood.", icon: "heart" },
 ];
 const wide: Figure = {
@@ -136,7 +136,9 @@ describe("panel-list", () => {
     for (const stage of STAGES) {
       const boxes = [pending, wide, tall].map((fig) => {
         const r = layoutTemplate({ ...input(3, "none"), panel: { picture: fig } }, T0, stage);
-        const imgs = r.slide.elements.filter((e) => e.type === "image") as ImageElement[];
+        const imgs = r.slide.elements.filter(
+          (e) => e.type === "image" && e.name !== PANEL_NAMES.icon,
+        ) as ImageElement[];
         expect(imgs).toHaveLength(1);
         const img = imgs[0] as ImageElement;
         expect(named(r.slide.elements, "Photo panel")).toHaveLength(0);
@@ -198,11 +200,11 @@ describe("panel-list", () => {
 
   test("icons are all or none: a miss draws numbers and is reported", () => {
     const hit = layoutTemplate(input(3, "none"), T0, "ks2");
-    expect(hit.slide.elements.filter((e) => e.type === "icon")).toHaveLength(3);
+    expect(named(hit.slide.elements, PANEL_NAMES.icon)).toHaveLength(3);
     expect(hit.iconMisses ?? []).toEqual([]);
     const rows = ROWS.slice(0, 3).map((r, i) => (i === 1 ? { ...r, icon: "kitten" } : r));
     const miss = layoutTemplate(input(3, "none", undefined, rows), T0, "ks2");
-    expect(miss.slide.elements.filter((e) => e.type === "icon")).toHaveLength(0);
+    expect(named(miss.slide.elements, PANEL_NAMES.icon)).toHaveLength(0);
     expect(miss.iconMisses).toEqual(["kitten"]);
     const discs = named(miss.slide.elements, PANEL_NAMES.disc) as ShapeElement[];
     expect(discs).toHaveLength(3);

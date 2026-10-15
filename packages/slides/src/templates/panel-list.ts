@@ -22,7 +22,7 @@
  *   fits, else inset with the picture radius. Never a mat or a blur (ruling 217).
  */
 import type {
-  IconElement,
+  ImageElement,
   PathElement,
   ShapeElement,
   SlideElement,
@@ -47,6 +47,7 @@ import {
   type AgeKey,
   cropFor,
   factsOf,
+  iconSrc,
   matchIcon,
   type PanelLook,
   panelLook,
@@ -407,18 +408,19 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   if (groupIcon && groupIcon !== PENDING_ICON) {
     const top = TITLE_TOP + title.h + PHOTO_GAP;
     const g = Math.max(0, Math.min(GROUP_ICON, panelW - 2 * TITLE_X, SLIDE_H - PHOTO_GAP - top));
+    // The library's drawing as an image (literal colours; PPTX rasterises it).
     c.els.push({
       id: uid(),
-      type: "icon",
+      type: "image",
       x: Math.round((panelW - g) / 2),
       y: Math.round(top + (SLIDE_H - PHOTO_GAP - top - g) / 2),
       w: Math.round(g),
       h: Math.round(g),
-      icon: groupIcon,
-      color: L.onDeep,
-      strokeWidth: 1.5,
+      src: iconSrc(groupIcon, c.t, g),
+      alt: "",
+      fit: "contain",
       name: PANEL_NAMES.groupIcon,
-    } as IconElement);
+    } as ImageElement);
   }
   if (photo && picBox) {
     const crop =
@@ -616,18 +618,21 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     // A draft's held icon: the empty disc or tile only, until it resolves.
     if (icons && matched[i] !== PENDING_ICON) {
       const g = Math.round(m.d * (back === "none" ? 1 : back === "soft" ? SOFT_ICON : L.discIcon));
+      // The library's drawing as an image (literal colours; PPTX rasterises it); round like the
+      // disc only inside the ring, never cropped when it stands alone or on a soft disc.
       c.els.push({
         id: uid(),
-        type: "icon",
+        type: "image",
         x: ROWS_X + Math.round((m.d - g) / 2),
         y: Math.round(dy + (m.d - g) / 2),
         w: g,
         h: g,
-        icon: matched[i] as string,
-        color: L.onCategory(fill),
-        strokeWidth: 2,
+        src: iconSrc(matched[i] as string, c.t, g),
+        alt: r.icon ?? "",
+        fit: "contain",
+        ...(back === "ring" ? { radius: Math.round(g / 2) } : {}),
         name: PANEL_NAMES.icon,
-      } as IconElement);
+      } as ImageElement);
     }
     let ty = y + (b.rh - b.th) / 2;
     if (r.name) {
