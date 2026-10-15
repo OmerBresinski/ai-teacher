@@ -1,12 +1,23 @@
 /*
- * The pilot icon library (TEACH-310 part b): 122 model-drawn concepts on a 240x240 box. Drawings
+ * The icon library (TEACH-310 parts b and c): the pilot's 122 model-drawn concepts plus the
+ * drawings the new layouts name (steps practicals, stages, myth, reasons, table, task, vocab,
+ * phonics, discussion), all on a 240x240 box. Drawings
  * are never made live; a label that misses falls back to numbers and is reported (match.ts), and
  * ICON_BACKFILL.md says how a missed concept is drawn and added.
  */
 import { CORE } from "./core";
+import { DISCUSSION } from "./set-discussion";
 import { EGYPT } from "./set-egypt";
 import { HEART } from "./set-heart";
+import { LAB } from "./set-lab";
+import { MYTH } from "./set-myth";
+import { PHONICS } from "./set-phonics";
 import { PLANTS } from "./set-plants";
+import { REASONS } from "./set-reasons";
+import { STAGES } from "./set-stages";
+import { TABLE } from "./set-table";
+import { TASK } from "./set-task";
+import { VOCAB } from "./set-vocab";
 import { VOLCANOES } from "./set-volcanoes";
 import type { IconStyle } from "./treatment";
 import { flatten } from "./treatment";
@@ -17,14 +28,27 @@ export { COOL_ICON_COLOURS, DEFAULT_ICON_COLOURS, ICON_STYLES, iconColourSet } f
 
 export type { IconAge, IconColours, IconDrawing, IconSize } from "./types";
 
-/** Assembled as the pilot's library.js did: the reused v1 drawings, then each set (later wins). */
-export const ICON_LIBRARY: Readonly<Record<string, IconDrawing>> = {
-  ...CORE,
-  ...HEART,
-  ...PLANTS,
-  ...VOLCANOES,
-  ...EGYPT,
+/** The pilot's sets, then the layout sets of part c. Ids are unique across sets (library.test.ts). */
+export const ICON_SETS: Readonly<Record<string, Readonly<Record<string, IconDrawing>>>> = {
+  core: CORE,
+  heart: HEART,
+  plants: PLANTS,
+  volcanoes: VOLCANOES,
+  egypt: EGYPT,
+  lab: LAB,
+  stages: STAGES,
+  myth: MYTH,
+  reasons: REASONS,
+  table: TABLE,
+  task: TASK,
+  vocab: VOCAB,
+  phonics: PHONICS,
+  discussion: DISCUSSION,
 };
+export const ICON_LIBRARY: Readonly<Record<string, IconDrawing>> = Object.assign(
+  {},
+  ...Object.values(ICON_SETS),
+);
 export const ICON_IDS: readonly string[] = Object.keys(ICON_LIBRARY);
 export const ICON_AGES: readonly IconAge[] = ["early", "primary", "secondary"];
 export const ICON_SIZES: readonly IconSize[] = ["s", "m", "l"];
@@ -49,24 +73,37 @@ export interface IconSvgOptions {
 let calls = 0;
 
 /**
- * A self-contained SVG for a library id: literal colours, the age's outline, gloss and radius, and
- * the size's level of detail. Returns "" for an id the library does not have.
+ * The children of an icon's SVG (its 240x240 drawing, flattened to literal colours for the age,
+ * size and theme), for a caller that places the drawing inside its own SVG, such as a medal.
+ * "" for an id the library does not have.
  */
-export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
-  const drawing = ICON_LIBRARY[id];
-  if (!drawing) return "";
+export function iconBody(id: string, opts: IconSvgOptions = {}): string {
+  if (!Object.hasOwn(ICON_LIBRARY, id)) return "";
+  const drawing = ICON_LIBRARY[id] as IconDrawing;
   const size: IconSize = opts.size === "s" || opts.size === "l" ? opts.size : "m";
   const markup = size === "s" && drawing.small ? drawing.small() : drawing.svg();
   // ids and sizes reach attributes, so only safe characters and finite positive numbers pass
   const prefix = String(opts.idPrefix ?? "").replace(/[^A-Za-z0-9_-]/g, "");
   const idPrefix = /^[A-Za-z]/.test(prefix) ? prefix : `tji${++calls}${prefix}`;
-  const body = flatten(markup, { ...opts, size, idPrefix });
-  const px = Number(opts.px);
-  const box =
-    Number.isFinite(px) && px > 0
-      ? ` width="${Math.round(px * 100) / 100}" height="${Math.round(px * 100) / 100}"`
-      : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${box}>${body}</svg>`;
+  return flatten(markup, { ...opts, size, idPrefix });
+}
+
+/** `width` and `height` attributes for a finite positive `px`, else "". */
+export function pxAttrs(px: unknown): string {
+  const n = Number(px);
+  return Number.isFinite(n) && n > 0
+    ? ` width="${Math.round(n * 100) / 100}" height="${Math.round(n * 100) / 100}"`
+    : "";
+}
+
+/**
+ * A self-contained SVG for a library id: literal colours, the age's outline, gloss and radius, and
+ * the size's level of detail. Returns "" for an id the library does not have.
+ */
+export function iconSvg(id: string, opts: IconSvgOptions = {}): string {
+  const body = iconBody(id, opts);
+  if (!body) return "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${pxAttrs(opts.px)}>${body}</svg>`;
 }
 
 /**

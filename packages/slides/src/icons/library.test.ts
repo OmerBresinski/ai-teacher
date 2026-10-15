@@ -6,6 +6,7 @@ import {
   ICON_AGES,
   ICON_IDS,
   ICON_LIBRARY,
+  ICON_SETS,
   ICON_SIZES,
   ICON_STYLES,
   iconColourSet,
@@ -33,6 +34,11 @@ describe("iconSvg: every drawing, size, age and theme", () => {
               expect(/\bclass=/.test(svg), `${where}: class`).toBe(false);
               expect(/--[a-z]/.test(svg), `${where}: custom property`).toBe(false);
               expect(/color-mix|calc\(|filter:/.test(svg), `${where}: css function`).toBe(false);
+              // nothing that loads, scripts or embeds: a rasteriser or a page may draw it as is
+              expect(
+                /href|<foreignObject|<script|<image|<use\b|\son[a-z]+=/i.test(svg),
+                where,
+              ).toBe(false);
               const allowed = iconColourSet({ colours, age, style });
               for (const c of svg.match(HEX) ?? []) {
                 expect(allowed.has(c.toLowerCase()), `${where}: stray colour ${c}`).toBe(true);
@@ -43,7 +49,8 @@ describe("iconSvg: every drawing, size, age and theme", () => {
         }
       }
     }
-    expect(n).toBe(122 * 3 * 3 * 2 * 2);
+    expect(ICON_IDS).toHaveLength(201);
+    expect(n).toBe(201 * 3 * 3 * 2 * 2);
   }, 30_000);
 
   test("px sets an intrinsic size for rasterisers", () => {
@@ -84,6 +91,44 @@ describe("iconSvg: every drawing, size, age and theme", () => {
   });
 });
 
+describe("sets (TEACH-310 part c)", () => {
+  test("no id is in two sets, so no drawing silently replaces another", () => {
+    const seen = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const [set, drawings] of Object.entries(ICON_SETS)) {
+      for (const id of Object.keys(drawings)) {
+        if (seen.has(id)) dupes.push(`${id}: ${seen.get(id)} and ${set}`);
+        seen.set(id, set);
+      }
+    }
+    expect(dupes).toEqual([]);
+    expect(seen.size).toBe(ICON_IDS.length);
+  });
+
+  test("the layout sets are style A: no outline from primary on, soft shading", () => {
+    for (const set of ["lab", "stages", "myth", "reasons", "table", "task", "vocab", "phonics"]) {
+      for (const id of Object.keys(ICON_SETS[set] ?? {})) {
+        for (const age of ["primary", "secondary"] as const) {
+          expect(iconSvg(id, { age }), `${id} ${age}`).not.toContain("stroke-opacity");
+          expect(iconSvg(id, { age }), `${id} ${age}`).not.toMatch(/paint-order/);
+        }
+        // every solid fill is shaded (a drawing of lines only, like the fish skeleton, has none)
+        if (/fill:#(?!ffffff)[0-9a-f]{6}/.test(iconSvg(id, { age: "secondary" }))) {
+          expect(iconSvg(id, { age: "primary" }), id).toContain("radialGradient");
+        }
+      }
+    }
+  });
+
+  test("the corners of the 240 box stay empty, so a rasteriser keeps them transparent", () => {
+    for (const id of ICON_IDS) {
+      const svg = iconSvg(id, { idPrefix: "a" });
+      expect(svg, id).not.toMatch(/<rect x="0" y="0" width="240" height="240"/);
+      expect(svg, id).not.toMatch(/<svg[^>]*style=/);
+    }
+  });
+});
+
 describe("hostile input", () => {
   test("bad colours, ids, sizes, ages and px never reach the markup", () => {
     const evil = '"/><script>alert(1)</script><x a="';
@@ -97,6 +142,7 @@ describe("hostile input", () => {
     expect(XMLValidator.validate(svg)).toBe(true);
     expect(svg).not.toContain("<script");
     expect(svg).not.toContain("alert(");
+    expect(svg).not.toMatch(/href|<foreignObject/i);
     expect(svg).not.toContain("width=");
     for (const id of [...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1])) {
       expect(id).toMatch(/^[A-Za-z][A-Za-z0-9_-]*$/);
@@ -178,6 +224,10 @@ describe("soft style (the default)", () => {
       "pyramid",
       "mummy",
       "watering-can",
+      // part c: real things keep their own colours (eyes too: never the theme ink, light on dark)
+      ...["fish", "fossil", "sand", "bean", "copper-oxide", "bread-roll", "cat", "frog", "bird"],
+      ...["dog", "horse", "apple", "lemon", "helmet", "coin", "shield", "flame", "thermometer"],
+      ...["hen", "waterfall", "wheat", "conical-flask", "beaker", "funnel"],
     ]) {
       expect(iconSvg(id, { colours: green, idPrefix: "t" }), id).toBe(
         iconSvg(id, { colours: red, idPrefix: "t" }),
