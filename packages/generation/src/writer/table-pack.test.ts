@@ -120,7 +120,10 @@ describe("the stage lays a long table over continuation slides (y8 French replay
       expect(s.elements.some((e) => e.name === "Diagram")).toBe(true);
       expect(JSON.stringify(s.elements)).toContain("(continued)");
     }
+    // s7 is a practice slide: its "slide 8" reference sat in the instruction, which the "work
+    // alone" layout keeps in the data and does not draw (TEACH-230 part b; Greg, 15 Oct). The
+    // reference is not on the drawn slide any more, so only its tasks are checked here.
     const said = JSON.stringify(out.slides.find((s) => s.id === "s7"));
-    expect(said).toContain(`slide ${8 + conts.length}`);
+    expect(said).toContain('"name":"Task"');
   });
 });
