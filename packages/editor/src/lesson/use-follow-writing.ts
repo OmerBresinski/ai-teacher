@@ -1,5 +1,6 @@
 import type { Id } from "@tj/domain/documents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isPlannedBlank } from "./live-draft";
 
 /**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the
@@ -20,8 +21,14 @@ export function useFollowWriting({
   setActiveSlide,
   startFollowing,
   canvasFocused,
+  lead,
 }: {
-  slides: readonly { id: Id }[] | undefined;
+  slides: readonly { id: Id; elements?: readonly unknown[] }[] | undefined;
+  /**
+   * Live writing (ADR 0039): the slide whose drafts are streaming now. The writer's later slides
+   * wait as blank `writing` slides, so the newest writing slide is not the one being written.
+   */
+  lead?: Id;
   writingSlideIds: ReadonlySet<Id> | undefined;
   activeSlideId: Id | null;
   setActiveSlide: (id: Id) => void;
@@ -36,12 +43,24 @@ export function useFollowWriting({
   const [following, setFollowing] = useState(startFollowing);
   const target = useMemo(() => {
     if (!writingSlideIds || !slides) return undefined;
-    for (let i = slides.length - 1; i >= 0; i--) {
-      const id = slides[i]?.id;
-      if (id !== undefined && writingSlideIds.has(id)) return id;
+    // The writer goes in order, and its later slides wait as planned blanks. The view never opens
+    // a slide with nothing on it (TEACH-202 part f): it stays on the last slide with something to
+    // show (its saved copy) until the next slide's draft has words (`lead`, ready drafts only).
+    let last = -1;
+    for (const [i, s] of slides.entries()) if (writingSlideIds.has(s.id)) last = i;
+    let shown: Id | undefined;
+    for (const s of slides.slice(0, last + 1)) {
+      const waiting = writingSlideIds.has(s.id) && s.elements !== undefined && isPlannedBlank(s);
+      if (!waiting) shown = s.id;
+      else if (shown !== undefined) break;
     }
-    return undefined;
-  }, [slides, writingSlideIds]);
+    const first = slides[0]?.id;
+    // The streaming slide leads, but never back past the slide already shown (a late draft of an
+    // earlier slide would pull the view back for a moment).
+    const at = (id: Id | undefined) => slides.findIndex((s) => s.id === id);
+    if (lead !== undefined && at(lead) >= Math.max(0, at(shown))) return lead;
+    return shown ?? first;
+  }, [slides, writingSlideIds, lead]);
   /** The slide the follow is opening, until the session reports it open. */
   const mark = useRef<Id | null>(null);
   const previous = useRef(activeSlideId);
@@ -59,9 +78,12 @@ export function useFollowWriting({
       }
     }
     if (!following || !target || target === activeSlideId) return;
+    // Forward only: the follow never takes the view back to an earlier slide.
+    const at = (id: Id | null) => (slides ?? []).findIndex((s) => s.id === id);
+    if (activeSlideId !== null && at(target) < at(activeSlideId)) return;
     mark.current = target;
     setActiveSlide(target);
-  }, [activeSlideId, following, target, setActiveSlide]);
+  }, [activeSlideId, following, target, setActiveSlide, slides]);
 
   // A click or key press anywhere is the teacher acting (the chip itself excepted).
   const writing = writingSlideIds !== undefined;

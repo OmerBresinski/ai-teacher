@@ -201,6 +201,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
+      // Live writing (ADR 0039): drafts ride the job's events, never the lesson row.
+      ...(ctx.draft ? { onDraft: ctx.draft } : {}),
       worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
       images: imagePlacer(deps, workspaceId),
       ...pictureMaker(deps, workspaceId, logger),

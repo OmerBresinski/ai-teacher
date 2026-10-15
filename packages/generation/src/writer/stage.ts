@@ -95,6 +95,7 @@ import {
   teaching,
   words as wordsOfText,
 } from "./guards";
+import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -323,6 +324,21 @@ export type WriterRun = {
   /** The drafts' throttle and clock (tests pass a fake clock). */
   draft?: DraftOptions;
   /**
+   * Live writing P6 (TEACH-202 part f, ADR 0039): each draft laid out (`layDraft`), as the slide it
+   * will be (id `s<index + 1>`) with its words so far and open placeholders for its visuals. First
+   * on the template's close, then as the words grow; type only steps down. Same contract as
+   * `onDraft`: read-only, best effort, superseded by the slide's `onSlide`. Not for the objectives
+   * slide (1), which code lays.
+   */
+  onDraftSlide?: (index: number, slide: WriterSlide) => void;
+  /**
+   * Live writing (ADR 0039): the writer's `flow` as soon as it closes in the stream (before any
+   * slide): every slide it will write, in order. Best effort; a throw is logged and ignored.
+   */
+  onFlow?: (flow: Plan["flow"]) => void;
+  /** Live writing: each `flow` entry as soon as it closes in the stream (the flow is long). */
+  onFlowItem?: (item: NonNullable<Plan["flow"]>[number]) => void;
+  /**
    * Live writing P2 (TEACH-202 part e): hands the caller a function to call when a picture lands
    * while the deck is still read-only. The slide is laid again and handed over (`onSlide`) at
    * once, so the picture shows as soon as it is placed rather than when the deck turns editable.
@@ -471,9 +487,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ...(diagramWarnings ? { diagramWarnings } : {}),
       });
     // A drawn diagram carries its builds (Present shows its parts one per Next).
-    if (!run.drawDiagrams) return void laid.set(i, lay());
+    // Live writing (ADR 0039): the laid slide keeps its drafts' ids (`stableIds`), so nothing
+    // remounts when it takes over from its last draft, nor when a later relay lands a picture.
+    const keep = (x: Materialised): Materialised =>
+      run.onDraftSlide ? { ...x, slide: stableIds(x.slide, `s${i + 1}`) } : x;
+    if (!run.drawDiagrams) return void laid.set(i, keep(lay()));
     const m = withBuilds(lay);
-    laid.set(i, { ...m, slide: withBuildCounts(m.slide) });
+    laid.set(i, keep({ ...m, slide: withBuildCounts(m.slide) }));
   };
   /**
    * LAYOUT-SEL Egypt s1: a title picture that failed is searched once more for the lesson's topic
@@ -1001,6 +1021,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "stream-stopped", why, ...(e ? { err: String(e).slice(0, 200) } : {}) });
   };
   const parser = new PartialJson((path, value) => {
+    // Live writing (ADR 0039): each flow entry as it closes, before the flow does.
+    if (streaming && path.length === 2 && path[0] === "flow" && run.onFlowItem) {
+      const item = value as NonNullable<Plan["flow"]>[number];
+      nonFatalSync(
+        () => run.onFlowItem?.(item),
+        (e) => log({ ev: "on-flow-item-failed", err: String(e).slice(0, 200) }),
+      );
+      return;
+    }
     if (!streaming || path.length !== (path[0] === "slides" ? 2 : 1)) return;
     const [key, k] = path;
     if (key === "design") {
@@ -1011,6 +1040,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     if (key === "flow") {
       plan.flow = value as Plan["flow"];
+      // Live writing (ADR 0039): the deck's slide count is known; the caller may show them all.
+      nonFatalSync(
+        () => run.onFlow?.(plan.flow),
+        (e) => log({ ev: "on-flow-failed", err: String(e).slice(0, 200) }),
+      );
       return;
     }
     const idx = key === "title" ? 0 : key === "slides" && typeof k === "number" ? k + 2 : -1;
@@ -1031,7 +1065,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (ok) nextOpen = idx === 0 ? 2 : idx + 1;
   });
   // Live writing P4: the open slide's drafts, peeked after each delta (never on a recorded run).
-  const onDraft = run.onDraft;
+  const draftSizes = new Map<number, DraftSizes>();
+  const onDraftSlide = run.onDraftSlide;
+  const onDraft =
+    run.onDraft || onDraftSlide
+      ? (idx: number, d: SlideDraft) => {
+          run.onDraft?.(idx, d);
+          // The objectives slide is laid by code (never written); a slide already open is done.
+          if (!onDraftSlide || idx === 1 || opened.has(idx)) return;
+          const sizes = draftSizes.get(idx) ?? new Map();
+          draftSizes.set(idx, sizes);
+          const m = layDraft(d, { ...base, index: idx, plan }, sizes, stageKey);
+          if (m) onDraftSlide(idx, { id: `s${idx + 1}`, ...m, notes: "" });
+        }
+      : undefined;
   let drafts = onDraft && streaming ? new SlideDrafts(onDraft, run.draft) : undefined;
   const draftStats = drafts?.stats;
   const main = run.recordedWriter

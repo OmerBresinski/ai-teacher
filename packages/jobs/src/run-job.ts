@@ -4,6 +4,7 @@ import {
   JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX,
   type JobEventRow,
   notifyJobEvent,
+  pruneEphemeralJobEvents,
 } from "@tj/db";
 import {
   JOB_FAILURE_MESSAGE,
@@ -20,6 +21,7 @@ import {
 import type { JobResult, JobWithMetadata } from "pg-boss";
 import type { Logger } from "pino";
 import { z } from "zod";
+import { createDraftEmitter, DRAFT_MIN_INTERVAL_MS } from "./drafts";
 import { emitJobEvent, nowIso } from "./events";
 import { createProgressEmitter, PROGRESS_MIN_INTERVAL_MS } from "./progress";
 import {
@@ -53,6 +55,8 @@ export interface RunJobOptions<D = unknown> {
   cancelPollIntervalMs?: number;
   /** Test seam. */
   progressMinIntervalMs?: number;
+  /** Test seam. */
+  draftMinIntervalMs?: number;
   /** Test seam: replaces `emitJobEvent` (e.g. to persist a terminal row and then fail the notify). */
   emit?: typeof emitJobEvent;
 }
@@ -183,10 +187,20 @@ async function runJobAttempt<N extends JobName, D = unknown>(
 
   // Pre-run guard: a job already settled by an earlier attempt never runs (or emits) again.
   const terminal = await getTerminalJobEvent(ctx.db, base);
+  // Drafts an earlier attempt left behind (a worker killed before its prune) go first (ADR 0039).
+  await pruneDrafts();
   if (terminal) {
     logger.info({ type: terminal.type, eventId: terminal.id }, "job already terminal, skipping");
     await notifyJobEvent(ctx.sql, { id: terminal.id, ...base });
     return dispositionForTerminal(bossJob.id, terminal);
+  }
+
+  async function pruneDrafts(): Promise<void> {
+    try {
+      await pruneEphemeralJobEvents(ctx.db, base);
+    } catch (err) {
+      logger.warn({ err: safeError(err) }, "slide draft prune failed");
+    }
   }
 
   /**
@@ -254,11 +268,19 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     onError: (err) => logger.warn({ err: safeError(err) }, "progress event failed"),
   });
 
+  // Live writing (ADR 0039): slide drafts, never awaited by the handler, pruned when it settles.
+  const drafts = createDraftEmitter({
+    minIntervalMs: opts.draftMinIntervalMs ?? DRAFT_MIN_INTERVAL_MS,
+    emit: (draft) => emit({ type: "slide-draft", ...base, at: nowIso(), draft }).then(() => {}),
+    onError: (err) => logger.warn({ err: safeError(err) }, "slide draft event failed"),
+  });
+
   const jobCtx: JobContext<N, D> = {
     ...base,
     payload,
     signal: abort.signal,
     progress: progress.emit,
+    draft: drafts.emit,
     logger,
     deps: opts.deps,
     attemptsLeft: bossJob.retryCount < bossJob.retryLimit,
@@ -286,6 +308,10 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     clearInterval(cancelPoll);
     opts.shutdown?.removeEventListener("abort", onShutdown);
   }
+
+  // Drafts end with the handler: nothing pending is written, and what was written goes (ADR 0039).
+  await drafts.stop();
+  await pruneDrafts();
 
   // Flush any coalesced progress before the terminal event so ordering is preserved.
   await progress.flush();

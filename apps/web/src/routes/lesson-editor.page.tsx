@@ -9,6 +9,7 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
+import { type DraftStore, draftStoreFor } from "@tj/editor/live-draft";
 import { Button, IconButton, toast } from "@tj/ui";
 import { ArrowLeft, Download, FileText, LockKeyhole } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ import {
 } from "@/components/sign-in/sign-in-copy";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
+import { useHeldSave } from "@/hooks/use-held-save";
 import { usePromptEdit } from "@/hooks/use-prompt-edit";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
@@ -168,21 +170,37 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     async () => (followerRef.current ? followerRef.current.pull() : undefined),
     [],
   );
-  const saveDocument = useSaveWithConflictToast(lessonId, onStale);
+  // Live writing (ADR 0039): the job this editor follows while the lesson fills, so a refused save
+  // is silent only under this lesson's own stream, never under another job's lock.
+  const followedJob = useRef<string | undefined>(undefined);
+  const ownJob = useCallback(() => followedJob.current, []);
+  const saveDocument = useSaveWithConflictToast(lessonId, onStale, ownJob);
   // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
   // The theme the lesson opened with is not a choice (it may be the automatic default).
   const openedTheme = useRef<string | undefined>(undefined);
   if (openedTheme.current === undefined && data && isFullDocument(data) && "slides" in data)
     openedTheme.current = data.themeId;
+  /** The row and job as the page last read them: whose slides are whose while a job fills. */
+  /** The job's draft store, kept past the job's end for the last slide's hand-over. */
+  const rowRef = useRef<{ drafts?: DraftStore }>({});
+  // Live writing (ADR 0039): a save while every slide is still the job's waits for the first done
+  // slide, then the editor's copy is saved (`useHeldSave`).
+  const heldSave = useHeldSave<Parameters<typeof saveDocument>[0]>({
+    save: saveDocument,
+    row:
+      data && isFullDocument(data) ? (data as Parameters<typeof useHeldSave>[0]["row"]) : undefined,
+    generating: !!meta?.generatingJobId,
+    pull: onStale,
+  });
   const save = useCallback(
     (lesson: Parameters<typeof saveDocument>[0]) => {
       if ("themeId" in lesson && lesson.themeId && lesson.themeId !== openedTheme.current) {
         openedTheme.current = lesson.themeId;
         rememberTheme(lesson.themeId);
       }
-      return saveDocument(lesson);
+      return heldSave(lesson);
     },
-    [saveDocument],
+    [heldSave],
   );
   const [destination, setDestination] = useState<HTMLDivElement | null>(null);
   const [storyStarted, setStoryStarted] = useState(false);
@@ -391,7 +409,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       anonymous,
       stopped: !!stoppedJobId,
       proposed: data.plan?.state === "proposed",
-      editableSlides: hasEditableSlides(data),
+      // Live writing (ADR 0039): the editor opens as soon as the job owns the deck (its slides
+      // `writing`), not at the first done slide, so the lesson is watched taking shape in it.
+      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0,
     })
   ) {
     setUnlocked({ jobId: fillingJobId, base: data });
@@ -402,6 +422,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   if (filling && watchedJobId !== null) setWatchedJobId(null);
   const generatingJobId =
     fillingJobId ?? stoppedJobId ?? (watchedJobId !== completedJobId ? watchedJobId : null);
+  // Live writing (ADR 0039): one store of slide drafts per job, fed by whichever view follows it.
+  const draftStore = generatingJobId ? draftStoreFor(generatingJobId) : undefined;
+  // The job's store outlives its end by a moment: the last slide finishes typing over the hand-over
+  // (the store empties itself shortly after the job ends).
+  if (draftStore) rowRef.current.drafts = draftStore;
+  followedJob.current = filling && fillingJobId ? fillingJobId : undefined;
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
@@ -431,6 +457,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onCompleted={setCompletedJobId}
         onViewSlide={setViewedSlideId}
         exportSlot={exportSlot}
+        drafts={draftStore}
       />
     </Suspense>
   ) : anonymous ? (
@@ -471,6 +498,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onPromptEdit={onPromptEdit}
         busySlideIds={proposals.busySlideIds}
         writingSlideIds={writing}
+        drafts={rowRef.current.drafts}
         proposalsBusy={proposals.busy}
         images={images}
         exportSlot={
@@ -493,6 +521,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           editorRef={editorRef}
           followerRef={followerRef}
           onStopped={setStoppedJobId}
+          drafts={draftStore}
         />
       ) : null}
     </>

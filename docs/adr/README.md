@@ -43,6 +43,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0036 | The writer's slide count is exact, title and objectives included | Accepted (amended by 0038) |
 | 0037 | Per-slide ownership while a lesson is generating: done slides are the teacher's, job writes merge | Accepted |
 | 0038 | The teacher picks a slide length tier; the writer picks the count inside it | Accepted |
+| 0039 | Slide drafts stream as an ephemeral job-event side channel; the persisted slide always wins | Accepted |
 
 Template: `0000-template.md`.
 
@@ -91,3 +92,4 @@ Template: `0000-template.md`.
 - 2026-10-02 — ADR 0008: anonymous sessions for the first signed-out lesson. The anonymous user is never deleted on link (the Workspace cascades from it); the claim hands the Workspace to a new account by `owner_user_id` (same browser through `onLinkAccount`, another device through a pending row keyed by an HMAC of the address; existing accounts decline); default-deny guard with two lessons per Workspace and three re-plans; a per-device quota with a per-IP ceiling as the bot backstop (production IP settings pending); `ANONYMOUS_LESSONS_DAILY_CAP=0` is the kill switch; cleanup after 14 days; Turnstile on anonymous and magic-link sign-in. See the amendment in `0008-better-auth.md`.
 - 2026-10-02 — ADR 0022 (TEACH-251 amendment): generation saves lessons with the current `FIT_VERSION`, so the first open tidies nothing; Tidy defaults to `split: false` on a generated slide (`isGeneratedSlide`), so the first-open migration, a re-theme and the Tidy button never add pages to it; a teacher's edit makes the slide theirs again (TEACH-14). See the fifth amendment in `0022-editor-package-boundary-and-state.md`.
 - 2026-10-02 — ADR 0008 (TEACH-300): both sign-in limiters key on one address, resolved by better-auth's `getIPFromHeader` from `AUTH_IP_HEADER` (`x-real-ip` on Railway, which its edge overwrites; IPv6 by /64); an unresolved address shares one bounded bucket; a booleans-only `x-tj-ip-probe` report; magic-link sends bounded per address per hour and per UTC day, skipped silently with the normal answer. See the amendment in `0008-better-auth.md`.
+- 2026-10-12 — ADR 0039 (TEACH-202 part f): live writing streams `slide-draft` job events, the slide being written laid out as it stands, throttled to 200 ms in the worker and pruned when the job ends; drafts never touch the document, show only on `writing` slides, and the persisted slide always wins. See `0039-slide-draft-side-channel.md`.

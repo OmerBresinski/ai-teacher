@@ -4,6 +4,7 @@ import type {
   GenerationStage,
   Lesson,
   LessonFacts,
+  Slide,
   SourceLocator,
   SourceRef,
   Worksheet,
@@ -160,6 +161,18 @@ export interface PipelineDeps {
     documentUpdatedAt?: string,
   ) => Promise<void>;
   context: PipelineContext;
+  /**
+   * Live writing (ADR 0039, TEACH-202 part f): the slide the writer is writing, laid out as it
+   * stands (`slide-draft` job events). Fire and forget; absent, no drafts are laid. A draft never
+   * reaches the lesson: the persisted slide always wins.
+   */
+  onDraft?: (draft: {
+    index: number;
+    slideId: string;
+    slide: Pick<Slide, "id" | "kind" | "elements"> &
+      Partial<Pick<Slide, "background" | "question" | "notes">>;
+    final?: boolean;
+  }) => void;
   /**
    * Ruling 201: whether a worksheet job was actually created for this lesson. The confirm's
    * `brief.worksheet` is only the teacher's intent; the write stage asks this before it decides

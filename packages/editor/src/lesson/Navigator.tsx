@@ -212,8 +212,18 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
     // Live writing P1 (TEACH-202 part e): a slide the follow opened scrolls into view only while
     // the teacher is not busy, and never takes focus.
     if (activeId && followMark.current?.current === activeId) {
-      if (i !== undefined && !teacherBusy())
-        virtualizerRef.current.scrollToIndex(i, { align: "auto" });
+      // Live writing (TEACH-202 part f): the strip glides forward to centre the slide being
+      // written, and never scrolls back.
+      const v = virtualizerRef.current;
+      const to = i !== undefined ? v.getOffsetForIndex(i, "center")?.[0] : undefined;
+      const el = v.scrollElement as HTMLElement | null;
+      if (to !== undefined && el && !teacherBusy() && to > (v.scrollOffset ?? 0)) {
+        const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        el.scrollTo({
+          [v.options.horizontal ? "left" : "top"]: to,
+          behavior: still ? "auto" : "smooth",
+        });
+      }
       return;
     }
     if (i !== undefined) virtualizerRef.current.scrollToIndex(i, { align: "auto" });

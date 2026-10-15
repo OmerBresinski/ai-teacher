@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
 import type { LessonEditorHandle } from "@tj/editor/lesson";
+import type { DraftStore } from "@tj/editor/live-draft";
 import { Button } from "@tj/ui";
 import { type RefObject, useCallback, useEffect, useImperativeHandle, useRef } from "react";
-import { useJobEvents } from "@/hooks/use-job-events";
+import { useFeedDrafts, useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse } from "@/lib/query";
@@ -43,6 +44,7 @@ export function FillingFollower({
   editorRef,
   followerRef,
   onStopped,
+  drafts,
 }: {
   lessonId: string;
   jobId: string;
@@ -55,9 +57,12 @@ export function FillingFollower({
    * was written, the way back), as it does when the job stops before any slide is done.
    */
   onStopped?: (jobId: string) => void;
+  /** Live writing (ADR 0039): the job's slide drafts go here, for the editor's canvas to show. */
+  drafts?: DraftStore;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId, queryClient);
+  useFeedDrafts(drafts, stream.drafts, stream.terminal !== null);
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
   const baseRef = useRef(base);
   const inFlight = useRef<Promise<Lesson | undefined> | null>(null);

@@ -30,7 +30,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { z } from "zod";
-import { hasQueuedJobEvent, terminalJobEventFor } from "./job-events";
+import { hasQueuedJobEvent, pruneEphemeralEventsOf, terminalJobEventFor } from "./job-events";
 import { documents } from "./schema/documents";
 import type { WorkspaceDb } from "./tenant";
 
@@ -734,6 +734,8 @@ export async function releaseStaleLock(
   const reason = await staleLockReason(ws, row, jobId, opts);
   if (reason === null) return row;
   await clearGenerating(ws, row.id, jobId);
+  // A dead job's slide drafts never reached its own prune (ADR 0039): they go with its lock.
+  await pruneEphemeralEventsOf(ws, jobId);
   opts.logger?.info({ lessonId: row.id, jobId, reason }, "released a stale generating lock");
   return (await getDocument(ws, row.id)) ?? { ...row, generatingJobId: null };
 }
