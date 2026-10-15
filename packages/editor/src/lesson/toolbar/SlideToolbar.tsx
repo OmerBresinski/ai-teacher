@@ -25,7 +25,7 @@ import { useHistory } from "../document-context";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
 import { AnswerDrawer } from "./AnswerDrawer";
-import { FreeLayoutSwitch } from "./FreeLayoutSwitch";
+import { LazyFreeLayoutSwitch } from "./LazyFreeLayoutSwitch";
 import { SlideArtMenu } from "./SlideArtMenu";
 import { BarButton, DropTrigger, ICON, useThemePalette } from "./shared";
 
@@ -72,7 +72,7 @@ export const SlideToolbar = memo(function SlideToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Slide" data-slide-toolbar>
-      <FreeLayoutSwitch slide={slide} />
+      <LazyFreeLayoutSwitch slide={slide} />
       <DropTrigger label="Slide layout" value={slide.kind} text={SLIDE_KIND_LABELS[slide.kind]}>
         <DropdownMenuLabel>Convert this slide to</DropdownMenuLabel>
         {SLIDE_KIND_ORDER.map((kind) => (

@@ -17,7 +17,7 @@ import * as reducers from "../../model/reducers";
 import { useLesson } from "../document-context";
 import { hint } from "../keys";
 import { useSessionActions } from "../use-editor-session";
-import { FreeLayoutSwitch } from "./FreeLayoutSwitch";
+import { LazyFreeLayoutSwitch } from "./LazyFreeLayoutSwitch";
 import { MoreDrawer } from "./MoreDrawer";
 import { SlotSideControl, type SlotSideProps } from "./SlotSideControl";
 import { ICON, OpacityControl, useElementWrites, useThemePalette } from "./shared";
@@ -48,7 +48,7 @@ export const OtherToolbar = memo(function OtherToolbar({
   return (
     <Panel as="bar" role="toolbar" aria-label="Element" data-other-toolbar>
       {slot ? <SlotSideControl slideId={slideId} {...slot} /> : null}
-      {slide ? <FreeLayoutSwitch slide={slide} /> : null}
+      {slide ? <LazyFreeLayoutSwitch slide={slide} /> : null}
       {element.type === "group" && !slide ? (
         <>
           <Tooltip label="Ungroup" shortcut={hint("$mod+Shift+g")}>

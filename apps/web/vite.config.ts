@@ -122,12 +122,22 @@ export default defineConfig(({ mode }) => {
           codeSplitting: {
             groups: [
               { name: "react", test: /node_modules\/(react|react-dom|scheduler)\// },
-              // The slide structure recipes keep the small modules they share with the template
-              // recipes in their own chunk, as before the lazy layout panel (TEACH-205 part b)
-              // reached the templates: split out, they add three chunks every lesson page loads.
+              // The lazy layout kit (TEACH-205 part b) shares these slide modules with the template
+              // recipes, which would split them into extra chunks every lesson page loads. Pin
+              // them to the chunks they formed before, so view and print load what they did.
               {
                 name: "structure",
-                test: /packages\/slides\/src\/(structure|look|point-kinds|fit-slide|sentences|art|lint|diagrams\/builds)\.ts$/,
+                test: /packages\/slides\/src\/(structure|look|fit-slide|sentences|art|lint)\.ts$/,
+                includeDependenciesRecursively: false,
+              },
+              {
+                name: "materialise",
+                test: /packages\/slides\/src\/(callout|callout-icons|content-shapes|theme-colours|materialise)\.ts$/,
+                includeDependenciesRecursively: false,
+              },
+              {
+                name: "choice",
+                test: /packages\/(slides\/src\/(background|path|diagrams\/(embed-fonts|builds))|editor\/src\/(images\/diagram-fonts|lesson\/image-adjust|slide\/elements\/choice))\.tsx?$/,
                 includeDependenciesRecursively: false,
               },
             ],

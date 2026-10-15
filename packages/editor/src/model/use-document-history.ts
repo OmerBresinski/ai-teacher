@@ -6,8 +6,8 @@
 
 import type { QueryFunction, QueryKey } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
-import { useMemo } from "react";
-import { syncLayoutGroups } from "./reducers/layout-sync";
+import { useEffect, useMemo } from "react";
+import { hasLayouts, loadLayoutEditing, settleLayoutGroups } from "./layout-editing";
 import { HISTORY_LIMIT, type History, type ReducerOf, useHistory } from "./use-history";
 
 export { HISTORY_LIMIT };
@@ -62,8 +62,12 @@ export function useDocumentHistory<TData = unknown>({
     onChange,
     isDocument: isLessonData,
     documentOf: lessonOf,
-    settle: syncLayoutGroups,
+    settle: settleLayoutGroups,
   });
+  const withLayouts = history.document ? hasLayouts(history.document) : false;
+  useEffect(() => {
+    if (withLayouts) void loadLayoutEditing();
+  }, [withLayouts]);
   // `history` is already memoised on its parts; this only renames `document` → `lesson`.
   return useMemo(() => {
     const { document: lesson, ...rest } = history;

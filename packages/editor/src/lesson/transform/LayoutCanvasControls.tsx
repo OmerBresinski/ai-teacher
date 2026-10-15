@@ -8,7 +8,7 @@ import {
 import { boundPath } from "@tj/slides/layout-paths";
 import * as kit from "@tj/slides/relayout";
 import { toast } from "@tj/ui";
-import { Plus, TriangleAlert, X } from "lucide-react";
+import { TriangleAlert, X } from "lucide-react";
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -20,8 +20,12 @@ import type { Point, Rect } from "../../model/geometry";
 import { setLayoutKit } from "../../model/layout-kit";
 import * as reducers from "../../model/reducers";
 import { renderTheme } from "../../model/themes";
+import { ICONS } from "../../slide/elements/IconView";
 import { useHistory, useLesson } from "../document-context";
 import { childRect } from "./layout-children";
+
+// From the icon set the slides already load, so lucide's plus stays in that chunk (bundle budget).
+const Plus = ICONS.plus as (typeof ICONS)[string];
 
 // Loading this module is what makes typing on the slide re-flow a layout (`layout-kit.ts`).
 setLayoutKit(kit);
