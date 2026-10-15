@@ -43,7 +43,11 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
         return { doc, v, key, stage, theme, value: lab?.maxCharsPerItem ?? -1 };
       }),
     ),
-  ).filter((c) => c.value >= 2 && c.value <= 238);
+  )
+    .filter((c) => c.value >= 2 && c.value <= 238)
+    // TEACH-230 part b: practice and the exit ticket are the "work alone" layouts now, measured in
+    // practice-capacity.json (practice.test.ts); the lab's pinned cells were the old numbered list.
+    .filter((c) => c.doc.id !== "practice" && c.doc.id !== "exit-ticket");
   // Every k-th cell: about 20, spread over templates and stages.
   const k = Math.max(1, Math.floor(cells.length / 20));
   const picked = cells.filter((_, i) => i % k === 0);
