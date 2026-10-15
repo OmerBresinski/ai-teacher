@@ -91,12 +91,13 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const h = plan.height;
   const x = Math.round((960 - TICKET.w) / 2);
   const y = Math.round(stageTop + Math.max(0, (room - h) / 2));
-  // The sand floor first, rising to behind the ticket's middle, edge to edge and to the foot.
+  // The sand floor first, rising to behind the ticket's middle, edge to edge and to the foot. It
+  // overhangs the slide by 16 pt, so a theme that rounds every field (Night Lab) rounds off-canvas.
   const floorY = Math.round(y + h * TICKET.floorAt);
   const floor = paintSurface(
     {
       role: "field-b",
-      box: { x: 0, y: floorY, w: 960, h: 540 - floorY },
+      box: { x: -16, y: floorY, w: 992, h: 556 - floorY },
       own: [0, 0, 0, 0],
       id: uid(),
     },

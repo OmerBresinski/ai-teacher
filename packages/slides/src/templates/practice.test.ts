@@ -36,7 +36,9 @@ describe("the gold's cases (northstars-v13/practice-exit)", () => {
         const r = lay(k.input, k.stage, t);
         expect(r.over).toEqual([]);
         for (const e of r.slide.elements) {
-          const size = (e as TextElement).style?.fontSize ?? e.textStyle?.fontSize;
+          const size =
+            (e as TextElement).style?.fontSize ??
+            (e as { textStyle?: { fontSize?: number } }).textStyle?.fontSize;
           if (size !== undefined) expect(size).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
           if (e.name !== WA_NAMES.floor) expect(e.y + e.h).toBeLessThanOrEqual(540);
         }
@@ -138,9 +140,9 @@ describe("exit ticket", () => {
     expect(ticket.x + ticket.w / 2).toBe(480);
     expect(ticket.w).toBe(TICKET.w);
     const floor = named(r.slide.elements, WA_NAMES.floor)[0] as SlideElement;
-    expect(floor.x).toBe(0);
-    expect(floor.w).toBe(960);
-    expect(floor.y + floor.h).toBe(540);
+    expect(floor.x).toBeLessThanOrEqual(-16);
+    expect(floor.x + floor.w).toBeGreaterThanOrEqual(976);
+    expect(floor.y + floor.h).toBeGreaterThanOrEqual(556);
     expect(Math.abs(floor.y - (ticket.y + ticket.h * 0.4))).toBeLessThanOrEqual(1);
     // Painted first: the floor, then the ticket, then its words.
     const order = r.slide.elements.map((e) => e.name);
