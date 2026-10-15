@@ -46,6 +46,58 @@ const leading = (t: string): number | undefined => {
 };
 
 /**
+ * TEACH-75 part y (NOTES worked v12, W-d2/W-d3): a worked example's panel model. `percent` finds
+ * p% of an amount by tenths (10%, the tens, half a tenth, the total), one brace per build;
+ * `equation` draws ax + b = c as two equal bars, its x cells at a neutral width (never to scale,
+ * so the drawing does not give the answer away). Only the numbers come from the writer.
+ */
+const PercentPanel = z.object({
+  model: z.literal("percent"),
+  amount: z.number().positive().finite(),
+  percent: z.number().finite(),
+});
+const EquationPanel = z.object({
+  model: z.literal("equation"),
+  a: z.number().finite(),
+  b: z.number().finite(),
+  c: z.number().finite(),
+  /** The unknown's letter. */
+  unknown: z
+    .string()
+    .trim()
+    .regex(/^[a-z]$/i)
+    .default("x"),
+});
+export const BarPanelSchema = z.discriminatedUnion("model", [PercentPanel, EquationPanel]);
+export type BarPanel = z.infer<typeof BarPanelSchema>;
+export type BarPanelInput = z.input<typeof BarPanelSchema>;
+
+/** The most x cells an equation bar draws: past it the slide shows its working as text only. */
+export const EQUATION_MAX_A = 6;
+
+/**
+ * Whether a panel model can draw its numbers exactly (the NOTES guards). `ok: false` tells the
+ * caller to fall back to the text-only worked example.
+ */
+export function barPanelGuard(p: BarPanelInput): { ok: true } | { ok: false; reason: string } {
+  if (p.model === "percent") {
+    if (!(p.percent > 0 && p.percent <= 100) || p.percent % 5 !== 0)
+      return { ok: false, reason: "the percent is not a multiple of 5 up to 100" };
+    return { ok: true };
+  }
+  if (!Number.isInteger(p.a) || p.a < 1 || p.a > EQUATION_MAX_A)
+    return { ok: false, reason: `a is not a whole number from 1 to ${EQUATION_MAX_A}` };
+  if (!(p.b > 0) || !(p.c > p.b))
+    return { ok: false, reason: "b is not positive or c is not above b" };
+  // x may be a decimal (KS3 solves 2x + 3 = 8), but one the cells show exactly: at most two
+  // decimal places. 10/3 would show as a rounded 3.33 that does not check.
+  const x = (p.c - p.b) / p.a;
+  if (Math.abs(Math.round(x * 100) - x * 100) > 1e-6)
+    return { ok: false, reason: "x is not a whole number or a decimal of at most 2 places" };
+  return { ok: true };
+}
+
+/**
  * dd-diagrams: a bar model draws quantities. Its parts are labelled with numbers (or "?"), and a
  * total that leads with a number is the sum of its parts (their values, or their numbered labels):
  * K y9 s3 drew "5 loaves" over parts worth 10 marks, a count of things set over money, which reads
@@ -57,8 +109,17 @@ export const BarModelSchema = z
     ...common,
     bars: z.array(Bar).min(1).max(4),
     combined: label(14).optional(),
+    /**
+     * A worked example's panel model: drawn from these numbers, its `bars` are ignored. Set by
+     * code (`barPanelSpec`), never by a writer: it is kept off the wire (`drawerOnly`).
+     */
+    panel: BarPanelSchema.optional().meta({ drawerOnly: true }),
   })
   .superRefine((m, ctx) => {
+    if (m.panel) {
+      const g = barPanelGuard(m.panel);
+      if (!g.ok) ctx.addIssue({ code: "custom", message: g.reason, path: ["panel"] });
+    }
     m.bars.forEach((b, i) => {
       b.parts.forEach((p, j) => {
         if (p.label && !QUANTITY.test(p.label))
