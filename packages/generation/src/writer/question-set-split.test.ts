@@ -3,7 +3,7 @@ import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { layDraft } from "./lay-draft";
 import { materialise, type Plan } from "./materialise";
-import { continueQuickCheck } from "./question-set-split";
+import { continueQuickCheck, evenParts } from "./question-set-split";
 
 /*
  * TEACH-101 part g on the writer's side: a quick check past its maximum continues on a second
@@ -63,6 +63,21 @@ describe("a quick check past its maximum continues (TEACH-101 part g)", () => {
       expect(m.over).toEqual([]);
       expect(texts(m.slide.elements, "Answer")).toHaveLength((p.questions as string[]).length);
     }
+  });
+
+  test("seven questions split 4 + 3, never 3 + 3 + 1", () => {
+    expect(evenParts(7, 2)).toEqual([4, 3]);
+    expect(evenParts(7, 3)).toEqual([3, 2, 2]);
+    const seven: [string, string][] = [
+      ...Y3,
+      ["What is 18 + 50?", "68"],
+      ["What is 61 + 20?", "81"],
+    ];
+    const qc = continueQuickCheck(set(seven), fits("KS1"));
+    const parts = [qc?.first, ...(qc?.rest ?? [])] as S[];
+    expect(parts.map((p) => (p.questions as string[]).length)).toEqual([4, 3]);
+    expect(parts.flatMap((p) => p.answers as string[])).toEqual(seven.map((i) => i[1]));
+    for (const p of parts) expect(lay(p, "KS1").over).toEqual([]);
   });
 
   test("a set that fits, or carries no answers, is left alone", () => {

@@ -238,4 +238,23 @@ describe("quick check (TEACH-101 part g)", () => {
       }
     }
   });
+
+  test("a blank answer's row has no '?' chip and no step; the rest reveal in order", () => {
+    const items: [string, string][] = y6.items.map((it, i) => (i === 2 ? [it[0], ""] : it));
+    const r = lay({ ...y6, items });
+    const els = r.slide.elements;
+    expect(named(els, QUICK_NAMES.wait)).toHaveLength(4);
+    expect(named(els, QUICK_NAMES.answer).map((a) => a.revealStep)).toEqual([1, 2, 3, 4]);
+    const slide = { id: "s", ...r.slide } as Slide;
+    expect(hasRevealableAnswer(slide)).toBe(false);
+    expect(slideStepCount(slide)).toBe(4);
+  });
+
+  test("a single-answer set reveals its one answer once; Present adds no second reveal", () => {
+    const r = lay({ ...y6, items: y6.items.slice(0, 1) });
+    const slide = { id: "s", ...r.slide } as Slide;
+    expect(named(slide.elements, QUICK_NAMES.answer)).toHaveLength(1);
+    expect(hasRevealableAnswer(slide)).toBe(false);
+    expect(slideStepCount(slide)).toBe(1);
+  });
 });

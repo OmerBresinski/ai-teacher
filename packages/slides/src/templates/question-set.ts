@@ -183,6 +183,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const s = c.s;
   c.s = { ...s, body: fit.size, lead: fit.size };
   let y = stageTop + gap;
+  let step = 0;
   const fields: FieldReport[] = [];
   const caps = quickCaps(stage, n);
   qs.forEach((q, i) => {
@@ -200,8 +201,10 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     );
     // The "?" chip, then (step i+1) a field-coloured cover over it and the answer.
     const cy = Math.round(mid - fit.chip / 2);
-    roleDisc(c, "chip", "?", ax, mid, fit.chip, QUICK_NAMES.wait);
+    // A row with no answer has nothing to reveal, so it has no "?" chip and no step.
     if (as[i]) {
+      step += 1;
+      roleDisc(c, "chip", "?", ax, mid, fit.chip, QUICK_NAMES.wait);
       const from = c.els.length;
       const cover = paint(
         c,
@@ -224,7 +227,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
         { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer },
       );
       for (const e of c.els.slice(from)) {
-        e.revealStep = i + 1;
+        e.revealStep = step;
         e.reveal = "rise";
       }
     }

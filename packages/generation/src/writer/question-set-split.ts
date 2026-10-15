@@ -19,16 +19,23 @@ export function continueQuickCheck(
   if (qs.length < 2 || !as.some((a) => typeof a === "string" && a.trim())) return undefined;
   if (fits(slide)) return undefined;
   for (let k = 2; k <= Math.min(MOST_PARTS, qs.length); k++) {
-    // As evenly as possible: 7 is 4 + 3, never 6 + 1.
-    const size = Math.ceil(qs.length / k);
     const parts: S[] = [];
-    for (let j = 0; j * size < qs.length; j++)
+    let from = 0;
+    for (const size of evenParts(qs.length, k)) {
       parts.push({
         ...slide,
-        questions: qs.slice(j * size, (j + 1) * size),
-        answers: as.slice(j * size, (j + 1) * size),
+        questions: qs.slice(from, from + size),
+        answers: as.slice(from, from + size),
       });
+      from += size;
+    }
     if (parts.every(fits)) return { first: parts[0] as S, rest: parts.slice(1) };
   }
   return undefined;
+}
+
+/** `n` items in `k` parts as evenly as possible, the larger first: 7 in 2 is 4 + 3, in 3 is 3 + 2 + 2. */
+export function evenParts(n: number, k: number): number[] {
+  const base = Math.floor(n / k);
+  return Array.from({ length: k }, (_, j) => base + (j < n % k ? 1 : 0)).filter((x) => x > 0);
 }
