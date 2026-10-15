@@ -409,19 +409,23 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   if (groupIcon && groupIcon !== PENDING_ICON) {
     const top = TITLE_TOP + title.h + PHOTO_GAP;
     const g = Math.max(0, Math.min(GROUP_ICON, panelW - 2 * TITLE_X, SLIDE_H - PHOTO_GAP - top));
-    // The library's drawing as an image (literal colours; PPTX rasterises it).
-    c.els.push({
-      id: uid(),
-      type: "image",
-      x: Math.round((panelW - g) / 2),
-      y: Math.round(top + (SLIDE_H - PHOTO_GAP - top - g) / 2),
-      w: Math.round(g),
-      h: Math.round(g),
-      src: iconSrc(groupIcon, c.t, g),
-      alt: "",
-      fit: "contain",
-      name: PANEL_NAMES.groupIcon,
-    } as ImageElement);
+    // The library's drawing as an image (literal colours; PPTX rasterises it). Until the library
+    // has loaded there is none yet; the next lay draws it in the same box.
+    const src = iconSrc(groupIcon, c.t, g);
+    if (src) {
+      c.els.push({
+        id: uid(),
+        type: "image",
+        x: Math.round((panelW - g) / 2),
+        y: Math.round(top + (SLIDE_H - PHOTO_GAP - top - g) / 2),
+        w: Math.round(g),
+        h: Math.round(g),
+        src,
+        alt: "",
+        fit: "contain",
+        name: PANEL_NAMES.groupIcon,
+      } as ImageElement);
+    }
   }
   if (photo && picBox) {
     const crop =
@@ -617,8 +621,10 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
             }),
       } as ShapeElement);
     // A draft's held icon: the empty disc or tile only, until it resolves.
-    if (icons && matched[i] !== PENDING_ICON) {
-      const g = Math.round(m.d * (back === "none" ? 1 : back === "soft" ? SOFT_ICON : L.discIcon));
+    // Until the icon library has loaded (`iconSrc` is ""), the same: the medal, then the drawing.
+    const g = Math.round(m.d * (back === "none" ? 1 : back === "soft" ? SOFT_ICON : L.discIcon));
+    const src = icons && matched[i] !== PENDING_ICON ? iconSrc(matched[i] as string, c.t, g) : "";
+    if (src) {
       // The library's drawing as an image (literal colours; PPTX rasterises it); round like the
       // disc only inside the ring, never cropped when it stands alone or on a soft disc.
       c.els.push({
@@ -628,7 +634,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         y: Math.round(dy + (m.d - g) / 2),
         w: g,
         h: g,
-        src: iconSrc(matched[i] as string, c.t, g),
+        src,
         alt: r.icon ?? "",
         fit: "contain",
         ...(back === "ring" ? { radius: Math.round(g / 2) } : {}),

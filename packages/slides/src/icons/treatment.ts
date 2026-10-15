@@ -85,6 +85,9 @@ export const ICON_PALETTE: Readonly<Record<string, string>> = {
   "rock-d": "#4A464C",
   grass: "#7CC35A",
   glow: "#FFE7A3",
+  // a natural near-black for eyes, noses and dark matter (copper oxide): never the theme ink, which
+  // is light on a dark theme (TEACH-310 part c)
+  eye: "#2A2230",
 };
 
 /** The pilot's warm theme slots (tokens.css `.theme-warm`): the default when a theme has none. */
@@ -265,7 +268,7 @@ const FILTER_MATRIX = {
   },
 } as const;
 
-function applyFilter(hex: string, filter: Filter): string {
+export function applyFilter(hex: string, filter: Filter): string {
   let c = parseHex(hex);
   for (const [fn, v] of filter) {
     if (fn === "chroma") {
@@ -299,6 +302,30 @@ function fromOklab([L, a, b]: Rgb): Rgb {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ].map((v) => fromLinear(clamp01(v))) as Rgb;
+}
+/** OKLCH (lightness 0-1, chroma, hue in degrees) of an #rrggbb colour. */
+export function toOklch(hex: string): [number, number, number] {
+  const [L, a, b] = toOklab(parseHex(hex));
+  return [L, Math.hypot(a, b), ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360];
+}
+/** An OKLCH colour as #rrggbb, chroma reduced until it fits sRGB (the theming slots' `ok`). */
+export function fromOklch(L: number, C: number, H: number): string {
+  const rad = (H * Math.PI) / 180;
+  const raw = (c: number) => {
+    const a = c * Math.cos(rad);
+    const b = c * Math.sin(rad);
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ];
+  };
+  let c = Math.max(0, C);
+  while (c > 0 && !raw(c).every((v) => v >= -0.0005 && v <= 1.0005)) c -= 0.002;
+  return toHex(raw(Math.max(0, c)).map((v) => fromLinear(clamp01(v))) as Rgb);
 }
 export function mixOklab(a: string, b: string, share: number): string {
   const x = toOklab(parseHex(a));
@@ -564,4 +591,96 @@ export function flatten(markup: string, opts: FlattenOptions): string {
     /<(clipPath|marker) id="([^"]+)"[^>]*>.*?<\/\1>/g,
     (whole, _tag: string, i: string) => (out.includes(`url(#${i})`) ? whole : ""),
   );
+}
+
+// ---------- contrast (TEACH-310 part c: icons on a dark medal) ----------
+
+/** WCAG relative luminance of an #rrggbb colour. */
+export function luminance(hex: string): number {
+  const [r, g, b] = parseHex(hex).map(toLinear) as Rgb;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+/** WCAG contrast ratio of two #rrggbb colours (1 to 21). */
+export function contrast(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+}
+
+const NUMS = /-?\d*\.?\d+(?:e-?\d+)?/g;
+/** Rough area of one element's bounding box, from its own geometry (transforms: scale only). */
+function boxArea(el: El, scale: number): number {
+  const a = new Map(el.attrs);
+  const n = (k: string) => Number.parseFloat(a.get(k) ?? "0") || 0;
+  let w = 0;
+  let h = 0;
+  if (el.tag === "circle") w = h = 2 * n("r");
+  else if (el.tag === "ellipse") [w, h] = [2 * n("rx"), 2 * n("ry")];
+  else if (el.tag === "rect") [w, h] = [n("width"), n("height")];
+  else if (el.tag === "path") {
+    const v = (a.get("d") ?? "").match(NUMS)?.map(Number) ?? [];
+    const xs = v.filter((_, i) => i % 2 === 0);
+    const ys = v.filter((_, i) => i % 2 === 1);
+    if (xs.length && ys.length) {
+      w = Math.max(...xs) - Math.min(...xs);
+      h = Math.max(...ys) - Math.min(...ys);
+    }
+  }
+  return w * h * scale * scale;
+}
+const scaleOf = (transform: string | undefined): number => {
+  const m = /scale\(\s*(-?[\d.]+)/.exec(transform ?? "");
+  return m ? Math.abs(Number.parseFloat(m[1] as string)) || 1 : 1;
+};
+
+/**
+ * The colours a viewer reads a drawing by against its medal: its large filled shapes (each at least
+ * 30% of the largest one's box, not a shade, gloss or detail; white aside), largest first, after
+ * the theme slots and the age filter. A drawing of lines only gives its largest stroked line.
+ */
+export function significantColours(markup: string, opts: TreatmentOptions = {}): string[] {
+  const slots = resolveSlots(opts);
+  const filter = ageTokens(opts.age, styleOf(opts.style)).filter;
+  const colourOf = (v: string | undefined): string | null => {
+    if (!v) return null;
+    const m = /var\(--([\w-]+)\)/.exec(v);
+    const hex = m ? slots[m[1] as string] : /^#[0-9a-fA-F]{3,6}$/.test(v.trim()) ? v.trim() : null;
+    return hex ? applyFilter(safeHex(hex, "#000000"), filter) : null;
+  };
+  const fills: [number, string][] = [];
+  const strokes: [number, string][] = [];
+  const walk = (nodes: Node[], scale: number, skip: boolean) => {
+    for (const node of nodes) {
+      if (typeof node === "string") continue;
+      const attrs = new Map(node.attrs);
+      if (node.tag === "clipPath" || node.tag === "marker" || node.tag === "defs") continue;
+      const classes = (attrs.get("class") ?? "").split(/\s+/);
+      const hidden = skip || classes.some((c) => ["sh", "hl", "sp", "lu", "dt", "dl"].includes(c));
+      const s = scale * scaleOf(attrs.get("transform"));
+      if (!hidden) {
+        const style = new Map(
+          (attrs.get("style") ?? "").split(";").map((d) => {
+            const i = d.indexOf(":");
+            return [d.slice(0, i).trim(), d.slice(i + 1).trim()] as [string, string];
+          }),
+        );
+        const area = boxArea(node, s);
+        const f = colourOf(style.get("fill"));
+        const k = colourOf(style.get("stroke"));
+        if (f && f !== "#ffffff") fills.push([area, f]);
+        else if (!f && k) strokes.push([area, k]);
+      }
+      walk(node.children, s, hidden);
+    }
+  };
+  walk(parseMarkup(markup), 1, false);
+  const list = fills.length ? fills : strokes;
+  const max = Math.max(0, ...list.map(([a]) => a));
+  return [
+    ...new Set(
+      list
+        .filter(([a]) => a >= 0.3 * max)
+        .sort((p, q) => q[0] - p[0])
+        .map(([, c]) => c),
+    ),
+  ];
 }

@@ -7,6 +7,8 @@
  * The dev Studio entry lives in `./mastra.dev.ts` and is never imported from here.
  */
 
+import "./icons-ready";
+
 export {
   type CallResult,
   type CallStructuredOptions,

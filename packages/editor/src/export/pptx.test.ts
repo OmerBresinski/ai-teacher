@@ -11,7 +11,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
-import { iconImageSrc } from "@tj/slides/icons";
+import { iconImageSrc, iconMedalImageSrc, medalColoursFor } from "@tj/slides/icons";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -601,6 +601,53 @@ describe("exportLessonPptx", () => {
     const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"));
     expect(media.some((f) => f.endsWith(".png"))).toBe(true);
     expect(media.some((f) => f.endsWith(".svg"))).toBe(false);
+  }, 30_000);
+
+  it("rasterises an icon medal with nothing painted behind it, so the PNG keeps its alpha", async () => {
+    const [water] = demoLibrary();
+    const first = water?.slides[0];
+    if (!water || !first) throw new Error("fixture");
+    const medal = medalColoursFor({
+      tokens: {
+        mode: "dark",
+        "medal-fill": "#364753",
+        "medal-tint": "#364753",
+        "medal-line": "#445968",
+      },
+    });
+    const src = iconMedalImageSrc("penguin", { medal, age: "secondary", px: 480 });
+    const icon = {
+      id: "m1",
+      type: "image",
+      x: 100,
+      y: 100,
+      w: 120,
+      h: 120,
+      src,
+      alt: "",
+      fit: "contain",
+    };
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [icon as SlideElement] }] };
+    const asked: string[] = [];
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+      rasteriseSvg: async (s) => {
+        asked.push(decodeURIComponent(s.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+    });
+    expect(asked).toHaveLength(1);
+    // the disc is the first thing drawn; no full-box rect or background, so the corners stay clear
+    expect(asked[0]).toMatch(
+      /^<svg[^>]*viewBox="0 0 240 240"[^>]*><circle cx="120" cy="120" r="120" style="fill:#364753"\/>/,
+    );
+    expect(asked[0]).not.toMatch(/<rect x="0" y="0" width="240"|<svg[^>]*style=/);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const pic = /<p:pic>[\s\S]*?<\/p:pic>/.exec(slide)?.[0] ?? "";
+    expect(pic).toContain("<p:blipFill>");
+    expect(pic).not.toContain("<a:solidFill>"); // no fill behind the picture
   }, 30_000);
 
   it("exports an image-match slide without throwing", async () => {

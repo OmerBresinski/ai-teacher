@@ -1,3 +1,4 @@
+import "../icons-ready";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import {

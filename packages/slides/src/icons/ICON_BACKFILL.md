@@ -26,3 +26,33 @@ drawn in batches:
    drawing parses, has literal colours only and resolves; `match.test.ts` checks no label or
    synonym maps to two concepts (exactly or after the plural fold) and that generic words from
    other subjects resolve to nothing.
+
+## Since TEACH-310 part c
+
+- **Where concepts live.** `concepts.ts` stays generated from the pilot list. Concepts for the
+  layout sets (and later batches) are written by hand in `concepts-layouts.ts`; `catalogue.ts`
+  joins the two lists, pilot first, and hands a pilot synonym over to a layout concept that owns
+  it (`HANDED_OVER`: "scroll" now draws the stages scroll, not papyrus). When two concepts share a
+  term the first keeps it (`buildIndex`); `match.test.ts` fails on any collision.
+- **Scoped words.** A word that is a concept in one subject and something else in another goes in
+  `SCOPED_TERMS` (`match.ts`) instead of being dropped: it matches only when the caller passes a
+  `subject` containing one of the listed words (`matchIcon(label, index, { subject })`,
+  `resolveIcons(labels, { subject })`). Today: "root" (science and plants; a square root in
+  maths) and "shield" (history; a shield volcano in geography).
+- **Natural colours.** Real things keep their own colours from `ICON_PALETTE`; eyes, noses and
+  dark matter use `eye`, never the theme's `icon-ink` (light on a dark theme). Only man-made
+  objects with no fixed colour take `icon-*` slots.
+- **Medals.** `iconMedalSvg(id, { medal })` draws an icon at 80% of a disc whose face is the
+  theme's `medal-fill` or `medal-tint` and whose ring is `medal-line` (or a category colour).
+  `medalColoursFor({ tokens })` reads those kebab tokens from the theme's record; only a theme
+  without them gets the final token set's derivation (the surface on light themes, a deep
+  accent-hue face with a quiet ring on dark ones, ruling 247).
+- **Dark on dark.** Each large shape of a drawing must read at 3:1 on the medal face. Where one
+  does not (a black penguin on a deep face), the medal draws a soft light rim behind the drawing
+  in the ring's hue, on that theme only (`medalRim`); `medal.test.ts` checks all icons on Slate and
+  Ember. A new drawing needs no per-theme work.
+- **Load it lazily.** The module is about 48 KB gzipped with 201 drawings (30 KB at part b) and
+  the lesson editor's chunk has about 5.7 KB headroom. Wire it with a dynamic
+  `import("@tj/slides/icons")`, never a static import, from the editor or the web app;
+  `lazy.test.ts` walks every client source (web, editor, slides, ui, domain, api-client) and fails
+  on any static import of it: named, side-effect or re-export, by package name or relative path.
