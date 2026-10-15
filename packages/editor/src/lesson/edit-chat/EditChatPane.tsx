@@ -11,6 +11,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
 import { type PromptEditAnswer, type PromptEditPartial, useProposals } from "../proposals-context";
@@ -22,8 +24,9 @@ import {
   useSessionActions,
   useSessionRead,
 } from "../use-editor-session";
-import { ChatThread, type ChatView } from "./ChatThread";
-import { type BubbleState, EditChatBubble } from "./EditChatBubble";
+import type { ChatView } from "./ChatThread";
+import type { ChatThreadPartProps, EditChatBubbleProps } from "./chat-parts";
+import type { BubbleState } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   type Alternative,
@@ -63,6 +66,21 @@ import {
  */
 
 export { EDIT_CHAT_LABEL } from "./edit-chat-context";
+
+// The thread and the bubble (with the Slides character) load after first paint, from one chunk
+// (TEACH-104 part d, lesson-editor route budget). The controller above them stays static: a request
+// in flight lives there, not in the parts that draw it.
+const thread = lazyLoader<ChatThreadPartProps>(() =>
+  import("./chat-parts").then((m) => m.ChatThreadPart),
+);
+const bubbleLoader = lazyLoader<EditChatBubbleProps>(() =>
+  import("./chat-parts").then((m) => m.EditChatBubble),
+);
+
+/** Starts loading the chat's parts (the pane calls it once it has painted); settles when done. */
+export async function preloadEditChat(): Promise<void> {
+  await Promise.all([thread.preload(), bubbleLoader.preload()]);
+}
 
 const WHOLE_LESSON =
   "I can’t change the whole lesson at once yet. I can change one slide at a time.";
@@ -551,10 +569,22 @@ export function EditChatPane({
   if (!controller) throw new Error("EditChatPane renders inside EditChatProvider");
   const { view, bubble, unread, closedHere } = controller;
   const close = view.close;
+  useEffect(() => {
+    void preloadEditChat();
+  }, []);
+  // A bump before the thread's chunk has landed focuses the composer once it mounts.
+  const focusOnMount = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: focus on each bump only
   useEffect(() => {
-    if (focusTick > 0) view.field.current?.focus();
+    if (focusTick === 0) return;
+    if (view.field.current) view.field.current.focus();
+    else focusOnMount.current = true;
   }, [focusTick]);
+  const onThreadMounted = useCallback(() => {
+    if (!focusOnMount.current) return;
+    focusOnMount.current = false;
+    view.field.current?.focus();
+  }, [view.field]);
   // Escape from the top bar (where focus lands when ⋯ closes) or from nowhere closes the open pane
   // too, as it does from inside it. The canvas keeps its own Escape (deselect).
   useEffect(() => {
@@ -593,17 +623,47 @@ export function EditChatPane({
           }
         }}
       >
-        <ChatThread view={view} />
+        {/* The aside keeps its width while the thread loads, so nothing around it moves. */}
+        <LazyPart
+          loader={thread}
+          props={{ view, onMounted: onThreadMounted }}
+          fallback={null}
+          failed={(retry) => (
+            <div className="flex flex-1 items-center justify-center p-4">
+              <RetryLoad className="px-3 py-1.5" onRetry={retry} />
+            </div>
+          )}
+        />
       </aside>
       {open || bubbleHidden ? null : (
-        <EditChatBubble
-          state={bubble}
-          announcement={unread?.text ?? ""}
-          takeFocus={closedHere.current}
-          onOpen={() => onReopen?.()}
-          host={bubbleHost}
+        <LazyPart
+          loader={bubbleLoader}
+          props={{
+            state: bubble,
+            announcement: unread?.text ?? "",
+            takeFocus: closedHere.current,
+            onOpen: () => onReopen?.(),
+            host: bubbleHost,
+          }}
+          fallback={null}
+          failed={(retry) => <BubbleRetry host={bubbleHost} onRetry={retry} />}
         />
       )}
     </>
   );
+}
+
+/** The bubble's chunk failed: a retry in the bubble's corner, so the way back in stays. */
+function BubbleRetry({ host, onRetry }: { host?: HTMLElement | null; onRetry: () => void }) {
+  if (host === null) return null;
+  const node = (
+    <RetryLoad
+      className={cn(
+        "z-40 bg-card px-2 py-1",
+        host ? "absolute right-4 bottom-2" : "fixed right-4 bottom-19",
+      )}
+      onRetry={onRetry}
+    />
+  );
+  return host ? createPortal(node, host) : node;
 }

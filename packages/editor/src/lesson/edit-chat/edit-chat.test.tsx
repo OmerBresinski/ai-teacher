@@ -7,6 +7,7 @@ import { makeText } from "../../model/insert";
 import { getTheme } from "../../model/themes";
 import type { PromptEditAnswer, PromptEditPartial, PromptEditRequest } from "../proposals-context";
 import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "../test-harness";
+import { preloadEditChat } from "./EditChatPane";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   canUndo,
@@ -29,6 +30,10 @@ import {
  * thread kept per lesson, Undo of exactly one change, refusals with a one-tap alternative, and the
  * follow-ups resolved in code.
  */
+
+// The thread and the bubble load as one lazy chunk (TEACH-104 part d); load it once up front so a
+// pane renders them at once, as it does in the app after first paint.
+beforeAll(preloadEditChat);
 
 afterEach(() => {
   cleanup();

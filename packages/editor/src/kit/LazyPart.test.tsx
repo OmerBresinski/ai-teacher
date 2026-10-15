@@ -53,4 +53,20 @@ describe("LazyPart", () => {
     expect(await screen.findByText("ready")).toBeInTheDocument();
     expect(calls).toBe(2);
   });
+
+  test("a part mounted after its import landed renders at once, with no fallback", async () => {
+    const loader = lazyLoader<{ label: string }>(() => Promise.resolve(Picker));
+    await loader.preload();
+    expect(loader.ready()).toBe(Picker);
+    render(
+      <LazyPart
+        loader={loader}
+        props={{ label: "picker" }}
+        fallback={<span>loading</span>}
+        failed={(retry) => <RetryLoad onRetry={retry} />}
+      />,
+    );
+    expect(screen.getByText("picker")).toBeInTheDocument();
+    expect(screen.queryByText("loading")).toBeNull();
+  });
 });
