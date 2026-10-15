@@ -82,6 +82,7 @@ import { licenceCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
 import { dataUrlImageSize } from "./image-size";
 import { slugify } from "./json";
+import { addGroundArt, shareMedia } from "./pptx-surfaces";
 import { docToRuns, type RunParagraph } from "./runs";
 
 type Pptx = PptxGenJS;
@@ -1457,6 +1458,7 @@ export async function exportLessonPptx(
           });
         }
       }
+      if (art) await addGroundArt(pptxSlide, theme, slide);
 
       const ctx: DrawContext = {
         slide,
@@ -1489,7 +1491,9 @@ export async function exportLessonPptx(
     const written = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
     // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
     const { withFallbackFaces } = await import("./pptx-fonts");
-    const buffer = await roundPictureCorners(await withFallbackFaces(written, theme));
+    const buffer = await shareMedia(
+      await roundPictureCorners(await withFallbackFaces(written, theme)),
+    );
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });

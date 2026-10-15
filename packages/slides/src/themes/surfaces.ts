@@ -1,0 +1,493 @@
+import type { PathElement, ShapeElement, Theme } from "@tj/domain/documents";
+import { THEMES } from "../themes";
+import TOKENS from "./tokens.json";
+
+/*
+ * Surface roles (TEACH-215 part b; UX rulings 107, 159, 211, 212, 213, 235, 236). A layout never
+ * names a colour for a painted part: it names the part's role (a field, a card, a badge ...) and
+ * the theme answers with a `SurfaceStyle`. The values come from `tokens.json`, which is the final
+ * token file for the sixteen themes as the theming pass wrote it (theme -> kebab token -> value),
+ * so a new token set drops in as a file. `paintSurface` draws one role as one element under its
+ * content; the PPTX export keeps it because the element is a native shape or a closed path.
+ */
+
+/** The painted roles a layout tags (THEME-FIT "Final role list"; the categorical sets are part c). */
+export const SURFACE_ROLES = [
+  "title",
+  "kicker",
+  "field-a",
+  "field-b",
+  "card",
+  "plate",
+  "badge",
+  "marker",
+  "medal",
+  "chip",
+  "frame",
+  "rule",
+  "key",
+  "connector",
+  "verdict-right",
+  "verdict-wrong",
+  "track",
+  "scrim",
+] as const;
+export type SurfaceRole = (typeof SURFACE_ROLES)[number];
+
+/** Where a title sits. Only `top` and `top-box` may wear a band; `hero` and `inline` never do. */
+export const TITLE_ZONES = ["top", "top-box", "hero", "inline"] as const;
+export type TitleZone = (typeof TITLE_ZONES)[number];
+export const BANDED_ZONES: ReadonlySet<TitleZone> = new Set(["top", "top-box"]);
+
+/** A role's state: the now step, a quiet label, a right answer, a flat card ... */
+export type SurfaceState = "now" | "inverse" | "ghost" | "quiet" | "flat" | "right" | "tint";
+
+/**
+ * How one role paints. `corner` is a radius in points, `"own"` (keep the layout's per-side
+ * corners), or `"full"` (a pill or a disc). `edge` is a notch or fold size and `shadow` an offset
+ * block, both inside the role's budget (`EDGE_BUDGET`, `SHADOW_MAX`).
+ */
+export type SurfaceStyle = {
+  fill: string;
+  pattern?: string;
+  line?: string;
+  lineWidth?: number;
+  corner: number | "own" | "full";
+  edge?: number;
+  shadow?: { x: number; y: number; color: string };
+  ink?: string;
+};
+
+/** A notch or fold may not reach the content: field 16, card 10, plate 6 (THEME-FIT checks). */
+export const EDGE_BUDGET: Partial<Record<SurfaceRole, number>> = {
+  "field-a": 16,
+  "field-b": 16,
+  card: 10,
+  plate: 6,
+};
+/** An offset (shadow) block sits at most this far from its surface. */
+export const SHADOW_MAX = 8;
+
+/** A theme's surfaces: one style per role and state, the title zones and the single-tone tokens. */
+export type ThemeSurfaces = {
+  mode: "light" | "dark";
+  ground: string;
+  /** The theme's corner for rounded surfaces; undefined keeps each layout's own. */
+  corner?: number;
+  titleMuted: string;
+  nowInk: string;
+  badgeNow: string;
+  track: { fill: string; ink: string };
+  medalTint: string;
+  chipQuiet: { fill: string; ink: string };
+  cardFlat: { line: string; width: number };
+  /** Locked: the same in every theme (the "AI picture" label on a photo). */
+  scrim: { fill: string; ink: string };
+  roles: Record<SurfaceRole, SurfaceStyle>;
+  states: Partial<Record<`${SurfaceRole}:${SurfaceState}`, SurfaceStyle>>;
+  /** A zone's band, or null when the zone is never banded or the theme has no band. */
+  zones: Record<TitleZone, SurfaceStyle | null>;
+};
+
+export type SurfaceTokens = Record<string, string>;
+const px = (v: string | undefined): number => Number.parseFloat(v ?? "0") || 0;
+
+/** True when a colour paints nothing: `transparent` or an `#RRGGBB00`. */
+export const isClear = (c: string | undefined): boolean =>
+  !c || c === "transparent" || /^#[0-9a-f]{6}00$/i.test(c);
+
+/** The kebab token record a theme file holds, as typed surfaces. */
+export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
+  const need = (k: string): string => {
+    const v = t[k];
+    if (v == null) throw new Error(`surface token "${k}" is missing`);
+    return v;
+  };
+  const corner = need("corner") === "own" ? undefined : px(need("corner"));
+  const field = corner ?? "own";
+  const lineOf = (c: string) => (isClear(c) ? undefined : c);
+  const s = (
+    fill: string,
+    rest: Omit<SurfaceStyle, "fill" | "corner"> & { corner?: SurfaceStyle["corner"] } = {},
+  ): SurfaceStyle => ({
+    fill,
+    corner: 0,
+    ...rest,
+  });
+  const band = isClear(need("title-band"))
+    ? null
+    : s(need("title-band"), { ink: need("title-ink") });
+  const cardLine = lineOf(need("card-line"));
+  const flatLine = lineOf(need("card-flat-line"));
+  const roles: Record<SurfaceRole, SurfaceStyle> = {
+    title: s(need("title-band"), { ink: need("title-ink") }),
+    kicker: s("transparent", { ink: need("title-muted") }),
+    "field-a": s(need("fa-fill"), { ink: need("fa-ink"), corner: field }),
+    "field-b": s(need("fb-fill"), { ink: need("fb-ink"), corner: field }),
+    card: s(need("card-fill"), {
+      ink: need("card-ink"),
+      line: cardLine,
+      lineWidth: cardLine ? px(need("card-lw")) : undefined,
+      corner: field,
+    }),
+    plate: s(need("plate-fill"), {
+      ink: need("ink"),
+      line: need("plate-line"),
+      lineWidth: 2,
+      corner: field,
+    }),
+    badge: s(need("badge-fill"), { ink: need("badge-ink"), corner: "full" }),
+    marker: s(need("marker-fill"), { ink: need("marker-ink"), corner: "full" }),
+    medal: s(need("medal-fill"), {
+      line: lineOf(need("medal-line")),
+      lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
+      corner: "full",
+    }),
+    chip: s(need("chip-fill"), { ink: need("chip-ink"), corner: "full" }),
+    frame: s(need("surface"), { corner: corner ?? px(need("radius-pic")) }),
+    rule: s(need("rule")),
+    key: s(need("accent"), { ink: need("key-ink"), corner: "full" }),
+    connector: s(need("rule")),
+    "verdict-right": s(need("sem-correct"), { ink: need("sem-correct-ink") }),
+    "verdict-wrong": s(need("sem-incorrect"), { ink: need("sem-incorrect-ink") }),
+    track: s(need("track-fill"), { ink: need("track-ink") }),
+    scrim: s(need("scrim"), { ink: need("scrim-ink"), corner: 6 }),
+  };
+  return {
+    mode: need("mode") === "dark" ? "dark" : "light",
+    ground: need("bg"),
+    corner,
+    titleMuted: need("title-muted"),
+    nowInk: need("now-ink"),
+    badgeNow: need("badge-now"),
+    track: { fill: need("track-fill"), ink: need("track-ink") },
+    medalTint: need("medal-tint"),
+    chipQuiet: { fill: need("chip-quiet-fill"), ink: need("chip-quiet-ink") },
+    cardFlat: { line: need("card-flat-line"), width: px(need("card-flat-lw")) },
+    scrim: { fill: need("scrim"), ink: need("scrim-ink") },
+    roles,
+    states: {
+      "badge:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
+      "badge:inverse": s(need("now-ink"), { ink: need("badge-now"), corner: "full" }),
+      "badge:ghost": s("transparent", {
+        ink: need("muted"),
+        line: need("rule"),
+        lineWidth: 2,
+        corner: "full",
+      }),
+      "chip:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
+      "chip:quiet": s(need("chip-quiet-fill"), { ink: need("chip-quiet-ink"), corner: "full" }),
+      "card:flat": s(need("card-fill"), {
+        ink: need("card-ink"),
+        line: flatLine,
+        lineWidth: flatLine ? px(need("card-flat-lw")) : undefined,
+        corner: field,
+      }),
+      "card:right": s(need("card-fill"), {
+        ink: need("card-ink"),
+        line: need("sem-correct"),
+        lineWidth: Math.max(2, px(need("card-lw"))),
+        corner: field,
+      }),
+      "key:right": s(need("sem-correct"), { ink: need("key-ink"), corner: "full" }),
+      "medal:tint": s(need("medal-tint"), {
+        line: lineOf(need("medal-line")),
+        lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
+        corner: "full",
+      }),
+    },
+    zones: { top: band, "top-box": band, hero: null, inline: null },
+  };
+}
+
+/** The final token file, theme by theme (`tokens.json`, verbatim from the theming pass). */
+export const SURFACE_TOKENS: Readonly<Record<string, SurfaceTokens>> = TOKENS as Record<
+  string,
+  SurfaceTokens
+>;
+
+/**
+ * Night Lab is live and has no final tokens (part c retires it from the picker): Slate's set with
+ * Night Lab's own palette, its theme-fit values (`theming/fit/fit.css`) and a deep medal under the
+ * dark medal rule. Its pairs are held to the same contrast test as every other theme.
+ */
+const NIGHT_LAB: SurfaceTokens = {
+  ...(TOKENS as Record<string, SurfaceTokens>)["dark-slate"],
+  sand: "#22262D",
+  "fa-fill": "#2A2620",
+  "fb-fill": "#22262D",
+  "card-fill": "#1C1F25",
+  "card-line": "#343A44",
+  "plate-fill": "#1C1F25",
+  "plate-line": "#F2B551",
+  "title-ink": "#ECEDEF",
+  "title-accent": "#F2B551",
+  "fa-ink": "#ECEDEF",
+  "fb-ink": "#ECEDEF",
+  "card-ink": "#ECEDEF",
+  "badge-fill": "#ECEDEF",
+  "badge-ink": "#131519",
+  "badge-now": "#F2B551",
+  "marker-fill": "#F2B551",
+  "marker-ink": "#131519",
+  "medal-fill": "#2E3440",
+  "medal-tint": "#2E3440",
+  "medal-line": "#3E4654",
+  "chip-fill": "#22262D",
+  "chip-ink": "#F2B551",
+  "key-ink": "#131519",
+  "sem-correct": "#86C7A8",
+  "sem-incorrect": "#F08A7A",
+  "sem-correct-ink": "#86C7A8",
+  "sem-incorrect-ink": "#F08A7A",
+  dim: "#868D98",
+  "now-ink": "#131519",
+  "title-muted": "#99A0AB",
+  "track-fill": "#22262D",
+  "track-ink": "#ECEDEF",
+  "hl-a": "#3A3122",
+  "hl-b": "#262B33",
+  "set-a": "#3A3122",
+  "set-b": "#23343A",
+  "bubble-a": "#2A2620",
+  "bubble-b": "#22262D",
+  "chip-quiet-fill": "#22262D",
+  "chip-quiet-ink": "#C9CED6",
+  "card-flat-line": "#343A44",
+  corner: "18px",
+};
+
+/** The palette keys a live theme owns: its surfaces are generated over these, never copied. */
+const LIVE_BASE: readonly [string, keyof Theme["colors"]][] = [
+  ["bg", "background"],
+  ["surface", "surface"],
+  ["ink", "ink"],
+  ["muted", "muted"],
+  ["accent", "accent"],
+  ["rule", "line"],
+];
+
+/**
+ * Tokens a live theme's own palette needs retuned: Reading Room's final dim is set for the round 5
+ * ground, which part c ships; on today's warmer ground it is deepened to keep AA.
+ */
+const LIVE_RETUNE: Readonly<Record<string, SurfaceTokens>> = {
+  "reading-room": { dim: "#706A5F" },
+};
+
+/**
+ * The token set a live theme paints with: its final tokens (or Night Lab's) with the theme's own
+ * palette laid over them, so `SURFACES` and `themes.ts` cannot disagree on a ground or an ink.
+ */
+export function liveTokens(theme: Pick<Theme, "id" | "colors">): SurfaceTokens | undefined {
+  const base = theme.id === "night-lab" ? NIGHT_LAB : SURFACE_TOKENS[theme.id];
+  if (!base) return undefined;
+  const own: SurfaceTokens = {};
+  for (const [k, c] of LIVE_BASE) {
+    const v = theme.colors[c];
+    if (typeof v === "string") own[k] = v.toUpperCase();
+  }
+  return { ...base, ...own, ...LIVE_RETUNE[theme.id] };
+}
+
+/** Every token set in force: the 16 final themes, then each live theme over its own palette. */
+export const SURFACE_TOKEN_SETS: Readonly<Record<string, SurfaceTokens>> = {
+  ...SURFACE_TOKENS,
+  ...Object.fromEntries(
+    THEMES.map((t) => [t.id, liveTokens(t)] as const).filter(
+      (e): e is readonly [string, SurfaceTokens] => e[1] != null,
+    ),
+  ),
+};
+
+/** `SURFACES[themeId]`: every final theme and every live theme, one entry each. */
+export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntries(
+  Object.entries(SURFACE_TOKEN_SETS).map(([id, t]) => [id, surfacesFromTokens(t)] as const),
+);
+
+/** A theme's surfaces; one the table does not know takes Paper's, or Slate's when dark. */
+export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>
+  SURFACES[theme.id] ?? (SURFACES[theme.dark ? "dark-slate" : "paper"] as ThemeSurfaces);
+
+/** The style for a role in a state (a state the theme does not set paints as the plain role). */
+export function surfaceStyle(
+  theme: Pick<Theme, "id" | "dark">,
+  role: SurfaceRole,
+  state?: SurfaceState,
+): SurfaceStyle {
+  const s = surfacesOf(theme);
+  return (state && s.states[`${role}:${state}`]) || s.roles[role];
+}
+
+/** Corners as [top-left, top-right, bottom-right, bottom-left], in points. */
+export type Corners = readonly [number, number, number, number];
+
+/**
+ * The four corners a surface draws. A full role is a disc or pill (half the short side). A fixed
+ * theme corner replaces only the corners the layout rounded, so a bleed side stays square;
+ * `"own"` keeps the layout's corners as they are.
+ */
+export function cornerRadii(
+  style: SurfaceStyle,
+  box: { w: number; h: number },
+  own: Corners = [0, 0, 0, 0],
+): Corners {
+  if (style.corner === "full") {
+    const r = Math.min(box.w, box.h) / 2;
+    return [r, r, r, r];
+  }
+  if (style.corner === "own") return own;
+  const r = style.corner;
+  const anyOwn = own.some((c) => c > 0);
+  return anyOwn ? (own.map((c) => (c > 0 ? r : 0)) as unknown as Corners) : [r, r, r, r];
+}
+
+export type Box = { x: number; y: number; w: number; h: number };
+
+/** Text closer than this to a field's top keeps the band its own pad (THEME-FIT fix 14). */
+export const BAND_JOIN_CLEAR = 24;
+/** A field further than this below the title is not joined. */
+export const BAND_JOIN_REACH = 72;
+
+/**
+ * Band join, written at layout time: if a field (or frame) starts 1-72pt below a top title and no
+ * text outside the field starts within 24pt of its top, the band runs down to meet it. Returns
+ * how far past the title's foot the band reaches, or null to keep the pad. Paint only.
+ */
+export function bandJoin(title: Box, fields: readonly Box[], texts: readonly Box[]): number | null {
+  const foot = title.y + title.h;
+  const field = fields
+    .filter((f) => f.y > foot && f.y - foot <= BAND_JOIN_REACH)
+    .sort((a, b) => a.y - b.y)[0];
+  if (!field) return null;
+  const blocked = texts.some(
+    (t) =>
+      t.h > 0 &&
+      t.y > foot &&
+      t.y < field.y + BAND_JOIN_CLEAR &&
+      !(t.x >= field.x && t.x + t.w <= field.x + field.w),
+  );
+  return blocked ? null : Math.round(field.y - foot);
+}
+
+/** What a layout asks to have painted: a role on a box, with the layout's own corners. */
+export type SurfaceSpec = {
+  role: SurfaceRole;
+  state?: SurfaceState;
+  /** For a title: its zone. A band is only ever drawn on a banded zone. */
+  zone?: TitleZone;
+  box: Box;
+  /** The layout's corners, TL TR BR BL; used when the theme keeps the layout's own. */
+  own?: Corners;
+  /** A title band's join (`bandJoin`), added below the box. */
+  join?: number | null;
+  id: string;
+};
+
+/** `#RRGGBBAA` as a colour and an opacity; anything else passes through. */
+export function splitAlpha(c: string): { color: string; opacity?: number } {
+  const m = /^(#[0-9a-f]{6})([0-9a-f]{2})$/i.exec(c);
+  if (!m) return { color: c };
+  const a = Number.parseInt(m[2] as string, 16) / 255;
+  return { color: (m[1] as string).toUpperCase(), opacity: Math.round(a * 1000) / 1000 };
+}
+
+/** `#RRGGBB` as `rgb(r, g, b)`. */
+export const rgbOf = (hex: string): string =>
+  `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+
+/** Points per quarter arc on an own-corner path: smooth at slide scale, native in PPTX. */
+const ARC_STEPS = 8;
+
+/** A rounded rectangle with four radii as a closed path in box fractions (TL, TR, BR, BL). */
+export function roundRectPoints(w: number, h: number, r: Corners): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  const cap = (v: number) => Math.max(0, Math.min(v, w / 2, h / 2));
+  const [tl, tr, br, bl] = r.map(cap) as unknown as Corners;
+  const arc = (cx: number, cy: number, rad: number, from: number) => {
+    if (rad === 0) {
+      pts.push({ x: cx, y: cy });
+      return;
+    }
+    for (let i = 0; i <= ARC_STEPS; i++) {
+      const a = ((from + (90 * i) / ARC_STEPS) * Math.PI) / 180;
+      pts.push({ x: cx + rad * Math.cos(a), y: cy + rad * Math.sin(a) });
+    }
+  };
+  arc(tl ? tl : 0, tl ? tl : 0, tl, 180);
+  arc(tr ? w - tr : w, tr ? tr : 0, tr, 270);
+  arc(br ? w - br : w, br ? h - br : h, br, 0);
+  arc(bl ? bl : 0, bl ? h - bl : h, bl, 90);
+  const round = (v: number) => Math.round(v * 10000) / 10000;
+  return pts.map((p) => ({ x: round(p.x / w), y: round(p.y / h) }));
+}
+
+/** The element name a painted surface carries in the layers list. */
+export const surfaceName = (role: SurfaceRole, state?: SurfaceState) =>
+  `surface:${role}${state ? `:${state}` : ""}`;
+
+/**
+ * One role as one element, drawn under its content: a native shape when the corners agree (a
+ * disc for full roles, a rounded or square rect), a closed path when they differ. Null when the
+ * role paints nothing here (a clear fill and no line, or a band on an unbanded zone).
+ */
+export function paintSurface(
+  spec: SurfaceSpec,
+  theme: Pick<Theme, "id" | "dark">,
+): ShapeElement | PathElement | null {
+  const s = surfacesOf(theme);
+  const style =
+    spec.role === "title"
+      ? spec.zone && BANDED_ZONES.has(spec.zone)
+        ? s.zones[spec.zone]
+        : null
+      : surfaceStyle(theme, spec.role, spec.state);
+  if (!style) return null;
+  if (spec.role === "kicker") return null;
+  if (isClear(style.fill) && !style.line) return null;
+  const box = { ...spec.box, h: spec.box.h + (spec.role === "title" ? (spec.join ?? 0) : 0) };
+  // A clear role (a ghost disc) is filled with the ground: PowerPoint has no "none" a shape keeps.
+  const split = splitAlpha(isClear(style.fill) ? s.ground : style.fill);
+  const { opacity } = split;
+  // The scrim is locked: written as rgb() so render-time re-theming (`themedColour`, which reads
+  // any hex that is some theme's token as that token) never swaps it for a theme's pale ink.
+  const fill = spec.role === "scrim" ? rgbOf(split.color) : split.color;
+  const base = {
+    id: spec.id,
+    name: surfaceName(spec.role, spec.state),
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    locked: true,
+    ...(opacity != null && opacity < 1 ? { opacity } : {}),
+  };
+  const stroke = style.line && !isClear(style.line) ? style.line : undefined;
+  const lines = stroke ? { stroke, strokeWidth: style.lineWidth ?? 2 } : {};
+  const r = cornerRadii(style, box, spec.own);
+  const same = r.every((c) => c === r[0]);
+  if (style.corner === "full" && box.w === box.h) {
+    return { ...base, type: "shape", shape: "ellipse", fill, ...lines };
+  }
+  if (style.corner === "full") {
+    return { ...base, type: "shape", shape: "pill", fill, ...lines };
+  }
+  if (same) {
+    return {
+      ...base,
+      type: "shape",
+      shape: r[0] > 0 ? "rounded" : "rect",
+      ...(r[0] > 0 ? { radius: r[0] } : {}),
+      fill,
+      ...lines,
+    };
+  }
+  return {
+    ...base,
+    type: "path",
+    points: roundRectPoints(box.w, box.h, r),
+    closed: true,
+    fill,
+    ...lines,
+  };
+}
