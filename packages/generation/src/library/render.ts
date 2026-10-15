@@ -906,9 +906,17 @@ export function drawnContentBox(svgText: string): {
  * Reads a drawn library SVG back (the string a slide's image element carries): its view box and
  * every text's size and box, measured as the draw measured them. For checks on real slides.
  */
+/** Arrow heads (arm, tip, arm), leader polylines and leader-sized dots of a drawn library SVG. */
+export type DrawnArrows = {
+  heads: { pts: [number, number][]; shown?: number[] }[];
+  leaders: { pts: [number, number][]; w: number; shown?: number[] }[];
+  dots: { c: [number, number]; r: number; shown?: number[] }[];
+};
+
 export function inspectDrawnSvg(svgText: string): {
   viewBox: [number, number, number, number];
   words: DrawnWords[];
+  arrows: DrawnArrows;
 } {
   const ts = Number(/data-fs-scale="([\d.]+)"/.exec(svgText)?.[1] ?? 1) || 1;
   return withDom(({ win, host }) =>
@@ -974,9 +982,70 @@ export function inspectDrawnSvg(svgText: string): {
           y1: Math.max(...ys),
         });
       }
+      // The arrow primitive's heads, and the leaders and leader dots they must keep clear of
+      // (TEACH-75 part x), in the drawing's own coordinates.
+      const place = (el: Element) => {
+        let mm: M = ID;
+        for (let e: Element | null = el; e && e !== svg; e = e.parentElement)
+          mm = mul(parseTransform(e.getAttribute("transform")), mm);
+        return {
+          at: ([x, y]: [number, number]): [number, number] => [
+            mm[0] * x + mm[2] * y + mm[4],
+            mm[1] * x + mm[3] * y + mm[5],
+          ],
+          scale: Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])) || 1,
+        };
+      };
+      const numsOf = (v: string | null) => (v?.match(/-?[\d.]+(?:e[-+]?\d+)?/g) ?? []).map(Number);
+      const arrows: DrawnArrows = { heads: [], leaders: [], dots: [] };
+      for (const el of svg ? [...svg.querySelectorAll("path.ahead")] : []) {
+        const e = el as unknown as Element;
+        const v = numsOf(e.getAttribute("d"));
+        if (v.length < 6) continue;
+        const { at } = place(e);
+        const shown = shownIn(e);
+        arrows.heads.push({
+          pts: [
+            at([v[0] as number, v[1] as number]),
+            at([v[2] as number, v[3] as number]),
+            at([v[4] as number, v[5] as number]),
+          ],
+          ...(shown ? { shown } : {}),
+        });
+      }
+      for (const el of svg ? [...svg.querySelectorAll("line, path, polyline")] : []) {
+        const e = el as unknown as Element;
+        if (!/--sw-lead/.test(e.getAttribute("style") ?? "") || e.classList.contains("ahead"))
+          continue;
+        const { at, scale } = place(e);
+        const shown = shownIn(e);
+        const raw =
+          e.tagName.toLowerCase() === "line"
+            ? ["x1", "y1", "x2", "y2"].map((k) => Number(e.getAttribute(k) ?? 0))
+            : /[QCASqcas]/.test(e.getAttribute("d") ?? "")
+              ? []
+              : numsOf(e.getAttribute("d") ?? e.getAttribute("points"));
+        const pts: [number, number][] = [];
+        for (let i = 0; i + 1 < raw.length; i += 2)
+          pts.push(at([raw[i] as number, raw[i + 1] as number]));
+        if (pts.length >= 2)
+          arrows.leaders.push({ pts, w: 2.5 * scale, ...(shown ? { shown } : {}) });
+      }
+      for (const el of svg ? [...svg.querySelectorAll("circle")] : []) {
+        const e = el as unknown as Element;
+        const r = Number(e.getAttribute("r") ?? 0);
+        if (!(r > 0 && r <= 10)) continue;
+        const { at, scale } = place(e);
+        const shown = shownIn(e);
+        arrows.dots.push({
+          c: at([Number(e.getAttribute("cx") ?? 0), Number(e.getAttribute("cy") ?? 0)]),
+          r: r * scale,
+          ...(shown ? { shown } : {}),
+        });
+      }
       host.innerHTML = "";
       sheet.remove();
-      return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words };
+      return { viewBox: [vb[0] ?? 0, vb[1] ?? 0, vb[2] ?? 0, vb[3] ?? 0], words, arrows };
     }),
   );
 }

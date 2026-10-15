@@ -95,7 +95,9 @@ function expectClean(line: string, a: Arrow, sw: number) {
     const vx = arm[0] - tip[0];
     const vy = arm[1] - tip[1];
     const len = Math.hypot(vx, vy);
-    expect(len).toBeCloseTo(sw * ARROW_ARM_K, 1);
+    // a line shorter than the head gets a smaller one (never past its start)
+    const full = (pathLength(line) * 0.9) / Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+    expect(len).toBeCloseTo(Math.min(sw * ARROW_ARM_K, full), 1);
     const deg = (Math.acos(-(vx * cx + vy * cy) / len) * 180) / Math.PI;
     expect(Math.abs(deg - ARROW_ARM_DEG)).toBeLessThanOrEqual(2);
   }
@@ -238,6 +240,63 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
     expect(arrowFaults(lopsided, [100, 100])).toEqual([
       "arrow: head arms not symmetric about the shaft",
     ]);
+  });
+});
+
+describe("arrow primitive: degenerate input", () => {
+  const noNaN = (a?: Arrow) => expect(a?.svg ?? "").not.toMatch(/NaN|Infinity/);
+
+  test("NaN or infinite points and bad strokes draw nothing", () => {
+    expect(arrowPath("M0 0 L100 NaN", { ink: "#000", sw: 4 })).toBeUndefined();
+    expect(arrowPath("M0 0 L100 0", { ink: "#000", sw: Number.NaN })).toBeUndefined();
+    expect(arrowPath("M0 0 L100 0", { ink: "#000", sw: 0 })).toBeUndefined();
+    expect(arrowLine([0, 0], [Number.NaN, 5], { ink: "#000", sw: 4 }).svg).toBe("");
+  });
+
+  test("a line from a point to itself draws nothing", () => {
+    expect(arrowLine([10, 10], [10, 10], { ink: "#000", sw: 4 }).svg).toBe("");
+    expect(arrowPath("M10 10 L10 10 L10 10", { ink: "#000", sw: 4 })).toBeUndefined();
+  });
+
+  test("zero-length segments at the end are skipped: the head follows the last real one", () => {
+    for (const line of ["M0 0 L100 0 L100 0", "M0 0 L50 0 L50 0 L100 0 L100 0 L100 0"]) {
+      const a = arrowPath(line, { ink: "#000", sw: 4 }) as Arrow;
+      noNaN(a);
+      expect(a.head.dir[0]).toBeCloseTo(1, 6);
+      expect(a.head.dir[1]).toBeCloseTo(0, 6);
+      expectClean(line, a, 4);
+    }
+  });
+
+  test("a path shorter than the head gets a smaller head that never reaches past its start", () => {
+    for (const [len, sw] of [
+      [2, 4],
+      [5, 4],
+      [8, 6],
+      [3, 12],
+    ] as const) {
+      const a = arrowPath(`M100 100 L${100 + len} 100`, { ink: "#000", sw }) as Arrow;
+      noNaN(a);
+      for (const arm of a.head.arms) expect(arm[0]).toBeGreaterThanOrEqual(100 - 1e-6);
+      expect(a.head.tip).toEqual([100 + len, 100]);
+    }
+  });
+
+  test("a hook that doubles back at the end aims along its last real segment", () => {
+    // runs right, then turns back left for a short stretch: the end chord points the wrong way
+    for (const sw of [3, 6]) {
+      const line = `M0 100 L200 100 L200 ${100 + sw} L${200 - sw * 1.5} ${100 + sw}`;
+      for (const dash of [undefined, "0.1 16"]) {
+        const a = arrowPath(line, { ink: "#000", sw, dash }) as Arrow;
+        noNaN(a);
+        expect(a.head.dir[0]).toBeCloseTo(-1, 6);
+        expect(arrowFaults(a.head, a.head.tip)).toEqual([]);
+      }
+    }
+    // a loop that ends where it began
+    const loop = arrowPath("M0 0 L100 0 L100 100 L0 100 L0 0", { ink: "#000", sw: 4 }) as Arrow;
+    noNaN(loop);
+    expect(loop.head.dir[1]).toBeCloseTo(-1, 6);
   });
 });
 

@@ -40,14 +40,14 @@ const f = (v: number) => {
  * The head whose tip is `tip`, the shaft arriving from `from` (any point on the shaft's end
  * tangent behind the tip: the previous point of a line, the last control point of a curve).
  */
-export function arrowHead(tip: Pt, from: Pt, sw: number): ArrowHead {
+export function arrowHead(tip: Pt, from: Pt, sw: number, armLen = sw * ARROW_ARM_K): ArrowHead {
   const dx = tip[0] - from[0];
   const dy = tip[1] - from[1];
   const L = Math.hypot(dx, dy) || 1;
   const ux = dx / L;
   const uy = dy / L;
   const a = (ARROW_ARM_DEG * Math.PI) / 180;
-  const len = sw * ARROW_ARM_K;
+  const len = armLen;
   const arm = (s: number): Pt => {
     const c = Math.cos(s * a);
     const n = Math.sin(s * a);
@@ -117,27 +117,78 @@ export interface ArrowGeometry {
  * symmetric about where the line actually comes from and a curve never crosses an arm.
  */
 export function arrowGeometry(d: string, sw: number, dash?: string): ArrowGeometry | undefined {
+  if (!(Number.isFinite(sw) && sw > 0)) return undefined;
   const segs = segments(d);
   if (!segs?.length) return undefined;
   const last = segs[segs.length - 1]!.p;
   const tip = last[last.length - 1]!;
-  const reach = sw * ARROW_ARM_K * ARROW_AIM_K;
-  // Whatever the path does in its last 1.5 head-lengths (a bend, a hook, a short stub) is replaced
-  // by one straight segment along the end chord, so the head always sits square on a straight run.
+  // the direction the line actually leaves in: its last segment that is not a point
+  const tangent = endTangent(segs);
+  if (!tangent) return undefined;
+  const start = segs[0]!.p[0]!;
+  // a path shorter than the head gets a smaller head, never reaching back past its start
+  const cosA = Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const total = pathLength(d);
+  const armLen = Math.min(sw * ARROW_ARM_K, (total * 0.9) / cosA);
+  if (!(armLen > 0)) return undefined;
+  const depth = armLen * cosA;
+  const reach = armLen * ARROW_AIM_K;
+  // Whatever the path does in its last 1.5 head-lengths (a bend, a short stub) is replaced by one
+  // straight segment along the end chord, so the head sits square on a straight run. When that chord
+  // is not well defined (the path hooks back on itself there, or ends where it began), the head
+  // follows the last real segment instead and the path is left as drawn. "Hooks back" = the chord
+  // and the last segment point more than a right angle apart.
   const cut = cutBack(segs, tip, reach);
-  const aim = cut ? cut.at : segs[0]!.p[0]!;
-  if (near(aim, tip)) return undefined;
-  const head = arrowHead(tip, aim, sw);
-  const prefix = cut ? cut.prefix : `M${f(aim[0])} ${f(aim[1])}`;
+  const aim = cut ? cut.at : start;
+  const chordOk =
+    !near(aim, tip) &&
+    (() => {
+      const L = Math.hypot(tip[0] - aim[0], tip[1] - aim[1]);
+      const cos = ((tip[0] - aim[0]) * tangent[0] + (tip[1] - aim[1]) * tangent[1]) / L;
+      return cos > 0;
+    })();
+  const head = chordOk
+    ? arrowHead(tip, aim, sw, armLen)
+    : arrowHead(tip, [tip[0] - tangent[0], tip[1] - tangent[1]], sw, armLen);
   const pair = dash ? dashPair(dash) : undefined;
-  if (!pair) return { shaft: `${prefix} L${f(tip[0])} ${f(tip[1])}`, head };
-  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
   const stop = depth + 2 * sw;
+  if (!chordOk) {
+    if (!pair) return { shaft: d, head };
+    const back = cutBack(segs, tip, stop);
+    const shaft = back
+      ? back.prefix + (back.prefix.endsWith(P(back.at)) ? "" : ` L${P(back.at)}`)
+      : `M${P(start)}`;
+    return { shaft, offset: endDashOffset(pathLength(shaft), pair[0], pair[1]), head };
+  }
+  const prefix = cut ? cut.prefix : `M${f(aim[0])} ${f(aim[1])}`;
+  if (!pair) return { shaft: `${prefix} L${f(tip[0])} ${f(tip[1])}`, head };
   const L = Math.hypot(tip[0] - aim[0], tip[1] - aim[1]);
   const end: Pt = L > stop ? [tip[0] - head.dir[0] * stop, tip[1] - head.dir[1] * stop] : aim;
   const shaft = L > stop ? `${prefix} L${f(end[0])} ${f(end[1])}` : prefix;
   return { shaft, offset: endDashOffset(pathLength(shaft), pair[0], pair[1]), head };
 }
+
+/** The unit direction of the path's last segment that is not a single point. */
+function endTangent(segs: Seg[]): Pt | undefined {
+  const lastSeg = segs[segs.length - 1]!.p;
+  const tip = lastSeg[lastSeg.length - 1]!;
+  for (let k = segs.length - 1; k >= 0; k--) {
+    const p = segs[k]!.p;
+    for (let j = p.length - 2; j >= 0; j--)
+      if (!near(p[j]!, tip)) {
+        const L = Math.hypot(tip[0] - p[j]![0], tip[1] - p[j]![1]);
+        return [(tip[0] - p[j]![0]) / L, (tip[1] - p[j]![1]) / L];
+      }
+  }
+  return undefined;
+}
+
+/** A drawing-free arrow for a degenerate line (a point): nothing is drawn. */
+const NONE = (tip: Pt, sw: number): Arrow => ({
+  shaft: "",
+  head: arrowHead(tip, [tip[0] - 1, tip[1]], sw),
+  svg: "",
+});
 
 /** The shaft and head as SVG; the shaft is tagged with the tip it leads to (`data-end`). */
 function arrowSvg(d: string, s: StrokeStyle): Arrow | undefined {
@@ -163,18 +214,19 @@ const P = (p: Pt) => `${f(p[0])} ${f(p[1])}`;
 /** A straight line arrow from `a` to its tip `b`. */
 export function arrowLine(a: Pt, b: Pt, s: StrokeStyle): Arrow {
   const [p, q] = [r2(a), r2(b)];
-  return arrowSvg(`M${P(p)} L${P(near(p, q) ? [q[0] - 1, q[1]] : q)}`, s) as Arrow;
+  return arrowSvg(`M${P(p)} L${P(q)}`, s) ?? NONE(q, s.sw);
 }
 
 /** A quadratic arrow from `a`, bowed through control `c`, to its tip `b`. */
 export function arrowQuad(a: Pt, c: Pt, b: Pt, s: StrokeStyle): Arrow {
-  return (arrowSvg(`M${P(r2(a))} Q${P(r2(c))} ${P(r2(b))}`, s) ?? arrowLine(a, b, s)) as Arrow;
+  return arrowSvg(`M${P(r2(a))} Q${P(r2(c))} ${P(r2(b))}`, s) ?? arrowLine(a, b, s);
 }
 
 /** A cubic arrow p0 → c1, c2 → tip p1. */
 export function arrowCubic(p0: Pt, c1: Pt, c2: Pt, p1: Pt, s: StrokeStyle): Arrow {
-  return (arrowSvg(`M${P(r2(p0))} C${P(r2(c1))} ${P(r2(c2))} ${P(r2(p1))}`, s) ??
-    arrowLine(p0, p1, s)) as Arrow;
+  return (
+    arrowSvg(`M${P(r2(p0))} C${P(r2(c1))} ${P(r2(c2))} ${P(r2(p1))}`, s) ?? arrowLine(p0, p1, s)
+  );
 }
 
 /** An arrow along any absolute path `d` (M, L, H, V, Q, C) whose last point is the tip. */
