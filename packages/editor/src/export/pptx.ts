@@ -48,7 +48,13 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { diagramBuildAt, richDocMaxStrikeStep, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import {
+  diagramBuildAt,
+  richDocMaxStrikeStep,
+  SLIDE_H,
+  SLIDE_W,
+  TEACHER_ONLY_MARK,
+} from "@tj/domain/documents";
 import {
   fittedFontSize,
   growFixedText,
@@ -1607,8 +1613,15 @@ export async function exportLessonPptx(
     for (const build of buildSlidePlan(lesson)) {
       const { step, steps } = build;
       // Laid out as present shows it: no diagram note or open slot to the class.
-      const slide = presentedSlide(build.slide, theme);
+      const shown = presentedSlide(build.slide, theme);
+      // End-of-deck Answers slides (ruling 240): never the "Teacher only" pill, and hidden (the
+      // slideshow skips them) unless the export includes the answers.
+      const slide =
+        shown.answersRole === "answers"
+          ? { ...shown, elements: shown.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) }
+          : shown;
       const pptxSlide = pptx.addSlide();
+      if (slide.answersRole === "answers") pptxSlide.hidden = !revealAnswers;
       pptxSlide.background = { color: hexColor(slide.background?.color) ?? background };
 
       // A slide's own background wins outright, as in `SlideView`: theme art must

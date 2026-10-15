@@ -5,8 +5,9 @@ import {
   SLIDE_H,
   SLIDE_W,
   slideStepCount,
+  TEACHER_ONLY_MARK,
 } from "@tj/domain/documents";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { InkLayer, LaserLayer } from "./InkLayer";
@@ -28,6 +29,12 @@ const DURATION = 320;
 
 type LayerSpec = { index: number; step: number };
 
+/** A slide as the class sees it: an Answers slide's "Teacher only" pill is never projected. */
+export function projected(slide: Slide): Slide {
+  if (slide.answersRole !== "answers") return slide;
+  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
+}
+
 export type StageProps = {
   lesson: Lesson;
   theme: Theme;
@@ -37,7 +44,7 @@ export function Stage({ lesson, theme }: StageProps) {
   const { index, step, direction, blackout } = usePresent().state;
   const reduced = useReducedMotion();
 
-  const slides = lesson.slides;
+  const slides = useMemo(() => lesson.slides.map(projected), [lesson.slides]);
   const slide = slides[Math.min(index, slides.length - 1)];
 
   // The letterbox band, so the timer readout can sit in it rather than on the

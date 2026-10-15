@@ -420,3 +420,52 @@ describe("PresentView", () => {
     expect(status()).toContain("Slide 4 of");
   });
 });
+
+/*
+ * TEACH-191 part b (ruling 240, gold r2 rules 1-3): the guard is the last slide the class reaches
+ * until the teacher turns on "Show answers to class"; the Answers slide is projected without its
+ * "Teacher only" pill.
+ */
+describe("PresentView: end-of-deck answers", () => {
+  const answersLesson = () => {
+    const l = lesson();
+    const guard = { ...newSlide("plenary", l.themeId), answersRole: "guard" as const };
+    const page = {
+      ...newSlide("plenary", l.themeId),
+      answersRole: "answers" as const,
+      elements: [
+        {
+          id: "pill",
+          type: "shape" as const,
+          shape: "pill" as const,
+          x: 700,
+          y: 50,
+          w: 150,
+          h: 28,
+          fill: "#F3EADB",
+          name: "answers:teacher-only",
+        },
+      ],
+    };
+    l.slides = [l.slides[0] as (typeof l.slides)[number], guard, page];
+    return l;
+  };
+
+  it("stops at the guard with a teacher-only hint, then the toggle presents the answers", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPresent({ lesson: answersLesson() });
+    key("ArrowRight");
+    expect(status()).toContain("Slide 2 of 3");
+    key("ArrowRight");
+    expect(status()).toContain("Slide 2 of 3");
+    expect(screen.getByText(/Answers are teacher only/)).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: "Show answers to class" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    await user.click(toggle);
+    key("ArrowRight");
+    expect(status()).toContain("Slide 3 of 3");
+    expect(
+      container.querySelector("[data-slide-mode='present'] [data-element-id='pill']"),
+    ).toBeNull();
+  });
+});

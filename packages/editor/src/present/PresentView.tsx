@@ -116,10 +116,14 @@ function PresentSurface({
 
   const slideIds = useMemo(() => lesson.slides.map((s) => s.id), [lesson.slides]);
   const stepCounts = useMemo(() => lesson.slides.map(slideStepCount), [lesson.slides]);
+  const teacherOnly = useMemo(
+    () => lesson.slides.map((s) => s.answersRole === "answers"),
+    [lesson.slides],
+  );
 
   useEffect(() => {
-    dispatch({ type: "setDeck", slideIds, steps: stepCounts, startIndex });
-  }, [slideIds, stepCounts, startIndex, dispatch]);
+    dispatch({ type: "setDeck", slideIds, steps: stepCounts, startIndex, teacherOnly });
+  }, [slideIds, stepCounts, startIndex, teacherOnly, dispatch]);
 
   // Progress is reported once, from wherever the session ends: the exit action or an unmount
   // (browser back, series chaining). `reported` stops the two paths double-writing.

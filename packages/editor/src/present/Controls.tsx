@@ -19,6 +19,8 @@ import {
   ChevronsRight,
   Crosshair,
   Eraser,
+  Eye,
+  EyeOff,
   Grid2x2,
   Highlighter,
   MoreHorizontal,
@@ -84,6 +86,8 @@ export type ControlsProps = {
 export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: ControlsProps) {
   const { state, dispatch, ink } = usePresent();
   const { index, step, tool, laser, timerOpen, pillCollapsed: collapsed, timer } = state;
+  const { showAnswers, answersHeld } = state;
+  const hasAnswers = state.teacherOnly.some(Boolean);
   const slideId = state.slideIds[index];
   const hasInk = slideId ? ink.hasInk(slideId) : false;
 
@@ -164,10 +168,19 @@ export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: Con
   return (
     <div
       className="td-autohide absolute right-5 bottom-5 z-[440]"
-      data-hidden={!visible}
+      data-hidden={!visible && !answersHeld}
       {...hover}
       {...focus}
     >
+      {answersHeld ? (
+        // On the teacher's chrome only: why "next" stopped at the guard (ruling 240).
+        <p
+          role="status"
+          className="mb-2 rounded-card bg-card px-3 py-2 text-body text-foreground ring-1 ring-border"
+        >
+          Answers are teacher only. Turn on Show answers to present them.
+        </p>
+      ) : null}
       <Panel style={PILL_STYLE}>
         {counter}
         {stepCount > 0 ? <StepDots step={step} total={stepCount} /> : null}
@@ -246,6 +259,18 @@ export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: Con
         </fieldset>
 
         <StageDivider />
+
+        {hasAnswers ? (
+          <Tooltip label="Show answers to class" contentClassName={STAGE_SCOPE_CLASS}>
+            <StageButton
+              label="Show answers to class"
+              active={showAnswers}
+              onClick={() => dispatch({ type: "setShowAnswers", on: !showAnswers })}
+            >
+              {showAnswers ? <Eye {...ICON} /> : <EyeOff {...ICON} />}
+            </StageButton>
+          </Tooltip>
+        ) : null}
 
         <Popover open={timerOpen} onOpenChange={(open) => dispatch({ type: "setTimerOpen", open })}>
           <PopoverTrigger asChild>
