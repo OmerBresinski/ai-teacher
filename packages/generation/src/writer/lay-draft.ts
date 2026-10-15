@@ -102,6 +102,7 @@ export function layDraft(
   return nonFatalSync(
     () => {
       const { fit: _fit, ...fields } = draft.fields;
+      if (draft.template === "hinge" && holdHingeTitle(fields)) return undefined;
       let s: S = slideNoEmDash({ template: draft.template, ...fields } as S) as S;
       if (isWriterActivity(s.template)) s = fromWriterActivity(s, stageKey, ctx.brief).slide;
       const look = lookOf(ctx.plan.flow?.find((x) => x.slide === ctx.index + 1));
@@ -133,6 +134,17 @@ export function layDraft(
     },
     () => undefined,
   );
+}
+
+/**
+ * The hinge's title is its question: the stem when there is one, else the heading (TEACH-256
+ * part b). The writer streams `heading` before `stem`, so a draft laid from the heading alone
+ * would type the heading in and then swap it for the stem under a new id. No hinge draft is laid
+ * until the stem's first word arrives, or the options start after an empty stem (the heading is the question).
+ */
+function holdHingeTitle(fields: S): boolean {
+  if (!("stem" in fields)) return true;
+  return String(fields.stem ?? "").trim() === "" && !("options" in fields);
 }
 
 /** Layouts with one visual of their own, by the field it streams in. */
