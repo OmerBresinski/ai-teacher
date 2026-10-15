@@ -88,6 +88,19 @@ describe("the generating bank", () => {
     expect(calls).toHaveLength(1);
     expect(logs.filter((l) => /daily cap spent/.test(l.msg ?? ""))).toHaveLength(1);
   });
+  test("FRAME-CUT (TEACH-251 part f): a subject run off the frame is logged, never made again", async () => {
+    const { generator, calls } = fakeGenerator(); // a dark band across the top: runs off three edges
+    logs.length = 0;
+    const bank = createGeneratingBank({
+      generator,
+      cap: createDailyImageCap({ capUsd: 5 }),
+      save: async () => ({ id: "g2", src: "/files/w/images/g2.png" }),
+      logger,
+    });
+    expect(await bank.generate(req, false, signal)).toBeDefined();
+    expect(calls).toHaveLength(1);
+    expect(logs.filter((l) => /ran off the frame/.test(l.msg ?? ""))).toHaveLength(1);
+  });
   test("the cap starts again each UTC day", () => {
     let now = new Date("2026-10-08T23:59:00Z");
     const cap = createDailyImageCap({ capUsd: 0.007, now: () => now });

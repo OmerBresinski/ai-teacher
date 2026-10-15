@@ -12,6 +12,7 @@ import {
   countArraySvg,
   directedImagePrompt,
   expectedImageCostUsd,
+  frameCutOf,
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
@@ -171,6 +172,14 @@ export function createGeneratingBank(opts: {
       const prompt = directedImagePrompt(req.imagePrompt, faithful);
       const out = await opts.generator.generate({ prompt, size, signal });
       opts.cap.spent(out.costUsd);
+      // FRAME-CUT (TEACH-251 part f): log-only. A subject drawn past its frame (on a plain backdrop)
+      // is logged so the cut rate can be measured; the root fix is the image prompt's framing.
+      const cut = frameCutOf(out.bytes);
+      if (cut?.cut)
+        opts.logger.info(
+          { stage: "illustrate", frameCut: cut.edges },
+          "picture subject ran off the frame",
+        );
       const saved = await opts.save(out.bytes, out.mime);
       // The picture's own shape (the model returns the size asked; the header is the fact).
       const [sw, sh] = size.split("x").map(Number) as [number, number];
