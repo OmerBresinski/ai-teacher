@@ -447,6 +447,19 @@ describe("path element (ADR 0032)", () => {
     expect(SlideSchema.safeParse(input.slides[0]).success).toBe(true);
   });
 
+  test("a dotted path keeps its dash gap; a gap of zero or less is rejected", () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
+    const slide = (dashGap: number) => ({
+      ...withPath(pts).slides[0],
+      elements: [{ ...path(pts), dash: "dotted", dashGap }],
+    });
+    expect(SlideSchema.safeParse(slide(4.4)).success).toBe(true);
+    expect(SlideSchema.safeParse(slide(0)).success).toBe(false);
+  });
+
   test("a path with a single point is rejected at its points", () => {
     const result = SlideSchema.safeParse(withPath([{ x: 0, y: 0 }]).slides[0]);
     expect(result.success).toBe(false);

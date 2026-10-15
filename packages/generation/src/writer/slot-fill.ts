@@ -47,9 +47,13 @@ const COLUMN_LABEL = 12;
  * stays the hard backstop.
  */
 export const CHARS_PER_WORD = 8;
-const LISTS = ["points", "questions", "options", "columns", "sequence"] as const;
+const LISTS = ["points", "questions", "options", "columns", "sequence", "items"] as const;
 
 const REF = (n: string): J => ({ $ref: `#/$defs/${n}` });
+const NUL = (x: J): J => ({ anyOf: [x, { type: "null" }] });
+/** An items row's accent words and icon label (the writer schema's own limits). */
+const ACCENT_WORD = 40;
+const ICON_LABEL = 23;
 const isNull = (x: J) => x.type === "null";
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 const capped = (n: number): J => ({ type: "string", maxLength: n });
@@ -124,7 +128,10 @@ function variantDef(
     heading,
   );
   if ("heading" in p) p.heading = capped(caps.heading);
-  if ("lead" in p && caps.lead !== undefined) p.lead = capped(caps.lead);
+  // The items row's lead is optional (null), so its cap keeps the null branch.
+  if ("lead" in p && caps.lead !== undefined)
+    p.lead = layout === "items-row" ? NUL(capped(caps.lead)) : capped(caps.lead);
+  if ("accentWord" in p) p.accentWord = NUL(capped(ACCENT_WORD));
   if ("stem" in p && caps.stem !== undefined) p.stem = capped(caps.stem);
   if ("instruction" in p)
     p.instruction =
@@ -158,6 +165,14 @@ function variantDef(
       cp.text = capped(item);
       cp.picture = v.figure ? nonNull(cp.picture as J, defs) : { type: "null" };
       it = card;
+    } else if (k === "items") {
+      // Items row (TEACH-75 part u): a name at the measured name room, a line, an icon label.
+      const row = clone(list.items as J);
+      const rp = row.properties as Record<string, J>;
+      rp.name = capped(v.columnLabel ?? COLUMN_LABEL);
+      rp.text = capped(item);
+      rp.icon = NUL(capped(ICON_LABEL));
+      it = row;
     } else if (k === "sequence") {
       const seq = clone(list.items as J);
       const capCaption = (b: J) => {

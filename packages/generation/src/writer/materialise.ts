@@ -4,6 +4,8 @@ import {
   type Figure,
   isPointKind,
   layoutTemplate,
+  motifOf,
+  PLACEHOLDER_ICON,
   type TemplateInput,
   type TemplatePoint,
 } from "@tj/slides/templates";
@@ -596,6 +598,30 @@ export function toInput(
             label: str(c.label),
             text: str(c.text),
             ...(f ? { icon: f } : planned ? { iconLost: true } : {}),
+          };
+        }),
+      };
+    case "items-row":
+      // TEACH-75 part u: icons are labels the slides' icon library matches; a miss numbers the
+      // row and comes back in `iconMisses`, so there is no picture ask and no lost picture.
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
+        ordered: s.ordered === true,
+        // A line style when the writer names one (menu v4); unknown is plain.
+        ...(typeof s.motif === "string" ? { motif: motifOf(s.motif) } : {}),
+        items: (Array.isArray(s.items) ? s.items : []).map((i0) => {
+          const i = (i0 ?? {}) as S;
+          return {
+            name: str(i.name),
+            text: str(i.text),
+            // The placeholder is the editor's for a teacher's blank, never the writer's: dropped,
+            // so a row that leans on it is numbered.
+            ...(typeof i.icon === "string" && i.icon.trim() && i.icon.trim() !== PLACEHOLDER_ICON
+              ? { icon: i.icon }
+              : {}),
           };
         }),
       };
