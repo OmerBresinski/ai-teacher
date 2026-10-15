@@ -3,7 +3,7 @@ import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
 import { type LayoutRef, LayoutRefSchema } from "./layout-ref";
 import { isLinkableHref } from "./links";
-import { type RichDoc, RichDocSchema } from "./rich-text";
+import { type RichDoc, RichDocSchema, richDocMaxStrikeStep } from "./rich-text";
 
 /*
  * Slides and their elements (ADR 0021). Units are logical points: a slide is 960x540 (the
@@ -254,6 +254,12 @@ export type ImageElement = ElementBase & {
    * `data-s` groups; every other surface shows the last build.
    */
   builds?: number;
+  /**
+   * Builds on rows (TEACH-205 part c, W-d4): the slide step that shows build 1, so build *i* shows
+   * with the row revealed at step `buildFrom + i - 1` (a worked example draws step *i* of its
+   * model with line *i*). Absent: the builds play after the element reveals, as before.
+   */
+  buildFrom?: number;
   /**
    * What a drawn diagram or a library model was drawn from (TEACH-97 part h), so the settings
    * panel can redraw it in place. Absent on photos, on teacher pictures and on diagrams saved
@@ -621,6 +627,7 @@ const ImageElementSchema = z.object({
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
   source: PhotoSourceSchema.optional(),
   builds: z.number().int().min(0).max(32).optional(),
+  buildFrom: z.number().int().min(0).max(64).optional(),
   // A source that does not parse (oversize, unknown kind) is dropped, never the slide: the drawing
   // in `src` still shows, and only the settings panel goes without it.
   diagram: DiagramSourceSchema.optional().catch(undefined),
@@ -932,6 +939,10 @@ export function slideStepCount(slide: Slide): number {
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
       if (el.revealStep && el.revealStep > max) max = el.revealStep;
+      // A diagram on rows ends at its last build; a myth strike shows on its own step (part c).
+      const bound = rowBound(el);
+      if (bound) max = Math.max(max, rowBuildEnd(bound));
+      if (el.type === "text") max = Math.max(max, richDocMaxStrikeStep(el.doc));
       if (el.type === "group") walk(el.children);
     }
   };
@@ -942,12 +953,24 @@ export function slideStepCount(slide: Slide): number {
   return max + diagramBuildSteps(slide) + answerRevealSteps(slide);
 }
 
-/** The most builds any drawn diagram on the slide has (they play together, one per Next). */
+/** A drawn diagram whose builds ride slide rows (`buildFrom`, TEACH-205 part c). */
+const rowBound = (el: SlideElement): ImageElement | undefined =>
+  el.type === "image" && el.buildFrom !== undefined && (el.builds ?? 0) > 0 ? el : undefined;
+
+/** The step that shows a row-bound diagram's last build. */
+const rowBuildEnd = (el: ImageElement): number =>
+  (el.buildFrom ?? 0) + Math.floor(el.builds ?? 0) - 1;
+
+/**
+ * The most builds any drawn diagram on the slide plays after the element reveals (they play
+ * together, one per Next). A diagram on rows (`buildFrom`) plays with its rows and is not counted.
+ */
 export function diagramBuildSteps(slide: Slide): number {
   let max = 0;
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
-      if (el.type === "image" && el.builds && el.builds > max) max = Math.floor(el.builds);
+      if (el.type === "image" && el.builds && el.builds > max && !rowBound(el))
+        max = Math.floor(el.builds);
       if (el.type === "group") walk(el.children);
     }
   };
@@ -956,10 +979,17 @@ export function diagramBuildSteps(slide: Slide): number {
 }
 
 /**
- * Which build a drawn diagram shows at `step`: 0 while the element reveals run, then one more
- * per step, held at the last build once the answer reveal starts.
+ * Which build a drawn diagram shows at `step`. Pass the diagram as `element` when it may ride
+ * rows: with `buildFrom`, build *i* shows at step `buildFrom + i - 1` (0 before, held at the last).
+ * Otherwise (and without `element`): 0 while the element reveals run, then one more per step,
+ * held at the last build once the answer reveal starts.
  */
-export function diagramBuildAt(slide: Slide, step: number): number {
+export function diagramBuildAt(slide: Slide, step: number, element?: SlideElement): number {
+  const bound = element && rowBound(element);
+  if (bound) {
+    const total = Math.floor(bound.builds ?? 0);
+    return Math.max(0, Math.min(total, step - (bound.buildFrom ?? 0) + 1));
+  }
   const total = diagramBuildSteps(slide);
   if (total === 0) return 0;
   const start = slideStepCount(slide) - answerRevealSteps(slide) - total;

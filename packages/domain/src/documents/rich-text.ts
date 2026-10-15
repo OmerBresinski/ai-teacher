@@ -111,13 +111,92 @@ const LinkAttrsSchema = z
   })
   .loose();
 
+/*
+ * Run attributes on `textStyle` beyond `color` (TEACH-205 part c; rulings 238, 248). A run may carry
+ * any mix of them:
+ * - `font: "quote"` sets the run in the theme's quote face (a worked example's `x`, a source's words);
+ * - `highlight: n` washes the run in colour slot n (1-4), never a hex: the theme owns the colour;
+ * - `strikeStep: n` is the myth strike, an offset line through the x-height (not the `strike`
+ *   mark, which is the font's own strikeout), shown from reveal step n (0 = from the start).
+ */
+export const RUN_FONTS = ["quote"] as const;
+export type RunFont = (typeof RUN_FONTS)[number];
+/** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
+export const HIGHLIGHT_SLOTS = 4;
+/** The latest reveal step a strike may name (as `ImageElement.buildFrom`). */
+const MAX_STRIKE_STEP = 64;
+
+export const safeRunFont = (raw: unknown): RunFont | null =>
+  typeof raw === "string" && (RUN_FONTS as readonly string[]).includes(raw)
+    ? (raw as RunFont)
+    : null;
+export const safeHighlightSlot = (raw: unknown): number | null =>
+  Number.isInteger(raw) && (raw as number) >= 1 && (raw as number) <= HIGHLIGHT_SLOTS
+    ? (raw as number)
+    : null;
+export const safeStrikeStep = (raw: unknown): number | null =>
+  Number.isInteger(raw) && (raw as number) >= 0 && (raw as number) <= MAX_STRIKE_STEP
+    ? (raw as number)
+    : null;
+
+/** The run attributes `textStyle` carries, as the renderers read them. */
+export type RunStyleAttrs = {
+  color?: string;
+  font?: RunFont;
+  highlight?: number;
+  strikeStep?: number;
+};
+
 const TextStyleAttrsSchema = z
   .object({
     color: nullish(
       z.string().refine((v) => safeCssColor(v) !== null, { message: "Not a CSS colour" }),
     ),
+    font: nullish(z.enum(RUN_FONTS)),
+    highlight: nullish(z.number().int().min(1).max(HIGHLIGHT_SLOTS)),
+    strikeStep: nullish(z.number().int().min(0).max(MAX_STRIKE_STEP)),
   })
   .loose();
+
+/** A text node with one `textStyle` mark carrying `attrs` (templates and tests build runs with it). */
+export function styledRun(text: string, attrs: RunStyleAttrs): RichNode {
+  const clean = Object.fromEntries(Object.entries(attrs).filter(([, v]) => v !== undefined));
+  return Object.keys(clean).length === 0
+    ? { type: "text", text }
+    : { type: "text", text, marks: [{ type: "textStyle", attrs: clean }] };
+}
+
+/** The validated run attributes on a node's `textStyle` mark (empty when it has none). */
+export function runStyleOf(node: RichNode): RunStyleAttrs {
+  const attrs = node.marks?.find((m) => m.type === "textStyle")?.attrs;
+  if (!attrs) return {};
+  const out: RunStyleAttrs = {};
+  const color = safeCssColor(attrs.color);
+  const font = safeRunFont(attrs.font);
+  const highlight = safeHighlightSlot(attrs.highlight);
+  const strikeStep = safeStrikeStep(attrs.strikeStep);
+  if (color) out.color = color;
+  if (font) out.font = font;
+  if (highlight !== null) out.highlight = highlight;
+  if (strikeStep !== null) out.strikeStep = strikeStep;
+  return out;
+}
+
+/** The latest step any myth strike in `doc` names (0 when none): it is a step of the slide. */
+export function richDocMaxStrikeStep(doc: RichDoc | RichNode): number {
+  let max = 0;
+  const stack: RichNode[] = [doc as RichNode];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) break;
+    if (node.type === "text") {
+      const step = runStyleOf(node).strikeStep;
+      if (step !== undefined && step > max) max = step;
+    }
+    if (Array.isArray(node.content)) stack.push(...node.content);
+  }
+  return max;
+}
 
 const EmptyAttrsSchema = z.object({}).loose().optional();
 

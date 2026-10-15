@@ -4,8 +4,14 @@ import {
   type RichDoc,
   RichDocSchema,
   type RichNode,
+  richDocMaxStrikeStep,
   richDocToPlainText,
+  runStyleOf,
+  safeHighlightSlot,
   safeLinkHref,
+  safeRunFont,
+  safeStrikeStep,
+  styledRun,
 } from "./rich-text";
 
 describe("richDocToPlainText", () => {
@@ -204,5 +210,61 @@ describe("RichDocSchema (closed schema, TEACH-277)", () => {
     expect(safeLinkHref("bbc.co.uk")).toBeNull();
     expect(safeLinkHref("javascript:alert(1)")).toBeNull();
     expect(safeLinkHref(42)).toBeNull();
+  });
+});
+
+describe("run attributes: quote font, highlight slot, myth strike (TEACH-205 part c)", () => {
+  const doc = (...runs: RichNode[]): RichDoc => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: runs }],
+  });
+
+  test("a run in the quote face, a highlight slot and a strike step parse and round-trip", () => {
+    const d = doc(
+      styledRun("x", { font: "quote" }),
+      { type: "text", text: " = " },
+      styledRun("Rome fell", { highlight: 2, color: "#123456" }),
+      styledRun("Bats are blind", { strikeStep: 2 }),
+    );
+    expect(RichDocSchema.parse(d)).toEqual(d);
+    expect(runStyleOf(d.content?.[0]?.content?.[2] as RichNode)).toEqual({
+      color: "#123456",
+      highlight: 2,
+    });
+    expect(richDocMaxStrikeStep(d)).toBe(2);
+  });
+
+  test("an old doc parses unchanged and has no strike step", () => {
+    const d = doc({
+      type: "text",
+      text: "plain",
+      marks: [{ type: "textStyle", attrs: { color: "red" } }],
+    });
+    expect(RichDocSchema.parse(d)).toEqual(d);
+    expect(richDocMaxStrikeStep(d)).toBe(0);
+    expect(styledRun("plain", {})).toEqual({ type: "text", text: "plain" });
+  });
+
+  test("bad values are refused at the boundary", () => {
+    const bad = (attrs: Record<string, unknown>) =>
+      RichDocSchema.safeParse(
+        doc({ type: "text", text: "x", marks: [{ type: "textStyle", attrs }] }),
+      ).success;
+    expect(bad({ font: "comic" })).toBe(false);
+    expect(bad({ highlight: 0 })).toBe(false);
+    expect(bad({ highlight: 5 })).toBe(false);
+    expect(bad({ highlight: "#ff0" })).toBe(false);
+    expect(bad({ strikeStep: -1 })).toBe(false);
+    expect(bad({ strikeStep: 1.5 })).toBe(false);
+    expect(bad({ font: null, highlight: null, strikeStep: null })).toBe(true);
+  });
+
+  test("the renderer-side readers drop what the schema would refuse", () => {
+    expect(safeRunFont("quote")).toBe("quote");
+    expect(safeRunFont("serif")).toBeNull();
+    expect(safeHighlightSlot(4)).toBe(4);
+    expect(safeHighlightSlot(2.5)).toBeNull();
+    expect(safeStrikeStep(0)).toBe(0);
+    expect(safeStrikeStep(65)).toBeNull();
   });
 });
