@@ -394,7 +394,9 @@ export function runRects(
       if (!run.attrs || !pick(run.attrs) || !broken.places) continue;
       const byLine = new Map<number, [number, number]>();
       for (let i = from; i < offset; i++) {
-        if (run.text.charCodeAt(i - from) === 10) continue;
+        // Spaces never widen a rect: one at a wrap hangs past the line's end.
+        const code = run.text.charCodeAt(i - from);
+        if (code === 10 || code === 32 || code === 9) continue;
         const line = broken.places.line[i] ?? 0;
         const x0 = broken.places.x[i] ?? 0;
         const x1 = x0 + (broken.places.adv[i] ?? 0);

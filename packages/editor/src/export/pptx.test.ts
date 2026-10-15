@@ -8,9 +8,16 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { HIGHLIGHT_FALLBACK_FILLS, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
+import {
+  DIAGRAM_NAME,
+  drawFigure,
+  FIGURE_RECT,
+  FONT_STACKS,
+  materialiseSlide,
+  v2Profile,
+} from "@tj/slides";
 import { iconImageSrc, iconMedalImageSrc, medalColoursFor } from "@tj/slides/icons";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
@@ -39,6 +46,7 @@ import {
   pptxFilename,
   pptxShapeName,
   roundedPictureName,
+  runMarkRects,
   slideLabel,
   textBoxOptions,
   trackingToPt,
@@ -1423,5 +1431,131 @@ describe("fallback faces in a v2 deck (ruling 213)", () => {
     const v1 = await slideXml(await exportLessonPptx(lesson, getTheme(water.themeId)));
     expect(v1).toContain('typeface="Andika"');
     expect(v1).not.toContain("Comic Sans MS");
+  }, 30_000);
+});
+
+describe("rich runs and builds on rows (TEACH-205 part c)", () => {
+  const theme = getTheme("paper");
+  const accent = hexColor(theme.colors.accent) ?? "";
+  const text = (id: string, doc: TextElement["doc"], extra: Partial<TextElement> = {}) =>
+    ({
+      id,
+      type: "text",
+      x: 60,
+      y: 60,
+      w: 360,
+      h: 200,
+      doc,
+      style: { preset: "body" },
+      ...extra,
+    }) as TextElement;
+  const para = (...content: NonNullable<TextElement["doc"]["content"]>) => ({
+    type: "doc" as const,
+    content: [{ type: "paragraph", content }],
+  });
+  const claim = text(
+    "claim",
+    para(
+      { type: "text", text: "Bats are blind, " },
+      {
+        type: "text",
+        text: "so they fly into walls at night and cannot find their food",
+        marks: [{ type: "textStyle", attrs: { highlight: 2 } }],
+      },
+      { type: "text", text: " — " },
+      { type: "text", text: "a myth", marks: [{ type: "textStyle", attrs: { strikeStep: 2 } }] },
+      { type: "text", text: " where " },
+      { type: "text", text: "x", marks: [{ type: "textStyle", attrs: { font: "quote" } }] },
+    ),
+  );
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><g data-s="1"><rect width="5" height="5"/></g><g data-s="2"><rect x="5" width="5" height="5"/></g></svg>';
+  const diagram = {
+    id: "d",
+    type: "image",
+    x: 500,
+    y: 60,
+    w: 300,
+    h: 200,
+    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    fit: "contain",
+    builds: 2,
+    buildFrom: 1,
+  } as SlideElement;
+  const rows = [1, 2].map((n) =>
+    text(`row${n}`, para({ type: "text", text: `Row ${n}` }), {
+      y: 300 + n * 40,
+      h: 36,
+      revealStep: n,
+    }),
+  );
+  const slide = { ...newSlide("content", "paper"), elements: [claim, diagram, ...rows] } as Slide;
+
+  it("a quote run takes the theme's quote face, italic where the theme sets quotes italic", () => {
+    const props = paragraphsToTextProps(docToRuns(claim.doc), {
+      fontFace: "Lexend",
+      fontSize: 20,
+      quoteFace: "Source Serif 4",
+      quoteItalic: true,
+    });
+    const x = props.find((p) => p.text === "x");
+    expect(x?.options?.fontFace).toBe("Source Serif 4");
+    expect(x?.options?.italic).toBe(true);
+    expect(props.find((p) => p.text?.startsWith("Bats"))?.options?.fontFace).toBe("Lexend");
+  });
+
+  it("a highlight is a rect per measured line under the text; a strike waits for its step (rows 3, 5)", () => {
+    const at1 = runMarkRects(claim, theme, 20, 1);
+    expect(at1.under.length).toBeGreaterThan(1);
+    expect(new Set(at1.under.map((s) => (s.fill as { color: string }).color))).toEqual(
+      new Set([HIGHLIGHT_FALLBACK_FILLS[1].slice(1)]),
+    );
+    expect(at1.over).toEqual([]);
+    const at2 = runMarkRects(claim, theme, 20, 2);
+    expect(at2.over).toHaveLength(1);
+    expect((at2.over[0]?.fill as { color: string } | undefined)?.color).toBe(accent);
+    // 0.075em thick at 20pt.
+    expect(at2.over[0]?.h).toBeCloseTo((0.075 * 20) / 72, 4);
+  });
+
+  it("struck and row-bound steps are build slides", () => {
+    expect(maxRevealStep(slide)).toBe(2);
+    expect(maxRevealStep({ ...slide, elements: [claim] })).toBe(2);
+    expect(
+      maxRevealStep({ ...slide, elements: [{ ...diagram, buildFrom: 3 } as SlideElement] }),
+    ).toBe(4);
+  });
+
+  it("each build slide carries its row's diagram build and its strike (rows 2, 5)", async () => {
+    const lesson: Lesson = { ...demoLibrary()[0], slides: [slide] } as Lesson;
+    const drawn: string[] = [];
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const blob = await exportLessonPptx(lesson, theme, {
+      rasteriseSvg: async (src) => {
+        drawn.push(decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+    });
+    expect(drawn).toHaveLength(3);
+    expect(drawn[0]).toContain('[data-s="1"],[data-s="2"]{opacity:0}');
+    expect(drawn[1]).toContain('[data-s="2"]{opacity:0}');
+    expect(drawn[1]).not.toContain('[data-s="1"]');
+    expect(drawn[2]).not.toContain("{opacity:0}");
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = async (n: number) =>
+      (await zip.file(`ppt/slides/slide${n}.xml`)?.async("string")) ?? "";
+    const strikes = (s: string) =>
+      [...s.matchAll(/<p:sp>.*?<\/p:sp>/gs)].filter(
+        (m) => m[0].includes('prst="rect"') && m[0].includes(`<a:srgbClr val="${accent}"`),
+      ).length;
+    const washes = (s: string) => (s.match(/<a:srgbClr val="ADC0D6"/g) ?? []).length;
+    const [s1, s2, s3] = await Promise.all([xml(1), xml(2), xml(3)]);
+    expect([strikes(s1), strikes(s2), strikes(s3)]).toEqual([0, 0, 1]);
+    expect(washes(s1)).toBeGreaterThan(1);
+    expect(washes(s3)).toBe(washes(s1));
+    // The quote face (Source Serif 4, written with its checked fallback Georgia, ruling 213), italic.
+    expect(fontFaceFor(v2Profile(theme).fonts.quote)).toBe("Source Serif 4");
+    expect(s1).toMatch(/i="1"[^>]*>(?:(?!<\/a:rPr>).)*typeface="Georgia"/);
   }, 30_000);
 });
