@@ -386,6 +386,12 @@ function drawPercent(p: Extract<BarPanel, { model: "percent" }>, x: Ctx, w: numb
   return still + frames(x, keys.length, layer);
 }
 
+/**
+ * The unknown's face: a math italic. No theme names a maths face yet, so this fallback stack
+ * stands in until the fonts part (TEACH-75 part aa, A7) owns `--font-math`.
+ */
+const MATH_FAMILY = "'STIX Two Math', 'Cambria Math', 'STIX Two Text', 'Times New Roman', serif";
+
 /** ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale. */
 function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
   const { c } = x;
@@ -418,12 +424,16 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   const letterFs = Math.max(big, Math.min(big * 1.2, inner / textWidth(p.unknown, x, 1, 500)));
   const need = Math.max(textWidth(num(xv), x, big, 700), textWidth(p.unknown, x, letterFs, 500));
   if (need > inner) x.faults?.push(`the ${p.unknown} cells are too narrow for "${num(xv)}"`);
-  const cell = (cx: number, cy: number, cw: number, fill: string, stroke = c.ink) =>
-    `<rect x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+  // Each cell a block of its own (the gold): its fill, then a thin ink outline with a small
+  // radius, drawn as two shapes so the flat finish keeps the outline.
+  const cell = (cx: number, cy: number, cw: number, fill: string) => {
+    const box = `x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="5"`;
+    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" stroke-width="2"/>`;
+  };
   const ghost = (cx: number, cy: number, cw: number) =>
     `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
   const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink) =>
-    text(x, cx, cy, [p.unknown], { fs, weight: 500, fill }).replace(
+    text(x, cx, cy, [p.unknown], { fs, weight: 500, fill, family: MATH_FAMILY }).replace(
       "<text ",
       '<text font-style="italic" ',
     );
@@ -438,15 +448,15 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
       const cx = bx + i * xw;
       g += cell(cx, top, xw, c.tint);
       if (key === "check") {
-        // The x tag in the cell's corner, the value under it; a cell too short for both carries
-        // its tag just over it.
-        const inside = bh >= x.minFs * 1.3 + big * 1.05;
-        g += inside
-          ? letter(x, cx + cut / 2 + x.minFs * 0.6, top + x.minFs * 0.75, x.minFs, c.muted)
-          : letter(x, cx + xw / 2, top - x.minFs * 0.65, x.minFs, c.muted);
-        const vy = inside ? Math.max(mid(top), top + x.minFs * 1.3 + big * 0.45) : mid(top);
-        g += text(x, cx + xw / 2, vy, [num(xv)], {
-          fs: big,
+        // A small x tag in the cell's top-left corner (the gold), the value under it with clear
+        // space between: the value steps down (never under the floor) in a short cell.
+        const tagH = x.minFs * 1.15;
+        const vfs = Math.max(x.minFs, Math.min(big, bh - tagH - x.minFs * 0.35));
+        if (tagH + x.minFs * 0.2 + vfs > bh) x.faults?.push("the bars are too short for the check");
+        g += letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
+        const vy = Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
+        g += text(x, cx + xw / 2, Math.min(vy, top + bh - vfs * 0.55), [num(xv)], {
+          fs: vfs,
           weight: 700,
           fill: c.accent,
         });
