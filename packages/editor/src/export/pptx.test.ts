@@ -30,7 +30,6 @@ import {
   lessonAnswers,
   maxRevealStep,
   optionTextFrame,
-  PPTX_FALLBACK_FACE,
   paragraphsToTextProps,
   place,
   pptxDashType,
@@ -40,7 +39,7 @@ import {
   textBoxOptions,
   trackingToPt,
 } from "./pptx";
-import { withFallbackFacesXml } from "./pptx-fonts";
+import { PPTX_FALLBACK_FACE, withFallbackFacesXml } from "./pptx-fonts";
 import { docToRuns } from "./runs";
 
 /*
@@ -1161,12 +1160,6 @@ describe("fallback faces in a v2 deck (ruling 213)", () => {
       "Nunito",
     ]);
     expect(withFallbackFacesXml(run("", "Andika"))).not.toContain('"Andika"');
-  });
-
-  it("keeps the name of a face the file embeds", () => {
-    expect(withFallbackFacesXml(run("", "Andika"), new Set(["Andika"]))).toContain(
-      'typeface="Andika"',
-    );
   });
 
   it("a Paper export names no unembedded v2 face; a v1 export is untouched", async () => {

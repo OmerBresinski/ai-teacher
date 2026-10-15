@@ -144,26 +144,6 @@ export const FONT_FAMILIES: Record<string, string> = {
   andika: "Andika",
 };
 
-/**
- * The installed face PowerPoint shows for a theme face the file does not embed (UX ruling 213),
- * measured in the theme v2 pilot against one sentence. Each is as wide or narrower, so text never
- * overflows its box; never Verdana for Lexend (+5%). Keyed by family, then role; written into a
- * v2 deck by `withFallbackFaces` (`pptx-fonts.ts`).
- */
-export const PPTX_FALLBACK_FACE: Record<
-  string,
-  { body: string; display: string; italic?: string }
-> = {
-  // +1%, and it keeps the single-storey a and g.
-  Andika: { body: "Comic Sans MS", display: "Comic Sans MS" },
-  // Body -6%, display -10%.
-  Lexend: { body: "Trebuchet MS", display: "Arial Bold" },
-  // -3%.
-  "Schibsted Grotesk": { body: "Arial", display: "Arial Bold" },
-  // Italic +1%: the v2 quote voice.
-  "Source Serif 4": { body: "Georgia", display: "Georgia", italic: "Georgia Italic" },
-};
-
 const FALLBACK_FACE = "Arial";
 
 /**
