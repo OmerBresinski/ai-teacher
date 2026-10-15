@@ -18,7 +18,7 @@
  *
  * Every size is in slide points (960 x 540): the gold's px at 1440 x 2/3.
  */
-import type { ShapeElement } from "@tj/domain/documents";
+import type { ShapeElement, SlideElement } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { resolveFontSize } from "../text-style";
 import { v2Profile } from "../theme-v2";
@@ -86,6 +86,9 @@ export const isCalc = (s: string) => /\d/.test(s) && /^[\d,.\s+−×÷=\-?/()]+$
  * so a slide that fits is comfortable; `tight` marks one drawn only past it.
  */
 export const comfortAt = (c: Pick<Ctx, "t">, q: number) => q >= v2Profile(c.t).comfort.body;
+
+/** A figure's caption: the gold's label size is under the floor; the smallest drawn step over it. */
+const captionSize = (c: Pick<Ctx, "t">) => resolveFontSize(c.t, "body", MIN_FONT_SIZE.body);
 
 /** The two sizes a task may take at the theme's stage: the body step, then bodySmall. */
 export function taskSteps(c: Pick<Ctx, "t" | "s">): number[] {
@@ -183,10 +186,18 @@ const captionOf = (f: Figure | undefined): string => {
   return String(d?.caption ?? d?.title ?? "").trim();
 };
 
-function visualOf(input: TemplateInput): Visual | null {
+function visualOf(c: Ctx, input: TemplateInput): Visual | null {
   const f = input.figure;
   if (!f) return null;
-  return { figure: f, failed: Boolean(input.tile), caption: captionOf(f) };
+  let failed = Boolean(input.tile);
+  // A figure that draws nothing (its data missing or unreadable) is a caption card, never lost:
+  // tried once off the slide at the card's picture size, its reasons kept for the caller.
+  if (!failed && !("photo" in f)) {
+    const probe: Ctx = { ...c, els: [], fails: [] };
+    failed = !kit.figurePanel(probe, f, { x: 0, y: 0, w: 343, h: 257 }, true);
+    if (failed) c.fails?.push(...(probe.fails ?? []));
+  }
+  return { figure: f, failed, caption: captionOf(f) };
 }
 
 /** The column options the gold tries, in order. */
@@ -246,15 +257,17 @@ function cardHeight(c: Ctx, v: Visual, visW: number): number {
   return Math.round(2 * WA.visPad + cap + inner * 0.75);
 }
 const captionH = (c: Ctx, s: string, w: number) =>
-  kit.measure({ ...c, s: { ...c.s, body: MIN_FONT_SIZE.body } }, s, "body", w, 500);
+  kit.measure({ ...c, s: { ...c.s, body: captionSize(c) } }, s, "body", w, 500);
 
 /**
  * The practice plan for the tasks under a stage starting at `stageTop`: the first column (and
  * card width) option that fits at the body step, else the best that fits at the step under it.
  */
 export function planPractice(c: Ctx, input: TemplateInput, stageTop: number): PracticePlan {
-  const items = (input.questions ?? []).map((s) => s ?? "").filter((s) => s.trim());
-  const v = visualOf(input);
+  const items = (input.questions ?? []).filter(
+    (s): s is string => typeof s === "string" && !!s.trim(),
+  );
+  const v = visualOf(c, input);
   const room = WA.foot - stageTop;
   const steps = taskSteps(c);
   const age = ageOf((keyStageOf(c.t) ?? "ks2") as Stage);
@@ -301,8 +314,10 @@ export function workHeading(c: Ctx, input: TemplateInput, centre = false): numbe
 
 export function layoutPractice(c: Ctx, input: TemplateInput) {
   const top = workHeading(c, input);
-  const items = (input.questions ?? []).map((s) => s ?? "").filter((s) => s.trim());
-  const v = visualOf(input);
+  const items = (input.questions ?? []).filter(
+    (s): s is string => typeof s === "string" && !!s.trim(),
+  );
+  const v = visualOf(c, input);
   const stageTop = Math.round(top + WA.practiceGap);
   const plan = planPractice(c, input, stageTop);
   c.tight = !plan.comfortable;
@@ -381,7 +396,7 @@ function drawCard(c: Ctx, v: Visual, at: { x: number; y: number; w: number }) {
   const f = v.figure;
   if (!("photo" in f) && v.caption) {
     const saved = c.s;
-    c.s = { ...saved, body: MIN_FONT_SIZE.body };
+    c.s = { ...saved, body: captionSize(c) };
     const el = kit.text(
       c,
       v.caption,
@@ -439,6 +454,17 @@ function quoteCaption(c: Ctx, words: string, rect: { x: number; y: number; w: nu
         '"type":"text","marks":[{"type":"italic"}],',
       ),
     );
+}
+
+/**
+ * Which input path each element shows, in draw order (the editor's layout ref, TEACH-205 part b):
+ * the heading and each task's words; badges, hairlines, cards and the kicker are not editable.
+ */
+export function workPaths(els: SlideElement[]): (string | undefined)[] {
+  let k = 0;
+  return els.map((e) =>
+    e.name === "Heading" ? "heading" : e.name === WA_NAMES.task ? `questions.${k++}` : undefined,
+  );
 }
 
 /* ------------------------------------------------------------------ */

@@ -1559,7 +1559,11 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const big = input.template === "big-diagram" ? bigRect(c, input) : undefined;
   // The side panel's reasons are kept only when the figure goes (they are the harness's fault).
   const sideFails: string[] = [];
-  const dropped = !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
+  // TEACH-230 part b: practice keeps a figure that cannot draw and shows its caption card in its
+  // place (the gold's fallback; ruling 215, nothing is lost); the reasons are still reported.
+  const keeps = input.template === "practice";
+  const dropped =
+    !keeps && !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
   if (dropped) c.fails?.push(...sideFails);
   if (dropped) {
     const { figure: _, ...rest } = input;

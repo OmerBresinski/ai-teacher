@@ -309,10 +309,11 @@ describe("caps at every count", () => {
       for (const template of ADAPTIVE_TEMPLATE_IDS) {
         const spec = ADAPTIVE_SPECS[template];
         for (let n = spec.min; n <= spec.max(stage); n++) {
-          const items = Array.from({ length: n }, (_, i) => ({
-            ...(spec.blank() as object),
-            n: i,
-          }));
+          // A string item (practice, exit ticket: TEACH-230 part b) is used as it is.
+          const items = Array.from({ length: n }, (_, i) => {
+            const b = spec.blank();
+            return typeof b === "string" ? b : { ...(b as object), n: i };
+          });
           const r: LayoutRef = { template, input: { heading: "Heading", [spec.items]: items } };
           let fields: ReturnType<typeof relayout>["fields"];
           try {

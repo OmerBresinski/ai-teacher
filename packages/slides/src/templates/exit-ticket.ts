@@ -11,6 +11,7 @@
  *   (ruling 108), drawn at the floor.
  */
 import { uid } from "../factories";
+import { resolveFontSize } from "../text-style";
 import { v2Profile } from "../theme-v2";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import { paintSurface } from "../themes/surfaces";
@@ -36,11 +37,18 @@ import {
 export const EXIT_MAX = 3;
 export const EXIT_LABEL = "Exit ticket";
 
-/** The gold's ticket, px at 1440 x 2/3. */
-export const TICKET = { w: 746, top: 27, side: 43, bottom: 29, kickGap: 16, floorAt: 0.4 } as const;
+/**
+ * The gold's ticket, px at 1440 x 2/3, except the top and bottom padding (27 / 29 in the gold):
+ * 5 pt is given back to the kicker, which the reading floor makes 4-8 pt taller than the gold's.
+ */
+export const TICKET = { w: 746, top: 24, side: 43, bottom: 27, kickGap: 16, floorAt: 0.4 } as const;
 
-/** The kicker: 30 / 26 px in the gold, never under the repo's reading floor (20 pt). */
-const kickerSize = () => MIN_FONT_SIZE.body;
+/**
+ * The kicker: 30 / 26 px (20 / 17.3 pt) in the gold. A text under the reading floor (20 pt, ruling
+ * 140) is not allowed, and the renderer draws any body text at a type-scale step (ruling 91): the
+ * smallest at or over 20 is bodySmall (28 / 25 / 21 pt at KS1 / KS2 / KS3), stored as drawn.
+ */
+const kickerSize = (c: Ctx) => resolveFontSize(c.t, "body", MIN_FONT_SIZE.body);
 
 const textW = (c: Ctx) => TICKET.w - 2 * TICKET.side - badgeSize(c) - WA.badgeGap;
 
@@ -50,7 +58,7 @@ export function ticketHeight(c: Ctx, items: string[], q: number): number | null 
   const b = badgeSize(c);
   const w = textW(c);
   const pad = Math.round(q * (n === 3 ? 0.5 : 0.7));
-  let h = TICKET.top + kickerSize() + TICKET.kickGap;
+  let h = TICKET.top + kickerSize(c) + TICKET.kickGap;
   for (const [i, s] of items.entries()) {
     const t = measureTask(c, s, q, w);
     const lines = Math.round(t / (q * taskLH(c)));
@@ -79,7 +87,9 @@ export function planExit(c: Ctx, items: string[], stageTop: number): ExitPlan {
 
 export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const top = workHeading(c, input, true);
-  const items = (input.questions ?? []).map((s) => s ?? "").filter((s) => s.trim());
+  const items = (input.questions ?? []).filter(
+    (s): s is string => typeof s === "string" && !!s.trim(),
+  );
   const stageTop = Math.round(top + WA.exitGap);
   const plan = planExit(c, items, stageTop);
   c.tight = !plan.comfortable;
@@ -114,7 +124,7 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const ix = x + TICKET.side;
   const iw = TICKET.w - 2 * TICKET.side;
   const saved = c.s;
-  c.s = { ...saved, body: kickerSize() };
+  c.s = { ...saved, body: kickerSize(c) };
   const kick = kit.text(
     c,
     EXIT_LABEL.toUpperCase(),
@@ -129,7 +139,7 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   c.s = saved;
   // The kicker is set solid (line height 1), as the gold's.
   kick.style = { ...kick.style, lineHeight: 1 };
-  kick.h = kickerSize();
+  kick.h = kickerSize(c);
   const q = plan.q;
   const b = badgeSize(c);
   const pad = Math.round(q * (items.length === 3 ? 0.5 : 0.7));
