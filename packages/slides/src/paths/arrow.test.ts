@@ -44,7 +44,17 @@ function chordDir(line: string, tip: Pt, sw: number): Pt {
   for (let k = pts.length - 1; k >= 0; k--) {
     const p = pts[k] as Pt;
     if (Math.hypot(p[0] - tip[0], p[1] - tip[1]) >= reach) {
-      from = p;
+      // the exact point on the line one reach from the tip, between this sample and the next
+      const q = (pts[k + 1] ?? p) as Pt;
+      let lo = 0;
+      let hi = 1;
+      for (let it = 0; it < 40; it++) {
+        const m = (lo + hi) / 2;
+        const r = [p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m];
+        if (Math.hypot((r[0] as number) - tip[0], (r[1] as number) - tip[1]) >= reach) lo = m;
+        else hi = m;
+      }
+      from = [p[0] + (q[0] - p[0]) * lo, p[1] + (q[1] - p[1]) * lo];
       break;
     }
   }
@@ -186,6 +196,30 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
     const a = arrowPath(line, { ink: "#000", sw: 5 }) as Arrow;
     expectClean(line, a, 5);
     expect(a.head.dir[0]).toBeCloseTo(-1, 5);
+  });
+
+  test("a sharp bend just before the tip is straightened along the end chord", () => {
+    // a vessel running across, then a short stub down into its target (the heart case)
+    for (const sw of [4, 6, 12, 19.2])
+      for (const stub of [0.5, 1, 2, 3, 4]) {
+        const line = `M0 300 L400 300 L400 ${300 + stub * sw}`;
+        for (const dash of [undefined, "0.1 16"]) {
+          const a = arrowPath(line, { ink: "#000", sw, dash }) as Arrow;
+          expectClean(line, a, sw);
+          const pts = a.shaft.match(/-?[\d.]+/g)?.map(Number) ?? [];
+          const [x, y] = [pts[pts.length - 2] as number, pts[pts.length - 1] as number];
+          const [px, py] = [pts[pts.length - 4] as number, pts[pts.length - 3] as number];
+          // both ends of the last segment lie on the head's axis (to the 0.01px the path is written in)
+          const [tx, ty] = a.head.tip;
+          for (const [qx, qy] of [
+            [x, y],
+            [px, py],
+          ] as Pt[])
+            expect(Math.abs((qx - tx) * a.head.dir[1] - (qy - ty) * a.head.dir[0])).toBeLessThan(
+              0.02,
+            );
+        }
+      }
   });
 
   test("the head shares the shaft's stroke, caps and joins, and draws no second head", () => {
