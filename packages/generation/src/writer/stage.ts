@@ -105,6 +105,7 @@ import {
   modelPoints,
   type Plan,
   questionsOf,
+  stableIdPrefix,
   tileDiagramKeys,
   type VisualAsk,
   type VisualState,
@@ -122,7 +123,7 @@ import {
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
-import { carryFigures, fitPilot, isPilot, pilotOvers } from "./pilot-fit";
+import { carryFigures, fitPilot, isPilot, pilotOvers, pilotSlips } from "./pilot-fit";
 import {
   PILOT_PACKS,
   type PilotPack,
@@ -1729,7 +1730,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
     const s0 = plan.slides[i] as S;
     const pctx = { ...base, index: i, plan, visual: visualState(i) };
-    if (!pilotOvers(s0, pctx).overs.length && !pilotOvers(s0, pctx).tooMany) return;
+    const at = pilotOvers(s0, pctx);
+    if (!at.overs.length && !at.tooMany && !pilotSlips(s0).length) return;
     const repair = run.services
       ? async (_s: S, faults: string[]) => {
           const ok = await repairOne({ slide: i + 1, faults }, "fit", {
@@ -1748,8 +1750,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       steps: r.steps,
       ...(r.cut?.length ? { cut: r.cut } : {}),
       ...(r.kept?.length ? { kept: r.kept } : {}),
+      ...(r.slips?.length ? { slips: r.slips } : {}),
     });
-    if (r.path === "trimmed" || r.path === "still-over") swapSlide(i, r.slide);
+    // Members are never dropped silently: a re-lay is logged above, members nothing holds here.
+    if (r.membersOver)
+      log({
+        ev: "pilot-members-over",
+        slide: i + 1,
+        id: `${stableIdPrefix(i + 1)}layout`,
+        template: String(r.slide.template),
+      });
+    if (r.path === "trimmed" || r.path === "still-over" || r.path === "relaid")
+      swapSlide(i, r.slide);
   });
   if (pilotSlides.length) {
     checks = check();

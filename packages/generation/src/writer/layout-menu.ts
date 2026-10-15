@@ -409,3 +409,41 @@ export function assembleWriterSystem(template: string, stage: WriterStage): stri
       throw new Error(`writer system: ${layout} has a second menu line`);
   return out;
 }
+
+/** A field's caps, keyed by the writer's field name (`heading`, `lead`, `name`, `text`, `title`, `quote`). */
+export type LayoutFieldCaps = Record<"items-row" | "panel-list" | "split-compare", Fields>;
+
+/**
+ * The loosest comfortable cap (characters) each pilot layout's fields reach over every cell the
+ * menu offers at a stage, from the same measured tables as the menu's Fits (`layoutOffer`). The
+ * schema's string caps come from here; each count's own cap is the layout's to enforce at the
+ * drawn size (pilot-fit.ts), and it reads the same tables.
+ */
+export function layoutFieldCaps(stage: WriterStage): LayoutFieldCaps {
+  const a = MENU_AGE[stage];
+  const o = layoutOffer(stage);
+  const top = (cells: (Fields | undefined)[]): Fields => {
+    const out: Fields = {};
+    for (const c of cells)
+      for (const [k, v] of Object.entries(c ?? {})) if (v > 0) out[k] = Math.max(out[k] ?? 0, v);
+    return out;
+  };
+  const row = o["items-row"];
+  const panel = o["panel-list"];
+  return {
+    "items-row": top([
+      ...row.icons.map((n) => listCaps("items-row", a, n)),
+      ...row.numbered.map((n) => listCaps("items-row", a, n, false, "num")),
+      ...row.lead.map((n) => listCaps("items-row", a, n, true)),
+    ]),
+    "panel-list": top([
+      ...panel.plain.map((n) => listCaps("panel-list", a, n)),
+      ...panel.pictures.map((n) => listCaps("panel-list", a, n, false, "pics")),
+      ...panel.lead.map((n) => listCaps("panel-list", a, n, true)),
+      ...panel.picturesLead.map((n) => listCaps("panel-list", a, n, true, "pics")),
+    ]),
+    "split-compare": top(
+      o["split-compare"].sides.map((k) => sideCaps(a, Number(k[0]), k.slice(1) as SideZone)),
+    ),
+  };
+}

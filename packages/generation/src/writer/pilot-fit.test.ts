@@ -1,12 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import type { FieldReport } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
-import { materialise, type Plan, visualsOf } from "./materialise";
+import {
+  LAYOUT_WRITER_MENUS,
+  layoutFieldCaps,
+  layoutOffer,
+  listCaps,
+  menuWords,
+} from "./layout-menu";
+import { materialise, type Plan, pilotFit, visualsOf } from "./materialise";
 import {
   carryFigures,
   fitPilot,
   pilotOvers,
+  pilotSlips,
   sentenceCut,
   trimPilot,
   writerPath,
@@ -103,6 +112,11 @@ describe("measured at the drawn size", () => {
   });
 });
 
+const fixedRow = (): S => ({
+  ...row,
+  items: (row.items as S[]).map((i) => ({ ...i, text: "Short line." })),
+});
+
 describe("the code step cuts whole sentences only", () => {
   test("a sentence cut, or nothing: never a clause or a word", () => {
     expect(sentenceCut("One fact here. Another fact follows on.", 20)).toBe("One fact here.");
@@ -143,18 +157,77 @@ describe("the code step cuts whole sentences only", () => {
       expect(r.slide).toEqual(words);
     }
   });
-  test("too many members lose the last ones", () => {
-    const six = {
+  test("too many members are never cut by code", () => {
+    const seven = {
       ...panel,
       items: Array.from({ length: 7 }, (_, n) => ({ name: `R${n}`, text: "x", icon: null })),
     };
-    const t = trimPilot(six, ctxAt(3), 6);
-    expect((t.slide.items as S[]).length).toBeLessThan(7);
-    expect(pilotOvers(t.slide, ctxAt(3)).tooMany).toBe(false);
+    const t = trimPilot(seven, ctxAt(3), 6);
+    expect((t.slide.items as S[]).length).toBe(7);
+    expect(t.ok).toBe(false);
   });
 });
 
-describe("repair, then repair with exact budgets, then whole sentences", () => {
+describe("members past the layout's most", () => {
+  test("a row with more items than it holds is re-laid as a panel list, every item kept", async () => {
+    const five = {
+      ...fixedRow(),
+      items: Array.from({ length: 5 }, (_, n) => ({
+        name: `Part ${n}`,
+        text: "Short line.",
+        icon: null,
+      })),
+    };
+    expect(pilotOvers(five, ctxAt(3)).tooMany).toBe(true);
+    const r = await fitPilot(five, ctxAt(3));
+    expect(r.path).toBe("relaid");
+    expect(r.slide.template).toBe("panel-list");
+    expect((r.slide.items as S[]).map((i) => i.name)).toEqual(
+      (five.items as S[]).map((i) => i.name),
+    );
+  });
+  test("members no layout holds stay whole and are flagged, never dropped", async () => {
+    const seven = {
+      ...panel,
+      items: Array.from({ length: 7 }, (_, n) => ({ name: `R${n}`, text: "x", icon: null })),
+    };
+    const r = await fitPilot(seven, ctxAt(3));
+    expect(r.membersOver).toBe(true);
+    expect(r.path).toBe("still-over");
+    expect((r.slide.items as S[]).length).toBe(7);
+  });
+});
+
+describe("slips the strict decoder lets through", () => {
+  test("a stray script letter, a title cut mid-phrase and its tail in the text are found", () => {
+    const slips = pilotSlips({
+      template: "split-compare",
+      heading: "Two ways 水",
+      sides: [
+        { title: "What mummification", text: "could do: keep the body.", picture: null },
+        { title: "Burial", text: "Kept bodies in sand.", picture: null },
+      ],
+    });
+    expect(slips.some((x) => x.startsWith("stray script: heading"))).toBe(true);
+    expect(slips.some((x) => x.startsWith("split title: sides.0.text"))).toBe(true);
+    expect(pilotSlips({ template: "items-row", items: [{ name: "Flow of", text: "A." }] })).toEqual(
+      ["split title: items.0.name ends mid-phrase: name it whole"],
+    );
+    expect(pilotSlips(fixedRow())).toEqual([]);
+  });
+  test("slips go to the one repair call with the over fields", async () => {
+    let seen: string[] = [];
+    const slipped = { ...fixedRow(), heading: "Parts 心" };
+    const r = await fitPilot(slipped, ctxAt(3), async (_s, f) => {
+      seen = f;
+      return fixedRow();
+    });
+    expect(seen.some((x) => x.startsWith("stray script"))).toBe(true);
+    expect(r.path).toBe("repaired");
+  });
+});
+
+describe("one repair, then whole sentences", () => {
   const fixed = { ...row, items: (row.items as S[]).map((i) => ({ ...i, text: "Short line." })) };
   test("a slide that fits is never sent", async () => {
     let calls = 0;
@@ -173,24 +246,21 @@ describe("repair, then repair with exact budgets, then whole sentences", () => {
     });
     expect(r.path).toBe("repaired");
     expect(r.slide).toEqual(fixed);
-    expect(seen.some((f) => /^overflow: items\.0\.text is \d+ characters, room \d+/.test(f))).toBe(
-      true,
-    );
+    expect(seen.some((f) => /^overflow: items\.0\.text is \d+ characters/.test(f))).toBe(true);
   });
-  test("still hidden after the first: a second call with each field's exact budget", async () => {
+  test("one call per slide: a clipped field is asked for in its exact budget, never a second call", async () => {
     const calls: string[][] = [];
     const r = await fitPilot(row, ctxAt(3), async (s, faults) => {
       calls.push(faults);
-      return calls.length === 1 ? s : fixed;
+      return s;
     });
-    expect(calls).toHaveLength(2);
-    expect(calls[1]?.[0]).toMatch(
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toMatch(
       /^overflow: items\.0\.text is \d+ characters: rewrite it whole, as a complete sentence, in at most \d+ characters$/,
     );
-    expect(r.path).toBe("repaired-budget");
-    expect(r.steps).toHaveLength(2);
+    expect(r.path).toBe("still-over");
   });
-  test("both calls fail, change layout or stay over: the long sentence is left whole, still over", async () => {
+  test("the call fails, changes layout or stays over: the long sentence is left whole, still over", async () => {
     for (const out of [{ template: "explain", heading: "x" }, undefined, row] as (
       | S
       | undefined
@@ -465,4 +535,83 @@ describe("the v4.6 pack's system text", () => {
       );
       expect(PILOT_PACKS["v4.6"].system[ks]).toBe(pinned);
     });
+});
+
+describe("one source for the pilot caps: menu, schema and enforcer agree", () => {
+  const STAGES = ["KS1", "KS2", "KS3-5"] as const;
+  const at = (node: unknown, ...path: string[]) =>
+    path.reduce<unknown>((a, k) => (a as Record<string, unknown> | undefined)?.[k], node) as
+      | Record<string, unknown>
+      | undefined;
+  const maxLen = (node: Record<string, unknown> | undefined) =>
+    node?.type === "string"
+      ? node.maxLength
+      : ((node?.anyOf as Record<string, unknown>[] | undefined)?.find((b) => b.type === "string")
+          ?.maxLength ?? undefined);
+
+  for (const stage of STAGES)
+    test(`${stage}: the code's cap table is the measured tables, the writer's schema has none`, () => {
+      const req = pilotRequest("v4.6", stage, {}, (sc) => sc);
+      const want = layoutFieldCaps(stage);
+      const capDefs = at(req.caps, "$defs");
+      for (const [layout, list, fields] of [
+        ["items-row", "items", ["name", "text"]],
+        ["panel-list", "items", ["name", "text"]],
+        ["split-compare", "sides", ["title", "text", "quote"]],
+      ] as const) {
+        const props = at(capDefs, layout, "properties", list, "items", "properties");
+        for (const f of fields) {
+          const cap = (want[layout] as Record<string, number>)[f];
+          expect(maxLen(at(props, f)), `${stage} ${layout}.${f}`).toBe(cap);
+          const writerProp = at(
+            req.schema,
+            "$defs",
+            layout,
+            "properties",
+            list,
+            "items",
+            "properties",
+            f,
+          );
+          expect(maxLen(writerProp), `${stage} ${layout}.${f} reaches the model`).toBeUndefined();
+        }
+        if (layout !== "split-compare") {
+          const heading = at(capDefs, layout, "properties", "heading");
+          expect(maxLen(heading)).toBe(want[layout].heading);
+        }
+      }
+      // The counts the schema allows are the counts the menu offers.
+      const offer = layoutOffer(stage);
+      expect(at(req.schema, "$defs", "items-row", "properties", "items")?.maxItems).toBe(
+        Math.max(...offer["items-row"].counts),
+      );
+    });
+
+  test("KS2: each offered row count's enforced cap is its table cell, and the menu never promises more", () => {
+    const menu = LAYOUT_WRITER_MENUS["items-row"].KS2;
+    const plain = (menu.split("Fits:")[1] ?? "").split("with a lead")[0] ?? "";
+    for (const n of layoutOffer("KS2")["items-row"].icons) {
+      const cell = listCaps("items-row", "primary", n);
+      const slide = {
+        ...fixedRow(),
+        lead: null,
+        items: Array.from({ length: n }, (_, k) => ({
+          name: `Part ${k}`,
+          text: "Short line.",
+          icon: ["heart", "lungs", "muscles", "blood"][k] ?? "heart",
+        })),
+      };
+      const field = (pilotFit(slide, ctxAt(3)).fields as FieldReport[]).find(
+        (f) => f.path === "items.0.text",
+      );
+      expect(field?.cap, `${n} items: enforcer`).toBe(cell?.text);
+      const words = new RegExp(`(?:^|; )(?:\\d+ to )?${n} items: up to (\\d+) words`).exec(plain);
+      const promised = Number(
+        words?.[1] ?? /(\d+) to (\d+) items: up to (\d+) words/.exec(plain)?.[3] ?? Number.NaN,
+      );
+      expect(promised, `${n} items: menu`).toBeLessThanOrEqual(
+        menuWords(cell?.text ?? 0, "primary"),
+      );
+    }
+  });
 });

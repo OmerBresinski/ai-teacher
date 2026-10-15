@@ -19,7 +19,8 @@ import l46 from "./bundles/pilot-v4.6/layouts.json" with { type: "json" };
 import t61 from "./bundles/pilot-v4.6-menu/system-KS1.template.txt" with { type: "text" };
 import t62 from "./bundles/pilot-v4.6-menu/system-KS2.template.txt" with { type: "text" };
 import t63 from "./bundles/pilot-v4.6-menu/system-KS3.template.txt" with { type: "text" };
-import { assembleWriterSystem } from "./layout-menu";
+import { assembleWriterSystem, layoutFieldCaps } from "./layout-menu";
+import type { WriterStage } from "./schema";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -84,7 +85,7 @@ export const PILOT_PACKS = {
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
-/** The pack the pilot proof runs (TEACH-110 s makes it the default once u/v/w are on master). */
+/** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
 export const PILOT_PACK_ID: PilotPackId = "v4.6";
 
 /**
@@ -164,13 +165,64 @@ export function pilotRequest(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
   if (pack.uncapped) {
-    // The library models are added from production's schema, which still caps its strings.
-    const caps = pack.capsFrom
+    // The other layouts' caps come from the capped pack (production's library models still cap
+    // their strings); the pilot layouts' caps come from the measured tables, as the menu's do.
+    const capped = pack.capsFrom
       ? pilotRequest(pack.capsFrom as PilotPackId, stageKey, prod, withLibrary).schema
+      : undefined;
+    const caps = capped
+      ? { ...capped, $defs: { ...capped.$defs, ...capPilotDefs(schema.$defs, writerStageOf(ks)) } }
       : undefined;
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }
   return { schema, system: pack.system[ks] };
+}
+
+const writerStageOf = (ks: Ks): WriterStage => (ks === "KS3" ? "KS3-5" : ks);
+
+/** Where each pilot layout keeps its strings: top-level fields, and its members' fields. */
+const PILOT_FIELDS = {
+  "items-row": { top: ["heading", "lead"], list: "items", member: ["name", "text"] },
+  "panel-list": { top: ["heading", "lead"], list: "items", member: ["name", "text"] },
+  "split-compare": { top: ["heading"], list: "sides", member: ["title", "text", "quote"] },
+} as const;
+
+/** A string node (or an anyOf's string branch) with `maxLength` set; other nodes as they are. */
+function capString(node: J | undefined, cap: number | undefined): J | undefined {
+  if (!node || !cap) return node;
+  if (node.type === "string") return { ...node, maxLength: cap };
+  if (Array.isArray(node.anyOf))
+    return {
+      ...node,
+      anyOf: node.anyOf.map((b: J) => (b.type === "string" ? { ...b, maxLength: cap } : b)),
+    };
+  return node;
+}
+
+/**
+ * The pilot layouts' defs with each string capped at the loosest comfortable cap the menu offers
+ * at this stage (`layoutFieldCaps`, the measured capacity tables). Code reads a field's room from
+ * these; the writer never sees them (v4.6 is uncapped). Never hand-typed.
+ */
+export function capPilotDefs(defs: J, stage: WriterStage): J {
+  const caps = layoutFieldCaps(stage);
+  const out: J = {};
+  for (const [layout, f] of Object.entries(PILOT_FIELDS) as [
+    keyof typeof PILOT_FIELDS,
+    (typeof PILOT_FIELDS)[keyof typeof PILOT_FIELDS],
+  ][]) {
+    const def = defs?.[layout];
+    if (!def) continue;
+    const c = caps[layout];
+    const d = structuredClone(def) as J;
+    for (const k of f.top) if (d.properties[k]) d.properties[k] = capString(d.properties[k], c[k]);
+    const m = d.properties[f.list]?.items;
+    if (m?.properties)
+      for (const k of f.member)
+        if (m.properties[k]) m.properties[k] = capString(m.properties[k], c[k]);
+    out[layout] = d;
+  }
+  return out;
 }
 
 /**

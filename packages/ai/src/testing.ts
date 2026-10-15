@@ -37,6 +37,11 @@ export interface FakeCall {
    * request (e.g. the writer offers no diagram-library menu), never for shaping an answer.
    */
   systemText?: string | undefined;
+  /**
+   * The structured-output format the caller asked for (`{ type: "json", schema, name }`), if any.
+   * For tests that pin the schema a stage sends, never for shaping an answer.
+   */
+  responseFormat?: unknown;
   /** The provider's signal, for signal-aware scripts and deadline assertions. */
   abortSignal?: AbortSignal | undefined;
 }
@@ -157,6 +162,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     prompt: FakePrompt,
     providerOptions: unknown,
     abortSignal: AbortSignal | undefined,
+    responseFormat?: unknown,
   ) => {
     const call: FakeCall = {
       index: calls.length,
@@ -167,6 +173,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       promptText: userText(prompt),
       systemText: systemText(prompt),
       abortSignal,
+      ...(responseFormat !== undefined ? { responseFormat } : {}),
       ...(providerOptions !== undefined ? { providerOptions } : {}),
       ...(imageParts(prompt) > 0 ? { imageParts: imageParts(prompt) } : {}),
     };
@@ -202,6 +209,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
             call.prompt,
             call.providerOptions,
             call.abortSignal,
+            call.responseFormat,
           );
           return {
             content: [{ type: "text", text }],
@@ -224,6 +232,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 call.prompt,
                 call.providerOptions,
                 call.abortSignal,
+                call.responseFormat,
               );
               if (stream?.firstMs) await new Promise((r) => setTimeout(r, stream.firstMs));
               controller.enqueue({ type: "text-start", id: "fake-text" });
