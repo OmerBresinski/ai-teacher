@@ -126,6 +126,12 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(photos).toHaveLength(4);
         return;
       }
+      // TEACH-256 part b: the hinge is re-laid to the v13 gold (question as title, cards on a sand
+      // stage), so the lab's saved hinge is not its geometry; its answer cards are still drawn.
+      if (s.kind === "multiple-choice" && want.kind === "multiple-choice") {
+        expect(got.some((e) => e.name === "Option")).toBe(true);
+        return;
+      }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         return;
