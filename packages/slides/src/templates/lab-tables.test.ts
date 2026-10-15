@@ -45,7 +45,11 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
         return { doc, v, key, stage, theme, value: lab?.maxCharsPerItem ?? -1 };
       }),
     ),
-  ).filter((c) => c.value >= 2 && c.value <= 238);
+  )
+    // The hinge was re-laid to the v13 gold (TEACH-256 part b): its caps are its own measured
+    // table (`hinge-capacity.json`, proven in hinge.test.ts), no longer the lab's.
+    .filter((c) => c.doc.id !== "hinge")
+    .filter((c) => c.value >= 2 && c.value <= 238);
   // Every k-th cell: about 20, spread over templates and stages.
   const k = Math.max(1, Math.floor(cells.length / 20));
   const picked = cells.filter((_, i) => i % k === 0);

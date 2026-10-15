@@ -37,6 +37,7 @@ import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 // TEACH-230 part b (B2): practice and exit ticket, the calm "work alone" slides.
 import { layoutExitTicket } from "./exit-ticket";
+import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
@@ -45,6 +46,7 @@ import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
+export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
 export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
 export type {
   ActivityCard,
@@ -203,6 +205,14 @@ export type TemplateInput = {
   ordered?: boolean;
   /** Items row: the connecting line's look: "dots" (default), "plain" (the band alone) or "none". */
   motif?: RowMotif;
+  /**
+   * Hinge (TEACH-256 part b): the options with an optional library icon label each (all icons ->
+   * picture tiles) and, for a wrong option, the belief behind it (speaker notes only, ruling 241).
+   * Read before `options` when given.
+   */
+  choices?: HingeChoice[];
+  /** Hinge: the option letters' script (ruling 239). Default Latin. */
+  letters?: HingeLetters;
   /** The one quiet line under a question list. */
   instruction?: string;
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
@@ -261,7 +271,7 @@ export const pointLabel = (p: TemplatePoint): string | undefined => {
 };
 
 export type TemplateResult = {
-  slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
+  slide: Pick<Slide, "kind" | "elements" | "background" | "question" | "notes">;
   over: string[];
   /** Round 2: why a diagram on this slide could not draw (drawDiagram's reasons); the slide was laid out without it. */
   diagram?: string[];
@@ -339,6 +349,8 @@ export type Ctx = {
   tight?: boolean;
   iconMisses?: string[];
   fields?: FieldReport[];
+  /** Speaker notes the layout writes (the hinge's wrong-option beliefs, TEACH-256 part b). */
+  notes?: string;
 };
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
@@ -2229,119 +2241,9 @@ function layoutOnce(
         figurePanel(c, input.figure);
       } else if (!(c.processLine && processLine(c, raw))) numbered(c, pts, G.margin, 720, "steps");
       break;
-    case "hinge": {
-      heading(c, input.heading);
-      const opts = input.options ?? [];
-      const stem = input.stem;
-      // A hinge about a figure (TEACH-75 part d: y2 asked about a square pupils could not see):
-      // the stem and options sit in the left column and the figure in the panel beside them.
-      const hasFig = figureDraws(c, input.figure, undefined, c.fails);
-      const X = hasFig ? G.left.x : G.margin;
-      let W: number = hasFig ? G.left.w : G.width;
-      // Round 2 (y11 s11 ran to the foot): the hinge is on the fit ladder. Full size first, then
-      // closer gaps and padding, then body (stem and options) one step down; flagged only past that.
-      const full = c.s;
-      let gap = 18;
-      let pad = 20;
-      let d = 0;
-      let sH = 0;
-      // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
-      // else one column (fit2: three options as 2 + 1 left a gap).
-      const grid = (perRow: number) => {
-        const w = Math.floor((W - gap * (perRow - 1)) / perRow);
-        const iw = w - 2 * pad - d - 14;
-        const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
-        const rows = Math.ceil(opts.length / perRow);
-        return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
-      };
-      let g = grid(1);
-      const ladder = () => {
-        for (const [k, r] of RUNGS.entries()) {
-          c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
-          gap = Math.round(18 * r.space);
-          pad = Math.max(10, Math.round(20 * r.space));
-          d = markerDisc(c);
-          sH = stem ? measure(c, stem, "lead", W) + Math.round(22 * r.space) : 0;
-          g = grid(hasFig ? 1 : opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
-          // Beside a figure the options stack; four that do not fit stack as 2x2.
-          if (hasFig && g.total > G.band.h && opts.length >= 3 && grid(2).total < g.total)
-            g = grid(2);
-          if (opts.length === 3 && !hasFig) {
-            const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
-            if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
-            // Three options in one column that do not fit may fit as a row of three.
-            if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
-          }
-          if (g.total <= G.band.h || k === RUNGS.length - 1) break;
-        }
-      };
-      ladder();
-      // Options that do not fit beside the figure at the last rung take a wider column and the
-      // figure a narrower panel, when it still draws there (KS1's large type on chalk, crayon).
-      let figRect: { x: number; y: number; w: number; h: number } = {
-        x: G.panel.x,
-        y: G.band.y,
-        w: G.panel.w,
-        h: G.band.h,
-      };
-      const narrow = { x: G.left.x + 544, y: G.band.y, w: G.right - G.left.x - 544, h: G.band.h };
-      if (hasFig && g.total > G.band.h && figureDraws(c, input.figure, narrow)) {
-        const was = { W, g, s: c.s, gap, pad, d, sH };
-        W = 520;
-        ladder();
-        if (g.total < was.g.total) figRect = narrow;
-        else {
-          ({ W, g, gap, pad, d, sH } = was);
-          c.s = was.s;
-        }
-      }
-      if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
-      let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
-      if (stem) {
-        text(c, stem, "lead", { x: X, y, w: W }, { color: c.t.colors.ink, name: "Stem" });
-        y += sH;
-      }
-      const optionIds: string[] = [];
-      opts.forEach((o, k) => {
-        const x = X + (k % g.perRow) * (g.w + gap);
-        const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
-        const card = box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
-          stroke: c.t.colors.line,
-          strokeWidth: 1,
-          radius: Math.min(c.t.radius, 16),
-          name: "Option",
-        });
-        optionIds.push(card.id);
-        const tones = optionColours(c.t);
-        disc(
-          c,
-          String.fromCharCode(65 + k),
-          x + pad,
-          yy + g.rowH / 2 - d / 2,
-          d,
-          c.optionColours ? tones[k % tones.length] : undefined,
-        );
-        const th = measure(c, o, "body", g.iw);
-        text(
-          c,
-          o,
-          "body",
-          { x: x + pad + d + 14, y: yy + g.rowH / 2 - th / 2, w: g.iw },
-          { color: c.t.colors.ink, name: "Option text" },
-        );
-      });
-      c.s = full;
-      if (hasFig) figurePanel(c, input.figure, figRect);
-      // The answer is question data on the option cards, so present hides it until the reveal.
-      const right = Number(input.correct);
-      if (Number.isInteger(right) && right >= 1 && right <= optionIds.length)
-        c.question = {
-          type: "multiple-choice",
-          options: optionIds.map((id, k) => ({ id, correct: k === right - 1 })),
-          ...(input.explanation?.trim() ? { explanation: input.explanation.trim() } : {}),
-        };
+    case "hinge":
+      layoutHinge(c, input);
       break;
-    }
     case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.
       if (isQuickCheck(input)) {
@@ -2432,6 +2334,7 @@ function layoutOnce(
       elements: c.els,
       ...(background ? { background } : {}),
       ...(c.question ? { question: c.question } : {}),
+      ...(c.notes ? { notes: c.notes } : {}),
     },
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),

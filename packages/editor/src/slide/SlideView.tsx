@@ -22,7 +22,7 @@ import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
-import { choiceMarks } from "./elements/choice";
+import { choiceMarks, hingeMarkOf } from "./elements/choice";
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
@@ -489,6 +489,79 @@ function ChoiceMarks({
         const r = placed.get(id);
         if (!r) return null;
         const right = state === "right";
+        // The hinge (TEACH-256 part b): ring and tick in `verdict-right`, the key in `key:right`,
+        // the others faded into the sand stage, as in the v13 gold.
+        const hinge = hingeMarkOf(slide, theme, id);
+        if (hinge) {
+          const key = hinge.key;
+          return (
+            <div
+              key={id}
+              data-answer-anim=""
+              data-choice-mark={state}
+              data-hinge-mark=""
+              style={{
+                position: "absolute",
+                left: r.x,
+                top: r.y,
+                width: r.w,
+                height: r.h,
+                zIndex: 800,
+                pointerEvents: "none",
+                borderRadius: hinge.radius,
+                background: right ? undefined : hinge.wash,
+                boxShadow: right ? `0 0 0 3px ${hinge.ring}` : undefined,
+              }}
+            >
+              {right && key ? (
+                <span
+                  style={{
+                    position: "absolute",
+                    left: key.x - r.x,
+                    top: key.y - r.y,
+                    width: key.w,
+                    height: key.h,
+                    borderRadius: key.radius,
+                    background: hinge.keyFill,
+                    color: hinge.keyInk,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: key.fontSize,
+                    lineHeight: 1,
+                  }}
+                >
+                  {key.letter}
+                </span>
+              ) : null}
+              {right ? (
+                <span
+                  role="img"
+                  aria-label="Correct answer"
+                  style={{
+                    position: "absolute",
+                    right: hinge.tick.right,
+                    top: hinge.tick.top,
+                    width: hinge.tick.d,
+                    height: hinge.tick.d,
+                    borderRadius: hinge.tick.d,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: hinge.ring,
+                    color: hinge.keyInk,
+                    fontWeight: 700,
+                    fontSize: Math.round(hinge.tick.d * 0.6),
+                    lineHeight: 1,
+                  }}
+                >
+                  ✓
+                </span>
+              ) : null}
+            </div>
+          );
+        }
         return (
           <div
             key={id}

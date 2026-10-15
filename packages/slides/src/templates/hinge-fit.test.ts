@@ -36,20 +36,21 @@ describe("hinge caps by card", () => {
         expect(hingeCardLines(g as never, options, sample(row.stem))).toBeLessThanOrEqual(
           HINGE_CARD_LINES,
         );
-        expect(hingeCardLines(g as never, options, sample(row.stem), "Stem")).toBeLessThanOrEqual(
-          HINGE_STEM_LINES,
-        );
+        expect(
+          hingeCardLines(g as never, options, sample(row.stem), "Heading"),
+        ).toBeLessThanOrEqual(HINGE_STEM_LINES);
       });
   }
 
-  test("R3 s6: three 36-character options on KS2 wrap past the card budget and the cap", () => {
+  test("R3 s6: three 36-character KS2 options now take full-width rows within the card budget", () => {
+    // TEACH-256 part b: options that do not fit one line in a grid cell take full-width rows of at
+    // most 2 lines, so the narrow 3-across cards that wrapped to 4 lines are gone.
     const options = [
       "It always carries oxygen-rich blood.",
       "It carries blood away from the heart.",
       "It carries blood towards the heart.",
     ];
     const stem = "Why is the vessel taking blood from the heart to the lungs an artery?";
-    expect(hingeCardLines("KS2", options, stem)).toBeGreaterThan(HINGE_CARD_LINES);
-    for (const o of options) expect(o.length).toBeGreaterThan(TABLE.groups.KS2?.options["3"] ?? 0);
+    expect(hingeCardLines("KS2", options, stem)).toBeLessThanOrEqual(HINGE_CARD_LINES);
   });
 });

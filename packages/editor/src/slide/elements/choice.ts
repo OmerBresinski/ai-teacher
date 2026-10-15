@@ -2,8 +2,9 @@
  * Choice answers drawn as cards or boxes (TEACH-101 part b): the words that name one, and which
  * ones the reveal marks. Kept out of `kit.ts` so print chunks that never show a choice stay small.
  */
-import type { Slide, SlideElement } from "@tj/domain/documents";
+import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { richDocToPlainText as docToPlainText } from "@tj/domain/documents";
+import { surfaceStyle } from "@tj/slides/surfaces";
 
 /**
  * The words that name a choice or answer element: its own text, or, for a card or option box drawn
@@ -49,4 +50,73 @@ export function choiceMarks(
     const rank = wrong.findIndex((w) => w.id === o.id);
     return revealAnswer || answerProgress > rank ? [{ id: o.id, state: "dim" as const }] : [];
   });
+}
+
+/** The hinge's element names (`@tj/slides` templates/hinge.ts `HINGE_NAMES`). */
+const HINGE_KEY = "Hinge key";
+const HINGE_ICON = "Option icon";
+const HINGE_STAGE = "surface:field-b";
+
+export type HingeMark = {
+  ring: string;
+  wash: string;
+  radius: number;
+  keyFill: string;
+  keyInk: string;
+  key: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    radius: number;
+    letter: string;
+    fontSize: number;
+  } | null;
+  tick: { d: number; right: number; top: number };
+};
+
+/**
+ * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring and tick in the theme's
+ * `verdict-right`, the right card's key in `key:right`, a wrong card faded to about a third into
+ * the sand stage. Null for any other choice card, which keeps the generic marks.
+ */
+export function hingeMarkOf(slide: Slide, theme: Theme, id: string): HingeMark | null {
+  const card = slide.elements.find((e) => e.id === id);
+  if (!card || card.type === "option") return null;
+  const inside = (e: SlideElement) =>
+    e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
+  const keyEl = slide.elements.find((e) => e.name === HINGE_KEY && inside(e));
+  if (!keyEl) return null;
+  const right = surfaceStyle(theme, "verdict-right");
+  const keyRight = surfaceStyle(theme, "key", "right");
+  const stage = slide.elements.find((e) => e.name === HINGE_STAGE);
+  const ground =
+    stage && "fill" in stage && typeof stage.fill === "string"
+      ? stage.fill
+      : theme.colors.background;
+  const tiles = slide.elements.some((e) => e.name === HINGE_ICON && inside(e));
+  const d = Math.round(keyEl.w * 0.78);
+  const radius = keyEl.type === "shape" && keyEl.radius ? keyEl.radius : Math.round(keyEl.w * 0.24);
+  const fontSize = keyEl.type === "shape" ? Number(keyEl.textStyle?.fontSize ?? 20) : 20;
+  return {
+    ring: right.fill,
+    // 66% of the stage over the card: the card reads at about a third (the gold's 0.34).
+    wash: `${ground.slice(0, 7)}A8`,
+    radius:
+      "radius" in card && typeof card.radius === "number"
+        ? card.radius
+        : Math.min(theme.radius, 16),
+    keyFill: keyRight.fill,
+    keyInk: keyRight.ink ?? theme.colors.onAccent,
+    key: {
+      x: keyEl.x,
+      y: keyEl.y,
+      w: keyEl.w,
+      h: keyEl.h,
+      radius,
+      letter: choiceText(slide, keyEl.id),
+      fontSize,
+    },
+    tick: tiles ? { d, right: 16, top: 16 } : { d, right: 19, top: Math.round((card.h - d) / 2) },
+  };
 }
