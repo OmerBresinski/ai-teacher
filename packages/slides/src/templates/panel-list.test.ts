@@ -744,5 +744,6 @@ describe("panel-list row pictures", () => {
   test("regenerating the row-picture caps gives the committed table (one cell re-measured)", () => {
     const table = CAPACITY as unknown as Record<string, Record<string, unknown>>;
     expect(measurePanelCaps("secondary", 4)).toEqual(table.secondary?.["4"] as never);
-  });
+    // Measuring every cell in the real text renderer takes 5–7 s on CI runners.
+  }, 30_000);
 });
