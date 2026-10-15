@@ -48,15 +48,20 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { diagramBuildAt, richDocMaxStrikeStep, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   fittedFontSize,
   growFixedText,
+  HIGHLIGHT_FALLBACK_FILLS,
   type PathSegment,
   pathSegments,
   presentedSlide,
+  type RunRect,
+  runRects,
   slideBackground,
+  v2Profile,
 } from "@tj/slides";
+import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -230,6 +235,9 @@ export type RunStyle = {
   charSpacing?: number;
   /** A theme's own bullet (`Theme.ornament.marker`) as a Unicode code point; PowerPoint's dot when absent. */
   bulletCode?: string;
+  /** The face a `font: "quote"` run is set in, and whether the theme sets quotes italic. */
+  quoteFace?: string;
+  quoteItalic?: boolean;
 };
 
 /** The nearest PowerPoint bullet character to each theme marker. */
@@ -299,6 +307,10 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
       const color = hexColor(run.color) ?? style.color;
       if (color) options.color = color;
       if (run.bold || style.bold) options.bold = true;
+      if (run.font === "quote" && style.quoteFace) {
+        options.fontFace = style.quoteFace;
+        if (style.quoteItalic) options.italic = true;
+      }
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
@@ -314,6 +326,8 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
 
 const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
   fontFace: fontFaceFor(r.fontFamily || theme.fonts.body),
+  quoteFace: fontFaceFor(v2Profile(theme).fonts.quote),
+  quoteItalic: v2Profile(theme).quoteStyle === "italic",
   fontSize: r.fontSize,
   color: hexColor(r.color) ?? hexColor(theme.colors.ink),
   bold: r.fontWeight >= 600,
@@ -361,12 +375,19 @@ export function textBoxOptions(
 /* Reveal steps and answers                                            */
 /* ------------------------------------------------------------------ */
 
-/** The highest reveal step on a slide, walking into groups. */
+/**
+ * The highest reveal step on a slide, walking into groups. A diagram whose builds ride rows
+ * (`buildFrom`) and a myth strike on its own step count too (TEACH-205 part c): each needs its
+ * build slide. Builds that play after the reveals, and the answer reveal, stay Present-only.
+ */
 export function maxRevealStep(slide: Slide): number {
   let max = 0;
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
       if (el.revealStep && el.revealStep > max) max = el.revealStep;
+      if (el.type === "image" && el.buildFrom !== undefined && (el.builds ?? 0) > 0)
+        max = Math.max(max, el.buildFrom + Math.floor(el.builds ?? 0) - 1);
+      if (el.type === "text") max = Math.max(max, richDocMaxStrikeStep(el.doc));
       if (el.type === "group") walk(el.children);
     }
   };
@@ -728,7 +749,7 @@ async function drawElement(
   const { slide, step } = ctx;
   switch (element.type) {
     case "text":
-      drawText(pptxSlide, element, theme);
+      drawText(pptxSlide, element, theme, step);
       return;
     case "gap-text":
       drawGapText(pptxSlide, element, theme, slide.question);
@@ -785,15 +806,80 @@ async function drawElement(
   }
 }
 
-function drawText(pptxSlide: PptxGenJS.Slide, element: TextElement, theme: Theme): void {
+function drawText(
+  pptxSlide: PptxGenJS.Slide,
+  element: TextElement,
+  theme: Theme,
+  step = Number.POSITIVE_INFINITY,
+): void {
   // The size the renderer draws a fixed-height box at when its words outgrew it (TEACH-75 part o).
   const resolved = resolveTextStyle(element.style, theme);
   const fitted = fittedFontSize(element, theme);
   const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
+  const marks = runMarkRects(element, theme, r.fontSize, step);
+  for (const shape of marks.under) pptxSlide.addShape("roundRect", shape);
   pptxSlide.addText(
     paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)),
     textBoxOptions(element, r),
   );
+  for (const shape of marks.over) pptxSlide.addShape("rect", shape);
+}
+
+/**
+ * Highlights and myth strikes as native shapes (TEACH-205 part c; THEME-FIT PPTX mapping): a
+ * highlight is a rounded rect per measured line *under* the text box, in the slot's fill, padded as
+ * `slide.css` pads it; a strike is a thin accent rect per line *over* it, centred 0.25em above the
+ * baseline and 0.075em thick, drawn only on build slides at or after its step. Lines come from the
+ * headless ruler (`runRects`), so they match the editor's wraps, not PowerPoint's own. A rotated box
+ * gets neither (the shapes would not turn with it).
+ */
+export function runMarkRects(
+  element: TextElement,
+  theme: Theme,
+  fontSize: number,
+  step = Number.POSITIVE_INFINITY,
+): { under: PptxGenJS.ShapeProps[]; over: PptxGenJS.ShapeProps[] } {
+  const none = { under: [], over: [] };
+  if (element.rotation || !/"(highlight|strikeStep)"/.test(JSON.stringify(element.doc)))
+    return none;
+  const rects: RunRect[] = runRects(
+    element.doc,
+    element.style,
+    theme,
+    { w: element.w, h: element.h },
+    (a) => a.highlight !== undefined || (a.strikeStep !== undefined && a.strikeStep <= step),
+    fontSize,
+  );
+  const under: PptxGenJS.ShapeProps[] = [];
+  const over: PptxGenJS.ShapeProps[] = [];
+  const accent = hexColor(theme.colors.accent) ?? "000000";
+  for (const q of rects) {
+    const em = q.fontSize;
+    const slot = q.attrs.highlight;
+    if (slot !== undefined) {
+      const h = Math.min(q.h, 1.28 * em);
+      under.push({
+        x: inches(element.x + q.x - 0.14 * em),
+        y: inches(element.y + q.y + (q.h - h) / 2),
+        w: inches(q.w + 0.28 * em),
+        h: inches(h),
+        fill: { color: hexColor(HIGHLIGHT_FALLBACK_FILLS[slot - 1]) ?? "FFFFFF" },
+        line: { type: "none" },
+        rectRadius: inches(5),
+      });
+    }
+    if (q.attrs.strikeStep !== undefined && q.attrs.strikeStep <= step) {
+      over.push({
+        x: inches(element.x + q.x),
+        y: inches(element.y + q.baseline - 0.2875 * em),
+        w: inches(q.w),
+        h: inches(0.075 * em),
+        fill: { color: accent },
+        line: { type: "none" },
+      });
+    }
+  }
+  return { under, over };
 }
 
 function drawGapText(
@@ -1188,11 +1274,28 @@ function drawEmbed(pptxSlide: PptxGenJS.Slide, element: EmbedLike, theme: Theme)
 
 type EmbedLike = { x: number; y: number; w: number; h: number; url: string };
 
+/**
+ * A diagram whose builds ride rows (`buildFrom`, TEACH-205 part c) at the build its build slide
+ * shows, so build *i* is on the PowerPoint slide of row *i*. Every other diagram keeps its stored
+ * drawing (the last build), as before.
+ */
+export function rowBuildSrc(
+  element: ImageElement,
+  ctx: Partial<Pick<DrawContext, "slide" | "step">>,
+): string {
+  if (element.buildFrom === undefined || !ctx.slide || ctx.step === undefined) return element.src;
+  const svg = svgOfDataUrl(element.src);
+  if (!svg) return element.src;
+  const build = diagramBuildAt(ctx.slide, ctx.step, element);
+  return builtSvgDataUrl(svgAtBuild(svg, build, { answer: true, motion: false }));
+}
+
 async function drawImage(
   pptxSlide: PptxGenJS.Slide,
   element: ImageElement,
   theme: Theme,
-  ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn">,
+  ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn"> &
+    Partial<Pick<DrawContext, "slide" | "step">>,
 ): Promise<void> {
   // A drawn diagram (an SVG data URL) goes in as a PNG, never as SVG: PowerPoint, Keynote and
   // Slides import SVG differently, a bitmap at twice the box reads the same everywhere (TEACH-247).
@@ -1200,7 +1303,7 @@ async function drawImage(
   const svg = element.src.startsWith("data:image/svg+xml");
   const data = svg
     ? await ctx
-        .rasteriseSvg(await withDiagramFonts(element.src), element.w, element.h)
+        .rasteriseSvg(await withDiagramFonts(rowBuildSrc(element, ctx)), element.w, element.h)
         .catch(() => undefined)
     : await toDataUrl(element.src, ctx.imageOrigin);
   if (svg && !data)

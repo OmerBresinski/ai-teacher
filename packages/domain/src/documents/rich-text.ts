@@ -111,13 +111,103 @@ const LinkAttrsSchema = z
   })
   .loose();
 
+/*
+ * Run attributes on `textStyle` beyond `color` (TEACH-205 part c; rulings 238, 248). A run may carry
+ * any mix of them:
+ * - `font: "quote"` sets the run in the theme's quote face (a worked example's `x`, a source's words);
+ * - `highlight: n` washes the run in colour slot n (1-4), never a hex: the theme owns the colour;
+ * - `strikeStep: n` is the myth strike, an offset line through the x-height (not the `strike`
+ *   mark, which is the font's own strikeout), shown from reveal step n (0 = from the start).
+ */
+export const RUN_FONTS = ["quote"] as const;
+export type RunFont = (typeof RUN_FONTS)[number];
+/** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
+export const HIGHLIGHT_SLOTS = 4;
+/** The latest reveal step a strike may name (as `ImageElement.buildFrom`). */
+const MAX_STRIKE_STEP = 64;
+
+export const safeRunFont = (raw: unknown): RunFont | null =>
+  typeof raw === "string" && (RUN_FONTS as readonly string[]).includes(raw)
+    ? (raw as RunFont)
+    : null;
+export const safeHighlightSlot = (raw: unknown): number | null =>
+  Number.isInteger(raw) && (raw as number) >= 1 && (raw as number) <= HIGHLIGHT_SLOTS
+    ? (raw as number)
+    : null;
+export const safeStrikeStep = (raw: unknown): number | null =>
+  Number.isInteger(raw) && (raw as number) >= 0 && (raw as number) <= MAX_STRIKE_STEP
+    ? (raw as number)
+    : null;
+
+/** The run attributes `textStyle` carries, as the renderers read them. */
+export type RunStyleAttrs = {
+  color?: string;
+  font?: RunFont;
+  highlight?: number;
+  strikeStep?: number;
+};
+
+/** `inner`, or undefined (with a warning) when the stored value does not parse. */
+const lenient = <T extends z.ZodType>(name: string, inner: T) =>
+  inner.catch((ctx) => {
+    console.warn(`[rich-text] dropped a bad textStyle.${name}: ${JSON.stringify(ctx.value)}`);
+    return undefined as z.output<T>;
+  });
+
+/**
+ * A text node's marks. A mark of a type this schema does not know (a stored lesson from an older
+ * or newer editor) is dropped with a warning and its text kept, rather than refusing the whole
+ * document. Known marks are still validated strictly: a `javascript:` link is refused (F01).
+ */
+const MarksSchema = z
+  .array(z.unknown())
+  .transform((marks) =>
+    marks.filter((m) => {
+      const type = (m as { type?: unknown } | null)?.type;
+      const known =
+        typeof type === "string" && (RICH_MARK_TYPES as readonly string[]).includes(type);
+      if (!known) console.warn(`[rich-text] dropped an unknown mark: ${JSON.stringify(type)}`);
+      return known;
+    }),
+  )
+  .pipe(z.array(z.lazy(() => MarkSchema)));
+
 const TextStyleAttrsSchema = z
   .object({
     color: nullish(
       z.string().refine((v) => safeCssColor(v) !== null, { message: "Not a CSS colour" }),
     ),
+    // A bad run attribute is dropped (the run stays plain text), never the document: these are
+    // looks, not safety, and an old or hand-edited lesson must still open (TEACH-205 part c review).
+    font: lenient("font", nullish(z.enum(RUN_FONTS))),
+    highlight: lenient("highlight", nullish(z.number().int().min(1).max(HIGHLIGHT_SLOTS))),
+    strikeStep: lenient("strikeStep", nullish(z.number().int().min(0).max(MAX_STRIKE_STEP))),
   })
   .loose();
+
+/** A text node with one `textStyle` mark carrying `attrs` (templates and tests build runs with it). */
+export function styledRun(text: string, attrs: RunStyleAttrs): RichNode {
+  const clean = Object.fromEntries(Object.entries(attrs).filter(([, v]) => v !== undefined));
+  return Object.keys(clean).length === 0
+    ? { type: "text", text }
+    : { type: "text", text, marks: [{ type: "textStyle", attrs: clean }] };
+}
+
+/** The latest step any myth strike in `doc` names (0 when none): it is a step of the slide. */
+export function richDocMaxStrikeStep(doc: RichDoc | RichNode): number {
+  let max = 0;
+  const stack: RichNode[] = [doc as RichNode];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) break;
+    for (const mark of node.marks ?? []) {
+      const step = mark.type === "textStyle" ? safeStrikeStep(mark.attrs?.strikeStep) : null;
+      if (step !== null && step > max) max = step;
+    }
+    if (Array.isArray(node.content)) stack.push(...node.content);
+  }
+  return max;
+}
 
 const EmptyAttrsSchema = z.object({}).loose().optional();
 
@@ -139,13 +229,13 @@ const OrderedListAttrsSchema = z
 const TextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
-  marks: z.array(MarkSchema).optional(),
+  marks: MarksSchema.optional(),
   attrs: EmptyAttrsSchema,
 });
 
 const HardBreakSchema = z.object({
   type: z.literal("hardBreak"),
-  marks: z.array(MarkSchema).optional(),
+  marks: MarksSchema.optional(),
   attrs: EmptyAttrsSchema,
 });
 

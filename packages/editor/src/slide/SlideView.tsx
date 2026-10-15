@@ -3,6 +3,7 @@ import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/
 import {
   growFixedText,
   isDiagramMark,
+  quoteFaceOf,
   slideArtVariant,
   slideBackground,
   withoutDiagramSlot,
@@ -175,6 +176,7 @@ export function SlideView({
   useLayoutEffect(() => {
     if (mode === "edit" && root.current) applySlideClip(root.current, spill);
   }, [mode, spill]);
+  const quote = quoteFaceOf(theme);
   const rootStyle: CSSProperties = {
     position: "relative",
     width: SLIDE_W,
@@ -198,6 +200,9 @@ export function SlideView({
     ["--td-accent-soft" as string]: withAlpha(theme.colors.accent, 0.18),
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
+    // A run in the quote face (`font: "quote"`, TEACH-205 part c): the theme's quote serif.
+    ["--td-font-quote" as string]: quote.family,
+    ["--td-quote-style" as string]: quote.italic ? "italic" : "normal",
     ...(mode === "thumb"
       ? { contentVisibility: "auto", containIntrinsicSize: `${SLIDE_W}px ${SLIDE_H}px` }
       : null),
@@ -236,10 +241,16 @@ export function SlideView({
               answerProgress={answerProgress}
               diagramBuild={
                 mode === "present" && step !== undefined
-                  ? diagramBuildAt(slide, step)
+                  ? diagramBuildAt(slide, step, el)
                   : mode === "edit" && diagramPreview?.id === el.id
                     ? diagramPreview.build
-                    : undefined
+                    : // A diagram on rows (`buildFrom`) follows the editor's step preview too.
+                      mode === "edit" &&
+                        el.type === "image" &&
+                        el.buildFrom !== undefined &&
+                        Number.isFinite(effectiveStep)
+                      ? diagramBuildAt(slide, effectiveStep, el)
+                      : undefined
               }
               diagramAnswer={
                 mode === "present"

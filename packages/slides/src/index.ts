@@ -34,6 +34,7 @@ export * from "./path";
 export * from "./reflow";
 export * from "./specs";
 export * from "./structure";
+export * from "./text-lines";
 export * from "./text-measure";
 export * from "./text-style";
 export { themedColour, withThemeColours } from "./theme-colours";

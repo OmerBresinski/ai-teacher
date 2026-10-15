@@ -54,6 +54,7 @@ export interface BudgetReport {
 }
 
 export const DEFAULT_MANIFEST = path.join("apps", "web", "dist", ".vite", "manifest.json");
+// 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
 export const DEFAULT_BUDGET_KB = 250;
 export const DEFAULT_WARN_KB = 200;
 export const SKIP_MESSAGE =
@@ -145,13 +146,15 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 315 },
   { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
   // Re-pinned 2026-10-15: Paper theme font and age-size tables (TEACH-152 part b), about 2.5 KB; approved by Greg
-  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 153 },
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
+  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 200 },
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
   // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
   { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 125 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
-  { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 38 },
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
+  { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 50 },
 ];
 
 /**

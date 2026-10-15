@@ -113,7 +113,7 @@ export function OverflowGlyph({
 
 export function TextView(props: ElementViewProps<TextElement>) {
   const { element, theme, mode } = props;
-  const staticView = <StaticText element={element} theme={theme} mode={mode} />;
+  const staticView = <StaticText element={element} theme={theme} mode={mode} step={props.step} />;
   if (mode !== "edit") return staticView;
   return (
     <Suspense fallback={staticView}>
@@ -129,10 +129,13 @@ export function StaticText({
   mode,
   bodyRef,
   overflowing,
+  step,
 }: {
   element: TextElement;
   theme: Theme;
   mode: SlideMode;
+  /** The slide's reveal step, for a myth strike that shows on a later one. */
+  step?: number;
   bodyRef?: Ref<HTMLDivElement>;
   overflowing?: boolean;
 }) {
@@ -146,6 +149,7 @@ export function StaticText({
       <div ref={bodyRef} style={{ width: "100%", flex: "0 0 auto" }}>
         <RichText
           doc={element.doc}
+          step={step}
           style={
             element.name === HEADING_NAME ? { ...textTypeCss(r), ...BALANCED } : textTypeCss(r)
           }
