@@ -22,7 +22,11 @@ import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
-import { choiceMarks, hingeMarkOf } from "./elements/choice";
+import { choiceMarks, HINGE_KEY } from "./elements/choice";
+
+/** The hinge reveal (TEACH-256 part b) loads on demand: its surface roles stay out of these chunks. */
+const HingeMarks = lazy(() => import("./elements/HingeMarks"));
+
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
@@ -483,16 +487,18 @@ function ChoiceMarks({
   );
   if (marks.length === 0) return null;
   const placed = placedById(slide.elements);
+  if (slide.elements.some((e) => e.name === HINGE_KEY))
+    return (
+      <Suspense fallback={null}>
+        <HingeMarks slide={slide} theme={theme} marks={marks} placed={placed} />
+      </Suspense>
+    );
   return (
     <>
       {marks.map(({ id, state }) => {
         const r = placed.get(id);
         if (!r) return null;
         const right = state === "right";
-        // The hinge (TEACH-256 part b): ring and tick in `verdict-right`, the key in `key:right`,
-        // the others faded into the sand stage, as in the v13 gold.
-        const hinge = hingeMarkOf(slide, theme, id);
-        const key = right ? hinge?.key : null;
         return (
           <div
             key={id}
@@ -506,54 +512,29 @@ function ChoiceMarks({
               height: r.h,
               zIndex: 800,
               pointerEvents: "none",
-              borderRadius: hinge?.radius ?? Math.min(theme.radius, 16),
-              background: right
-                ? undefined
-                : (hinge?.wash ?? withAlpha(theme.colors.background, 0.62)),
-              boxShadow: right
-                ? `0 0 0 ${hinge ? 3 : 4}px ${hinge?.ring ?? theme.colors.correct}`
-                : undefined,
+              borderRadius: Math.min(theme.radius, 16),
+              background: right ? undefined : withAlpha(theme.colors.background, 0.62),
+              boxShadow: right ? `0 0 0 4px ${theme.colors.correct}` : undefined,
             }}
           >
-            {key ? (
-              <span
-                style={{
-                  position: "absolute",
-                  left: key.x - r.x,
-                  top: key.y - r.y,
-                  width: key.w,
-                  height: key.h,
-                  borderRadius: key.radius,
-                  background: hinge?.keyFill,
-                  color: hinge?.keyInk,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 700,
-                  fontSize: key.fontSize,
-                }}
-              >
-                {key.letter}
-              </span>
-            ) : null}
             {right ? (
               <span
                 role="img"
                 aria-label="Correct answer"
                 style={{
                   position: "absolute",
-                  right: hinge?.tick.right ?? 10,
-                  top: hinge?.tick.top ?? 10,
-                  width: hinge?.tick.d ?? 36,
-                  height: hinge?.tick.d ?? 36,
+                  right: 10,
+                  top: 10,
+                  width: 36,
+                  height: 36,
                   borderRadius: 36,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: hinge?.ring ?? theme.colors.correct,
-                  color: hinge?.keyInk ?? theme.colors.surface,
+                  background: theme.colors.correct,
+                  color: theme.colors.surface,
                   fontWeight: 700,
-                  fontSize: hinge ? Math.round(hinge.tick.d * 0.6) : 22,
+                  fontSize: 22,
                   lineHeight: 1,
                 }}
               >

@@ -63,6 +63,7 @@ import {
 } from "@tj/slides";
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -71,7 +72,7 @@ import { withDiagramFonts } from "../images/diagram-fonts";
 import { resolveImageSrc } from "../images/resolve-src";
 import { type Crop, currentCrop, normaliseTransform, renderedFit } from "../lesson/image-adjust";
 import { normaliseAngle } from "../model/geometry";
-import { choiceText, hingeRevealShapes, oneStepReveal } from "../slide/elements/choice";
+import { choiceText } from "../slide/elements/choice";
 import {
   clamp,
   GAP_TOKEN,
@@ -85,6 +86,7 @@ import {
 } from "../slide/elements/kit";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
+import { hingeRevealShapes, oneStepReveal } from "./hinge-reveal";
 import { imageCredentials } from "./image-credentials";
 import { dataUrlImageSize } from "./image-size";
 import { slugify } from "./json";
@@ -1649,7 +1651,12 @@ export async function exportLessonPptx(
         await drawElement(pptxSlide, element, theme, ctx, NO_FRAME);
       }
       if (oneStepReveal(slide) && step === steps - 1)
-        for (const mark of hingeRevealShapes(slide, theme)) drawShape(pptxSlide, mark, theme);
+        for (const mark of hingeRevealShapes(slide, theme, {
+          ring: surfaceStyle(theme, "verdict-right").fill,
+          keyFill: surfaceStyle(theme, "key", "right").fill,
+          keyInk: surfaceStyle(theme, "key", "right").ink ?? theme.colors.onAccent,
+        }))
+          drawShape(pptxSlide, mark, theme);
 
       const notes = slide.notes?.trim();
       const stepNote = steps > 1 ? `Reveal ${step + 1} of ${steps}.` : "";
