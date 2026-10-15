@@ -19,21 +19,41 @@ type El = Slide["elements"][number];
 export type DraftSizes = Map<string, number>;
 
 /**
- * A layout mints fresh element ids each time; a draft's ids are its elements' names in order
- * (`d-Heading-0`), so one slide's drafts keep their ids from draft to draft: the renderer updates
- * the same boxes rather than mounting new ones, and the type sizes are held per box. The answer
- * data, which names ids, is left off a draft (nothing on a writing slide reveals answers).
+ * A layout mints fresh element ids each time; a live slide's ids are its elements' names in order
+ * (`d-s4-Heading-0`, the slide's id first so they stay unique in the deck). One slide's drafts keep
+ * their ids from draft to draft, and the laid slide that ends them (`stableIds` in the writer
+ * stage) carries the same ones: the renderer updates the same boxes from the first draft to the
+ * saved copy rather than mounting new ones, and the type sizes are held per box.
  */
-export function stableDraftIds(slide: Laid): Laid {
+export function stableIds(slide: Laid, slideId: string): Laid {
   const seen = new Map<string, number>();
+  const renamed = new Map<string, string>();
   const elements = walk(slide.elements, (e) => {
     const name = (e as { name?: string }).name ?? e.type;
     const n = seen.get(name) ?? 0;
     seen.set(name, n + 1);
-    return { ...e, id: `d-${name.replace(/[^\w-]/g, "_")}-${n}` } as El;
+    const id = `d-${slideId}-${name.replace(/[^\w-]/g, "_")}-${n}`;
+    renamed.set(e.id, id);
+    return { ...e, id } as El;
   });
+  // Anything else on the slide that names an element (the answer data, builds) follows its id.
+  const follow = (v: unknown): unknown =>
+    v === undefined
+      ? v
+      : JSON.parse(
+          JSON.stringify(v, (_k, x) =>
+            typeof x === "string" && renamed.has(x) ? renamed.get(x) : x,
+          ),
+        );
+  return Object.fromEntries(
+    Object.entries(slide).map(([k, v]) => [k, k === "elements" ? elements : follow(v)]),
+  ) as Laid;
+}
+
+/** A draft's ids (`stableIds`); the answer data is left off (nothing on a writing slide reveals answers). */
+export function stableDraftIds(slide: Laid, slideId: string): Laid {
   const { question: _q, ...rest } = slide;
-  return { ...rest, elements };
+  return stableIds(rest as Laid, slideId);
 }
 
 const walk = (els: readonly El[], fn: (e: El) => El): El[] =>
@@ -86,7 +106,7 @@ export function layDraft(
         const held = lay(reserveLook({ ...s, [field]: undefined }, look));
         if (hasVisual(held.slide.elements)) m = held;
       }
-      return holdTypeSizes(stableDraftIds(m.slide), sizes);
+      return holdTypeSizes(stableDraftIds(m.slide, `s${ctx.index + 1}`), sizes);
     },
     () => undefined,
   );

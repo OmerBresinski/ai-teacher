@@ -37,12 +37,19 @@ export type DraftStore = {
   latestReady: () => LiveDraft | undefined;
   subscribe: (fn: () => void) => () => void;
   set: (drafts: Iterable<LiveDraft>) => void;
+  /**
+   * The job ended: the drafts go `afterMs` later (the last save reaches the document first). The
+   * store owns the timer, so a view that unmounts at the job's end (the lock release) never keeps
+   * them. Calling it again does not restart the wait.
+   */
+  end: (afterMs: number) => void;
 };
 
 export function createDraftStore(): DraftStore {
   let byId = new Map<string, LiveDraft>();
   const subs = new Set<() => void>();
-  return {
+  let ending: ReturnType<typeof setTimeout> | undefined;
+  const store: DraftStore = {
     get: (id) => byId.get(id),
     latest: () => {
       let best: LiveDraft | undefined;
@@ -68,7 +75,12 @@ export function createDraftStore(): DraftStore {
       byId = next;
       for (const fn of subs) fn();
     },
+    end: (afterMs) => {
+      if (ending !== undefined) return;
+      ending = setTimeout(() => store.set([]), afterMs);
+    },
   };
+  return store;
 }
 
 const NO_SUBSCRIBE = () => () => {};

@@ -190,8 +190,8 @@ export function useFeedDrafts(
       return;
     }
     // The job's end lands a moment before its last save reaches the open document: the drafts
-    // stay for that moment, so the last slide never flashes an older copy, then go.
-    const timer = setTimeout(() => store.set([]), DRAFTS_AFTER_END_MS);
-    return () => clearTimeout(timer);
+    // stay for that moment, so the last slide never flashes an older copy, then go. The store
+    // owns the wait: the lock release after `completed` unmounts this view, and must not keep them.
+    store.end(DRAFTS_AFTER_END_MS);
   }, [store, drafts, ended]);
 }

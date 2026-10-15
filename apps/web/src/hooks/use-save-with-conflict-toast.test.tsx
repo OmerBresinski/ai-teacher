@@ -26,7 +26,10 @@ const puts = () =>
   fakeApi.requests.filter((r) => r.method === "PUT" && r.path === `/documents/${ID}`).length;
 
 /** A hook whose cached row state is the stored one, then another writer moves the row on. */
-function setup(onStale: () => Promise<LibraryDocument | undefined>) {
+function setup(
+  onStale: () => Promise<LibraryDocument | undefined>,
+  lock?: { holder: string; following?: string },
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const row = fakeApi.get(ID);
   if (!row) throw new Error("fake api has no demo lesson");
@@ -34,14 +37,18 @@ function setup(onStale: () => Promise<LibraryDocument | undefined>) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     deletedAt: row.deletedAt,
-    generatingJobId: row.generatingJobId,
+    generatingJobId: lock ? lock.holder : row.generatingJobId,
   };
+  if (lock) fakeApi.setGenerating(ID, lock.holder);
   queryClient.setQueryData(queryKeys.libraryDocumentMeta(ID), meta);
-  fakeApi.touch(ID);
+  if (!lock) fakeApi.touch(ID);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  const { result } = renderHook(() => useSaveWithConflictToast(ID, onStale), { wrapper });
+  const { result } = renderHook(
+    () => useSaveWithConflictToast(ID, onStale, lock ? () => lock.following : undefined),
+    { wrapper },
+  );
   const body = row.body as LibraryDocument;
   /** The save's rejection (or `undefined`), with React's state updates flushed. */
   const refusal = async (document: LibraryDocument) => {
@@ -76,6 +83,31 @@ describe("useSaveWithConflictToast with onStale", () => {
 
   it("no merged copy falls through to the toast", async () => {
     const { refusal, body } = setup(async () => undefined);
+    expect(await refusal(body)).toBeInstanceOf(SaveRefusedError);
+    expect(toastSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useSaveWithConflictToast under a generating lock (ADR 0039)", () => {
+  beforeEach(() => toastSpy.mockReset());
+  afterAll(() => fakeApi.setGenerating(ID, null));
+  const JOB = "01a06a15-1849-7000-ac6a-c07e27fe3001";
+  const OTHER = "01a06a15-1849-7000-ac6a-c07e27fe3002";
+
+  it("the lesson's own streaming job holding the lock: refused quietly, no toast", async () => {
+    const { refusal, body } = setup(async () => undefined, { holder: JOB, following: JOB });
+    expect(await refusal(body)).toBeInstanceOf(SaveRefusedError);
+    expect(toastSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it("another job's lock still shows the toast", async () => {
+    const { refusal, body } = setup(async () => undefined, { holder: OTHER, following: JOB });
+    expect(await refusal(body)).toBeInstanceOf(SaveRefusedError);
+    expect(toastSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("a lock while the editor follows no job still shows the toast", async () => {
+    const { refusal, body } = setup(async () => undefined, { holder: OTHER });
     expect(await refusal(body)).toBeInstanceOf(SaveRefusedError);
     expect(toastSpy).toHaveBeenCalledTimes(1);
   });

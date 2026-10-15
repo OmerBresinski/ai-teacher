@@ -152,3 +152,32 @@ describe("the slide's structure comes first (TEACH-202 part f)", () => {
     }
   }, 60_000);
 });
+
+describe("the hand-over keeps every box (TEACH-202 part f review)", () => {
+  test("the laid slide reuses its last draft's element ids, so nothing remounts", async () => {
+    const ids = (els: El[]): string[] =>
+      els.flatMap((e) => [e.id, ...ids((e.children as El[] | undefined) ?? [])]);
+    const last = new Map<number, string[]>();
+    const handed = new Map<number, string[]>();
+    await replayRun("y5-maths-fractions-of-amounts", {
+      stream: pieces(4000, 9),
+      hooks: {
+        draft: { ms: 0 },
+        onDraftSlide: (i, s) => last.set(i, ids(s.elements as El[])),
+        onSlide: (i, s) => {
+          if (!handed.has(i)) handed.set(i, ids(s.elements as El[]));
+        },
+      },
+    });
+    expect(last.size).toBeGreaterThan(3);
+    let kept = 0;
+    for (const [i, drafted] of last) {
+      const laid = new Set(handed.get(i) ?? []);
+      const text = drafted.filter((id) => /-(Heading|Lead|Title)/i.test(id));
+      for (const id of text) expect(laid.has(id)).toBe(true);
+      kept += drafted.filter((id) => laid.has(id)).length;
+      expect([...laid].every((id) => id.startsWith(`d-s${i + 1}-`))).toBe(true);
+    }
+    expect(kept).toBeGreaterThan(last.size);
+  }, 60_000);
+});

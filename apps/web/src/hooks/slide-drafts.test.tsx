@@ -84,6 +84,22 @@ describe("slide drafts on the job stream", () => {
     expect(store.latest()).toBeUndefined();
   });
 
+  it("the job's end clears the drafts even when the view unmounts at the lock release", async () => {
+    const store = createDraftStore();
+    const { rerender, unmount } = renderHook(
+      ({ drafts, ended }: { drafts: JobEventsState["drafts"]; ended: boolean }) =>
+        useFeedDrafts(store, drafts, ended),
+      { initialProps: { drafts: { s4: draft(3, "last") }, ended: false } },
+    );
+    expect(store.latest()?.slideId).toBe("s4");
+    // `completed`, then the lock release drops the filling job and the follower with it.
+    rerender({ drafts: { s4: draft(3, "last") }, ended: true });
+    unmount();
+    expect(store.latest()?.slideId).toBe("s4");
+    await new Promise((r) => setTimeout(r, DRAFTS_AFTER_END_MS + 50));
+    expect(store.latest()).toBeUndefined();
+  });
+
   it("a replay that arrives oldest first never steps the store back to an older draft", () => {
     const store = createDraftStore();
     store.set([{ ...draft(2, "newest words"), seq: 40 }]);

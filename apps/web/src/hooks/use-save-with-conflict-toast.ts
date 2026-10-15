@@ -23,17 +23,36 @@ export function useSaveWithConflictToast(
    * instead of the toast.
    */
   onStale?: () => Promise<LibraryDocument | undefined>,
+  /**
+   * Live writing (ADR 0039): the job holding the lock, as the editor knows it, when it is the job
+   * this editor is following (this lesson's own stream); `undefined` otherwise.
+   */
+  ownJob?: () => string | undefined,
 ): (document: LibraryDocument) => Promise<void> {
   const queryClient = useQueryClient();
   const { mutateAsync: save } = useMutation(libraryMutations.autosaveDocument(queryClient));
+  /** The job holding the lesson's lock, as this editor last read the row. */
+  const lockedBy = useCallback(
+    (): string | undefined =>
+      queryClient.getQueryData(libraryQueries.documentMeta(documentId).queryKey)?.generatingJobId ??
+      undefined,
+    [queryClient, documentId],
+  );
   return useCallback(
     async (document: LibraryDocument) => {
-      const refuse = (error: unknown): never => {
+      const refuse = async (error: unknown): Promise<never> => {
         if (error instanceof ApiError && error.status === 409) {
           // Live writing (ADR 0039): a filling lesson's editor opens before any slide is done, and
           // a save then is refused as `generating` by design; the next save after a slide is done
-          // carries the whole document, so the refusal is not the teacher's to see.
-          if (error.reason === "generating" && onStale)
+          // carries the whole document, so the refusal is not the teacher's to see. Only when the
+          // lock is still the job this editor follows: another job's lock (another tab, a
+          // regenerate) keeps its toast.
+          if (
+            error.reason === "generating" &&
+            ownJob &&
+            lockedBy() !== undefined &&
+            lockedBy() === ownJob()
+          )
             throw new SaveRefusedError(error.message, { cause: error });
           const stale = error.reason === "stale";
           toast(error.message, {
@@ -69,13 +88,13 @@ export function useSaveWithConflictToast(
               await save(merged);
               return;
             } catch (retryError) {
-              refuse(retryError);
+              await refuse(retryError);
             }
           }
         }
-        refuse(error);
+        await refuse(error);
       }
     },
-    [save, queryClient, documentId, onStale],
+    [save, queryClient, documentId, onStale, ownJob, lockedBy],
   );
 }

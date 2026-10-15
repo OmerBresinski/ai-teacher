@@ -170,7 +170,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     async () => (followerRef.current ? followerRef.current.pull() : undefined),
     [],
   );
-  const saveDocument = useSaveWithConflictToast(lessonId, onStale);
+  // Live writing (ADR 0039): the job this editor follows while the lesson fills, so a refused save
+  // is silent only under this lesson's own stream, never under another job's lock.
+  const followedJob = useRef<string | undefined>(undefined);
+  const ownJob = useCallback(() => followedJob.current, []);
+  const saveDocument = useSaveWithConflictToast(lessonId, onStale, ownJob);
   // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
   // The theme the lesson opened with is not a choice (it may be the automatic default).
   const openedTheme = useRef<string | undefined>(undefined);
@@ -423,6 +427,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // The job's store outlives its end by a moment: the last slide finishes typing over the hand-over
   // (the store empties itself shortly after the job ends).
   if (draftStore) rowRef.current.drafts = draftStore;
+  followedJob.current = filling && fillingJobId ? fillingJobId : undefined;
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";

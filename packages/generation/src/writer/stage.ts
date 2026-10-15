@@ -95,7 +95,7 @@ import {
   teaching,
   words as wordsOfText,
 } from "./guards";
-import { type DraftSizes, layDraft } from "./lay-draft";
+import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -487,9 +487,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ...(diagramWarnings ? { diagramWarnings } : {}),
       });
     // A drawn diagram carries its builds (Present shows its parts one per Next).
-    if (!run.drawDiagrams) return void laid.set(i, lay());
+    // Live writing (ADR 0039): the laid slide keeps its drafts' ids (`stableIds`), so nothing
+    // remounts when it takes over from its last draft, nor when a later relay lands a picture.
+    const keep = (x: Materialised): Materialised =>
+      run.onDraftSlide ? { ...x, slide: stableIds(x.slide, `s${i + 1}`) } : x;
+    if (!run.drawDiagrams) return void laid.set(i, keep(lay()));
     const m = withBuilds(lay);
-    laid.set(i, { ...m, slide: withBuildCounts(m.slide) });
+    laid.set(i, keep({ ...m, slide: withBuildCounts(m.slide) }));
   };
   /**
    * LAYOUT-SEL Egypt s1: a title picture that failed is searched once more for the lesson's topic
