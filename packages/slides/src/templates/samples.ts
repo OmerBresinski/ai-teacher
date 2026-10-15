@@ -109,7 +109,9 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         "What does a tadpole grow into?",
         "Name one animal whose young change shape.",
       ],
+      // TEACH-101 part g: with its answers, the question set is the quick check.
       instruction: "Answer in full sentences.",
+      answers: ["A lamb", "A frog", "A butterfly"],
     },
     {
       template: "discussion",

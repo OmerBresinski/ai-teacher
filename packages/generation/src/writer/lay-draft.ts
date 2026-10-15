@@ -9,6 +9,7 @@ import { slideNoEmDash } from "./checks";
 import type { SlideDraft } from "./draft";
 import { asksVisual, lookOf, withLook } from "./fixes";
 import { type MaterialiseCtx, type Materialised, materialise } from "./materialise";
+import { quickCheckDraft, withoutReveals } from "./question-set-draft";
 import { nonFatalSync } from "./services";
 
 type S = Record<string, unknown>;
@@ -98,6 +99,8 @@ export function layDraft(
       if (isWriterActivity(s.template)) s = fromWriterActivity(s, stageKey, ctx.brief).slide;
       const look = lookOf(ctx.plan.flow?.find((x) => x.slide === ctx.index + 1));
       s = reserveLook(s, look);
+      // TEACH-101 part g: a quick check holds every written row's chip; its answers never show.
+      s = quickCheckDraft(s);
       const lay = (x: S) => materialise(x, { ...ctx, visual: () => ({ status: "pending" }) });
       let m = lay(s);
       // A figure half streamed may not lay out yet: its planned slot holds until it does.
@@ -106,7 +109,7 @@ export function layDraft(
         const held = lay(reserveLook({ ...s, [field]: undefined }, look));
         if (hasVisual(held.slide.elements)) m = held;
       }
-      return holdTypeSizes(stableDraftIds(m.slide, `s${ctx.index + 1}`), sizes);
+      return holdTypeSizes(stableDraftIds(withoutReveals(m.slide), `s${ctx.index + 1}`), sizes);
     },
     () => undefined,
   );

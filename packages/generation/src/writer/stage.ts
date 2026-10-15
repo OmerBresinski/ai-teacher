@@ -124,6 +124,7 @@ import {
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
+import { continueQuickCheck } from "./question-set-split";
 import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
 import { writerSchema } from "./schema";
@@ -926,6 +927,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
     return tc.first;
   };
+  /** TEACH-101 part g: a quick check past its maximum continues on more quick-check slides. */
+  const quickRest = new Map<number, S[]>();
+  const splitQuick = (idx: number, s: S): S => {
+    const qc = continueQuickCheck(
+      s,
+      (sl) =>
+        !materialise(sl, { ...base, index: idx, plan, visual: () => ({ status: "pending" }) }).over
+          .length,
+    );
+    if (!qc) {
+      quickRest.delete(idx);
+      return s;
+    }
+    quickRest.set(idx, qc.rest);
+    log({ ev: "quick-check-continued", slide: idx + 1, slides: qc.rest.length + 1 });
+    return qc.first;
+  };
   const openSlide = (idx: number, arrived: S) => {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
@@ -972,6 +990,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       s = a.slide;
     }
     s = splitTable(idx, s);
+    s = splitQuick(idx, s);
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
@@ -1188,6 +1207,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       at.set(i + 1, slides.length);
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
+      for (const [k, q] of (quickRest.get(i) ?? []).entries()) {
+        const m = materialise(q, {
+          ...base,
+          index: i,
+          plan,
+          visual: () => ({ status: "pending" }),
+        });
+        slides.push({ id: `s${i + 1}q${k + 1}`, ...m.slide, notes: "" });
+      }
       for (const [k, t] of (tableRest.get(i) ?? []).entries()) {
         const m = materialise(t, {
           ...base,
