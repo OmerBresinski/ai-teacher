@@ -10,8 +10,8 @@ import { exportLessonPptx } from "./pptx";
  * TEACH-191 part b (ruling 240; THEME-FIT §3): the guard and Answers slides export with native
  * shapes (badges as ellipses, verdict chips and the guard disc as PowerPoint shapes, the hairline a
  * rect), the "Teacher only" pill never exported, and the Answers slides hidden (skipped by the
- * slideshow) unless the export includes the answers. The ledger has no reveal steps, so each slide
- * is one PowerPoint slide.
+ * slideshow) unless the export includes the answers. Each reveal step becomes a build slide, so each slide
+ * is one PowerPoint slide per reveal step.
  */
 const GROUPS: AnswerGroup[] = [
   {
@@ -41,16 +41,25 @@ async function exported(includeAnswers: boolean) {
   );
   const xml = async (n: number) =>
     (await zip.file(`ppt/slides/slide${n}.xml`)?.async("string")) ?? "";
-  return { slides, guard: await xml(1), page: await xml(2), third: await xml(3) };
+  // Two groups reveal a group per click: the Answers slide builds as 3 slides (hidden, 1, 2).
+  return {
+    slides,
+    guard: await xml(1),
+    hidden: await xml(2),
+    page: await xml(4),
+    after: await xml(5),
+  };
 }
 
 const geoms = (xml: string) => [...xml.matchAll(/<a:prstGeom prst="(\w+)"/g)].map((m) => m[1]);
 
 describe("PPTX: end-of-deck answers", () => {
   it("draws native shapes, never the pill, one slide per Answers slide", async () => {
-    const { slides, guard, page, third } = await exported(false);
+    const { slides, guard, hidden, page, after } = await exported(false);
     expect(slides.map((s) => s.answersRole)).toEqual(["guard", "answers"]);
-    expect(third).toBe("");
+    expect(after).toBe("");
+    expect(hidden).toContain("?");
+    expect(hidden).not.toContain("Evaporation");
     expect(geoms(guard)).toContain("ellipse");
     const g = geoms(page);
     // Four badges, two verdict chips, one hairline.
