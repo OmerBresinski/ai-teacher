@@ -5,7 +5,6 @@
  * No fuzzy matching and no substring guessing: a miss is null, and callers report it.
  */
 import { ICON_CONCEPTS } from "./catalogue";
-import { ICON_LIBRARY } from "./library";
 import type { IconConcept } from "./types";
 
 /** Lower case, "&" -> "and", drop a "Name: description" tail, punctuation and a leading article. */
@@ -78,6 +77,8 @@ export function buildIndex(list: readonly IconConcept[] = ICON_CONCEPTS): IconIn
   return { exact, folded, scoped };
 }
 const INDEX = buildIndex();
+/** Every concept id; each one has a drawing (match.test.ts), so the matcher never loads the drawings. */
+const CONCEPT_IDS: ReadonlySet<string> = new Set(ICON_CONCEPTS.map((c) => c.id));
 
 function inScope(term: string, subject: string | null | undefined): boolean {
   const words = new Set(normalise(subject).split(" "));
@@ -105,7 +106,7 @@ export function resolveIcon(
 ): string | null {
   if (!label) return null;
   const key = String(label).trim();
-  if (Object.hasOwn(ICON_LIBRARY, key)) return key;
+  if (CONCEPT_IDS.has(key)) return key;
   return matchIcon(key, INDEX, context);
 }
 

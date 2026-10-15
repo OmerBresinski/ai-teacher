@@ -7,6 +7,8 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
+import * as ICON_LIBRARY from "../icons";
+import { iconsLoaded, loadIcons, provideIcons, unloadIconsForTests } from "../icons/loader";
 import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
@@ -35,6 +37,7 @@ import { ageOf } from "./panel-list-deps";
  * under it) beside 2-6 rows. Comfortable to 5 rows (early 4); 6 is always tight; words are never
  * cut, anything past its hard maximum is named in `over`.
  */
+provideIcons(ICON_LIBRARY);
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
 const T0 = THEMES[0] as Theme;
 const must = <T>(x: T | undefined | null): T => {
@@ -191,6 +194,23 @@ describe("panel-list", () => {
       const keep = (els: SlideElement[]) => els.filter((e) => e.name !== PANEL_NAMES.icon).map(box);
       expect(keep(held.slide.elements)).toEqual(keep(whole.slide.elements));
     }
+  });
+
+  test("before the icon library loads: the medals hold their place, then the drawings land", async () => {
+    unloadIconsForTests();
+    const before = layoutTemplate(input(3, "none"), T0, "ks2");
+    expect(named(before.slide.elements, PANEL_NAMES.icon)).toHaveLength(0);
+    expect(before.iconMisses ?? []).toEqual([]);
+    expect(iconsLoaded()).toBeNull();
+    await loadIcons(); // the first lay started the load
+    const after = layoutTemplate(input(3, "none"), T0, "ks2");
+    const icons = named(after.slide.elements, PANEL_NAMES.icon) as ImageElement[];
+    expect(icons).toHaveLength(3);
+    expect(icons.every((e) => e.src.startsWith("data:image/svg+xml"))).toBe(true);
+    const box = (e: SlideElement) => [e.name, e.x, e.y, e.w, e.h];
+    const keep = (els: SlideElement[]) => els.filter((e) => e.name !== PANEL_NAMES.icon).map(box);
+    expect(keep(before.slide.elements)).toEqual(keep(after.slide.elements));
+    provideIcons(ICON_LIBRARY);
   });
 
   test("shares that do not match the rows are reported and no pie is drawn", () => {

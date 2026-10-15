@@ -7,13 +7,19 @@ import { dirname, join, resolve, sep } from "node:path";
  * about 5.7 KB of headroom (#521 review), so code that reaches the browser loads it with a dynamic
  * `import("@tj/slides/icons")`. This walks every client-side source file and fails on any static
  * import of the module: named, side-effect (`import "..."`) or re-export, by package name or by a
- * relative path into `packages/slides/src/icons`. Server-only packages (generation, worker, api,
+ * relative path into `packages/slides/src/icons`, except the light modules (`LIGHT`: the loader and
+ * the matcher, which hold no drawings and import none). Server-only packages (generation, worker, api,
  * images, extract) may import it statically; nothing they hold reaches a browser chunk.
  */
 const ROOT = resolve(import.meta.dir, "../../../..");
 const ICONS = resolve(import.meta.dir);
 const CLIENT = ["apps/web/src", "packages/editor/src", "packages/slides/src", "packages/ui/src"];
 const CLIENT_PACKAGES = ["packages/domain/src", "packages/api-client/src"];
+/** Icon modules a client may import statically: no drawings, and no static import of one. */
+const LIGHT = ["loader", "match", "catalogue", "concepts", "concepts-layouts", "types"].map((m) =>
+  join(ICONS, m),
+);
+const isLight = (target: string) => LIGHT.includes(target.replace(/\.ts$/, ""));
 
 /** Every static module specifier in a source: `import ... from`, `import "..."`, `export ... from`. */
 export function staticSpecifiers(source: string): string[] {
@@ -30,7 +36,7 @@ export function reachesIcons(file: string, spec: string): boolean {
   if (/^@tj\/slides\/icons(?:\/|$)/.test(spec)) return true;
   if (!spec.startsWith(".")) return false;
   const target = resolve(dirname(file), spec);
-  return target === ICONS || target.startsWith(ICONS + sep);
+  return (target === ICONS || target.startsWith(ICONS + sep)) && !isLight(target);
 }
 
 function sources(dir: string): string[] {
@@ -59,6 +65,16 @@ describe("the icon library is loaded lazily", () => {
     expect(offenders).toEqual([]);
   });
 
+  test("the light modules import no drawing module statically", () => {
+    for (const m of LIGHT) {
+      const file = `${m}.ts`;
+      const heavy = staticSpecifiers(readFileSync(file, "utf8")).filter(
+        (s) => s.startsWith(".") && !isLight(resolve(dirname(file), s)),
+      );
+      expect(heavy, file).toEqual([]);
+    }
+  });
+
   test("named, type, side-effect and re-export imports are all seen; dynamic ones are not", () => {
     const src = [
       'import { iconSvg } from "@tj/slides/icons";',
@@ -80,6 +96,8 @@ describe("the icon library is loaded lazily", () => {
     expect(reachesIcons(inSlides, "../icons/medal")).toBe(true);
     expect(reachesIcons(join(ROOT, "packages/slides/src/x.ts"), "./icons")).toBe(true);
     expect(reachesIcons(join(ROOT, "packages/slides/src/x.ts"), "./iconsets")).toBe(false);
+    expect(reachesIcons(inSlides, "../icons/loader")).toBe(false);
+    expect(reachesIcons(inSlides, "../icons/match")).toBe(false);
     expect(reachesIcons(join(ROOT, "packages/editor/src/x.ts"), "lucide-react")).toBe(false);
   });
 });

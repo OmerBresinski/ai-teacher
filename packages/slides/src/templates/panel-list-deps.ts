@@ -5,14 +5,14 @@
  * of the pilot branches); this file flattens them into the names the template draws with.
  */
 import type { Theme } from "@tj/domain/documents";
-import { iconSvgForTheme } from "../icons";
+import { iconsLoaded, loadIcons } from "../icons/loader";
 import { contrastRatio } from "../look";
 import type { PictureFacts } from "../picture-fit";
 import { ageProfileOf, v2Colors, v2Profile } from "../theme-v2";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import type { SubjectBox } from "./index";
 
-export { matchIcon, normalise } from "../icons";
+export { matchIcon, normalise } from "../icons/match";
 export {
   cropFor,
   type FracRect,
@@ -106,9 +106,18 @@ export function panelLook(theme: Theme): PanelLook {
 /* Icon library                                                        */
 /* ------------------------------------------------------------------ */
 
-/** A library concept as an image `src` for a box of `boxPt`, in the theme's v2 icon slots. */
+/**
+ * A library concept as an image `src` for a box of `boxPt`, in the theme's v2 icon slots. Until the
+ * library has loaded (`../icons/loader`) it is "", the pending icon's placeholder: the medal draws
+ * at its full size with no drawing in it, so nothing shifts, and the load starts for the next lay.
+ */
 export function iconSrc(id: string, theme: Theme, boxPt: number): string {
-  const svg = iconSvgForTheme(
+  const icons = iconsLoaded();
+  if (!icons) {
+    void loadIcons();
+    return "";
+  }
+  const svg = icons.iconSvgForTheme(
     id,
     { colors: theme.colors, iconSlots: v2Colors(theme).icon, keyStage: keyStageOf(theme) },
     boxPt,
