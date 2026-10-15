@@ -15,8 +15,10 @@ const flow = {
   },
 };
 const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
+/** Templates added after the snapshot: an old lesson cannot hold them. */
+const NEWER = new Set<string>(["panel-list"]);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
-  ...templateSamples(),
+  ...templateSamples().filter((s) => !NEWER.has(s.template)),
   {
     template: "picture-text",
     heading: "Lambs",

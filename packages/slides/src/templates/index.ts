@@ -35,9 +35,10 @@ import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
+import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId, GridCard };
+export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual };
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -144,6 +145,7 @@ export type TemplateId =
   | "cards-grid"
   | "banner-text"
   | "hook"
+  | "panel-list"
   | ActivityId;
 
 export type TemplateInput = {
@@ -169,6 +171,10 @@ export type TemplateInput = {
   sequence?: { caption: string; figure?: Figure; tile?: boolean }[];
   /** Cards grid (ruling 203): 2-4 cards, each a label, a body and an optional icon. */
   grid?: GridCard[];
+  /** Panel list (TEACH-75 part v): 2-6 rows, each a name, one line and an optional icon label. */
+  rows?: PanelRow[];
+  /** Panel list: the title panel's visual, a picture or a pie of one share per row; none: the title sits low. */
+  panel?: PanelVisual | null;
   /** The one quiet line under a question list. */
   instruction?: string;
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
@@ -225,6 +231,24 @@ export type TemplateResult = {
    * The caller treats each as a failed visual: never an empty tile (TEACH-75 part d).
    */
   lost?: number[];
+  /** Fits, but not comfortably (ruling 215): past a comfort size, cap or count. */
+  tight?: boolean;
+  /** Icon labels the icon library could not match; the slide drew numbers instead (never silent). */
+  iconMisses?: string[];
+  /** One entry per field with its length and measured limits: the live "62/80" counters. */
+  fields?: FieldReport[];
+};
+
+/** A field's length against its measured comfortable cap and hard maximum (ruling 215). */
+export type FieldReport = {
+  field: string;
+  /** The field as a dotted input path ("rows.2.text"), the editor's LayoutRef address (TEACH-205 b). */
+  path: string;
+  chars: number;
+  cap: number;
+  hardMax: number;
+  tight: boolean;
+  over: boolean;
 };
 
 /* ------------------------------------------------------------------ */
@@ -252,12 +276,20 @@ export type Ctx = {
   processLine?: boolean;
   /** `LayoutOptions.objectiveCards` (UX ruling 203). */
   objectiveCards?: boolean;
+  /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
+  panelNoVisual?: "narrow" | "icon";
+  /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
+  panelIconBack?: "ring" | "none" | "soft";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
   headingCap?: number;
   /** The body was placed from the measured heading bottom already, so it is not moved again. */
   bodyFromHeading?: boolean;
+  /** See `TemplateResult.tight`, `iconMisses` and `fields`. */
+  tight?: boolean;
+  iconMisses?: string[];
+  fields?: FieldReport[];
 };
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
@@ -1209,6 +1241,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   "exit-ticket": "exit-ticket",
   "equation-hero": "worked-example",
   "cards-grid": "content",
+  "panel-list": "content",
   "banner-text": "image-text",
   hook: "image-text",
   pair: "image-match",
@@ -1524,6 +1557,10 @@ export type LayoutOptions = {
   processLine?: boolean;
   /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
   objectiveCards?: boolean;
+  /** Panel list with no visual: a narrower panel (the default) or the group's icon large in it. */
+  panelNoVisual?: "narrow" | "icon";
+  /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
+  panelIconBack?: "ring" | "none" | "soft";
 };
 
 /**
@@ -1630,6 +1667,8 @@ function layoutOnce(
     ...(opts.optionColours ? { optionColours: true } : {}),
     ...(opts.processLine ? { processLine: true } : {}),
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
+    ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
+    ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -2274,6 +2313,9 @@ function layoutOnce(
     case "cards-grid":
       layoutCardsGrid(c, input);
       break;
+    case "panel-list":
+      layoutPanelList(c, input);
+      break;
     case "banner-text":
       layoutBanner(c, input);
       break;
@@ -2317,6 +2359,9 @@ function layoutOnce(
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
     ...(c.lost?.length ? { lost: c.lost } : {}),
+    ...(c.tight !== undefined ? { tight: c.tight } : {}),
+    ...(c.iconMisses?.length ? { iconMisses: c.iconMisses } : {}),
+    ...(c.fields ? { fields: c.fields } : {}),
   };
   const warned = [...new Set(c.els.flatMap((e) => WARNED.get(e) ?? []))];
   if (warned.length) result.diagramWarnings = warned;
