@@ -8,7 +8,8 @@
  */
 import type { AgeProfileKey, ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
-import { iconSvgForTheme, resolveIcons as resolveLibraryIcons } from "../icons";
+import { iconsLoaded, loadIcons } from "../icons/loader";
+import { resolveIcons as resolveLibraryIcons } from "../icons/match";
 import {
   ageProfileOf,
   type V2Profile as ThemeV2Profile,
@@ -68,13 +69,20 @@ export function resolveIcons(labels: readonly string[]): IconResolution {
 
 /**
  * The concept as an image `src` for a box of `boxPt`: the library's drawing in the theme's icon
- * slots and age, or the placeholder in `colour`.
+ * slots and age, or the placeholder in `colour`; "" while the library is still loading.
  */
 export function iconSrc(id: string, theme: Theme, boxPt: number, colour: string): string {
+  // Until the drawings have loaded (`../icons/loader`) a library concept is "": the medal keeps
+  // its face and size with no drawing, and the load starts so the next lay draws it.
+  const icons = id === PLACEHOLDER_ICON ? null : iconsLoaded();
+  if (id !== PLACEHOLDER_ICON && !icons) {
+    void loadIcons();
+    return "";
+  }
   const svg =
     id === PLACEHOLDER_ICON
       ? placeholderSvg(colour)
-      : (iconSvgForTheme(
+      : (icons?.iconSvgForTheme(
           id,
           {
             colors: theme.colors,

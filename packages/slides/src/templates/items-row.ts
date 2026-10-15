@@ -583,16 +583,16 @@ function medal(
     if (concept === PENDING_ICON) return;
     // The library's drawings fill 75% of a round face (pilot `.medal > svg`), 72% of a tile.
     const g = Math.round(d * (tile ? 0.72 : 0.75));
-    c.els.push(
-      iconImage(
-        concept,
-        c.t,
-        { x: Math.round(x + (d - g) / 2), y: Math.round(y + (d - g) / 2), w: g, h: g },
-        col.accent,
-        ROW_NAMES.icon,
-        name,
-      ),
+    const image = iconImage(
+      concept,
+      c.t,
+      { x: Math.round(x + (d - g) / 2), y: Math.round(y + (d - g) / 2), w: g, h: g },
+      col.accent,
+      ROW_NAMES.icon,
+      name,
     );
+    // Before the icon library has loaded, the face alone (as a held icon); same box after.
+    if (image.src) c.els.push(image);
     if (ordered) {
       const b = Math.round(prof.badge);
       const bx = Math.round(x + d * (tile ? 0.9 : 0.86) - b / 2);

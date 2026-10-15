@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PathElement, ShapeElement, SlideElement } from "@tj/domain/documents";
+import * as ICON_LIBRARY from "../icons";
+import { loadIcons, provideIcons, unloadIconsForTests } from "../icons/loader";
 import { isPlaceholderIcon } from "../look";
 import { presentedSlide, withoutDiagramSlot } from "../materialise";
 import { resolveTextStyle } from "../text-style";
@@ -19,6 +21,28 @@ import {
 import { ROW_CAP_GROUPS, rowCapsFor, rowFitsAt } from "./items-row-capacity";
 import CAPACITY from "./items-row-capacity.json" with { type: "json" };
 import { ageProfileOf, GOLD_PROFILES } from "./items-row-deps";
+
+provideIcons(ICON_LIBRARY);
+
+describe("items-row before the icon library loads (TEACH-310 part c)", () => {
+  test("the medals keep their faces and boxes; the drawings land on the next lay", async () => {
+    unloadIconsForTests();
+    const items = ["Water", "Light", "Warmth"].map(
+      (name) => ({ name, text: `${name} helps the plant grow.`, icon: name }) as RowItem,
+    );
+    const before = layoutTemplate(row(items), THEMES[0] as never, "ks2");
+    await loadIcons();
+    const after = layoutTemplate(row(items), THEMES[0] as never, "ks2");
+    const drawn = (els: SlideElement[]) =>
+      els.filter((e) => e.type === "image" && /^data:image\/svg/.test((e as { src: string }).src));
+    expect(drawn(before.slide.elements)).toHaveLength(0);
+    expect(drawn(after.slide.elements).length).toBeGreaterThan(0);
+    const box = (els: SlideElement[]) =>
+      els.filter((e) => e.type !== "image").map((e) => [e.name, e.x, e.y, e.w, e.h]);
+    expect(box(before.slide.elements)).toEqual(box(after.slide.elements));
+    provideIcons(ICON_LIBRARY);
+  });
+});
 
 /*
  * items-row (TEACH-75 part u): 2-4 items on a connecting line, comfortable on every theme at the
