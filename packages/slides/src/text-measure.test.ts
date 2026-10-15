@@ -174,3 +174,75 @@ describe("runRects", () => {
     ).toEqual([]);
   });
 });
+
+describe("runRects with emoji, ZWJ sequences, combining marks and RTL (review of #529)", () => {
+  const doc = (...runs: ReturnType<typeof styledRun>[]): RichDoc => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: runs }],
+  });
+  const hl = (d: RichDoc, w = 400) =>
+    runRects(d, { preset: "body" }, paper, { w, h: 300 }, (a) => !!a.highlight);
+  const CASES: [string, string][] = [
+    ["an emoji", "Bats 🦇 see"],
+    ["a ZWJ family", "the 👨‍👩‍👧 family"],
+    ["a skin-tone wave", "wave 👋🏽 hello"],
+    ["combining marks", "café naïve"],
+  ];
+
+  for (const [name, text] of CASES) {
+    test(`${name} in a highlighted run is one rect, after the plain words`, () => {
+      const rects = hl(
+        doc(styledRun("Plain words first then ", {}), styledRun(text, { highlight: 1 })),
+      );
+      expect(rects.length).toBe(1);
+      expect(rects[0]?.x).toBeGreaterThan(0);
+      expect(rects[0]?.w).toBeGreaterThan(0);
+    });
+
+    test(`${name} that wraps keeps every rect on its own consecutive line`, () => {
+      const rects = hl(
+        doc(styledRun(`${text} ${text} ${text} ${text} ${text}`, { highlight: 3 })),
+        160,
+      );
+      expect(rects.length).toBeGreaterThan(1);
+      rects.forEach((r, k) => {
+        expect(r.line).toBe(k);
+        expect(r.w).toBeGreaterThan(0);
+      });
+    });
+  }
+
+  test("a combining mark takes no room: e + U+0301 is as wide as the bare e", () => {
+    const [a] = hl(doc(styledRun("cafe\u0301", { highlight: 1 })));
+    const [b] = hl(doc(styledRun("cafe", { highlight: 1 })));
+    expect(a?.w).toBeCloseTo(b?.w ?? 0, 6);
+  });
+
+  test("a ZWJ family is one glyph wide, not five", () => {
+    const [one] = hl(doc(styledRun("👨", { highlight: 1 })));
+    const [fam] = hl(doc(styledRun("👨‍👩‍👧", { highlight: 1 })));
+    expect(fam?.w).toBeCloseTo((one?.w ?? 0) * 3, 6);
+  });
+
+  test("a paragraph with right-to-left text gets no rect rather than a misplaced one", () => {
+    expect(hl(doc(styledRun("שלום", { highlight: 1 })))).toEqual([]);
+    expect(hl(doc(styledRun("Rome ", { highlight: 1 }), styledRun("مرحبا", {})))).toEqual([]);
+    // Other paragraphs keep theirs.
+    const two: RichDoc = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [styledRun("שלום", { highlight: 1 })] },
+        { type: "paragraph", content: [styledRun("Rome", { highlight: 1 })] },
+      ],
+    };
+    expect(hl(two).length).toBe(1);
+  });
+
+  test("lineOfOffset inside a surrogate pair answers the emoji's line", () => {
+    const text = "Bats and owls hunt by night 🦇 and see";
+    const i = text.indexOf("🦇");
+    const at = lineOfOffset(text, i, "body", paper, 120);
+    expect(at).toBeGreaterThan(0);
+    expect(lineOfOffset(text, i + 1, "body", paper, 120)).toBe(at);
+  });
+});

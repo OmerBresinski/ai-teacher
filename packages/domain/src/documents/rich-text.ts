@@ -147,14 +147,41 @@ export type RunStyleAttrs = {
   strikeStep?: number;
 };
 
+/** `inner`, or undefined (with a warning) when the stored value does not parse. */
+const lenient = <T extends z.ZodType>(name: string, inner: T) =>
+  inner.catch((ctx) => {
+    console.warn(`[rich-text] dropped a bad textStyle.${name}: ${JSON.stringify(ctx.value)}`);
+    return undefined as z.output<T>;
+  });
+
+/**
+ * A text node's marks. A mark of a type this schema does not know (a stored lesson from an older
+ * or newer editor) is dropped with a warning and its text kept, rather than refusing the whole
+ * document. Known marks are still validated strictly: a `javascript:` link is refused (F01).
+ */
+const MarksSchema = z
+  .array(z.unknown())
+  .transform((marks) =>
+    marks.filter((m) => {
+      const type = (m as { type?: unknown } | null)?.type;
+      const known =
+        typeof type === "string" && (RICH_MARK_TYPES as readonly string[]).includes(type);
+      if (!known) console.warn(`[rich-text] dropped an unknown mark: ${JSON.stringify(type)}`);
+      return known;
+    }),
+  )
+  .pipe(z.array(z.lazy(() => MarkSchema)));
+
 const TextStyleAttrsSchema = z
   .object({
     color: nullish(
       z.string().refine((v) => safeCssColor(v) !== null, { message: "Not a CSS colour" }),
     ),
-    font: nullish(z.enum(RUN_FONTS)),
-    highlight: nullish(z.number().int().min(1).max(HIGHLIGHT_SLOTS)),
-    strikeStep: nullish(z.number().int().min(0).max(MAX_STRIKE_STEP)),
+    // A bad run attribute is dropped (the run stays plain text), never the document: these are
+    // looks, not safety, and an old or hand-edited lesson must still open (TEACH-205 part c review).
+    font: lenient("font", nullish(z.enum(RUN_FONTS))),
+    highlight: lenient("highlight", nullish(z.number().int().min(1).max(HIGHLIGHT_SLOTS))),
+    strikeStep: lenient("strikeStep", nullish(z.number().int().min(0).max(MAX_STRIKE_STEP))),
   })
   .loose();
 
@@ -202,13 +229,13 @@ const OrderedListAttrsSchema = z
 const TextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
-  marks: z.array(MarkSchema).optional(),
+  marks: MarksSchema.optional(),
   attrs: EmptyAttrsSchema,
 });
 
 const HardBreakSchema = z.object({
   type: z.literal("hardBreak"),
-  marks: z.array(MarkSchema).optional(),
+  marks: MarksSchema.optional(),
   attrs: EmptyAttrsSchema,
 });
 

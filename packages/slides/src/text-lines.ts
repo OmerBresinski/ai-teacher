@@ -156,6 +156,20 @@ export function breakRuns(
   place();
   for (const j of spaceChars) put(j, starts.length - 1, used);
   widths.push(used);
+  if (places) {
+    // The second unit of a surrogate pair (an emoji, an astral letter) sits where its first does,
+    // with no width of its own, so no offset is left on line 0 at x 0.
+    let i = 0;
+    for (const run of runs) {
+      for (const ch of run.text) {
+        if (ch.length === 2) {
+          places.line[i + 1] = places.line[i] ?? 0;
+          places.x[i + 1] = (places.x[i] ?? 0) + (places.adv[i] ?? 0);
+        }
+        i += ch.length;
+      }
+    }
+  }
   return places ? { starts, widths, places } : { starts, widths };
 }
 
@@ -311,6 +325,9 @@ export function runRects(
       });
     });
     y += broken.starts.length * lineH;
+    // Right-to-left text is laid out by the bidi algorithm, which this ruler does not run: no rect
+    // beats a misplaced one (follow-up for A7, which owns RTL measurement).
+    if (runs.some((run) => RTL.test(run.text))) return;
     let offset = 0;
     for (const run of runs) {
       const from = offset;
@@ -319,9 +336,10 @@ export function runRects(
       if (!pick(attrs) || !broken.places) continue;
       const byLine = new Map<number, [number, number]>();
       for (let i = from; i < offset; i++) {
-        // Spaces never widen a rect: one at a wrap hangs past the line's end.
+        // Spaces never widen a rect: one at a wrap hangs past the line's end. Nor does the second
+        // unit of a surrogate pair: its first unit carries the character.
         const code = run.text.charCodeAt(i - from);
-        if (code === 10 || code === 32 || code === 9) continue;
+        if (code === 10 || code === 32 || code === 9 || (code >= 0xdc00 && code < 0xe000)) continue;
         const line = broken.places.line[i] ?? 0;
         const x0 = broken.places.x[i] ?? 0;
         const x1 = x0 + (broken.places.adv[i] ?? 0);
@@ -366,6 +384,9 @@ export function runRects(
   }
   return out;
 }
+
+/** Strong right-to-left letters: Hebrew, Arabic, Syriac, Thaana, NKo and their presentation forms. */
+const RTL = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
 
 const safeAlign = (raw: unknown): string | undefined =>
   raw === "left" || raw === "center" || raw === "right" ? raw : undefined;

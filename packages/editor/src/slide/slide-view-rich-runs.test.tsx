@@ -83,6 +83,27 @@ describe("rich runs on the slide", () => {
     expect(root.style.getPropertyValue("--td-quote-style")).toBe("italic");
   });
 
+  test("emoji, ZWJ, combining marks and RTL stay whole inside one highlight span (review of #529)", () => {
+    for (const t of ["Bats 🦇 see", "the 👨‍👩‍👧 family", "cafe\u0301", "שלום עולם"]) {
+      const doc = {
+        type: "doc" as const,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: t, marks: [{ type: "textStyle", attrs: { highlight: 1 } }] },
+            ],
+          },
+        ],
+      };
+      const one = { ...slide, elements: [{ ...claim, doc } as TextElement] } as Slide;
+      const { container } = render(<SlideView slide={one} theme={theme} mode="present" step={1} />);
+      const spans = container.querySelectorAll("[data-hl]");
+      expect(spans).toHaveLength(1);
+      expect(spans[0]?.textContent).toBe(t);
+    }
+  });
+
   test("the myth strike is absent at step 1 and present at step 2 (row 5)", () => {
     expect(at("present", 1).strike?.hasAttribute("data-strike-hidden")).toBe(true);
     expect(at("present", 2).strike?.hasAttribute("data-strike-hidden")).toBe(false);

@@ -44,6 +44,17 @@ const FALLBACK_EM = 1;
  * fallback with real metrics here; every count, line lookup and run rect follows.
  */
 export function charAdvance(code: number, advances: readonly number[] | undefined): number {
+  // A mark that joins its neighbour takes no room: combining marks, ZWJ/ZWNJ, variation
+  // selectors, skin tones and emoji tags, so "é" (e + U+0301) or a ZWJ family is one glyph wide.
+  if (
+    (code >= 0x300 && code < 0x370) ||
+    (code >= 0x200c && code < 0x200e) ||
+    (code >= 0x20d0 && code < 0x2100) ||
+    (code >= 0xfe00 && code < 0xfe10) ||
+    (code >= 0x1f3fb && code < 0x1f400) ||
+    (code >= 0xe0020 && code < 0xe0080)
+  )
+    return 0;
   const adv = advances && code >= 32 && code <= 126 ? advances[code - 32] : undefined;
   return (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000;
 }

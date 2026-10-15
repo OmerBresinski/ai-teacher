@@ -1519,6 +1519,29 @@ describe("rich runs and builds on rows (TEACH-205 part c)", () => {
     expect(at2.over[0]?.h).toBeCloseTo((0.075 * 20) / 72, 4);
   });
 
+  it("emoji, ZWJ sequences and combining marks keep one rect; RTL gets none (review of #529)", () => {
+    const one = (t: string) =>
+      runMarkRects(
+        text(
+          "odd",
+          para(
+            { type: "text", text: "Plain words " },
+            { type: "text", text: t, marks: [{ type: "textStyle", attrs: { highlight: 1 } }] },
+          ),
+        ),
+        theme,
+        20,
+        1,
+      ).under;
+    for (const t of ["Bats 🦇 see", "the 👨‍👩‍👧 family", "wave 👋🏽", "cafe\u0301 naïve"]) {
+      const under = one(t);
+      expect(under).toHaveLength(1);
+      // Past the plain words, never a stray rect at the box's left edge.
+      expect(Number(under[0]?.x)).toBeGreaterThan((60 + 50) / 72);
+    }
+    expect(one("שלום עולם")).toEqual([]);
+  });
+
   it("struck and row-bound steps are build slides", () => {
     expect(maxRevealStep(slide)).toBe(2);
     expect(maxRevealStep({ ...slide, elements: [claim] })).toBe(2);
