@@ -12,7 +12,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import * as reducers from "../../model/reducers";
 import { useHistory, useLesson } from "../document-context";
@@ -26,7 +25,7 @@ import {
   useSessionRead,
 } from "../use-editor-session";
 import type { ChatView } from "./ChatThread";
-import type { BubbleState } from "./EditChatBubble";
+import { type BubbleState, EditChatBubble } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   type Alternative,
@@ -73,14 +72,14 @@ const thread = lazyLoader(
   () => import("./chat-parts"),
   (m) => m.ChatThreadPart,
 );
-const bubbleLoader = lazyLoader(
+const bubbleFace = lazyLoader(
   () => import("./chat-parts"),
-  (m) => m.EditChatBubble,
+  (m) => m.BubbleFace,
 );
 
 /** Starts loading the chat's parts (the pane calls it once it has painted); settles when done. */
 export async function preloadEditChat(): Promise<void> {
-  await Promise.all([thread.preload(), bubbleLoader.preload()]);
+  await Promise.all([thread.preload(), bubbleFace.preload()]);
 }
 
 const WHOLE_LESSON =
@@ -637,25 +636,22 @@ export function EditChatPane({
         />
       </aside>
       {open || bubbleHidden ? null : (
-        <LazyPart
-          loader={bubbleLoader}
-          props={{
-            state: bubble,
-            announcement: unread?.text ?? "",
-            takeFocus: closedHere.current,
-            onOpen: () => onReopen?.(),
-            host: bubbleHost,
-          }}
-          fallback={<BubbleShell host={bubbleHost} onOpen={() => onReopen?.()} />}
-          failed={(retry) => (
-            <BubbleShell
-              host={bubbleHost}
-              onOpen={() => {
-                retry();
-                onReopen?.();
-              }}
+        <EditChatBubble
+          state={bubble}
+          announcement={unread?.text ?? ""}
+          takeFocus={closedHere.current}
+          onOpen={() => onReopen?.()}
+          host={bubbleHost}
+          face={
+            <LazyPart
+              loader={bubbleFace}
+              props={{ state: bubble, inHost: Boolean(bubbleHost) }}
+              fallback={<span aria-hidden className={bubbleHost ? "size-[46px]" : "size-[54px]"} />}
+              failed={() => (
+                <span aria-hidden className={bubbleHost ? "size-[46px]" : "size-[54px]"} />
+              )}
             />
-          )}
+          }
         />
       )}
     </>
@@ -699,26 +695,4 @@ export function ChatPaneShell({ onClose, onRetry }: { onClose: () => void; onRet
       </div>
     </div>
   );
-}
-
-/**
- * The bubble before its chunk (with the Slides character) has landed, or when it failed: the same
- * round button in the same place, so the way into the chat is there from first paint. Opening the
- * pane from it shows the pane's shell, which loads (or retries) the thread.
- */
-export function BubbleShell({ host, onOpen }: { host?: HTMLElement | null; onOpen: () => void }) {
-  if (host === null) return null;
-  const node = (
-    <button
-      type="button"
-      data-edit-chat-bubble="idle"
-      aria-label="Open Edit with Dayback"
-      onClick={onOpen}
-      className={cn(
-        "z-40 inline-flex items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
-        host ? "absolute right-4 bottom-2 size-12" : "fixed right-4 bottom-19 size-14",
-      )}
-    />
-  );
-  return host ? createPortal(node, host) : node;
 }

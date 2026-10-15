@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SendArrow } from "./ChatThread";
-import { BubbleShell, ChatPaneShell } from "./EditChatPane";
+import { ChatPaneShell } from "./EditChatPane";
 
 afterEach(cleanup);
 
@@ -26,25 +26,6 @@ describe("the edit chat before its chunk lands (TEACH-104 part d)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close Edit with Dayback" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  test("the bubble shell opens the pane, sits in its host, and waits while the host is null", () => {
-    const onOpen = mock(() => undefined);
-    const { rerender } = render(<BubbleShell host={null} onOpen={onOpen} />);
-    expect(screen.queryByRole("button")).toBeNull();
-    const host = document.createElement("div");
-    document.body.append(host);
-    rerender(<BubbleShell host={host} onOpen={onOpen} />);
-    const inHost = screen.getByRole("button", { name: "Open Edit with Dayback" });
-    expect(host.contains(inHost)).toBe(true);
-    expect(inHost.className).toContain("absolute");
-    fireEvent.click(inHost);
-    expect(onOpen).toHaveBeenCalledTimes(1);
-    rerender(<BubbleShell onOpen={onOpen} />);
-    expect(screen.getByRole("button", { name: "Open Edit with Dayback" }).className).toContain(
-      "fixed",
-    );
-    host.remove();
   });
 
   test("the inline send arrow keeps lucide's arrow-up drawing", () => {
