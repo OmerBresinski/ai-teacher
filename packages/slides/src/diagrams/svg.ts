@@ -6,6 +6,7 @@
 import type { Theme } from "@tj/domain/documents";
 import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
+import { arrowLine } from "../paths/arrow";
 import { type KeyStage, keyStageOf, typeScale } from "../themes";
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
@@ -333,7 +334,11 @@ export function arrowHead(
   return `<polygon points="${n(tx)},${n(ty)} ${p(size, size * 0.6)} ${p(size * 0.85, 0)} ${p(size, -size * 0.6)}" fill="${fill}"/>`;
 }
 
-/** A straight arrow from (x1, y1) to (x2, y2). */
+/**
+ * A straight arrow from (x1, y1) to its tip (x2, y2), drawn by the arrow primitive: the shaft ends
+ * at the tip, under an open chevron that shares its stroke (TEACH-75 part x). `_head` is kept for
+ * old callers and ignored: the head is sized from the stroke.
+ */
 export function arrow(
   x1: number,
   y1: number,
@@ -343,11 +348,7 @@ export function arrow(
   width: number = STROKE.line,
   _head = 0,
 ) {
-  const head = headFor(width);
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  const ex = x2 - Math.cos(a) * head * 0.8;
-  const ey = y2 - Math.sin(a) * head * 0.8;
-  return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(ex)}" y2="${n(ey)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>${arrowHead(x2, y2, x1, y1, head, color, width)}`;
+  return arrowLine([x1, y1], [x2, y2], { ink: color, sw: width }).svg;
 }
 
 /** A horizontal curly brace from x1 to x2 whose ends sit at `y` and whose point is `d` above (d < 0: below). */

@@ -5,6 +5,7 @@
 import { niceTicks } from "./axis.js";
 import { GRID } from "./layout.js";
 import { noteCut } from "./pictures.js";
+import { arrowHead, endDashOffset, pathLength } from "@tj/slides/arrow";
 import { clamp, fmtInt, h, lines, measure, overlaps, rng, T, W, wrap } from "./svg.js";
 
 export { niceTicks };
@@ -135,27 +136,68 @@ export function headD(x, y, ang, s) {
     " Z"
   );
 }
-/** Arrow along path d ending at (ex,ey) heading ang. opts: draw (build index to draw on), delay, dash, k (head scale), g (group attrs). */
+/** A stroke width (a number, a token var, or calc(var + Npx)) as px, so the head can be sized from it. */
+function strokePx(ctx, w) {
+  if (typeof w === "number") return w;
+  const s = String(w);
+  const v = s.match(/var\((--[\w-]+)\)/);
+  let px = v ? (ctx.tok ? ctx.tok(v[1]) : NaN) : parseFloat(s);
+  const plus = s.match(/[+-]\s*([\d.]+)px\s*\)?\s*$/);
+  if (v && plus) px += (s.includes("- " + plus[1]) ? -1 : 1) * parseFloat(plus[1]);
+  return Number.isFinite(px) && px > 0 ? px : 5;
+}
+/**
+ * Arrow along path d ending at (ex,ey) heading ang, drawn by the arrow primitive (@tj/slides/arrow,
+ * TEACH-75 part x): the shaft runs on to the tip, which sits where the old filled head's tip sat
+ * (`reach` past (ex,ey), default 0.72 x the head size), under an open chevron sharing its stroke. A
+ * dashed or dotted shaft is phased so its last dash or dot ends under the head.
+ * opts: draw (build index to draw on), delay, dash, k (head scale), reach (px from (ex,ey) to the tip),
+ * cls (extra shaft class), g (group attrs).
+ */
 export function arrow(ctx, p, d, ex, ey, ang, col, w, opts = {}) {
   const g = h("g", opts.g || {}, p);
-  const s = ctx.tk.head * (opts.k || 1);
+  const width = w || "var(--sw-arrow)";
+  const sw = strokePx(ctx, width);
+  const reach = opts.reach != null ? opts.reach : ctx.tk.head * (opts.k || 1) * 0.72;
+  const c = Math.cos(ang),
+    sn = Math.sin(ang);
+  const tip = [+(ex + c * reach).toFixed(2), +(ey + sn * reach).toFixed(2)];
+  const shaft = reach > 0.01 ? `${d} L${tip[0]} ${tip[1]}` : d;
   const a = {
-    d,
+    d: shaft,
     fill: "none",
     stroke: col,
-    "stroke-width": w || "var(--sw-arrow)",
+    "stroke-width": width,
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
+    "data-end": `${tip[0]},${tip[1]}`,
+    cls: [opts.draw != null ? "draw" : null, opts.cls].filter(Boolean).join(" ") || null,
   };
   if (opts.dash) a["stroke-dasharray"] = opts.dash;
-  if (opts.draw != null)
-    Object.assign(a, { cls: "draw", pathLength: 1, s: opts.draw, delay: opts.delay || 0 });
-  h("path", a, g);
+  if (opts.draw != null) Object.assign(a, { pathLength: 1, s: opts.draw, delay: opts.delay || 0 });
+  const el = h("path", a, g);
+  const pair = opts.dash ? String(opts.dash).split(/[\s,]+/).map(Number) : null;
+  if (pair && pair.length === 2 && opts.draw == null) {
+    let len = NaN;
+    try {
+      len = el.getTotalLength();
+    } catch {}
+    if (!Number.isFinite(len) || len <= 0) len = pathLength(shaft);
+    if (len > 0) el.setAttribute("stroke-dashoffset", String(endDashOffset(len, pair[0], pair[1])));
+  }
+  const head = arrowHead(tip, [tip[0] - c, tip[1] - sn], sw);
   h(
     "path",
     {
-      d: headD(ex + Math.cos(ang) * s * 0.72, ey + Math.sin(ang) * s * 0.72, ang, s),
-      fill: col,
+      d: head.d,
+      fill: "none",
+      stroke: col,
+      "stroke-width": width,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      cls: "ahead",
+      "data-tip": `${tip[0]},${tip[1]}`,
+      "data-dir": `${head.dir[0].toFixed(5)},${head.dir[1].toFixed(5)}`,
       s: opts.draw,
       delay: opts.draw != null ? (opts.delay || 0) + 600 : null,
     },

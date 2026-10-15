@@ -4,7 +4,7 @@
 // Ported from the north-star water cycle onto the kit.
 import {
   h, T, bez, overlaps, measure, GRID,
-  textBlock, arrow, wavyD, headD, object, sky,
+  textBlock, arrow, wavyD, object, sky,
   editable, computed, txt, TEXT_PARAM_FOR, TITLE_PARAM, schemaCheck, withDefaults, result,
 } from '../kit/index.js';
 import { cloud } from '../kit/batch-F.js';
@@ -129,7 +129,7 @@ export function notes(P) {
 
 /* ------------------------------------------------------------------ scene geometry */
 // Vapour from the sea: cubic paths [start, c1, c2, end], ending at the cloud's right side.
-const VAPOUR = [[[860, 536], [860, 420], [790, 304], [694, 268]], [[940, 540], [940, 400], [850, 282], [702, 242]], [[1020, 544], [1020, 380], [920, 252], [708, 214]]];
+const VAPOUR = [[[860, 536], [860, 420], [790, 304], [694, 268]], [[940, 540], [940, 400], [850, 282], [714, 245]], [[1020, 544], [1020, 380], [920, 252], [708, 214]]];
 const LAND = {
   hills: {
     trees: [[64, 614, .95], [132, 604, 1], [198, 600, .9]],
@@ -280,8 +280,8 @@ export function render(root, P, ctx) {
   const vapour = (paths, id) => {
     const vg = h('g', { s: bi(id), cls: 'rise', c: soft(id) }, g);
     for (const [a0, c1, c2, d] of paths) {
-      h('path', { d: `M${a0} C${c1} ${c2} ${d}`, fill: 'none', stroke: 'var(--vapour)', 'stroke-width': 'calc(var(--sw-arrow) + 2px)', 'stroke-linecap': 'round', 'stroke-dasharray': '0.1 18', cls: 'vflow' }, vg);
-      { const ang = Math.atan2(d[1] - c2[1], d[0] - c2[0]); h('path', { d: headD(d[0] + Math.cos(ang) * 4, d[1] + Math.sin(ang) * 4, ang, ctx.tk.head * .9), fill: 'var(--vapour)' }, vg); }
+      // the arrow primitive: the dotted shaft runs to the tip and ends with a dot under the head (TEACH-75 part x)
+      arrow(ctx, vg, `M${a0} C${c1} ${c2} ${d}`, d[0], d[1], Math.atan2(d[1] - c2[1], d[0] - c2[0]), 'var(--vapour)', 'var(--sw-arrow)', { dash: '0.1 16', cls: 'vflow', reach: 4 });
       obstacles.push(...pathBoxes([a0, c1, c2, d]));
     }
   };

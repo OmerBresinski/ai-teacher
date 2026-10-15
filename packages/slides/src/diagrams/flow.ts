@@ -2,6 +2,7 @@
  * Flows: a chain of steps laid out in rows that snake (left to right, then right to left, so every
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
+import { arrowLine, arrowQuad } from "../paths/arrow";
 import type { KeyStage } from "../themes";
 import { part } from "./builds";
 import { finishOf } from "./finish";
@@ -50,7 +51,8 @@ const CYCLE_ARROW_W = 3;
 
 /**
  * A cycle arrow from (x1, y1) to its tip (x2, y2): a quadratic through `via` (the ring's bow) or a
- * straight line, the shaft stopping `back` short of the tip so the head covers its end.
+ * straight line, drawn by the arrow primitive so the shaft ends under the head (TEACH-75 part x).
+ * `_back` and `_head` are kept for old callers: the head is sized from the stroke.
  */
 function cycleArrow(
   c: Ctx["c"],
@@ -59,17 +61,11 @@ function cycleArrow(
   x2: number,
   y2: number,
   via: [number, number] | undefined,
-  back: number,
-  head: number,
+  _back: number,
+  _head: number,
 ): string {
-  const [fx, fy] = via ?? [x1, y1];
-  const tl = Math.hypot(x2 - fx, y2 - fy) || 1;
-  const ex = x2 - ((x2 - fx) / tl) * back;
-  const ey = y2 - ((y2 - fy) / tl) * back;
-  const d = via
-    ? `M${n(x1)},${n(y1)} Q${n(fx)},${n(fy)} ${n(ex)},${n(ey)}`
-    : `M${n(x1)},${n(y1)} L${n(ex)},${n(ey)}`;
-  return `<path d="${d}" fill="none" stroke="${c.ink}" stroke-width="${CYCLE_ARROW_W}" stroke-linecap="round"/>${arrowHead(x2, y2, fx, fy, head, c.ink)}`;
+  const s = { ink: c.ink, sw: CYCLE_ARROW_W };
+  return via ? arrowQuad([x1, y1], via, [x2, y2], s).svg : arrowLine([x1, y1], [x2, y2], s).svg;
 }
 
 function box(x: Ctx, b: Box, label: string, fs: number): string {
