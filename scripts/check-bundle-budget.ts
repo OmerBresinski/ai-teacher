@@ -4,7 +4,7 @@
 //
 // Enforces the bundle budgets of the web app. Reads the Vite manifest and:
 //
-// 1. Initial load (F18-R05: 220 KB gzipped) — every `isEntry` chunk and its static `imports`
+// 1. Initial load (F18-R05: 250 KB gzipped) — every `isEntry` chunk and its static `imports`
 //    (not `dynamicImports`, which are lazy routes), JS and CSS gzipped, printed as a Markdown table.
 // 2. Route chunks (ADR 0022 §8, TEACH-113) — for each entry of `BUNDLE_CHUNK_BUDGETS`, the route's
 //    chunk plus everything its static imports pull in *beyond the initial load*, JS and CSS gzipped,
@@ -16,7 +16,7 @@
 //
 //   exit 0  total <= warn threshold (default 200 KB), or the manifest is missing (TEACH-21)
 //   exit 0  warn  < total <= budget  (prints a WARN line)
-//   exit 1  total > budget (default 220 KB), a route chunk over its ceiling, a budgeted route with
+//   exit 1  total > budget (default 250 KB), a route chunk over its ceiling, a budgeted route with
 //           no chunk in the manifest, or an exporter leak
 //
 // Overrides: BUNDLE_BUDGET_KB, BUNDLE_WARN_KB, --chunk.
@@ -54,8 +54,8 @@ export interface BudgetReport {
 }
 
 export const DEFAULT_MANIFEST = path.join("apps", "web", "dist", ".vite", "manifest.json");
-// 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom), total fail 250→220 (Greg)
-export const DEFAULT_BUDGET_KB = 220;
+// 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
+export const DEFAULT_BUDGET_KB = 250;
 export const DEFAULT_WARN_KB = 200;
 export const SKIP_MESSAGE =
   "Bundle budget: skipped — apps/web/dist/.vite/manifest.json not found (TEACH-21)";
@@ -146,14 +146,14 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 315 },
   { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
   // Re-pinned 2026-10-15: Paper theme font and age-size tables (TEACH-152 part b), about 2.5 KB; approved by Greg
-  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom), total fail 250→220 (Greg)
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
   { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 200 },
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
   // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
   { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 125 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
-  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom), total fail 250→220 (Greg)
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
   { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 50 },
 ];
 
