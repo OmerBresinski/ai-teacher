@@ -33,6 +33,7 @@ import {
   type Stage,
   type TemplateInput,
 } from "./index";
+import CAPACITY from "./question-set-capacity.json" with { type: "json" };
 
 const SLIDE_W = 960;
 const SLIDE_H = 540;
@@ -73,11 +74,13 @@ const stageOf = (c: Ctx): Stage => (c.t as { keyStage?: Stage }).keyStage ?? "ks
 /** `{a/b}` is set inline as "a/b" in this batch (the stacked fraction is Tech debt). */
 export const inlineFractions = (s: string): string => s.replace(/\{(\d+)\/(\d+)\}/g, "$1/$2");
 
-/** Whether a question-set input draws as the quick check: every question has its answer. */
+/** Whether a question-set input draws as the quick check: its questions carry answers. */
 export function isQuickCheck(input: TemplateInput): boolean {
   const qs = (input.questions ?? []).filter((q) => q.trim());
   const as = input.answers ?? [];
-  return !input.figure && qs.length >= 1 && qs.every((_, i) => !!as[i]?.trim());
+  // A set the writer is still streaming may have answers for its first questions only: it lays
+  // out as the quick check from its first answer, so nothing changes shape when the rest arrive.
+  return !input.figure && qs.length >= 1 && as.some((a) => !!a?.trim());
 }
 
 type Fit = {
@@ -109,7 +112,9 @@ function paint(
 export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const stage = stageOf(c);
   const qs = (input.questions ?? []).map((q) => inlineFractions(q.trim()));
-  const as = (input.answers ?? []).map((a) => inlineFractions(a.trim()));
+  const as = (input.questions ?? []).map((_, i) =>
+    inlineFractions((input.answers?.[i] ?? "").trim()),
+  );
   const n = qs.length;
   const head = kit.heading(c, input.heading);
   const headBottom = head.y + head.h;
@@ -179,6 +184,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   c.s = { ...s, body: fit.size, lead: fit.size };
   let y = stageTop + gap;
   const fields: FieldReport[] = [];
+  const caps = quickCaps(stage, n);
   qs.forEach((q, i) => {
     const h = fit.rowH[i] as number;
     const mid = y + h / 2;
@@ -195,33 +201,35 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     // The "?" chip, then (step i+1) a field-coloured cover over it and the answer.
     const cy = Math.round(mid - fit.chip / 2);
     roleDisc(c, "chip", "?", ax, mid, fit.chip, QUICK_NAMES.wait);
-    const from = c.els.length;
-    const cover = paint(
-      c,
-      "field-b",
-      {
-        x: ax - 2,
-        y: cy - 2,
-        w: fit.chip + 4,
-        h: fit.chip + 4,
-      },
-      [0, 0, 0, 0],
-    );
-    if (cover) cover.name = QUICK_NAMES.cover;
-    const ah = fit.aH[i] as number;
-    kit.text(
-      c,
-      as[i] as string,
-      "lead",
-      { x: ax, y: mid - ah / 2, w: aw },
-      { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer },
-    );
-    for (const e of c.els.slice(from)) {
-      e.revealStep = i + 1;
-      e.reveal = "rise";
+    if (as[i]) {
+      const from = c.els.length;
+      const cover = paint(
+        c,
+        "field-b",
+        {
+          x: ax - 2,
+          y: cy - 2,
+          w: fit.chip + 4,
+          h: fit.chip + 4,
+        },
+        [0, 0, 0, 0],
+      );
+      if (cover) cover.name = QUICK_NAMES.cover;
+      const ah = fit.aH[i] as number;
+      kit.text(
+        c,
+        as[i] as string,
+        "lead",
+        { x: ax, y: mid - ah / 2, w: aw },
+        { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer },
+      );
+      for (const e of c.els.slice(from)) {
+        e.revealStep = i + 1;
+        e.reveal = "rise";
+      }
     }
-    fields.push(report(`questions.${i}`, q.length, qw, fit.size));
-    fields.push(report(`answers.${i}`, (as[i] as string).length, aw, fit.size));
+    fields.push(report(`questions.${i}`, q.length, caps.questions));
+    fields.push(report(`answers.${i}`, (as[i] ?? "").length, caps.answers));
     y += h + gap;
   });
   c.s = s;
@@ -250,18 +258,26 @@ function roleDisc(
   if (st.ink && el.textStyle) el.textStyle = { ...el.textStyle, color: st.ink };
 }
 
-/** A field's length against a rough per-line cap (the live counters; the caps table is measured). */
-function report(path: string, chars: number, w: number, size: number): FieldReport {
-  const perLine = Math.max(1, Math.floor(w / (size * 0.5)));
-  const cap = perLine;
-  const hardMax = 2 * perLine;
+type Cap = { cap: number; hardMax: number };
+/** The measured limits for a stage and count (`question-set-capacity.json`), nearest count. */
+export function quickCaps(stage: Stage, n: number): { questions: Cap; answers: Cap } {
+  const age = stage === "ks1" ? "early" : stage === "ks2" ? "primary" : "secondary";
+  const t =
+    (CAPACITY as Record<string, Record<string, { questions: Cap; answers: Cap }>>)[age] ?? {};
+  const counts = Object.keys(t).map(Number);
+  const k = Math.min(Math.max(n, Math.min(...counts)), Math.max(...counts));
+  return t[String(k)] as { questions: Cap; answers: Cap };
+}
+
+/** A field's length against its measured comfortable cap and hard maximum (the live counters). */
+function report(path: string, chars: number, c: Cap): FieldReport {
   return {
     field: path.split(".")[0] as string,
     path,
     chars,
-    cap,
-    hardMax,
-    tight: chars > cap,
-    over: chars > hardMax,
+    cap: c.cap,
+    hardMax: c.hardMax,
+    tight: chars > c.cap,
+    over: chars > c.hardMax,
   };
 }

@@ -9,7 +9,9 @@ import {
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { inlineFractions, QUICK_NAMES, quickCheckMax } from "./question-set";
+import { inlineFractions, QUICK_NAMES, quickCaps, quickCheckMax } from "./question-set";
+import { measureQuickCaps } from "./question-set-capacity";
+import CAPACITY from "./question-set-capacity.json";
 
 /*
  * TEACH-101 part g: the quick check (gold `northstars-v12/questions-b`, direction C). Cases are the
@@ -210,6 +212,30 @@ describe("quick check (TEACH-101 part g)", () => {
       const r = layoutTemplate({ ...quickInput(y6), template }, paper, "ks2");
       expect(named(r.slide.elements, QUICK_NAMES.answer)).toHaveLength(0);
       expect(hasRevealableAnswer({ id: "s", ...r.slide } as Slide)).toBe(true);
+    }
+  });
+
+  test("the caps table is the renderer's own measure (regenerated cells equal the JSON)", () => {
+    const t = CAPACITY as unknown as Record<string, Record<string, unknown>>;
+    expect(measureQuickCaps("early", 4)).toEqual(t.early?.["4"] as never);
+    expect(measureQuickCaps("primary", 5)).toEqual(t.primary?.["5"] as never);
+    expect(measureQuickCaps("secondary", 5)).toEqual(t.secondary?.["5"] as never);
+  }, 120_000);
+
+  test("every question and answer reports its measured limits (the live counters)", () => {
+    for (const c of Object.values(QUICK_CASES)) {
+      const r = lay(c);
+      const caps = quickCaps(c.stage, c.items.length);
+      const fields = r.fields ?? [];
+      expect(fields.map((f) => f.path)).toEqual(
+        c.items.flatMap((_, i) => [`questions.${i}`, `answers.${i}`]),
+      );
+      for (const f of fields) {
+        expect(f.hardMax).toBe(
+          f.field === "answers" ? caps.answers.hardMax : caps.questions.hardMax,
+        );
+        expect(f.over).toBe(f.chars > f.hardMax);
+      }
     }
   });
 });
