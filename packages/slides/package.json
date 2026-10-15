@@ -25,6 +25,7 @@
     "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",
     "./templates/hook-capacity.json": "./src/templates/hook-capacity.json",
     "./templates/panel-list-capacity.json": "./src/templates/panel-list-capacity.json",
+    "./templates/split-compare-capacity.json": "./src/templates/split-compare-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts"

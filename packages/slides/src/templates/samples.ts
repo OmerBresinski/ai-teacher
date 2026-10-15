@@ -147,5 +147,14 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
       ],
       panel: { picture: ph("a hen with her chicks") },
     },
+    {
+      template: "split-compare",
+      heading: "Hen and chick",
+      accentWord: "chick",
+      sides: [
+        { title: "Hen", text: "A hen is big.", picture: ph("a hen") },
+        { title: "Chick", text: "A chick is small.", picture: ph("a chick") },
+      ],
+    },
   ];
 }

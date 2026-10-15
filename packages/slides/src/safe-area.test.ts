@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { SAFE } from "./grid";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
+import { layoutTemplate, type Stage } from "./templates";
+import { SPLIT_NAMES, splitGroupOf } from "./templates/split-compare";
+import { splitSides } from "./templates/split-compare-capacity";
 import { THEMES } from "./themes";
 
 const meta = { promptVersion: "test", model: "test", at: "2026-09-30T00:00:00.000Z" };
@@ -25,5 +29,37 @@ describe("safe area", () => {
       for (const c of cards)
         expect(c.y + c.h, `${t.id} card bottom`).toBeLessThanOrEqual(SAFE_BOTTOM);
     }
+  });
+
+  /** Full-bleed by design (TEACH-75 part w): split-compare's ground and colour fields, as backdrops are in `reflow.ts`. */
+  const FULL_BLEED = new Set<string>([SPLIT_NAMES.ground, SPLIT_NAMES.field]);
+  test("split-compare: only its named full-bleed ground and fields leave the safe area, on every theme", () => {
+    for (const t of THEMES)
+      for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
+        for (const n of [2, 3] as const)
+          for (const zone of ["picture", "quote", "text"] as const) {
+            const r = layoutTemplate(
+              {
+                template: "split-compare",
+                heading: "Two kinds",
+                // Each stage at its own caps: KS2-length words are over at KS1, whose type is larger.
+                sides: splitSides(splitGroupOf(stage), n, zone),
+              },
+              t,
+              stage,
+            );
+            const outside = r.slide.elements.filter(
+              (e) =>
+                e.x < SAFE.x ||
+                e.y < SAFE.y ||
+                e.x + e.w > SAFE.x + SAFE.w ||
+                e.y + e.h > SAFE_BOTTOM,
+            );
+            expect(outside.length).toBeGreaterThan(0);
+            for (const e of outside)
+              expect(FULL_BLEED.has(e.name ?? ""), `${t.id} ${stage} ${n} ${zone} ${e.name}`).toBe(
+                true,
+              );
+          }
   });
 });

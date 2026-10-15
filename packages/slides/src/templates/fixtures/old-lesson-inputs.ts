@@ -15,8 +15,8 @@ const flow = {
   },
 };
 const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
-/** Templates added after the snapshot: an old lesson cannot hold them. */
-const NEWER = new Set<string>(["panel-list"]);
+/** Templates added since the snapshot: an old lesson cannot hold them, so they are not in it. */
+const NEWER = new Set<string>(["panel-list", "split-compare"]);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
   ...templateSamples().filter((s) => !NEWER.has(s.template)),
   {

@@ -36,9 +36,10 @@ import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual };
+export type { ActivityCard, ActivityId, GridCard, PanelRow, PanelVisual, SplitSide };
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -146,6 +147,8 @@ export type TemplateId =
   | "banner-text"
   | "hook"
   | "panel-list"
+  | "split-compare"
+  | "side-by-side"
   | ActivityId;
 
 export type TemplateInput = {
@@ -199,6 +202,15 @@ export type TemplateInput = {
   targets?: { x: number; y: number; text: string }[];
   /** Label: words in the bank that no pointer wants. */
   extra?: string[];
+  /**
+   * Split compare (TEACH-75 part w): 2-3 sides in edge-to-edge colour fields, each a title and a
+   * sentence or two, with all-or-none zones (a matched picture pair, a quote each, or words only).
+   */
+  sides?: SplitSide[];
+  /** Split compare: the seam marker's word ("vs" when absent). */
+  marker?: string | null;
+  /** An exact substring of the heading shown in the accent (ignored when it is not one). */
+  accentWord?: string | null;
 };
 
 /**
@@ -238,6 +250,9 @@ export type TemplateResult = {
   /** One entry per field with its length and measured limits: the live "62/80" counters. */
   fields?: FieldReport[];
 };
+
+/** split-compare's name for a FieldReport. */
+export type FieldCount = FieldReport;
 
 /** A field's length against its measured comfortable cap and hard maximum (ruling 215). */
 export type FieldReport = {
@@ -280,6 +295,8 @@ export type Ctx = {
   panelNoVisual?: "narrow" | "icon";
   /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
   panelIconBack?: "ring" | "none" | "soft";
+  /** `LayoutOptions.setTint` (TEACH-75 part w). */
+  setTint?: "accent" | "neutral";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
@@ -1244,6 +1261,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   "panel-list": "content",
   "banner-text": "image-text",
   hook: "image-text",
+  "split-compare": "content",
+  "side-by-side": "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -1561,6 +1580,8 @@ export type LayoutOptions = {
   panelNoVisual?: "narrow" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
   panelIconBack?: "ring" | "none" | "soft";
+  /** Side by side: the cards in the theme's soft neutral, its sand (the default), or the accent's soft tint. */
+  setTint?: "accent" | "neutral";
 };
 
 /**
@@ -1669,6 +1690,7 @@ function layoutOnce(
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
     ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
     ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
+    ...(opts.setTint ? { setTint: opts.setTint } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -2321,6 +2343,12 @@ function layoutOnce(
       break;
     case "hook":
       layoutHook(c, input);
+      break;
+    case "split-compare":
+      layoutSplitCompare(c, input);
+      break;
+    case "side-by-side":
+      layoutSideBySide(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);
