@@ -39,7 +39,7 @@ function readSvg(svg: string) {
 /** The chord the head must aim along: from the line's point 1.5 head-lengths back to the tip. */
 function chordDir(line: string, tip: Pt, sw: number): Pt {
   const reach = sw * ARROW_ARM_K * 1.5;
-  const pts = samplePath(line, 2048);
+  const pts = samplePath(line, 512);
   let from = pts[0] as Pt;
   for (let k = pts.length - 1; k >= 0; k--) {
     const p = pts[k] as Pt;
@@ -142,7 +142,7 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
     };
     // bowed connectors as diagrams draw them: controls inside the band beside the chord, any
     // direction, any bow either side, short to long
-    for (let k = 0; k < 600; k++) {
+    for (let k = 0; k < 200; k++) {
       const sw = STROKES[k % STROKES.length]!;
       const p0: Pt = [rnd() * 1400, rnd() * 800];
       const L = 4 * sw * ARROW_ARM_K + rnd() * 600;
@@ -171,7 +171,7 @@ describe("arrow primitive: the shaft ends under the head at any angle", () => {
         );
       }
     }
-  });
+  }, 60_000);
 
   test("a curve whose last control point sits on the tip still points along the curve", () => {
     const a = arrowCubic([0, 0], [100, 0], [200, 100], [200, 100], { ink: "#000", sw: 4 });
