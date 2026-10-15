@@ -17,7 +17,8 @@
  */
 import type { PathElement, ShapeElement, TextPreset } from "@tj/domain/documents";
 import { uid } from "../factories";
-import { pathSegments, samplePath } from "../path";
+import { pathSegments } from "../path";
+import { samplePath } from "../path-sample";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";

@@ -29,8 +29,9 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
 import { contrastRatio, coverColours } from "../look";
+import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";

@@ -77,7 +77,7 @@ import type {
   TextStyle,
   Theme,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { isLayoutGroup, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
@@ -222,10 +222,14 @@ export function isGeneratedSlide(slide: Pick<Slide, "elements">): boolean {
   return slide.elements.length > 0 && slide.elements.every((el) => el.authoredBy === "ai");
 }
 
-/** Never repositioned by the engine (SPEC: images and locked elements stay put). */
+/**
+ * Never repositioned by the engine (SPEC: images and locked elements stay put). An adaptive layout
+ * group (a `LayoutRef`) is re-laid only by its own template (TEACH-205 part b), never by Tidy.
+ */
 export function isFrozen(el: SlideElement): boolean {
   return (
     !!el.locked ||
+    isLayoutGroup(el) ||
     el.type === "image" ||
     !!el.rotation ||
     isBackdrop(el) ||
