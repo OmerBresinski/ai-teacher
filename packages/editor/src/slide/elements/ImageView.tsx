@@ -81,6 +81,9 @@ function useBuiltSrc(element: ImageElement, build: number | undefined, answer: b
   }, [element.src, element.builds, build, answer, reduced, back]);
 }
 
+/** An svg data URI: a drawing with a transparent ground, such as a library icon. */
+export const isDrawing = (src: string | undefined) => !!src?.startsWith("data:image/svg+xml");
+
 function Picture({
   element,
   theme,
@@ -149,7 +152,9 @@ function Picture({
         height: "100%",
         overflow: "hidden",
         borderRadius: radius || undefined,
-        background: theme.colors.surface,
+        // A photo waits on the slide's surface; a drawing (a library icon, an svg data URI) keeps
+        // its own transparency, so it never sits in a white box on a coloured ground (TEACH-310 b).
+        background: isDrawing(src) ? undefined : theme.colors.surface,
       }}
     >
       <div style={{ position: "absolute", ...style.wrapper }}>

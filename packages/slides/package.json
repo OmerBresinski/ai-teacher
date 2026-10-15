@@ -24,7 +24,8 @@
     "./templates/cards-grid-capacity.json": "./src/templates/cards-grid-capacity.json",
     "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",
     "./templates/hook-capacity.json": "./src/templates/hook-capacity.json",
-    "./diagram-builds": "./src/diagrams/builds.ts"
+    "./diagram-builds": "./src/diagrams/builds.ts",
+    "./icons": "./src/icons/index.ts"
   },
   "scripts": {
     "lint": "biome check .",
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@tj/config": "workspace:*",
     "@types/bun": "1.4.2",
+    "fast-xml-parser": "5.11.1",
     "typescript": "5.9.3"
   },
   "dependencies": {

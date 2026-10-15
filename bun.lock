@@ -333,6 +333,7 @@
       "devDependencies": {
         "@tj/config": "workspace:*",
         "@types/bun": "1.4.2",
+        "fast-xml-parser": "5.11.1",
         "typescript": "5.9.3",
       },
     },

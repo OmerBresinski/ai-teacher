@@ -10,6 +10,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
+import { iconImageSrc } from "@tj/slides/icons";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -558,6 +559,45 @@ describe("exportLessonPptx", () => {
     const failed = await media(async () => undefined);
     expect(failed.files.some((f) => f.endsWith(".svg"))).toBe(false);
     expect(failed.warnings).toEqual(["A diagram could not be drawn as a picture: A square"]);
+  }, 30_000);
+
+  it("exports a library icon carried as an SVG image as a PNG in literal colours (TEACH-310 part b)", async () => {
+    const [water] = demoLibrary();
+    const first = water?.slides[0];
+    if (!water || !first) throw new Error("fixture");
+    const icon = {
+      id: "ic1",
+      type: "image",
+      name: "Item icon",
+      x: 100,
+      y: 100,
+      w: 120,
+      h: 120,
+      src: iconImageSrc("canopic-jar", { age: "early", px: 480 }),
+      alt: "",
+      fit: "contain",
+    } as SlideElement;
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [icon] }] };
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const asked: string[] = [];
+    const warnings: string[] = [];
+    const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+      rasteriseSvg: async (src) => {
+        asked.push(decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+      onWarning: (m) => warnings.push(m),
+    });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('viewBox="0 0 240 240"');
+    expect(asked[0]).not.toContain("var(");
+    expect(asked[0]).toMatch(/(fill:|stop-color=")#[0-9a-f]{6}/);
+    expect(warnings).toEqual([]);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"));
+    expect(media.some((f) => f.endsWith(".png"))).toBe(true);
+    expect(media.some((f) => f.endsWith(".svg"))).toBe(false);
   }, 30_000);
 
   it("exports an image-match slide without throwing", async () => {
