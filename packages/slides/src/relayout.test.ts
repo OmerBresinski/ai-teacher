@@ -136,9 +136,10 @@ describe("fields (ruling 215)", () => {
   });
 
   test("a template layoutTemplate does not lay out yet is refused, not drawn", () => {
-    expect(() => relayout({ template: "items-row", input: {} }, theme, "ks3")).toThrow(
-      NotAdaptiveError,
-    );
+    // Every adaptive id is live on master now, so the fixture is a stored ref to a template this
+    // build does not have (a lesson saved by a newer build).
+    const future = { template: "not-a-layout-yet" as LayoutRef["template"], input: {} };
+    expect(() => relayout(future, theme, "ks3")).toThrow(NotAdaptiveError);
   });
 });
 

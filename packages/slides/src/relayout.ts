@@ -21,6 +21,7 @@ import type {
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
+import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 import { resolveTextStyle } from "./text-style";
@@ -55,6 +56,18 @@ export type AdaptiveSpec = {
   iconFor?: (name: string) => string | null | undefined;
 };
 
+/** items-row: the heading, the lead, and each item's name and line (a line follows its name). */
+function itemsRowPaths(els: SlideElement[]): (string | undefined)[] {
+  let item = -1;
+  return els.map((el) => {
+    if (el.name === "Heading") return "heading";
+    if (el.name === ROW_NAMES.lead) return "lead";
+    if (el.name === ROW_NAMES.name) return `items.${++item}.name`;
+    if (el.name === ROW_NAMES.text) return item < 0 ? undefined : `items.${item}.text`;
+    return undefined;
+  });
+}
+
 /**
  * The adaptive templates. The three pilot layouts are listed so they plug in when their recipes
  * land in `layoutTemplate` (until then `relayout` refuses them: the template is not live).
@@ -70,12 +83,14 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
   },
   "items-row": {
     items: "items",
-    min: 2,
-    max: (stage) => (stage === "ks1" ? 4 : 6),
-    blank: () => ({ title: "New item", text: "Add a sentence here.", icon: "placeholder" }),
-    placeholderIcon: "placeholder",
+    min: ROW_MIN,
+    // The row's own range (four at every age): five or six items never fit, so add stops at four.
+    max: (stage) => ROW_MAX[ageProfileOf(stage)],
+    blank: blankRowItem,
+    placeholderIcon: PLACEHOLDER_ICON,
     continuation: true,
     noun: "items",
+    paths: itemsRowPaths,
   },
   "panel-list": {
     items: "rows",
