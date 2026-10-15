@@ -14,19 +14,29 @@ export function continueQuickCheck(
   fits: (s: S) => boolean,
 ): { first: S; rest: S[] } | undefined {
   if (slide.template !== "question-set") return undefined;
-  const qs = Array.isArray(slide.questions) ? slide.questions : [];
-  const as = Array.isArray(slide.answers) ? slide.answers : [];
+  // The writer's `items: [{ question, answer }]` split as one list; else questions with answers.
+  const items = Array.isArray(slide.items) ? (slide.items as unknown[]) : undefined;
+  const qs = items ?? (Array.isArray(slide.questions) ? slide.questions : []);
+  const as = items
+    ? items.map((i) => (i as S | null)?.answer)
+    : Array.isArray(slide.answers)
+      ? slide.answers
+      : [];
   if (qs.length < 2 || !as.some((a) => typeof a === "string" && a.trim())) return undefined;
   if (fits(slide)) return undefined;
   for (let k = 2; k <= Math.min(MOST_PARTS, qs.length); k++) {
     const parts: S[] = [];
     let from = 0;
     for (const size of evenParts(qs.length, k)) {
-      parts.push({
-        ...slide,
-        questions: qs.slice(from, from + size),
-        answers: as.slice(from, from + size),
-      });
+      parts.push(
+        items
+          ? { ...slide, items: items.slice(from, from + size) }
+          : {
+              ...slide,
+              questions: qs.slice(from, from + size),
+              answers: as.slice(from, from + size),
+            },
+      );
       from += size;
     }
     if (parts.every(fits)) return { first: parts[0] as S, rest: parts.slice(1) };

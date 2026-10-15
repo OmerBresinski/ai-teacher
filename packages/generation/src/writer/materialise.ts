@@ -101,6 +101,13 @@ export type Materialised = {
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
+/** A quick check's answers, from its items or its answers list (TEACH-101 part g). */
+const quickAnswers = (s: S): string[] =>
+  Array.isArray(s.items)
+    ? s.items.map((i) => str((i as S | null)?.answer))
+    : Array.isArray(s.answers)
+      ? s.answers.map((a) => str(a))
+      : [];
 const strs = (v: unknown) =>
   Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : str((x as S)?.question))) : [];
 /**
@@ -580,10 +587,11 @@ export function toInput(
       return {
         template,
         heading,
-        questions: strs(s.questions),
-        // TEACH-101 part g: a question set that carries one answer per question is the quick check.
-        ...(template === "question-set" && Array.isArray(s.answers) && s.answers.length
-          ? { answers: strs(s.answers) }
+        // TEACH-101 part g: a quick check comes as `items: [{ question, answer }]` (or as
+        // `questions` with `answers`); a set that carries its answers draws as the quick check.
+        questions: strs(Array.isArray(s.items) ? s.items : s.questions),
+        ...(template === "question-set" && quickAnswers(s).length
+          ? { answers: quickAnswers(s) }
           : {}),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
