@@ -3,6 +3,7 @@ import { LEAKS } from "@tj/slides/templates/activities";
 import CAPACITY from "@tj/slides/templates/activity-capacity.json" with { type: "json" };
 import { isHistoricalLesson, type PeriodFields } from "../period";
 import MENU from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
+import { ANSWER_FIRST, answerFirstMenu } from "./contract";
 import type { WriterStage } from "./schema";
 
 /*
@@ -117,7 +118,7 @@ export function activityMenu(stage: WriterStage, menu: string = MENU): string {
     const id = line.match(/^- ([a-z-]+):/)?.[1];
     return !id || isWriterActivity(id);
   };
-  return menu
+  return answerFirstMenu(menu)
     .split("\n")
     .filter(offered)
     .join("\n")
@@ -180,17 +181,16 @@ export function activityDefs(stage: WriterStage): Record<string, J> {
       id === "group-sort"
         ? obj({ ...head, groups: arr(S_(), b.groups?.[0] ?? 2, b.groups?.[1] ?? 2), cards })
         : id === "choose"
-          ? obj({
+          ? // Answer first (ANSWER-BUG.md): the correct card is the first; no counted key.
+            obj({
               ...head,
-              cards,
-              correct: { type: "integer", minimum: 1, maximum: b.cards[1] },
+              cards: { ...cards, description: ANSWER_FIRST.chooseCards },
               explanation: NUL(S_()),
             })
           : id === "odd-one-out"
             ? obj({
                 ...head,
-                cards,
-                correct: { type: "integer", minimum: 1, maximum: b.cards[1] },
+                cards: { ...cards, description: ANSWER_FIRST.oddCards },
                 explanation: S_(),
               })
             : obj({ ...head, cards });
@@ -254,7 +254,8 @@ export function fromWriterActivity(
   const b = bounds(id, stage);
   const groups = Array.isArray(raw.groups) ? raw.groups.map(str).filter(Boolean) : [];
   type Card = { text: string; picture?: string; group?: number; answer: boolean; bad?: boolean };
-  const correct = Number(raw.correct);
+  // The writer's answer is its first card (answer first); an older output's `correct` counts from 1.
+  const correct = raw.correct === undefined ? 1 : Number(raw.correct);
   if (asks && !(Number.isInteger(correct) && correct >= 1 && correct <= raws.length))
     return plain(`correct ${String(raw.correct)} out of range`);
   let cards: Card[] = (Array.isArray(raw.cards) ? (raw.cards as S[]) : []).flatMap(

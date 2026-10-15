@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import { withActivities } from "./activities";
-import { charsOver, fitTable } from "./fixes";
+import { answerFirstMain, charsOver, fitTable } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { materialise, type Plan, type VisualState, visualsOf } from "./materialise";
 import { BANNER_TEXT_DEFAULT, writerSchema } from "./schema";
@@ -45,7 +45,9 @@ describe("the banner-text schema", () => {
 
   test("older outputs still validate with it on (round trip)", () => {
     const k1 = writerSchema("KS1", SLIDES, undefined, { bannerText: true }) as J;
-    expect(validate(withActivities(k1, "KS1"), (fixture as { main: unknown }).main)).toEqual([]);
+    expect(
+      validate(withActivities(k1, "KS1"), answerFirstMain((fixture as { main: unknown }).main)),
+    ).toEqual([]);
   });
 
   test("a banner validates top or bottom; four bullets do not", () => {

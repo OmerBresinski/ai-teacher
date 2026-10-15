@@ -1,7 +1,7 @@
 import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
 import { gridCaps } from "./cards-grid-fits";
-import { freeformLabels, teachesSchema, writerCaps } from "./contract";
+import { ANSWER_FIRST, freeformLabels, teachesSchema, writerCaps } from "./contract";
 import { hookCap } from "./hook-fits";
 
 /*
@@ -403,6 +403,9 @@ export function writerSchema(
     const m = /^dg-(.+)-(side|full)$/.exec(name);
     if (m) defs[name] = writerCaps(def, m[1] as string, stage, m[2] as "side" | "full");
   }
+  // Answer first: the hinge's correct option is its first; no counted key (ANSWER-BUG.md).
+  const hinge = defs.hinge;
+  if (hinge) defs.hinge = answerFirstDef(hinge, "options", ANSWER_FIRST.options);
   const free = defs["diagram-freeform"];
   if (free)
     defs["diagram-freeform"] = {
@@ -419,6 +422,19 @@ export function writerSchema(
     };
   }
   return s;
+}
+
+/**
+ * A single-answer def without its counted `correct`: the answer is the first item of `list`,
+ * which says so in its description (the writer's def only; the repair schema is pinned apart).
+ */
+export function answerFirstDef(def: J, list: string, description: string): J {
+  const { correct: _, ...props } = def.properties as Record<string, J>;
+  return {
+    ...def,
+    required: (def.required as string[]).filter((k) => k !== "correct"),
+    properties: { ...props, [list]: { ...(props[list] as J), description } },
+  };
 }
 
 /** The schema as the pinned file holds it (one-space indent, trailing newline). */

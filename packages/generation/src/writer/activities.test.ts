@@ -20,7 +20,8 @@ import {
 } from "./activities";
 import { writerBundle } from "./bundle";
 import { checkSlide } from "./checks";
-import { type Brief, promptStage } from "./fixes";
+import { ANSWER_FIRST, PINNED_LINES } from "./contract";
+import { answerFirstMain, type Brief, promptStage } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { repairable } from "./guards";
 import {
@@ -112,7 +113,7 @@ describe("schema", () => {
 
   test("the fixture lesson is a valid strict answer to the KS1 schema", () => {
     const s = withActivities(writerSchema("KS1", fixture.brief.slides), "KS1");
-    expect(validate(s, fixture.main)).toEqual([]);
+    expect(validate(s, answerFirstMain(fixture.main))).toEqual([]);
     const tooMany = {
       ...writerActivity("pair"),
       cards: Array(5).fill({ label: "a", picture: "b" }),
@@ -515,24 +516,30 @@ describe("the writer stage on a fake model", () => {
    */
   // Repinned for TEACH-110 part k: the contract lines (contract.ts) and the teaches enum.
   // Schema repinned for TEACH-110 part m: table rows capped at 32, fraction shapes up to 6 (writerCaps).
+  /**
+   * [system, schema] sha256 as master sent them before answer first (ANSWER-BUG.md), then as
+   * sent now. The system text differs only by the hinge line: swapping it back gives master's.
+   */
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
-      "6c2aef8e7bb0b37d3629f418f4da12d9d0953ae3aaab4e2117417514bbae0d4c",
+      "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
+      "c2c4ddf387fb6363071343e83a974514c44a76cb91bac2cc67c0172e797c75c5",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
-      "12f84564cb1219e3a826034d77c76b298a42a0a4576ab944535df3bfda4c40c1",
+      "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
+      "ae02b04e227938f895bd49da46ae4e14af65c632edb4bb2fa86977e5e6a03480",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
-      "32ef0397c356a16045d5a9490d7a999884d1f0a3a4dcd959e18748ba14c38ea6",
+      "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
+      "1f3e9541137608f2abb48fc9d7ac250ad6f624299acb961e6b5c4d89e8656867",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");
-
   test("activities off: the writer is sent master's system text and schema, byte for byte", async () => {
-    for (const [keyStage, [system, schema]] of Object.entries(MASTER)) {
+    for (const [keyStage, [before, system, schema]] of Object.entries(MASTER)) {
       const seen: { writer?: WriterReq; chats: ChatReq[] } = { chats: [] };
       const out = await runWriter({
         brief: { ...brief, keyStage, slides: { min: 9, max: 12 } } as Brief,
@@ -542,7 +549,9 @@ describe("the writer stage on a fake model", () => {
         activities: false,
       });
       expect(out.slides.length).toBeGreaterThan(2);
-      expect(sha(seen.writer?.system ?? "")).toBe(system);
+      const sent = seen.writer?.system ?? "";
+      expect(sha(sent)).toBe(system);
+      expect(sha(sent.split(ANSWER_FIRST.hingeKey).join(PINNED_LINES.hingeKey))).toBe(before);
       expect(sha(JSON.stringify(seen.writer?.schema))).toBe(schema);
     }
   });
