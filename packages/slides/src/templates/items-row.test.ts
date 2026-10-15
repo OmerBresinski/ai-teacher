@@ -602,12 +602,19 @@ describe("real writer output", () => {
       expect(named(els, ROW_NAMES.ring)).toHaveLength(0);
       expect(named(els, ROW_NAMES.numeral)).toHaveLength(0);
       expect(els.filter((e) => e.type === "path")).toHaveLength(0);
-      // Re-spaced: the names start just under the heading, level, and nothing is over.
+      // Centred in the body like a medal row: the gap above the names matches the gap under the
+      // lowest line (within the stage's padding), never a group hung at the top over a void.
       const heading = must(els.find((e) => e.name === "Heading"));
       const names = named(els, ROW_NAMES.name);
       expect(names).toHaveLength(4);
       expect(new Set(names.map((e) => e.y)).size).toBe(1);
-      expect(must(names[0]).y - (heading.y + heading.h)).toBeLessThan(80);
+      const top = must(names[0]).y - (heading.y + heading.h);
+      const bottom = Math.max(
+        ...els
+          .filter((e) => e.name === ROW_NAMES.text || e.name === ROW_NAMES.name)
+          .map((e) => e.y + e.h),
+      );
+      expect(Math.abs(top - (540 - bottom))).toBeLessThan(60);
       // Words get the medal's room, so a bare row is never more over than the numbered one.
       const numbered = layoutTemplate(row(VOLC, { ordered: true }), T0, stage);
       for (const f of off.over) expect(numbered.over).toContain(f);

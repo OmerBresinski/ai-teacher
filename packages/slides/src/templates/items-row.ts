@@ -11,7 +11,7 @@
  *   back in `iconMisses`, never silently.
  * - Unordered with no icons there is no medal and no connecting line (writer smoke, 16 Oct: a
  *   medal with nothing on its face read as an empty circle): each item is its name and line, and
- *   the row sits under the heading with the spare space at the foot, as the no-visual stages do.
+ *   the row is centred in the body like a medal row (a group hung at the top leaves a void).
  * - Fit (ruling 215): medals give way to their comfort minimum, then type to the age's comfort
  *   sizes. Past that the slide is `tight`, and medals then type shrink only to the floors. Words
  *   are never cut; a field still over is named in `over`.
@@ -385,8 +385,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
 
   // Place: the rows centred in the stage, each row centred across it.
   const { mm, blocks } = g;
-  // Bare rows sit under the heading; spare space falls at the foot (no-visual stages gold).
-  const rowsTop = stageTop + pad + (bare ? 0 : Math.max(0, (avail - g.rowsH) / 2));
+  const rowsTop = stageTop + pad + Math.max(0, (avail - g.rowsH) / 2);
   let y = rowsTop;
   const rows: { cx: number; cy: number; k: number }[][] = [];
   let k = 0;
