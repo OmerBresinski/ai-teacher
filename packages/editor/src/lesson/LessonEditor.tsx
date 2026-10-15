@@ -12,6 +12,7 @@ import {
 } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import {
+  type ComponentType,
   type ReactNode,
   type Ref,
   useCallback,
@@ -23,6 +24,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
+import { LazyPart, lazyLoader } from "../kit/LazyPart";
 import { SaveFailedBar } from "../kit/SaveFailedBar";
 import { isFitStale } from "../layout/fit-plan";
 import { createMeasurer } from "../layout/measure";
@@ -42,6 +44,7 @@ import {
 import { ActiveEditorProvider } from "../text/active-editor";
 import { Canvas, stepZoom } from "./Canvas";
 import { HistoryProvider, LessonProvider } from "./document-context";
+import { type DraftStore, useDraftLead } from "./draft-store";
 import { EditChatPane, EditChatProvider } from "./edit-chat/EditChatPane";
 import { type EditChatApi, EditChatContext } from "./edit-chat/edit-chat-context";
 import { readPaneOpen, writePaneOpen } from "./edit-chat/thread";
@@ -50,7 +53,7 @@ import { FollowMarkContext } from "./follow-mark";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
-import { type DraftStore, LiveSlide, useDraftLead } from "./live-draft";
+import type { LiveSlideProps } from "./live-draft";
 import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
@@ -658,7 +661,7 @@ export function LessonEditor({
                                         className="contents"
                                         inert={!!slide && !!writingSlideIds?.has(slide.id)}
                                       >
-                                        <LiveSlide
+                                        <LiveCanvas
                                           store={drafts}
                                           slideId={slide?.id}
                                           slide={slide}
@@ -796,4 +799,26 @@ function WritingOverlay() {
       </span>
     </div>
   );
+}
+
+/**
+ * Live writing (ADR 0039): the typing (`LiveSlide`) loads only while a job is generating, so it
+ * stays out of the editor's first chunk. With no draft store the canvas draws the saved slide as
+ * it always did; while the part loads, or if its chunk fails, the saved slide shows (no typing),
+ * and a failed import is retried on the next mount (`lazyLoader` forgets it).
+ */
+/** Set once the part has loaded: from then on it renders directly, never suspending again. */
+let LoadedLiveSlide: ComponentType<LiveSlideProps> | undefined;
+const liveSlide = lazyLoader<LiveSlideProps>(() =>
+  import("./live-draft").then((m) => {
+    LoadedLiveSlide = m.LiveSlide;
+    return m.LiveSlide;
+  }),
+);
+
+function LiveCanvas(props: LiveSlideProps) {
+  if (!props.store) return props.render(props.slide, false);
+  if (LoadedLiveSlide) return <LoadedLiveSlide {...props} />;
+  const plain = props.render(props.slide, false);
+  return <LazyPart loader={liveSlide} props={props} fallback={plain} failed={() => plain} />;
 }

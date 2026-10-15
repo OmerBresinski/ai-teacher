@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
+import type { DraftStore } from "@tj/editor/draft-store";
 import type { LessonEditorHandle } from "@tj/editor/lesson";
-import type { DraftStore } from "@tj/editor/live-draft";
 import { Button } from "@tj/ui";
 import { type RefObject, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { useFeedDrafts, useJobEvents } from "@/hooks/use-job-events";

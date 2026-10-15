@@ -1,6 +1,6 @@
 import type { Id } from "@tj/domain/documents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isPlannedBlank } from "./live-draft";
+import { isPlannedBlank } from "./draft-store";
 
 /**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the

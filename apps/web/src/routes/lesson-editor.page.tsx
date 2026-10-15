@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
+import { type DraftStore, draftStoreFor } from "@tj/editor/draft-store";
 import { ExportControl } from "@tj/editor/export";
 import {
   displayInTheme,
@@ -9,7 +10,6 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
-import { type DraftStore, draftStoreFor } from "@tj/editor/live-draft";
 import { Button, IconButton, toast } from "@tj/ui";
 import { ArrowLeft, Download, FileText, LockKeyhole } from "lucide-react";
 import {
