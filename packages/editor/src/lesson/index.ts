@@ -2,16 +2,9 @@
 
 export { AUTOSAVE_MS, SaveRefusedError, type SaveState } from "../model/use-autosave";
 export { clearShift, GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
+export { createDraftStore, type DraftStore, type LiveDraft, wordCount } from "./draft-store";
 export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
 export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
-export {
-  createDraftStore,
-  type DraftStore,
-  type LiveDraft,
-  LiveSlide,
-  revealSlide,
-  wordCount,
-} from "./live-draft";
 export { MobileSlideList } from "./MobileSlideList";
 export {
   FILMSTRIP_HEIGHT,

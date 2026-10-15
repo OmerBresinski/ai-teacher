@@ -6,7 +6,7 @@ import {
   JobEventSchema,
   type SlideDraftPayload,
 } from "@tj/domain/jobs";
-import type { DraftStore } from "@tj/editor/live-draft";
+import type { DraftStore } from "@tj/editor/draft-store";
 import { useEffect, useReducer } from "react";
 import { env } from "@/env";
 import { sessionBoundary, sessionSignal } from "@/lib/session-boundary";
