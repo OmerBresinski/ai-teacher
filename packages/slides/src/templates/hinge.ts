@@ -109,10 +109,29 @@ function AGES(): Record<Age, AgeSpec> {
 
 /** "2/5" set as a stacked fraction. */
 const FRACTION = /^\s*(\d+)\s*\/\s*(\d+)\s*$/;
-/** Maths options: digits and operators only. */
-const mathy = (s: string) => /^[\d\s.+\-−×÷=()/a-z]+$/i.test(s) && /\d/.test(s);
+/**
+ * Maths options: digits, operators and one-letter variables only ("3x - 2", "-5"). A word of two
+ * letters or more ("12-year-old") is prose, and its hyphens stay hyphens.
+ */
+const mathy = (s: string) =>
+  /^[\d\s.+\-−×÷=()/a-z]+$/i.test(s) && /\d/.test(s) && !/[a-z]{2,}/i.test(s);
 /** A true minus in a maths option (never a hyphen). */
 export const optionText = (s: string): string => (mathy(s) ? s.replace(/-/g, "−") : s);
+
+/**
+ * The options the slide shows, at most `HINGE_MAX`, and the right one's place among them. Past the
+ * cap the last options are dropped (the slide is flagged), but never the right answer: when it is
+ * one of the dropped, the last wrong option kept goes instead, so the question is never lost.
+ */
+export function keptHinge(input: TemplateInput): { choices: HingeChoice[]; correct: number } {
+  const all = hingeChoices(input);
+  const right = Number(input.correct);
+  const r = Number.isInteger(right) && right >= 1 && right <= all.length ? right - 1 : -1;
+  const keep = all.map((_, k) => k);
+  for (let k = keep.length - 1; keep.length > HINGE_MAX && k >= 0; k--)
+    if (k !== r) keep.splice(k, 1);
+  return { choices: keep.map((k) => all[k] as HingeChoice), correct: keep.indexOf(r) + 1 };
+}
 
 /** The options as choices: `choices` when given, else the plain `options`. */
 export function hingeChoices(input: TemplateInput): HingeChoice[] {
@@ -322,7 +341,7 @@ function plan(
   input: TemplateInput,
   headBottom = 120,
 ): Plan & { geo: Geo; choices: HingeChoice[] } {
-  const choices = hingeChoices(input).slice(0, HINGE_MAX);
+  const { choices } = keptHinge(input);
   const fig = !!input.figure;
   const g = geometry(c, input, headBottom, choices.length, fig);
   // Master's key-stage scale (ruling 91) sets body and one step under it: the gold's px ceilings
@@ -479,8 +498,9 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
   }
 
   // The answer is question data on the cards, counted from 1 (TEACH-110 part u).
-  const right = Number(input.correct);
-  if (Number.isInteger(right) && right >= 1 && right <= ids.length)
+  // Counted among the options kept (`keptHinge`): a dropped 5th never takes the right answer.
+  const right = keptHinge(input).correct;
+  if (right >= 1 && right <= ids.length)
     c.question = {
       type: "multiple-choice",
       options: ids.map((id, k) => ({ id, correct: k === right - 1 })),
@@ -488,7 +508,7 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
       oneStep: true,
       ...(input.explanation?.trim() ? { explanation: input.explanation.trim() } : {}),
     };
-  const notes = hingeNotes(choices, Number.isInteger(right) ? right : undefined, letters);
+  const notes = hingeNotes(choices, right || undefined, letters);
   if (notes) c.notes = notes;
   c.fields = fieldsOf(choices, age);
   c.tight = p.ok && p.look === "rows" && (p.gap < GAP || p.size < comfortOf(AGES()[age]));

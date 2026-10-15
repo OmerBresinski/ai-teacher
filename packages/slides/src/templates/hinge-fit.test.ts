@@ -60,8 +60,16 @@ describe("hinge caps by card", () => {
                 (e as { style?: { fontSize?: number } }).style?.fontSize ?? 0,
               ).toBeGreaterThanOrEqual(20);
           }
-          expect(hingeCardLines).toBeFunction();
         }
+        // The writer table's measure (`hingeCardLines`) reads a one-word card as one line at full
+        // size; its caps stay frozen at master's values until E1 (see the PR body).
+        expect(
+          hingeCardLines(
+            g as never,
+            options.map(() => "Yes"),
+            "Which?",
+          ),
+        ).toBe(1);
       });
   }
 });

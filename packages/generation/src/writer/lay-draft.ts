@@ -140,11 +140,12 @@ export function layDraft(
  * The hinge's title is its question: the stem when there is one, else the heading (TEACH-256
  * part b). The writer streams `heading` before `stem`, so a draft laid from the heading alone
  * would type the heading in and then swap it for the stem under a new id. No hinge draft is laid
- * until the stem's first word arrives, or the options start after an empty stem (the heading is the question).
+ * until the stem's first word arrives, or the options start with no stem (empty or never written):
+ * the heading is then the question.
  */
-function holdHingeTitle(fields: S): boolean {
-  if (!("stem" in fields)) return true;
-  return String(fields.stem ?? "").trim() === "" && !("options" in fields);
+export function holdHingeTitle(fields: S): boolean {
+  if ("options" in fields) return false;
+  return String(fields.stem ?? "").trim() === "";
 }
 
 /** Layouts with one visual of their own, by the field it streams in. */

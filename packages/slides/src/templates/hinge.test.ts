@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { getTheme, THEMES } from "../themes";
-import { HINGE_CAPS, HINGE_NAMES, hingeLookOf } from "./hinge";
+import { HINGE_CAPS, HINGE_NAMES, keptHinge, optionText } from "./hinge";
 import { hingeCapInput, measureHingeCapacity } from "./hinge-capacity";
 import TABLE from "./hinge-capacity.json" with { type: "json" };
-import { type Ctx, layoutTemplate, type Stage, type TemplateInput } from "./index";
+import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /* TEACH-256 part b: the v13 hinge gold (northstars-v13/hinge/NOTES.md); rulings 136, 161, 230, 241. */
 type El = {
@@ -102,8 +102,6 @@ describe("hinge: the look is chosen by code (ruling 161)", () => {
     expect(new Set(cards.map((c) => c.w)).size).toBe(1);
   });
   test("a figure beside the options rules tiles out", () => {
-    const c = { t: paper } as unknown as Ctx;
-    void c;
     const r = lay(
       {
         choices: [
@@ -116,7 +114,7 @@ describe("hinge: the look is chosen by code (ruling 161)", () => {
       "ks2",
     );
     expect(look(r)).not.toBe("tiles");
-    expect(hingeLookOf).toBeFunction();
+    expect(["grid", "rows"]).toContain(look(r));
   });
 });
 
@@ -226,5 +224,34 @@ describe("hinge: answer, notes, letters, maths", () => {
       }
       expect(els(r)[0]?.name).toBe(HINGE_NAMES.stage);
     }
+  });
+});
+
+describe("hinge option text and the cap", () => {
+  test("a maths option takes a true minus; a hyphen in words stays a hyphen", () => {
+    expect(optionText("3x - 2")).toBe("3x − 2");
+    expect(optionText("-5")).toBe("−5");
+    expect(optionText("12-year-old")).toBe("12-year-old");
+    expect(optionText("a 12-year-old boy")).toBe("a 12-year-old boy");
+  });
+  const five = ["One", "Two", "Three", "Four", "Five"];
+  test("a 5th option is dropped and the slide flagged; the right answer is kept", () => {
+    expect(keptHinge({ options: five, correct: 2 } as TemplateInput)).toEqual({
+      choices: ["One", "Two", "Three", "Four"].map((text) => ({ text })),
+      correct: 2,
+    });
+    const k = keptHinge({ options: five, correct: 5 } as TemplateInput);
+    expect(k.choices.map((o) => o.text)).toEqual(["One", "Two", "Three", "Five"]);
+    expect(k.correct).toBe(4);
+    const r = lay({
+      template: "hinge",
+      heading: "Check",
+      stem: "Which?",
+      options: five,
+      correct: 5,
+    });
+    const q = r.slide.question as { options: { correct: boolean }[] } | undefined;
+    expect(q?.options.map((o) => o.correct)).toEqual([false, false, false, true]);
+    expect(r.over).toContain("hinge options 5/4");
   });
 });

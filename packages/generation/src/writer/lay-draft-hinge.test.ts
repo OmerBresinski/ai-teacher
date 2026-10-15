@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides/themes";
 import { peekPartial } from "./draft";
-import { layDraft, stableIds } from "./lay-draft";
+import { holdHingeTitle, layDraft, stableIds } from "./lay-draft";
 import { materialise } from "./materialise";
 
 /*
@@ -135,4 +135,16 @@ describe("hinge in draft mode", () => {
       expect<string>(looks.at(-1) ?? "none").toBe(look(closed));
     });
   }
+});
+
+describe("holdHingeTitle", () => {
+  test("holds while only the heading is written, or the stem is still empty", () => {
+    expect(holdHingeTitle({ heading: "Check" })).toBe(true);
+    expect(holdHingeTitle({ heading: "Check", stem: "" })).toBe(true);
+  });
+  test("lays once the stem has words, or the options start with no stem", () => {
+    expect(holdHingeTitle({ heading: "Check", stem: "Why" })).toBe(false);
+    expect(holdHingeTitle({ heading: "Which is magnetic?", options: ["Iron"] })).toBe(false);
+    expect(holdHingeTitle({ heading: "Which is magnetic?", stem: "", options: [] })).toBe(false);
+  });
 });
