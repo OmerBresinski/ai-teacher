@@ -208,6 +208,19 @@ export type ImageElement = ElementBase & {
    * box changes shape keeps it in view (TEACH-153).
    */
   focal?: { x: number; y: number };
+  /**
+   * Picture-fit facts (TEACH-25 part b, ruling 217), written when the picture is placed. `subject`:
+   * the box round what the picture shows, as fractions of the picture; found in code only on a
+   * plain backdrop (never by saliency). `backdrop`: which edges are a plain backdrop (an axis whose
+   * two edges are plain may be extended by edge-stretch) and its colour. `kind`: an object on a
+   * backdrop or a scene; a scene is never extended. Absent means unknown: the busy-scene rule.
+   */
+  subject?: { x: number; y: number; w: number; h: number };
+  backdrop?: {
+    plain: { top: boolean; right: boolean; bottom: boolean; left: boolean };
+    colour: string;
+  };
+  kind?: "object" | "scene";
   /** Non-destructive adjustments layered over `src` (TEACH-153); `src` itself is never rewritten. */
   imageTransform?: ImageTransform;
   radius?: number;
@@ -546,6 +559,26 @@ const ImageElementSchema = z.object({
   fit: z.enum(["cover", "contain"]),
   crop: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
   focal: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
+  subject: z
+    .object({
+      x: z.number().min(0).max(1),
+      y: z.number().min(0).max(1),
+      w: z.number().min(0).max(1),
+      h: z.number().min(0).max(1),
+    })
+    .optional(),
+  backdrop: z
+    .object({
+      plain: z.object({
+        top: z.boolean(),
+        right: z.boolean(),
+        bottom: z.boolean(),
+        left: z.boolean(),
+      }),
+      colour: z.string().max(32),
+    })
+    .optional(),
+  kind: z.enum(["object", "scene"]).optional(),
   imageTransform: z
     .object({
       straighten: z.number().min(-45).max(45).optional(),

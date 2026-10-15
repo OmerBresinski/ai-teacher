@@ -50,6 +50,7 @@ export {
   rankCommons,
 } from "./commons";
 export { type CountArray, countArraySvg } from "./count-array";
+export { extendRaster } from "./extend";
 export * from "./panels";
 export {
   type CreatePexelsClientOptions,
@@ -68,6 +69,14 @@ export {
   PEXELS_PER_SECOND,
   type PexelsLimitOptions,
 } from "./pexels-limit";
+export {
+  detectSubjectBox,
+  type EdgePlainness,
+  edgePlainness,
+  type PictureFactsFound,
+  pictureFacts,
+  type SubjectBox,
+} from "./picture-facts";
 export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
