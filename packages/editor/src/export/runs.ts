@@ -24,6 +24,8 @@ export type Run = {
   color?: string;
   /** Link address exactly as authored. PowerPoint gets it as a run hyperlink. */
   href?: string;
+  /** Set in the theme's quote face (`textStyle.font`, TEACH-205 part c). */
+  font?: "quote";
 };
 
 export type RunParagraph = {
@@ -75,6 +77,7 @@ function marksOf(node: RichNode): Omit<Run, "text"> {
       case "textStyle": {
         const color = mark.attrs?.color;
         if (typeof color === "string" && color.trim()) out.color = color.trim();
+        if (mark.attrs?.font === "quote") out.font = "quote";
         break;
       }
       default:
@@ -91,7 +94,8 @@ const sameStyle = (a: Run, b: Omit<Run, "text">): boolean =>
   !!a.strike === !!b.strike &&
   !!a.code === !!b.code &&
   a.color === b.color &&
-  a.href === b.href;
+  a.href === b.href &&
+  a.font === b.font;
 
 /**
  * Flatten a doc to paragraphs of styled runs.

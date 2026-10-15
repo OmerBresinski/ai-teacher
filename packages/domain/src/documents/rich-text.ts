@@ -123,6 +123,11 @@ export const RUN_FONTS = ["quote"] as const;
 export type RunFont = (typeof RUN_FONTS)[number];
 /** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
 export const HIGHLIGHT_SLOTS = 4;
+/**
+ * Each slot's highlight fill until the theme carries its own (`--cat-n-fill`, layout batch A8):
+ * Paper's r5 fills (`theming/slots.css`). The editor (`slide.css`) and the PPTX export read these.
+ */
+export const HIGHLIGHT_FALLBACK_FILLS = ["#F4D0D3", "#ADC0D6", "#F8E3BC", "#A8CFCD"] as const;
 /** The latest reveal step a strike may name (as `ImageElement.buildFrom`). */
 const MAX_STRIKE_STEP = 64;
 

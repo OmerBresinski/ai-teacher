@@ -2,8 +2,11 @@ import {
   type RichDoc,
   type RichNode,
   safeCssColor,
+  safeHighlightSlot,
   safeLinkHref,
   safeLinkRel,
+  safeRunFont,
+  safeStrikeStep,
   safeTextAlign,
 } from "@tj/domain/documents";
 
@@ -15,8 +18,8 @@ import {
  * reads back identically here.
  *
  * Node types: doc, paragraph (textAlign), text, hardBreak, bulletList, orderedList (start),
- * listItem. Marks, in the schema's order (link outermost): link, bold, italic, strike, code,
- * underline, textStyle. Inline marks are serialised the way ProseMirror's `DOMSerializer` does it:
+ * listItem. Marks, in the schema's order (link outermost): link, textStyle, bold, italic, strike,
+ * code, underline. Inline marks are serialised the way ProseMirror's `DOMSerializer` does it:
  * a mark that continues unchanged onto the next inline node stays open, so `<strong>a<br>b</strong>`
  * rather than one wrapper per node. Anything unknown throws so the caller falls back.
  *
@@ -42,11 +45,12 @@ const escapeAttr = (s: string) =>
 type Mark = NonNullable<RichNode["marks"]>[number];
 
 /**
- * Tiptap wraps marks outermost-first in this order — the mark *schema* order, which is the
- * StarterKit's registration order (link, bold, italic, strike, code, …) followed by the extensions
- * `baseExtensions` adds after it (underline, textStyle).
+ * Tiptap wraps marks outermost-first in this order — the mark *schema* order: extensions sorted by
+ * priority (Link 1000, TextStyle 101, the rest 100), then by registration order (StarterKit's bold,
+ * italic, strike, code, then underline). A coloured or highlighted bold run is therefore
+ * `<span …><strong>`, never the other way round (TEACH-205 part c pinned it).
  */
-const MARK_ORDER = ["link", "bold", "italic", "strike", "code", "underline", "textStyle"];
+const MARK_ORDER = ["link", "textStyle", "bold", "italic", "strike", "code", "underline"];
 
 const DEFAULT_REL = "noopener noreferrer";
 
@@ -80,9 +84,17 @@ function markTag(mark: Mark): [open: string, close: string] {
     case "code":
       return ["<code>", "</code>"];
     case "textStyle": {
-      // Tiptap emits the span even with no colour set.
+      // Tiptap emits the span even with no colour set; the run attributes follow the colour in
+      // extension order (`run-style.ts`, TEACH-205 part c), as data attributes only.
       const color = safeCssColor(attrs.color);
-      return [color ? `<span style="color: ${escapeAttr(color)};">` : "<span>", "</span>"];
+      const parts = color ? [`style="color: ${escapeAttr(color)};"`] : [];
+      const font = safeRunFont(attrs.font);
+      if (font) parts.push(`data-font="${font}"`);
+      const slot = safeHighlightSlot(attrs.highlight);
+      if (slot !== null) parts.push(`data-hl="${slot}"`);
+      const strike = safeStrikeStep(attrs.strikeStep);
+      if (strike !== null) parts.push(`data-strike="${strike}"`);
+      return [parts.length ? `<span ${parts.join(" ")}>` : "<span>", "</span>"];
     }
     case "link": {
       const open = linkOpenTag(attrs);

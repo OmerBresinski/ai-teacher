@@ -188,6 +188,19 @@ const FIXTURES: Record<string, RichDoc> = {
       },
     ],
   },
+  runAttributes: {
+    type: "doc",
+    content: [
+      p([
+        t("x", [{ type: "textStyle", attrs: { font: "quote" } }]),
+        t(" and ", []),
+        t("Rome fell", [{ type: "textStyle", attrs: { color: "#123456", highlight: 2 } }]),
+        t(" — ", []),
+        t("bats are blind", [{ type: "textStyle", attrs: { strikeStep: 2, highlight: 1 } }]),
+        t("!", [{ type: "bold" }, { type: "textStyle", attrs: { strikeStep: 0 } }]),
+      ]),
+    ],
+  },
   escaping: docFromText("<script>alert('x') & y > z</script>"),
   emptyDoc: { type: "doc" },
 };
