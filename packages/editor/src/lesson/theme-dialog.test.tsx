@@ -19,8 +19,8 @@ describe("ThemeDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     const dialog = await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    // Every catalogue theme, once (nine since Chalk & Cream was retired, ruling 202).
-    expect(tiles).toHaveLength(9);
+    // Every catalogue theme, once (nine since Chalk & Cream was retired, ruling 202, and Paper, theme v2).
+    expect(tiles).toHaveLength(10);
     const paper = tiles.find((t) => t.getAttribute("data-theme-tile") === "playground");
     if (!paper) throw new Error("no playground tile");
     fireEvent.click(paper);

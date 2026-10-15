@@ -34,7 +34,7 @@ const artOf = (t: Theme) =>
 
 describe("theme catalogue", () => {
   test("nine themes, no Chalk & Cream; old chalk lessons render as Splash; unknown ids fall back to Splash (ruling 202)", () => {
-    expect(THEMES).toHaveLength(9);
+    expect(THEMES).toHaveLength(10);
     expect(THEMES.map((t) => t.id)).not.toContain("chalk");
     expect(isThemeId("chalk")).toBe(false);
     expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);

@@ -195,8 +195,9 @@ describe("typed callout card", () => {
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;
+    // Theme v2 (TEACH-152 part b) is new: no old lesson was laid out on it.
     for (const stage of OLD_LESSON_STAGES)
-      for (const theme of THEMES)
+      for (const theme of THEMES.filter((t) => !t.v2))
         OLD_LESSON_INPUTS.forEach((input, i) => {
           const key = `${stage}/${theme.id}/${i}-${input.template}`;
           const j = JSON.stringify(layoutTemplate(input, theme, stage), (k, v) =>

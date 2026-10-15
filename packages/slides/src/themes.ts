@@ -1,6 +1,7 @@
 import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
 import { DEFAULT_THEME_ID, liveThemeId } from "@tj/domain/documents";
 import { FONT_STACKS } from "./fonts";
+import { PAPER_V2 } from "./theme-v2-paper";
 
 /**
  * Ten classroom themes (look/themes, 26 Sept 2026): four clean (Studio, Exam Hall, Night Lab,
@@ -334,6 +335,42 @@ const BASE: Theme[] = [
     titleTracking: "0em",
     radius: 6,
   },
+  {
+    // Theme v2 (TEACH-152 part b; UX rulings 211, 212): the golds' warm paper, plum ink, one red
+    // accent family and a deep heading. The v2 layouts read `v2` through `v2Profile`/`v2Colors`
+    // (`theme-v2.ts`); the rest of the product reads the v1 fields below like any theme.
+    id: "paper",
+    name: "Paper",
+    suits:
+      "Every age. Warm paper, white icon medals and one accent; type, shapes and fonts tune to the age.",
+    tags: [],
+    colors: {
+      background: "#FFFAF4",
+      surface: "#FFFFFF",
+      ink: "#22152B",
+      heading: "#5A1530",
+      muted: "#5E5066",
+      accent: "#D7263D",
+      accent2: "#1F5C9E",
+      onAccent: "#FFFFFF",
+      line: "#EFE6D8",
+      correct: "#2E7D4F",
+      incorrect: "#B3261E",
+    },
+    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.03em",
+    radius: 13,
+    v2: PAPER_V2,
+  },
 ];
 
 /**
@@ -520,6 +557,12 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     example: { fill: "#DFF3E6", line: "#0B6B3A", ink: "#062E1A", icon: "#0B6B3A" },
     "key-words": { fill: "#FFEDB8", line: "#7A5200", ink: "#3A2600", icon: "#7A5200" },
   },
+  // Paper (theme v2): Chalk's warm set, made for the same cream ground.
+  paper: {
+    "watch-out": { fill: "#F7DFD8", line: "#DBA99C", ink: "#5A1D12", icon: "#A83A2E" },
+    example: { fill: "#DCEBD8", line: "#A7C7A2", ink: "#1F4A2C", icon: "#2F6B44" },
+    "key-words": { fill: "#F7E5B9", line: "#D8B86A", ink: "#4E3604", icon: "#8A5800" },
+  },
 };
 
 /**
@@ -539,6 +582,7 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   "exam-hall": ["#1B3A8C", "#78580C", "#B0306A", "#5B3FA0"],
   "night-lab": ["#F2B551", "#D083A6", "#9D8CC6", "#ECEDEF"],
   beacon: ["#0A46C8", "#7A5200", "#0E6B78", "#B0306A"],
+  paper: ["#A94A18", "#4A5D8C", "#0E6B78", "#B0306A"],
 };
 
 /** A theme's option colours; one the table does not know takes Splash's, or Night Lab's when dark. */

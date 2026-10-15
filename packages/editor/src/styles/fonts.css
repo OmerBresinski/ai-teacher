@@ -34,5 +34,7 @@
   --font-nunito: "Nunito Variable";
   --font-outfit: "Outfit Variable";
   --font-geist: "Geist Variable";
+  /* Static faces (fonts-playful.css): Andika has no variable build. */
+  --font-andika: "Andika";
   --font-geist-mono: "Geist Mono Variable";
 }

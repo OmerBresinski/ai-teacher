@@ -76,4 +76,11 @@ export const LIBRARY_THEMES: LibraryTheme[] = [
     ink: "#0E0E0E",
     tags: ["Primary", "Bold"],
   },
+  {
+    id: "paper",
+    name: "Paper",
+    swatch: "#FFFAF4",
+    ink: "#22152B",
+    tags: ["Primary", "Secondary", "Calm"],
+  },
 ];

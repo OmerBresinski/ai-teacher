@@ -28,7 +28,7 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
-import { contrastRatio } from "../look";
+import { contrastRatio, coverColours } from "../look";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
@@ -77,6 +77,8 @@ export function templateScale(theme: Theme, stage: Stage): Scale {
     small: s.bodySmall,
   };
 }
+/** Room past a fixed title's line boxes for its ink (descenders, accents), as a share of its size. */
+const TITLE_INK_MARGIN = 0.2;
 const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
 
 /* ------------------------------------------------------------------ */
@@ -1655,8 +1657,10 @@ function layoutOnce(
     case "title": {
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
-      background = { color: c.t.colors.accent };
-      const on = c.t.colors.onAccent;
+      // The ground is the look's cover colour: the accent, or a v2 theme's deep (Paper's wine).
+      const cover = coverColours(c.t);
+      background = { color: cover.fill };
+      const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
       let ph = 444;
@@ -1702,6 +1706,21 @@ function layoutOnce(
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
       if (input.lead) titleEl.style = { ...titleEl.style, valign: "bottom", autoHeight: false };
+      // A fixed box clips at its edge, and the title's 1.06 line box is shorter than the face's
+      // ascent plus descent: the last line's "g" and "y" were cut flat. The box grows by a margin
+      // on every side, padded by the same, so the words wrap and sit exactly where they did and
+      // only the clip edge moves clear of the descenders (TEACH-152 part b). v2 themes only: an
+      // old lesson on a v1 theme stays byte-identical (typed-callout guard).
+      if (input.lead && c.t.v2) {
+        const m = Math.ceil(size * TITLE_INK_MARGIN);
+        Object.assign(titleEl, {
+          x: titleEl.x - m,
+          y: titleEl.y - m,
+          w: titleEl.w + 2 * m,
+          h: titleEl.h + 2 * m,
+        });
+        titleEl.style = { ...titleEl.style, padding: m };
+      }
       if (input.lead)
         text(
           c,

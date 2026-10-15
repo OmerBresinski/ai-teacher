@@ -9,7 +9,7 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
+import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, FONT_STACKS, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -39,6 +39,7 @@ import {
   textBoxOptions,
   trackingToPt,
 } from "./pptx";
+import { PPTX_FALLBACK_FACE, withFallbackFacesXml } from "./pptx-fonts";
 import { docToRuns } from "./runs";
 
 /*
@@ -119,6 +120,25 @@ describe("fontFaceFor", () => {
     expect(fontFaceFor('var(--font-unknown), "Trebuchet MS", sans-serif')).toBe("Trebuchet MS");
     expect(fontFaceFor("sans-serif")).toBe("Arial");
     expect(fontFaceFor(undefined)).toBe("Arial");
+  });
+
+  it("names the theme v2 faces, and maps each to its measured fallback (ruling 213)", () => {
+    expect(fontFaceFor(FONT_STACKS.andika)).toBe("Andika");
+    expect(fontFaceFor(FONT_STACKS.schibsted)).toBe("Schibsted Grotesk");
+    expect(fontFaceFor(FONT_STACKS.sourceSerif)).toBe("Source Serif 4");
+    const paper = getTheme("paper");
+    for (const profile of Object.values(paper.v2?.ages ?? {})) {
+      for (const key of Object.values(profile.fonts)) {
+        const face = fontFaceFor(FONT_STACKS[key as keyof typeof FONT_STACKS]);
+        expect([face, PPTX_FALLBACK_FACE[face] !== undefined]).toEqual([face, true]);
+      }
+    }
+    expect(PPTX_FALLBACK_FACE.Andika).toEqual({ body: "Comic Sans MS", display: "Comic Sans MS" });
+    expect(PPTX_FALLBACK_FACE.Lexend).toEqual({ body: "Trebuchet MS", display: "Arial Bold" });
+    expect(PPTX_FALLBACK_FACE["Schibsted Grotesk"]?.display).toBe("Arial Bold");
+    expect(PPTX_FALLBACK_FACE["Source Serif 4"]?.italic).toBe("Georgia Italic");
+    const all = Object.values(PPTX_FALLBACK_FACE).flatMap((f) => Object.values(f));
+    expect(all.some((f) => /verdana/i.test(f ?? ""))).toBe(false);
   });
 });
 
@@ -1111,4 +1131,59 @@ describe("a slide exported as the class sees it", () => {
     expect(xml).toContain("Magma rises through cracks in the crust");
     expect(xml).toContain("The crust gives way and lava pours out");
   });
+});
+
+describe("fallback faces in a v2 deck (ruling 213)", () => {
+  const run = (attrs: string, face: string) =>
+    `<a:rPr lang="en-GB"${attrs}><a:latin typeface="${face}" pitchFamily="34" charset="0"/><a:cs typeface="${face}"/></a:rPr>`;
+
+  it("names each new font's checked fallback by role", () => {
+    const xml = [
+      run("", "Andika"),
+      run(' b="1"', "Andika"),
+      run("", "Lexend"),
+      run(' b="1"', "Lexend"),
+      run(' b="1"', "Schibsted Grotesk"),
+      run(' i="1"', "Source Serif 4"),
+      run("", "Nunito"),
+    ].join("");
+    const faces = [...withFallbackFacesXml(xml).matchAll(/<a:latin typeface="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(faces).toEqual([
+      "Comic Sans MS",
+      "Comic Sans MS",
+      "Trebuchet MS",
+      "Arial",
+      "Arial",
+      "Georgia",
+      "Nunito",
+    ]);
+    expect(withFallbackFacesXml(run("", "Andika"))).not.toContain('"Andika"');
+  });
+
+  it("a Paper export names no unembedded v2 face; a v1 export is untouched", async () => {
+    const [water] = demoLibrary();
+    if (!water) throw new Error("fixture");
+    const first = water.slides[0];
+    const text = first?.elements.find((e) => e.type === "text");
+    if (!first || !text || text.type !== "text") throw new Error("fixture");
+    const andika = { ...text, style: { ...text.style, fontFamily: FONT_STACKS.andika } };
+    const lesson = {
+      ...water,
+      slides: [{ ...first, elements: [...first.elements, andika] }, ...water.slides.slice(1)],
+    };
+    const slideXml = async (blob: Blob) => {
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const parts = Object.keys(zip.files).filter((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p));
+      return (await Promise.all(parts.map((p) => zip.file(p)?.async("string") ?? ""))).join("");
+    };
+    const paper = await slideXml(await exportLessonPptx(lesson, getTheme("paper")));
+    expect(paper).not.toMatch(/typeface="(Andika|Lexend|Schibsted Grotesk|Source Serif 4)"/);
+    expect(paper).toContain('typeface="Comic Sans MS"');
+    expect(paper).toContain('typeface="Trebuchet MS"');
+    const v1 = await slideXml(await exportLessonPptx(lesson, getTheme(water.themeId)));
+    expect(v1).toContain('typeface="Andika"');
+    expect(v1).not.toContain("Comic Sans MS");
+  }, 30_000);
 });

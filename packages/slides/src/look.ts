@@ -252,8 +252,8 @@ function cover(slide: Slide, t: Theme): Slide {
     });
     return { ...slide, elements };
   }
-  const ink = t.colors.onAccent;
-  const soft = readableSoft(ink, t.colors.accent);
+  const { fill, ink } = coverColours(t);
+  const soft = readableSoft(ink, fill);
   const elements = slide.elements.map((el): SlideElement => {
     if (el.type === "shape") {
       if (el.name === "Accent rule") return { ...el, fill: ink };
@@ -268,7 +268,18 @@ function cover(slide: Slide, t: Theme): Slide {
       el.name === "Subtitle";
     return { ...el, style: { ...el.style, color: quiet ? soft : ink } };
   });
-  return { ...slide, background: { ...slide.background, color: t.colors.accent }, elements };
+  return { ...slide, background: { ...slide.background, color: fill }, elements };
+}
+
+/**
+ * The plain cover's ground and ink: the accent and its ink, or on a v2 theme the accent family's
+ * deep (Paper's wine, as its title panels) with `onDeep`, so the red stays for highlighted words
+ * (Greg, 12 Oct: a full-bleed red cover was too bright).
+ */
+export function coverColours(t: Theme): { fill: string; ink: string } {
+  const deep = t.v2?.accents[t.v2.defaultAccent]?.deep;
+  if (t.v2 && deep) return { fill: deep, ink: t.v2.colors.onDeep };
+  return { fill: t.colors.accent, ink: t.colors.onAccent };
 }
 
 /**

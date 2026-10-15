@@ -77,7 +77,7 @@ describe("title, agenda (objectives on the title slide)", () => {
   });
 
   test("real titles and objectives fit on every theme, one step down", () => {
-    expect(THEMES.length).toBe(9);
+    expect(THEMES.length).toBe(10);
     for (const d of DECKS) {
       const { failing } = fitsPlanned(spec(d), { stepDown: 1 });
       expect({ title: d.title, failing: failing.map((f) => f.theme) }).toEqual({

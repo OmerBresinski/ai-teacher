@@ -141,6 +141,7 @@ export const FONT_FAMILIES: Record<string, string> = {
   nunito: "Nunito",
   outfit: "Outfit",
   geist: "Geist",
+  andika: "Andika",
 };
 
 const FALLBACK_FACE = "Arial";
@@ -1386,7 +1387,10 @@ export async function exportLessonPptx(
     const answers = revealAnswers ? lessonAnswers(lesson) : [];
     if (answers.length > 0) addAnswersSlide(pptx, lesson, theme, answers);
 
-    const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    const written = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
+    const { withFallbackFaces } = await import("./pptx-fonts");
+    const buffer = await withFallbackFaces(written, theme);
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });

@@ -24,6 +24,13 @@ const FONTS: Record<string, string> = {
   nunito: "nunito",
   outfit: "outfit",
 };
+/**
+ * Static families (no variable build): one file per weight. A weight with no file renders in the
+ * nearest face the browser picks (600 in Andika's 700), which is what is measured.
+ */
+const STATIC_FONTS: Record<string, { pkg: string; weights: number[] }> = {
+  andika: { pkg: "andika", weights: [400, 700] },
+};
 const WEIGHTS = [400, 600, 700];
 const CHARS = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join("");
 
@@ -31,15 +38,38 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent("<html><body></body></html>");
 const out: Record<string, Record<number, number[]>> = {};
-for (const [key, pkg] of Object.entries(FONTS)) {
-  const file = `${ROOT}/@fontsource-variable+${pkg}@5.3.0/node_modules/@fontsource-variable/${pkg}/files/${pkg}-latin-wght-normal.woff2`;
-  const b64 = readFileSync(file).toString("base64");
+type Face = { b64: string; weight: string };
+const faces: [string, Face[]][] = [
+  ...Object.entries(FONTS).map(([key, pkg]): [string, Face[]] => [
+    key,
+    [
+      {
+        b64: readFileSync(
+          `${ROOT}/@fontsource-variable+${pkg}@5.3.0/node_modules/@fontsource-variable/${pkg}/files/${pkg}-latin-wght-normal.woff2`,
+        ).toString("base64"),
+        weight: "100 900",
+      },
+    ],
+  ]),
+  ...Object.entries(STATIC_FONTS).map(([key, { pkg, weights }]): [string, Face[]] => [
+    key,
+    weights.map((w) => ({
+      b64: readFileSync(
+        `${ROOT}/@fontsource+${pkg}@5.3.0/node_modules/@fontsource/${pkg}/files/${pkg}-latin-${w}-normal.woff2`,
+      ).toString("base64"),
+      weight: String(w),
+    })),
+  ]),
+];
+for (const [key, list] of faces) {
   out[key] = await page.evaluate(
-    async ({ key, b64, WEIGHTS, CHARS }) => {
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      const face = new FontFace(`m-${key}`, bytes.buffer, { weight: "100 900" });
-      await face.load();
-      document.fonts.add(face);
+    async ({ key, list, WEIGHTS, CHARS }) => {
+      for (const { b64, weight } of list) {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const face = new FontFace(`m-${key}`, bytes.buffer, { weight });
+        await face.load();
+        document.fonts.add(face);
+      }
       const ctx = document.createElement("canvas").getContext("2d");
       if (!ctx) throw new Error("no canvas");
       const res: Record<number, number[]> = {};
@@ -49,7 +79,7 @@ for (const [key, pkg] of Object.entries(FONTS)) {
       }
       return res;
     },
-    { key, b64, WEIGHTS, CHARS },
+    { key, list, WEIGHTS, CHARS },
   );
 }
 await browser.close();
