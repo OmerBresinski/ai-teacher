@@ -87,9 +87,6 @@ export const isCalc = (s: string) => /\d/.test(s) && /^[\d,.\s+−×÷=\-?/()]+$
  */
 export const comfortAt = (c: Pick<Ctx, "t">, q: number) => q >= v2Profile(c.t).comfort.body;
 
-/** A figure's caption: the gold's label size is under the floor; the smallest drawn step over it. */
-const captionSize = (c: Pick<Ctx, "t">) => resolveFontSize(c.t, "body", MIN_FONT_SIZE.body);
-
 /** The two sizes a task may take at the theme's stage: the body step, then bodySmall. */
 export function taskSteps(c: Pick<Ctx, "t" | "s">): number[] {
   const top = resolveFontSize(c.t, "body", Math.max(c.s.body, MIN_FONT_SIZE.body));
@@ -253,11 +250,8 @@ function stackHeight(c: Ctx, items: string[], q: number, visW: number): number |
 function cardHeight(c: Ctx, v: Visual, visW: number): number {
   const inner = visW - 2 * WA.visPad;
   if (v.failed) return Math.round(visW * 0.75);
-  const cap = "photo" in v.figure || !v.caption ? 0 : captionH(c, v.caption, inner) + 9;
-  return Math.round(2 * WA.visPad + cap + inner * 0.75);
+  return Math.round(2 * WA.visPad + inner * 0.75);
 }
-const captionH = (c: Ctx, s: string, w: number) =>
-  kit.measure({ ...c, s: { ...c.s, body: captionSize(c) } }, s, "body", w, 500);
 
 /**
  * The practice plan for the tasks under a stage starting at `stageTop`: the first column (and
@@ -392,25 +386,9 @@ function drawCard(c: Ctx, v: Visual, at: { x: number; y: number; w: number }) {
   if (v.failed) return failedCard();
   const mark = c.els.length;
   if (card) c.els.push(card);
-  let y = at.y + WA.visPad;
+  const y = at.y + WA.visPad;
   const f = v.figure;
-  if (!("photo" in f) && v.caption) {
-    const saved = c.s;
-    c.s = { ...saved, body: captionSize(c) };
-    const el = kit.text(
-      c,
-      v.caption,
-      "body",
-      { x: inner.x, y, w: inner.w },
-      {
-        weight: 500,
-        color: c.t.colors.muted,
-        name: WA_NAMES.caption,
-      },
-    );
-    c.s = saved;
-    y = el.y + el.h + 9;
-  }
+  // A figure draws its own title (the gold's label over the bars); the caption is its fallback.
   const box = { x: inner.x, y, w: inner.w, h: Math.round(inner.w * 0.75) };
   if ("photo" in f) {
     kit.photoBox(c, f, box, true);
