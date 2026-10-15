@@ -260,7 +260,7 @@ describe("icons and numbers", () => {
       expect(named(r.slide.elements, ROW_NAMES.numeral)).toHaveLength(0);
       // Only the resolved item wears its badge; held items show nothing on the face.
       expect(named(r.slide.elements, ROW_NAMES.badge)).toHaveLength(ordered ? 1 : 0);
-      expect(named(r.slide.elements, ROW_NAMES.mark)).toHaveLength(0);
+      expect(named(r.slide.elements, "Mark")).toHaveLength(0);
     }
     // Faces and words sit exactly where the resolved row puts them: the icon lands, nothing moves.
     const r = layoutTemplate(row(held), T0, "ks3");
@@ -592,10 +592,26 @@ describe("real writer output", () => {
     }
   });
 
-  test("unordered with no icons: a neutral mark, never numbers; ordered: numbers", () => {
-    const off = layoutTemplate(row(VOLC, { ordered: false }), T0, "ks3");
-    expect(named(off.slide.elements, ROW_NAMES.numeral)).toHaveLength(0);
-    expect(named(off.slide.elements, ROW_NAMES.mark)).toHaveLength(4);
+  test("unordered with no icons: no medal, no line, never an empty circle; ordered: numbers", () => {
+    for (const stage of ["ks1", "ks2", "ks3"] as const) {
+      const off = layoutTemplate(row(VOLC, { ordered: false }), T0, stage);
+      const els = off.slide.elements;
+      // Writer smoke y4-romans s7 (16 Oct): Wall, Forts, Gateways each sat on a blank dot.
+      expect(els.filter((e) => e.type === "shape" && e.shape === "ellipse")).toHaveLength(0);
+      expect(named(els, ROW_NAMES.medal)).toHaveLength(0);
+      expect(named(els, ROW_NAMES.ring)).toHaveLength(0);
+      expect(named(els, ROW_NAMES.numeral)).toHaveLength(0);
+      expect(els.filter((e) => e.type === "path")).toHaveLength(0);
+      // Re-spaced: the names start just under the heading, level, and nothing is over.
+      const heading = must(els.find((e) => e.name === "Heading"));
+      const names = named(els, ROW_NAMES.name);
+      expect(names).toHaveLength(4);
+      expect(new Set(names.map((e) => e.y)).size).toBe(1);
+      expect(must(names[0]).y - (heading.y + heading.h)).toBeLessThan(80);
+      // Words get the medal's room, so a bare row is never more over than the numbered one.
+      const numbered = layoutTemplate(row(VOLC, { ordered: true }), T0, stage);
+      for (const f of off.over) expect(numbered.over).toContain(f);
+    }
     const on = layoutTemplate(row(VOLC, { ordered: true }), T0, "ks3");
     expect(named(on.slide.elements, ROW_NAMES.numeral)).toHaveLength(4);
   });

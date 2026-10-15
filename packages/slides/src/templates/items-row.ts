@@ -9,6 +9,9 @@
  *   the text and there is no connector; numbered medals stay stacked on the curve.
  * - Icons are all or none: any label the matcher misses numbers every item, and the misses come
  *   back in `iconMisses`, never silently.
+ * - Unordered with no icons there is no medal and no connecting line (writer smoke, 16 Oct: a
+ *   medal with nothing on its face read as an empty circle): each item is its name and line, and
+ *   the row sits under the heading with the spare space at the foot, as the no-visual stages do.
  * - Fit (ruling 215): medals give way to their comfort minimum, then type to the age's comfort
  *   sizes. Past that the slide is `tight`, and medals then type shrink only to the floors. Words
  *   are never cut; a field still over is named in `over`.
@@ -74,7 +77,6 @@ export const ROW_NAMES = {
   medal: "Circle",
   icon: "Picture",
   numeral: "Number",
-  mark: "Mark",
   badgeRing: "Number edge",
   /** The number badge on an icon circle: `kit.disc`'s list marker. */
   badge: "Marker",
@@ -240,6 +242,8 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
     l === PENDING_ICON ? PENDING_ICON : l ? (res.ids[named.indexOf(l)] ?? null) : null,
   );
   const icons = n > 0 && concepts.every(Boolean);
+  // Unordered and no icons: no medal at all, never an empty face or numbers that read as a sequence.
+  const bare = !icons && input.ordered === false;
   const fields = report(age, input, items, icons);
   c.fields = fields;
   for (const f of fields) if (f.over && !c.over.includes(f.field)) c.over.push(f.field);
@@ -250,8 +254,12 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const shape = rowShape(n);
   const perRow = shape[0] ?? n;
   const M = prof.medal;
-  const m = icons ? M * (two ? 0.66 : n === 4 ? 0.8 : 1) : M * (two ? 0.44 : n === 4 ? 0.62 : 0.72);
-  const minMedal = icons ? prof.medalMin : M * 0.4;
+  const m = bare
+    ? 0
+    : icons
+      ? M * (two ? 0.66 : n === 4 ? 0.8 : 1)
+      : M * (two ? 0.44 : n === 4 ? 0.62 : 0.72);
+  const minMedal = bare ? 0 : icons ? prof.medalMin : M * 0.4;
   const gap = n <= 3 ? 37 : 29;
   const itemW = Math.floor(Math.min(n <= 2 ? 293 : 1e9, (STAGE_W - (perRow - 1) * gap) / perRow));
   const nf = beside ? 0.86 : two ? 0.8 : 1;
@@ -287,7 +295,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       if (!wordsFit(c, it.text, "body", textW, bodyWeight, bodySize)) wordsOk = false;
       const gapN = beside ? 4 : 7;
       const textH = nameH + (lineH ? gapN + lineH : 0);
-      const h = beside ? Math.max(mm, textH) : mm + mm * 0.14 + 3 + textH;
+      const h = beside ? Math.max(mm, textH) : bare ? textH : mm + mm * 0.14 + 3 + textH;
       return { nameH, lineH, textH, h, gapN };
     });
     // Stacked rows: the names in one row share the tallest name's height (each name top-aligned
@@ -301,7 +309,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
         for (const b of row) {
           b.nameH = nameH;
           b.textH = nameH + (b.lineH ? b.gapN + b.lineH : 0);
-          b.h = mm + mm * 0.14 + 3 + b.textH;
+          b.h = bare ? b.textH : mm + mm * 0.14 + 3 + b.textH;
         }
       }
     }
@@ -336,7 +344,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const step: Step = { ms: 1, fk: 1 };
   let g = measureAt(step);
   // Medals give way first, all the way to their comfort minimum (numbers to 40% of the medal).
-  const msComfort = Math.min(1, minMedal / m);
+  const msComfort = bare ? 1 : Math.min(1, minMedal / m);
   while (!g.comfy && step.ms > msComfort + 1e-6) {
     step.ms = Math.max(msComfort, +(step.ms - 0.05).toFixed(2));
     g = measureAt(step);
@@ -354,7 +362,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   g = measureAt(step);
   const medalOk = g.mm >= minMedal - 1;
   if (!(g.comfy && medalOk && g.typeOk)) {
-    while (!g.fits && step.ms > 0.7) {
+    while (!bare && !g.fits && step.ms > 0.7) {
       step.ms = +(step.ms - 0.05).toFixed(2);
       g = measureAt(step);
     }
@@ -377,7 +385,9 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
 
   // Place: the rows centred in the stage, each row centred across it.
   const { mm, blocks } = g;
-  let y = stageTop + pad + Math.max(0, (avail - g.rowsH) / 2);
+  // Bare rows sit under the heading; spare space falls at the foot (no-visual stages gold).
+  const rowsTop = stageTop + pad + (bare ? 0 : Math.max(0, (avail - g.rowsH) / 2));
+  let y = rowsTop;
   const rows: { cx: number; cy: number; k: number }[][] = [];
   let k = 0;
   shape.forEach((cnt, r) => {
@@ -396,10 +406,10 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   });
 
   const motif = motifOf(input.motif);
-  if (motif !== "none" && !beside)
+  if (motif !== "none" && !beside && !bare)
     for (const row of rows) connector(c, row, mm, icons, prof, col, motif);
 
-  y = stageTop + pad + Math.max(0, (avail - g.rowsH) / 2);
+  y = rowsTop;
   k = 0;
   shape.forEach((cnt, r) => {
     const rowH = g.rowHs[r] ?? 0;
@@ -409,21 +419,22 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       if (!b) continue;
       const mx = p.cx - mm / 2;
       const my = p.cy - mm / 2;
-      medal(
-        c,
-        p.k,
-        concepts[p.k] ?? null,
-        it.name,
-        icons,
-        input.ordered !== false,
-        mx,
-        my,
-        mm,
-        prof,
-        col,
-      );
+      if (!bare)
+        medal(
+          c,
+          p.k,
+          concepts[p.k] ?? null,
+          it.name,
+          icons,
+          input.ordered !== false,
+          mx,
+          my,
+          mm,
+          prof,
+          col,
+        );
       const tx = beside ? mx + mm + 17 : p.cx - g.textW / 2;
-      const ty = beside ? y : my + mm + mm * 0.14 + 3;
+      const ty = beside ? y : bare ? y : my + mm + mm * 0.14 + 3;
       const align = beside ? "left" : "center";
       textAt(c, it.name, "heading", g.nameSize, nameWeight, NAME_LH, {
         x: tx,
@@ -612,27 +623,6 @@ function medal(
     return;
   }
   const size = Math.max(26, Math.round(d * 0.46));
-  if (!ordered) {
-    // Unordered and no icons: a neutral mark, never numbers that read as a sequence.
-    shape({
-      x: Math.round(x),
-      y: Math.round(y),
-      w: d,
-      h: d,
-      fill: col.surface,
-      name: ROW_NAMES.medal,
-    });
-    const dot = Math.round(d * 0.24);
-    shape({
-      x: Math.round(x + (d - dot) / 2),
-      y: Math.round(y + (d - dot) / 2),
-      w: dot,
-      h: dot,
-      fill: col.connector.band,
-      name: ROW_NAMES.mark,
-    });
-    return;
-  }
   shape({
     x: Math.round(x),
     y: Math.round(y),
