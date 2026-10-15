@@ -1,0 +1,2947 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["design", "flow", "title", "slides"],
+  "properties": {
+    "design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["picture_style"],
+      "properties": { "picture_style": { "type": "string", "enum": ["photo", "illustration"] } }
+    },
+    "flow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slide", "does", "shape", "look_at", "teaches"],
+        "properties": {
+          "slide": { "type": "integer" },
+          "does": { "type": "string" },
+          "shape": {
+            "type": "string",
+            "enum": [
+              "recall",
+              "hook",
+              "one big idea",
+              "sequence",
+              "comparison",
+              "parts of a whole",
+              "data",
+              "worked example",
+              "check"
+            ]
+          },
+          "look_at": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "shows"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["picture", "picture-sequence", "diagram", "none", "cards"]
+              },
+              "shows": {
+                "type": "string",
+                "description": "what it shows; for none, why nothing to look at would help this slide"
+              }
+            }
+          },
+          "teaches": { "type": "array", "items": { "type": "integer", "enum": [1, 2] } }
+        }
+      },
+      "minItems": 9,
+      "maxItems": 12
+    },
+    "title": { "anyOf": [{ "$ref": "#/$defs/title~fig" }, { "$ref": "#/$defs/title~bare" }] },
+    "slides": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          { "$ref": "#/$defs/visual-text~points-0-fig" },
+          { "$ref": "#/$defs/visual-text~points-2-fig" },
+          { "$ref": "#/$defs/visual-text~points-3-fig" },
+          { "$ref": "#/$defs/visual-text~points-1-key-fig" },
+          { "$ref": "#/$defs/visual-text~points-2-key-fig" },
+          { "$ref": "#/$defs/big-visual~fig" },
+          { "$ref": "#/$defs/picture-sequence~sequence-2" },
+          { "$ref": "#/$defs/picture-sequence~sequence-3" },
+          { "$ref": "#/$defs/picture-sequence~sequence-4" },
+          { "$ref": "#/$defs/compare~columns-2" },
+          { "$ref": "#/$defs/compare~columns-3" },
+          { "$ref": "#/$defs/compare~columns-2-fig" },
+          { "$ref": "#/$defs/compare~columns-3-fig" },
+          { "$ref": "#/$defs/steps~points-3" },
+          { "$ref": "#/$defs/steps~points-4" },
+          { "$ref": "#/$defs/steps~points-5" },
+          { "$ref": "#/$defs/steps~points-3-fig" },
+          { "$ref": "#/$defs/steps~points-4-fig" },
+          { "$ref": "#/$defs/equation-hero~points-2" },
+          { "$ref": "#/$defs/equation-hero~points-3" },
+          { "$ref": "#/$defs/equation-hero~points-4" },
+          { "$ref": "#/$defs/equation-hero~points-2-fig" },
+          { "$ref": "#/$defs/equation-hero~points-3-fig" },
+          { "$ref": "#/$defs/discussion~bare" },
+          { "$ref": "#/$defs/discussion~fig" },
+          { "$ref": "#/$defs/explain~points-0" },
+          { "$ref": "#/$defs/explain~points-2" },
+          { "$ref": "#/$defs/explain~points-3" },
+          { "$ref": "#/$defs/explain~points-1-key" },
+          { "$ref": "#/$defs/explain~points-2-key" },
+          { "$ref": "#/$defs/hinge~options-2" },
+          { "$ref": "#/$defs/hinge~options-3" },
+          { "$ref": "#/$defs/hinge~options-4" },
+          { "$ref": "#/$defs/question-set~questions-3" },
+          { "$ref": "#/$defs/question-set~questions-4" },
+          { "$ref": "#/$defs/question-set~questions-3-fig" },
+          { "$ref": "#/$defs/practice~questions-3" },
+          { "$ref": "#/$defs/practice~questions-4" },
+          { "$ref": "#/$defs/practice~questions-3-fig" },
+          { "$ref": "#/$defs/exit-ticket~questions-3" },
+          { "$ref": "#/$defs/exit-ticket~questions-4" },
+          { "$ref": "#/$defs/hook~fig" },
+          { "$ref": "#/$defs/pair" },
+          { "$ref": "#/$defs/group-sort" },
+          { "$ref": "#/$defs/sequence" },
+          { "$ref": "#/$defs/choose" },
+          { "$ref": "#/$defs/odd-one-out" }
+        ]
+      },
+      "minItems": 7,
+      "maxItems": 10
+    }
+  },
+  "$defs": {
+    "picture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shows", "must_see", "subject"],
+      "properties": {
+        "shows": { "type": "string" },
+        "must_see": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "subject": { "type": "string", "enum": ["named", "generic"] }
+      }
+    },
+    "figure": {
+      "anyOf": [
+        { "$ref": "#/$defs/picture" },
+        { "$ref": "#/$defs/diagram-side" },
+        { "type": "null" }
+      ]
+    },
+    "dg-bar-model-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 14 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 22 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 14 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "about 6 rows fit in this slot; write every row the table needs, a longer table continues on the next slide"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 32 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 4,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 26 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 18 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 10 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 9 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-side": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-side" },
+        { "$ref": "#/$defs/dg-number-line-side" },
+        { "$ref": "#/$defs/dg-line-graph-side" },
+        { "$ref": "#/$defs/dg-bar-chart-side" },
+        { "$ref": "#/$defs/dg-pie-side" },
+        { "$ref": "#/$defs/dg-table-side" },
+        { "$ref": "#/$defs/dg-flow-side" },
+        { "$ref": "#/$defs/dg-cycle-side" },
+        { "$ref": "#/$defs/dg-timeline-side" },
+        { "$ref": "#/$defs/dg-layers-side" },
+        { "$ref": "#/$defs/dg-venn-side" },
+        { "$ref": "#/$defs/dg-carroll-side" },
+        { "$ref": "#/$defs/dg-equal-groups-side" },
+        { "$ref": "#/$defs/dg-fraction-shapes-side" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "dg-bar-model-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 18 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 10 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 30 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "about 5 rows fit in this slot; write every row the table needs, a longer table continues on the next slide"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 26 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 60 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 18 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 22 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 9 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-full": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-full" },
+        { "$ref": "#/$defs/dg-number-line-full" },
+        { "$ref": "#/$defs/dg-line-graph-full" },
+        { "$ref": "#/$defs/dg-bar-chart-full" },
+        { "$ref": "#/$defs/dg-pie-full" },
+        { "$ref": "#/$defs/dg-table-full" },
+        { "$ref": "#/$defs/dg-flow-full" },
+        { "$ref": "#/$defs/dg-cycle-full" },
+        { "$ref": "#/$defs/dg-timeline-full" },
+        { "$ref": "#/$defs/dg-layers-full" },
+        { "$ref": "#/$defs/dg-venn-full" },
+        { "$ref": "#/$defs/dg-carroll-full" },
+        { "$ref": "#/$defs/dg-equal-groups-full" },
+        { "$ref": "#/$defs/dg-fraction-shapes-full" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "diagram-freeform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "shows", "labels"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["labelled-diagram", "particles", "hydrograph", "river", "cubes"]
+        },
+        "shows": { "type": "string" },
+        "labels": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "type": "string", "description": "at most 24 characters" }
+        }
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "heading", "instruction", "cards"],
+      "properties": {
+        "template": { "type": "string", "enum": ["pair"] },
+        "heading": { "type": "string" },
+        "instruction": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "picture"],
+            "properties": {
+              "label": { "type": "string", "pattern": "^.{1,26}$" },
+              "picture": { "type": "string" }
+            }
+          },
+          "minItems": 3,
+          "maxItems": 5
+        }
+      }
+    },
+    "group-sort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "heading", "instruction", "groups", "cards"],
+      "properties": {
+        "template": { "type": "string", "enum": ["group-sort"] },
+        "heading": { "type": "string" },
+        "instruction": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "groups": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 3 },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "picture", "group"],
+            "properties": {
+              "label": { "type": "string", "pattern": "^.{1,10}$" },
+              "picture": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "group": { "type": "integer", "minimum": 1, "maximum": 3 }
+            }
+          },
+          "minItems": 6,
+          "maxItems": 6
+        }
+      }
+    },
+    "sequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "heading", "instruction", "cards"],
+      "properties": {
+        "template": { "type": "string", "enum": ["sequence"] },
+        "heading": { "type": "string" },
+        "instruction": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "picture"],
+            "properties": {
+              "label": { "type": "string", "pattern": "^.{1,20}$" },
+              "picture": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+          },
+          "minItems": 4,
+          "maxItems": 5
+        }
+      }
+    },
+    "choose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "heading", "instruction", "cards", "correct", "explanation"],
+      "properties": {
+        "template": { "type": "string", "enum": ["choose"] },
+        "heading": { "type": "string" },
+        "instruction": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "picture"],
+            "properties": {
+              "label": { "type": "string", "pattern": "^.{1,56}$" },
+              "picture": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "correct": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "explanation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+      }
+    },
+    "odd-one-out": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "heading", "instruction", "cards", "correct", "explanation"],
+      "properties": {
+        "template": { "type": "string", "enum": ["odd-one-out"] },
+        "heading": { "type": "string" },
+        "instruction": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "picture"],
+            "properties": {
+              "label": { "type": "string", "pattern": "^.{1,30}$" },
+              "picture": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+          },
+          "minItems": 3,
+          "maxItems": 5
+        },
+        "correct": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "explanation": { "type": "string" }
+      }
+    },
+    "visual-text~points-0-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["visual-text"] },
+        "fit": { "type": "string", "enum": ["points-0-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 0 },
+          "minItems": 0,
+          "maxItems": 0
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "visual-text~points-2-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["visual-text"] },
+        "fit": { "type": "string", "enum": ["points-2-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 110 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 73 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "visual-text~points-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["visual-text"] },
+        "fit": { "type": "string", "enum": ["points-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 96 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 64 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "visual-text~points-1-key-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["visual-text"] },
+        "fit": { "type": "string", "enum": ["points-1-key-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 136 },
+        "points": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text"],
+                "properties": {
+                  "label": { "type": "string", "maxLength": 16 },
+                  "text": { "type": "string", "maxLength": 92 }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "text"],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["remember", "watch-out", "key-point", "example", "fun-fact"]
+                  },
+                  "text": { "type": "string", "maxLength": 92 }
+                }
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "visual-text~points-2-key-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["visual-text"] },
+        "fit": { "type": "string", "enum": ["points-2-key-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 48 },
+        "points": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text"],
+                "properties": {
+                  "label": { "type": "string", "maxLength": 16 },
+                  "text": { "type": "string", "maxLength": 32 }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "text"],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["remember", "watch-out", "key-point", "example", "fun-fact"]
+                  },
+                  "text": { "type": "string", "maxLength": 32 }
+                }
+              }
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "big-visual~fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["big-visual"] },
+        "fit": { "type": "string", "enum": ["fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 112 },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-full" }] }
+      }
+    },
+    "picture-sequence~sequence-2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "sequence"],
+      "properties": {
+        "template": { "type": "string", "enum": ["picture-sequence"] },
+        "fit": { "type": "string", "enum": ["sequence-2"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["shows", "must_see", "subject", "caption"],
+            "properties": {
+              "shows": { "type": "string" },
+              "must_see": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "maxItems": 4
+              },
+              "subject": { "type": "string", "enum": ["named", "generic"] },
+              "caption": { "type": "string", "maxLength": 48 }
+            }
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "picture-sequence~sequence-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "sequence"],
+      "properties": {
+        "template": { "type": "string", "enum": ["picture-sequence"] },
+        "fit": { "type": "string", "enum": ["sequence-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["shows", "must_see", "subject", "caption"],
+            "properties": {
+              "shows": { "type": "string" },
+              "must_see": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "maxItems": 4
+              },
+              "subject": { "type": "string", "enum": ["named", "generic"] },
+              "caption": { "type": "string", "maxLength": 30 }
+            }
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "picture-sequence~sequence-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "sequence"],
+      "properties": {
+        "template": { "type": "string", "enum": ["picture-sequence"] },
+        "fit": { "type": "string", "enum": ["sequence-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["shows", "must_see", "subject", "caption"],
+            "properties": {
+              "shows": { "type": "string" },
+              "must_see": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "maxItems": 4
+              },
+              "subject": { "type": "string", "enum": ["named", "generic"] },
+              "caption": { "type": "string", "maxLength": 22 }
+            }
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "compare~columns-2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "columns"],
+      "properties": {
+        "template": { "type": "string", "enum": ["compare"] },
+        "fit": { "type": "string", "enum": ["columns-2"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "text", "picture"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 12 },
+              "text": { "type": "string", "maxLength": 188 },
+              "picture": { "type": "null" }
+            }
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "compare~columns-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "columns"],
+      "properties": {
+        "template": { "type": "string", "enum": ["compare"] },
+        "fit": { "type": "string", "enum": ["columns-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "text", "picture"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 12 },
+              "text": { "type": "string", "maxLength": 124 },
+              "picture": { "type": "null" }
+            }
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "compare~columns-2-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "columns"],
+      "properties": {
+        "template": { "type": "string", "enum": ["compare"] },
+        "fit": { "type": "string", "enum": ["columns-2-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "text", "picture"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 12 },
+              "text": { "type": "string", "maxLength": 30 },
+              "picture": {
+                "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }]
+              }
+            }
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "compare~columns-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "columns"],
+      "properties": {
+        "template": { "type": "string", "enum": ["compare"] },
+        "fit": { "type": "string", "enum": ["columns-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "text", "picture"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 12 },
+              "text": { "type": "string", "maxLength": 56 },
+              "picture": {
+                "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }]
+              }
+            }
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "steps~points-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["steps"] },
+        "fit": { "type": "string", "enum": ["points-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 144 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "steps~points-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["steps"] },
+        "fit": { "type": "string", "enum": ["points-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 136 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "steps~points-5": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["steps"] },
+        "fit": { "type": "string", "enum": ["points-5"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 72 },
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "steps~points-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["steps"] },
+        "fit": { "type": "string", "enum": ["points-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 75 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "steps~points-4-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["steps"] },
+        "fit": { "type": "string", "enum": ["points-4-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 69 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "figure": { "anyOf": [{ "$ref": "#/$defs/picture" }, { "$ref": "#/$defs/diagram-side" }] }
+      }
+    },
+    "equation-hero~points-2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "formula", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["equation-hero"] },
+        "fit": { "type": "string", "enum": ["points-2"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 123 },
+        "formula": { "type": "string", "maxLength": 62 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 82 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "equation-hero~points-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "formula", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["equation-hero"] },
+        "fit": { "type": "string", "enum": ["points-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 72 },
+        "formula": { "type": "string", "maxLength": 62 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 48 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "equation-hero~points-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "formula", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["equation-hero"] },
+        "fit": { "type": "string", "enum": ["points-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 52 },
+        "formula": { "type": "string", "maxLength": 62 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 50 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "figure": { "type": "null" }
+      }
+    },
+    "equation-hero~points-2-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "formula", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["equation-hero"] },
+        "fit": { "type": "string", "enum": ["points-2-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 50 },
+        "formula": { "type": "string", "maxLength": 28 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 33 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "figure": { "$ref": "#/$defs/diagram-side" }
+      }
+    },
+    "equation-hero~points-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "formula", "points", "figure"],
+      "properties": {
+        "template": { "type": "string", "enum": ["equation-hero"] },
+        "fit": { "type": "string", "enum": ["points-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 29 },
+        "formula": { "type": "string", "maxLength": 28 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 19 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "figure": { "$ref": "#/$defs/diagram-side" }
+      }
+    },
+    "discussion~bare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["discussion"] },
+        "fit": { "type": "string", "enum": ["bare"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "picture": { "type": "null" }
+      }
+    },
+    "discussion~fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["discussion"] },
+        "fit": { "type": "string", "enum": ["fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "picture": { "$ref": "#/$defs/picture" }
+      }
+    },
+    "explain~points-0": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points"],
+      "properties": {
+        "template": { "type": "string", "enum": ["explain"] },
+        "fit": { "type": "string", "enum": ["points-0"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 0 },
+          "minItems": 0,
+          "maxItems": 0
+        }
+      }
+    },
+    "explain~points-2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points"],
+      "properties": {
+        "template": { "type": "string", "enum": ["explain"] },
+        "fit": { "type": "string", "enum": ["points-2"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 227 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 151 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "explain~points-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points"],
+      "properties": {
+        "template": { "type": "string", "enum": ["explain"] },
+        "fit": { "type": "string", "enum": ["points-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 221 },
+        "points": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 147 },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "explain~points-1-key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points"],
+      "properties": {
+        "template": { "type": "string", "enum": ["explain"] },
+        "fit": { "type": "string", "enum": ["points-1-key"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "points": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text"],
+                "properties": {
+                  "label": { "type": "string", "maxLength": 16 },
+                  "text": { "type": "string", "maxLength": 190 }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "text"],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["remember", "watch-out", "key-point", "example", "fun-fact"]
+                  },
+                  "text": { "type": "string", "maxLength": 190 }
+                }
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      }
+    },
+    "explain~points-2-key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "points"],
+      "properties": {
+        "template": { "type": "string", "enum": ["explain"] },
+        "fit": { "type": "string", "enum": ["points-2-key"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 106 },
+        "points": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text"],
+                "properties": {
+                  "label": { "type": "string", "maxLength": 16 },
+                  "text": { "type": "string", "maxLength": 71 }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "text"],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["remember", "watch-out", "key-point", "example", "fun-fact"]
+                  },
+                  "text": { "type": "string", "maxLength": 71 }
+                }
+              }
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "hinge~options-2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "stem", "options", "correct"],
+      "properties": {
+        "template": { "type": "string", "enum": ["hinge"] },
+        "fit": { "type": "string", "enum": ["options-2"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "stem": { "type": "string", "maxLength": 93 },
+        "options": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 56 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "correct": { "type": "integer", "minimum": 1, "maximum": 2 }
+      }
+    },
+    "hinge~options-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "stem", "options", "correct"],
+      "properties": {
+        "template": { "type": "string", "enum": ["hinge"] },
+        "fit": { "type": "string", "enum": ["options-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "stem": { "type": "string", "maxLength": 65 },
+        "options": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 30 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "correct": { "type": "integer", "minimum": 1, "maximum": 3 }
+      }
+    },
+    "hinge~options-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "stem", "options", "correct"],
+      "properties": {
+        "template": { "type": "string", "enum": ["hinge"] },
+        "fit": { "type": "string", "enum": ["options-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "stem": { "type": "string", "maxLength": 72 },
+        "options": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 40 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "correct": { "type": "integer", "minimum": 1, "maximum": 4 }
+      }
+    },
+    "question-set~questions-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["question-set"] },
+        "fit": { "type": "string", "enum": ["questions-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 131 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] },
+        "picture": { "type": "null" }
+      }
+    },
+    "question-set~questions-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["question-set"] },
+        "fit": { "type": "string", "enum": ["questions-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 81 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] },
+        "picture": { "type": "null" }
+      }
+    },
+    "question-set~questions-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["question-set"] },
+        "fit": { "type": "string", "enum": ["questions-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 64 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 38 }, { "type": "null" }] },
+        "picture": { "$ref": "#/$defs/picture" }
+      }
+    },
+    "practice~questions-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["practice"] },
+        "fit": { "type": "string", "enum": ["questions-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 131 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] },
+        "picture": { "type": "null" }
+      }
+    },
+    "practice~questions-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["practice"] },
+        "fit": { "type": "string", "enum": ["questions-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 81 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] },
+        "picture": { "type": "null" }
+      }
+    },
+    "practice~questions-3-fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["practice"] },
+        "fit": { "type": "string", "enum": ["questions-3-fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 64 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 38 }, { "type": "null" }] },
+        "picture": { "$ref": "#/$defs/picture" }
+      }
+    },
+    "exit-ticket~questions-3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction"],
+      "properties": {
+        "template": { "type": "string", "enum": ["exit-ticket"] },
+        "fit": { "type": "string", "enum": ["questions-3"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 131 },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] }
+      }
+    },
+    "exit-ticket~questions-4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "questions", "instruction"],
+      "properties": {
+        "template": { "type": "string", "enum": ["exit-ticket"] },
+        "fit": { "type": "string", "enum": ["questions-4"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 81 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "instruction": { "anyOf": [{ "type": "string", "maxLength": 71 }, { "type": "null" }] }
+      }
+    },
+    "hook~fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["hook"] },
+        "fit": { "type": "string", "enum": ["fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 410 },
+        "picture": { "$ref": "#/$defs/picture" }
+      }
+    },
+    "title~fig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["title"] },
+        "fit": { "type": "string", "enum": ["fig"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 100 },
+        "picture": { "$ref": "#/$defs/picture" }
+      }
+    },
+    "title~bare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "fit", "heading", "lead", "picture"],
+      "properties": {
+        "template": { "type": "string", "enum": ["title"] },
+        "fit": { "type": "string", "enum": ["bare"] },
+        "heading": { "type": "string", "maxLength": 68 },
+        "lead": { "type": "string", "maxLength": 240 },
+        "picture": { "type": "null" }
+      }
+    }
+  }
+}

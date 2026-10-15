@@ -187,7 +187,7 @@ export function judgeRepair(
   if (opts.fit) {
     if (toNotes.some((t) => t.trim())) why.push("moved slide words to the notes");
     const items = (x: S) =>
-      ["points", "questions", "options", "columns", "sequence"].reduce(
+      ["points", "questions", "options", "columns", "sequence", "items", "rows", "sides"].reduce(
         (a, k) => a + (Array.isArray(x[k]) ? (x[k] as unknown[]).length : 0),
         0,
       );

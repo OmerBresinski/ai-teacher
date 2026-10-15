@@ -422,7 +422,8 @@ export function slotFillSystem(system: string, schema: J): string {
 }
 
 /** A string that ends a sentence. */
-const SENTENCE_END = /[.!?)"'’”]$/;
+// An ellipsis ends a completion stem on purpose ("An artery always carries blood…"), not a cut.
+const SENTENCE_END = /[.!?)"'’”…]$/;
 /** Fields written as sentences, by name; a lead is a caption on title and big-visual. */
 const SENTENCE_FIELD = /(^|\.)(lead|stem|instruction)$/;
 const CAPTION_LEAD = new Set(["title", "big-visual"]);
@@ -451,22 +452,31 @@ export type Arrival = {
  * rest of the stage sees today's slide shape. A breach, cut or overflow is a writer fault: logged,
  * never silently accepted, and never repaired here (slot-fill never drops or rewrites words).
  */
-export function slotFillArrival(raw: J, stage: string, schema: J): Arrival {
+/** Layouts written as one def, without a `fit` (the pilot pack). */
+const PILOT_LAYOUTS = new Set(["items-row", "panel-list", "split-compare"]);
+
+export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arrival {
   const { fit, ...slide } = raw;
   const layout = String(raw.template ?? "");
   const key = typeof fit === "string" ? fit : undefined;
   const defs = (schema.$defs ?? {}) as Record<string, J>;
-  const def = key ? defs[variantDefName(layout, key)] : undefined;
+  // A pilot layout (TEACH-110 part s) is one def with no per-fit variants: it carries no `fit`,
+  // is checked against its own def here and measured at its drawn size later (pilot-fit.ts).
+  const pilot = !key && PILOT_LAYOUTS.has(layout) && !!defs[layout];
+  const def = key ? defs[variantDefName(layout, key)] : pilot ? defs[layout] : undefined;
   const breaches: string[] = [];
   const cuts: string[] = [];
   const fields: Arrival["fields"] = [];
   const wordsIn = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
-  if (!key) breaches.push("fit: missing");
+  if (!key && !pilot) breaches.push("fit: missing");
   else if (!def) breaches.push(`fit: no variant ${layout}~${key}`);
   else {
     breaches.push(...validate(def, raw, schema));
+    // An uncapped request (pilot v4.6) is checked against a capped one with the same defs: the
+    // writer never sees a cap, code still reads each field's room from the cap table.
+    const capDefs = ((caps ?? schema).$defs ?? {}) as Record<string, J>;
     const walk = (s: J, v: unknown, path: string) => {
-      if (s.$ref) return walk(defs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
+      if (s.$ref) return walk(capDefs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
       if (s.anyOf) {
         for (const b of s.anyOf as J[]) walk(b, v, path);
         return;
@@ -488,9 +498,10 @@ export function slotFillArrival(raw: J, stage: string, schema: J): Arrival {
         for (const [k, p] of Object.entries((s.properties ?? {}) as Record<string, J>))
           walk(p, (v as J)[k], path ? `${path}.${k}` : k);
     };
-    walk(def, raw, "");
+    walk((caps && capDefs[key ? variantDefName(layout, key) : layout]) || def, raw, "");
   }
-  const over = charsOver(slide, stage);
+  // A pilot slide's room is measured by its layout (pilot-fit.ts), not the old per-fit tables.
+  const over = pilot ? [] : charsOver(slide, stage);
   const route = breaches.length || cuts.length || over.length ? "writer-fault" : "as-written";
   return { slide, ...(key ? { fit: key } : {}), breaches, cuts, fields, over, route };
 }

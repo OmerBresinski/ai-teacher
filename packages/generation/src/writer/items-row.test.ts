@@ -82,8 +82,25 @@ describe("items-row on the writer's layout", () => {
     stage: "KS2" as never,
   };
   const plan = { slides: [] } as unknown as Plan;
-  const run = (s: S) =>
-    materialise(s, { ...base, index: 3, plan, visual: () => ({ status: "failed" }) });
+  /** The slide's elements as laid, a layout group taken apart (materialise keeps it whole). */
+  const run = (s: S) => {
+    const m = materialise(s, { ...base, index: 3, plan, visual: () => ({ status: "failed" }) });
+    const elements = m.slide.elements.flatMap((e) =>
+      e.type === "group" && "layout" in e
+        ? e.children.map((c) => ({ ...c, x: c.x + e.x, y: c.y + e.y }))
+        : [e],
+    );
+    return { ...m, slide: { ...m.slide, elements } };
+  };
+
+  test("the row stays one re-layable group in the editor (TEACH-205 part b prototype)", () => {
+    const m = materialise(row, { ...base, index: 3, plan, visual: () => ({ status: "failed" }) });
+    expect(m.slide.elements).toHaveLength(1);
+    const g = m.slide.elements[0] as { type: string; layout?: { template: string; input: S } };
+    expect(g.type).toBe("group");
+    expect(g.layout?.template).toBe("items-row");
+    expect((g.layout?.input.items as S[] | undefined)?.length).toBe((row.items as S[]).length);
+  });
 
   test("icons are labels for the library, never picture asks", () => {
     expect(visualsOf(row, 3, { ...base, plan })).toEqual([]);

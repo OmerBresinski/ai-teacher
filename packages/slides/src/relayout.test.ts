@@ -334,3 +334,39 @@ describe("caps at every count", () => {
       }
   });
 });
+
+describe("field states follow the layout's own measure", () => {
+  test("an items-row line the layout measures past the frame is over, though under the table's hard maximum", () => {
+    // Chat-edit router run r24: 50 characters against a hard maximum of 54, but "muscular" wraps
+    // the line to five lines at the drawn size and the layout reports it over.
+    const ref = {
+      template: "items-row",
+      input: {
+        template: "items-row",
+        heading: "Four parts working together",
+        lead: "The circulatory system moves blood around the body.",
+        ordered: false,
+        motif: "vessel",
+        items: [
+          {
+            name: "Heart",
+            text: "A muscular pump that pushes blood around the body.",
+            icon: "heart",
+          },
+          { name: "Blood", text: "A liquid that transports substances.", icon: "blood" },
+          {
+            name: "Blood vessels",
+            text: "Tubes carrying blood to and from the heart.",
+            icon: "blood vessel",
+          },
+          { name: "Lungs", text: "Help oxygen enter the blood when we breathe.", icon: "lungs" },
+        ],
+      },
+      frame: { x: 0, y: 38, w: 960, h: 450 },
+    } as unknown as LayoutRef;
+    const r = relayout(ref, getTheme("paper"), "ks2", "g");
+    const heart = r.fields.find((f) => f.path === "items.0.text");
+    expect(r.result.over).toContain("items[0].text");
+    expect(heart?.state).toBe("over");
+  });
+});

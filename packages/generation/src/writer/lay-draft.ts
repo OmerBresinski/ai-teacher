@@ -4,11 +4,18 @@
 // repairs: those run once, when the slide closes (`openSlide`), and the closed slide supersedes
 // every draft.
 import type { Slide } from "@tj/domain/documents";
+import { resolveIcon } from "@tj/slides/icons";
+import { PENDING_ICON } from "@tj/slides/templates";
 import { fromWriterActivity, isWriterActivity } from "./activities";
 import { slideNoEmDash } from "./checks";
 import type { SlideDraft } from "./draft";
-import { asksVisual, lookOf, withLook } from "./fixes";
-import { type MaterialiseCtx, type Materialised, materialise } from "./materialise";
+import { asksVisual, lookOf, shuffleHinge, withLook } from "./fixes";
+import {
+  type MaterialiseCtx,
+  type Materialised,
+  materialise,
+  STABLE_ID_TEMPLATES,
+} from "./materialise";
 import { quickCheckDraft, withoutReveals } from "./question-set-draft";
 import { nonFatalSync } from "./services";
 
@@ -101,7 +108,15 @@ export function layDraft(
       s = reserveLook(s, look);
       // TEACH-101 part g: a quick check holds every written row's chip; its answers never show.
       s = quickCheckDraft(s);
-      const lay = (x: S) => materialise(x, { ...ctx, visual: () => ({ status: "pending" }) });
+      s = keepSidePictures(s);
+      // A hinge draws its options where the closed slide will: once `correct` has arrived (it
+      // follows the options), the same seeded shuffle as the stage, so nothing jumps at hand-over.
+      if (s.template === "hinge" && typeof s.correct === "number")
+        s = shuffleHinge(s, `${ctx.brief.id}:${ctx.index}:${String(s.stem ?? "")}`);
+      s = iconsFromNames(s, draft.open);
+      // `draft`: a picture still to come holds its slot while the slide fills.
+      const lay = (x: S) =>
+        materialise(x, { ...ctx, draft: true, visual: () => ({ status: "pending" }) });
       let m = lay(s);
       // A figure half streamed may not lay out yet: its planned slot holds until it does.
       const field = VISUAL_FIELD[String(s.template)];
@@ -109,7 +124,12 @@ export function layDraft(
         const held = lay(reserveLook({ ...s, [field]: undefined }, look));
         if (hasVisual(held.slide.elements)) m = held;
       }
-      return holdTypeSizes(stableDraftIds(withoutReveals(m.slide), `s${ctx.index + 1}`), sizes);
+      // Pilot layouts come out of `materialise` with the closed slide's own ids already.
+      const shown = withoutReveals(m.slide);
+      const ided = STABLE_ID_TEMPLATES.has(String(s.template))
+        ? (({ question: _q, ...rest }) => rest)(shown)
+        : stableDraftIds(shown, `s${ctx.index + 1}`);
+      return holdTypeSizes(ided as Laid, sizes);
     },
     () => undefined,
   );
@@ -160,4 +180,82 @@ function hasVisual(els: readonly El[]): boolean {
       (e.type !== "text" && e.type !== "shape") ||
       hasVisual(((e as { children?: El[] }).children ?? []) as El[]),
   );
+}
+
+/**
+ * Split compare's pictures are all or none, and the writer streams each side's picture after its
+ * words: laid as it stands, side 1's slot would vanish when side 2 starts (no picture yet) and
+ * come back when side 2's arrives. Once any side has a picture, a side whose picture has not
+ * arrived yet holds an open slot too, so a slot never vanishes while the slide is written. A
+ * side whose writer wrote `picture: null` is its own decision and is left alone.
+ */
+export function keepSidePictures(s: S): S {
+  if (s.template !== "split-compare" || !Array.isArray(s.sides)) return s;
+  const sides = s.sides as (S | null | undefined)[];
+  // A picture is there once it says what it shows: before that (`{"kind": "labelled-d`) it is
+  // still arriving and does not lay out yet.
+  const there = (p: unknown) =>
+    !!p && typeof p === "object" && typeof (p as S).shows === "string" && !!(p as S).shows;
+  const donor = sides.find((d) => there(d?.picture))?.picture;
+  if (!donor) return s;
+  return {
+    ...s,
+    sides: sides.map((d) =>
+      d && d.picture !== null && !there(d.picture) ? { ...d, picture: donor } : d,
+    ),
+  };
+}
+
+/**
+ * Icons while a row streams (stream sim 14 Oct, Greg picked "on name": "without showing numbers if
+ * icons are inbound ... can it rather fade in nicely into the space without the placeholder img?").
+ * items-row and panel-list draw icons all or none, and the writer writes each item's `icon` after
+ * its words, so a draft would show numbers until the last icon lands, then flip. Here:
+ * - **Declared so far decides.** Any item with `icon: null` (or a whole label the library misses):
+ *   the writer's row as it stands (numbers). Any `icon` opened: icons are inbound. Neither yet:
+ *   unknown, and the row is held as icons with every face empty, never a guessed drawing.
+ * - **Inbound:** an item draws the writer's own icon once that label is whole and resolves, else
+ *   its name's icon once the name is whole and resolves, else an empty face (`PENDING_ICON`). A
+ *   face never shows a number or a placeholder drawing; the editor fades each drawing in. Icons
+ *   land in reading order (an item waits for an earlier empty one).
+ * `open` is where the open string sits (`SlideDraft.open`); a string anywhere else is whole.
+ */
+export function iconsFromNames(s: S, open?: readonly (string | number)[]): S {
+  if ((s.template !== "items-row" && s.template !== "panel-list") || !Array.isArray(s.items))
+    return s;
+  const items = s.items as unknown[];
+  const live = items.filter((it): it is S => !!it && typeof it === "object");
+  if (!live.length) return s;
+  const whole = (i: number, key: string) =>
+    !(open && open[0] === "items" && open[1] === i && open[2] === key);
+  const own = (it: S, i: number) =>
+    typeof it.icon === "string" && it.icon.trim() && whole(i, "icon") ? it.icon : null;
+  // The writer's choice so far: no icons, or a whole label that misses (the row will be numbered).
+  if (live.some((it) => it.icon === null)) return s;
+  if (
+    items.some(
+      (it, i) =>
+        it && typeof it === "object" && own(it as S, i) && !resolveIcon(own(it as S, i) as string),
+    )
+  )
+    return s;
+  const inbound = live.some((it) => typeof it.icon === "string");
+  // Icons land in reading order: an item waits while an earlier one is still empty, so a drawing's
+  // id (named by its place among the row's drawings) never shifts and nothing lands twice.
+  let held = !inbound;
+  return {
+    ...s,
+    items: items.map((it, i) => {
+      if (!it || typeof it !== "object") return it;
+      const item = it as S;
+      const mine = own(item, i);
+      const name = typeof item.name === "string" && whole(i, "name") ? item.name : null;
+      const label = mine ?? (name && resolveIcon(name) ? name : null);
+      if (held || !label) {
+        held = true;
+        return { ...item, icon: PENDING_ICON };
+      }
+      return mine ? item : { ...item, icon: label };
+    }),
+  };
 }
