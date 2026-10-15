@@ -23,6 +23,7 @@ import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
 import { EXIT_MAX } from "./templates/exit-ticket";
+import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
@@ -136,6 +137,17 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: false,
     noun: "questions",
     paths: workPaths,
+  },
+  hinge: {
+    items: "options",
+    min: HINGE_MIN,
+    // KS1 takes 2-3 options (gold caps); 4 from KS2.
+    max: (stage) => (ageProfileOf(stage) === "early" ? HINGE_MAX - 1 : HINGE_MAX),
+    blank: () => "New answer",
+    // A question is never split (rulings 91, 102): over is flagged, the teacher cuts.
+    continuation: false,
+    noun: "options",
+    paths: hingePaths,
   },
 };
 

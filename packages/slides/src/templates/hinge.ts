@@ -116,9 +116,41 @@ export const optionText = (s: string): string => (mathy(s) ? s.replace(/-/g, "âˆ
 
 /** The options as choices: `choices` when given, else the plain `options`. */
 export function hingeChoices(input: TemplateInput): HingeChoice[] {
-  if (input.choices?.length) return input.choices;
-  return (input.options ?? []).map((text) => ({ text }));
+  // An option is a string; anything else a caller passes reads as its `text` (never a crash).
+  const opts = input.options?.map((o: unknown) =>
+    typeof o === "string" ? o : String((o as { text?: unknown } | null)?.text ?? ""),
+  );
+  const ch = input.choices;
+  if (!ch?.length) return (opts ?? []).map((text) => ({ text }));
+  // An edited option list (the editor's relayout writes `options`) wins over the writer's
+  // choices when it no longer lines up with them; matching lists keep each choice's icon and why.
+  if (!opts?.length) return ch;
+  if (opts.length !== ch.length) return opts.map((text) => ({ text }));
+  return ch.map((c, k) => ({ ...c, text: opts[k] ?? c.text }));
 }
+
+/**
+ * Which input path each element shows, in draw order (the editor's layout ref binding): the
+ * question (`stem` when there is one, else `heading`) and each card's words. A stacked fraction's
+ * two numbers are not bound one by one (the option is edited whole in the side panel).
+ */
+export function hingePaths(els: SlideElement[]): (string | undefined)[] {
+  const cards = els.filter((e) => e.name === HINGE_NAMES.card);
+  const fraction = new Set(
+    cards
+      .filter((c) => els.some((e) => e.name === HINGE_NAMES.bar && within(e, c)))
+      .map((c) => c.id),
+  );
+  return els.map((el) => {
+    if (el.name === "Heading") return "heading";
+    if (el.name === "Stem") return "stem";
+    if (el.name !== HINGE_NAMES.text) return undefined;
+    const k = cards.findIndex((c) => within(el, c));
+    return k < 0 || fraction.has((cards[k] as SlideElement).id) ? undefined : `options.${k}`;
+  });
+}
+const within = (e: SlideElement, c: SlideElement) =>
+  e.x >= c.x && e.y >= c.y && e.x + e.w <= c.x + c.w + 0.5 && e.y + e.h <= c.y + c.h + 0.5;
 
 /**
  * Which look the options take (ruling 161): tiles when every option has an icon the library
@@ -344,6 +376,8 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
     c.over.length = n0;
     const lines = Math.round(el.h / ((el.style?.fontSize ?? c.s.heading) * kit.LH.heading));
     if (lines > 2) c.over.push(`hinge question ${lines} lines`);
+    // The stem is the question when there is one: the title is bound to it (`hingePaths`).
+    if (input.stem?.trim()) el.name = "Stem";
     accent(c, el, input.accentWord);
     headBottom = el.y + el.h;
   }
@@ -450,6 +484,8 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
     c.question = {
       type: "multiple-choice",
       options: ids.map((id, k) => ({ id, correct: k === right - 1 })),
+      // The gold reveals in one click: every wrong card fades and the right one is marked.
+      oneStep: true,
       ...(input.explanation?.trim() ? { explanation: input.explanation.trim() } : {}),
     };
   const notes = hingeNotes(choices, Number.isInteger(right) ? right : undefined, letters);
@@ -476,7 +512,10 @@ function cardOf(
 
 /** The rounded-square letter key, a card a pupil holds up (never the round number badge). */
 function key(c: Ctx, letter: string, x: number, y: number, d: number) {
-  const st = surfaceStyle(c.t, "key");
+  // The gold's key is the card's ink with the letter in the card's fill (on dark themes a pale key
+  // with a dark letter); the `key` role's accent would be a second red on the slide.
+  const card = surfaceStyle(c.t, "card");
+  const st = { fill: card.ink ?? c.t.colors.ink, ink: card.fill };
   c.els.push({
     id: uid(),
     type: "shape",

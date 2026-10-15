@@ -111,6 +111,8 @@ export type QuestionData =
       options: { id: Id; correct: boolean }[];
       multi?: boolean;
       explanation?: string;
+      /** One click fades every wrong option and marks the right one (the hinge, TEACH-256 part b). */
+      oneStep?: boolean;
     }
   | { type: "matching"; pairs: { id: Id; leftElementId: Id; rightElementId: Id }[] }
   /** Words to pictures. `labelId` is the word that belongs under `imageId`, wherever it sits now. */
@@ -759,6 +761,7 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
     options: z.array(z.object({ id: z.string(), correct: z.boolean() })),
     multi: z.boolean().optional(),
     explanation: z.string().optional(),
+    oneStep: z.boolean().optional(),
   }),
   z.object({
     type: z.literal("matching"),
@@ -1005,7 +1008,8 @@ export function diagramBuildAt(slide: Slide, step: number, element?: SlideElemen
 export function answerRevealSteps(slide: Slide): number {
   if (!hasRevealableAnswer(slide)) return 0;
   const q = slide.question;
-  if (q?.type === "multiple-choice") return q.options.filter((o) => !o.correct).length + 1;
+  if (q?.type === "multiple-choice")
+    return q.oneStep ? 1 : q.options.filter((o) => !o.correct).length + 1;
   if (q?.type === "true-false") return Math.max(1, countOptions(slide.elements));
   return 1;
 }

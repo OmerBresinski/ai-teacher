@@ -6,8 +6,8 @@ import { HINGE_NAMES } from "./hinge";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /*
- * TEACH-256 part b (rulings 161, 230): every hinge letter key is painted by the theme's `key`
- * role, a rounded square (never the round number badge), its letter readable on it; the reveal
+ * TEACH-256 part b (rulings 161, 230): every hinge letter key is the card's ink (the gold's
+ * ink key), a rounded square (never the round number badge), its letter readable on it; the reveal
  * stays the multiple-choice question data, counted from 1. Replaces part f's per-option disc
  * colours (P8), which the v13 gold retired.
  */
@@ -28,7 +28,7 @@ const hinge = (n: number): TemplateInput => ({
 });
 
 describe("hinge letter keys", () => {
-  test("2, 3 and 4 options fit on every theme; each key is the key role, its letter readable", () => {
+  test("2, 3 and 4 options fit on every theme; each key is the card's ink, its letter readable", () => {
     for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
       for (const theme of THEMES)
         for (const n of [2, 3, 4]) {
@@ -41,7 +41,9 @@ describe("hinge letter keys", () => {
           });
           const keys = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.key);
           expect(keys).toHaveLength(n);
-          const role = surfaceStyle(theme, "key");
+          // The gold's key: the card's ink, the letter in the card's fill (never the key role's red).
+          const card = surfaceStyle(theme, "card");
+          const role = { fill: card.ink };
           for (const k of keys) {
             expect(k.shape).toBe("rounded");
             expect(k.fill).toBe(role.fill);

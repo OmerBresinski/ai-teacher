@@ -18,6 +18,7 @@ export const ADAPTIVE_TEMPLATE_IDS = [
   // TEACH-230 part b (B2): the "work alone" slides.
   "practice",
   "exit-ticket",
+  "hinge",
 ] as const;
 
 export type AdaptiveTemplateId = (typeof ADAPTIVE_TEMPLATE_IDS)[number];

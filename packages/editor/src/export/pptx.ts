@@ -71,7 +71,7 @@ import { withDiagramFonts } from "../images/diagram-fonts";
 import { resolveImageSrc } from "../images/resolve-src";
 import { type Crop, currentCrop, normaliseTransform, renderedFit } from "../lesson/image-adjust";
 import { normaliseAngle } from "../model/geometry";
-import { choiceText } from "../slide/elements/choice";
+import { choiceText, hingeRevealShapes, oneStepReveal } from "../slide/elements/choice";
 import {
   clamp,
   GAP_TOKEN,
@@ -404,7 +404,8 @@ export type BuildSlide = { slide: Slide; index: number; step: number; steps: num
 
 export function buildSlidePlan(lesson: Lesson): BuildSlide[] {
   return lesson.slides.flatMap((slide, index) => {
-    const steps = maxRevealStep(slide);
+    // A one-click answer (the hinge) is one more build slide: the reveal (TEACH-256 part b).
+    const steps = maxRevealStep(slide) + (oneStepReveal(slide) ? 1 : 0);
     return Array.from({ length: steps + 1 }, (_, step) => ({
       slide,
       index,
@@ -1049,7 +1050,11 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     y: inches(element.y),
     w: inches(element.w),
     h: inches(element.h),
-    fill: { color: hexColor(element.fill ?? theme.colors.surface) ?? "FFFFFF" },
+    // A clear fill (the hinge reveal's ring) paints nothing under its line.
+    fill:
+      element.fill === "transparent"
+        ? { type: "none" }
+        : { color: hexColor(element.fill ?? theme.colors.surface) ?? "FFFFFF" },
     line: stroke && strokeWidth > 0 ? { color: stroke, width: strokeWidth } : { type: "none" },
   };
   if (element.shape === "rounded" || element.shape === "pill") options.rectRadius = inches(radius);
@@ -1643,6 +1648,8 @@ export async function exportLessonPptx(
         if (!visibleAt(element, step)) continue;
         await drawElement(pptxSlide, element, theme, ctx, NO_FRAME);
       }
+      if (oneStepReveal(slide) && step === steps - 1)
+        for (const mark of hingeRevealShapes(slide, theme)) drawShape(pptxSlide, mark, theme);
 
       const notes = slide.notes?.trim();
       const stepNote = steps > 1 ? `Reveal ${step + 1} of ${steps}.` : "";

@@ -510,7 +510,9 @@ function ChoiceMarks({
               background: right
                 ? undefined
                 : (hinge?.wash ?? withAlpha(theme.colors.background, 0.62)),
-              boxShadow: right ? `0 0 0 ${hinge ? 3 : 4}px ${theme.colors.correct}` : undefined,
+              boxShadow: right
+                ? `0 0 0 ${hinge ? 3 : 4}px ${hinge?.ring ?? theme.colors.correct}`
+                : undefined,
             }}
           >
             {key ? (
@@ -522,8 +524,8 @@ function ChoiceMarks({
                   width: key.w,
                   height: key.h,
                   borderRadius: key.radius,
-                  background: theme.colors.correct,
-                  color: theme.colors.onAccent,
+                  background: hinge?.keyFill,
+                  color: hinge?.keyInk,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -548,8 +550,8 @@ function ChoiceMarks({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: theme.colors.correct,
-                  color: theme.colors.surface,
+                  background: hinge?.ring ?? theme.colors.correct,
+                  color: hinge?.keyInk ?? theme.colors.surface,
                   fontWeight: 700,
                   fontSize: hinge ? Math.round(hinge.tick.d * 0.6) : 22,
                   lineHeight: 1,

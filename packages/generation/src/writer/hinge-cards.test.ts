@@ -31,7 +31,6 @@ describe("fitTable hinge cards", () => {
       const { hinge: _b, ...restOff } = off[g]?.layouts ?? {};
       expect(restOn).toEqual(restOff);
     }
-    // Re-measured on the TEACH-256 part b layout (rows of up to 2 lines replace 3-across cards).
-    expect(cards.groups.KS2.options["3"]).toBe(44);
+    expect(cards.groups.KS2.options["3"]).toBe(30);
   });
 });

@@ -236,8 +236,7 @@ export const HINGE_STEM_LINES = 2;
 export const hingeStemFit = (g: Group) =>
   largest(
     (n) =>
-      hingeCardLines(g, [sample(REST, 1), sample(REST, 4)], sample(n), "Heading") <=
-      HINGE_STEM_LINES,
+      hingeCardLines(g, [sample(REST, 1), sample(REST, 4)], sample(n), "Stem") <= HINGE_STEM_LINES,
   );
 /** The hinge option counts the writer may use (capacity.ts: 2 to 4 options). */
 export const HINGE_OPTIONS = [2, 3, 4] as const;
