@@ -89,6 +89,11 @@ export function barPanelGuard(p: BarPanelInput): { ok: true } | { ok: false; rea
     return { ok: false, reason: `a is not a whole number from 1 to ${EQUATION_MAX_A}` };
   if (!(p.b > 0) || !(p.c > p.b))
     return { ok: false, reason: "b is not positive or c is not above b" };
+  // x may be a decimal (KS3 solves 2x + 3 = 8), but one the cells show exactly: at most two
+  // decimal places. 10/3 would show as a rounded 3.33 that does not check.
+  const x = (p.c - p.b) / p.a;
+  if (Math.abs(Math.round(x * 100) - x * 100) > 1e-6)
+    return { ok: false, reason: "x is not a whole number or a decimal of at most 2 places" };
   return { ok: true };
 }
 

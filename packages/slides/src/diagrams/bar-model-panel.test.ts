@@ -3,6 +3,7 @@ import { atKeyStage, getTheme, THEMES, typeScale } from "../themes";
 import {
   barPanelFrames,
   barPanelGuard,
+  barPanelMinWidth,
   barPanelSpec,
   EQUATION_MAX_A,
   PANEL_MIN,
@@ -192,5 +193,56 @@ describe("the panel is code's, not the writer's", () => {
     const j = diagramJsonSchema("bar-model") as { properties: Record<string, unknown> };
     expect(Object.keys(j.properties)).not.toContain("panel");
     expect(Object.keys(j.properties)).toContain("bars");
+  });
+});
+
+describe("the writer's schema is master's (review of #526)", () => {
+  // sha256 of JSON.stringify of each schema, read on origin/master 8c5587793 before this part.
+  const sha = (o: unknown) =>
+    require("node:crypto").createHash("sha256").update(JSON.stringify(o)).digest("hex");
+  test("the bar model's wire and drawer schemas hash as on master", async () => {
+    const { diagramJsonSchema, drawerJsonSchema } = await import("./wire");
+    expect(sha(diagramJsonSchema("bar-model"))).toBe(
+      "75753184e4b98fad675b4625d65b7b96201c214b3097da7c8ddbfbe0afaddc4a",
+    );
+    expect(sha(drawerJsonSchema("bar-model"))).toBe(
+      "089a7e9660c7efdd0d4776d478f81f5d420dcd74a8a7d15c95bc68cca2bf3f23",
+    );
+  });
+});
+
+describe("x cells are measured: a value never overflows its cell", () => {
+  const t3 = atKeyStage(getTheme("paper"), "ks3");
+  const eq = (a: number, b: number, c: number) => ({ model: "equation" as const, a, b, c });
+  test("a 3-digit x in six cells is over at 300 wide, and fits at its measured width", () => {
+    const p = eq(6, 12, 762); // x = 125
+    const box = { w: 300, h: 300 };
+    expect(diagramFaults(spec(p), t3, box)).toContain('the x cells are too narrow for "125"');
+    const min = barPanelMinWidth(p, t3, 300) as number;
+    expect(min).toBeGreaterThan(300);
+    expect(diagramFaults(spec(p), t3, { w: min, h: 300 })).toEqual([]);
+    expect(shownLabelSize(spec(p), t3, { w: min, h: 300 })).toBeGreaterThanOrEqual(21);
+  });
+  test("every value drawn sits inside its cell at the measured width (3-digit, decimal)", () => {
+    for (const p of [eq(6, 12, 762), eq(3, 5, 380), eq(2, 3, 8), eq(4, 1, 10), eq(5, 2.5, 15)]) {
+      const min = barPanelMinWidth(p, t3, 300) as number;
+      expect(min).toBeDefined();
+      expect(diagramFaults(spec(p), t3, { w: min, h: 300 })).toEqual([]);
+    }
+  });
+  test("a decimal x draws exactly: 2x + 3 = 8 shows 2.5 in each cell", () => {
+    const svg = svgOf(spec(eq(2, 3, 8)), "ks3", undefined, false);
+    expect(svg.split(">2.5</tspan>").length - 1).toBe(2);
+  });
+  test("a recurring x is refused with a clear reason", () => {
+    const g = barPanelGuard(eq(3, 2, 12)); // x = 10/3
+    expect(g.ok).toBe(false);
+    if (!g.ok) expect(g.reason).toBe("x is not a whole number or a decimal of at most 2 places");
+  });
+  test("ten x cells are refused (a ≤ 6); the ten tenths of a percent bar draw", () => {
+    expect(barPanelGuard(eq(10, 5, 105)).ok).toBe(false);
+    const svg = svgOf(spec(Y6), "ks3", undefined, false);
+    expect((svg.match(/<line /g) ?? []).length).toBe(9);
+    expect(diagramFaults(spec(Y6), t3, { w: 320, h: 200 })).toEqual([]);
   });
 });

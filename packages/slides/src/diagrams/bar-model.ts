@@ -1,4 +1,6 @@
 /** Bar models: one to four bars cut into parts, drawn to one scale, with totals as braces. */
+
+import type { Theme } from "@tj/domain/documents";
 import { answerPart, buildsOn, PASSING_HIDDEN, part } from "./builds";
 import {
   type BarModel,
@@ -8,7 +10,7 @@ import {
   barPanelGuard,
 } from "./schema";
 import { look, WEIGHT } from "./style";
-import { type Ctx, type DrawnText, hBrace, n, num, text, textWidth, vBrace } from "./svg";
+import { type Ctx, context, type DrawnText, hBrace, n, num, text, textWidth, vBrace } from "./svg";
 
 export { barPanelGuard, EQUATION_MAX_A } from "./schema";
 
@@ -296,6 +298,23 @@ function valueLabel(
   );
 }
 
+/**
+ * The narrowest box (slide points, at `h` tall) in which a panel draws every number at or above
+ * the age floor, measured: its x cells take the width their value needs at the floor. A caller
+ * whose box is narrower reports the panel over (or shows the working as text only).
+ */
+export function barPanelMinWidth(panel: BarPanelInput, theme: Theme, h = 440): number | undefined {
+  if (!barPanelGuard(panel).ok) return undefined;
+  const p = BarPanelSchema.parse(panel);
+  for (let w = PANEL_MIN.w; w <= 960; w += 4) {
+    const faults: string[] = [];
+    // The drawer's own box: the zone less its inset each side (index.ts DRAW_INSET).
+    drawPanel(p, { ...context(theme, w, h), rec: [], faults }, w - 8, h);
+    if (faults.length === 0) return w;
+  }
+  return undefined;
+}
+
 /** The smallest box a panel model draws into (a worked example's panel, ruling 155). */
 export const PANEL_MIN = { w: 270, h: 180 } as const;
 
@@ -390,7 +409,8 @@ function drawPercent(p: Extract<BarPanel, { model: "percent" }>, x: Ctx, w: numb
  * The unknown's face: a math italic. No theme names a maths face yet, so this fallback stack
  * stands in until the fonts part (TEACH-75 part aa, A7) owns `--font-math`.
  */
-const MATH_FAMILY = "'STIX Two Math', 'Cambria Math', 'STIX Two Text', 'Times New Roman', serif";
+const MATH_FAMILY =
+  "'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'STIX Two Text', 'Times New Roman', serif";
 
 /** ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale. */
 function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
@@ -423,6 +443,8 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   // The letter a step over the numbers when the cell has room for it.
   const letterFs = Math.max(big, Math.min(big * 1.2, inner / textWidth(p.unknown, x, 1, 500)));
   const need = Math.max(textWidth(num(xv), x, big, 700), textWidth(p.unknown, x, letterFs, 500));
+  // Measured at the floor: a value that cannot stand in its cell (a 3-digit x in six cells) is
+  // reported over, never drawn past its cell; `barPanelMinWidth` gives the box it needs.
   if (need > inner) x.faults?.push(`the ${p.unknown} cells are too narrow for "${num(xv)}"`);
   // Each cell a block of its own (the gold): its fill, then a thin ink outline with a small
   // radius, drawn as two shapes so the flat finish keeps the outline.
