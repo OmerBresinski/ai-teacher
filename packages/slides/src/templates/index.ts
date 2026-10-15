@@ -38,6 +38,7 @@ import { type GridCard, layoutCardsGrid } from "./cards-grid";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
@@ -2330,6 +2331,11 @@ function layoutOnce(
     case "question-set":
     case "exit-ticket":
     case "practice": {
+      // TEACH-101 part g: a question set whose every question has its answer is the quick check.
+      if (tpl === "question-set" && isQuickCheck(input)) {
+        layoutQuestionSet(c, input);
+        break;
+      }
       heading(c, input.heading);
       const qs = input.questions ?? [];
       if (input.figure) {

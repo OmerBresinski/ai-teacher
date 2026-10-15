@@ -1011,6 +1011,29 @@ function countOptions(els: SlideElement[]): number {
 export function hasRevealableAnswer(slide: Slide): boolean {
   const q = slide.question;
   if (!q) return false;
-  if (q.type === "open-response") return !!q.modelAnswer?.trim();
+  if (q.type === "open-response") return !!q.modelAnswer?.trim() && !revealsOwnAnswers(slide);
   return true;
+}
+
+/**
+ * Whether the slide reveals an open response's answers itself, one element step per answer line
+ * (the quick check, TEACH-101 part g): its model answer stays on the question for the worksheet,
+ * the answer drawer and the PowerPoint key, and Present adds no extra step to show it again.
+ */
+export function revealsOwnAnswers(slide: Slide): boolean {
+  const q = slide.question;
+  if (q?.type !== "open-response" || !q.modelAnswer?.trim()) return false;
+  const lines = q.modelAnswer
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim()).length;
+  const steps = new Set<number>();
+  const walk = (els: SlideElement[]) => {
+    for (const el of els) {
+      if (el.revealStep && el.revealStep > 0) steps.add(el.revealStep);
+      if (el.type === "group") walk(el.children);
+    }
+  };
+  walk(slide.elements);
+  return lines > 1 && steps.size === lines && Math.max(...steps) === lines;
 }

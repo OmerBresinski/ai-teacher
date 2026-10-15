@@ -18,7 +18,10 @@ const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
 /** Templates added since the snapshot: an old lesson cannot hold them, so they are not in it. */
 const NEWER = new Set<string>(["panel-list", "split-compare", "items-row"]);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
-  ...templateSamples().filter((s) => !NEWER.has(s.template)),
+  ...templateSamples()
+    .filter((s) => !NEWER.has(s.template))
+    // The question-set sample gained answers (the quick check, TEACH-101 part g); master's had none.
+    .map((s) => (s.template === "question-set" ? { ...s, answers: undefined } : s)),
   {
     template: "picture-text",
     heading: "Lambs",

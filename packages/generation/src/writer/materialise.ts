@@ -581,6 +581,10 @@ export function toInput(
         template,
         heading,
         questions: strs(s.questions),
+        // TEACH-101 part g: a question set that carries one answer per question is the quick check.
+        ...(template === "question-set" && Array.isArray(s.answers) && s.answers.length
+          ? { answers: strs(s.answers) }
+          : {}),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
