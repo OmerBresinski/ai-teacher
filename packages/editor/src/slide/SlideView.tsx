@@ -501,12 +501,15 @@ function ChoiceMarks({
                 role="img"
                 aria-label="Correct answer"
                 style={{
+                  // On the card's corner, outside its words (TEACH-75 part D): a tick inside the
+                  // card sat over the end of a full-width option's first line.
                   position: "absolute",
-                  right: 10,
-                  top: 10,
+                  right: -14,
+                  top: -14,
                   width: 36,
                   height: 36,
                   borderRadius: 36,
+                  boxShadow: `0 0 0 3px ${theme.colors.surface}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

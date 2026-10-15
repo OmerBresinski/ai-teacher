@@ -40,8 +40,9 @@ describe("body top from the measured heading (ruling 198)", () => {
     expect(two.r.over.filter((o) => o.startsWith("heading"))).toEqual([]);
   });
   test("a body already lower than the gap stays where it is", () => {
-    const one = lay("Quick check", qs(2));
-    const two = lay(long, qs(2));
+    // One question: a short set opens up and steps its type up (TEACH-75 part D) and still sits low.
+    const one = lay("Quick check", qs(1));
+    const two = lay(long, qs(1));
     expect(two.gap).toBeGreaterThan(two.oneLineGap);
     expect(two.foot).toBe(one.foot);
   });

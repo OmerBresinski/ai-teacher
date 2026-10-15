@@ -106,7 +106,7 @@ export function roleSteps(sc: TypeScale, role: TextRole): number[] {
       return at("caption");
     case "heading":
     case "question":
-      return at("headingDisplay", "heading", "body");
+      return at("headingDisplay", "heading", "bodyLarge", "body");
     default:
       return at("title", "subtitle", "headingDisplay", "heading");
   }

@@ -397,6 +397,11 @@ export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
   ks4: { body: 25, heading: 1.05, caption: 1 },
   ks5: { body: 25, heading: 1.05, caption: 1 },
 };
+/**
+ * bodyLarge = body x this: the one step over body (TEACH-75 part D), for a question slide's options
+ * and a short practice set's questions when the band has room (back-of-room test).
+ */
+export const BODY_LARGE = 1.18;
 /** bodySmall = body x this: the one step under body. */
 export const BODY_SMALL = 0.85;
 /** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
@@ -437,6 +442,7 @@ export type TypeStep =
   | "subtitle"
   | "headingDisplay"
   | "heading"
+  | "bodyLarge"
   | "body"
   | "bodySmall"
   | "caption";
@@ -450,6 +456,8 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
     subtitle: Math.round(own.subtitle * k.heading),
     headingDisplay: Math.round(heading * DISPLAY_HEADING),
     heading,
+    // Never at or over the heading step, so each step is its own size.
+    bodyLarge: Math.min(Math.round(k.body * BODY_LARGE), heading - 2),
     body: k.body,
     bodySmall: Math.round(k.body * BODY_SMALL),
     caption: Math.round(own.caption * k.caption),

@@ -137,6 +137,44 @@ describe.each(LESSONS)("replay %s", (b) => {
         kind: kind as never,
         background: want.background as never,
       });
+      // TEACH-75 part D re-lays hinge options by length and puts a practice slide's instruction
+      // first: the same words, by the AI, in a new arrangement. Geometry is the templates' own test.
+      const relaid =
+        ["multiple-choice", "open-response", "starter", "exit-ticket"].includes(String(kind)) &&
+        want.elements.some((e) => e.name === "Option" || e.name === "Item");
+      if (relaid) {
+        const words = (els: El[]) =>
+          els
+            .filter((e) => (e.type === "text" || e.doc) && e.name !== "Instruction")
+            .map((e) => JSON.stringify(e.doc))
+            .sort();
+        expect({ i, words: words(got) }).toEqual({ i, words: words(want.elements) });
+        // The lab's run kept an overflowing instruction's first line only (y8 s7's word bank); with
+        // the instruction first and the rows opened up it fits whole, so it starts with the lab's.
+        const said = (els: El[]) => {
+          const d = els.find((e) => e.name === "Instruction")?.doc as
+            | { content?: { content?: { text?: string }[] }[] }
+            | undefined;
+          return (d?.content ?? [])
+            .flatMap((p) => p.content ?? [])
+            .map((t) => t.text ?? "")
+            .join("");
+        };
+        expect({ i, starts: said(got).startsWith(said(want.elements)) }).toEqual({
+          i,
+          starts: true,
+        });
+        // Tolerance, not geometry: the same elements give or take the instruction's one hairline,
+        // and nothing outside the slide.
+        expect({ i, n: Math.abs(got.length - want.elements.length) <= 1 }).toEqual({ i, n: true });
+        for (const el of got)
+          expect({ i, inside: Number(el.y) >= 0 && Number(el.y) + Number(el.h) <= 540 }).toEqual({
+            i,
+            inside: true,
+          });
+        for (const el of got) expect({ i, by: el.authoredBy }).toEqual({ i, by: "ai" });
+        return;
+      }
       expect({ i, n: got.length }).toEqual({ i, n: want.elements.length });
       // Ranged slots are the multi-picture ones; title, picture-text and big-picture hold one photo.
       const ranged =
