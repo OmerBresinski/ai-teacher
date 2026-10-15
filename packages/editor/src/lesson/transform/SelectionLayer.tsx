@@ -8,12 +8,11 @@ import {
 } from "@tj/domain/documents";
 import { slotSideOnDrop } from "@tj/slides";
 import {
+  type ComponentProps,
   type CSSProperties,
-  lazy,
   type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  Suspense,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -22,6 +21,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../../images/image-search";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import {
   EXPLANATION_PLACEHOLDER,
   explanationLane,
@@ -75,6 +75,7 @@ import {
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
 import { ImageCreditBadge } from "./ImageCreditBadge";
+import type LayoutCanvasControlsPart from "./LayoutCanvasControls";
 import { type DiagramStep, ModelStepper } from "./ModelStepper";
 import {
   AngleLabel,
@@ -86,7 +87,10 @@ import {
 import { SelectionFrame } from "./SelectionFrame";
 
 /** An adaptive layout's on-canvas add, delete and over-limit marks: brings the template code. */
-const LayoutCanvasControls = lazy(() => import("./LayoutCanvasControls"));
+/** The on-canvas layout controls (TEACH-205 part b), loaded with the first layout selected. */
+const layoutCanvasControls = lazyLoader<ComponentProps<typeof LayoutCanvasControlsPart>>(() =>
+  import("./LayoutCanvasControls").then((m) => m.default),
+);
 
 import { layoutChildBox, layoutGroupOfChild, layoutTextAt } from "./layout-children";
 import { useLayoutDetachNotice } from "./use-layout-detach-notice";
@@ -933,16 +937,24 @@ export function SelectionLayer({
         const on = selected.length === 1 && first && isLayoutGroup(first.el) ? first : typingIn;
         if (!on || gestureOn || cropping || !isLayoutGroup(on.el)) return null;
         return (
-          <Suspense fallback={null}>
-            <LayoutCanvasControls
-              slideId={slide.id}
-              group={on.el as GroupElement & { layout: LayoutRef }}
-              scale={scale}
-              toSlide={toSlide}
-              onEditText={(id) => actions.setEditingText(id)}
-              onPointerFocus={focusStage}
-            />
-          </Suspense>
+          <LazyPart
+            loader={layoutCanvasControls}
+            props={{
+              slideId: slide.id,
+              group: on.el as GroupElement & { layout: LayoutRef },
+              scale,
+              toSlide,
+              onEditText: (id: string) => actions.setEditingText(id),
+              onPointerFocus: focusStage,
+            }}
+            fallback={null}
+            failed={(retry) => (
+              <RetryLoad
+                className="pointer-events-auto absolute top-2 left-2 bg-surface px-2 py-1"
+                onRetry={retry}
+              />
+            )}
+          />
         );
       })()}
 
