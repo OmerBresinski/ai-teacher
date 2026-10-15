@@ -216,7 +216,8 @@ describe("typed callout card", () => {
           n++;
         });
     expect(n).toBe(Object.keys(want).length);
-  });
+    // Every old input on every theme and stage: about 6 s when the turbo run is loaded.
+  }, 30_000);
 
   test("the first typed point goes under the text; a later one stays, labelled with its type", () => {
     expect(
