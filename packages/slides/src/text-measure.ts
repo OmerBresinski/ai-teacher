@@ -1,12 +1,4 @@
-import {
-  type RichDoc,
-  type RichNode,
-  type RunStyleAttrs,
-  runStyleOf,
-  type TextPreset,
-  type TextStyle,
-  type Theme,
-} from "@tj/domain/documents";
+import type { RichDoc, RichNode, TextPreset, TextStyle, Theme } from "@tj/domain/documents";
 import { ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
@@ -80,7 +72,7 @@ export const isSpace = (code: number, ch: string): boolean =>
   code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(ch));
 
 /** A run of text: set bold (a chunk's label) and/or in the quote face (`font: "quote"`). */
-export type Run = { text: string; bold?: boolean; quote?: boolean; attrs?: RunStyleAttrs };
+export type Run = { text: string; bold?: boolean; quote?: boolean; node?: RichNode };
 
 /**
  * How many lines a paragraph's runs take in a column `room` points wide: the one wrap rule. A bold
@@ -188,34 +180,27 @@ export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight
 }
 
 /**
- * The theme's quote face: its v2 age profile's (`v2Profile(theme).fonts.quote`), a v1 theme's body
+ * The theme's quote face and whether it is set italic: its v2 age profile's (`v2Profile(theme).fonts.quote`), a v1 theme's body
  * face. Read from `theme.v2` here rather than through `./theme-v2`, which would put the v2 profile
  * tables in every chunk that fits text; `text-measure.test.ts` holds the two equal on every theme.
  */
-export function quoteFamilyOf(theme: Theme): string {
-  const ages = theme.v2?.ages;
-  if (!ages) return theme.fonts.body;
-  const stage = keyStageOf(theme)?.toLowerCase() ?? "";
-  const want = /^(eyfs|ks1)$/.test(stage)
-    ? "early"
-    : /^(ks[345]|post16)$/.test(stage)
-      ? "secondary"
-      : "primary";
-  const order =
-    want === "early"
-      ? ["early", "primary", "secondary"]
-      : want === "secondary"
-        ? ["secondary", "primary", "early"]
-        : ["primary", "early", "secondary"];
-  for (const age of order) {
-    const p = theme.v2?.supports.includes(age as never)
-      ? ages[age as keyof typeof ages]
-      : undefined;
-    const key = p?.fonts.quote as FontKey | undefined;
-    if (key && FONT_STACKS[key]) return FONT_STACKS[key];
+export function quoteFaceOf(theme: Theme): { family: string; italic: boolean } {
+  const v2 = theme.v2;
+  const stage = keyStageOf(theme) ?? "";
+  const want = /^(eyfs|ks1)$/i.test(stage) ? 0 : /^(ks[345]|post16)$/i.test(stage) ? 2 : 1;
+  // `v2Profile`'s nearest supported age: the wanted one, then by distance, the younger on a tie.
+  const order = [want, want - 1, want + 1, want - 2, want + 2];
+  for (const i of order) {
+    const age = (["early", "primary", "secondary"] as const)[i];
+    const p = age && v2?.supports.includes(age) ? v2.ages[age] : undefined;
+    const family = p && FONT_STACKS[p.fonts.quote as FontKey];
+    if (p && family) return { family, italic: p.quoteStyle === "italic" };
   }
-  return theme.fonts.body;
+  return { family: theme.fonts.body, italic: false };
 }
+
+/** The family a `font: "quote"` run is measured and drawn in. */
+export const quoteFamilyOf = (theme: Theme): string => quoteFaceOf(theme).family;
 
 /*
  * The headless ruler (TEACH-28): the `Measurer` the fitting engine (`./reflow.ts`) takes, built
@@ -237,11 +222,8 @@ export const ORDERED_INDENT_EM = 1.45;
 export function runsOf(node: RichNode, bold = false): Run[] {
   const b = bold || !!node.marks?.some((m) => m.type === "bold");
   if (node.type === "text") {
-    const attrs = runStyleOf(node);
-    const run: Run = { text: node.text ?? "", bold: b };
-    if (attrs.font === "quote") run.quote = true;
-    if (Object.keys(attrs).length > 0) run.attrs = attrs;
-    return [run];
+    const quote = node.marks?.some((m) => m.type === "textStyle" && m.attrs?.font === "quote");
+    return [{ text: node.text ?? "", bold: b, quote, node }];
   }
   if (node.type === "hardBreak") return [{ text: "\n" }];
   return (node.content ?? []).flatMap((n) => runsOf(n, b));

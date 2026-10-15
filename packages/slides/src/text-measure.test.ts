@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { HIGHLIGHT_SLOTS, type RichDoc, styledRun } from "@tj/domain/documents";
 import fixtures from "./fixtures/line-of-offset.json";
-import { lineBreaks, lineOfOffset, runRects } from "./text-lines";
-import { charAdvance, countLines, measureHeadless, quoteFamilyOf } from "./text-measure";
+import { lineBreaks, lineOfOffset, runRects, runStyleOf } from "./text-lines";
+import { charAdvance, countLines, measureHeadless, quoteFaceOf } from "./text-measure";
 import { v2Profile } from "./theme-v2";
 import { getTheme, THEMES } from "./themes";
 
@@ -68,7 +68,10 @@ describe("lineBreaks and lineOfOffset", () => {
     for (const t of THEMES)
       for (const band of ["eyfs", "ks1", "ks2", "ks3", "ks5"]) {
         const theme = getTheme(t.id, band);
-        expect(quoteFamilyOf(theme)).toBe(v2Profile(theme).fonts.quote);
+        expect(quoteFaceOf(theme)).toEqual({
+          family: v2Profile(theme).fonts.quote,
+          italic: v2Profile(theme).quoteStyle === "italic",
+        });
       }
   });
 
@@ -133,6 +136,10 @@ describe("runRects", () => {
     expect(rects[0]?.x).toBeGreaterThan(0);
     expect(rects[1]?.y).toBeGreaterThan(rects[0]?.y ?? 0);
     expect(HIGHLIGHT_SLOTS).toBe(4);
+    expect(runStyleOf(styledRun("a", { color: "#123456", highlight: 2 }))).toEqual({
+      color: "#123456",
+      highlight: 2,
+    });
   });
 
   test("rect heights follow the line box, and the doc height agrees with measureHeadless", () => {

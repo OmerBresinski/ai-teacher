@@ -1,10 +1,14 @@
-import type {
-  RichDoc,
-  RichNode,
-  RunStyleAttrs,
-  TextPreset,
-  TextStyle,
-  Theme,
+import {
+  type RichDoc,
+  type RichNode,
+  type RunStyleAttrs,
+  safeCssColor,
+  safeHighlightSlot,
+  safeRunFont,
+  safeStrikeStep,
+  type TextPreset,
+  type TextStyle,
+  type Theme,
 } from "@tj/domain/documents";
 import {
   BLOCK_GAP_EM,
@@ -155,6 +159,28 @@ export function breakRuns(
   return places ? { starts, widths, places } : { starts, widths };
 }
 
+/**
+ * Each slot's highlight fill until the theme carries its own (`--cat-n-fill`, layout batch A8):
+ * Paper's r5 fills (`theming/slots.css`); `slide.css` holds the same hexes as its fallbacks.
+ */
+export const HIGHLIGHT_FALLBACK_FILLS = ["#F4D0D3", "#ADC0D6", "#F8E3BC", "#A8CFCD"] as const;
+
+/** The validated run attributes on a node's `textStyle` mark (empty when it has none). */
+export function runStyleOf(node: RichNode): RunStyleAttrs {
+  const attrs = node.marks?.find((m) => m.type === "textStyle")?.attrs;
+  const out: RunStyleAttrs = {};
+  if (!attrs) return out;
+  const color = safeCssColor(attrs.color);
+  const font = safeRunFont(attrs.font);
+  const highlight = safeHighlightSlot(attrs.highlight);
+  const strikeStep = safeStrikeStep(attrs.strikeStep);
+  if (color) out.color = color;
+  if (font) out.font = font;
+  if (highlight !== null) out.highlight = highlight;
+  if (strikeStep !== null) out.strikeStep = strikeStep;
+  return out;
+}
+
 /*
  * Line lookup and run rects (TEACH-205 part c, S-d2) on the headless ruler (`./text-measure.ts`,
  * the one wrap rule). A module of its own so the view and print chunks, which load the ruler for
@@ -289,7 +315,8 @@ export function runRects(
     for (const run of runs) {
       const from = offset;
       offset += run.text.length;
-      if (!run.attrs || !pick(run.attrs) || !broken.places) continue;
+      const attrs = run.node ? runStyleOf(run.node) : {};
+      if (!pick(attrs) || !broken.places) continue;
       const byLine = new Map<number, [number, number]>();
       for (let i = from; i < offset; i++) {
         // Spaces never widen a rect: one at a wrap hangs past the line's end.
@@ -310,7 +337,7 @@ export function runRects(
           baseline: 0,
           line: base + line,
           fontSize: size,
-          attrs: run.attrs,
+          attrs,
         });
       }
     }

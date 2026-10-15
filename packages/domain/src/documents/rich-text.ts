@@ -123,11 +123,6 @@ export const RUN_FONTS = ["quote"] as const;
 export type RunFont = (typeof RUN_FONTS)[number];
 /** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
 export const HIGHLIGHT_SLOTS = 4;
-/**
- * Each slot's highlight fill until the theme carries its own (`--cat-n-fill`, layout batch A8):
- * Paper's r5 fills (`theming/slots.css`). The editor (`slide.css`) and the PPTX export read these.
- */
-export const HIGHLIGHT_FALLBACK_FILLS = ["#F4D0D3", "#ADC0D6", "#F8E3BC", "#A8CFCD"] as const;
 /** The latest reveal step a strike may name (as `ImageElement.buildFrom`). */
 const MAX_STRIKE_STEP = 64;
 
@@ -171,22 +166,6 @@ export function styledRun(text: string, attrs: RunStyleAttrs): RichNode {
     : { type: "text", text, marks: [{ type: "textStyle", attrs: clean }] };
 }
 
-/** The validated run attributes on a node's `textStyle` mark (empty when it has none). */
-export function runStyleOf(node: RichNode): RunStyleAttrs {
-  const attrs = node.marks?.find((m) => m.type === "textStyle")?.attrs;
-  if (!attrs) return {};
-  const out: RunStyleAttrs = {};
-  const color = safeCssColor(attrs.color);
-  const font = safeRunFont(attrs.font);
-  const highlight = safeHighlightSlot(attrs.highlight);
-  const strikeStep = safeStrikeStep(attrs.strikeStep);
-  if (color) out.color = color;
-  if (font) out.font = font;
-  if (highlight !== null) out.highlight = highlight;
-  if (strikeStep !== null) out.strikeStep = strikeStep;
-  return out;
-}
-
 /** The latest step any myth strike in `doc` names (0 when none): it is a step of the slide. */
 export function richDocMaxStrikeStep(doc: RichDoc | RichNode): number {
   let max = 0;
@@ -194,9 +173,9 @@ export function richDocMaxStrikeStep(doc: RichDoc | RichNode): number {
   while (stack.length > 0) {
     const node = stack.pop();
     if (!node) break;
-    if (node.type === "text") {
-      const step = runStyleOf(node).strikeStep;
-      if (step !== undefined && step > max) max = step;
+    for (const mark of node.marks ?? []) {
+      const step = mark.type === "textStyle" ? safeStrikeStep(mark.attrs?.strikeStep) : null;
+      if (step !== null && step > max) max = step;
     }
     if (Array.isArray(node.content)) stack.push(...node.content);
   }

@@ -44,39 +44,35 @@
  *   above the baseline (an offset underline, not the font's strikeout). `data-strike-hidden` is set
  *   while the slide is before step n (`StaticText`).
  */
-.td-rt [data-font="quote"] {
+[data-font="quote"] {
   font-family: var(--td-font-quote, inherit);
   font-style: var(--td-quote-style, normal);
 }
-.td-rt [data-hl] {
+[data-hl] {
   padding: 0.04em 0.14em;
   margin: 0 -0.14em;
   border-radius: 5px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-}
-.td-rt [data-hl="1"] {
   background: var(--cat-1-fill, #f4d0d3);
 }
-.td-rt [data-hl="2"] {
+[data-hl="2"] {
   background: var(--cat-2-fill, #adc0d6);
 }
-.td-rt [data-hl="3"] {
+[data-hl="3"] {
   background: var(--cat-3-fill, #f8e3bc);
 }
-.td-rt [data-hl="4"] {
+[data-hl="4"] {
   background: var(--cat-4-fill, #a8cfcd);
 }
-.td-rt [data-strike] {
-  text-decoration-line: underline;
-  text-decoration-color: var(--td-accent);
-  text-decoration-thickness: 0.075em;
+[data-strike] {
+  text-decoration: underline var(--td-accent) 0.075em;
   /* From the baseline: the line's top edge sits 0.25em + half its thickness above it. */
   text-underline-offset: -0.2875em;
   text-decoration-skip-ink: none;
 }
-.td-rt [data-strike][data-strike-hidden] {
-  text-decoration-line: none;
+[data-strike-hidden] {
+  text-decoration: none;
 }
 
 .td-rt ul,

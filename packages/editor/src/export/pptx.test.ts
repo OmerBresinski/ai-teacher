@@ -8,13 +8,14 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
-import { HIGHLIGHT_FALLBACK_FILLS, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import {
   DIAGRAM_NAME,
   drawFigure,
   FIGURE_RECT,
   FONT_STACKS,
+  HIGHLIGHT_FALLBACK_FILLS,
   materialiseSlide,
   v2Profile,
 } from "@tj/slides";

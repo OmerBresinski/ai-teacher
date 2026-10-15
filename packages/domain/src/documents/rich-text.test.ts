@@ -6,7 +6,6 @@ import {
   type RichNode,
   richDocMaxStrikeStep,
   richDocToPlainText,
-  runStyleOf,
   safeHighlightSlot,
   safeLinkHref,
   safeRunFont,
@@ -227,10 +226,6 @@ describe("run attributes: quote font, highlight slot, myth strike (TEACH-205 par
       styledRun("Bats are blind", { strikeStep: 2 }),
     );
     expect(RichDocSchema.parse(d)).toEqual(d);
-    expect(runStyleOf(d.content?.[0]?.content?.[2] as RichNode)).toEqual({
-      color: "#123456",
-      highlight: 2,
-    });
     expect(richDocMaxStrikeStep(d)).toBe(2);
   });
 

@@ -3,9 +3,9 @@ import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/
 import {
   growFixedText,
   isDiagramMark,
+  quoteFaceOf,
   slideArtVariant,
   slideBackground,
-  v2Profile,
   withoutDiagramSlot,
   withThemeColours,
 } from "@tj/slides";
@@ -176,7 +176,7 @@ export function SlideView({
   useLayoutEffect(() => {
     if (mode === "edit" && root.current) applySlideClip(root.current, spill);
   }, [mode, spill]);
-  const quote = v2Profile(theme);
+  const quote = quoteFaceOf(theme);
   const rootStyle: CSSProperties = {
     position: "relative",
     width: SLIDE_W,
@@ -201,8 +201,8 @@ export function SlideView({
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
     // A run in the quote face (`font: "quote"`, TEACH-205 part c): the theme's quote serif.
-    ["--td-font-quote" as string]: quote.fonts.quote,
-    ["--td-quote-style" as string]: quote.quoteStyle,
+    ["--td-font-quote" as string]: quote.family,
+    ["--td-quote-style" as string]: quote.italic ? "italic" : "normal",
     ...(mode === "thumb"
       ? { contentVisibility: "auto", containIntrinsicSize: `${SLIDE_W}px ${SLIDE_H}px` }
       : null),

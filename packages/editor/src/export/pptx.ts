@@ -48,16 +48,11 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import {
-  diagramBuildAt,
-  HIGHLIGHT_FALLBACK_FILLS,
-  richDocMaxStrikeStep,
-  SLIDE_H,
-  SLIDE_W,
-} from "@tj/domain/documents";
+import { diagramBuildAt, richDocMaxStrikeStep, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   fittedFontSize,
   growFixedText,
+  HIGHLIGHT_FALLBACK_FILLS,
   type PathSegment,
   pathSegments,
   presentedSlide,
