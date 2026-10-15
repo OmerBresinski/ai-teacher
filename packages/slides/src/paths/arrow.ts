@@ -122,7 +122,14 @@ export function arrowGeometry(d: string, sw: number, dash?: string): ArrowGeomet
   const last = segs[segs.length - 1]!.p;
   const tip = last[last.length - 1]!;
   const reach = sw * ARROW_ARM_K * ARROW_AIM_K;
-  const cut = cutBack(segs, tip, reach);
+  // A path that ends in a straight run at least a head deep (after a bend, say) aims along that run,
+  // so the head sits square on the line it leaves; otherwise along the chord 1.5 head-lengths back.
+  const runDepth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const run = straightRun(segs);
+  const cut =
+    run && run.length >= runDepth && run.length < reach
+      ? { at: run.from, prefix: run.k ? write(segs.slice(0, run.k)) : `M${P(run.from)}` }
+      : cutBack(segs, tip, reach);
   const aim = cut ? cut.at : segs[0]!.p[0]!;
   if (near(aim, tip)) return undefined;
   const head = arrowHead(tip, aim, sw);
@@ -266,6 +273,27 @@ function at(s: Seg, t: number): Pt {
     u * u * u * a[0] + 3 * u * u * t * b[0] + 3 * u * t * t * c![0] + t * t * t * d![0],
     u * u * u * a[1] + 3 * u * u * t * b[1] + 3 * u * t * t * c![1] + t * t * t * d![1],
   ];
+}
+
+/** The path's trailing straight run: collinear line segments back from the end. */
+function straightRun(segs: Seg[]): { from: Pt; length: number; k: number } | undefined {
+  let k = segs.length - 1;
+  const lastSeg = segs[k] as Seg;
+  if (lastSeg.k !== "L") return undefined;
+  const [a, b] = lastSeg.p as [Pt, Pt];
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  let from = a;
+  while (k > 0) {
+    const s = segs[k - 1] as Seg;
+    if (s.k !== "L") break;
+    const [c, d] = s.p as [Pt, Pt];
+    if (Math.hypot(d[0] - c[0], d[1] - c[1]) < 1e-6) break;
+    const t = Math.atan2(d[1] - c[1], d[0] - c[0]);
+    if (Math.abs(Math.atan2(Math.sin(t - ang), Math.cos(t - ang))) > Math.PI / 180) break;
+    from = c;
+    k--;
+  }
+  return { from, length: Math.hypot(b[0] - from[0], b[1] - from[1]), k };
 }
 
 /** Split segment `s` at t, keeping the first part. */
