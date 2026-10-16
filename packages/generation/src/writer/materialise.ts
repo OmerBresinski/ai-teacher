@@ -596,6 +596,28 @@ export function toInput(
         points: strs(s.points ?? s.lines),
         figure: fig("figure"),
       };
+    case "source": {
+      // TEACH-75 part ab (C2): a verbatim extract with 2-4 notes pinned to their lines; a picture
+      // source shows its picture slot, or the "from" words alone when it could not be made.
+      const form = s.form === "verse" || s.form === "picture" ? s.form : "prose";
+      const f = form === "picture" ? fig("picture") : undefined;
+      return {
+        template,
+        heading,
+        form,
+        from: str(s.from),
+        extract: typeof s.extract === "string" ? s.extract : "",
+        notes: (Array.isArray(s.notes) ? s.notes : []).map((n0) => {
+          const n = (n0 && typeof n0 === "object" ? n0 : { text: n0 }) as S;
+          return {
+            ...(typeof n.anchor === "string" ? { anchor: n.anchor } : {}),
+            label: str(n.label),
+            text: str(n.text),
+          };
+        }),
+        ...(f ? { figure: f } : {}),
+      } as TemplateInput;
+    }
     case "hinge":
       return {
         template,

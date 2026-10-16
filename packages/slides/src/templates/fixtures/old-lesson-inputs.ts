@@ -18,6 +18,7 @@ const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
 /** Templates added since the snapshot: an old lesson cannot hold them, so they are not in it. */
 // `worked` (TEACH-17 part b) is new: no saved lesson can hold one, so it has no master hash.
 // `figure` (TEACH-239 part b) is new too: no saved lesson holds one.
+// `source` (TEACH-75 part ab) likewise.
 const NEWER = new Set<string>([
   "panel-list",
   "split-compare",
@@ -25,6 +26,7 @@ const NEWER = new Set<string>([
   "worked",
   "stages",
   "figure",
+  "source",
 ]);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
   ...templateSamples()

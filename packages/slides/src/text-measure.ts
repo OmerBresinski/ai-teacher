@@ -1,5 +1,5 @@
 import type { RichDoc, RichNode, TextPreset, TextStyle, Theme } from "@tj/domain/documents";
-import { ADVANCES } from "./font-metrics.generated";
+import { ADVANCES, ITALIC_ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
@@ -27,11 +27,21 @@ const KEY_BY_STACK = new Map<string, FontKey>(
   Object.entries(FONT_STACKS).map(([key, stack]) => [stack, key as FontKey]),
 );
 
-function advancesFor(stack: string, weight: number): readonly number[] | undefined {
+function advancesFor(
+  stack: string,
+  weight: number,
+  italic = false,
+  exact500 = false,
+): readonly number[] | undefined {
   const key = KEY_BY_STACK.get(stack);
-  const table = key ? ADVANCES[key] : undefined;
+  // An italic quote face measures in its own advances when the font has them (TEACH-75 part ab).
+  const table = key ? ((italic ? ITALIC_ADVANCES[key] : undefined) ?? ADVANCES[key]) : undefined;
   if (!table) return undefined;
-  return weight >= 650 ? table[700] : weight >= 500 ? table[600] : table[400];
+  if (weight >= 650) return table[700];
+  // A quote run at 500 reads its own 500 advances (TEACH-75 part ab); everything else keeps the
+  // 600 table at 500, so laid-out lessons stay byte-identical.
+  if (weight >= 500 && weight < 550 && exact500 && table[500]) return table[500];
+  return weight >= 500 ? table[600] : table[400];
 }
 
 /** Width, in ems, of an unknown character: the widest capital, to stay on the safe side. */
@@ -76,6 +86,8 @@ export type LineType = Pick<
 > & {
   /** The stack a `font: "quote"` run is set in (the theme's quote face); body when absent. */
   quoteFamily?: string;
+  /** The quote face is set italic (`quoteFaceOf(theme).italic`): measured in its italic advances. */
+  quoteItalic?: boolean;
 };
 
 /** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
@@ -140,9 +152,12 @@ export function tablesFor(runs: readonly Run[], type: LineType) {
     ? advancesFor(type.fontFamily, Math.max(700, type.fontWeight))
     : regular;
   const quoteFamily = type.quoteFamily ?? type.fontFamily;
-  const quote = runs.some((r) => r.quote) ? advancesFor(quoteFamily, type.fontWeight) : regular;
+  const qi = type.quoteItalic ?? false;
+  const quote = runs.some((r) => r.quote)
+    ? advancesFor(quoteFamily, type.fontWeight, qi, true)
+    : regular;
   const quoteBold = runs.some((r) => r.quote && r.bold)
-    ? advancesFor(quoteFamily, Math.max(700, type.fontWeight))
+    ? advancesFor(quoteFamily, Math.max(700, type.fontWeight), qi, true)
     : quote;
   const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
   return {
@@ -273,7 +288,12 @@ export const measureHeadless =
   (input: MeasureInput): number => {
     const r = resolveTextStyle(input.style, theme, input.preset, input.role);
     const fontSize = input.fontSize ?? r.fontSize;
-    const type: LineType = { ...r, fontSize, quoteFamily: quoteFamilyOf(theme) };
+    const type: LineType = {
+      ...r,
+      fontSize,
+      quoteFamily: quoteFamilyOf(theme),
+      quoteItalic: quoteFaceOf(theme).italic,
+    };
     const upper = r.textTransform === "uppercase";
     const doc = upper ? upperDoc(input.doc) : input.doc;
     const { lines, gaps } = blocksOf(doc.content ?? [], type, input.width - input.inset);

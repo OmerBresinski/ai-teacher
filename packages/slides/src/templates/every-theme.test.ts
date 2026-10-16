@@ -36,6 +36,8 @@ const ALL: TemplateId[] = [
   "stages",
   // TEACH-239 part b (C7).
   "figure",
+  // TEACH-75 part ab (C2).
+  "source",
 ];
 
 type Sized = {

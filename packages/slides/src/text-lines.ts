@@ -18,6 +18,7 @@ import {
   LIST_INDENT_EM,
   type LineType,
   ORDERED_INDENT_EM,
+  quoteFaceOf,
   quoteFamilyOf,
   type Run,
   runsOf,
@@ -150,6 +151,12 @@ export function breakRuns(
           places.adv[i] = adv;
           wordChars.push(i);
         }
+        // A browser may break after a hyphen inside a word ("knock-|kneed"): the part up to it is
+        // placed as a word of its own, and the rest follows with no space (TEACH-75 part ab).
+        if (code === 45 && word > adv) {
+          place();
+          space = 0;
+        }
       }
     }
   }
@@ -218,6 +225,7 @@ function plainLayout(
     ...(opts.weight === undefined ? {} : { fontWeight: opts.weight }),
     ...(opts.fontSize === undefined ? {} : { fontSize: opts.fontSize }),
     quoteFamily: quoteFamilyOf(theme),
+    quoteItalic: quoteFaceOf(theme).italic,
   };
   const shown = r.textTransform === "uppercase" ? text.toUpperCase() : text;
   return breakRuns(
@@ -299,7 +307,12 @@ export function runRects(
 ): RunRect[] {
   const r = resolveTextStyle(style, theme, style?.preset ?? "body");
   const size = fontSize ?? r.fontSize;
-  const type: LineType = { ...r, fontSize: size, quoteFamily: quoteFamilyOf(theme) };
+  const type: LineType = {
+    ...r,
+    fontSize: size,
+    quoteFamily: quoteFamilyOf(theme),
+    quoteItalic: quoteFaceOf(theme).italic,
+  };
   const lineH = size * r.lineHeight;
   const gap = BLOCK_GAP_EM * size;
   const shown = r.textTransform === "uppercase" ? upperDoc(doc) : doc;

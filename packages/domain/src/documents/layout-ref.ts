@@ -23,6 +23,8 @@ export const ADAPTIVE_TEMPLATE_IDS = [
   "worked",
   // TEACH-75 part ac (C4).
   "stages",
+  // TEACH-75 part ab (C2): a source's notes.
+  "source",
 ] as const;
 
 export type AdaptiveTemplateId = (typeof ADAPTIVE_TEMPLATE_IDS)[number];
