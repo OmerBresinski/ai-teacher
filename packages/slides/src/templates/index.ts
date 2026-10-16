@@ -41,6 +41,8 @@ import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+// TEACH-75 part ae (C6).
+import { layoutPictureText, type PictureText, pictureTextOf } from "./picture-text";
 import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
@@ -265,6 +267,12 @@ export type TemplateInput = {
    * beside the library model in `figure`. A steps slide without it lays out as before.
    */
   step?: StepModel;
+  // TEACH-75 part ae (C6).
+  /**
+   * Picture and text (TEACH-75 part ae): the tucked-field look, with the failed-picture icon and
+   * the key card look's cards. A picture-text slide without it lays out as before.
+   */
+  pictureText?: PictureText;
   /** An exact substring of the heading shown in the accent (ignored when it is not one). */
   accentWord?: string | null;
   /**
@@ -1904,6 +1912,12 @@ function layoutOnce(
     }
     case "picture-text":
     case "diagram-text": {
+      // TEACH-75 part ae (C6): the tucked field and the key card look.
+      const pt = pictureTextOf(input);
+      if (pt) {
+        layoutPictureText(c, input, pt, stage);
+        break;
+      }
       heading(c, input.heading);
       const mark = c.els.length;
       const overMark = c.over.length;
