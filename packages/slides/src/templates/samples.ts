@@ -217,5 +217,15 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         { anchor: "moving in the air", label: "spring", text: "It feels alive." },
       ],
     },
+    // TEACH-75 part ad (C5): reasons.
+    {
+      template: "reasons",
+      heading: "Why do plants need water?",
+      reasons: [
+        { head: "To stand up", line: "Without water, a plant droops.", icon: "without-water" },
+        { head: "To grow", line: "Water helps a plant grow.", icon: "growth-over-time" },
+        { head: "To make food", line: "Leaves use water.", icon: "leaf" },
+      ],
+    },
   ];
 }

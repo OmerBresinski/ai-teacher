@@ -28,6 +28,7 @@
     "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",
     "./templates/hook-capacity.json": "./src/templates/hook-capacity.json",
     "./templates/panel-list-capacity.json": "./src/templates/panel-list-capacity.json",
+    "./templates/reasons-capacity.json": "./src/templates/reasons-capacity.json",
     "./templates/split-compare-capacity.json": "./src/templates/split-compare-capacity.json",
     "./templates/stages-capacity.json": "./src/templates/stages-capacity.json",
     "./templates/question-set-capacity.json": "./src/templates/question-set-capacity.json",

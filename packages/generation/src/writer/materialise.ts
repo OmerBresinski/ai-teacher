@@ -1,5 +1,7 @@
 import "../icons-ready";
 import type { Slide, Theme } from "@tj/domain/documents";
+// TEACH-75 part ad (C5).
+import { resolveIcon } from "@tj/slides/icons";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { layoutGroup } from "@tj/slides/relayout";
 import {
@@ -8,6 +10,7 @@ import {
   layoutTemplate,
   motifOf,
   PLACEHOLDER_ICON,
+  REASON_PENDING_ICON,
   type TemplateInput,
   type TemplatePoint,
 } from "@tj/slides/templates";
@@ -856,6 +859,33 @@ export function toInput(
         ...(f ? { figure: f } : { icon }),
       };
     }
+    // TEACH-75 part ad (C5): reasons. Icons are library labels (no picture ask). A draft whose
+    // reasons have icons coming holds the empty face on a reason whose icon has not arrived or is
+    // still a partial label, so the icons never drop out (all or none) while the row streams; the
+    // closed slide reads the writer's labels as they are.
+    case "reasons": {
+      const items = (Array.isArray(s.items) ? s.items : []) as (S | null)[];
+      const iconOf = (i: S) => (typeof i.icon === "string" && i.icon.trim() ? i.icon : null);
+      const inbound = ctx.draft && items.some((i) => i && iconOf(i));
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        chain: s.kind === "chain" || s.chain === true,
+        reasons: items.map((i0) => {
+          const i = (i0 ?? {}) as S;
+          const own = iconOf(i);
+          const icon = inbound
+            ? own && resolveIcon(own)
+              ? own
+              : i.icon === null
+                ? null
+                : REASON_PENDING_ICON
+            : own;
+          return { head: str(i.head), line: str(i.line), ...(icon ? { icon } : {}) };
+        }),
+      } as TemplateInput;
+    }
     case "banner-text": {
       // Ruling 203 (P4): the photo as a strip over or under the words. A picture that could not
       // be made (after the same retries and lostPic ladder as any picture slot) leaves the words
@@ -1021,6 +1051,8 @@ export function whatIs(word: string, language = false): string | undefined {
 const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
 // TEACH-75 part ac (C4).
 ADAPTIVE.add("stages");
+// TEACH-75 part ad (C5).
+ADAPTIVE.add("reasons");
 
 /**
  * Layouts whose drafts and closed slide share ids (draft mode, TEACH-110 s): the pilot layouts,
