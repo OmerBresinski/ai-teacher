@@ -98,12 +98,13 @@ let TABLE = CAPACITY as unknown as Record<string, StageCell[]>;
 export function withoutStageCaps<T>(f: () => T): T {
   const kept = TABLE;
   TABLE = {};
+  const wasMeasuring = MEASURING;
   MEASURING = true;
   try {
     return f();
   } finally {
     TABLE = kept;
-    MEASURING = false;
+    MEASURING = wasMeasuring;
   }
 }
 /** True while the capacity script measures: no field is checked against a table it is writing. */

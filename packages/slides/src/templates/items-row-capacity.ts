@@ -140,14 +140,19 @@ export function measureRowCaps(age: Age): RowCell[] {
           text: within(TEXT, text, m),
           name: within(NAME, name, m),
         });
+        const leadCap = lead ? cap("lead", rest) : { cap: 0, hardMax: 0 };
         out.push({
           items: n,
           icons,
           withLead: lead,
           name,
           text,
-          lead: lead ? cap("lead", rest) : { cap: 0, hardMax: 0 },
-          heading: cap("heading", (m) => ({ ...rest(m), ...(lead ? { lead: LEAD } : {}) })),
+          lead: leadCap,
+          // The heading beside a lead at most the lead's own limit, like every other stand-in.
+          heading: cap("heading", (m) => ({
+            ...rest(m),
+            ...(lead ? { lead: within(LEAD, leadCap, m) } : {}),
+          })),
         });
       }
   return out;

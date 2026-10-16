@@ -67,6 +67,7 @@ describe("split-compare reveal (row 3)", () => {
           const els = r.slide.elements;
           // KS1's three quoted sides hold a quote of a word beside their words (TEACH-68 part b):
           // the writer never offers them (layout-menu's quote budget), so these quotes are over.
+          // The writer never offers KS1's three quoted sides: quoteBudget is below MIN_QUOTE.
           const none =
             zone === "quote" && n === 3 && splitGroupOf(stage) === "KS1"
               ? ["quote"]

@@ -151,12 +151,13 @@ let TABLE = CAPACITY as unknown as Record<string, CapCell[]>;
 export function withoutCaps<T>(f: () => T): T {
   const kept = TABLE;
   TABLE = {};
+  const wasMeasuring = MEASURING;
   MEASURING = true;
   try {
     return f();
   } finally {
     TABLE = kept;
-    MEASURING = false;
+    MEASURING = wasMeasuring;
   }
 }
 /** Lay out under `table` instead of the committed one (tests: a cell of 0, a missing cell). */
