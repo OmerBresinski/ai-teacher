@@ -251,6 +251,7 @@ describe("stages: caps (stages-capacity.json is what the renderer measures)", ()
     ]);
     expect(table.secondary).toHaveLength(8);
   });
+  // A full re-measure on every theme: about 2 s alone, past bun's 5 s default under CI load.
   for (const [age, n, vis] of [
     ["primary", 5, "icons"],
     ["secondary", 3, "pictures"],
@@ -259,7 +260,7 @@ describe("stages: caps (stages-capacity.json is what the renderer measures)", ()
       expect(measureCell(age, n, vis)).toEqual(
         table[age]?.find((c) => c.n === n && c.vis === vis) as ReturnType<typeof measureCell>,
       );
-    });
+    }, 60_000);
 });
 
 describe("stages: RTL (ruling 239; the mirror rows wait for part z)", () => {
