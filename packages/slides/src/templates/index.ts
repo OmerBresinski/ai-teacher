@@ -1790,8 +1790,13 @@ function headingFit(
   if (foot > SLIDE_H) return { shift: 0, holds: false, gap };
   const c: Ctx = { t: atKeyStage(theme, stage), s: templateScale(theme, stage), over: [], els: [] };
   // The largest size that keeps the body above the safe foot; failing that, above the slide's edge.
+  // Only the sizes a heading draws at: the renderer snaps a heading to its role's steps (display,
+  // heading, body), so a size between them is measured at one size and drawn at the next step down,
+  // its box keeping lines it does not draw (TEACH-215 part d).
+  const sc = typeScale(c.t);
+  const sizes = sc ? [sc.heading, sc.body] : [];
   for (const limit of [SAFE_FOOT, SLIDE_H])
-    for (let size = full - 2; size >= c.s.body; size -= 2) {
+    for (const size of sizes.filter((s) => s < full && s >= c.s.body)) {
       const h = measure({ ...c, s: { ...c.s, heading: size } }, words, "heading", G.width);
       if (foot + shiftAt(h) <= limit) return { shift, holds: true, gap, cap: size };
     }
