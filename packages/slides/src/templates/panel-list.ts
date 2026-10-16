@@ -657,10 +657,12 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         color: L.muted,
         name: PANEL_NAMES.line,
       });
-    // A hairline midway in the gap above the row; none when tight (a rule pressed on text reads packed).
+    // A hairline midway in the gap above the row, tight or not (TEACH-75 part ar). The gold drops
+    // them on a tight slide, but a list streams in row by row and grows tight as its words land, so
+    // a rule a draft drew would vanish at hand-over; the gap it sits in is never under `gapMin`.
     const prev = m.blocks[i - 1];
     const py = m.ys[i - 1];
-    if (i > 0 && !tight && prev && py !== undefined) {
+    if (i > 0 && prev && py !== undefined) {
       const mid = (py + prev.rh + y) / 2;
       c.els.push({
         id: uid(),
