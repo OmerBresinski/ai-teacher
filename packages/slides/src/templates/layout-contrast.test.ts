@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { resolveTextStyle } from "../text-style";
+import { withThemeColours } from "../theme-colours";
 import { THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateId } from "./index";
 import { templateSamples } from "./samples";
@@ -69,6 +70,28 @@ describe("a layout's words read on its own ground, on every theme", () => {
             const els = layoutTemplate(input, theme, stage).slide.elements as unknown as El[];
             for (const deck of THEMES)
               for (const f of faults(els, deck)) found.push(`${stage} on ${deck.id}: ${f}`);
+          }
+        expect(found).toEqual([]);
+      });
+});
+
+/*
+ * Saved flat (pilot slides before the layout group, or any slide whose lesson moves theme): the
+ * slide goes through `withThemeColours`, which moves every theme token to the new theme but keeps
+ * a mixed field tint. The words on a kept field must still read on it.
+ */
+describe("a flat layout's words read after the lesson moves to any theme", () => {
+  for (const template of TEMPLATES)
+    for (const theme of THEMES)
+      test(`${template} laid out on ${theme.id}, switched to every theme`, () => {
+        const found: string[] = [];
+        for (const input of templateSamples().filter((s) => s.template === template))
+          for (const stage of STAGES) {
+            const slide = layoutTemplate(input, theme, stage).slide;
+            for (const deck of THEMES) {
+              const els = withThemeColours({ id: "s", ...slide }, deck).elements as unknown as El[];
+              for (const f of faults(els, deck)) found.push(`${stage} to ${deck.id}: ${f}`);
+            }
           }
         expect(found).toEqual([]);
       });
