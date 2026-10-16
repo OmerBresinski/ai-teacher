@@ -62,6 +62,11 @@ export interface FakeReply {
         paceMs: number;
         /** Wait this long before the first piece (a model's time to first token). */
         firstMs?: number | undefined;
+        /**
+         * Called once the last piece is handed over: when the model stopped writing, by the clock
+         * the pieces actually kept (timers run late under load), not by `paceMs` times the pieces.
+         */
+        onEnd?: (() => void) | undefined;
       }
     | undefined;
 }
@@ -243,6 +248,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                   controller.enqueue({ type: "text-delta", id: "fake-text", delta });
                 }
               } else controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
+              stream?.onEnd?.();
               controller.enqueue({ type: "text-end", id: "fake-text" });
               controller.enqueue({
                 type: "finish",
