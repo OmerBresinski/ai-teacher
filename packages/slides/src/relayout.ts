@@ -37,6 +37,7 @@ import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
+import { SOURCE_MAX, SOURCE_MIN, sourcePaths } from "./templates/source";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 // TEACH-75 part ac (C4).
 import { blankStage, STAGES_MAX, STAGES_MIN, stagesPaths } from "./templates/stages";
@@ -184,6 +185,17 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: true,
     noun: "lines",
     paths: workedPaths,
+  },
+  // TEACH-75 part ab (C2): a source's notes, 2-4 at every age; an over-long extract splits at a
+  // sentence or stanza (`splitSource`).
+  source: {
+    items: "notes",
+    min: SOURCE_MIN,
+    max: () => SOURCE_MAX,
+    blank: () => ({ anchor: "", label: "New note", text: "Add a short note." }),
+    continuation: true,
+    noun: "notes",
+    paths: sourcePaths,
   },
 };
 

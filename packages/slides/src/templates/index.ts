@@ -47,6 +47,8 @@ import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 import { layoutPictureText, type PictureText, pictureTextOf } from "./picture-text";
 import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
+// TEACH-75 part ab (C2): a source, a verbatim extract with notes pinned to their lines.
+import { layoutSource, type SourceForm, type SourceNote } from "./source";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 // TEACH-75 part ac (C4): stages.
 import { layoutStages, type StageItem } from "./stages";
@@ -68,6 +70,8 @@ export type {
   PanelVisual,
   RowItem,
   RowMotif,
+  SourceForm,
+  SourceNote,
   SplitSide,
 };
 /** items-row's name for a FieldReport. */
@@ -188,6 +192,7 @@ export type TemplateId =
   | "stages"
   // TEACH-239 part b (C7).
   | "figure"
+  | "source"
   | ActivityId;
 
 export type TemplateInput = {
@@ -299,6 +304,14 @@ export type TemplateInput = {
   // TEACH-239 part b (C7): the figure slide.
   /** Figure slide: the topic's library icon label, drawn in a medal on the plate when no figure drew. */
   icon?: string;
+  /** Source (TEACH-75 part ab): prose, verse (one line per `\n`) or a picture of a document. */
+  form?: SourceForm;
+  /** Source: where it is from, one line of at most 12 words. */
+  from?: string;
+  /** Source: the verbatim extract. */
+  extract?: string;
+  /** Source: 2-4 notes, each pinned to the row where its verbatim `anchor` ends. */
+  notes?: SourceNote[];
 };
 
 /**
@@ -1360,6 +1373,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   stages: "content",
   // TEACH-239 part b (C7).
   figure: "diagram",
+  // TEACH-75 part ab (C2).
+  source: "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2378,6 +2393,9 @@ function layoutOnce(
     // TEACH-75 part ac (C4).
     case "stages":
       layoutStages(c, input);
+      break;
+    case "source":
+      layoutSource(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

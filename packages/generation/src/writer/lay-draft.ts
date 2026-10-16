@@ -103,6 +103,9 @@ export function layDraft(
     () => {
       const { fit: _fit, ...fields } = draft.fields;
       if (draft.template === "hinge" && holdHingeTitle(fields)) return undefined;
+      // TEACH-75 part ab (C2): a source waits for its whole `form` ("ver" is not yet verse), so its
+      // extract is never laid as prose and then swapped for verse lines under new ids.
+      if (draft.template === "source" && draft.open?.[0] === "form") return undefined;
       let s: S = slideNoEmDash({ template: draft.template, ...fields } as S) as S;
       if (isWriterActivity(s.template)) s = fromWriterActivity(s, stageKey, ctx.brief).slide;
       const look = lookOf(ctx.plan.flow?.find((x) => x.slide === ctx.index + 1));
@@ -128,7 +131,10 @@ export function layDraft(
       // Pilot layouts come out of `materialise` with the closed slide's own ids already.
       // TEACH-17 part b (C1): a worked example's rows are its reveals, not hidden answers; the
       // working writes in as it comes, so its elements are the closed slide's from the first row.
-      const shown = s.template === "worked" ? m.slide : withoutReveals(m.slide);
+      // TEACH-75 part ab (C2): a source's notes are not answers either; they show as they are
+      // written, so nothing vanishes at the hand-over (the closed slide reveals one per click).
+      const shown =
+        s.template === "worked" || s.template === "source" ? m.slide : withoutReveals(m.slide);
       // A pilot slide laid without its group (a diagram it could not hold) is named like any other.
       const ided = isStableGroupSlide(shown, ctx.index)
         ? (({ question: _q, ...rest }) => rest)(shown)

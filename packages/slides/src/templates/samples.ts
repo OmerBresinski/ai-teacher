@@ -204,5 +204,18 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         },
       },
     },
+    // TEACH-75 part ab (C2): a source with notes pinned to their lines.
+    {
+      template: "source",
+      heading: "",
+      form: "prose",
+      from: "from The Wind in the Willows, Kenneth Grahame (1908)",
+      extract:
+        "The Mole had been working very hard all the morning, spring-cleaning his little home. Spring was moving in the air above and in the earth below and around him.",
+      notes: [
+        { anchor: "working very hard", label: "busy", text: "He never stops." },
+        { anchor: "moving in the air", label: "spring", text: "It feels alive." },
+      ],
+    },
   ];
 }
