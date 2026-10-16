@@ -50,7 +50,7 @@
     },
     "claim": {
       "cap": 12,
-      "hardMax": 28
+      "hardMax": 30
     },
     "fact": {
       "cap": 18,
