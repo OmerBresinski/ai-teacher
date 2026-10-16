@@ -740,6 +740,26 @@ export function toInput(
           };
         }),
       } as TemplateInput;
+    // TEACH-17 part b (C1): the worked example. The writer's `panel` is the layout's `barPanel`;
+    // its guard (and a build count off the rows) falls back to the text-only base in the layout.
+    case "worked": {
+      const ls = (Array.isArray(s.lines) ? s.lines : []) as (S | null)[];
+      return {
+        template,
+        heading,
+        lines: ls.map((l0) => {
+          const l = (l0 ?? {}) as S;
+          return {
+            ...(typeof l.move === "string" && l.move.trim() ? { move: l.move } : {}),
+            eq: str(l.eq),
+            ...(l.answer === true ? { answer: true } : {}),
+          };
+        }),
+        ...(typeof s.check === "string" && s.check.trim() ? { check: s.check } : {}),
+        ...(Array.isArray(s.vars) ? { vars: s.vars.filter((v) => typeof v === "string") } : {}),
+        ...(s.panel && typeof s.panel === "object" ? { barPanel: s.panel } : {}),
+      } as TemplateInput;
+    }
     case "banner-text": {
       // Ruling 203 (P4): the photo as a strip over or under the words. A picture that could not
       // be made (after the same retries and lostPic ladder as any picture slot) leaves the words

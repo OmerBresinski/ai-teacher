@@ -414,3 +414,57 @@ describe("hinge (TEACH-256 part b)", () => {
         );
   });
 });
+
+// TEACH-17 part b (C1).
+describe("worked example (TEACH-17 part b)", () => {
+  const workedRef = (n: number) =>
+    ({
+      template: "worked",
+      input: {
+        heading: "Solve 4(x - 3) = 2x + 6",
+        lines: [
+          { eq: "4(x - 3) = 2x + 6" },
+          { move: "Expand the bracket", eq: "4x - 12 = 2x + 6" },
+          { move: "Subtract 2x from both sides", eq: "2x - 12 = 6" },
+          { move: "Add 12 to both sides", eq: "2x = 18" },
+          { move: "Divide both sides by 2", eq: "x = 9", answer: true },
+        ].slice(0, n),
+        check: "4(*9* - 3) = 2 × *9* + 6",
+      },
+    }) as never;
+  test("add up to 5 lines and the check at KS3 (4 at KS2), remove down to 1", () => {
+    const five = addItem(workedRef(4), 4, "ks3");
+    expect(five.ok).toBe(true);
+    if (five.ok) expect(addItem(five.ref, 5, "ks3").ok).toBe(false);
+    expect(addItem(workedRef(4), 4, "ks2").ok).toBe(false);
+    const one = removeItem(workedRef(2), 1);
+    expect(one.ok).toBe(true);
+    if (one.ok) expect(removeItem(one.ref, 0).ok).toBe(false);
+  });
+  test("a blank line keeps its siblings' look: on the = column, its own step", () => {
+    const r = addItem(workedRef(3), 3, "ks3");
+    if (!r.ok) throw new Error("refused");
+    const laid = relayout(r.ref, getTheme("paper"), "ks3");
+    const signs = laid.elements.filter((e) => e.name === "Eq sign");
+    expect(signs).toHaveLength(4);
+    expect(new Set(signs.map((e) => Math.round(e.x + e.w / 2))).size).toBe(1);
+    expect(signs.map((e) => e.revealStep)).toEqual([1, 2, 3, 4]);
+    expect(laid.result.over).toEqual([]);
+  });
+  test("the title binds to the heading, the check strip's sum to the check", () => {
+    const laid = relayout(workedRef(3), getTheme("paper"), "ks3", "g");
+    const paths = laid.elements.map((e) => boundPath("g", e.id)).filter(Boolean);
+    expect(paths).toEqual(["heading", "check"]);
+  });
+  test("every stored font size is the size the renderer draws at the bound stage", () => {
+    for (const stage of ["ks2", "ks3"] as const) {
+      const theme = atKeyStage(getTheme("paper"), stage);
+      const laid = relayout(workedRef(5), getTheme("paper"), stage);
+      for (const e of laid.elements) {
+        const st = e.type === "text" ? e.style : e.type === "shape" ? e.textStyle : undefined;
+        if (st?.fontSize)
+          expect(resolveFontSize(theme, st.preset ?? "body", st.fontSize)).toBe(st.fontSize);
+      }
+    }
+  });
+});

@@ -45,6 +45,8 @@ import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
 import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
+// TEACH-17 part b (C1): the worked example.
+import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
@@ -171,6 +173,8 @@ export type TemplateId =
   | "split-compare"
   | "side-by-side"
   | "items-row"
+  // TEACH-17 part b (C1).
+  | "worked"
   | ActivityId;
 
 export type TemplateInput = {
@@ -259,6 +263,15 @@ export type TemplateInput = {
   kind?: "short" | "tf";
   /** Practice (TEACH-230 part b): the picture could not be made; its card shows the caption. */
   tile?: boolean;
+  // TEACH-17 part b (C1): the worked example.
+  /** Worked example: the working, one row per click (`{ move?, eq, answer? }`). */
+  lines?: WorkedLine[];
+  /** Worked example: the check, one equation; `*n*` marks the substituted value. */
+  check?: string;
+  /** Worked example: the letters set as variables (default x). */
+  vars?: string[];
+  /** Worked example: the writer's `panel` (algebra-bar or percent-bar); its guard falls back to text only. */
+  barPanel?: WorkedPanel | null;
 };
 
 /**
@@ -1314,6 +1327,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   hook: "image-text",
   "split-compare": "content",
   "side-by-side": "content",
+  // TEACH-17 part b (C1).
+  worked: "worked-example",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2256,6 +2271,10 @@ function layoutOnce(
     }
     case "hinge":
       layoutHinge(c, input);
+      break;
+    // TEACH-17 part b (C1).
+    case "worked":
+      layoutWorked(c, input, stage);
       break;
     case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.

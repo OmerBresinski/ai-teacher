@@ -30,6 +30,8 @@ import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./t
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
+// TEACH-17 part b (C1).
+import { WORKED_MIN, workedMax, workedPaths } from "./templates/worked";
 import { resolveTextStyle } from "./text-style";
 import { ageProfileOf } from "./theme-v2";
 
@@ -150,6 +152,18 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: false,
     noun: "options",
     paths: hingePaths,
+  },
+  // TEACH-17 part b (C1): one working line per row; the check is its own field, not a line.
+  worked: {
+    items: "lines",
+    min: WORKED_MIN,
+    // A slide holds 6 rows at KS3-5 and 5 at KS1-2, the check among them (worked-capacity.json).
+    max: (stage) => workedMax(stage) - 1,
+    blank: () => ({ move: "New step", eq: "x = 1" }),
+    // Past the rows a slide holds, the working continues on a second slide (`splitWorked`).
+    continuation: true,
+    noun: "lines",
+    paths: workedPaths,
   },
 };
 

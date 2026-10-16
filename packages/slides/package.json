@@ -36,6 +36,7 @@
     "./templates/hinge-capacity.json": "./src/templates/hinge-capacity.json",
     "./templates/steps-model": "./src/templates/steps-model.ts",
     "./templates/steps-model-capacity.json": "./src/templates/steps-model-capacity.json",
+    "./templates/worked-capacity.json": "./src/templates/worked-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
