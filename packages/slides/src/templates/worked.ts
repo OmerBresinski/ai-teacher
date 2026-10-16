@@ -48,6 +48,8 @@ export const WORKED_NAMES = {
   railFill: "Rail fill",
   ghost: "Badge ghost",
   badge: "Badge",
+  /** The ink badge a row keeps once a later row is the newest. */
+  done: "Badge done",
   plate: "Answer plate",
   left: "Eq left",
   sign: "Eq sign",
@@ -544,30 +546,36 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       strokeWidth: 2,
     });
   const badgeSize = stop(c, "body", BADGE * 0.46);
-  for (const [i, y] of badgeY.entries())
+  // The newest row's badge is the accent (gold: `.lb.now`); the next click lays the ink badge over
+  // it, so only the latest row is red. The last row's badge stays red.
+  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) =>
     shape(
       c,
       {
         shape: "ellipse",
-        name: WORKED_NAMES.badge,
+        name,
         x: X0,
         y: y - BADGE / 2,
         w: BADGE,
         h: BADGE,
-        fill: ink,
+        fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
           preset: "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
           fontWeight: 700,
-          color: c.t.colors.background,
+          color: ink2,
           align: "center",
           valign: "middle",
           padding: 0,
         },
       },
-      i + 1,
+      step,
     );
+  const onAccent = c.t.colors.onAccent ?? c.t.colors.background;
+  for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, accent, onAccent, i + 1);
+  for (const [i, y] of badgeY.entries())
+    if (i < badgeY.length - 1) badge(i, y, WORKED_NAMES.done, ink, c.t.colors.background, i + 2);
 
   // The rows: the answer plate, then left side, "=", right side on the "=" column.
   lines.forEach((l, i) => {

@@ -47,6 +47,12 @@ describe("worked example: the = column and one row per click", () => {
         Array.from({ length: rows }, (_, i) => i + 1),
       );
       expect(slideStepCount(r.slide as Slide)).toBe(rows);
+      // The newest row's badge is the accent; the next click covers it with ink (the last stays red).
+      const accent = getTheme("paper").colors.accent;
+      expect(badges.every((b) => (b as { fill?: string }).fill === accent)).toBe(true);
+      expect(named(els, WORKED_NAMES.done).map((b) => b.revealStep)).toEqual(
+        Array.from({ length: rows - 1 }, (_, i) => i + 2),
+      );
       // Ghost badges show from the start: the class sees how many steps are coming.
       expect(named(els, WORKED_NAMES.ghost).every((g) => !g.revealStep)).toBe(true);
       // Each move rides its own row with its arrow.
@@ -55,6 +61,16 @@ describe("worked example: the = column and one row per click", () => {
           true,
         );
     });
+
+  test("the check reads at the steps' size, as in the gold (not a size under them)", () => {
+    for (const k of ["y8", "stress", "moles"]) {
+      const els = lay(k).slide.elements as El[];
+      const eq = named(els, WORKED_NAMES.left)[0]?.style?.fontSize ?? 0;
+      const check = named(els, WORKED_NAMES.check)[0]?.style?.fontSize ?? 0;
+      expect(check).toBeGreaterThanOrEqual(eq * 0.75);
+      expect(check).toBeLessThanOrEqual(eq);
+    }
+  });
 
   test("the answer row sits on an answer plate in the accent", () => {
     const els = lay("y8").slide.elements as El[];
