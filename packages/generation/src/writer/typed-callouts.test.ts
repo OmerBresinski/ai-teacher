@@ -33,7 +33,8 @@ describe("typed callouts in the writer schema", () => {
     const MASTER: Record<string, string> = {
       // Answer first (ANSWER-BUG.md): the hinge def lost `correct` and its options say the
       // answer comes first. Before: KS1 72261a17, KS2 7ae81170, KS3-5 04108708.
-      KS1: "a20417f55a770efc2af466cc986fd98de45c9f3a",
+      // TEACH-68 part b: KS1 items-row lead measured (pattern 1 -> 50 chars). Before: a20417f5.
+      KS1: "149d25c5d2676ee45ff8ced4d7d8f45ad5d0ce45",
       KS2: "6f0ec48d2398a32ce05b6153164258b3d9178de2",
       "KS3-5": "1c5df3ec65c5f9177683fa2f6140106e34505aaa",
     };

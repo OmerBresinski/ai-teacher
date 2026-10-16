@@ -522,11 +522,12 @@ describe("the writer stage on a fake model", () => {
    */
   // Schema repinned for TEACH-75 part u: the items row is live (no off switch).
   // Schema hashes include the required `close` field (TEACH-110 part ab); the system text is unchanged.
+  // KS1 schema repinned for TEACH-68 part b: the items-row lead is measured (was 2360cda4).
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
       "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
-      "2360cda43688f0df817aa611617c882183d42fa9529f7f992019d86ba1461c81",
+      "91d913cd0a1a4a18ca40659c11d798d72875dbe5fcc50db26935818e82d56010",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
