@@ -38,12 +38,14 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
+import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { SAFE, SPACE } from "../grid";
 import { resolveFontSize } from "../text-style";
 import { MIN_FONT_SIZE, typeScale } from "../themes";
 import {
   type Ctx,
+  diagramFailed,
   type FieldCount,
   type Figure,
   kit,
@@ -240,6 +242,36 @@ function pictureOf(s: SplitSide): Pic | null {
   return null;
 }
 
+/**
+ * The diagram kinds a split compare side draws from a spec (TEACH-110 part ad): each drew with no
+ * readability warning, as given (no simpler form), at the side's size (360 x 230) at KS2, KS3 and
+ * KS4, with every label at the 24-character cap (`scripts/split-side-kinds.ts`). Labelled
+ * drawings, flows, tables, charts, graphs, timelines, cycles and layers did not, so the writer menu
+ * offers only these for a side.
+ * TODO(TEACH-110): number-line, fraction-shapes and particles drew cleanly at sample labels, but
+ * their padded specs did not parse; add them once verified at maximum labels.
+ */
+export const SPLIT_SIDE_DIAGRAM_KINDS: readonly string[] = ["equal-groups", "venn"];
+
+/**
+ * A side whose picture is a diagram spec (`{diagram}`, the form the live drawer hands back: no
+ * pre-drawn SVG), drawn at the side's width when its kind draws cleanly there. Any other kind, or
+ * a drawing with any readability warning, leaves the side with no picture, and the sides fall to
+ * words (zones are all or none): a crowded sketch reads worse than the words.
+ */
+function withDrawn(c: Ctx, s: SplitSide, box: { w: number; h: number }): SplitSide {
+  const f = s.picture;
+  if (!f || !("diagram" in f)) return s;
+  const kind = String((f.diagram as { kind?: unknown } | null)?.kind ?? "");
+  if (diagramFailed(f.diagram) || !SPLIT_SIDE_DIAGRAM_KINDS.includes(kind))
+    return { ...s, picture: null };
+  const r = drawDiagram(f.diagram, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
+  if (!r.ok || r.warnings || !r.element.src || !(r.element.w > 0 && r.element.h > 0))
+    return { ...s, picture: null };
+  const drawn = { src: r.element.src, aspect: r.element.w / r.element.h, alt: r.element.alt ?? "" };
+  return { ...s, picture: { drawn } as Figure };
+}
+
 export function zoneOf(sides: SplitSide[]): SplitZone {
   if (sides.length && sides.every((s) => pictureOf(s))) return "picture";
   if (sides.length && sides.every((s) => s.quote?.trim())) return "quote";
@@ -272,8 +304,8 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const all = input.sides ?? [];
   if (all.length < SPLIT_MIN) c.over.push(`sides ${all.length}/${SPLIT_MIN}`);
   if (all.length > SPLIT_MAX) c.over.push(`sides ${all.length}/${SPLIT_MAX}`);
-  const sides = all.slice(0, SPLIT_MAX);
-  const n = Math.max(SPLIT_MIN, sides.length);
+  const given = all.slice(0, SPLIT_MAX);
+  const n = Math.max(SPLIT_MIN, given.length);
   const tones = splitTones(c.t);
   const stage = stageOf(c);
   const voice = quoteVoice(c.t, stage);
@@ -301,6 +333,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const frame = frameOf(look, n);
   const fw = frame.w;
   const cellW = frame.cellW;
+  const sides = given.map((s) => withDrawn(c, s, { w: cellW, h: Math.round(fh * PIC_GROW) }));
   const zone = zoneOf(sides);
   const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
   const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);

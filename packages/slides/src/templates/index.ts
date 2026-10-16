@@ -57,6 +57,7 @@ import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
 export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+export { SPLIT_SIDE_DIAGRAM_KINDS } from "./split-compare";
 // TEACH-75 part ac (C4).
 export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
 export type {

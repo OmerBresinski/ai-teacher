@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { DIAGRAM_SAMPLES } from "@tj/slides/diagrams";
 import { ICON_CONCEPTS, resolveIcon } from "@tj/slides/icons";
 import type { FieldReport } from "@tj/slides/templates";
+import { SPLIT_SIDE_DIAGRAM_KINDS } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import {
@@ -423,6 +425,54 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
       );
     }
   });
+
+  // TEACH-110 part ad: the live drawer hands back the spec itself (`{status: "diagram", spec}`, no
+  // pre-drawn `drawn`), so the side is `{diagram: spec}`. A side draws it only for a kind that reads
+  // cleanly at side size (SPLIT_SIDE_DIAGRAM_KINDS); the forces lesson's labelled drawings crowded
+  // there, so its sides stay words, as before, never a crowded sketch.
+  const live = JSON.parse(
+    readFileSync(new URL("./fixtures/split-side-diagrams.json", import.meta.url), "utf8"),
+  ) as Record<string, S>;
+  const sideSvgs = (s: S, specs: unknown[]) => {
+    const drawer = ((k: string) => ({
+      status: "diagram",
+      spec: specs[Number(k.split(".")[1])],
+    })) as unknown as (k: string) => never;
+    const m = materialise(s, { ...ctxAt(3), visual: drawer });
+    expect(m.diagram).toBeUndefined();
+    const kids = (m.slide.elements as unknown as G[])[0]?.children ?? [];
+    return kids.filter(
+      (c) => c.type === "image" && (c.src ?? "").startsWith("data:image/svg"),
+    ) as unknown as { x: number; w: number }[];
+  };
+  for (const [name, s] of Object.entries(live))
+    test(`a-hinge-y9-forces ${name}: labelled drawings stay words at side size`, () => {
+      const specs = (s.sides as S[]).map((d) => (d.picture as S).diagram);
+      expect(visualsOf(s, 3, { ...ctxAt(3) } as never).map((a) => [a.key, a.type])).toEqual([
+        ["side.0", "diagram"],
+        ["side.1", "diagram"],
+      ]);
+      expect(specs.every((d) => !SPLIT_SIDE_DIAGRAM_KINDS.includes(String((d as S).kind)))).toBe(
+        true,
+      );
+      expect(sideSvgs(s, specs)).toHaveLength(0);
+    });
+  for (const kind of SPLIT_SIDE_DIAGRAM_KINDS.filter((k) => k === "venn" || k === "particles"))
+    test(`a ${kind} side pair is drawn, one in each half`, () => {
+      const spec = DIAGRAM_SAMPLES[kind] as S;
+      const s = {
+        ...(live["20261016-1221-s5"] as S),
+        sides: ((live["20261016-1221-s5"] as S).sides as S[]).map((d) => ({
+          ...d,
+          picture: { diagram: spec },
+        })),
+      };
+      const pics = sideSvgs(s, [spec, spec]);
+      expect(pics).toHaveLength(2);
+      const [a, b] = [...pics].sort((p, q) => p.x - q.x);
+      expect((a?.x ?? 0) + (a?.w ?? 0)).toBeLessThanOrEqual(480);
+      expect(b?.x ?? 0).toBeGreaterThanOrEqual(480);
+    });
 });
 
 describe("slot-fill reads a pilot slide as written, not as a writer fault (TEACH-110 part s)", () => {
