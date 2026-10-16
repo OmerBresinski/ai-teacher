@@ -37,6 +37,7 @@ export type LayoutKit = Pick<
   | "removeItem"
   | "canSplit"
   | "splitItems"
+  | "relayEndAnswers"
 >;
 
 /** A layout change: the lesson (the same object when nothing changed) and, if refused, why. */

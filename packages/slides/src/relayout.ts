@@ -15,6 +15,7 @@ import type {
   GroupElement,
   LayoutFrame,
   LayoutRef,
+  Slide,
   SlideElement,
   Theme,
 } from "@tj/domain/documents";
@@ -22,6 +23,7 @@ import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } f
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
+import { answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
@@ -170,6 +172,61 @@ const asStage = (v: unknown): Stage | undefined =>
  */
 export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage {
   return asStage((theme as { keyStage?: unknown }).keyStage) ?? asStage(ageBand) ?? "ks3";
+}
+
+/** A slide's content without its id or any element's id and geometry, keys sorted. */
+function contentOf(slide: Slide): string {
+  const drop = new Set(["id", "x", "y", "w", "h"]);
+  const norm = (v: unknown, top = false): unknown =>
+    Array.isArray(v)
+      ? v.map((x) => norm(x))
+      : v && typeof v === "object"
+        ? Object.fromEntries(
+            Object.keys(v)
+              .filter((k) => !(top ? k === "id" : drop.has(k)))
+              .sort()
+              .map((k) => [k, norm((v as Record<string, unknown>)[k])]),
+          )
+        : v;
+  return JSON.stringify(norm(JSON.parse(JSON.stringify(slide)), true));
+}
+
+/**
+ * The deck's guard and Answers slides built again for a theme switch (TEACH-191 part c), or null
+ * when they stay exactly as they are.
+ *
+ * Their row heights are each answer's wrapped height measured in the faces of the theme they were
+ * built in, so drawn in a theme with wider faces a wrapped answer runs into the next row. One rule:
+ * when every guard and Answers slide is exactly what the deck builder makes from the lesson's
+ * questions in the old theme (`prev`, `prevTheme`; elements, words, formatting and reveal steps
+ * compared, positions and ids ignored), nothing of the teacher's is on them, so they are built
+ * again in the new theme where the first one stood, and the page count may grow or shrink. Any
+ * difference (an edited word, a format, an added or removed element or slide) means the teacher
+ * has worked on them: they are left exactly as they are. A deck with no Answers slides gets none.
+ */
+export function relayEndAnswers(
+  prev: readonly Slide[],
+  prevTheme: Theme,
+  prevStage: Stage,
+  slides: readonly Slide[],
+  theme: Theme,
+  stage: Stage,
+): Slide[] | null {
+  const old = prev.filter((s) => s.answersRole);
+  const at = slides.findIndex((s) => s.answersRole);
+  if (!old.length || at < 0) return null;
+  const groups = answerGroupsOf(prev.filter((s) => !s.answersRole));
+  const opts = { skipWithKey: false } as const;
+  const expected = endAnswerSlides(groups, prevTheme, prevStage, opts);
+  if (expected.length !== old.length) return null;
+  if (expected.some((s, i) => contentOf(s) !== contentOf(old[i] as Slide))) return null;
+  const made = endAnswerSlides(groups, theme, stage, opts).map((s, i) => {
+    const was = old[i];
+    return was && was.answersRole === s.answersRole ? { ...s, id: was.id } : s;
+  });
+  const lesson = slides.filter((s) => !s.answersRole);
+  const before = slides.slice(0, at).filter((s) => !s.answersRole);
+  return [...before, ...made, ...lesson.slice(before.length)];
 }
 
 /* ------------------------------------------------------------------ */
