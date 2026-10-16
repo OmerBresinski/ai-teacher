@@ -347,6 +347,10 @@ function orderedRow(
     ...(input.motif ? { motif: input.motif } : {}),
     items: items.map((it) => ({ name: it.name, text: it.line, icon: null })),
   });
+  // Stages draws on the deck's ground in both looks: drop items-row's own ground (TEACH-75 part
+  // ap), or a draft in this look would show an element the closed icons look never has.
+  const ground = c.els.findIndex((el) => el.name === ROW_NAMES.ground);
+  if (ground >= 0) c.els.splice(ground, 1);
   if (misses.length) c.iconMisses = misses;
   const rename = (f: string) =>
     f.replace(/^items\[(\d+)\]\.text$/, "stages[$1].line").replace(/^items\[/, "stages[");
