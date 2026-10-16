@@ -227,5 +227,19 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         { head: "To make food", line: "Leaves use water.", icon: "leaf" },
       ],
     },
+    // TEACH-75 part ag (G1).
+    {
+      template: "myth",
+      heading: "How things fall",
+      myth: {
+        claim: "Heavier objects fall faster.",
+        fact: "Without air resistance, all objects fall at the same rate.",
+        factEm: "the same rate.",
+        proof: {
+          line: "On the Moon, a hammer and a feather **land together.**",
+          icons: ["hammer", "bird-feather"],
+        },
+      },
+    },
   ];
 }

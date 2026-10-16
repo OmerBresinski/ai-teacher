@@ -763,6 +763,39 @@ export function toInput(
           };
         }),
       } as TemplateInput;
+    // TEACH-75 part ag (G1): myth and fact. The writer's `myth` fields as they are; a proof picture
+    // still to come holds its slot in a draft, one that failed leaves the line alone (myth-c).
+    case "myth": {
+      const m = (s.myth && typeof s.myth === "object" ? s.myth : s) as S;
+      const p0 = (m.proof && typeof m.proof === "object" ? m.proof : null) as S | null;
+      const pic =
+        p0 && isPic(p0.picture) ? figureNow("proof", p0.picture as Pic, ctx, mark) : undefined;
+      const held =
+        ctx.draft && p0 && isPic(p0.picture) && !pic ? { photo: PLACEHOLDER_IMAGE, alt: "" } : null;
+      const icons = Array.isArray(p0?.icons)
+        ? (p0.icons as unknown[]).filter((i) => typeof i === "string")
+        : [];
+      return {
+        template,
+        heading,
+        myth: {
+          ...(m.opening === "straight" ? { opening: "straight" } : {}),
+          ...(m.verdict === "true" ? { verdict: "true" } : {}),
+          claim: str(m.claim),
+          fact: str(m.fact),
+          ...(typeof m.factEm === "string" && m.factEm.trim() ? { factEm: m.factEm } : {}),
+          ...(p0 && str(p0.line).trim()
+            ? {
+                proof: {
+                  line: str(p0.line),
+                  ...(icons.length ? { icons: icons as string[] } : {}),
+                  ...(pic || held ? { picture: (pic ?? held) as Figure } : {}),
+                },
+              }
+            : {}),
+        },
+      } as TemplateInput;
+    }
     // The pilot sets and contrasts (TEACH-110 part s).
     // Row and side pictures go through figureNow, so a pending one is the open slot.
     case "panel-list": {
