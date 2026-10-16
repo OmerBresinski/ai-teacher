@@ -1062,8 +1062,22 @@ function countOptions(els: SlideElement[]): number {
 export function hasRevealableAnswer(slide: Slide): boolean {
   const q = slide.question;
   if (!q) return false;
-  if (q.type === "open-response") return !!q.modelAnswer?.trim() && !revealsOwnAnswers(slide);
+  if (q.type === "open-response")
+    return !!q.modelAnswer?.trim() && !revealsOwnAnswers(slide) && !answersOffSlide(slide);
   return true;
+}
+
+/**
+ * Whether the slide's model answer lives only on the end-of-deck Answers slides: a practice slide
+ * (kind `open-response`) or the exit ticket. The slide is the pupils' brief and nothing builds on
+ * it (ruling 231, practice-exit gold "Reveal states: none"), so no surface draws the answer on it.
+ * The answer stays on the question for the Answers slides, the drawer, the worksheet and the key.
+ */
+export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolean {
+  return (
+    slide.question?.type === "open-response" &&
+    (slide.kind === "open-response" || slide.kind === "exit-ticket")
+  );
 }
 
 /**

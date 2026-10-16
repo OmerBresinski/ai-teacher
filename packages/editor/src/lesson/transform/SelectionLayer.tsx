@@ -677,7 +677,7 @@ export function SelectionLayer({
       const box = explanationLayout({
         slide,
         theme,
-        text: explanationText(slide.question) || EXPLANATION_PLACEHOLDER,
+        text: explanationText(slide) || EXPLANATION_PLACEHOLDER,
       });
       // The card is anchored by its bottom and may have grown taller than the ruler predicted, so
       // the *rendered* box is the hit target where there is one.

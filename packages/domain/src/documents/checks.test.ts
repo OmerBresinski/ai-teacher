@@ -64,11 +64,15 @@ describe("checkLesson", () => {
     test("an open-response slide with a blank model answer is an error; a filled one is not", () => {
       const l = generatedLesson();
       const slide = slideOf(l, "s-mc");
-      slide.kind = "open-response";
-      slide.question = { type: "open-response", modelAnswer: "  " };
-      expect(checkLesson(l).map((f) => f.check)).toEqual(["question-answer"]);
-      slide.question = { type: "open-response", modelAnswer: "Evaporation" };
-      expect(checkLesson(l)).toEqual([]);
+      // Practice and the exit ticket draw no answer on the slide (TEACH-230 part c), but the
+      // Answers slides read it, so a blank one is still an error.
+      for (const kind of ["open-response", "exit-ticket"] as const) {
+        slide.kind = kind;
+        slide.question = { type: "open-response", modelAnswer: "  " };
+        expect(checkLesson(l).map((f) => f.check)).toEqual(["question-answer"]);
+        slide.question = { type: "open-response", modelAnswer: "Evaporation" };
+        expect(checkLesson(l)).toEqual([]);
+      }
     });
 
     test("a fill-gap slide with an empty gap answer is an error", () => {

@@ -3,6 +3,7 @@
  * Kept free of JSX so it can be imported from anywhere without cycles.
  */
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
+import { answersOffSlide } from "@tj/domain/documents";
 import type { ResolvedText } from "@tj/slides";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
@@ -172,9 +173,13 @@ export function optionChipLabel(element: { label?: string }, text: string): stri
     : null;
 }
 
-/** Reveal copy shown beneath the options, if the question carries any. */
-export function explanationText(question: QuestionData | undefined): string | null {
-  if (!question) return null;
+/**
+ * Reveal copy shown beneath the options, if the question carries any. A practice or exit slide's
+ * model answer is never drawn on the slide (`answersOffSlide`): it lives on the Answers slides.
+ */
+export function explanationText(slide: Pick<Slide, "kind" | "question">): string | null {
+  const question = slide.question;
+  if (!question || answersOffSlide(slide)) return null;
   if (question.type === "true-false" || question.type === "multiple-choice")
     return question.explanation?.trim() || null;
   if (question.type === "open-response") return question.modelAnswer?.trim() || null;
