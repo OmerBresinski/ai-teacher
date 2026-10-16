@@ -15,6 +15,7 @@ import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
+import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
@@ -261,7 +262,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         stage,
         promptVersions: {
           ...(lesson.generation?.promptVersions ?? {}),
-          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}`,
+          // The pilot pack rides on the bundle: the stamp names both, so a render and a replay
+          // know which menu and caps wrote the deck (TEACH-110 part s).
+          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}+pilot-${PILOT_PACK_ID}`,
         },
         usage: deps.budget.totals(),
         ...(slideStates ? { slideStates } : {}),
@@ -409,6 +412,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       brief: writerBrief(lesson),
       objectives,
       bundle: writerBundleOf(lesson),
+      // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text
+      // assembled from the layout menus and its caps from the measured tables (pilot-pack.ts).
+      pilotPack: PILOT_PACK_ID,
       services,
       // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
       // call on the small model (TEACH-247).

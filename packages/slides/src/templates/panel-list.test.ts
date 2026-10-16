@@ -18,7 +18,6 @@ import {
   DISPLAY_CUSHION,
   holdRowPictures,
   PANEL_COMFORT,
-  PANEL_LIST_WRITER_MENU,
   PANEL_NAMES,
   PANEL_W,
   PANEL_W_NARROW,
@@ -528,24 +527,6 @@ describe("panel-list", () => {
       }
     expect(Object.keys(CAPACITY)).toEqual(["early", "primary", "secondary"]);
   }, 60_000);
-
-  test("the writer menu's row range and heading cap stay inside the measured capacity", () => {
-    const CHARS_PER_WORD = 6;
-    for (const [key, age] of [
-      ["KS1", "early"],
-      ["KS2", "primary"],
-      ["KS3-5", "secondary"],
-    ] as const) {
-      const line = PANEL_LIST_WRITER_MENU[key];
-      const most = Number(must(/^- panel-list: \d+ to (\d+) members/.exec(line))[1]);
-      expect(most, `${key} row range`).toBe(PANEL_COMFORT[age]);
-      const heading = /heading up to (\d+) words/.exec(line);
-      if (heading) {
-        const cap = must(panelCapsFor(age, most)).heading.cap;
-        expect(Number(heading[1]) * CHARS_PER_WORD, `${key} heading`).toBeLessThanOrEqual(cap);
-      }
-    }
-  });
 
   test("regenerating the capacity gives the committed table (two cells re-measured)", () => {
     const table = CAPACITY as unknown as Record<string, Record<string, unknown>>;

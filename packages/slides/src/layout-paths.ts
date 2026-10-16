@@ -43,7 +43,8 @@ export function boundPath(groupId: string, childId: string): string | undefined 
   const prefix = `${groupId}:`;
   if (!childId.startsWith(prefix)) return undefined;
   const path = childId.slice(prefix.length);
-  return /^\d+$/.test(path) || !path ? undefined : path;
+  // A box with no field: its place (`3`) or its name (`~Row_picture-0`, TEACH-110 part s).
+  return /^\d+$/.test(path) || path.startsWith("~") || !path ? undefined : path;
 }
 
 type Box = { x: number; y: number; w: number; h: number };

@@ -310,8 +310,12 @@ export function fieldStates(ref: LayoutRef, result: TemplateResult, stage: Stage
     if (cap <= 0) return [];
     const value = getAtPath(ref, path);
     const chars = typeof value === "string" ? value.trim().length : 0;
+    // The layout's own measure at the drawn size outranks the table: a field it reports over (an
+    // items row whose real words wrap a line more than the table's sample did) is over, even under
+    // its hard maximum (chat-edit router run r24: the Heart line ran 16 pt past the frame).
+    const measuredOver = result.over.includes(f.field ?? path) || result.over.includes(path);
     const state: LayoutField["state"] =
-      f.hardMax > 0 && chars > f.hardMax ? "over" : chars > cap ? "tight" : "ok";
+      measuredOver || (f.hardMax > 0 && chars > f.hardMax) ? "over" : chars > cap ? "tight" : "ok";
     return [{ path, chars, cap, hardMax: f.hardMax, state }];
   });
 }
@@ -409,9 +413,17 @@ export function relayout(ref: LayoutRef, theme: Theme, stage: Stage, idPrefix?: 
   const raw = result.slide.elements;
   const bound = pathsOf(ref.template, raw);
   const paths: Record<string, string> = {};
+  // A box with no field path (a disc, a line) is named by its element name and how many before it
+  // share that name, not by its place in the list: a draft that gains an item keeps every earlier
+  // box's id, so the streamed slide's hand-over remounts nothing (TEACH-110 part s). The `~` keeps
+  // it from reading as a field path (`boundPath`).
+  const seen = new Map<string, number>();
   const elements = raw.map((el, n) => {
     const path = bound[n];
-    const id = idPrefix ? `${idPrefix}:${path ?? n}` : el.id;
+    const name = (el.name ?? el.type).replace(/[^\w-]/g, "_");
+    const k = seen.get(name) ?? 0;
+    if (!path) seen.set(name, k + 1);
+    const id = idPrefix ? `${idPrefix}:${path ?? `~${name}-${k}`}` : el.id;
     if (path) paths[id] = path;
     return id === el.id ? el : { ...el, id };
   });

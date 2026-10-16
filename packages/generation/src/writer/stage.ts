@@ -37,7 +37,6 @@ import {
   QUESTION_TEMPLATES,
   questionSafe,
   withBuildCounts,
-  writerSpecOf,
 } from "./diagrams";
 import { type DraftOptions, type SlideDraft, SlideDrafts } from "./draft";
 import {
@@ -106,6 +105,7 @@ import {
   modelPoints,
   type Plan,
   questionsOf,
+  stableIdPrefix,
   tileDiagramKeys,
   type VisualAsk,
   type VisualState,
@@ -123,6 +123,15 @@ import {
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
+import { carryFigures, fitPilot, isPilot, pilotOvers, pilotSlips } from "./pilot-fit";
+import {
+  PILOT_PACKS,
+  type PilotPack,
+  type PilotPackId,
+  pilotRepairSchema,
+  pilotRequest,
+  stripStringCaps,
+} from "./pilot-pack";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
 import { continuePractice } from "./practice-split";
 import { continueQuickCheck } from "./question-set-split";
@@ -182,6 +191,11 @@ export type WriterRun = {
   vetoed?: (index: number, key: string) => string | undefined;
   /** The writer prompt bundle; absent: the shipped one (`WRITER_BUNDLE_ID`). */
   bundle?: WriterBundleId;
+  /**
+   * The pilot writer pack (TEACH-110 part s): its menu, schema and layouts replace the bundle's
+   * system text and schema, as the real-writer smokes sent them. Absent: the bundle's own.
+   */
+  pilotPack?: PilotPackId;
   /** The pupil-wording call for slide 2; `false` keeps the teacher's wording (the evidence runs). */
   pupilWording?: boolean;
   /**
@@ -613,11 +627,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }),
     models.map((m) => m.id),
   );
-  const unsplit = activities ? withActivities(libbed, stageKey) : libbed;
-  const slotFill = run.slotFill ?? P.features?.slotFill ?? false;
-  const schema = slotFill ? withSlotFill(unsplit, stageKey) : unsplit;
-  const system0 = libSystem(writerSystem(brief, P), models);
-  const system = slotFill ? slotFillSystem(system0, schema) : system0;
+  const pilot = run.pilotPack
+    ? pilotRequest(run.pilotPack, stageKey, libbed, (sc) =>
+        libSchema(
+          sc,
+          models.map((m) => m.id),
+        ),
+      )
+    : undefined;
+  const unsplit = pilot ? pilot.schema : activities ? withActivities(libbed, stageKey) : libbed;
+  // A pack's base schema is already split per fit (`template~fit`): arrival strips `fit`, and the
+  // system text already carries its Fits lines.
+  const slotFill = pilot
+    ? Object.keys(pilot.schema.$defs ?? {}).some((k) => k.includes("~"))
+    : (run.slotFill ?? P.features?.slotFill ?? false);
+  const schema = slotFill && !pilot ? withSlotFill(unsplit, stageKey) : unsplit;
+  const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
+  const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
@@ -955,7 +981,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema);
+      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps);
       raw = a.slide;
       log({
         ev: "slot-fill",
@@ -997,6 +1023,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     s = splitTable(idx, s);
     s = splitQuick(idx, s);
+    // Pack v4.5 asks for the hinge's correct option first (`correct` 1): any other value means the
+    // writer ignored the order rule, so its key is suspect (build/HINGE-ANSWER.md). Logged only.
+    if (
+      run.pilotPack &&
+      run.pilotPack !== "v4.4" &&
+      s.template === "hinge" &&
+      Number(s.correct) !== 1
+    )
+      log({ ev: "hinge-first-unmet", slide: idx + 1, correct: s.correct ?? null });
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
@@ -1006,7 +1041,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
       s = added.slide;
-    } else if (look && look.kind !== "none" && !asksVisual(s))
+      // A pilot layout draws its own visual (icons, medals, side pictures): its look is met.
+    } else if (look && look.kind !== "none" && !asksVisual(s) && !isPilot(s))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
     const one = titleOneThing(s);
     if (one.how) {
@@ -1112,7 +1148,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: activities ? withActivityMenu(system, stageKey, P.activityMenu) : system,
+          system:
+            activities && !pilot ? withActivityMenu(system, stageKey, P.activityMenu) : system,
           user: localise(user),
           schema,
           name: "lesson",
@@ -1526,6 +1563,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       exempt?: ReadonlySet<string>;
       /** Fit: keep a reword that cut the overflow without clearing it. */
       keepPartial?: boolean;
+      /** The call's schema; absent: the bundle's repair schema for the stage. */
+      schema?: Record<string, unknown>;
     } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
@@ -1580,7 +1619,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // Restaging (stand-alone, reroute) has its own prompt, never repair.txt.
       system: mode === "fit" ? P.repair : P.restage,
       user: u,
-      schema: repairSchemaFor(stageKey),
+      // An uncapped pack (v4.6) strips the generic repair too: a capped repair cuts its own fix.
+      schema:
+        ro.schema ??
+        (run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).uncapped
+          ? stripStringCaps(repairSchemaFor(stageKey))
+          : repairSchemaFor(stageKey)),
       name: "slide",
       // Strict JSON, as base4f-p123 ran repair and restage (TEACH-110 part f).
       strict: true,
@@ -1596,14 +1640,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       return false;
     }
     const before = plan.slides[i] as S;
-    const keyed = keepAnswerKey(before, keepAsksHonest(before, o2.slide));
+    const keyed = keepAnswerKey(
+      before,
+      keepAsksHonest(before, ro.schema ? carryFigures(before, o2.slide) : o2.slide),
+    );
     o2.slide = keyed ?? before;
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     // The pinned repair prompt may move one whole unit to the notes or split: it is judged by the
     // word-loss rule, not the fit-only rule.
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
-      fit: false,
+      // A pilot fit repair shortens words to the measured room: rewording is its job, so it is
+      // judged by the fit rule (every item kept, nothing to the notes), not word loss (proof:
+      // every shortening of a pilot row was refused for losing words).
+      fit: Boolean(ro.schema),
       // A restaged slide may lose its figure and the words that pointed at it, never a question,
       // an item or the slide's other words.
       ...(mode !== "fit" ? { restage: true, exempt: ro.exempt ?? POINTING_WORDS } : {}),
@@ -1640,8 +1690,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const now = judged(i).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
     const fresh = [...kinds(now)].filter((k) => !was.has(k));
-    const worse =
-      mode !== "fit"
+    // A pilot repair's fit is measured by the fit ladder itself (pilotOvers at the drawn size); the
+    // older checks' overflow points do not read pilot paths, so only a new fault of another kind
+    // undoes it (proof: every accepted pilot shortening was reverted on that comparison).
+    const worse = ro.schema
+      ? fresh.some((k) => k !== "overflow")
+      : mode !== "fit"
         ? now.some((f) => /^(dangling|unanswerable):/.test(f))
         : ro.keepPartial
           ? fresh.length > 0 || overflowPt(now) >= overflowPt(c.faults)
@@ -1665,6 +1719,54 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
+  // ── pilot layouts: validate at the drawn size and repair (TEACH-110 part s) ──
+  // A pilot slide's fields past their measured cap go back to a bounded fit repair whose schema
+  // keeps the layout, then a second with exact budgets; code then cuts whole sentences only, and a
+  // field with none to stop at stays whole (still over, the editor's chip). This is the pilot
+  // layouts' own fit, not a check: it runs when the checks only log too (TEACH-110 part s).
+  const pilotSlides = plan.slides.flatMap((s0, i) =>
+    isPilot(s0 as S) && repairable(s0 as S, i) ? [i] : [],
+  );
+  await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
+    const s0 = plan.slides[i] as S;
+    const pctx = { ...base, index: i, plan, visual: visualState(i) };
+    const at = pilotOvers(s0, pctx);
+    if (!at.overs.length && !at.tooMany && !pilotSlips(s0).length) return;
+    const repair = run.services
+      ? async (_s: S, faults: string[]) => {
+          const ok = await repairOne({ slide: i + 1, faults }, "fit", {
+            keepPartial: true,
+            schema: pilotRepairSchema(repairSchemaFor(stageKey), schema, String(s0.template)),
+          });
+          return ok ? (plan.slides[i] as S) : undefined;
+        }
+      : undefined;
+    const r = await fitPilot(s0, pctx, repair);
+    log({
+      ev: "pilot-fit",
+      slide: i + 1,
+      path: r.path,
+      overs: r.overs,
+      steps: r.steps,
+      ...(r.cut?.length ? { cut: r.cut } : {}),
+      ...(r.kept?.length ? { kept: r.kept } : {}),
+      ...(r.slips?.length ? { slips: r.slips } : {}),
+    });
+    // Members are never dropped silently: a re-lay is logged above, members nothing holds here.
+    if (r.membersOver)
+      log({
+        ev: "pilot-members-over",
+        slide: i + 1,
+        id: `${stableIdPrefix(i + 1)}layout`,
+        template: String(r.slide.template),
+      });
+    if (r.path === "trimmed" || r.path === "still-over" || r.path === "relaid")
+      swapSlide(i, r.slide);
+  });
+  if (pilotSlides.length) {
+    checks = check();
+    failing = failingNow();
+  }
   if (act) {
     phaseSlides = [...plan.slides];
     await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {

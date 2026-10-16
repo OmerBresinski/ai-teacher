@@ -143,23 +143,6 @@ export const PANEL_NAMES = {
   rowPicture: "Row picture",
 } as const;
 
-/**
- * The writer's menu line for panel-list per key-stage group, copied verbatim from the pilot's
- * `writer/MENU-v3.md` (section A) for TEACH-110 part s to wire; its numbers come from the pilot's
- * caps and are re-derived from `panel-list-capacity.json` there. The row range and the heading
- * cap are checked against that table in panel-list.test.ts (a word is counted as 6 characters).
- */
-// writer-prompt: owned by TEACH-110 s
-export const PANEL_LIST_WRITER_MENU = {
-  // writer-prompt: owned by TEACH-110 s
-  KS1: "- panel-list: 3 to 4 members of one group, such as kinds, groups or rules, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: 3 items each 8; 4 each 5; with a lead of up to 5 words: 3 items each 5.",
-  // writer-prompt: owned by TEACH-110 s
-  KS2: "- panel-list: 3 to 4 members of one group, such as kinds, groups or rules, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: heading up to 5 words; 3 items each 12; 4 each 5; with a lead of up to 6 words: 3 items each 11; 4 each 5.",
-  // writer-prompt: owned by TEACH-110 s
-  "KS3-5":
-    "- panel-list: 3 to 5 members of one group, such as kinds, groups or rules, or five named parts, too many for items-row, as a calm list beside a title panel, each a name and one line, when order does not matter (2 to 4 parts or stages go to items-row). The panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: heading up to 5 words; 3 items each 12; 4 to 5 each 6; with a lead of up to 6 words: 3 items each 11; 4 each 6.",
-} as const;
-
 /* Geometry (960 x 540; the pilot's 1440 px x 2/3). */
 const SLIDE_H = 540;
 export const PANEL_W = 313;

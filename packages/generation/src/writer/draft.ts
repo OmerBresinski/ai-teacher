@@ -161,6 +161,11 @@ export type SlideDraft = {
   template: string;
   /** Every other field so far; an open string is cut where the stream is. */
   fields: Record<string, unknown>;
+  /**
+   * Where the open string sits (`["items", 2, "name"]`), absent when no string is open. A string
+   * anywhere else is whole, so a draft can act on a name the moment it closes.
+   */
+  open?: (string | number)[];
 };
 
 export type DraftOptions = {
@@ -232,12 +237,14 @@ export class SlideDrafts {
     const template = v.template;
     if (typeof template !== "string" || peeked?.open?.[0] === "template") return;
     const { template: _t, ...fields } = v;
+    const openAt = peeked?.open as (string | number)[] | undefined;
     const key = JSON.stringify(fields);
-    const sent = `${template}\n${key}`;
+    // A string that closes with no new characters is still news: a name is whole from then on.
+    const sent = `${template}\n${key}\n${JSON.stringify(openAt ?? null)}`;
     if (sent === this.last) return;
     this.last = sent;
     this.at = now;
     this.stats.drafts++;
-    this.onDraft(open.index, { template, fields });
+    this.onDraft(open.index, { template, fields, ...(openAt ? { open: openAt } : {}) });
   }
 }

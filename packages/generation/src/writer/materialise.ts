@@ -1,6 +1,7 @@
 import "../icons-ready";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
+import { layoutGroup } from "@tj/slides/relayout";
 import {
   type Figure,
   isPointKind,
@@ -89,6 +90,8 @@ export type MaterialiseCtx = {
    * drawing that draws only with warnings fills its room and its faults come back as `diagramWarnings`.
    */
   diagramWarnings?: boolean;
+  /** The slide is still being written (the draft path, TEACH-110 part s): a picture to come holds its slot. */
+  draft?: boolean;
 };
 export type Materialised = {
   slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
@@ -229,6 +232,21 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
     (Array.isArray(s.grid) ? s.grid : []).forEach((c, n) => {
       const p = (c as S)?.icon;
       if (isPic(p)) out.push({ key: `icon.${n}`, f: p });
+    });
+  // Pilot sets and contrasts (TEACH-110 part s): a panel list's title-panel picture and one per
+  // row (row pictures; side by side draws the same rows as cards), and a split compare's sides.
+  if (s.template === "panel-list") {
+    const pn = (s.panel ?? null) as S | null;
+    if (pn && isPic(pn.picture)) out.push({ key: "panel", f: pn.picture });
+    (Array.isArray(s.items) ? s.items : []).forEach((i, n) => {
+      const p = (i as S)?.picture;
+      if (isPic(p)) out.push({ key: `row.${n}`, f: p });
+    });
+  }
+  if (s.template === "split-compare")
+    (Array.isArray(s.sides) ? s.sides : []).forEach((d, n) => {
+      const p = (d as S)?.picture;
+      if (isPic(p) || isDia(p)) out.push({ key: `side.${n}`, f: p });
     });
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
@@ -638,6 +656,57 @@ export function toInput(
           };
         }),
       };
+    // The pilot sets and contrasts (TEACH-110 part s).
+    // Row and side pictures go through figureNow, so a pending one is the open slot.
+    case "panel-list": {
+      const items = (Array.isArray(s.items) ? s.items : []) as (S | null)[];
+      const pictured = items.some((i) => isPic(i?.picture));
+      const rows = items.map((i0, n) => {
+        const i = (i0 ?? {}) as S;
+        const p = isPic(i.picture) ? figureNow(`row.${n}`, i.picture as Pic, ctx, mark) : undefined;
+        // A draft holds the slot of a picture still to come (DRAFT-MODE.md); closed, all or none.
+        const held =
+          ctx.draft && i.picture !== null && !p ? { photo: PLACEHOLDER_IMAGE, alt: "" } : null;
+        return {
+          name: str(i.name),
+          text: str(i.text),
+          icon: !pictured && typeof i.icon === "string" && i.icon.trim() ? i.icon : null,
+          ...(pictured ? { picture: (p ?? held) as Figure | null } : {}),
+        };
+      });
+      const pn = (s.panel ?? null) as S | null;
+      const panelPic =
+        pn && isPic(pn.picture) ? figureNow("panel", pn.picture as Pic, ctx, mark) : undefined;
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
+        rows,
+        // The title panel's own picture (menu v4.3 `panel: {picture}`); shares and none are none.
+        panel: panelPic ? { picture: panelPic } : null,
+      } as TemplateInput;
+    }
+    case "split-compare":
+      return {
+        template,
+        heading,
+        ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
+        ...(typeof s.marker === "string" ? { marker: s.marker } : {}),
+        sides: (Array.isArray(s.sides) ? s.sides : []).map((d0, n) => {
+          const d = (d0 ?? {}) as S;
+          const p =
+            isPic(d.picture) || isDia(d.picture)
+              ? figureNow(`side.${n}`, d.picture as Pic | Dia, ctx, mark)
+              : undefined;
+          return {
+            title: str(d.title),
+            text: str(d.text),
+            ...(typeof d.quote === "string" && d.quote ? { quote: d.quote } : {}),
+            ...(p ? { picture: p } : {}),
+          };
+        }),
+      } as TemplateInput;
     case "banner-text": {
       // Ruling 203 (P4): the photo as a strip over or under the words. A picture that could not
       // be made (after the same retries and lostPic ladder as any picture slot) leaves the words
@@ -799,6 +868,25 @@ export function whatIs(word: string, language = false): string | undefined {
   return `What does “${w}” mean?`;
 }
 
+/** Pilot layouts kept as re-layable groups (prototype, see `materialise`). */
+const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
+
+/**
+ * Layouts whose drafts and closed slide share ids (draft mode, TEACH-110 s): the pilot layouts,
+ * wrapped in one `layoutGroup` whose id comes from the slide's place and whose children are
+ * `<group>:<path>`, so the hand-over from the last draft remounts nothing.
+ */
+export const STABLE_ID_TEMPLATES: ReadonlySet<string> = ADAPTIVE;
+/** The id prefix of the slide at `index` (the `d-` the live view joins drafts by). */
+export const stableIdPrefix = (index: number) => `d-s${index}-`;
+
+/** A pilot layout's fit at its drawn size: the laid template and its per-field report. */
+export function pilotFit(s: S, ctx: MaterialiseCtx) {
+  const input = toInput(s, ctx);
+  const r = layoutTemplate(input, ctx.theme, ctx.stage);
+  return { template: String(input.template), fields: r.fields ?? [], over: r.over };
+}
+
 /** Lay one slide out from its JSON and the visuals' current states. */
 export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
   let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
@@ -822,6 +910,20 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     r = { ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage), diagram: why };
   }
   const slide = { ...r.slide, kind: kindByRole(s, ctx, r.slide.kind) };
+  // PROTOTYPE (pilot/integration only; belongs to TEACH-110 part s): an adaptive pilot layout stays
+  // a component in the editor. Its elements go into one group that keeps the template and input
+  // (`layoutGroup`), so the teacher's add, delete and typing re-flow it (TEACH-205 part b).
+  const template = str(normalise(s).template);
+  if (ADAPTIVE.has(template) && !r.diagram?.length) {
+    const input = toInput(s, ctx) as unknown as Record<string, unknown>;
+    const group = layoutGroup(
+      { template: template as "items-row", input },
+      ctx.theme,
+      ctx.stage,
+      `${stableIdPrefix(ctx.index)}layout`,
+    );
+    slide.elements = [{ ...group, authoredBy: "ai" } as unknown as Slide["elements"][number]];
+  }
   return aiAuthored({
     slide,
     over: r.over,
