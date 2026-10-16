@@ -167,7 +167,7 @@ export function SlideView({
 
   const sortIndex = useMemo(() => sortPositions(slide), [slide]);
   const optionIndex = useMemo(() => optionPositions(slide), [slide]);
-  const explanation = revealAnswer ? explanationText(slide.question) : null;
+  const explanation = revealAnswer ? explanationText(slide) : null;
   /**
    * True-false and multiple choice get the "Why?" panel (Chalkie inventory line
    * 10). In the editor it is drawn even when empty, so there is somewhere to type;

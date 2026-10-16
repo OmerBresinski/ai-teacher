@@ -211,7 +211,9 @@ describe("quick check (TEACH-101 part g)", () => {
     for (const template of ["practice", "exit-ticket"] as const) {
       const r = layoutTemplate({ ...quickInput(y6), template }, paper, "ks2");
       expect(named(r.slide.elements, QUICK_NAMES.answer)).toHaveLength(0);
-      expect(hasRevealableAnswer({ id: "s", ...r.slide } as Slide)).toBe(true);
+      // The answers live on the end Answers slides: nothing reveals on the slide (TEACH-230 part c).
+      expect(r.slide.question?.type).toBe("open-response");
+      expect(hasRevealableAnswer({ id: "s", ...r.slide } as Slide)).toBe(false);
     }
   });
 
