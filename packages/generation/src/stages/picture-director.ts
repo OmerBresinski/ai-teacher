@@ -5,6 +5,7 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
+import { safeError } from "@tj/domain";
 import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
@@ -22,7 +23,13 @@ import { PICTURE_DIRECTOR_BATCH_VERSION } from "../prompts/picture-director-batc
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
-import { isFatal, nonFatal, nonFatalSync, whenNonFatal } from "../writer/services";
+import {
+  isFatal,
+  isReservationRefusal,
+  nonFatal,
+  nonFatalSync,
+  whenNonFatal,
+} from "../writer/services";
 import {
   type DirectedPlacer,
   judgeMadeDirected,
@@ -931,6 +938,8 @@ export type WriterPictureMiss =
   | "set-not-searched"
   | "deadline"
   | "error"
+  /** The budget refused the picture's call before it ran (a reservation, not spend over the cap). */
+  | "budget"
   | "match6"
   /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
   | "history-card-generated"
@@ -1017,6 +1026,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "set-not-searched": "Picture sets are made by the generator, which is not on.",
   deadline: "The picture search ran out of time.",
   error: "The picture search failed.",
+  budget: "The picture search stopped at this lesson's spending limit.",
   match6: "",
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
@@ -1134,6 +1144,18 @@ export function createWriterPictures(opts: {
       // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
       if (roundStop.signal.aborted && !opts.deps.signal.aborted) {
         slot.miss = "deadline";
+        return;
+      }
+      // A picture whose call the budget refused up front is a missing picture, not a failed lesson
+      // (TEACH-110 part z): its slot ends empty for the teacher to fill, the other placements keep
+      // running, and nothing was spent on it. Spend over the cap (`BudgetExceeded`) still stops.
+      if (isReservationRefusal(error) && !opts.deps.signal.aborted) {
+        slot.miss = "budget";
+        const key = [...slots].find(([, s]) => s === slot)?.[0];
+        opts.deps.logger.warn(
+          { stage: "illustrate", picture: key, miss: "budget", err: safeError(error) },
+          "picture call refused by the lesson budget; slot left empty",
+        );
         return;
       }
       if (isFatal(error) || opts.deps.signal.aborted) {
