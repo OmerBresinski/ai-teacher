@@ -1,0 +1,14 @@
+{
+  "KS1": {
+    "words": 37,
+    "comfortable": 19
+  },
+  "KS2": {
+    "words": 42,
+    "comfortable": 27
+  },
+  "KS3-5": {
+    "words": 66,
+    "comfortable": 41
+  }
+}
