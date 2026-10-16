@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { ICON_CONCEPTS } from "@tj/slides/icons";
 import type { FieldReport } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
@@ -21,6 +22,7 @@ import {
   writerPath,
 } from "./pilot-fit";
 import {
+  layoutIconNames,
   PILOT_PACKS,
   pilotRepairSchema,
   pilotRequest,
@@ -285,6 +287,20 @@ describe("one repair, then whole sentences", () => {
     expect(pilotOvers(over, ctxAt(3)).overs.some((o) => o.clipped)).toBe(true);
     expect((await fitPilot(over, ctxAt(3))).steps).toHaveLength(1);
   });
+  // TEACH-110 part x: the writer is offered every icon the matcher knows, built per request from
+  // the catalogue (pilot set + LAYOUT_CONCEPTS), never a frozen list in the pack.
+  test("the icon names are the matcher's whole catalogue", () => {
+    const want = ICON_CONCEPTS.map((c) => c.label.toLowerCase());
+    expect(layoutIconNames()).toEqual(want);
+    expect(want).toHaveLength(201);
+    for (const ks of ["KS1", "KS2", "KS3"]) {
+      const { schema } = pilotRequest("v4.7", ks, {}, (sc) => sc);
+      const icon = schema.$defs["layout-icon"];
+      expect(icon.anyOf[0].enum).toEqual(want);
+      expect(icon.anyOf[1]).toEqual({ type: "null" });
+    }
+    expect(layoutIconNames()).toEqual(expect.arrayContaining(["warmth", "fair test", "beaker"]));
+  });
   test("the repair schema carries only what the slide's own layout reaches", () => {
     const { schema } = pilotRequest("v4.5", "KS2", {}, (sc) => sc);
     const repair = {
@@ -364,6 +380,36 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
     expect(srcs(group(sides, 3, [], photo))).toEqual(
       expect.arrayContaining(["https://img/side.0.jpg", "https://img/side.1.jpg"]),
     );
+  });
+
+  // TEACH-110 part x: a side's diagram, bare (`{kind…}`) or wrapped (`{diagram: {kind…}}`, as
+  // a-hinge-y9-forces s6 stored it), is asked for and drawn, never dropped to text.
+  test("a split compare side's diagram is asked for and drawn in the group", () => {
+    const dia = (n: number) => ({
+      kind: "labelled-diagram",
+      shows: `forces ${n}`,
+      labels: ["Weight"],
+    });
+    const drawn = (k: string) =>
+      ({
+        status: "diagram",
+        spec: { drawn: { src: `https://img/${k}.svg`, aspect: 1.5, alt: k, bare: true } },
+      }) as never;
+    const srcs = (els: G[]) => (els[0]?.children ?? []).flatMap((c) => (c.src ? [c.src] : []));
+    for (const wrap of [(n: number) => dia(n), (n: number) => ({ diagram: dia(n) })]) {
+      const sides = {
+        ...split,
+        sides: (split.sides as S[]).map((d, n) => ({ ...d, text: "Short.", picture: wrap(n) })),
+      };
+      const asks = visualsOf(sides, 3, { ...ctxAt(3) } as never);
+      expect(asks.map((a) => [a.key, a.type])).toEqual([
+        ["side.0", "diagram"],
+        ["side.1", "diagram"],
+      ]);
+      expect(srcs(group(sides, 3, [], drawn))).toEqual(
+        expect.arrayContaining(["https://img/side.0.svg", "https://img/side.1.svg"]),
+      );
+    }
   });
 });
 
