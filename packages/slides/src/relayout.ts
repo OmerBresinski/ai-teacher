@@ -23,7 +23,7 @@ import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } f
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
-import { answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
+import { ANSWERS_NAMES, answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
@@ -201,8 +201,8 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 }
 
 /** A slide's content without its id or any element's id and geometry, keys sorted. */
-function contentOf(slide: Slide): string {
-  const drop = new Set(["id", "x", "y", "w", "h"]);
+function contentOf(slide: Slide, sizes = true): string {
+  const drop = new Set(["id", "x", "y", "w", "h", ...(sizes ? [] : ["fontSize", "lineHeight"])]);
   const norm = (v: unknown, top = false): unknown =>
     Array.isArray(v)
       ? v.map((x) => norm(x))
@@ -215,6 +215,49 @@ function contentOf(slide: Slide): string {
           )
         : v;
   return JSON.stringify(norm(JSON.parse(JSON.stringify(slide)), true));
+}
+
+/** The words an Answers slide shows, sizes and places aside: what a teacher could have edited. */
+const ANSWER_WORDS = new Set(["Answer", "Working", "Model answer", "Correction", "Verdict"]);
+function answerWordsOf(slides: readonly Slide[]): string | null {
+  const known = new Set<string | undefined>([
+    ...ANSWER_WORDS,
+    ...Object.values(ANSWERS_NAMES),
+    "Heading",
+    TEACHER_ONLY_MARK,
+  ]);
+  const out: unknown[] = [];
+  for (const slide of slides)
+    for (const e of slide.elements) {
+      if (!known.has(e.name) && !e.name?.startsWith("surface:")) return null;
+      if (!ANSWER_WORDS.has(e.name ?? "") || e.type !== "text") continue;
+      const { fontSize: _f, lineHeight: _l, ...style } = e.style ?? {};
+      out.push([e.name, e.doc, style]);
+    }
+  // Keys sorted: a stored slide's keys come back from the database in another order.
+  return JSON.stringify(out, (_k, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1)))
+      : v,
+  );
+}
+
+/**
+ * Answers slides built before their sizes were the drawn sizes (TEACH-191 part d) never match a
+ * rebuild exactly: they still count as untouched when they hold only the builder's elements and
+ * show the same answers, in the same order, with the same words and formatting. Sizes, places and
+ * the page split are the builder's to redo.
+ */
+function untouchedAnswers(old: readonly Slide[], expected: readonly Slide[]): boolean {
+  const guard = (ss: readonly Slide[]) => ss.filter((s) => s.answersRole === "guard");
+  const [a, b] = [guard(old), guard(expected)];
+  if (
+    a.length !== b.length ||
+    a.some((s, i) => contentOf(s, false) !== contentOf(b[i] as Slide, false))
+  )
+    return false;
+  const words = answerWordsOf(old);
+  return words !== null && words === answerWordsOf(expected);
 }
 
 /**
@@ -244,8 +287,10 @@ export function relayEndAnswers(
   const groups = answerGroupsOf(prev.filter((s) => !s.answersRole));
   const opts = { skipWithKey: false } as const;
   const expected = endAnswerSlides(groups, prevTheme, prevStage, opts);
-  if (expected.length !== old.length) return null;
-  if (expected.some((s, i) => contentOf(s) !== contentOf(old[i] as Slide))) return null;
+  const same =
+    expected.length === old.length &&
+    expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
+  if (!same && !untouchedAnswers(old, expected)) return null;
   const made = endAnswerSlides(groups, theme, stage, opts).map((s, i) => {
     const was = old[i];
     return was && was.answersRole === s.answersRole ? { ...s, id: was.id } : s;
@@ -259,7 +304,7 @@ export function relayEndAnswers(
 /* Input paths                                                         */
 /* ------------------------------------------------------------------ */
 
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { SLIDE_H, SLIDE_W, TEACHER_ONLY_MARK } from "@tj/domain/documents";
 import { TRIM } from "./grid";
 import { getAtPath, setAtPath } from "./layout-paths";
 

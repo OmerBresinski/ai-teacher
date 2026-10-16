@@ -1,0 +1,7035 @@
+{
+  "20261016-1221/y4-romans": {
+    "themeId": "splash",
+    "ageBand": "ks2",
+    "yearGroup": "Year 4",
+    "generation": {
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives+bundle-base4f-p123",
+        "generated": "lesson-writer.v1+bundle-base4f-p123+pilot-v4.7-new-only"
+      }
+    },
+    "slides": [
+      {
+        "id": "s10",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s10-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Compare the evidence",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. The left settlement has earth tracks and roundhouses; the right has paved streets and stone buildings.\n2. People collect water from a well on the left and a public fountain on the right."
+        }
+      },
+      {
+        "id": "s11",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s11-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Use the ideas somewhere new",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. A straight route makes the journey more direct, while a paved surface helps stop the cart sinking into mud.\n2. A public bathhouse provides shared washing facilities, and drains carry wastewater away."
+        }
+      },
+      {
+        "id": "s12",
+        "kind": "exit-ticket",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s12-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you know",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. Straight, paved roads helped traders transport goods; marketplaces brought buyers and sellers together.\n2. Aqueducts brought water, drains carried wastewater away, and public bathhouses provided shared places to wash.\n3. The Iron Age settlement had tracks, roundhouses and a well; the Roman town had paving, stone buildings and fountains."
+        }
+      },
+      {
+        "id": "5N4IvmAPS5",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 133,
+            "w": 133,
+            "x": 413.5,
+            "y": 142,
+            "id": "nSiDYLvE0z",
+            "fill": "#DDF0F8",
+            "name": "Guard disc",
+            "type": "shape",
+            "shape": "ellipse",
+            "locked": true
+          },
+          {
+            "h": 56,
+            "w": 56,
+            "x": 452,
+            "y": 181,
+            "id": "er6aQnF_4o",
+            "icon": "check",
+            "name": "Guard tick",
+            "type": "icon",
+            "color": "#1E7A4C",
+            "strokeWidth": 6
+          },
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 309,
+            "id": "UgVT-I7lyI",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers on the next slide",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 37,
+            "w": 832,
+            "x": 64,
+            "y": 371,
+            "id": "avuXPUMGPK",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Get ready to check your work.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Guard line",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 400,
+              "lineHeight": 1.3
+            }
+          }
+        ],
+        "answersRole": "guard"
+      },
+      {
+        "id": "9tsdmya6io",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "HB_ZRDncSG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (1 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "HI6wTL7sV8",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "60Yh70ynGm",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "Wz68hGcswF",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "Ovrp-KIocV",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "tBYNriNcB7",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Compare the evidence",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 147,
+            "id": "1czTFtZpX8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 147,
+            "id": "MnW1R0A5nJ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 146,
+            "id": "cqH1PV2pz3",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 146,
+            "id": "rVhF0T7V-B",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The left settlement has earth tracks and roundhouses; the right has paved streets and stone buildings.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 216,
+            "id": "_eXkwzT_Qm",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 216,
+            "id": "snLhrgMztG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 215,
+            "id": "eyKPMgoleY",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 215,
+            "id": "ygZr06hKd8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "People collect water from a well on the left and a public fountain on the right.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 294,
+            "id": "zc1NHhhkZk",
+            "fill": "#BFE1F0",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 316,
+            "id": "2O-0akJZFc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 340,
+            "id": "d768g9F6Fh",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Use the ideas somewhere new",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 317,
+            "id": "ZURVyZa6LG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 317,
+            "id": "IzBQ_eC9AF",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 316,
+            "id": "ASx-un9wO4",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 316,
+            "id": "UJvr3_TVAi",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "A straight route makes the journey more direct, while a paved surface helps stop the cart sinking into mud.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 386,
+            "id": "_Mb-7iBcty",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 386,
+            "id": "fNJwDZNYkz",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 385,
+            "id": "CHndJMrFf8",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 385,
+            "id": "43yhiTMWM7",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "A public bathhouse provides shared washing facilities, and drains carry wastewater away.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          }
+        ],
+        "answersRole": "answers"
+      },
+      {
+        "id": "vHVrqoePKN",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "hrqppjapMG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (2 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "KYSqoksQAK",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "BbvhL3XKQy",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "FveFXl_RNw",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "cRlPfH4d1h",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "EXIT TICKET",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 53,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "h6zdSe3veG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you know",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 301,
+            "y": 147,
+            "id": "o5BszsdbE-",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 352,
+            "y": 147,
+            "id": "9MeEiX-2KB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 37,
+            "w": 37,
+            "x": 351,
+            "y": 146,
+            "id": "H3GVptuNWB",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 110,
+            "w": 544,
+            "x": 352,
+            "y": 146,
+            "id": "-S3e-kweJ2",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Straight, paved roads helped traders transport goods; marketplaces brought buyers and sellers together.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 301,
+            "y": 273,
+            "id": "EpU4PfuqcG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 352,
+            "y": 273,
+            "id": "wAWYmwLOsr",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 37,
+            "w": 37,
+            "x": 351,
+            "y": 272,
+            "id": "kgPV8lZNZs",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 110,
+            "w": 544,
+            "x": 352,
+            "y": 272,
+            "id": "2iCxCcEi3B",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Aqueducts brought water, drains carried wastewater away, and public bathhouses provided shared places to wash.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 301,
+            "y": 399,
+            "id": "s8Gww0Pg-o",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 35,
+            "w": 35,
+            "x": 352,
+            "y": 399,
+            "id": "Zol-88dpTQ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 37,
+            "w": 37,
+            "x": 351,
+            "y": 398,
+            "id": "KMeeRstrfH",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 110,
+            "w": 544,
+            "x": 352,
+            "y": 398,
+            "id": "p6EszMQG73",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The Iron Age settlement had tracks, roundhouses and a well; the Roman town had paving, stone buildings and fountains.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          }
+        ],
+        "answersRole": "answers"
+      }
+    ]
+  },
+  "20261016-1221/y2-plants": {
+    "themeId": "splash",
+    "ageBand": "ks2",
+    "yearGroup": "Year 4",
+    "generation": {
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives+bundle-base4f-p123",
+        "generated": "lesson-writer.v1+bundle-base4f-p123+pilot-v4.7-new-only"
+      }
+    },
+    "slides": [
+      {
+        "id": "s10",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s10-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Compare the plants",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. Plant A looks healthier because its leaves are green and its stem is upright.\n2. Too little water can slow growth: plant B is smaller and has drooping leaves."
+        }
+      },
+      {
+        "id": "s11",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s11-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Plan a seedling test",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. 20 ml and 40 ml\n2. Light, soil, pots, duration.\n3. Measure both heights from soil to stem tip, subtract 8 cm from each, then compare the increases."
+        }
+      },
+      {
+        "id": "s12",
+        "kind": "exit-ticket",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s12-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you know",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. Water, light, air, nutrients and room to grow are needed for healthy growth.\n2. Height alone does not show health because pale leaves and a weak stem suggest too little light.\n3. Change daily water amount, keep light the same, and measure the increase in height in centimetres."
+        }
+      },
+      {
+        "id": "8ANBoQu3Do",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 133,
+            "w": 133,
+            "x": 413.5,
+            "y": 142,
+            "id": "C3D1OlStkA",
+            "fill": "#DDF0F8",
+            "name": "Guard disc",
+            "type": "shape",
+            "shape": "ellipse",
+            "locked": true
+          },
+          {
+            "h": 56,
+            "w": 56,
+            "x": 452,
+            "y": 181,
+            "id": "aaaUFrr_LX",
+            "icon": "check",
+            "name": "Guard tick",
+            "type": "icon",
+            "color": "#1E7A4C",
+            "strokeWidth": 6
+          },
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 309,
+            "id": "lgzPOJ5EEB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers on the next slide",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 37,
+            "w": 832,
+            "x": 64,
+            "y": 371,
+            "id": "bMDvlvGOy3",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Get ready to check your work.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Guard line",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 400,
+              "lineHeight": 1.3
+            }
+          }
+        ],
+        "answersRole": "guard"
+      },
+      {
+        "id": "u6dq2UJ8EY",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "MbikmlDR_l",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (1 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "wMDgqBhfsg",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "iYbs6GnzAA",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "VG4D_53bsl",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "tyXb2UebRk",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 24,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "QANMurgR_t",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Compare the plants",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 301,
+            "y": 147,
+            "id": "jMz5cwJm4n",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 346,
+            "y": 147,
+            "id": "ZGb7O2LJ4k",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 31,
+            "w": 31,
+            "x": 345,
+            "y": 146,
+            "id": "XFqI1alOcf",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 60,
+            "w": 550,
+            "x": 346,
+            "y": 146,
+            "id": "y7uTllZiHn",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Plant A looks healthier because its leaves are green and its stem is upright.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 301,
+            "y": 223,
+            "id": "3M7b9B60H0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 346,
+            "y": 223,
+            "id": "z5yiAje_j_",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 31,
+            "w": 31,
+            "x": 345,
+            "y": 222,
+            "id": "rPIYHAv0N-",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 60,
+            "w": 550,
+            "x": 346,
+            "y": 222,
+            "id": "Z6v1L8CRr6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Too little water can slow growth: plant B is smaller and has drooping leaves.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 303,
+            "id": "9wn0zfqd3V",
+            "fill": "#BFE1F0",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 326,
+            "id": "s7WJaaXQbM",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 24,
+            "w": 190,
+            "x": 64,
+            "y": 350,
+            "id": "1891qipmI8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Plan a seedling test",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 301,
+            "y": 327,
+            "id": "NL2MmxBZD0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 346,
+            "y": 327,
+            "id": "ee4nSytd-x",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 31,
+            "w": 31,
+            "x": 345,
+            "y": 326,
+            "id": "1Fc6n6Kxo6",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 30,
+            "w": 550,
+            "x": 346,
+            "y": 326,
+            "id": "UZWk1tQU8V",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "20 ml and 40 ml",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 301,
+            "y": 373,
+            "id": "i23RK4soRP",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 346,
+            "y": 373,
+            "id": "MRgJD7xKO5",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 31,
+            "w": 31,
+            "x": 345,
+            "y": 372,
+            "id": "0p5KcA2UR9",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 30,
+            "w": 550,
+            "x": 346,
+            "y": 372,
+            "id": "d0tvx94Ek8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Light, soil, pots, duration.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 301,
+            "y": 419,
+            "id": "gKUzvvP5LV",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 29,
+            "w": 29,
+            "x": 346,
+            "y": 419,
+            "id": "o4Gq2Bzu68",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 31,
+            "w": 31,
+            "x": 345,
+            "y": 418,
+            "id": "_lKxmr7_1a",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 60,
+            "w": 550,
+            "x": 346,
+            "y": 418,
+            "id": "Jlz2icIqbi",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Measure both heights from soil to stem tip, subtract 8 cm from each, then compare the increases.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          }
+        ],
+        "answersRole": "answers"
+      },
+      {
+        "id": "k42ZpESfQW",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "p117-OADpt",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (2 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "Vv7kAiDfqi",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "mjPTPxLI97",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "Oboxq3Wkz5",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "Qgw0DsKRaZ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "EXIT TICKET",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 56,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "5UpAz_AWdZ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you know",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 23,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 301,
+            "y": 147,
+            "id": "tQF9znsqfq",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 353,
+            "y": 147,
+            "id": "RZ-QufAhqS",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 38,
+            "w": 38,
+            "x": 352,
+            "y": 146,
+            "id": "Ad5QWU3hCD",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 76,
+            "w": 543,
+            "x": 353,
+            "y": 146,
+            "id": "qDBSGIPHlt",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Water, light, air, nutrients and room to grow are needed for healthy growth.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 29,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 301,
+            "y": 239,
+            "id": "WdRFPW7zZU",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 353,
+            "y": 239,
+            "id": "ge5mcEf69o",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 38,
+            "w": 38,
+            "x": 352,
+            "y": 238,
+            "id": "Xrg6cNwErq",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 114,
+            "w": 543,
+            "x": 353,
+            "y": 238,
+            "id": "hBRbyB_yTa",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Height alone does not show health because pale leaves and a weak stem suggest too little light.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 29,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 301,
+            "y": 369,
+            "id": "x1lLYbktfl",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 353,
+            "y": 369,
+            "id": "IXDmsOIjkB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 20,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 38,
+            "w": 38,
+            "x": 352,
+            "y": 368,
+            "id": "bF6NP-1tcb",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 114,
+            "w": 543,
+            "x": 353,
+            "y": 368,
+            "id": "41jt9nor94",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Change daily water amount, keep light the same, and measure the increase in height in centimetres.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 29,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          }
+        ],
+        "answersRole": "answers"
+      }
+    ]
+  },
+  "20261016-1221/a-hinge-y9-forces": {
+    "themeId": "studio",
+    "ageBand": "ks3",
+    "yearGroup": "Year 9",
+    "generation": {
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives+bundle-base4f-p123",
+        "generated": "lesson-writer.v1+bundle-base4f-p123+pilot-v4.7-new-only"
+      }
+    },
+    "slides": [
+      {
+        "id": "s4",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s4-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Calculate and draw",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. 5 N right \u2014 9 \u2212 4 = 5 N\n2. 8 N left \u2014 6 + 2 = 8 N"
+        }
+      },
+      {
+        "id": "s9",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s9-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Reason about a bend",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. P: the resultant points towards the inside of the bend.\n2. No, because the car changes direction, so its velocity changes."
+        }
+      },
+      {
+        "id": "s10",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s10-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Predict each car\u2019s motion",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. 600 N right; it speeds up. \u2014 900 \u2212 300 = 600 N\n2. 500 N left; it slows down. \u2014 700 \u2212 200 = 500 N"
+        }
+      },
+      {
+        "id": "s11",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s11-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Stretch: reason in space",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. 0 N; constant speed in a straight line. \u2014 40 \u2212 40 = 0 N\n2. It slows because the resultant opposes motion; a force changes velocity rather than making it instantly zero."
+        }
+      },
+      {
+        "id": "s12",
+        "kind": "exit-ticket",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s12-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answer independently",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. 5 N right \u2014 12 \u2212 7 = 5 N\n2. With zero resultant, an already moving object continues at constant speed in a straight line.\n3. Forwards when speeding up, backwards when braking, and towards the bend\u2019s inside when turning left."
+        }
+      },
+      {
+        "id": "2G9FyZsHoR",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 133,
+            "w": 133,
+            "x": 413.5,
+            "y": 142,
+            "id": "A7kyTb-FNT",
+            "fill": "#EBF0F5",
+            "name": "Guard disc",
+            "type": "shape",
+            "shape": "ellipse",
+            "locked": true
+          },
+          {
+            "h": 56,
+            "w": 56,
+            "x": 452,
+            "y": 181,
+            "id": "aCeC05lOCe",
+            "icon": "check",
+            "name": "Guard tick",
+            "type": "icon",
+            "color": "#15803D",
+            "strokeWidth": 6
+          },
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 309,
+            "id": "-jgWt8jJNo",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers on the next slide",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 32,
+            "w": 832,
+            "x": 64,
+            "y": 367,
+            "id": "21LiZQwwL0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Get ready to check your work.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Guard line",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 24,
+              "autoHeight": true,
+              "fontWeight": 400,
+              "lineHeight": 1.3
+            }
+          }
+        ],
+        "answersRole": "guard"
+      },
+      {
+        "id": "1ni4sZmDYJ",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "21Ki8uBAu_",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (1 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 57,
+            "id": "Z6h7b4DZ3G",
+            "fill": "#E4E7EB",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 63,
+            "id": "WsnlDMV7XZ",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#4F5D6E",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 62,
+            "id": "UUVY6q9bMC",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "CGoMzjhZru",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0B6E86",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 24,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "dS8cd6zoGy",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Calculate and draw",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 147,
+            "id": "N42sY-eZAh",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 147,
+            "id": "Hk_62JXWDS",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 146,
+            "id": "DD7_3zHAwF",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 29,
+            "w": 89,
+            "x": 345,
+            "y": 146,
+            "id": "hrD_2jjUCI",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "5 N right",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 25,
+            "w": 441,
+            "x": 455,
+            "y": 148,
+            "id": "idByHKbj6o",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "9 \u2212 4 = 5 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Working",
+            "type": "text",
+            "style": {
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.25
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 187,
+            "id": "QLJH4WSwid",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 187,
+            "id": "BTvaGUWWaW",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 186,
+            "id": "XGr0qPtCQA",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 29,
+            "w": 89,
+            "x": 345,
+            "y": 186,
+            "id": "YF-Jt3hULh",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "8 N left",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 25,
+            "w": 441,
+            "x": 455,
+            "y": 188,
+            "id": "TJwgIFkOvo",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "6 + 2 = 8 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Working",
+            "type": "text",
+            "style": {
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.25
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 236,
+            "id": "f_v_iWCAwC",
+            "fill": "#D9E1EA",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 258,
+            "id": "FDWLR3fvaj",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0B6E86",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 24,
+            "w": 190,
+            "x": 64,
+            "y": 282,
+            "id": "1D62J878uc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Reason about a bend",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 259,
+            "id": "MHy7JDOhNC",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 259,
+            "id": "dymvqcE5Kf",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 258,
+            "id": "sOkTziQx-N",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 29,
+            "w": 551,
+            "x": 345,
+            "y": 258,
+            "id": "ZcQig2t95S",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "P: the resultant points towards the inside of the bend.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 299,
+            "id": "o2qCKC5RgB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 299,
+            "id": "k63s7hqNJ9",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 298,
+            "id": "rfU2St7KGb",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 298,
+            "id": "vMdsWkkmrU",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "No, because the car changes direction, so its velocity changes.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 377,
+            "id": "32Dd0XEkL1",
+            "fill": "#D9E1EA",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 400,
+            "id": "AopOgWPht_",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0B6E86",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 424,
+            "id": "4E9xmaMQJw",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Predict each car\u2019s motion",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 401,
+            "id": "YM6h1hq8B6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 401,
+            "id": "0FNUcU-YUD",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 400,
+            "id": "awWSD8gGNt",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 3
+          },
+          {
+            "h": 29,
+            "w": 551,
+            "x": 345,
+            "y": 400,
+            "id": "qirRg15uxR",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "600 N right; it speeds up. \u2014 900 \u2212 300 = 600 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 3
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 441,
+            "id": "Txii6APtrc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 441,
+            "id": "-1z1YPWsvk",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 440,
+            "id": "U7Q9F2TfGu",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 3
+          },
+          {
+            "h": 29,
+            "w": 551,
+            "x": 345,
+            "y": 440,
+            "id": "DqtkBqrHdm",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "500 N left; it slows down. \u2014 700 \u2212 200 = 500 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 3
+          }
+        ],
+        "answersRole": "answers"
+      },
+      {
+        "id": "uL-JgDjob5",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 50,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "-dvt-AjfQX",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (2 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 44,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 57,
+            "id": "XrHvjUkFsb",
+            "fill": "#E4E7EB",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 63,
+            "id": "GECAY3Oe1R",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#4F5D6E",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 62,
+            "id": "WbEiZTuftx",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "hkHw0XvF_K",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0B6E86",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "7TrkR7aeXS",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Stretch: reason in space",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 147,
+            "id": "sGcZMcQq53",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 147,
+            "id": "ZbAKND1jQB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 146,
+            "id": "z4Y9P4EENK",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 29,
+            "w": 551,
+            "x": 345,
+            "y": 146,
+            "id": "2nFG488Vef",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "0 N; constant speed in a straight line. \u2014 40 \u2212 40 = 0 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 187,
+            "id": "rE_PbCEwgr",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 187,
+            "id": "2sIOy9kqcE",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 186,
+            "id": "-LKteYfXm-",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 186,
+            "id": "Qi5A-5ci_5",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "It slows because the resultant opposes motion; a force changes velocity rather than making it instantly zero.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 265,
+            "id": "nBNCBk2yzY",
+            "fill": "#D9E1EA",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 287,
+            "id": "5Fhk_SO0Sl",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "EXIT TICKET",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0B6E86",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 311,
+            "id": "E5G5ksrP6O",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answer independently",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 288,
+            "id": "UXooOUhzzD",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 288,
+            "id": "ecE0ozAN7O",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 287,
+            "id": "Pp0K3lsPUj",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 29,
+            "w": 89,
+            "x": 345,
+            "y": 287,
+            "id": "GycV418S_i",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "5 N right",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 25,
+            "w": 441,
+            "x": 455,
+            "y": 289,
+            "id": "Em18j0-j7m",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "12 \u2212 7 = 5 N",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Working",
+            "type": "text",
+            "style": {
+              "color": "#4F5D6E",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.25
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 328,
+            "id": "VaRfU_IIlt",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 328,
+            "id": "Cki7GbuKZy",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 327,
+            "id": "7MRfR_xdUu",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 327,
+            "id": "TkLQkCFG-M",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "With zero resultant, an already moving object continues at constant speed in a straight line.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 301,
+            "y": 396,
+            "id": "Pz4NVA0GUE",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0F172A",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 28,
+            "w": 28,
+            "x": 345,
+            "y": 396,
+            "id": "1FfQ_E-9Ys",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#EBF0F5",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#4F5D6E",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 16,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 30,
+            "w": 30,
+            "x": 344,
+            "y": 395,
+            "id": "F1t4njPJZC",
+            "fill": "#F7F9FB",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 58,
+            "w": 551,
+            "x": 345,
+            "y": 395,
+            "id": "h-XEAGf7QP",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Forwards when speeding up, backwards when braking, and towards the bend\u2019s inside when turning left.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#0F172A",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 22,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          }
+        ],
+        "answersRole": "answers"
+      }
+    ]
+  },
+  "20261016-1145/y4-romans": {
+    "themeId": "splash",
+    "ageBand": "ks2",
+    "yearGroup": "Year 4",
+    "generation": {
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives+bundle-base4f-p123",
+        "generated": "lesson-writer.v1+bundle-base4f-p123+pilot-v4.7-new-only"
+      }
+    },
+    "slides": [
+      {
+        "id": "s4",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s4-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Explain how roads helped",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. A firm, straighter road could help soldiers reach the fort more quickly.\n2. A firm road could make it easier for a loaded cart to travel without getting stuck."
+        }
+      },
+      {
+        "id": "s9",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s9-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Read the evidence",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. Walls and room foundations.\n2. People could have met others while washing in the public baths."
+        }
+      },
+      {
+        "id": "s10",
+        "kind": "open-response",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s10-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Apply your learning",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. The farmer could carry grain to market more easily by cart on the firm road.\n2. People could collect clean water nearby or wash and meet others in the public baths.\n3. Bath walls show a shared bathing building existed, but cannot prove that nearby homes had their own bathrooms."
+        }
+      },
+      {
+        "id": "s11",
+        "kind": "exit-ticket",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "d-s11-Heading-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you have learnt",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            },
+            "authoredBy": "ai"
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "1. Firm, straighter roads helped soldiers and carts carrying goods travel more easily.\n2. People could wash and meet at public baths and collect clean water within their town.\n3. Roman baths at Bath."
+        }
+      },
+      {
+        "id": "A1nvZlOzwt",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 133,
+            "w": 133,
+            "x": 413.5,
+            "y": 142,
+            "id": "AXZB1Z4-2p",
+            "fill": "#DDF0F8",
+            "name": "Guard disc",
+            "type": "shape",
+            "shape": "ellipse",
+            "locked": true
+          },
+          {
+            "h": 56,
+            "w": 56,
+            "x": 452,
+            "y": 181,
+            "id": "7d5Ecjwd-T",
+            "icon": "check",
+            "name": "Guard tick",
+            "type": "icon",
+            "color": "#1E7A4C",
+            "strokeWidth": 6
+          },
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 309,
+            "id": "EyaukVONZ8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers on the next slide",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 37,
+            "w": 832,
+            "x": 64,
+            "y": 371,
+            "id": "KkVlG2XYL_",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Get ready to check your work.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Guard line",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 28,
+              "autoHeight": true,
+              "fontWeight": 400,
+              "lineHeight": 1.3
+            }
+          }
+        ],
+        "answersRole": "guard"
+      },
+      {
+        "id": "mHWR3siujD",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "a84yGVN674",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (1 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "kjPbenjkcz",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "TB0LZ_YY-i",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "NuY2dBjxjs",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "pKnN-NCdqP",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 51,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "DeAqDYeWaM",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Explain how roads helped",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 21,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 301,
+            "y": 147,
+            "id": "AASH78jNNv",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 351,
+            "y": 147,
+            "id": "LzYKk0Ye4k",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 19,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 350,
+            "y": 146,
+            "id": "RnhgxSe5RU",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 71,
+            "w": 545,
+            "x": 351,
+            "y": 146,
+            "id": "gQnVr3r0Gu",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "A firm, straighter road could help soldiers reach the fort more quickly.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 27,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 301,
+            "y": 234,
+            "id": "qQxQqtAzNo",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 351,
+            "y": 234,
+            "id": "1Ki1AIKuHj",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 19,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 350,
+            "y": 233,
+            "id": "GW2KJ6orZx",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 71,
+            "w": 545,
+            "x": 351,
+            "y": 233,
+            "id": "4SI-jQXroA",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "A firm road could make it easier for a loaded cart to travel without getting stuck.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 27,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 331,
+            "id": "oncG4fdYOF",
+            "fill": "#BFE1F0",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 358,
+            "id": "io_qhDvRRc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 26,
+            "w": 190,
+            "x": 64,
+            "y": 382,
+            "id": "7171IL4SeP",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Read the evidence",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 21,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 301,
+            "y": 359,
+            "id": "IQUUkLEc4a",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 351,
+            "y": 359,
+            "id": "1_T4mvd913",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 19,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 350,
+            "y": 358,
+            "id": "irk83oz28X",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 36,
+            "w": 545,
+            "x": 351,
+            "y": 358,
+            "id": "5MTh09EpJF",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Walls and room foundations.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 27,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 301,
+            "y": 411,
+            "id": "8pjzdVICeG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 15,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 34,
+            "w": 34,
+            "x": 351,
+            "y": 411,
+            "id": "R1bYBq0lup",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 19,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 36,
+            "w": 36,
+            "x": 350,
+            "y": 410,
+            "id": "4HLtad8LD8",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 71,
+            "w": 545,
+            "x": 351,
+            "y": 410,
+            "id": "Ao472PnHh7",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "People could have met others while washing in the public baths.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 27,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          }
+        ],
+        "answersRole": "answers"
+      },
+      {
+        "id": "-uy6mmR2_d",
+        "kind": "plenary",
+        "elements": [
+          {
+            "h": 54,
+            "w": 832,
+            "x": 64,
+            "y": 46,
+            "id": "i3v-4sDPPK",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers (2 of 2)",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "padding": 0,
+              "fontSize": 48,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.12
+            }
+          },
+          {
+            "h": 28,
+            "w": 157,
+            "x": 739,
+            "y": 59,
+            "id": "jk9io_Z7Rz",
+            "fill": "#DDF0F8",
+            "name": "answers:teacher-only",
+            "type": "shape",
+            "shape": "pill",
+            "locked": true
+          },
+          {
+            "h": 17,
+            "w": 17,
+            "x": 753,
+            "y": 65,
+            "id": "CdBQ5xUriX",
+            "icon": "eye-off",
+            "name": "answers:teacher-only",
+            "type": "icon",
+            "color": "#465F6B",
+            "strokeWidth": 2
+          },
+          {
+            "h": 18,
+            "w": 157,
+            "x": 778,
+            "y": 64,
+            "id": "s5fTiDCyiW",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Teacher only",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "answers:teacher-only",
+            "type": "text",
+            "style": {
+              "color": "#465F6B",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 146,
+            "id": "yOD6IcZBmM",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "PRACTICE",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 24,
+            "w": 190,
+            "x": 64,
+            "y": 170,
+            "id": "6l9IibhyAB",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Apply your learning",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 147,
+            "id": "6EVdpZelDj",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 147,
+            "id": "dcs-SO3LLA",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 146,
+            "id": "WJMeGx0vJo",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 52,
+            "w": 554,
+            "x": 342,
+            "y": 146,
+            "id": "gRqB8UxkST",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The farmer could carry grain to market more easily by cart on the firm road.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 210,
+            "id": "B3Vcnaagki",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 210,
+            "id": "fX_TqbghF8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 209,
+            "id": "oxZ9gHCOOX",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 52,
+            "w": 554,
+            "x": 342,
+            "y": 209,
+            "id": "nymatRs20G",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "People could collect clean water nearby or wash and meet others in the public baths.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 272,
+            "id": "E9fkBdKDyl",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 272,
+            "id": "O9IP8jI-ef",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 271,
+            "id": "zc_VGW2Wxw",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 1
+          },
+          {
+            "h": 52,
+            "w": 554,
+            "x": 342,
+            "y": 271,
+            "id": "zSqWZZFVfv",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Bath walls show a shared bathing building existed, but cannot prove that nearby homes had their own bathrooms.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 1
+          },
+          {
+            "h": 1,
+            "w": 832,
+            "x": 64,
+            "y": 339,
+            "id": "gGICKKv7c0",
+            "fill": "#BFE1F0",
+            "name": "Rule",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true
+          },
+          {
+            "h": 18,
+            "w": 190,
+            "x": 64,
+            "y": 356,
+            "id": "Brd_8M4ws0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "EXIT TICKET",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Kicker",
+            "type": "text",
+            "style": {
+              "color": "#0A5CA2",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 15,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 48,
+            "w": 190,
+            "x": 64,
+            "y": 380,
+            "id": "sOquSKeByr",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Show what you have learnt",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Source title",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 357,
+            "id": "i_H11KGKzW",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 357,
+            "id": "uBlY6Fl1UR",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 356,
+            "id": "NrsdbSBLhG",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 52,
+            "w": 554,
+            "x": 342,
+            "y": 356,
+            "id": "Mvec6WI2pW",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Firm, straighter roads helped soldiers and carts carrying goods travel more easily.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 420,
+            "id": "3sMHbzCrIZ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 420,
+            "id": "zsHKjMslNh",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 419,
+            "id": "azZXegmEtD",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 52,
+            "w": 554,
+            "x": 342,
+            "y": 419,
+            "id": "y2abjC74Jx",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "People could wash and meet at public baths and collect clean water within their town.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Model answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 500,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 301,
+            "y": 482,
+            "id": "mdh-n3G5md",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "3",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#0A5CA2",
+            "name": "surface:badge",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#FFFFFF",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 25,
+            "w": 25,
+            "x": 342,
+            "y": 482,
+            "id": "9omVuuKLnn",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DDF0F8",
+            "name": "Hidden answer",
+            "type": "shape",
+            "shape": "ellipse",
+            "textStyle": {
+              "align": "center",
+              "color": "#465F6B",
+              "preset": "body",
+              "valign": "middle",
+              "padding": 0,
+              "fontSize": 14,
+              "fontWeight": 700
+            }
+          },
+          {
+            "h": 27,
+            "w": 27,
+            "x": 341,
+            "y": 481,
+            "id": "enINxddNb5",
+            "fill": "#EDF8FC",
+            "name": "Revealed",
+            "type": "shape",
+            "shape": "rect",
+            "revealStep": 2
+          },
+          {
+            "h": 26,
+            "w": 554,
+            "x": 342,
+            "y": 481,
+            "id": "yTkeO1o6NT",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Roman baths at Bath.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answer",
+            "type": "text",
+            "style": {
+              "color": "#10252F",
+              "preset": "body",
+              "padding": 0,
+              "fontSize": 20,
+              "autoHeight": true,
+              "fontWeight": 700,
+              "lineHeight": 1.3
+            },
+            "revealStep": 2
+          }
+        ],
+        "answersRole": "answers"
+      }
+    ]
+  }
+}
