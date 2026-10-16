@@ -52,7 +52,6 @@ import {
   mix,
   type Stage,
   type TemplateInput,
-  warnDrawn,
 } from "./index";
 import SET_CAPACITY from "./side-by-side-capacity.json" with { type: "json" };
 import CAPACITY from "./split-compare-capacity.json" with { type: "json" };
@@ -244,31 +243,38 @@ function pictureOf(s: SplitSide): Pic | null {
 }
 
 /**
+ * The diagram kinds a split compare side draws from a spec (TEACH-110 part ad): each drew with no
+ * readability warning, as given (no simpler form), at the side's size (360 x 230) at KS2, KS3 and
+ * KS4, from the drawer's samples and, where the spec still parses, with every label at the 24
+ * character cap (`scripts/split-side-kinds.ts`). Labelled drawings, flows, tables, charts, graphs,
+ * timelines, cycles and layers did not, so the writer menu offers only these for a side.
+ */
+export const SPLIT_SIDE_DIAGRAM_KINDS: readonly string[] = [
+  "equal-groups",
+  "fraction-shapes",
+  "number-line",
+  "particles",
+  "venn",
+];
+
+/**
  * A side whose picture is a diagram spec (`{diagram}`, the form the live drawer hands back: no
- * pre-drawn SVG) with that diagram drawn at the side's width (TEACH-110 part ad), so it takes the
- * picture zone like a pre-drawn one. A spec that does not draw readably there leaves the side with
- * no picture, and the sides fall to words (zones are all or none), as before.
+ * pre-drawn SVG), drawn at the side's width when its kind draws cleanly there. Any other kind, or
+ * a drawing with any readability warning, leaves the side with no picture, and the sides fall to
+ * words (zones are all or none): a crowded sketch reads worse than the words.
  */
 function withDrawn(c: Ctx, s: SplitSide, box: { w: number; h: number }): SplitSide {
   const f = s.picture;
   if (!f || !("diagram" in f)) return s;
-  if (diagramFailed(f.diagram)) return { ...s, picture: null };
-  const r = drawDiagram(f.diagram, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
-  // A spec that does not draw is reported (`fails`), so the writer stage sees the dropped drawing.
-  // One that draws only with label warnings is drawn, its warnings on the result: the side has no
-  // other room to try, and the editor's group re-flows it with no warnings pass (a planned visual
-  // is never lost, Greg 10 Oct).
-  if (!r.ok || !r.element.src || !(r.element.w > 0 && r.element.h > 0)) {
-    c.fails?.push(...(r.ok ? ["it does not draw"] : r.reasons));
+  const kind = String((f.diagram as { kind?: unknown } | null)?.kind ?? "");
+  if (diagramFailed(f.diagram) || !SPLIT_SIDE_DIAGRAM_KINDS.includes(kind))
     return { ...s, picture: null };
-  }
+  const r = drawDiagram(f.diagram, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
+  if (!r.ok || r.warnings || !r.element.src || !(r.element.w > 0 && r.element.h > 0))
+    return { ...s, picture: null };
   const drawn = { src: r.element.src, aspect: r.element.w / r.element.h, alt: r.element.alt ?? "" };
-  const figure = { drawn } as Figure;
-  if (r.warnings) SIDE_WARNED.set(figure, r.warnings);
-  return { ...s, picture: figure };
+  return { ...s, picture: { drawn } as Figure };
 }
-/** The warnings a side's diagram drew with, carried to its image element. */
-const SIDE_WARNED = new WeakMap<object, string[]>();
 
 export function zoneOf(sides: SplitSide[]): SplitZone {
   if (sides.length && sides.every((s) => pictureOf(s))) return "picture";
@@ -751,8 +757,6 @@ function picture(
       alt: f.drawn.alt ?? "",
       fit: "contain",
     } as ImageElement);
-    const warned = SIDE_WARNED.get(f);
-    if (warned) warnDrawn(c.els[c.els.length - 1] as object, warned);
     return;
   }
   if (!("photo" in f)) return;
