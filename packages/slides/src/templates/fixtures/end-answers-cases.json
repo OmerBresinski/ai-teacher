@@ -1,0 +1,397 @@
+{
+  "ks1": {
+    "stage": "ks1",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Adding tens",
+        "items": [
+          {
+            "n": 1,
+            "a": "76"
+          },
+          {
+            "n": 2,
+            "a": "92"
+          },
+          {
+            "n": 3,
+            "a": "43 stickers"
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "What plants need",
+        "items": [
+          {
+            "n": 1,
+            "a": "Water, light or warmth"
+          },
+          {
+            "n": 2,
+            "a": "Through its roots"
+          }
+        ]
+      }
+    ]
+  },
+  "ks2": {
+    "stage": "ks2",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Add using the column method",
+        "items": [
+          {
+            "n": 1,
+            "a": "6,245"
+          },
+          {
+            "n": 2,
+            "a": "6,202"
+          },
+          {
+            "n": 3,
+            "a": "9,221"
+          },
+          {
+            "n": 4,
+            "a": "9,196"
+          },
+          {
+            "n": 5,
+            "a": "9,215"
+          },
+          {
+            "n": 6,
+            "a": "7,713"
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "Column addition",
+        "items": [
+          {
+            "n": 1,
+            "a": "8,252",
+            "work": "carry 1 into the tens, hundreds and thousands"
+          },
+          {
+            "n": 2,
+            "a": "4,201",
+            "work": "2,395 + 1,806 = 4,201"
+          },
+          {
+            "n": 3,
+            "a": "£6,137",
+            "work": "£3,478 + £2,659 = £6,137"
+          }
+        ]
+      }
+    ]
+  },
+  "ks3": {
+    "stage": "ks3",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Causes of the First World War",
+        "items": [
+          {
+            "n": 1,
+            "s": "Austria-Hungary declared war on Serbia, Russia backed Serbia, Germany backed Austria-Hungary and France was tied to Russia, so one quarrel pulled in every ally."
+          },
+          {
+            "n": 2,
+            "s": "Britain feared the new German battleships threatened its navy and trade; Germany thought Britain wanted to keep it weak."
+          },
+          {
+            "n": 3,
+            "s": "It gave Austria-Hungary an excuse to crush Serbia, which it blamed for stirring up Slavs inside its empire."
+          },
+          {
+            "n": 4,
+            "s": "Any cause, backed by one reason: for example, the alliances, because they turned a Balkan crisis into a European war."
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "The circulatory system",
+        "items": [
+          {
+            "n": 1,
+            "s": "The heart pumps blood; the blood (red blood cells) carries oxygen."
+          },
+          {
+            "n": 2,
+            "s": "It picks up oxygen in the lungs and gives up carbon dioxide there too."
+          },
+          {
+            "n": 3,
+            "s": "Her muscles respire faster, so they need more oxygen and glucose delivered."
+          }
+        ]
+      }
+    ]
+  },
+  "tf": {
+    "stage": "ks2",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "True or false: the water cycle",
+        "items": [
+          {
+            "n": 1,
+            "tf": true
+          },
+          {
+            "n": 2,
+            "tf": false,
+            "why": "They are tiny drops of water."
+          },
+          {
+            "n": 3,
+            "tf": true
+          },
+          {
+            "n": 4,
+            "tf": false,
+            "why": "Warmth makes water evaporate faster."
+          },
+          {
+            "n": 5,
+            "tf": true
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "The water cycle",
+        "items": [
+          {
+            "n": 1,
+            "a": "Evaporation"
+          },
+          {
+            "n": 2,
+            "a": "Condensation"
+          }
+        ]
+      }
+    ]
+  },
+  "over": {
+    "stage": "ks2",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Add using the column method",
+        "items": [
+          {
+            "n": 1,
+            "a": "6,245"
+          },
+          {
+            "n": 2,
+            "a": "6,202"
+          },
+          {
+            "n": 3,
+            "a": "9,221"
+          },
+          {
+            "n": 4,
+            "a": "9,196"
+          },
+          {
+            "n": 5,
+            "a": "9,215"
+          },
+          {
+            "n": 6,
+            "a": "7,713"
+          }
+        ]
+      },
+      {
+        "kind": "practice",
+        "title": "True or false: adding large numbers",
+        "items": [
+          {
+            "n": 1,
+            "tf": true
+          },
+          {
+            "n": 2,
+            "tf": false,
+            "why": "8,252 has a 2 in the ones."
+          },
+          {
+            "n": 3,
+            "tf": true
+          },
+          {
+            "n": 4,
+            "tf": false,
+            "why": "You carry into the next column."
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "Column addition",
+        "items": [
+          {
+            "n": 1,
+            "a": "8,252",
+            "work": "carry 1 into the tens, hundreds and thousands"
+          },
+          {
+            "n": 2,
+            "a": "4,201",
+            "work": "2,395 + 1,806 = 4,201"
+          },
+          {
+            "n": 3,
+            "a": "£6,137",
+            "work": "£3,478 + £2,659 = £6,137"
+          }
+        ]
+      }
+    ]
+  },
+  "over3": {
+    "stage": "ks3",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Causes of the First World War",
+        "items": [
+          {
+            "n": 1,
+            "s": "An alliance is an agreement to defend each other, such as the Triple Entente of Britain, France and Russia."
+          },
+          {
+            "n": 2,
+            "s": "Germany's Dreadnoughts challenged the Royal Navy, which Britain needed to protect its empire and food supply."
+          },
+          {
+            "n": 3,
+            "s": "The assassin, Gavrilo Princip, belonged to a Serb nationalist group, and Austria-Hungary believed Serbia's government backed it."
+          },
+          {
+            "n": 4,
+            "s": "Germany invaded France through Belgium, and Britain had promised in 1839 to protect Belgian neutrality."
+          },
+          {
+            "n": 5,
+            "s": "Colonies gave raw materials, markets and prestige, so Britain, France and Germany clashed over land in Africa."
+          },
+          {
+            "n": 6,
+            "s": "Any cause, backed by one reason: for example, the alliances, because they turned a Balkan crisis into a European war."
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "Causes of the First World War",
+        "items": [
+          {
+            "n": 1,
+            "a": "28 June 1914"
+          },
+          {
+            "n": 2,
+            "a": "Belgium"
+          },
+          {
+            "n": 3,
+            "s": "Russia mobilised to defend Serbia, so Germany declared war on Russia, then France."
+          }
+        ]
+      }
+    ]
+  },
+  "three": {
+    "stage": "ks3",
+    "groups": [
+      {
+        "kind": "practice",
+        "title": "Causes of the First World War",
+        "items": [
+          {
+            "n": 1,
+            "s": "An alliance is an agreement to defend each other, such as the Triple Entente of Britain, France and Russia."
+          },
+          {
+            "n": 2,
+            "s": "Germany's Dreadnoughts challenged the Royal Navy, which Britain needed to protect its empire and food supply."
+          },
+          {
+            "n": 3,
+            "s": "The assassin, Gavrilo Princip, belonged to a Serb nationalist group, and Austria-Hungary believed Serbia's government backed it."
+          },
+          {
+            "n": 4,
+            "s": "Germany invaded France through Belgium, and Britain had promised in 1839 to protect Belgian neutrality."
+          },
+          {
+            "n": 5,
+            "s": "Colonies gave raw materials, markets and prestige, so Britain, France and Germany clashed over land in Africa."
+          },
+          {
+            "n": 6,
+            "s": "Any cause, backed by one reason: for example, the alliances, because they turned a Balkan crisis into a European war."
+          }
+        ]
+      },
+      {
+        "kind": "practice",
+        "title": "True or false: the road to war",
+        "items": [
+          {
+            "n": 1,
+            "tf": true
+          },
+          {
+            "n": 2,
+            "tf": false,
+            "why": "Italy joined the Allies in 1915."
+          },
+          {
+            "n": 3,
+            "tf": true
+          },
+          {
+            "n": 4,
+            "tf": false,
+            "why": "Britain declared war on 4 August 1914."
+          }
+        ]
+      },
+      {
+        "kind": "exit",
+        "title": "Causes of the First World War",
+        "items": [
+          {
+            "n": 1,
+            "a": "28 June 1914"
+          },
+          {
+            "n": 2,
+            "a": "Belgium"
+          },
+          {
+            "n": 3,
+            "s": "Russia mobilised to defend Serbia, so Germany declared war on Russia, then France."
+          }
+        ]
+      }
+    ]
+  }
+}

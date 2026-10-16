@@ -59,9 +59,15 @@ export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
     const indices = parsed.ok ? parsed.indices : lesson.slides.map((_, i) => i);
     return indices.flatMap((i) => {
       const slide = lesson.slides[i];
-      return slide ? [{ slide, number: i + 1 }] : [];
+      if (!slide) return [];
+      // End-of-deck answers (TEACH-191 part b, gold answers/NOTES.md): the guard is a projector
+      // device and never prints. The Answers slides, "Teacher only" pill kept, print only on the
+      // teacher's copy (`answers`); the pupils' handout leaves them out.
+      if (slide.answersRole === "guard") return [];
+      if (slide.answersRole === "answers" && !answers) return [];
+      return [{ slide, number: i + 1 }];
     });
-  }, [lesson.slides, slides]);
+  }, [lesson.slides, slides, answers]);
 
   // Ready only once the type and the pictures have landed, or the first page prints with fallback
   // fonts and empty image boxes. The one external subscription here: the document's paint. It

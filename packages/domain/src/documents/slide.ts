@@ -87,6 +87,12 @@ export type Slide = {
    * typed into its freed boxes (each still carries its `<id>:<path>` id).
    */
   freeLayout?: FreeLayout;
+  /**
+   * End-of-deck answers (UX ruling 240, TEACH-191 part b): `guard` is the pupil-safe "Answers on
+   * the next slide" slide, `answers` an Answers (n of N) slide behind it. Present stops at the guard
+   * unless the teacher turns "Show answers to class" on.
+   */
+  answersRole?: AnswersRole;
 };
 
 /** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
@@ -99,6 +105,16 @@ export type FreeLayout = {
   h: number;
   layout: LayoutRef;
 };
+
+export type AnswersRole = "guard" | "answers";
+/** The "Teacher only" pill's element name on an Answers slide: drawn for the teacher, never projected. */
+export const TEACHER_ONLY_MARK = "answers:teacher-only";
+
+/** A slide as the class sees it: an Answers slide's "Teacher only" pill is never projected. */
+export function projected(slide: Slide): Slide {
+  if (slide.answersRole !== "answers") return slide;
+  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
+}
 
 /* ------------------------------------------------------------------ */
 /* Question data                                                       */
@@ -842,6 +858,7 @@ export const SlideSchema = z
         layout: LayoutRefSchema,
       })
       .optional(),
+    answersRole: z.enum(["guard", "answers"]).optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential

@@ -11,6 +11,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "@tj/slides/templates";
+import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
@@ -1011,4 +1012,27 @@ export function wordsOf(raw: S): string {
     parts.push(str(c.label), str(c.text));
   parts.push(...activityWords(s));
   return parts.filter(Boolean).join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* End-of-deck answers (TEACH-191 part b)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The deck as it ships: the practice and exit answers collected on Answers slides behind the guard
+ * at the very end (ruling 240), laid out by `@tj/slides` from the slides' own answers. Code, not the
+ * writer: the writer's prompt and schema never name the layout. A rebuild replaces the old end.
+ * A worksheet answer sheet keeps them too (r3 gold), unless `ANSWERS_SKIP_WITH_WORKSHEET_KEY` flips.
+ */
+export function withEndAnswers(
+  slides: Slide[],
+  ctx: { theme: Theme; stage: Stage; worksheetAnswerKey: boolean },
+): Slide[] {
+  const lesson = slides.filter((s) => !s.answersRole);
+  return [
+    ...lesson,
+    ...endAnswerSlides(answerGroupsOf(lesson), ctx.theme, ctx.stage, {
+      worksheetAnswerKey: ctx.worksheetAnswerKey,
+    }),
+  ];
 }

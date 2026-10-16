@@ -9,12 +9,14 @@ import {
   type SlideGenerationState,
   type SlideTier,
 } from "@tj/domain/documents";
+import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
+import { withEndAnswers } from "../writer/materialise";
 import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
@@ -597,8 +599,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           ),
       })
     : credited(out.slides);
+  // TEACH-191 part b: the practice and exit answers on Answers slides behind a guard, at the end.
+  const keyStage = stageOf(lesson.ageBand, lesson.yearGroup);
+  const shipped = withEndAnswers(deck as unknown as Slide[], {
+    theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
+    stage: keyStage,
+    worksheetAnswerKey: lesson.brief?.worksheet === true,
+  });
   const done = {
-    ...toLesson(deck, "generated", allIn(deck, "done")),
+    ...toLesson(shipped, "generated", allIn(shipped, "done")),
     title: writtenTitle(lesson, out.title),
   };
   const { updatedAt } = await deps.persist(done);

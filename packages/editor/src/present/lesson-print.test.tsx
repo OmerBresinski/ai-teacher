@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
+import { TEACHER_ONLY_MARK } from "@tj/domain/documents";
 import { lesson as baseLesson, creditedLesson } from "@tj/domain/documents/fixtures";
 import { LessonPrint } from "./LessonPrint";
 
@@ -95,5 +96,44 @@ describe("LessonPrint drawn diagrams", () => {
       );
       expect(frame.querySelector("img")?.getAttribute("src")).toBe(f.src);
     }
+  });
+});
+
+describe("LessonPrint end-of-deck answers (TEACH-191 part b)", () => {
+  const withEnd = () => {
+    const base = baseLesson();
+    const [a, b] = base.slides;
+    if (!a || !b) throw new Error("fixture has two slides");
+    const pill = {
+      ...b.elements[0],
+      id: "pill",
+      name: TEACHER_ONLY_MARK,
+    } as (typeof b.elements)[0];
+    return {
+      ...base,
+      slides: [
+        a,
+        { ...b, id: "guard", answersRole: "guard" as const },
+        { ...b, id: "ans", answersRole: "answers" as const, elements: [...b.elements, pill] },
+      ],
+    };
+  };
+  const printed = () =>
+    [...document.querySelectorAll<HTMLElement>("[data-slide-index]")].map(
+      (e) => e.dataset.slideIndex,
+    );
+
+  it("the teacher copy prints the Answers slides with the Teacher only pill and no guard", () => {
+    render(<LessonPrint lesson={withEnd()} options={{ answers: true }} />);
+    expect(printed()).toEqual(["1", "3"]);
+    expect(document.querySelector('[data-element-id="pill"]')).not.toBeNull();
+  });
+
+  it("the pupils' handout prints neither the guard nor the answers", () => {
+    render(<LessonPrint lesson={withEnd()} />);
+    expect(printed()).toEqual(["1"]);
+    cleanup();
+    render(<LessonPrint lesson={withEnd()} options={{ handout3: true }} />);
+    expect(printed()).toEqual(["1"]);
   });
 });

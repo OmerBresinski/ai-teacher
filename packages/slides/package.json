@@ -30,6 +30,8 @@
     "./templates/panel-list-capacity.json": "./src/templates/panel-list-capacity.json",
     "./templates/split-compare-capacity.json": "./src/templates/split-compare-capacity.json",
     "./templates/question-set-capacity.json": "./src/templates/question-set-capacity.json",
+    "./templates/end-answers": "./src/templates/end-answers.ts",
+    "./templates/end-answers-capacity.json": "./src/templates/end-answers-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",

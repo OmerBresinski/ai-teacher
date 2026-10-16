@@ -19,6 +19,8 @@ export function NotesPanel({ lesson, theme }: { lesson: Lesson; theme: Theme }) 
   const slide = lesson.slides[index];
   const next = lesson.slides[index + 1];
   const notes = slide?.notes?.trim();
+  // The Answers slides, for the teacher to read while the class sees the lesson (ruling 240).
+  const answers = lesson.slides.filter((s) => s.answersRole === "answers");
 
   return (
     <aside
@@ -52,6 +54,27 @@ export function NotesPanel({ lesson, theme }: { lesson: Lesson; theme: Theme }) 
           <p className="text-body text-ink-3">No notes on this slide.</p>
         )}
       </div>
+
+      {answers.length ? (
+        <section
+          aria-label="Answers"
+          className="max-h-[40%] shrink-0 overflow-y-auto border-border border-t px-4 py-4"
+        >
+          <p className="mb-2 font-semibold text-eyebrow text-ink-3 uppercase">Answers</p>
+          {state.answersHeld ? (
+            <p role="status" className="mb-3 text-body text-foreground">
+              Answers are teacher only. Turn on Show answers to present them.
+            </p>
+          ) : null}
+          <ul className="flex flex-col gap-3">
+            {answers.map((s) => (
+              <li key={s.id} className="overflow-hidden rounded-card ring-1 ring-border">
+                <SlideStatic slide={s} theme={theme} width={288} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="shrink-0 border-border border-t px-4 py-4">
         <p className="mb-2 font-semibold text-eyebrow text-ink-3 uppercase">
