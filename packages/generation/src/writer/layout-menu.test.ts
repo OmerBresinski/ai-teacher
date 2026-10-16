@@ -9,6 +9,7 @@ import {
   MENU_AGE,
   MENU_CHARS_PER_WORD,
   PANEL_LIST_WRITER_MENU,
+  PIC_SIDE_HEADROOM,
   type SideZone,
   SPLIT_COMPARE_WRITER_MENU,
   sideCaps,
@@ -181,6 +182,9 @@ describe("layout menu lines", () => {
           if (cap <= 0) faults.push(`${n}${z}: ${f} never comfortable`);
         if (Number(m[3]) * cpw > must(caps.text))
           faults.push(`${n}${z}: ${m[3]} words > text cap ${caps.text}`);
+        // Pictured sides keep headroom under the cap: past it the words win and the pictures shrink.
+        if (z === "p" && Number(m[3]) * cpw > PIC_SIDE_HEADROOM * must(caps.text))
+          faults.push(`${n}${z}: ${m[3]} words > ${PIC_SIDE_HEADROOM} of text cap ${caps.text}`);
         if (m[4] && Number(m[4]) * cpw > must(caps.quote))
           faults.push(`${n}${z}: quote ${m[4]} words > ${caps.quote}`);
         if (title * cpw > must(caps.title))
