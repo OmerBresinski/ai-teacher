@@ -32,6 +32,7 @@ import { uid } from "../factories";
 import { lineWidth } from "../text-measure";
 import { typeScale } from "../themes";
 import { paintSurface, surfacesOf } from "../themes/surfaces";
+import { FIGURE_WIDE_ASPECT } from "./figure-rules";
 import { type Ctx, type Figure, G, kit, type Role, type Stage, type TemplateInput } from "./index";
 import { iconSrc, matchIcon } from "./panel-list-deps";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
@@ -104,8 +105,6 @@ export const KEY_CAPS = {
   num: 6,
   unit: 1,
 };
-/** Only a near-square library model fits the side field; a wider one belongs on the figure slide. */
-export const MODEL_MAX_ASPECT = 1.45;
 
 const words = (s: string | undefined | null) =>
   (s ?? "").trim().split(/\s+/).filter(Boolean).length;
@@ -131,7 +130,7 @@ export function pictureTextOf(input: TemplateInput): PictureText | undefined {
 
 /** Whether a figure may sit in the side field (a library model only when near-square). */
 export const fitsSideField = (f: Figure | undefined) =>
-  !isModel(f) || (f.drawn.aspect || 1) <= MODEL_MAX_ASPECT;
+  !isModel(f) || (f.drawn.aspect || 1) <= FIGURE_WIDE_ASPECT;
 
 /**
  * Content past the writer's caps, as `over` lines. A cap of 0 reports over, never "no cap"; the
@@ -207,12 +206,12 @@ const nameSize = (c: Ctx) => typeScale(c.t)?.heading ?? c.s.heading;
 
 /** One rung of the fit ladder: the lead's and points' size steps and the spacing share. */
 type Rung = { lead: Role; pts: Role; k: number };
+/** The points always sit a step under the lead (the gold: lead 1.12x body at 500, points body). */
 const RUNGS: Rung[] = [
-  { lead: "body", pts: "body", k: 1 },
-  { lead: "body", pts: "body", k: 0.85 },
+  { lead: "body", pts: "small", k: 1 },
   { lead: "body", pts: "small", k: 0.85 },
   { lead: "body", pts: "small", k: 0.7 },
-  { lead: "small", pts: "small", k: 0.7 },
+  { lead: "body", pts: "small", k: 0.55 },
 ];
 
 export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText, stage: Stage) {
@@ -264,21 +263,22 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
     const fieldBox = model
       ? { x: 960 - 48 - fw, y: fieldTop, w: fw, h: 540 - 35 - fieldTop }
       : { x: 960 - fw, y: fieldTop, w: fw, h: 540 - fieldTop };
-    if (!model) {
+    // A photo is the field itself (no ground or line under it); the sand field holds a fallback.
+    if (!model && !photo) {
       const s = paintSurface({ id: uid(), role: "field-b", box: fieldBox, own: [r, 0, 0, 0] }, c.t);
-      // Under a photo the field is only its ground while the picture loads: no line round it.
-      if (s) {
-        const el: Record<string, unknown> = { ...s, name: PT_NAMES.field };
-        if (photo) for (const k of Object.keys(el)) if (/stroke|line/i.test(k)) delete el[k];
-        c.els.push(el as unknown as ShapeElement);
-      }
+      if (s) c.els.push({ ...s, name: PT_NAMES.field } as ShapeElement);
     }
     if (photo) {
+      // One rounded corner (top-left): the picture runs r past the right and bottom edges, where the
+      // slide's edge cuts its other three corners off, so it bleeds square there as in the gold.
       c.els.push({
         id: uid(),
         type: "image",
         name: PT_NAMES.photo,
         ...fieldBox,
+        w: fieldBox.w + r,
+        h: fieldBox.h + r,
+        radius: r,
         src: photo.photo,
         alt: photo.alt ?? "",
         ...(photo.request ? { request: photo.request } : {}),

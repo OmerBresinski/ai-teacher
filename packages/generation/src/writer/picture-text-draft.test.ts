@@ -37,7 +37,6 @@ describe("picture and text: draft ids survive the hand-over", () => {
     expect(seq.at(-1)).toEqual(
       expect.arrayContaining([
         "d-s3-Heading-0",
-        "d-s3-Picture_field-0",
         "d-s3-Photo-0",
         "d-s3-Lead-0",
         "d-s3-Point-0",

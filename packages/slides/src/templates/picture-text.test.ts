@@ -57,14 +57,16 @@ describe("picture and text: the field", () => {
     ] as const) {
       const input = { ...(PT_CASES["ks2-wrapping"]?.input as TemplateInput), figure: photo(a) };
       const [p] = named(layoutTemplate(input, paper, "ks2"), PT_NAMES.photo);
-      expect(p?.w).toBe(w);
-      expect((p?.x ?? 0) + (p?.w ?? 0)).toBe(960);
-      expect((p?.y ?? 0) + (p?.h ?? 0)).toBe(540);
+      expect(960 - (p?.x ?? 0)).toBe(w);
+      // It bleeds: its right and bottom run past the slide's edges by its corner radius.
+      expect((p?.x ?? 0) + (p?.w ?? 0)).toBeGreaterThan(960);
+      expect((p?.y ?? 0) + (p?.h ?? 0)).toBeGreaterThan(540);
+      expect((p?.x ?? 0) + w).toBe(960);
     }
   });
   test("lead only: the picture takes 53 more", () => {
     const [p] = named(lay("ks1-chick"), PT_NAMES.photo);
-    expect(p?.w).toBe(387 + 53);
+    expect(960 - (p?.x ?? 0)).toBe(387 + 53);
   });
   test("failed picture: the sand field holds the icon's medal; no icon: the words take the width", () => {
     const r = lay("ks2-wrapping-nopic");
@@ -95,7 +97,7 @@ describe("picture and text: the field", () => {
     const poster = { ...paper, id: "poster" } as Theme;
     const r = lay("ks2-wrapping", poster);
     const [band] = named(r, PT_NAMES.band);
-    const [field] = named(r, PT_NAMES.field);
+    const [field] = named(r, PT_NAMES.photo);
     expect(band?.y).toBe(0);
     expect((band?.y ?? 0) + (band?.h ?? 0)).toBe(field?.y as number);
     // No column text starts under the band.
@@ -103,6 +105,19 @@ describe("picture and text: the field", () => {
       for (const e of named(r, n)) expect(e.y).toBeGreaterThanOrEqual(field?.y as number);
     expect(named(lay("ks2-wrapping"), PT_NAMES.band)).toHaveLength(0);
   });
+});
+
+describe("picture and text: hierarchy", () => {
+  for (const theme of THEMES)
+    for (const name of ["ks1-chick", "ks2-wrapping", "ks2-canopic-portrait", "ks3-composite"])
+      test(`${name} on ${theme.id}: the points sit a step under the lead, in muted`, () => {
+        const r = lay(name, theme);
+        const lead = named(r, PT_NAMES.lead)[0]?.style?.fontSize ?? 0;
+        for (const p of named(r, PT_NAMES.point)) {
+          expect(p.style?.fontSize ?? 99).toBeLessThan(lead);
+          expect(p.style?.color).toBe(theme.colors.muted);
+        }
+      });
 });
 
 describe("picture and text: caps flag, never clip", () => {

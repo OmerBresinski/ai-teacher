@@ -58,8 +58,9 @@ export function sweepFits(stages: readonly Stage[], n: number, first: boolean): 
           style?: { fontSize?: number };
         }[];
         const gap = r.slide.elements.filter((e) => e.name === "Point");
-        const body = lead?.style?.fontSize;
-        if (pts.some((p) => p.style?.fontSize !== body)) return false;
+        const body = lead?.style?.fontSize ?? 0;
+        // Rung 1 keeps the lead at its own step, a step over the points.
+        if (pts.some((p) => (p.style?.fontSize ?? 0) >= body)) return false;
         // Rung 1 keeps the full spacing: the second point starts 16pt under the first.
         const [a, b] = gap as { y: number; h: number }[];
         if (a && b && b.y - (a.y + a.h) < 16) return false;

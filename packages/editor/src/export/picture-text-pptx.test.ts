@@ -31,7 +31,7 @@ async function slideXml(input: TemplateInput) {
 }
 
 describe("PPTX: picture and text", () => {
-  it("plain look: title, lead, points, the field and the picture", async () => {
+  it("plain look: title, lead, points and the picture", async () => {
     const { xml, files } = await slideXml({
       template: "picture-text",
       heading: "Wrapping the mummy",
@@ -50,8 +50,7 @@ describe("PPTX: picture and text", () => {
     ])
       expect(xml).toContain(`<a:t>${w}`);
     expect(xml).toContain("<p:pic>");
-    // The field's one rounded corner is custom geometry; the dots are ellipses.
-    expect(xml).toContain("<a:custGeom>");
+    // The photo is the field (no shape under it); the dots are ellipses.
     expect(xml).toContain('prst="ellipse"');
     expect(files.some((f) => f.startsWith("ppt/media/"))).toBe(true);
     expect(xml).not.toContain("<p:timing>");
