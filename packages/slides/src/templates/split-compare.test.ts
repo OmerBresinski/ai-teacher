@@ -6,6 +6,7 @@ import { getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { sample } from "./capacity";
 import { cutSubjects, type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
+  PIC_HOLD_W,
   SPLIT_NAMES,
   type SplitSide,
   type SplitZone,
@@ -502,5 +503,62 @@ describe("split-compare measured at the size the browser draws", () => {
           }
       }
     expect(faults.slice(0, 10)).toEqual([]);
+  });
+});
+
+/*
+ * TEACH-75 part ar: a side's picture holds the gold's share of its field (sc-4-long: 40% early,
+ * 51% primary, 55% secondary of a 716 px field) while the type shrinks; at the writer's caps it is
+ * never squeezed under it (y4-romans s3 drew 140 x 79 in a 478 pt field, 29%).
+ */
+describe("split-compare pictures hold the gold's share at the writer's caps", () => {
+  const STAGES: Stage[] = ["ks1", "ks2", "ks3", "ks4"];
+  const PHOTOS: Figure[] = [wide, upright];
+  const share = (els: SlideElement[]) => {
+    const field = els.find((e) => e.name === SPLIT_NAMES.field) as SlideElement;
+    const pics = els.filter((e) => e.name === SPLIT_NAMES.picture);
+    return {
+      w: Math.max(...pics.map((e) => e.w)) / field.w,
+      h: Math.max(...pics.map((e) => e.h)),
+      fw: field.w,
+      n: pics.length,
+    };
+  };
+  for (const theme of THEMES)
+    for (const stage of STAGES)
+      test(`${theme.id} ${stage}: 2 and 3 sides at cap, wide and upright photos`, () => {
+        const faults: string[] = [];
+        for (const n of [2, 3] as const)
+          for (const photo of PHOTOS) {
+            const sides: SplitSide[] = splitSides(splitGroupOf(stage), n, "picture").map(
+              (s): SplitSide => ({ ...s, picture: photo }),
+            );
+            const r = layoutTemplate(input(sides, SPLIT_FIT_HEADING), theme, stage);
+            const m = share(r.slide.elements);
+            const hold = PIC_HOLD_W[stage];
+            const tag = `${n} ${photo === wide ? "wide" : "upright"}`;
+            if (m.n !== n) faults.push(`${tag} pictures ${m.n}`);
+            // A landscape picture spans the share; an upright one stands as tall as a 4:3 at it.
+            if (photo === wide && m.w < hold - 0.01) faults.push(`${tag} share ${m.w.toFixed(2)}`);
+            if (photo === upright && m.h < (hold * m.fw) / (4 / 3) - 1)
+              faults.push(`${tag} height ${m.h}`);
+            if (r.over.length) faults.push(`${tag} over ${r.over.join(",")}`);
+          }
+        expect(faults).toEqual([]);
+      });
+
+  test("words past the floors squeeze the picture and are over, never cut", () => {
+    const long =
+      "Long straight stretches shortened routes. Firm, paved surfaces helped soldiers, travellers and traders move goods quickly.";
+    const r = layoutTemplate(
+      input([
+        { title: "Local tracks", text: long, picture: wide },
+        { title: "Roman main roads", text: long, picture: wide },
+      ]),
+      THEMES[0] as (typeof THEMES)[number],
+      "ks2",
+    );
+    expect(r.over.length).toBeGreaterThan(0);
+    expect(texts(r.slide.elements).filter((e) => e.name === SPLIT_NAMES.text)).toHaveLength(2);
   });
 });

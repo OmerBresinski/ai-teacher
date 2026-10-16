@@ -17,9 +17,10 @@
  *   "?" medal centred in the box its content will fill. On step 1 an opaque cover in the field's
  *   colour appears over the medal with the content above it: the domain can only make an element
  *   appear, so the cover is what hides the "?" in the editor, in Present and on PPTX build slides.
- * - **Fit (ruling 215).** Words are never changed or cut. Pictures give way first, then type to the
- *   age's comfort sizes; past that the slide is `tight` and type goes on to the floors. A field past
- *   its measured hard maximum (`split-compare-capacity.json`), or the field furthest past its cap
+ * - **Fit (ruling 215).** Words are never changed or cut. Pictures give way first, but only to the
+ *   gold's share of the field (`PIC_HOLD_W`), then type to the age's comfort sizes; past that the
+ *   slide is `tight` and type goes on to the floors. Words still too long there squeeze the
+ *   pictures and are over. A field past its measured hard maximum (`split-compare-capacity.json`), or the field furthest past its cap
  *   when the slide still overflows, is named in `over`.
  *
  * **Side by side** (TEACH-75 part w, Greg 14 Oct: "the compare without VS variant for variety"):
@@ -136,6 +137,21 @@ const TEXT_FILL = 0.9;
 const PIC_GROW = 0.62;
 const PIC_LOW = 0.25;
 const PIC_MIN_W = 0.4;
+/**
+ * The picture's share of its field that the type gives way to, by key stage (TEACH-75 part ar):
+ * the gold's long-words pair (`sc-4-long`, northstars `checks.json`) draws its pictures 290, 364 and
+ * 396 px wide in a 716 px field at early, primary and secondary (40%, 51%, 55%); every gold with
+ * shorter words is wider still. Type shrinks to its floors before a picture goes under this; only
+ * words that still do not fit there squeeze it, and they are over.
+ */
+export const PIC_HOLD_W: Readonly<Record<Stage, number>> = {
+  ks1: 0.4,
+  ks2: 0.5,
+  ks3: 0.55,
+  ks4: 0.55,
+  ks5: 0.55,
+};
+/* The gold's own floor (`PIC_MIN_W`): past the type floors a held picture may give way to it, tight. */
 
 const stageOf = (c: Ctx): Stage => (c.t as { keyStage?: Stage }).keyStage ?? "ks2";
 /** A field's inner padding (the pilot's 56 / 80 px); the slide's outer edges keep the safe margin. */
@@ -346,23 +362,30 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
       cands.push(pics.map(() => r));
     if (!cands.length) cands.push(pics.map((p) => p.aspect));
   }
-  const pick = (room: number): Pick => {
+  // Held, the widest box keeps a share of the field however little room the words leave (an upright
+  // pair: the height a 4:3 picture has at that share).
+  const pick = (room: number, share: number): Pick => {
     const cap = Math.max(1, Math.min(room, hGrow));
     let best: Pick | null = null;
-    let bestScore = -1;
+    let bestScore = Number.NEGATIVE_INFINITY;
     for (const ratios of cands) {
-      const h = Math.min(cap, ...ratios.map((r) => cellW / r));
+      const held = share && !set ? Math.min(hGrow, (share * fw) / Math.max(4 / 3, ...ratios)) : 0;
+      const h = Math.min(Math.max(cap, held), ...ratios.map((r) => cellW / r));
       const boxes = ratios.map((r) => ({
         w: Math.round(Math.min(cellW, h * r)),
         h: Math.round(h),
       }));
+      // A held shape taller than the room is over it by its height: the shortest of those wins (the
+      // wider, shorter shape is how a picture gives way), and any that fits beats them all.
       const score =
-        pics.reduce(
-          (t, p, i) => t + subjectArea(p, (boxes[i] as { w: number }).w, Math.round(h)),
-          0,
-        ) +
-        boxes.reduce((t, b) => t + b.w, 0) * 1e-3;
-      if (score > bestScore + 1e-6) {
+        h > cap + 0.5
+          ? -h
+          : pics.reduce(
+              (t, p, i) => t + subjectArea(p, (boxes[i] as { w: number }).w, Math.round(h)),
+              0,
+            ) +
+            boxes.reduce((t, b) => t + b.w, 0) * 1e-3;
+      if (best === null || score > bestScore + 1e-6) {
         best = { ratios, boxes };
         bestScore = score;
       }
@@ -371,7 +394,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   };
 
   type Plan = { name: number; zone: number; picH: number; body: number; total: number; pic?: Pick };
-  const plan = (z: SplitSizes): Plan => {
+  const plan = (z: SplitSizes, share = PIC_HOLD_W[stage]): Plan => {
     const name = Math.max(0, ...sides.map((s) => nameH(s, z)));
     const words = Math.max(0, ...sides.map((s) => textH(s, z)));
     let zoneH = 0;
@@ -379,7 +402,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
     let pic: Pick | undefined;
     if (zone === "picture") {
       const room = stageH - name - (name ? TITLE_GAP : 0) - (words ? words + BODY_GAP : 0);
-      pic = pick(room);
+      pic = pick(room, share);
       picH = Math.max(...pic.boxes.map((b) => b.h));
       zoneH = picH + (name ? TITLE_GAP : 0);
     } else if (zone === "quote")
@@ -420,12 +443,27 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
     p = plan(z);
     j = judge(p, z);
   }
-  // ...then, tight, on to the floors until it fits.
+  // ...then, tight, on to the floors until it fits, the pictures held at the gold's share...
   while (!j.fits && k > kMin) {
     k = Math.max(kMin, Math.round((k - 0.025) * 1000) / 1000);
     z = at(k);
     p = plan(z);
     j = judge(p, z);
+  }
+  // ...and only words that still do not fit at the floors squeeze the pictures: to the gold's 40%
+  // floor the slide is tight; past it the words are over (the slide still draws whole, the picture
+  // as large as they leave).
+  let squeezed = false;
+  if (!j.fits && zone === "picture" && !set) {
+    for (const share of PIC_HOLD_W[stage] > PIC_MIN_W ? [PIC_MIN_W, 0] : [0]) {
+      const q = plan(z, share);
+      const qj = judge(q, z);
+      if (!qj.fits) continue;
+      p = q;
+      j = { ...qj, comfy: false };
+      squeezed = share === 0;
+      break;
+    }
   }
   const narrow = narrowOf(p);
   const comfy = j.comfy && typeComfy(z) && !narrow.length;
@@ -488,9 +526,9 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
     }
   }
 
-  const fit = { fits: j.fits && !narrow.length, comfy };
+  const fit = { fits: j.fits && !narrow.length && !squeezed, comfy: comfy && !squeezed };
   if (!useTable) return fit;
-  report(c, sides, n, zone, { ...fit, fits: j.fits }, look);
+  report(c, sides, n, zone, { ...fit, fits: j.fits && !squeezed }, look);
   for (const i of narrow) c.over.push(`sides[${i}].picture`);
   if (narrow.length) c.tight = true;
   return fit;
