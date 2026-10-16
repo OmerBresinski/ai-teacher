@@ -216,6 +216,12 @@ const seqFigure = (x: unknown): Pic | Dia | undefined => {
   const d = (x as S | null)?.diagram;
   return isDia(d) ? d : undefined;
 };
+/**
+ * A split compare side's visual (TEACH-110 part x): a picture, a diagram-side spec (`{kind…}`),
+ * or that diagram wrapped as `{diagram: {kind…}}`, the form a laid side keeps when its drawing
+ * was not made. Unwrapped here, so the side's diagram is asked for and drawn, never dropped.
+ */
+const sideFigure = (x: unknown): Pic | Dia | undefined => (isPic(x) || isDia(x) ? x : seqFigure(x));
 /** The keys of a slide's tile diagrams (compare columns, sequence stages). */
 export const tileDiagramKeys = (raw: S | undefined): string[] =>
   !raw || typeof raw !== "object"
@@ -260,8 +266,8 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
   }
   if (s.template === "split-compare")
     (Array.isArray(s.sides) ? s.sides : []).forEach((d, n) => {
-      const p = (d as S)?.picture;
-      if (isPic(p) || isDia(p)) out.push({ key: `side.${n}`, f: p });
+      const f = sideFigure((d as S)?.picture);
+      if (f) out.push({ key: `side.${n}`, f });
     });
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
@@ -724,10 +730,8 @@ export function toInput(
         ...(typeof s.marker === "string" ? { marker: s.marker } : {}),
         sides: (Array.isArray(s.sides) ? s.sides : []).map((d0, n) => {
           const d = (d0 ?? {}) as S;
-          const p =
-            isPic(d.picture) || isDia(d.picture)
-              ? figureNow(`side.${n}`, d.picture as Pic | Dia, ctx, mark)
-              : undefined;
+          const f = sideFigure(d.picture);
+          const p = f ? figureNow(`side.${n}`, f, ctx, mark) : undefined;
           return {
             title: str(d.title),
             text: str(d.text),

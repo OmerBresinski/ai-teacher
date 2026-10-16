@@ -1,3 +1,4 @@
+import { ICON_CONCEPTS, resolveIcon } from "@tj/slides/icons";
 import b1 from "./bundles/pilot-v4.4/base-KS1.schema.json" with { type: "json" };
 import b2 from "./bundles/pilot-v4.4/base-KS2.schema.json" with { type: "json" };
 import b3 from "./bundles/pilot-v4.4/base-KS3.schema.json" with { type: "json" };
@@ -58,6 +59,8 @@ export type PilotPack = {
   capsFrom?: string;
   /** The question layouts' defs come from the capacity tables (`questionDefs`, v4.7 on). */
   questionDefs?: boolean;
+  /** `layout-icon` is built per request from the matcher's catalogue (`layoutIconDef`, v4.7 on). */
+  catalogueIcons?: boolean;
 };
 
 export const PILOT_PACKS = {
@@ -104,6 +107,7 @@ export const PILOT_PACKS = {
     uncapped: true,
     capsFrom: "v4.5",
     questionDefs: true,
+    catalogueIcons: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -178,6 +182,7 @@ export function pilotRequest(
   const defs = {
     ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
     ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
+    ...(pack.catalogueIcons ? { "layout-icon": layoutIconDef() } : {}),
   };
   const refs = (schema.properties.slides.items.anyOf as J[]).filter(
     (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),
@@ -210,6 +215,26 @@ export function pilotRequest(
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }
   return { schema, system: pack.system[ks] };
+}
+
+/**
+ * The icon names a writer may use (TEACH-110 part x): every concept label the matcher knows
+ * (`@tj/slides/icons` ICON_CONCEPTS, the pilot set and LAYOUT_CONCEPTS), lower case, in catalogue
+ * order. Built per request, so a concept added to the library reaches the writer with no pack edit.
+ */
+export function layoutIconNames(): string[] {
+  // A label the matcher reads only with a subject ("roots" outside maths) is offered as its id,
+  // which always resolves, so a writer in any subject never picks a name that draws nothing.
+  const name = (c: (typeof ICON_CONCEPTS)[number]) => {
+    const label = c.label.toLowerCase();
+    return resolveIcon(label) === c.id ? label : c.id;
+  };
+  return [...new Set(ICON_CONCEPTS.map(name))];
+}
+
+/** The shared `layout-icon` def: a listed name, or null when no listed name fits. */
+export function layoutIconDef(): J {
+  return { anyOf: [{ type: "string", enum: layoutIconNames() }, { type: "null" }] };
 }
 
 const writerStageOf = (ks: Ks): WriterStage => (ks === "KS3" ? "KS3-5" : ks);
