@@ -277,11 +277,14 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
   // The two top names side by side over their circles; when they would touch, each keeps to its
   // own half (left- and right-aligned) and wraps onto two lines, and the head grows to hold them.
   const nameW = (t: string) => textWidth(t, x, fs, WEIGHT.name);
+  // Set names keep the frame's inner padding (half a line, at least 8) from its sides, so a long
+  // name never touches the frame at a split compare side's size (TEACH-110 part ad).
+  const pad = Math.max(8, fs * 0.5);
   const top2 = s.sets.slice(0, 2);
   const roomOf = (rr: number) => 3.2 * rr;
   const clash = (rr: number) =>
-    top2.reduce((a, t) => a + nameW(t), 0) + fs > Math.min(w - 8, roomOf(rr));
-  const split = (t: string) => wrap(t, x, w / 2 - fs * 0.5 - 4, 2, fs, WEIGHT.name);
+    top2.reduce((a, t) => a + nameW(t), 0) + fs > Math.min(w - 2 * pad, roomOf(rr));
+  const split = (t: string) => wrap(t, x, w / 2 - fs * 0.5 - pad, 2, fs, WEIGHT.name);
   // Items in no set sit in a row along the foot of the universal box, below the circles.
   const outside = s.items
     .filter((it) => !it.in.some((i) => i < s.sets.length))
@@ -328,7 +331,7 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
     const below = i === 2;
     if (wrapNames && !below) {
       out.push(
-        text(x, i === 0 ? 4 : w - 4, py - r - fs * 0.3, nameLines[i] ?? [name], {
+        text(x, i === 0 ? pad : w - pad, py - r - fs * 0.3, nameLines[i] ?? [name], {
           weight: WEIGHT.name,
           anchor: i === 0 ? "start" : "end",
           v: "bottom",
@@ -341,8 +344,8 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
       text(
         x,
         Math.max(
-          textWidth(name, x, fs, WEIGHT.name) / 2 + 4,
-          Math.min(w - textWidth(name, x, fs, WEIGHT.name) / 2 - 4, ax),
+          textWidth(name, x, fs, WEIGHT.name) / 2 + pad,
+          Math.min(w - textWidth(name, x, fs, WEIGHT.name) / 2 - pad, ax),
         ),
         below ? Math.min(h - strip - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
         [name],

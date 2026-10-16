@@ -245,17 +245,13 @@ function pictureOf(s: SplitSide): Pic | null {
 /**
  * The diagram kinds a split compare side draws from a spec (TEACH-110 part ad): each drew with no
  * readability warning, as given (no simpler form), at the side's size (360 x 230) at KS2, KS3 and
- * KS4, from the drawer's samples and, where the spec still parses, with every label at the 24
- * character cap (`scripts/split-side-kinds.ts`). Labelled drawings, flows, tables, charts, graphs,
- * timelines, cycles and layers did not, so the writer menu offers only these for a side.
+ * KS4, with every label at the 24-character cap (`scripts/split-side-kinds.ts`). Labelled
+ * drawings, flows, tables, charts, graphs, timelines, cycles and layers did not, so the writer menu
+ * offers only these for a side.
+ * TODO(TEACH-110): number-line, fraction-shapes and particles drew cleanly at sample labels, but
+ * their padded specs did not parse; add them once verified at maximum labels.
  */
-export const SPLIT_SIDE_DIAGRAM_KINDS: readonly string[] = [
-  "equal-groups",
-  "fraction-shapes",
-  "number-line",
-  "particles",
-  "venn",
-];
+export const SPLIT_SIDE_DIAGRAM_KINDS: readonly string[] = ["equal-groups", "venn"];
 
 /**
  * A side whose picture is a diagram spec (`{diagram}`, the form the live drawer hands back: no
