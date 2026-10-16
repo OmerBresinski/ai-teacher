@@ -53,6 +53,11 @@ export const STEP_TEXT_W = 787;
 export const STEP_GAP = 16;
 /** The stage's foot: the standard bottom margin (64 at 1440). */
 export const STEP_FOOT = 540 - 43;
+/**
+ * The shortest stage a model may have (200 on the 960 grid, 300 at 1440; the gold's shortest is
+ * 441 at 1440). Text that leaves less is named in `over`, as a long do line is: never shrunk past it.
+ */
+export const STEP_MIN_STAGE = 200;
 /** The badge's diameter on the 960 grid (56 at 1440, 62 at early years). */
 const badgeD = (stage: Stage) => (stage === "ks1" ? 41 : 37);
 /** Badge to title (22 at 1440); title to the do line (20 at 1440). */
@@ -202,6 +207,7 @@ export function layoutStepModel(c: Ctx, input: TemplateInput, step: StepModel, s
   // Stage: centred, top-aligned, down to the foot; a model on the paper, no panel.
   const r = stepStage(bottom);
   const f = input.figure;
+  if (f && r.h < STEP_MIN_STAGE) c.over.push("step model stage too short");
   if (isModel(f)) {
     const a = f.drawn.aspect || r.w / r.h;
     const w = Math.min(r.w, Math.round(r.h * a));

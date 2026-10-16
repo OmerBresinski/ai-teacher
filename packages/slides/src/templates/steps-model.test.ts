@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
 import { THEMES } from "../themes";
 import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { STEP_FOOT, STEP_GAP, STEP_NAMES, stepModelOf } from "./steps-model";
+import { STEP_FOOT, STEP_GAP, STEP_MIN_STAGE, STEP_NAMES, stepModelOf } from "./steps-model";
 import { measureStepCaps, stepWords } from "./steps-model-capacity";
 import CAPACITY from "./steps-model-capacity.json" with { type: "json" };
 
@@ -200,5 +200,44 @@ describe("saved steps slides keep their old layout and every word", () => {
     expect(r.over).toEqual([]);
     expect(named(r.slide.elements, STEP_NAMES.do)).toBeDefined();
     expect(named(r.slide.elements, STEP_NAMES.model)).toBeDefined();
+  });
+
+  test("a saved one point beside a model re-lays as the model step with no word or figure lost", () => {
+    const saved: TemplateInput = {
+      template: "steps",
+      heading: "Filter the mixture",
+      points: [{ text: "Pour the mixture through filter paper.", label: "Pour" }],
+      figure: model(),
+    };
+    for (const t of THEMES.slice(0, 3))
+      for (const stage of STAGES) {
+        const r = layoutTemplate(saved, t, stage);
+        expect(r.over).toEqual([]);
+        const all = words(r.slide.elements);
+        expect(all).toContain("Filter the mixture");
+        expect(all).toContain("Pour the mixture through filter paper.");
+        const m = named(r.slide.elements, STEP_NAMES.model) as SlideElement & {
+          src: string;
+          alt: string;
+        };
+        expect(m.alt).toBe("Filter");
+        expect(decodeURIComponent(m.src)).toContain("Sand stays");
+        expect(m.w * m.h).toBeGreaterThan(0);
+      }
+  });
+});
+
+describe("a stage too short for the model is over, never shrunk away", () => {
+  test("a long title and do line leave under the shortest stage: named in over", () => {
+    const long = "Watch the water drip slowly through the paper into the glass beaker below";
+    const r = layoutTemplate(
+      { ...step({ do: stepWords(CAPACITY.KS1.twoLines), see: null }), heading: `${long} ${long}` },
+      theme,
+      "ks1",
+    );
+    expect(r.over).toContain("step model stage too short");
+    const ok = layoutTemplate(step(), theme, "ks1");
+    const m = named(ok.slide.elements, STEP_NAMES.model) as SlideElement;
+    expect(STEP_FOOT - m.y).toBeGreaterThanOrEqual(STEP_MIN_STAGE);
   });
 });
