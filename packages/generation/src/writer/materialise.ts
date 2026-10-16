@@ -906,8 +906,31 @@ const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
  * `<group>:<path>`, so the hand-over from the last draft remounts nothing.
  */
 export const STABLE_ID_TEMPLATES: ReadonlySet<string> = ADAPTIVE;
-/** The id prefix of the slide at `index` (the `d-` the live view joins drafts by). */
-export const stableIdPrefix = (index: number) => `d-s${index}-`;
+/**
+ * The id prefix of the slide at `index` (0-based): `d-s<n>-` with n its place in the deck, the
+ * slide's own id (`s<n>`), as every other draft's ids are (`stableDraftIds`). One scheme for the
+ * whole lesson: a pilot slide's group was once numbered from 0 (`d-s3-layout` on s4), so the
+ * next slide's draft carried the open slide's prefix (TEACH-110 part w).
+ */
+export const stableIdPrefix = (index: number) => `d-s${index + 1}-`;
+
+/**
+ * The slide is one pilot layout group with the ids its place gives it (`materialise`): its
+ * children are `<group>:<path>`, the ids the editor binds add, delete and split to, and the ids
+ * every draft of the slide already showed. Renaming them (`stableIds`) unbinds the group.
+ */
+export function isStableGroupSlide(
+  slide: { elements: readonly unknown[] },
+  index: number,
+): boolean {
+  const [only, ...rest] = slide.elements as { id?: string; type?: string; layout?: unknown }[];
+  return (
+    rest.length === 0 &&
+    only?.type === "group" &&
+    !!only.layout &&
+    only.id === `${stableIdPrefix(index)}layout`
+  );
+}
 
 /** A pilot layout's fit at its drawn size: the laid template and its per-field report. */
 export function pilotFit(s: S, ctx: MaterialiseCtx) {

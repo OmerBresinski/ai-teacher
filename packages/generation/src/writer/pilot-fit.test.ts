@@ -329,8 +329,8 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
       expect(els).toHaveLength(1);
       expect(els[0]?.type).toBe("group");
       expect(els[0]?.layout?.template).toBe(want);
-      expect(els[0]?.id).toBe(`d-s${idx}-layout`);
-      expect(els[0]?.children?.every((c) => c.id.startsWith(`d-s${idx}-layout:`))).toBe(true);
+      expect(els[0]?.id).toBe(`d-s${idx + 1}-layout`);
+      expect(els[0]?.children?.every((c) => c.id.startsWith(`d-s${idx + 1}-layout:`))).toBe(true);
     });
 
   test("row, panel and side pictures are asked for by key", () => {

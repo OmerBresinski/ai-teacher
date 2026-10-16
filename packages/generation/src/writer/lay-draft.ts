@@ -11,10 +11,10 @@ import { slideNoEmDash } from "./checks";
 import type { SlideDraft } from "./draft";
 import { asksVisual, lookOf, shuffleHinge, withLook } from "./fixes";
 import {
+  isStableGroupSlide,
   type MaterialiseCtx,
   type Materialised,
   materialise,
-  STABLE_ID_TEMPLATES,
 } from "./materialise";
 import { quickCheckDraft, withoutReveals } from "./question-set-draft";
 import { nonFatalSync } from "./services";
@@ -127,7 +127,8 @@ export function layDraft(
       }
       // Pilot layouts come out of `materialise` with the closed slide's own ids already.
       const shown = withoutReveals(m.slide);
-      const ided = STABLE_ID_TEMPLATES.has(String(s.template))
+      // A pilot slide laid without its group (a diagram it could not hold) is named like any other.
+      const ided = isStableGroupSlide(shown, ctx.index)
         ? (({ question: _q, ...rest }) => rest)(shown)
         : stableDraftIds(shown, `s${ctx.index + 1}`);
       return holdTypeSizes(ided as Laid, sizes);

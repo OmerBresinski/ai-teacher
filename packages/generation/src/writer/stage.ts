@@ -100,6 +100,7 @@ import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
+  isStableGroupSlide,
   type Materialised,
   materialise,
   modelPoints,
@@ -505,8 +506,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // A drawn diagram carries its builds (Present shows its parts one per Next).
     // Live writing (ADR 0039): the laid slide keeps its drafts' ids (`stableIds`), so nothing
     // remounts when it takes over from its last draft, nor when a later relay lands a picture.
+    // A pilot layout group already has them (`stableIdPrefix`), bound to its fields: kept as is,
+    // or the editor finds no items to add, delete or split (TEACH-110 part w).
     const keep = (x: Materialised): Materialised =>
-      run.onDraftSlide ? { ...x, slide: stableIds(x.slide, `s${i + 1}`) } : x;
+      run.onDraftSlide && !isStableGroupSlide(x.slide, i)
+        ? { ...x, slide: stableIds(x.slide, `s${i + 1}`) }
+        : x;
     if (!run.drawDiagrams) return void laid.set(i, keep(lay()));
     const m = withBuilds(lay);
     laid.set(i, keep({ ...m, slide: withBuildCounts(m.slide) }));
@@ -1757,7 +1762,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       log({
         ev: "pilot-members-over",
         slide: i + 1,
-        id: `${stableIdPrefix(i + 1)}layout`,
+        id: `${stableIdPrefix(i)}layout`,
         template: String(r.slide.template),
       });
     if (r.path === "trimmed" || r.path === "still-over" || r.path === "relaid")
