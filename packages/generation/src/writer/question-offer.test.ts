@@ -143,6 +143,14 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         expect(sys.split(`\n- ${k}: `).length).toBe(2);
       expect(sys).not.toContain("\n- choose: ");
       expect(sys.split("\nAnswers on question-set, practice and exit-ticket").length).toBe(2);
+      // Every fill shape names only keys its def has (items-row lost \`ordered\`, ruling 227).
+      for (const line of sys.split("\n").filter((l) => l.startsWith('{"template":"'))) {
+        const shape = JSON.parse(line) as J;
+        const def = defs[shape.template];
+        if (!def?.properties) continue;
+        for (const k of Object.keys(shape))
+          expect(def.properties[k], `${shape.template}.${k}`).toBeDefined();
+      }
     });
   }
   test("the request is smaller than v4.6's: the per-count twins go", () => {

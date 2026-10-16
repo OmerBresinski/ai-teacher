@@ -81,7 +81,7 @@ Example slides from other lessons, each written as one item of slides:
 
 
 Fill shapes for the layouts above, each written as one item of slides:
-{"template":"items-row","heading":"…","accentWord":null,"lead":null,"ordered":false,"motif":null,"items":[{"name":"…","text":"…","icon":"heart"}]}
+{"template":"items-row","heading":"…","accentWord":null,"lead":null,"motif":null,"items":[{"name":"…","text":"…","icon":"heart"}]}
 {"template":"panel-list","heading":"…","lead":null,"panel":null,"items":[{"name":"…","text":"…","icon":null,"picture":null}]}
 {"template":"split-compare","heading":"…","accentWord":null,"sides":[{"title":"…","text":"…","quote":null,"picture":null}]}
 {"template":"hinge","heading":"…","options":[{"text":"…","icon":null,"why":null},{"text":"…","icon":null,"why":"…"}]}
