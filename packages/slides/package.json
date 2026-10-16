@@ -33,6 +33,7 @@
     "./templates/end-answers": "./src/templates/end-answers.ts",
     "./templates/end-answers-capacity.json": "./src/templates/end-answers-capacity.json",
     "./templates/practice-capacity.json": "./src/templates/practice-capacity.json",
+    "./templates/hinge-capacity.json": "./src/templates/hinge-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
