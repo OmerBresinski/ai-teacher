@@ -1,4 +1,4 @@
-import { ICON_CONCEPTS } from "@tj/slides/icons";
+import { ICON_CONCEPTS, resolveIcon } from "@tj/slides/icons";
 import b1 from "./bundles/pilot-v4.4/base-KS1.schema.json" with { type: "json" };
 import b2 from "./bundles/pilot-v4.4/base-KS2.schema.json" with { type: "json" };
 import b3 from "./bundles/pilot-v4.4/base-KS3.schema.json" with { type: "json" };
@@ -223,7 +223,13 @@ export function pilotRequest(
  * order. Built per request, so a concept added to the library reaches the writer with no pack edit.
  */
 export function layoutIconNames(): string[] {
-  return [...new Set(ICON_CONCEPTS.map((c) => c.label.toLowerCase()))];
+  // A label the matcher reads only with a subject ("roots" outside maths) is offered as its id,
+  // which always resolves, so a writer in any subject never picks a name that draws nothing.
+  const name = (c: (typeof ICON_CONCEPTS)[number]) => {
+    const label = c.label.toLowerCase();
+    return resolveIcon(label) === c.id ? label : c.id;
+  };
+  return [...new Set(ICON_CONCEPTS.map(name))];
 }
 
 /** The shared `layout-icon` def: a listed name, or null when no listed name fits. */

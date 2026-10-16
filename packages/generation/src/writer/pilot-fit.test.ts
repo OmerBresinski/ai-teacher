@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { ICON_CONCEPTS } from "@tj/slides/icons";
+import { ICON_CONCEPTS, resolveIcon } from "@tj/slides/icons";
 import type { FieldReport } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
@@ -290,9 +290,15 @@ describe("one repair, then whole sentences", () => {
   // TEACH-110 part x: the writer is offered every icon the matcher knows, built per request from
   // the catalogue (pilot set + LAYOUT_CONCEPTS), never a frozen list in the pack.
   test("the icon names are the matcher's whole catalogue", () => {
-    const want = ICON_CONCEPTS.map((c) => c.label.toLowerCase());
-    expect(layoutIconNames()).toEqual(want);
+    const want = layoutIconNames();
     expect(want).toHaveLength(201);
+    // One name per concept, in catalogue order: its label, or its id when the label needs a subject.
+    expect(want).toEqual(
+      ICON_CONCEPTS.map((c) =>
+        want.includes(c.label.toLowerCase()) ? c.label.toLowerCase() : c.id,
+      ),
+    );
+    expect(want).toContain("root");
     for (const ks of ["KS1", "KS2", "KS3"]) {
       const { schema } = pilotRequest("v4.7", ks, {}, (sc) => sc);
       const icon = schema.$defs["layout-icon"];
@@ -300,6 +306,12 @@ describe("one repair, then whole sentences", () => {
       expect(icon.anyOf[1]).toEqual({ type: "null" });
     }
     expect(layoutIconNames()).toEqual(expect.arrayContaining(["warmth", "fair test", "beaker"]));
+  });
+  test("every icon name resolves to its drawing with no subject given", () => {
+    const ids = new Set(ICON_CONCEPTS.map((c) => c.id));
+    const miss = layoutIconNames().filter((n) => !ids.has(resolveIcon(n) ?? ""));
+    expect(miss).toEqual([]);
+    expect(resolveIcon("roots")).toBeNull();
   });
   test("the repair schema carries only what the slide's own layout reaches", () => {
     const { schema } = pilotRequest("v4.5", "KS2", {}, (sc) => sc);
