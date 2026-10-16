@@ -23,6 +23,7 @@
  */
 import type { ImageElement, PathElement, TextElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { v2Colors, v2Profile } from "../theme-v2";
@@ -187,24 +188,10 @@ function pathOf(
 }
 
 /**
- * The chain's block arrow pointing down from y0 to y1, centred on x: the gold's stages-family
- * arrow (shaft 32% of its height, head 78% wide and 50% long), one closed path.
+ * The chain's block arrow's proportions, as shares of its length (the gold's stages-family arrow:
+ * shaft 32%, head 78% wide and 50% long). The outline is the shared `blockArrow` (paths/arrow.ts).
  */
-export function blockArrowDown(x: number, y0: number, y1: number): [number, number][] {
-  const h = y1 - y0;
-  const sw = h * 0.32;
-  const hw = h * 0.78;
-  const hl = h * 0.5;
-  return [
-    [x - sw / 2, y0],
-    [x + sw / 2, y0],
-    [x + sw / 2, y1 - hl],
-    [x + hw / 2, y1 - hl],
-    [x, y1],
-    [x - hw / 2, y1 - hl],
-    [x - sw / 2, y1 - hl],
-  ];
-}
+const CHAIN_ARROW = { shaft: 0.32, head: 0.78, headLen: 0.5 } as const;
 
 export function layoutReasons(c: Ctx, input: TemplateInput) {
   c.bodyFromHeading = true;
@@ -476,7 +463,12 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
       const y0 = at + a.h + 5;
       const y1 = bt - 5;
       if (y1 - y0 < 8) continue;
-      const pts = blockArrowDown(x, y0, y1);
+      const len = y1 - y0;
+      const pts = blockArrow([x, y0], [x, y1], {
+        shaft: len * CHAIN_ARROW.shaft,
+        head: len * CHAIN_ARROW.head,
+        headLen: len * CHAIN_ARROW.headLen,
+      }).map(([px, py]) => [px, py] as [number, number]);
       c.els.push(
         pathOf(pts, {
           fill: off,
