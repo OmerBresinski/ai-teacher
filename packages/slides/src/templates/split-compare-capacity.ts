@@ -50,6 +50,8 @@ export type SplitMeasured = Record<Field, { cap: number; hardMax: number; words:
 /** What a field holds while the fields measured before it are measured. */
 const BASE = { title: 16, quote: 20, text: 1 } as const;
 const ORDER: Field[] = ["text", "quote", "title"];
+/** The shortest stand-ins (a word or two): a re-measure when `BASE`'s overflow left a field 0. */
+const SHORT = { title: 8, quote: 8 } as const;
 const sidesOf = (n: number, zone: SplitZone, len: Partial<Record<Field, number>>): SplitSide[] =>
   Array.from({ length: n }, (_, i) => ({
     title: sample(len.title ?? BASE.title, i),
@@ -116,8 +118,16 @@ export function measureSplitCell(
   for (const f of fields) {
     const at = (comfy: boolean) => (chars: number) =>
       allFit(group, sidesOf(n, zone, { ...len, [f]: chars }), comfy, look);
-    const cap = longest(at(true), LIMITS[f]);
-    const hardMax = Math.max(cap, longest(at(false), LIMITS[f]));
+    // A field that gives 0 beside the stand-ins is re-measured beside the shortest real ones
+    // (TEACH-68 part b): KS1's three 20-character quotes were over their own limit and left the
+    // words no room, though words fit beside shorter quotes.
+    const short = (comfy: boolean) => (chars: number) =>
+      allFit(group, sidesOf(n, zone, { ...SHORT, ...len, [f]: chars }), comfy, look);
+    const cap = longest(at(true), LIMITS[f]) || longest(short(true), LIMITS[f]);
+    const hardMax = Math.max(
+      cap,
+      longest(at(false), LIMITS[f]) || longest(short(false), LIMITS[f]),
+    );
     out[f] = { cap, hardMax, words: cap ? sample(cap).split(" ").length : 0 };
     len[f] = cap;
   }

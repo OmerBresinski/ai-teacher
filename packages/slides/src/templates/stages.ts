@@ -98,12 +98,16 @@ let TABLE = CAPACITY as unknown as Record<string, StageCell[]>;
 export function withoutStageCaps<T>(f: () => T): T {
   const kept = TABLE;
   TABLE = {};
+  MEASURING = true;
   try {
     return f();
   } finally {
     TABLE = kept;
+    MEASURING = false;
   }
 }
+/** True while the capacity script measures: no field is checked against a table it is writing. */
+let MEASURING = false;
 export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
   (TABLE[age] ?? []).find((c) => c.n === n && c.vis === vis);
 
@@ -526,12 +530,19 @@ function accentWord(
 function report(age: Age, input: TemplateInput, items: StageItem[], vis: StageVis): FieldReport[] {
   const caps = stageCapsOf(age, Math.min(Math.max(items.length, STAGES_MIN), 6), vis);
   // A name's measure is its longest word (each word is nowrap; a second word takes a second line).
-  const row = (field: string, value: string, m?: StageCap, word = false): FieldReport => {
+  // `measured` false: a field the table does not measure (the heading). A measured field with no
+  // cell, or a hard maximum of 0 (6-up primary with pictures), holds nothing: any content is over,
+  // never "no limit" (TEACH-68 part b), so the layout is never chosen silently.
+  const row = (
+    field: string,
+    value: string,
+    m?: StageCap,
+    word = false,
+    measured = true,
+  ): FieldReport => {
     const chars = word ? Math.max(0, ...value.split(/\s+/).map((w) => w.length)) : value.length;
     const cap = m?.hardMax ? m : undefined;
-    // A measured cell that holds nothing (5-up early or 6-up primary with pictures): any content
-    // is over, so the layout is never chosen silently.
-    const none = !!m && m.hardMax === 0 && chars > 0;
+    const none = measured && !MEASURING && !cap && chars > 0;
     return {
       field,
       path: field.replace(/\[(\d+)\]/g, ".$1"),
@@ -542,7 +553,7 @@ function report(age: Age, input: TemplateInput, items: StageItem[], vis: StageVi
       over: none || (!!cap && chars > cap.hardMax),
     };
   };
-  const out: FieldReport[] = [row("heading", input.heading.trim())];
+  const out: FieldReport[] = [row("heading", input.heading.trim(), undefined, false, false)];
   items.forEach((it, i) => {
     out.push(row(`stages[${i}].name`, it.name, caps?.name, true));
     out.push(row(`stages[${i}].line`, it.line, caps?.line));

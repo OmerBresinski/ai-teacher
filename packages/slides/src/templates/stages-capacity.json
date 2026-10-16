@@ -64,12 +64,12 @@
       "n": 5,
       "vis": "pictures",
       "name": {
-        "cap": 0,
-        "hardMax": 0
+        "cap": 5,
+        "hardMax": 5
       },
       "line": {
-        "cap": 0,
-        "hardMax": 0
+        "cap": 16,
+        "hardMax": 24
       }
     }
   ],

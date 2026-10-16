@@ -32,17 +32,28 @@ const TEXT = 40;
 const LEAD = 40;
 const LIMIT = 320;
 
-type Fill = Partial<Record<RowField, number>> & { only?: boolean };
-/** The row's input: every field at its default length unless `fill` sets it (`only`: item 0 alone). */
+/** The other fields' stand-in lengths while one field is measured (default NAME, TEXT, LEAD). */
+type Base = Partial<Record<"name" | "text" | "lead", number>>;
+type Fill = Partial<Record<RowField, number>> & { only?: boolean; base?: Base };
+/**
+ * The row's input: every field at its stand-in length unless `fill` sets it (`only`: item 0 alone,
+ * its siblings short). No stand-in is longer than the cell lets that field be: a cap governs every
+ * item, so a sibling or a neighbouring field over its own limit is a row the table never allows,
+ * and its overflow would sink the measured field to 0 (KS2 crayon's five iconed items with a lead:
+ * 16-character siblings overflowed, every item at 12 fits; five items' 40-character texts left no
+ * room for any name or heading).
+ */
 function input(n: number, v: RowVariant, f: Fill = {}): TemplateInput {
-  const len = (field: "name" | "text", k: number) =>
-    f[field] !== undefined && (!f.only || k === 0)
-      ? (f[field] as number)
-      : field === "name"
-        ? NAME
-        : f.only && f.text !== undefined
-          ? 16
-          : TEXT;
+  const stand = { name: f.base?.name ?? NAME, text: f.base?.text ?? TEXT };
+  const short = { name: stand.name, text: Math.min(16, stand.text) };
+  const len = (field: "name" | "text", k: number) => {
+    const set = f[field];
+    if (set !== undefined && (!f.only || k === 0)) return set;
+    if (set !== undefined) return Math.min(short[field], set);
+    return field === "text" && f.only && f.name === undefined && f.text !== undefined
+      ? short.text
+      : stand[field];
+  };
   const items: RowItem[] = Array.from({ length: n }, (_, k) => ({
     name: sample(len("name", k), k + 2),
     text: sample(len("text", k), k),
@@ -51,7 +62,7 @@ function input(n: number, v: RowVariant, f: Fill = {}): TemplateInput {
   return {
     template: "items-row",
     heading: f.heading !== undefined ? sample(f.heading, 7) : ROW_FIT_HEADING,
-    ...(v.lead ? { lead: sample(f.lead ?? LEAD, 4) } : {}),
+    ...(v.lead ? { lead: sample(f.lead ?? f.base?.lead ?? LEAD, 4) } : {}),
     items,
   };
 }
@@ -84,11 +95,12 @@ export function rowFitsAt(
   field: RowField,
   chars: number,
   mode: "fit" | "comfort",
+  base?: Base,
 ): boolean {
   const list = field === "name" || field === "text";
   return (
-    rowHolds(age, n, v, { [field]: chars }, mode) &&
-    (!list || rowHolds(age, n, v, { [field]: chars, only: true }, mode))
+    rowHolds(age, n, v, { [field]: chars, base }, mode) &&
+    (!list || rowHolds(age, n, v, { [field]: chars, only: true, base }, mode))
   );
 }
 
@@ -114,18 +126,28 @@ export function measureRowCaps(age: Age): RowCell[] {
     for (const icons of [true, false])
       for (const lead of [false, true]) {
         const v = { icons, lead };
-        const cap = (field: RowField): FieldCap => ({
-          cap: longest((c) => rowFitsAt(age, n, v, field, c, "comfort")),
-          hardMax: longest((c) => rowFitsAt(age, n, v, field, c, "fit")),
+        // Text first, beside the default name and lead; then name beside text at most its limit;
+        // then the heading and lead beside both (stand-ins never over the field's own limit).
+        const cap = (field: RowField, base: (mode: "fit" | "comfort") => Base = () => ({})) => ({
+          cap: longest((c) => rowFitsAt(age, n, v, field, c, "comfort", base("comfort"))),
+          hardMax: longest((c) => rowFitsAt(age, n, v, field, c, "fit", base("fit"))),
+        });
+        const within = (def: number, fc: FieldCap, mode: "fit" | "comfort") =>
+          Math.max(2, Math.min(def, mode === "fit" || !fc.cap ? fc.hardMax : fc.cap));
+        const text = cap("text");
+        const name = cap("name", (m) => ({ text: within(TEXT, text, m) }));
+        const rest = (m: "fit" | "comfort"): Base => ({
+          text: within(TEXT, text, m),
+          name: within(NAME, name, m),
         });
         out.push({
           items: n,
           icons,
           withLead: lead,
-          name: cap("name"),
-          text: cap("text"),
-          lead: lead ? cap("lead") : { cap: 0, hardMax: 0 },
-          heading: cap("heading"),
+          name,
+          text,
+          lead: lead ? cap("lead", rest) : { cap: 0, hardMax: 0 },
+          heading: cap("heading", (m) => ({ ...rest(m), ...(lead ? { lead: LEAD } : {}) })),
         });
       }
   return out;

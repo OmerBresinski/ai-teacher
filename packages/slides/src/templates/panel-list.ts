@@ -706,16 +706,19 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const add = (field: string, key: "heading" | "lead" | "name" | "text", s: string) => {
     const cp = capOf(key);
     const chars = s.length;
-    const cap = cp ? (comfyHere ? Math.max(cp.cap, chars) : cp.cap) : 0;
-    const hardMax = cp ? (fitsHere ? Math.max(cp.hardMax, chars) : cp.hardMax) : 0;
+    // A missing cell or a hard maximum of 0 holds nothing (six rows at early): every word there
+    // is over, never "no limit" (TEACH-68 part b), and the slide's own fit cannot lift it.
+    const none = !cp || cp.hardMax <= 0;
+    const cap = none ? 0 : comfyHere ? Math.max(cp.cap, chars) : cp.cap;
+    const hardMax = none ? 0 : fitsHere ? Math.max(cp.hardMax, chars) : cp.hardMax;
     fields.push({
       field,
       path: field.replace(/\[(\d+)\]/g, ".$1"),
       chars,
       cap,
       hardMax,
-      tight: !!cp && chars > cap,
-      over: !!cp && chars > hardMax,
+      tight: chars > cap,
+      over: chars > hardMax,
     });
   };
   add("heading", "heading", head);

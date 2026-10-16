@@ -18,7 +18,7 @@ import {
   rowShape,
   STEM_GREEN,
 } from "./items-row";
-import { ROW_CAP_GROUPS, rowCapsFor, rowFitsAt } from "./items-row-capacity";
+import { ROW_CAP_GROUPS, type RowCell, rowCapsFor, rowFitsAt } from "./items-row-capacity";
 import CAPACITY from "./items-row-capacity.json" with { type: "json" };
 import { ageProfileOf, GOLD_PROFILES } from "./items-row-deps";
 
@@ -81,7 +81,10 @@ const SHORT = [
 const itemsOf = (n: number, icons = true, short = n >= 5): RowItem[] =>
   ITEMS.slice(0, n).map((it, i) => {
     const text = short ? (SHORT[i] as string) : it.text;
-    return icons ? { ...it, text } : { name: it.name, text };
+    // Two rows hold names of at most 12 characters with icons (the measured hard maximum,
+    // TEACH-68 part b): "Blood vessels" (13) is over there.
+    const name = short && it.name.length > 12 ? "Vessels" : it.name;
+    return icons ? { ...it, name, text } : { name, text };
   });
 const row = (items: RowItem[], extra: Partial<TemplateInput> = {}): TemplateInput => ({
   template: "items-row",
@@ -158,9 +161,15 @@ describe("comfort", () => {
         for (const icons of [true, false]) {
           // Names within the measured name cap (early, 4 with icons: 12 characters).
           const cap = rowCapsFor(ageProfileOf(stage), n, { icons, lead: false });
-          const items = itemsOf(n, icons).map((it) =>
-            it.name.length > (cap?.name.cap ?? 99) ? { ...it, name: "Vessels" } : it,
-          );
+          // Texts within the measured text cap too (early, 4 with icons: 20 characters), cut at a
+          // word: a cap holds with the other fields at theirs (TEACH-68 part b).
+          const within = (t: string, max: number) =>
+            t.length <= max ? t : `${t.slice(0, max + 1).replace(/\s+\S*$/, "")}.`.slice(0, max);
+          const items = itemsOf(n, icons).map((it) => ({
+            ...it,
+            name: it.name.length > (cap?.name.cap ?? 99) ? "Vessels" : it.name,
+            text: within(it.text, cap?.text.cap ?? 99),
+          }));
           for (const theme of THEMES) {
             const r = layoutTemplate(row(items), theme, stage);
             const tag = `${theme.id} ${n} ${icons}`;
@@ -545,6 +554,26 @@ describe("capacity", () => {
     const five = rowCapsFor("primary", 5, { icons: true, lead: false });
     expect(five?.text.cap).toBe(0);
     expect(five?.text.hardMax ?? 0).toBeGreaterThan(0);
+  });
+
+  test("no field the row shows has a hard maximum of 0 (TEACH-68 part b)", () => {
+    // A 0 means nothing fits: the writer would be told to leave the field empty. Name, text and
+    // heading always show; the lead only with a lead. Stand-ins over a field's own limit used to
+    // sink a cell to 0 (KS2 crayon, five iconed items with a lead).
+    const zeros: string[] = [];
+    for (const [age, cells] of Object.entries(CAPACITY))
+      for (const c of cells as RowCell[])
+        for (const f of [
+          "name",
+          "text",
+          "heading",
+          ...(c.withLead ? (["lead"] as const) : []),
+        ] as const)
+          if (c[f].hardMax === 0)
+            zeros.push(
+              `${age} ${c.items} ${c.icons ? "icons" : "numbers"} lead=${c.withLead} ${f}`,
+            );
+    expect(zeros).toEqual([]);
   });
 
   test("spot check: the cap is the renderer's measurement (comfortable at cap, not at cap + 4)", () => {
