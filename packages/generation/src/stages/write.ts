@@ -534,6 +534,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   } catch (error) {
     // No streamed save lands after the failure; pictures and diagram jobs started off the stream
     // stop spending, whatever the failure (K3, a budget stop, a cancel or any other throw).
+    // Every throw is logged with where it happened (TEACH-110 part z): the job's own failure line
+    // carries only the error's type, and a picture's or a slide's tail throw read as "undefined".
+    deps.logger.warn(
+      {
+        stage: "write",
+        phase: editableSaved ? "after-editable" : "writing",
+        slide: newest >= 0 ? newest + 1 : null,
+        err: error,
+      },
+      "write stage failed",
+    );
     failed.abort();
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);

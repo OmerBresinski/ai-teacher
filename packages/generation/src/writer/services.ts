@@ -52,6 +52,24 @@ export function isBudgetRefusal(e: unknown): boolean {
 }
 
 /**
+ * The budget refused one call before it ran (`BudgetReservationError`, `UnestimableCallError`), at
+ * any depth of `cause`, and nothing says the lesson's spend is over its cap (`BudgetExceeded`). The
+ * refusal reserves a call's worst case against the calls still in flight, so it can come while the
+ * lesson has spent a fraction of its cap. Nothing was spent on the refused call.
+ */
+export function isReservationRefusal(e: unknown): boolean {
+  let reserved = false;
+  for (let x: unknown = e, i = 0; x !== undefined && x !== null && i < 10; i++) {
+    if (x instanceof BudgetExceeded) return false;
+    if (x instanceof BudgetReservationError || x instanceof UnestimableCallError) reserved = true;
+    const cause = (x as { cause?: unknown }).cause;
+    if (cause === x) break;
+    x = cause;
+  }
+  return reserved;
+}
+
+/**
  * The one way the writer, picture and diagram paths recover from an error: a fatal one (budget,
  * abort; `isFatal`) is rethrown so the job stops, any other goes to `onError`, whose value is
  * returned. A bare `catch` in those modules is a test failure (`non-fatal.test.ts`).

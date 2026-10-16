@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { BudgetReservationError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Lesson, PhotoSource } from "@tj/domain/documents";
 import { encodePng, type ImageGenerator, type PhotoResult, type StoredPhoto } from "@tj/images";
@@ -258,6 +259,40 @@ describe("writer pictures: stops are never swallowed", () => {
     pictures.start(2, ask(), slide);
     const err = await pictures.settle(1_000).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(BudgetExceeded);
+  });
+
+  test("a budget refusal of one picture call leaves that slot empty; settle and the lesson go on (TEACH-110 part z)", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => {
+        throw new Error("stream failed", { cause: new BudgetReservationError("usd") });
+      },
+    });
+    pictures.start(2, ask(), slide);
+    await expect(pictures.settle(1_000)).resolves.toBeUndefined();
+    expect(pictures.state(2, ask().key)).toEqual({ status: "failed" });
+    // Unaffordable now: the stage does not ask for it again.
+    expect(pictures.retryable(2, ask().key)).toBe(false);
+  });
+
+  test("spend over the cap in a picture call still fails settle", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => {
+        throw Object.assign(new BudgetReservationError("usd"), {
+          cause: new BudgetExceeded("usd"),
+        });
+      },
+    });
+    pictures.start(2, ask(), slide);
+    const err = await pictures.settle(1_000).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BudgetReservationError);
   });
 
   test("a cancel ends settle at once with an abort, and the running placement sees it", async () => {

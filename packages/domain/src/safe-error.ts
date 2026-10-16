@@ -18,6 +18,8 @@ const ERROR_TYPES = new Set([
   "InputRejected",
   "SourceUnavailable",
   "BudgetExceeded",
+  "BudgetReservationError",
+  "UnestimableCallError",
   "NonRetryableError",
   "ResendSendError",
   "UnknownError",
