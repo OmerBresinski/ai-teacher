@@ -123,6 +123,15 @@ describe("reasons in draft mode (TEACH-75 part ad)", () => {
       }
     });
 
+    test(`${name}: draft ids survive the hand-over: every element id any draft shows is in the closed slide`, () => {
+      const keep = new Set(closed.map((e) => e.id));
+      const shown = new Set(drafts.flat().map((e) => e.id));
+      expect(shown.size).toBeGreaterThan(0);
+      for (const id of shown) expect({ id, kept: keep.has(id) }).toEqual({ id, kept: true });
+      // And the hand-over itself: the final draft's ids are exactly the closed slide's.
+      expect([...new Set((drafts.at(-1) ?? []).map((e) => e.id))].sort()).toEqual([...keep].sort());
+    });
+
     test(`${name}: icons never drop out once the first one is written`, () => {
       let had = 0;
       for (const d of drafts) {
