@@ -19,7 +19,14 @@
  *
  * Sizes are slide points (960 x 540): the gold's px at 1440 x 2/3.
  */
-import type { ImageElement, RichDoc, ShapeElement, TextElement } from "@tj/domain/documents";
+import {
+  type ImageElement,
+  type RichDoc,
+  type RunStyleAttrs,
+  type ShapeElement,
+  styledRun,
+  type TextElement,
+} from "@tj/domain/documents";
 import { barPanelFrames, barPanelGuard, barPanelSpec } from "../diagrams/bar-model";
 import { withBuilds } from "../diagrams/builds";
 import { buildCount, diagramElement, svgDataUrl, svgOfDataUrl } from "../diagrams/index";
@@ -103,10 +110,11 @@ export function mathText(s: string): string {
 }
 
 type Run = { text: string; marks?: unknown[] };
-const styled = (text: string, attrs: Record<string, unknown>, bold = false): Run => ({
-  text,
-  marks: [...(bold ? [{ type: "bold" }] : []), { type: "textStyle", attrs }],
-});
+/** A run in A3's run style (`styledRun`, TEACH-205 part c), bold when asked. */
+const styled = (text: string, attrs: RunStyleAttrs, bold = false): Run => {
+  const r = styledRun(text, attrs) as Run;
+  return bold ? { ...r, marks: [{ type: "bold" }, ...(r.marks ?? [])] } : r;
+};
 const docOf = (runs: Run[]): RichDoc =>
   ({
     type: "doc",
