@@ -189,5 +189,20 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         { name: "Ends", line: "In the sea.", icon: "estuary" },
       ],
     },
+    // TEACH-239 part b (C7): the figure slide (a library model's drawing, its caption).
+    {
+      template: "figure",
+      heading: "The water cycle in a town",
+      accentWord: "water cycle",
+      lead: "The same water goes round and round.",
+      figure: {
+        drawn: {
+          src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" class="slide tk theme-primary" viewBox="0 0 1280 564"><rect width="1280" height="564"/></svg>')}`,
+          aspect: 2.27,
+          alt: "The water cycle",
+          bare: true,
+        },
+      },
+    },
   ];
 }

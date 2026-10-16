@@ -37,6 +37,8 @@ import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
 // TEACH-230 part b (B2): practice and exit ticket, the calm "work alone" slides.
 import { layoutExitTicket } from "./exit-ticket";
+// TEACH-239 part b (C7): the figure slide.
+import { layoutFigure } from "./figure";
 import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
@@ -183,6 +185,8 @@ export type TemplateId =
   | "worked"
   // TEACH-75 part ac (C4).
   | "stages"
+  // TEACH-239 part b (C7).
+  | "figure"
   | ActivityId;
 
 export type TemplateInput = {
@@ -291,6 +295,9 @@ export type TemplateInput = {
   vars?: string[];
   /** Worked example: the writer's `panel` (algebra-bar or percent-bar); its guard falls back to text only. */
   barPanel?: WorkedPanel | null;
+  // TEACH-239 part b (C7): the figure slide.
+  /** Figure slide: the topic's library icon label, drawn in a medal on the plate when no figure drew. */
+  icon?: string;
 };
 
 /**
@@ -1350,6 +1357,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   worked: "worked-example",
   // TEACH-75 part ac (C4).
   stages: "content",
+  // TEACH-239 part b (C7).
+  figure: "diagram",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -1615,7 +1624,8 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const sideFails: string[] = [];
   // TEACH-230 part b: practice keeps a figure that cannot draw and shows its caption card in its
   // place (the gold's fallback; ruling 215, nothing is lost); the reasons are still reported.
-  const keeps = input.template === "practice";
+  // TEACH-239 part b (C7): the figure slide places its own drawn model or shows its icon plate.
+  const keeps = input.template === "practice" || input.template === "figure";
   const dropped =
     !keeps && !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
   if (dropped) c.fails?.push(...sideFails);
@@ -2302,6 +2312,10 @@ function layoutOnce(
     // TEACH-17 part b (C1).
     case "worked":
       layoutWorked(c, input, stage);
+      break;
+    // TEACH-239 part b (C7).
+    case "figure":
+      layoutFigure(c, input, stage);
       break;
     case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.

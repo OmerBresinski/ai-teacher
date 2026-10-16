@@ -12,6 +12,8 @@ import {
   type TemplatePoint,
 } from "@tj/slides/templates";
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
+// TEACH-239 part b (C7): the figure slide's writer rules (a leaf: no drawing code).
+import { FIGURE_WIDE_ASPECT, figureSlideAllowed } from "@tj/slides/templates/figure-rules";
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
@@ -151,6 +153,18 @@ const isPic = (f: unknown): f is Pic =>
 /** A figure the diagram library draws (`kind: "model"`). */
 export const isModel = (f: unknown): boolean =>
   isDia(f) && (f as { kind?: unknown }).kind === "model";
+/** TEACH-239 part b (C7): a big visual asking for a library model may become the figure slide. */
+const isModelSlide = (s: unknown): boolean => {
+  const o = (s ?? {}) as S;
+  return (
+    o.template === "figure" ||
+    (["big-visual", "big-diagram"].includes(str(o.template)) &&
+      (isModel(o.figure) || isModel(o.diagram)))
+  );
+};
+/** A drawn library model wider than the figure slide's threshold (narrower ones go beside words). */
+const wideModel = (f: Figure | undefined): boolean =>
+  !!f && "drawn" in f && !!f.drawn.bare && f.drawn.aspect > FIGURE_WIDE_ASPECT;
 
 /**
  * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
@@ -488,6 +502,13 @@ export function toInput(
       // A long table's slide moved across the slide (table-pack.ts, `cardsUnder`) carries its
       // points as key cards (ruling 194); other big visuals' points are read in the notes.
       const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
+      // TEACH-239 part b (C7): a wide library model is the lesson's figure slide (ruling 229).
+      if (
+        !cards.length &&
+        wideModel(f) &&
+        figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide)
+      )
+        return { template: "figure", heading, ...(lead ? { lead } : {}), figure: f };
       return f
         ? { template, heading, lead, figure: f, ...(cards.length ? { points: cards } : {}) }
         : { template: "explain", heading, lead: lead ?? "" };
@@ -785,6 +806,33 @@ export function toInput(
         ...(Array.isArray(s.vars) ? { vars: s.vars.filter((v) => typeof v === "string") } : {}),
         ...(s.panel && typeof s.panel === "object" ? { barPanel: s.panel } : {}),
       } as TemplateInput;
+    }
+    // TEACH-239 part b (C7): the figure slide. One model or photo, its caption (`caption` or
+    // `lead`), and the topic's icon for the plate when the figure could not be made. A second one
+    // in a lesson, or one beside another diagram slide, is laid as the old big visual (ruling 229).
+    case "figure": {
+      const f = fig("figure") ?? fig("diagram") ?? fig("picture");
+      const caption = str(s.caption ?? s.lead).trim();
+      const icon = str(s.icon).trim();
+      const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
+      // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
+      if (!figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+        return f
+          ? {
+              template: "photo" in f ? "big-picture" : "big-diagram",
+              heading,
+              lead: caption,
+              figure: f,
+            }
+          : { template: "explain", heading, lead: caption };
+      if (!f && !icon) return { template: "explain", heading, lead: caption };
+      return {
+        template,
+        heading,
+        ...accent,
+        ...(caption ? { lead: caption } : {}),
+        ...(f ? { figure: f } : { icon }),
+      };
     }
     case "banner-text": {
       // Ruling 203 (P4): the photo as a strip over or under the words. A picture that could not

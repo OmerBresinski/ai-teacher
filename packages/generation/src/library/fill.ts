@@ -315,6 +315,35 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
   return out;
 }
 
+/** `grownTextFault`'s reason when a word is split across a label's lines or lost. */
+export const WORDS_SPLIT = "its words split or change across lines";
+/** The label-word split rule's step (TEACH-239 part b): the type scale steps down by this. */
+export const WHOLE_WORD_STEP = 0.05;
+
+/**
+ * The label-word split rule (TEACH-239 part b): from a grown drawing at `scale` whose words split,
+ * step the type scale down by 0.05 and redraw until every word is whole. Back at the kit's size, or
+ * when a redraw fails, the base drawing (whole words at scale 1) is kept: split words never ship.
+ */
+export async function wholeWordDrawing<D extends { svg: string }>(
+  grown: D,
+  scale: number,
+  base: D,
+  splits: (svg: string) => boolean,
+  redraw: (typeScale: number) => Promise<D | string>,
+): Promise<{ drawing: D; scale: number }> {
+  let drawing = grown;
+  let kept = scale;
+  while (kept > 1 && splits(drawing.svg)) {
+    const ts = Math.round((kept - WHOLE_WORD_STEP) * 100) / 100;
+    const down = ts > 1 ? await redraw(ts) : "at the kit's size";
+    if (typeof down === "string") return { drawing: base, scale: 1 };
+    drawing = down;
+    kept = ts;
+  }
+  return { drawing, scale: kept };
+}
+
 /**
  * What went wrong with a drawing's words once its type grew (the label floor), against the same
  * drawing at the kit's own sizes: a word split across lines or lost ("Oxygen-p" / "oor"), or a
@@ -329,7 +358,7 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
       .sort()
       .join(" ");
   const grown = drawnLines(grownSvg);
-  if (words(baseSvg) !== words(grownSvg)) return "its words split or change across lines";
+  if (words(baseSvg) !== words(grownSvg)) return WORDS_SPLIT;
   for (const t of grown)
     if (t.pitch.some((d) => d < 0.9 * t.fs))
       return `its lines "${t.lines.join(" / ").slice(0, 30)}" sit on top of one another`;
@@ -455,6 +484,7 @@ export async function libraryDiagram(
     const place = ask.place;
     const offBefore = new Set(full.offSlide);
     const baseSvg = full.svg;
+    const baseDrawing = full;
     // The type scale `full` was drawn at, and the smallest scale found too big to draw cleanly.
     let keptScale = 1;
     let tooBig = Number.POSITIVE_INFINITY;
@@ -496,6 +526,21 @@ export async function libraryDiagram(
       keptScale = ts;
       if (ts >= LABEL_FLOOR_MAX) break;
     }
+    // TEACH-239 part b (C7): the label-word split rule. A grown size that breaks a word across a
+    // label's lines steps down 0.05 at a time until every word is whole (or back at the kit's size).
+    const splits = (svg: string) =>
+      nonFatalSync(
+        () => grownTextFault(baseSvg, svg) === WORDS_SPLIT,
+        () => false,
+      );
+    const whole = await wholeWordDrawing(full, keptScale, baseDrawing, splits, (ts) =>
+      nonFatal(
+        () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
+        (e) => String(e).slice(0, 160),
+      ),
+    );
+    full = whole.drawing;
+    keptScale = whole.scale;
     typeScale = keptScale;
     log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
     if (typeScale !== 1) {
