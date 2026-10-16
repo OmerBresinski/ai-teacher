@@ -22,7 +22,13 @@ import * as reducers from "../model/reducers";
 import { getTheme, THEMES } from "../model/themes";
 import { renderedHeights } from "./fit-plan";
 import { lintSlide } from "./lint";
-import { recolourSlide, rethemeFromReducer, rethemeLesson, slidesNeedingFit } from "./retheme";
+import {
+  recolourSlide,
+  relayLayouts,
+  rethemeFromReducer,
+  rethemeLesson,
+  slidesNeedingFit,
+} from "./retheme";
 
 /*
  * TEACH-258 FR5: a generated lesson re-themed with `setTheme` alone keeps the old theme's boxes
@@ -289,5 +295,10 @@ describe("re-theme: the Answers slides follow the new faces", () => {
     const stale = rethemeLesson(base, "paper", measureHeadless(getTheme("paper")), null).lesson;
     expect(answerBoxes(stale).map((e) => e.h)).toEqual(answerBoxes(base).map((e) => e.h));
     expect(answerBoxes(after).map((e) => e.h)).not.toEqual(answerBoxes(base).map((e) => e.h));
+    // The same pass as the adaptive layouts: re-laying the switched lesson directly agrees.
+    const switched = { ...base, themeId: "paper" };
+    expect(answerBoxes(relayLayouts(switched, kit)).map((e) => [e.y, e.h])).toEqual(
+      answerBoxes(after).map((e) => [e.y, e.h]),
+    );
   });
 });
