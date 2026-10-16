@@ -582,7 +582,8 @@ function report(
   const fields: FieldCount[] = [];
   sides.forEach((s, i) => {
     const row = (key: "title" | "quote" | "text", v: string) => {
-      const lim = cell[key] ?? cell.text;
+      // A field with no measured limit holds nothing (over), never another field's (TEACH-68 part b).
+      const lim = cell[key] ?? { cap: 0, hardMax: 0 };
       const chars = v.length;
       fields.push({
         field: `sides[${i}].${key}`,

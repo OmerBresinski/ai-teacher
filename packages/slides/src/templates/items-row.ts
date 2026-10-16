@@ -151,12 +151,27 @@ let TABLE = CAPACITY as unknown as Record<string, CapCell[]>;
 export function withoutCaps<T>(f: () => T): T {
   const kept = TABLE;
   TABLE = {};
+  const wasMeasuring = MEASURING;
+  MEASURING = true;
+  try {
+    return f();
+  } finally {
+    TABLE = kept;
+    MEASURING = wasMeasuring;
+  }
+}
+/** Lay out under `table` instead of the committed one (tests: a cell of 0, a missing cell). */
+export function withRowCapsTable<T>(table: Record<string, RowCaps[]>, f: () => T): T {
+  const kept = TABLE;
+  TABLE = table as typeof TABLE;
   try {
     return f();
   } finally {
     TABLE = kept;
   }
 }
+/** True while the capacity script measures: no field is checked against a table it is writing. */
+let MEASURING = false;
 export function capsOf(age: Age, n: number, o: { icons: boolean; lead: boolean }) {
   const cells = TABLE[age] ?? [];
   return cells.find((c) => c.items === n && c.icons === o.icons && c.withLead === o.lead);
@@ -821,16 +836,28 @@ function report(age: Age, input: TemplateInput, items: RowItem[], icons: boolean
   });
   const row = (field: string, value: string, measured?: FieldCap): RowField => {
     const chars = value.length;
-    // A hard maximum of 0: nothing fitted with the table's default words, so no limit is known.
-    const cap = measured?.hardMax ? measured : undefined;
+    // A missing cell or a hard maximum of 0 is "nothing fits here", never "no limit" (TEACH-68
+    // part b): any words in that field are over.
+    // While the table is measured no field is checked.
+    if (MEASURING)
+      return {
+        field,
+        path: field.replace(/\[(\d+)\]/g, ".$1"),
+        chars,
+        cap: 0,
+        hardMax: 0,
+        tight: false,
+        over: false,
+      };
+    const cap = measured ?? { cap: 0, hardMax: 0 };
     return {
       field,
       path: field.replace(/\[(\d+)\]/g, ".$1"),
       chars,
-      cap: cap ? cap.cap : 0,
-      hardMax: cap ? cap.hardMax : 0,
-      tight: !!cap && chars > cap.cap,
-      over: !!cap && chars > cap.hardMax,
+      cap: cap.cap,
+      hardMax: cap.hardMax,
+      tight: chars > cap.cap,
+      over: chars > cap.hardMax,
     };
   };
   const out = [row("heading", input.heading.trim(), caps?.heading)];

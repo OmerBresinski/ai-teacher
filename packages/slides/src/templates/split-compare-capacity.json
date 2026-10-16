@@ -58,19 +58,19 @@
       },
       "quote": {
         "title": {
-          "cap": 13,
-          "hardMax": 22,
-          "words": 2
+          "cap": 5,
+          "hardMax": 13,
+          "words": 1
         },
         "quote": {
           "cap": 5,
-          "hardMax": 18,
+          "hardMax": 5,
           "words": 1
         },
         "text": {
-          "cap": 0,
-          "hardMax": 0,
-          "words": 0
+          "cap": 29,
+          "hardMax": 41,
+          "words": 5
         }
       },
       "text": {

@@ -65,10 +65,15 @@ describe("split-compare reveal (row 3)", () => {
         test(`${zone}, ${n} sides, side 2 hidden, ${stage}`, () => {
           const r = laid(zone, n, 1, stage);
           const els = r.slide.elements;
-          // Over only in a field that holds no words at this age (hard maximum 0: KS1's three quotes).
-          const none = Object.entries(splitTable(splitGroupOf(stage), n as 2 | 3, zone))
-            .filter(([, l]) => !l.hardMax)
-            .map(([f]) => f);
+          // KS1's three quoted sides hold a quote of a word beside their words (TEACH-68 part b):
+          // the writer never offers them (layout-menu's quote budget), so these quotes are over.
+          // The writer never offers KS1's three quoted sides: quoteBudget is below MIN_QUOTE.
+          const none =
+            zone === "quote" && n === 3 && splitGroupOf(stage) === "KS1"
+              ? ["quote"]
+              : Object.entries(splitTable(splitGroupOf(stage), n as 2 | 3, zone))
+                  .filter(([, l]) => !l.hardMax)
+                  .map(([f]) => f);
           expect(r.over.filter((o) => !none.some((f) => o.endsWith(`.${f}`)))).toEqual([]);
           expect(steps(els)).toBe(1);
 

@@ -6,7 +6,9 @@
  * it the field is named in `over`), on every theme. Measured as the pilot's `caps.mjs` does: with
  * icons and a pie; each list field is the smaller of two runs, every row long and one row long
  * beside short siblings; `withLead` holds the row caps beside a one-line lead. A cap of 0 means
- * that count is never comfortable. `pictures` is the same table measured with a 4:3 photo on every
+ * that count is never comfortable even beside short siblings: a field that gives 0 beside the
+ * stand-in rows is re-measured beside `TINY` ones, so a 0 left in the table means the count itself
+ * does not hold there (six rows at early and primary), never that a stand-in overflowed. `pictures` is the same table measured with a 4:3 photo on every
  * row (Greg's D1 pick, 14 Oct): the panel then narrows and each row's words sit beside a tile. Regenerate: `bun packages/slides/src/templates/panel-list-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
@@ -27,6 +29,19 @@ const SHORT: PanelRow[] = [
   { name: "Leaves", text: "Give us fibre.", icon: "leaf" },
   { name: "Sun", text: "Gives vitamin D.", icon: "sun" },
   { name: "Heart", text: "Pumps the blood.", icon: "heart" },
+];
+/**
+ * The siblings a field is re-measured beside when `SHORT`'s gave 0 (TEACH-68 part b): at five or
+ * six rows a 20-character sibling line is already over its own limit, so its overflow sank every
+ * field to 0 although short rows fit. Each sibling here is within any limit the cell has.
+ */
+const TINY: PanelRow[] = [
+  { name: "Fruit", text: "Vitamins.", icon: "apple" },
+  { name: "Fish", text: "Muscles.", icon: "fish" },
+  { name: "Water", text: "Cools us.", icon: "water" },
+  { name: "Leaf", text: "Fibre.", icon: "leaf" },
+  { name: "Sun", text: "Vitamin D.", icon: "sun" },
+  { name: "Heart", text: "Pumps.", icon: "heart" },
 ];
 
 /**
@@ -109,8 +124,9 @@ function rowCap(
   n: number,
   field: "name" | "text",
   lead?: string,
+  siblings: PanelRow[] = SHORT,
 ): Cap {
-  const base = SHORT.slice(0, n);
+  const base = siblings.slice(0, n);
   const allLong = (ch: number) =>
     inputOf(
       base.map((r, i) => ({ ...r, [field]: sample(ch, i * 3) })),
@@ -141,21 +157,50 @@ export function measurePanelCaps(
   }
 }
 
-function measureCells(
+type Cells = Omit<PanelCaps, "pictures">;
+/** Each 0 in `a` (a cap or a hard maximum) taken from `b`, its words with it. */
+function fillZeros(a: Cells, b: () => Cells): Cells {
+  const zero = (c: Cap) => c.cap === 0 || c.hardMax === 0;
+  if (![a.heading, a.lead, a.name, a.text, a.withLead.name, a.withLead.text].some(zero)) return a;
+  const f = b();
+  const pick = (x: Cap, y: Cap): Cap => ({
+    cap: x.cap || y.cap,
+    hardMax: x.hardMax || y.hardMax,
+    words: x.cap ? x.words : y.words,
+  });
+  return {
+    heading: pick(a.heading, f.heading),
+    lead: pick(a.lead, f.lead),
+    name: pick(a.name, f.name),
+    text: pick(a.text, f.text),
+    withLead: {
+      name: pick(a.withLead.name, f.withLead.name),
+      text: pick(a.withLead.text, f.withLead.text),
+    },
+  };
+}
+
+/** A cell beside `SHORT` siblings; a field that gave 0 there is re-measured beside `TINY`'s. */
+function measureCells(age: AgeKey, n: number, themes: readonly Theme[]): Cells {
+  return fillZeros(measureBeside(age, n, themes, SHORT), () => measureBeside(age, n, themes, TINY));
+}
+
+function measureBeside(
   age: AgeKey,
   n: number,
   themes: readonly Theme[],
-): Omit<PanelCaps, "pictures"> {
+  siblings: PanelRow[],
+): Cells {
   const stage = PANEL_AGES[age];
-  const rows = SHORT.slice(0, n);
+  const rows = siblings.slice(0, n);
   return {
     heading: capOf(themes, stage, (ch) => inputOf(rows, sample(ch, 2)), 2),
     lead: capOf(themes, stage, (ch) => inputOf(rows, HEADING, sample(ch, 5)), 5),
-    name: rowCap(themes, stage, n, "name"),
-    text: rowCap(themes, stage, n, "text"),
+    name: rowCap(themes, stage, n, "name", undefined, siblings),
+    text: rowCap(themes, stage, n, "text", undefined, siblings),
     withLead: {
-      name: rowCap(themes, stage, n, "name", PANEL_FIT_LEAD),
-      text: rowCap(themes, stage, n, "text", PANEL_FIT_LEAD),
+      name: rowCap(themes, stage, n, "name", PANEL_FIT_LEAD, siblings),
+      text: rowCap(themes, stage, n, "text", PANEL_FIT_LEAD, siblings),
     },
   };
 }

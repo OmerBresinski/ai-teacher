@@ -35,14 +35,16 @@ const NAME = 6;
 const LINE = 16;
 const LIMIT = 160;
 
-type Fill = { name?: number; line?: number; only?: boolean };
+/** The siblings' lengths while a field is measured (default NAME and LINE). */
+type Base = { name?: number; line?: number };
+type Fill = { name?: number; line?: number; only?: boolean; base?: Base };
 /** The strip's input: every field at its default length unless `fill` sets it (`only`: stage 0 alone). */
 export function stagesInput(n: number, vis: StageVis, f: Fill = {}): TemplateInput {
   const at = (k: number, v: number | undefined, d: number) =>
     v !== undefined && (!f.only || k === 0) ? v : d;
   const stages: StageItem[] = Array.from({ length: n }, (_, k) => ({
-    name: WORD.slice(0, at(k, f.name, NAME)),
-    line: sample(at(k, f.line, LINE), k),
+    name: WORD.slice(0, at(k, f.name, f.base?.name ?? NAME)),
+    line: sample(at(k, f.line, f.base?.line ?? LINE), k),
     icon: ICONS[k % ICONS.length] as string,
     ...(vis === "pictures" ? { picture: { photo: "https://images.test/stage.jpg", alt: "" } } : {}),
   }));
@@ -85,9 +87,10 @@ const fitsAt = (
   field: "name" | "line",
   chars: number,
   mode: "fit" | "comfort",
+  base?: Base,
 ) =>
-  stagesHold(age, n, vis, { [field]: chars }, mode) &&
-  stagesHold(age, n, vis, { [field]: chars, only: true }, mode);
+  stagesHold(age, n, vis, { [field]: chars, base }, mode) &&
+  stagesHold(age, n, vis, { [field]: chars, only: true, base }, mode);
 
 /** The longest `chars` (1-character steps for a name, 2 for a line) that holds, 0 when none does. */
 function longest(ok: (chars: number) => boolean, from: number, to: number, step: number): number {
@@ -99,12 +102,19 @@ function longest(ok: (chars: number) => boolean, from: number, to: number, step:
   return best;
 }
 
-/** One cell: a name's and a line's cap and hard maximum, as characters. */
+/**
+ * One cell: a name's and a line's cap and hard maximum, as characters. A field that gives 0 beside
+ * the default siblings is re-measured beside the shortest each sibling may be (a 3-letter name, a
+ * 10-character line, the searches' own floors), so a sibling over its own limit never sinks it to
+ * 0 (TEACH-68 part b). A 0 left means the count holds no stage there at all.
+ */
 export function measureCell(age: Age, n: number, vis: StageVis): StageCell {
   const name = (mode: "fit" | "comfort") =>
-    longest((c) => fitsAt(age, n, vis, "name", c, mode), 3, WORD.length, 1);
+    longest((c) => fitsAt(age, n, vis, "name", c, mode), 3, WORD.length, 1) ||
+    longest((c) => fitsAt(age, n, vis, "name", c, mode, { name: 3, line: 10 }), 3, WORD.length, 1);
   const line = (mode: "fit" | "comfort") =>
-    longest((c) => fitsAt(age, n, vis, "line", c, mode), 10, LIMIT, 2);
+    longest((c) => fitsAt(age, n, vis, "line", c, mode), 10, LIMIT, 2) ||
+    longest((c) => fitsAt(age, n, vis, "line", c, mode, { name: 3 }), 10, LIMIT, 2);
   return {
     n,
     vis,
