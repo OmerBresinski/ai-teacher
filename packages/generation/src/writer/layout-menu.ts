@@ -1,3 +1,7 @@
+import { SHORT_ANSWER_WORDS } from "@tj/slides/templates/end-answers";
+import END_ANSWERS_CAPACITY from "@tj/slides/templates/end-answers-capacity.json" with {
+  type: "json",
+};
 import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import ITEMS_ROW_CAPACITY from "@tj/slides/templates/items-row-capacity.json" with { type: "json" };
 import PANEL_LIST_CAPACITY from "@tj/slides/templates/panel-list-capacity.json" with {
@@ -413,12 +417,18 @@ const PIC_MAX: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
  */
 export const TILE_WORDS = 2;
 /**
- * TODO(TEACH-191 part b): read these from `end-answers-capacity.json` when #536 lands.
- * The end Answers ledger's answer forms (TEACH-191 part b, `end-answers.ts` `answerItem`): a short
- * answer is at most 4 words, the longest sentence class it measures is 20 words, and a worked line
- * is the gold's 8 words. Read them from `end-answers-capacity.json` once that table is on master.
+ * The end Answers ledger's answer forms (TEACH-191 part b): a short answer is what the ledger
+ * parses as one (`SHORT_ANSWER_WORDS`, `end-answers.ts` `answerItem`), and the longest model
+ * sentence is the longest sentence class the ledger's capacity table measures
+ * (`end-answers-capacity.json`, "N-word sentences"). Working is one calculation line, the form the
+ * table measures for worked answers.
  */
-export const ANSWER_WORDS = { short: 4, sentence: 20, working: 8 } as const;
+const longestSentence = Math.max(
+  ...Object.values(END_ANSWERS_CAPACITY as Record<string, Record<string, number>>).flatMap((k) =>
+    Object.keys(k).map((x) => Number(/^(\d+)-word sentences$/.exec(x)?.[1] ?? 0)),
+  ),
+);
+export const ANSWER_WORDS = { short: SHORT_ANSWER_WORDS, sentence: longestSentence } as const;
 
 type QuickCell = { questions: CapCell; answers: CapCell };
 const QUICK = QUICK_CAPACITY as unknown as Record<Age, Record<string, QuickCell>>;
@@ -528,7 +538,7 @@ export const EXIT_TICKET_WRITER_MENU: Record<WriterStage, string> = byStage((a) 
 });
 
 // writer-prompt: owned by TEACH-110 v. One line for the three layouts that carry answers.
-export const ANSWERS_RULE = `Answers on question-set, practice and exit-ticket are what a pupil should write, never a mark scheme: a number with its unit, a word or a phrase of up to ${ANSWER_WORDS.short} words, or True or False with a few words correcting a false statement; on practice and exit-ticket, an explain or describe task's answer may be one model sentence of up to ${ANSWER_WORDS.sentence} words, and the steps of a calculation go in working, up to ${ANSWER_WORDS.working} words or one calculation, else null; the answer itself holds no working. Code reveals a quick check's answers on its slide and gathers the practice and exit-ticket answers onto Answers slides at the end of the deck.`;
+export const ANSWERS_RULE = `Answers on question-set, practice and exit-ticket are what a pupil should write, never a mark scheme: a number with its unit, a word or a phrase of up to ${ANSWER_WORDS.short} words, or True or False with a few words correcting a false statement; on practice and exit-ticket, an explain or describe task's answer may be one model sentence of up to ${ANSWER_WORDS.sentence} words, and the steps of a calculation go in working, as one calculation line, else null; the answer itself holds no working. Code reveals a quick check's answers on its slide and gathers the practice and exit-ticket answers onto Answers slides at the end of the deck.`;
 
 /** What the question layouts offer at a stage: the schema's array bounds come from here. */
 export function questionOffer(stage: WriterStage) {

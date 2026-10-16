@@ -221,6 +221,28 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     }
     expect(Object.keys(L.flowShapeRoutes).sort()).toEqual(Object.keys(menus).sort());
   });
+  test("the answers rule's word limits are the end Answers ledger's own", async () => {
+    const { answerItem, SHORT_ANSWER_WORDS } = await import("@tj/slides/templates/end-answers");
+    const cap = (await import("@tj/slides/templates/end-answers-capacity.json")).default as J;
+    const { ANSWERS_RULE } = await import("./layout-menu");
+    const short = Number(/a phrase of up to (\d+) words/.exec(ANSWERS_RULE)?.[1]);
+    const sentence = Number(/one model sentence of up to (\d+) words/.exec(ANSWERS_RULE)?.[1]);
+    expect(short).toBe(SHORT_ANSWER_WORDS);
+    // A short answer at the limit stays a short answer in the ledger; one word more is a sentence.
+    const words = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
+    expect("a" in answerItem(1, words(short))).toBe(true);
+    expect("s" in answerItem(1, words(short + 1))).toBe(true);
+    // The sentence limit is a sentence class the ledger's capacity table measures at every stage.
+    for (const stage of Object.keys(cap))
+      expect(cap[stage][`${sentence}-word sentences`]).toBeGreaterThan(0);
+    // Code's " — " join is read back as answer plus working.
+    expect(answerItem(1, "20 m/s — 100 ÷ 5 = 20")).toEqual({
+      n: 1,
+      a: "20 m/s",
+      work: "100 ÷ 5 = 20",
+    });
+    expect(ANSWERS_RULE).not.toMatch(/working, up to \d+/);
+  });
   test("the answers rule slot is required exactly once", () => {
     const t = PILOT_PACKS["v4.7"].system.KS2;
     expect(t).toContain("Answers on question-set");

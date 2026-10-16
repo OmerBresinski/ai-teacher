@@ -748,6 +748,8 @@ const answered = (it: AnswerItem) =>
  * dash or colon) as a chip, a short answer of at most four words (with optional working after an
  * em dash or " = " line) bold, anything longer as a sentence model answer.
  */
+/** A short answer (bold, with optional working) is at most this many words; longer is a sentence. */
+export const SHORT_ANSWER_WORDS = 4;
 export function answerItem(n: number, raw: string): AnswerItem {
   const v = raw.trim();
   const tf = /^(true|false)\b[\s.:,;–—-]*(.*)$/i.exec(v);
@@ -756,9 +758,9 @@ export function answerItem(n: number, raw: string): AnswerItem {
     return { n, tf: (tf[1] as string).toLowerCase() === "true", ...(why ? { why } : {}) };
   }
   const worked = /^(.{1,40}?)\s+[—–]\s+(.+)$/.exec(v);
-  if (worked && words(worked[1] as string) <= 4)
+  if (worked && words(worked[1] as string) <= SHORT_ANSWER_WORDS)
     return { n, a: (worked[1] as string).trim(), work: (worked[2] as string).trim() };
-  return words(v) <= 4 ? { n, a: v } : { n, s: v };
+  return words(v) <= SHORT_ANSWER_WORDS ? { n, a: v } : { n, s: v };
 }
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
