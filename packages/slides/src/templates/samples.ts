@@ -168,5 +168,16 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         { name: "Blood vessels", text: "Tubes that blood travels through.", icon: "vessels" },
       ],
     },
+    // TEACH-17 part b (C1): the worked example.
+    {
+      template: "worked",
+      heading: "Solve 3x + 5 = 20",
+      lines: [
+        { eq: "3x + 5 = 20" },
+        { move: "Subtract 5 from both sides", eq: "3x = 15" },
+        { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+      ],
+      check: "3 × *5* + 5 = 20",
+    },
   ];
 }

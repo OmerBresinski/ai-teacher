@@ -30,6 +30,8 @@ const ALL: TemplateId[] = [
   "panel-list",
   "split-compare",
   "items-row",
+  // TEACH-17 part b (C1).
+  "worked",
 ];
 
 type Sized = {

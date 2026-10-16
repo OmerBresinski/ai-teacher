@@ -126,7 +126,9 @@ export function layDraft(
         if (hasVisual(held.slide.elements)) m = held;
       }
       // Pilot layouts come out of `materialise` with the closed slide's own ids already.
-      const shown = withoutReveals(m.slide);
+      // TEACH-17 part b (C1): a worked example's rows are its reveals, not hidden answers; the
+      // working writes in as it comes, so its elements are the closed slide's from the first row.
+      const shown = s.template === "worked" ? m.slide : withoutReveals(m.slide);
       // A pilot slide laid without its group (a diagram it could not hold) is named like any other.
       const ided = isStableGroupSlide(shown, ctx.index)
         ? (({ question: _q, ...rest }) => rest)(shown)
