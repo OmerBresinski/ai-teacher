@@ -213,7 +213,8 @@ describe("reasons: counts, caps and over (never truncated)", () => {
             `${chain ? "chain" : "reasons"}-${n}`
           ] as never,
         );
-  });
+    // Fifteen cells of binary search on every theme: about 9 s on the CI runner, past bun's 5 s.
+  }, 120_000);
 
   test("a cap is never over its hard maximum, and a count the layout refuses is all 0", () => {
     for (const age of ["early", "primary", "secondary"] as const)
