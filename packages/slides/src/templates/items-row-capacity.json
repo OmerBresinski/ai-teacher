@@ -533,11 +533,11 @@
       "withLead": true,
       "name": {
         "cap": 0,
-        "hardMax": 12
+        "hardMax": 16
       },
       "text": {
         "cap": 0,
-        "hardMax": 0
+        "hardMax": 12
       },
       "lead": {
         "cap": 0,
@@ -617,11 +617,11 @@
       "withLead": true,
       "name": {
         "cap": 0,
-        "hardMax": 12
+        "hardMax": 16
       },
       "text": {
         "cap": 0,
-        "hardMax": 0
+        "hardMax": 12
       },
       "lead": {
         "cap": 0,
