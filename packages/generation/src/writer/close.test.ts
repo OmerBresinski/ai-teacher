@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CLOSING_DEF, closedSlides, withClose } from "./close";
-import { pilotRequest } from "./pilot-pack";
+import {
+  CLOSING_DEF,
+  closedSlides,
+  hasExitLayout,
+  NO_EXIT_LAYOUT,
+  withClose,
+  withCloseLine,
+} from "./close";
+import { PILOT_PACKS, type PilotPackId, pilotRequest } from "./pilot-pack";
+import { replayRun } from "./replay-fixture";
 import { runWriter, WriterIncompleteError } from "./stage";
 
 /*
@@ -67,7 +75,15 @@ describe("withClose: the last slide is a required field", () => {
       properties: { slides: { items: { anyOf: [{ $ref: "#/$defs/hinge" }] } } },
       $defs: { hinge: {} },
     };
-    expect(() => withClose(schema, true)).toThrow(/no exit-ticket layout/);
+    expect(hasExitLayout(schema)).toBe(false);
+    expect(() => withClose(schema, true)).toThrow(NO_EXIT_LAYOUT);
+  });
+  test("every pack in the repo offers an exit ticket, so none skips the requirement", () => {
+    for (const id of Object.keys(PILOT_PACKS) as PilotPackId[])
+      for (const ks of ["KS1", "KS2", "KS3"])
+        expect(hasExitLayout(pilotRequest(id, ks, {}, (sc) => sc).schema as J), `${id} ${ks}`).toBe(
+          true,
+        );
   });
 });
 
@@ -130,5 +146,84 @@ describe("runWriter: a writer output without its exit ticket is never laid or st
     expect((error as WriterIncompleteError).deterministic).toBe(false);
     expect(editable).toBe(false);
     expect(events.some((e) => e.ev === "exit-ticket-missing")).toBe(true);
+  });
+});
+
+describe("withCloseLine: the context names close", () => {
+  const user = "Topic: Plants\nExit ticket: on the last slide\n\nObjectives:\n1. Name parts\n";
+  test("on the slides: the line follows the exit-ticket line", () => {
+    const lines = withCloseLine(user, true).split("\n");
+    expect(lines[2]).toBe("Close (the last slide, after slides): the exit ticket.");
+    expect(lines.filter((l) => l.startsWith("Close"))).toHaveLength(1);
+  });
+  test("on the worksheet: close sends the class to the worksheet", () => {
+    expect(withCloseLine(user, false).split("\n")[2]).toContain("on their worksheet");
+  });
+  test("a context with no exit-ticket line gets it at the end", () => {
+    expect(withCloseLine("Topic: Plants\n", true)).toBe(
+      "Topic: Plants\nClose (the last slide, after slides): the exit ticket.\n",
+    );
+  });
+});
+
+describe("live writing: close is drafted and opened like any slide (draft mode)", async () => {
+  type El = { id: string; children?: El[] };
+  const flat = (els: El[]): El[] => els.flatMap((e) => [e, ...flat(e.children ?? [])]);
+  const pieces = (text: string) => {
+    const out: string[] = [];
+    for (let at = 0; at < text.length; at += 7) out.push(text.slice(at, at + 7));
+    return out;
+  };
+  const CLOSE = {
+    template: "discussion",
+    heading: "Exit ticket",
+    lead: "Complete the exit ticket on your worksheet now.",
+    picture: null,
+  };
+  // The saved run (worksheet setting) with its last slide written as `close`.
+  const asClose = (text: string) => {
+    const out = JSON.parse(text) as { slides: J[] };
+    out.slides.pop();
+    return JSON.stringify({ ...out, close: CLOSE });
+  };
+  const drafts = new Map<number, El[][]>();
+  const events: string[] = [];
+  const run = await replayRun("y5-maths-fractions-of-amounts", {
+    stream: pieces,
+    text: asClose,
+    visual: () => ({ status: "pending" }),
+    onStreamEnd: () => events.push("stream-end"),
+    hooks: {
+      draft: { ms: 0 },
+      onDraftSlide: (i, s) => {
+        events.push(`draft:${i}`);
+        drafts.set(i, [...(drafts.get(i) ?? []), s.elements as unknown as El[]]);
+      },
+      onSlide: (i) => {
+        events.push(`slide:${i}`);
+      },
+    },
+  });
+  // The closing slide's deck index: the slide after the last of `slides` (title 0, objectives 1).
+  const i = run.slides.findIndex((s) => JSON.stringify(s).includes(CLOSE.lead));
+
+  test("the closing slide is the deck's last written slide", () => {
+    const last = run.slides.filter((s) => !(s as { answersRole?: unknown }).answersRole).at(-1);
+    expect(JSON.stringify(last)).toContain(CLOSE.lead);
+  });
+  test("its draft comes before the stream ends, and the slide opens before it ends", () => {
+    expect(i).toBeGreaterThan(2);
+    expect(Math.max(...drafts.keys())).toBe(i);
+    const end = events.indexOf("stream-end");
+    expect(events.indexOf(`draft:${i}`)).toBeGreaterThan(-1);
+    expect(events.indexOf(`draft:${i}`)).toBeLessThan(end);
+    expect(events.indexOf(`slide:${i}`)).toBeLessThan(end);
+  });
+  test("its draft ids carry its own prefix and survive the hand-over", () => {
+    const last = (drafts.get(i) ?? []).at(-1) ?? [];
+    for (const e of flat(last)) expect(e.id).toStartWith(`d-s${i + 1}-`);
+    const shown = run.slides[i] as unknown as { elements: El[] };
+    const ids = new Set(flat(shown.elements).map((e) => e.id));
+    expect(flat(last).filter((e) => ids.has(e.id)).length).toBeGreaterThan(0);
   });
 });

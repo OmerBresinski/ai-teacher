@@ -440,6 +440,9 @@ export * from "./planner/testing";
  * A saved lesson writer answer and its notes answer (the Year 5 fractions evidence run), for
  * tests that run the writer planner through the jobs with a fake model (TEACH-110 part b).
  */
+/** The answers to `writerFixture`'s exit ticket (its three jug questions). */
+export const EXIT_ANSWERS = ["9 litres", "10 litres", "Jug B: it holds exactly 10 litres"];
+
 export function writerFixture(): { main: string; notes: string } {
   const dir = new URL("./writer/fixtures/replay/y5-maths-fractions-of-amounts/", import.meta.url);
   const read = (f: string) => readFileSync(new URL(f, dir), "utf8");
@@ -451,7 +454,15 @@ export function writerFixture(): { main: string; notes: string } {
   };
   const { picture: _picture, ...last } = main.slides.pop() ?? {};
   return {
-    main: JSON.stringify({ ...main, close: { ...last, template: "exit-ticket" } }, null, 2),
+    main: JSON.stringify(
+      {
+        ...main,
+        // Its answers, as the writer now gives them with each question.
+        close: { ...last, template: "exit-ticket", answers: EXIT_ANSWERS },
+      },
+      null,
+      2,
+    ),
     notes: read("notes.json"),
   };
 }

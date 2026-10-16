@@ -8,6 +8,7 @@ import { WRITER_PLANNED_VERSION } from "../stages/objectives-first";
 import { write } from "../stages/write";
 import {
   callLimitedBudget,
+  EXIT_ANSWERS,
   initialState,
   recordingDeps,
   sampleBriefLesson,
@@ -62,6 +63,26 @@ const fakeAi = (on: (name: string, call: FakeCall) => string | undefined = () =>
       return "{}";
     },
   });
+
+describe("the exit ticket written in close (TEACH-110 part ab)", () => {
+  test("it is the deck's last written slide, and the Answers slides carry its answers", async () => {
+    const close = (JSON.parse(fixture.main) as { close: { questions: string[] } }).close;
+    const out = await write(initialState(planned()), recordingDeps(fakeAi()));
+    const slides = out.lesson.slides;
+    const answers = slides.filter((sl) => sl.answersRole);
+    const written = slides.filter((sl) => !sl.answersRole);
+    const text = (sl: unknown) => JSON.stringify(sl);
+    // The exit ticket's first question is on the last written slide (or its continuation).
+    expect(written.slice(-2).some((sl) => text(sl).includes(close.questions[0] as string))).toBe(
+      true,
+    );
+    expect(answers.length).toBeGreaterThan(0);
+    // The Answers slides carry the exit ticket's answers, after the practice slides' answers.
+    const all = answers.map(text).join("");
+    for (const a of EXIT_ANSWERS) expect(all).toContain(a);
+    expect(all).toContain("EXIT");
+  });
+});
 
 describe("a stop is never swallowed", () => {
   test("a cancel after the editable save: the stage rejects, no deck is saved as ready", async () => {

@@ -28,6 +28,35 @@ const nameOf = (ref: J) =>
     .pop() ?? "";
 const isExit = (ref: J) => nameOf(ref).split("~")[0] === EXIT_TICKET;
 
+/** Why a lesson cannot be written: its exit ticket belongs on the slides and no layout holds one. */
+export const NO_EXIT_LAYOUT = "no exit-ticket layout: the lesson cannot end with its check";
+
+/** True when the writer's slide menu offers an exit ticket. Every pack in the repo does. */
+export function hasExitLayout(schema: J): boolean {
+  const slides = (schema.properties as Record<string, J> | undefined)?.slides;
+  const anyOf = ((slides?.items as { anyOf?: J[] } | undefined)?.anyOf ?? []) as J[];
+  return anyOf.some(isExit);
+}
+
+/*
+ * The context names `close` (the pinned bundles' user text is byte-exact, and the packs' system
+ * text says "The exit ticket goes where the context says"), so the line goes in after the
+ * context's own exit-ticket line. Code adds it, so no pinned prompt and no pack's size changes.
+ */
+const LINE_ON_SLIDES = "Close (the last slide, after slides): the exit ticket.";
+const LINE_ON_WORKSHEET =
+  "Close (the last slide, after slides): one slide telling the class to complete the exit ticket on their worksheet.";
+
+/** The user turn with the `close` line after its "Exit ticket:" line (else at the end). */
+export function withCloseLine(user: string, exitTicketOnSlides: boolean): string {
+  const line = exitTicketOnSlides ? LINE_ON_SLIDES : LINE_ON_WORKSHEET;
+  const lines = user.split("\n");
+  const at = lines.findIndex((l) => l.startsWith("Exit ticket:"));
+  if (at < 0) return `${user.replace(/\n*$/, "")}\n${line}\n`;
+  lines.splice(at + 1, 0, line);
+  return lines.join("\n");
+}
+
 const CLOSE_ON_SLIDES =
   "The lesson's last slide, after every slide in slides: the exit ticket. The flow's last entry plans it.";
 const CLOSE_ON_WORKSHEET =
@@ -41,8 +70,7 @@ export function withClose(schema: J, exitTicketOnSlides: boolean): J {
   const slides = props.slides as J;
   const items = slides.items as { anyOf: J[] };
   const exits = items.anyOf.filter(isExit);
-  if (exitTicketOnSlides && exits.length === 0)
-    throw new Error("writer schema: no exit-ticket layout to close the lesson with");
+  if (exitTicketOnSlides && exits.length === 0) throw new Error(NO_EXIT_LAYOUT);
   let close: J;
   if (exitTicketOnSlides) {
     close = { anyOf: exits, description: CLOSE_ON_SLIDES };
