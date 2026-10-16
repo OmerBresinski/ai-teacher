@@ -17,7 +17,15 @@ const flow = {
 const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
 /** Templates added since the snapshot: an old lesson cannot hold them, so they are not in it. */
 // `worked` (TEACH-17 part b) is new: no saved lesson can hold one, so it has no master hash.
-const NEWER = new Set<string>(["panel-list", "split-compare", "items-row", "worked", "stages"]);
+// `figure` (TEACH-239 part b) is new too: no saved lesson holds one.
+const NEWER = new Set<string>([
+  "panel-list",
+  "split-compare",
+  "items-row",
+  "worked",
+  "stages",
+  "figure",
+]);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
   ...templateSamples()
     .filter((s) => !NEWER.has(s.template))

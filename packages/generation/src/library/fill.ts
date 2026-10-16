@@ -321,6 +321,10 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
  * line set less than 0.9 of its type size below the one above (lines on top of one another).
  * Undefined when neither.
  */
+/** `grownTextFault`'s reason when a word is split across a label's lines or lost. */
+export const WORDS_SPLIT = "its words split or change across lines";
+/** The label-word split rule's step (TEACH-239 part b): the type scale steps down by this. */
+export const WHOLE_WORD_STEP = 0.05;
 export function grownTextFault(baseSvg: string, grownSvg: string): string | undefined {
   const words = (svg: string) =>
     drawnLines(svg)
@@ -329,7 +333,7 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
       .sort()
       .join(" ");
   const grown = drawnLines(grownSvg);
-  if (words(baseSvg) !== words(grownSvg)) return "its words split or change across lines";
+  if (words(baseSvg) !== words(grownSvg)) return WORDS_SPLIT;
   for (const t of grown)
     if (t.pitch.some((d) => d < 0.9 * t.fs))
       return `its lines "${t.lines.join(" / ").slice(0, 30)}" sit on top of one another`;
@@ -455,6 +459,7 @@ export async function libraryDiagram(
     const place = ask.place;
     const offBefore = new Set(full.offSlide);
     const baseSvg = full.svg;
+    const baseDrawing = full;
     // The type scale `full` was drawn at, and the smallest scale found too big to draw cleanly.
     let keptScale = 1;
     let tooBig = Number.POSITIVE_INFINITY;
@@ -495,6 +500,28 @@ export async function libraryDiagram(
       full = grown;
       keptScale = ts;
       if (ts >= LABEL_FLOOR_MAX) break;
+    }
+    // TEACH-239 part b (C7): the label-word split rule. A grown size that breaks a word across a
+    // label's lines steps down 0.05 at a time until every word is whole (or back at the kit's size).
+    const splits = (svg: string) =>
+      nonFatalSync(
+        () => grownTextFault(baseSvg, svg) === WORDS_SPLIT,
+        () => false,
+      );
+    while (keptScale > 1 && splits(full.svg)) {
+      const ts = Math.round((keptScale - WHOLE_WORD_STEP) * 100) / 100;
+      if (ts <= 1) {
+        full = baseDrawing;
+        keptScale = 1;
+        break;
+      }
+      const down = await nonFatal(
+        () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
+        (e) => String(e).slice(0, 160),
+      );
+      if (typeof down === "string") break;
+      full = down;
+      keptScale = ts;
     }
     typeScale = keptScale;
     log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
