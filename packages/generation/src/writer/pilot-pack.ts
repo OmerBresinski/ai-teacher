@@ -47,6 +47,8 @@ export type PilotPack = {
     basePatches?: J;
     /** Base defs a pack layout replaces, by exact key, removed before the pack's defs go in (v4.7). */
     replaced?: string[];
+    /** A flow item's size, how much the slide says, written before `teaches` (TEACH-110 part aa). */
+    flowSize?: J;
   };
   base: Record<Ks, J>;
   system: Record<Ks, string>;
@@ -177,6 +179,16 @@ export function pilotRequest(
     fp.items.properties.teaches = pf.items.properties.teaches;
   }
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
+  if (pack.layouts.flowSize) {
+    // Sized at planning, so the layout step picks a fit that holds it (never squeezed at writing).
+    const { teaches, ...rest } = fp.items.properties;
+    fp.items.properties = { ...rest, size: pack.layouts.flowSize, teaches };
+    fp.items.required = [
+      ...fp.items.required.filter((k: string) => k !== "teaches"),
+      "size",
+      "teaches",
+    ];
+  }
   const replaced = new Set(pack.layouts.replaced ?? []);
   for (const k of replaced) delete schema.$defs[k];
   const defs = {

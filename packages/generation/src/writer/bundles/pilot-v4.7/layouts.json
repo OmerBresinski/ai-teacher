@@ -1314,6 +1314,7 @@
     }
   },
   "retired": ["compare", "cards-grid"],
+  "flowSize": { "type": "string", "description": "how many items, each words or a sentence" },
   "flowShapes": [
     "recall",
     "hook",
