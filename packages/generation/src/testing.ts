@@ -440,11 +440,29 @@ export * from "./planner/testing";
  * A saved lesson writer answer and its notes answer (the Year 5 fractions evidence run), for
  * tests that run the writer planner through the jobs with a fake model (TEACH-110 part b).
  */
+/** The answers to `writerFixture`'s exit ticket (its three jug questions). */
+export const EXIT_ANSWERS = ["9 litres", "10 litres", "Jug B: it holds exactly 10 litres"];
+
 export function writerFixture(): { main: string; notes: string } {
   const dir = new URL("./writer/fixtures/replay/y5-maths-fractions-of-amounts/", import.meta.url);
   const read = (f: string) => readFileSync(new URL(f, dir), "utf8");
+  // The saved run predates `close` (TEACH-110 part ab) and its lesson ends on practice. A lesson
+  // with the exit ticket on the slides must end with it, so its last slide becomes the exit ticket
+  // in `close`, as the writer's schema now asks: same slide count, same words.
+  const main = JSON.parse((JSON.parse(read("main.json")) as { text: string }).text) as {
+    slides: Record<string, unknown>[];
+  };
+  const { picture: _picture, ...last } = main.slides.pop() ?? {};
   return {
-    main: (JSON.parse(read("main.json")) as { text: string }).text,
+    main: JSON.stringify(
+      {
+        ...main,
+        // Its answers, as the writer now gives them with each question.
+        close: { ...last, template: "exit-ticket", answers: EXIT_ANSWERS },
+      },
+      null,
+      2,
+    ),
     notes: read("notes.json"),
   };
 }

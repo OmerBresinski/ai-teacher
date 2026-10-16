@@ -123,7 +123,12 @@ describe("a Year 12 lesson's requests", () => {
         throw new Error("no answers in this run");
       },
     };
-    await runWriter({ brief, objectives: fixture.objectives, services });
+    // The fixture predates `close` (TEACH-110 part ab): its exit ticket is on the worksheet.
+    await runWriter({
+      brief: { ...brief, exitTicketOnSlides: false },
+      objectives: fixture.objectives,
+      services,
+    });
     const P = writerBundle();
     // Activities are on by default (TEACH-101 part e): the KS3-5 text carries the KS3-5 menu.
     expect(writer?.system).toBe(withActivityMenu(contractSystem(P.systemKS3_5), "KS3-5"));

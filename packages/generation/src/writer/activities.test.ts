@@ -521,21 +521,22 @@ describe("the writer stage on a fake model", () => {
    * sent now. The system text differs only by the hinge line: swapping it back gives master's.
    */
   // Schema repinned for TEACH-75 part u: the items row is live (no off switch).
+  // Schema hashes include the required `close` field (TEACH-110 part ab); the system text is unchanged.
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
       "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
-      "cfce3e5da32beda52a8017ac0f1dde93bed38d5f6edf7e514df3300d341608ec",
+      "2360cda43688f0df817aa611617c882183d42fa9529f7f992019d86ba1461c81",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
       "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
-      "b66ddbbf8b1dc5f825809fe4b02d802f144bcac31195a615d2963e7f945bb8e2",
+      "c4b100f07cacac1e0d4e90e071693b36e8c71d92730e88ef38b9410cced89d69",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
       "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
-      "f5912eaaaf157a6517470e2ee74dfafa0d0c1e2915e185b775af76c7c95019b9",
+      "f21aebc3ac2c4f56f5337310eb537259ba16eb9a1502b4917a2413652c0d8acd",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");

@@ -25,6 +25,7 @@ import {
   referentFault,
   slideNoEmDash,
 } from "./checks";
+import { closedSlides, hasExitLayout, NO_EXIT_LAYOUT, withClose, withCloseLine } from "./close";
 import { contractSystem } from "./contract";
 import { countMiss } from "./count";
 import { writerDrawerSystem } from "./diagram-contract.gen";
@@ -592,10 +593,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         );
 
   // ── the writer call ──
-  const user = contextBlock(
-    brief,
-    run.objectives.map((t) => ({ teacher: t, pupil: "" })),
-    P.user,
+  const user = withCloseLine(
+    contextBlock(
+      brief,
+      run.objectives.map((t) => ({ teacher: t, pupil: "" })),
+      P.user,
+    ),
+    brief.exitTicketOnSlides,
   );
   const stageKey = promptStage(brief.keyStage);
   // The library's catalogue goes after base4's diagram kinds, in the system text and the schema.
@@ -646,7 +650,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const slotFill = pilot
     ? Object.keys(pilot.schema.$defs ?? {}).some((k) => k.includes("~"))
     : (run.slotFill ?? P.features?.slotFill ?? false);
-  const schema = slotFill && !pilot ? withSlotFill(unsplit, stageKey) : unsplit;
+  // The lesson's last slide is its own required field (TEACH-110 part ab): the exit ticket, or the
+  // closing slide that sends the class to the worksheet's.
+  const closable = slotFill && !pilot ? withSlotFill(unsplit, stageKey) : unsplit;
+  if (brief.exitTicketOnSlides && !hasExitLayout(closable))
+    throw new WriterIncompleteError(NO_EXIT_LAYOUT);
+  const schema = withClose(closable, brief.exitTicketOnSlides);
   const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
@@ -1113,7 +1122,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       );
       return;
     }
-    const idx = key === "title" ? 0 : key === "slides" && typeof k === "number" ? k + 2 : -1;
+    // `close` (TEACH-110 part ab) opens as the slide after the last of `slides`.
+    const idx =
+      key === "title"
+        ? 0
+        : key === "slides" && typeof k === "number"
+          ? k + 2
+          : key === "close" && nextOpen >= 2
+            ? nextOpen
+            : -1;
     if (idx < 0) return;
     if (!plan.flow || idx !== nextOpen || !value || typeof value !== "object")
       return stopStream(`slide ${idx + 1} out of order`);
@@ -1198,7 +1215,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     flow?: Plan["flow"];
     title?: S;
     slides?: S[];
+    close?: S | null;
   };
+  // Every lesson ends with its check: `close` goes back at the end, and a lesson whose exit ticket
+  // belongs on the slides and has none fails here, before anything is laid or stored.
+  const closed = closedSlides(out, brief.exitTicketOnSlides);
+  if (closed.missing) {
+    log({ ev: "exit-ticket-missing", level: "error", slides: closed.slides.length });
+    throw new WriterIncompleteError(closed.missing);
+  }
+  if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
+  out.slides = closed.slides;
   // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
   const miss =
     brief.slides.min === brief.slides.max
