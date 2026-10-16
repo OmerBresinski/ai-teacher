@@ -23,8 +23,8 @@
   },
   "primary": {
     "title": {
-      "cap": 6,
-      "hardMax": 6
+      "cap": 5,
+      "hardMax": 5
     },
     "claim": {
       "cap": 12,

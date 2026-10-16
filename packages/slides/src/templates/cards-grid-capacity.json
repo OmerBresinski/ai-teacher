@@ -54,8 +54,8 @@
     {
       "cards": 2,
       "heading": true,
-      "words": 38,
-      "chars": 188,
+      "words": 33,
+      "chars": 164,
       "label": 40
     },
     {
@@ -68,8 +68,8 @@
     {
       "cards": 3,
       "heading": true,
-      "words": 22,
-      "chars": 112,
+      "words": 19,
+      "chars": 98,
       "label": 12
     },
     {
@@ -82,8 +82,8 @@
     {
       "cards": 4,
       "heading": true,
-      "words": 13,
-      "chars": 66,
+      "words": 8,
+      "chars": 44,
       "label": 22
     }
   ],
@@ -126,7 +126,7 @@
     {
       "cards": 4,
       "heading": true,
-      "words": 17,
+      "words": 14,
       "chars": 86,
       "label": 26
     }

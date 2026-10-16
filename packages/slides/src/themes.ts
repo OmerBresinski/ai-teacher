@@ -336,8 +336,8 @@ const BASE: Theme[] = [
     radius: 6,
   },
   {
-    // Theme v2 (TEACH-152 part b; UX rulings 211, 212): the golds' warm paper, plum ink, one red
-    // accent family and a deep heading. The v2 layouts read `v2` through `v2Profile`/`v2Colors`
+    // Theme v2 (TEACH-152 part b; UX rulings 211, 212, 259): the golds' warm paper, ink headings
+    // at the gold's weight with one accent word, and one red accent family. The v2 layouts read `v2` through `v2Profile`/`v2Colors`
     // (`theme-v2.ts`); the rest of the product reads the v1 fields below like any theme.
     id: "paper",
     name: "Paper",
@@ -348,7 +348,7 @@ const BASE: Theme[] = [
       background: "#FFFAF4",
       surface: "#FFFFFF",
       ink: "#22152B",
-      heading: "#5A1530",
+      heading: "#22152B",
       muted: "#5E5066",
       accent: "#D7263D",
       accent2: "#1F5C9E",
@@ -366,7 +366,7 @@ const BASE: Theme[] = [
       [20, 1.45],
       [13, 1.2],
     ]),
-    weights: { title: 700, heading: 700, body: 400 },
+    weights: { title: 800, heading: 800, body: 400 },
     titleTracking: "-0.03em",
     radius: 13,
     v2: PAPER_V2,
@@ -388,18 +388,24 @@ const BASE: Theme[] = [
  * the themes' own sizes, which is every lesson until the writer planner binds a stage to its themes.
  */
 export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
-type StageScale = { body: number; heading: number; caption: number };
-/** Body in slide points (960 wide); display stops multiply the theme's own. */
+type StageScale = { body: number; display?: number; heading: number; caption: number };
+/**
+ * Body in slide points (960 wide); `display` is the slide heading, the golds' `--t-title` (ruling
+ * 259): 72 px at KS2 and 68 px from KS3 on a 1440 slide, the same in every theme (ruling 235).
+ * KS1 keeps the theme's own display heading (its heading stop x1.15): the early gold's 80 px
+ * leaves no room for KS1's rows, options and long titles. The other display stops multiply the
+ * theme's own.
+ */
 export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
   ks1: { body: 33, heading: 1.15, caption: 1.1 },
-  ks2: { body: 29, heading: 1.1, caption: 1.05 },
-  ks3: { body: 25, heading: 1.05, caption: 1 },
-  ks4: { body: 25, heading: 1.05, caption: 1 },
-  ks5: { body: 25, heading: 1.05, caption: 1 },
+  ks2: { body: 29, display: 48, heading: 1.1, caption: 1.05 },
+  ks3: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
+  ks4: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
+  ks5: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
 };
 /** bodySmall = body x this: the one step under body. */
 export const BODY_SMALL = 0.85;
-/** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
+/** The slide heading over the theme's heading stop, where the stage sets no display size (KS1). */
 const DISPLAY_HEADING = 1.15;
 
 /** The key stages, as a set: `in` on `KEY_STAGE_TYPE` would also accept "constructor" or "toString". */
@@ -448,7 +454,7 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
   return {
     title: Math.round(own.title * k.heading),
     subtitle: Math.round(own.subtitle * k.heading),
-    headingDisplay: Math.round(heading * DISPLAY_HEADING),
+    headingDisplay: k.display ?? Math.round(heading * DISPLAY_HEADING),
     heading,
     body: k.body,
     bodySmall: Math.round(k.body * BODY_SMALL),

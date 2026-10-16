@@ -53,7 +53,7 @@ describe("the first v2 theme (paper)", () => {
     expect(c.ink).toBe("#22152B");
     expect(c.muted).toBe("#5E5066");
     expect(c.accent).toBe("#D7263D");
-    expect(c.heading).toBe("#5A1530");
+    expect(c.heading).toBe("#22152B");
   });
 
   test("ks1 reads early at THEME.md x2/3", () => {
@@ -129,7 +129,7 @@ describe("the first v2 theme (paper)", () => {
     expect(red.connector).toEqual({ band: "#F6C9C2", dot: "#D7263D" });
     expect(green.accent).toBe("#2C8A43");
     expect(green.deep).toBe("#1F4A38");
-    expect(green.heading).toBe("#1F4A38");
+    expect(green.heading).toBe("#22152B");
     expect(green.background).toBe(red.background);
     expect(green.category).toEqual(red.category);
     expect(v2Colors(getTheme("paper"), "no-such-family").accent).toBe("#D7263D");
