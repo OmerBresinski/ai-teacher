@@ -284,6 +284,7 @@ describe("re-theme: the Answers slides follow the new faces", () => {
 
   test("Splash to Paper: the answer boxes are rebuilt, the guard keeps its id", () => {
     const base = deck();
+    const opening = JSON.stringify(base);
     const after = rethemeLesson(base, "paper", measureHeadless(getTheme("paper")), kit).lesson;
     expect(after.slides.slice(0, 2)).toEqual(practice);
     expect(after.slides[2]?.id).toBe(base.slides[2]?.id);
@@ -297,8 +298,47 @@ describe("re-theme: the Answers slides follow the new faces", () => {
     expect(answerBoxes(after).map((e) => e.h)).not.toEqual(answerBoxes(base).map((e) => e.h));
     // The same pass as the adaptive layouts: re-laying the switched lesson directly agrees.
     const switched = { ...base, themeId: "paper" };
-    expect(answerBoxes(relayLayouts(switched, kit)).map((e) => [e.y, e.h])).toEqual(
+    expect(answerBoxes(relayLayouts(switched, kit, base)).map((e) => [e.y, e.h])).toEqual(
       answerBoxes(after).map((e) => [e.y, e.h]),
     );
+    // One undo step: the switch is pure, and going back to the opening theme gives the deck back.
+    expect(JSON.stringify(base)).toBe(opening);
+    expect(rethemeFromReducer(after, base, "splash", measureHeadless(splash)).lesson).toBe(base);
+  });
+
+  test("an edited Answers slide is left byte for byte as it was", () => {
+    const base = deck();
+    const i = base.slides.findIndex((s) => s.answersRole === "answers");
+    const page = base.slides[i] as Slide;
+    const edited: Lesson = {
+      ...base,
+      slides: base.slides.map((s, k) =>
+        k === i
+          ? {
+              ...page,
+              elements: page.elements.map((e) =>
+                e.type === "text" && e.name === ANSWERS_NAMES.sentence
+                  ? { ...e, doc: doc("Firm roads, faster carts.") as never }
+                  : e,
+              ),
+            }
+          : s,
+      ),
+    };
+    const after = rethemeLesson(edited, "paper", measureHeadless(getTheme("paper")), kit).lesson;
+    const answers = (l: Lesson) =>
+      JSON.stringify(
+        l.slides
+          .filter((s) => s.answersRole)
+          .map((s) => s.elements.map((e) => [e.id, e.x, e.y, e.w, e.h, "doc" in e ? e.doc : null])),
+      );
+    expect(answers(after)).toBe(answers(edited));
+  });
+
+  test("nothing to re-lay: the same lesson object comes back", () => {
+    const base = deck();
+    expect(relayLayouts(base, kit)).toBe(base);
+    const plain = { ...base, slides: practice };
+    expect(relayLayouts(plain, kit, plain)).toBe(plain);
   });
 });

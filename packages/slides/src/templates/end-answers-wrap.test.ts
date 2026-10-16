@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement, Theme } from "@tj/domain/documents";
-import { answerGroupsOnSlides, relayEndAnswers } from "../relayout";
+import { relayEndAnswers } from "../relayout";
 import { countLines } from "../text-measure";
 import { getTheme, THEMES } from "../themes";
 import { ANSWERS_NAMES, type AnswerGroup, answerGroupsOf, endAnswerSlides } from "./end-answers";
@@ -149,106 +149,104 @@ describe("Answers rows are as tall as their wrapped words", () => {
       });
 });
 
-describe("relayEndAnswers: a re-theme builds the Answers slides in the new faces", () => {
-  const practice = (id: string, answers: string[]): Slide => ({
-    id,
+describe("relayEndAnswers: untouched Answers are rebuilt in the new faces, edited ones are kept", () => {
+  const OPTS = { skipWithKey: false } as const;
+  // Two practice slides of four long answers: at KS1 the faces decide between 3 and 5 pages.
+  const longLesson = [0, 1].map((i) => ({
+    id: `l${i}`,
     kind: "open-response",
     elements: [],
     question: {
       type: "open-response",
-      modelAnswer: answers.map((a, i) => `${i + 1}. ${a}`).join("\n"),
+      modelAnswer: [0, 1, 2, 3].map((n) => `${n + 1}. ${LONG[(i + n) % LONG.length]}`).join("\n"),
     },
-  });
-  const lessonSlides = [
-    practice("p1", LONG.slice(0, 2)),
-    practice("p2", LONG.slice(2, 5)),
-    { ...practice("x1", LONG.slice(0, 3)), kind: "exit-ticket" as const },
+  })) as unknown as Slide[];
+  const deckIn = (lesson: Slide[], id: string, stage: Stage = "ks2") => [
+    ...lesson,
+    ...endAnswerSlides(answerGroupsOf(lesson), getTheme(id, stage), stage, OPTS),
   ];
+  const relay = (deck: Slide[], from: string, to: string, stage: Stage = "ks2") =>
+    relayEndAnswers(deck, getTheme(from, stage), stage, deck, getTheme(to, stage), stage);
+  const pages = (slides: readonly Slide[]) => slides.filter((s) => s.answersRole).length;
 
   for (const from of THEMES)
     for (const to of THEMES) {
       if (from.id === to.id) continue;
-      test(`${from.id} -> ${to.id}`, () => {
-        const a = getTheme(from.id, "ks2");
-        const b = getTheme(to.id, "ks2");
-        const deck = [...lessonSlides, ...endAnswerSlides(answerGroupsOf(lessonSlides), a, "ks2")];
-        const relaid = relayEndAnswers(deck, b, "ks2");
+      test(`untouched, ${from.id} -> ${to.id}: rebuilt, no row overruns`, () => {
+        const deck = deckIn(ROMANS, from.id);
+        const relaid = relay(deck, from.id, to.id) as Slide[];
         expect(relaid).not.toBeNull();
-        expect(problems(relaid as Slide[], b)).toEqual([]);
-        // The lesson's own slides stay first and untouched; the guard keeps its id.
-        expect((relaid as Slide[]).slice(0, 3)).toEqual(lessonSlides);
-        expect((relaid as Slide[])[3]?.id).toBe(deck[3]?.id);
+        expect(problems(relaid, getTheme(to.id, "ks2"))).toEqual([]);
+        expect(relaid.slice(0, 3)).toEqual(ROMANS);
+        expect(relaid[3]?.id).toBe(deck[3]?.id);
       });
     }
+
+  test("untouched: the page count grows or shrinks with the new faces", () => {
+    const counts = THEMES.map((t) => ({ id: t.id, n: pages(deckIn(longLesson, t.id, "ks1")) }));
+    const few = counts.reduce((a, b) => (b.n < a.n ? b : a));
+    const many = counts.reduce((a, b) => (b.n > a.n ? b : a));
+    expect(many.n).toBeGreaterThan(few.n);
+    const grown = relay(deckIn(longLesson, few.id, "ks1"), few.id, many.id, "ks1") as Slide[];
+    expect(pages(grown)).toBe(many.n);
+    expect(problems(grown, getTheme(many.id, "ks1"))).toEqual([]);
+    const shrunk = relay(deckIn(longLesson, many.id, "ks1"), many.id, few.id, "ks1") as Slide[];
+    expect(pages(shrunk)).toBe(few.n);
+  });
 
   test("the check has teeth: Splash's Answers drawn unchanged in Paper overrun (the live bug)", () => {
     const deck = endAnswerSlides(answerGroupsOf(ROMANS), getTheme("splash", "ks2"), "ks2");
     expect(problems(deck, getTheme("paper", "ks2")).length).toBeGreaterThan(0);
   });
 
-  test("reads its groups back from the slides it drew, carried-over groups joined", () => {
-    for (const stage of STAGES) {
-      const deck = endAnswerSlides(groups, getTheme("paper", stage), stage);
-      expect(answerGroupsOnSlides(deck)).toEqual(groups);
-    }
+  /** The deck with its first Answers slide's first model answer changed by `edit`. */
+  const editFirst = (deck: Slide[], edit: (el: TextElement) => TextElement | TextElement[]) => {
+    const i = deck.findIndex((s) => s.answersRole === "answers");
+    const slide = deck[i] as Slide;
+    const j = slide.elements.findIndex(
+      (e) => e.type === "text" && e.name === ANSWERS_NAMES.sentence,
+    );
+    const elements = slide.elements.flatMap((e, k) => (k === j ? edit(e as TextElement) : [e]));
+    return deck.map((s, k) => (k === i ? { ...s, elements } : s));
+  };
+  const para = (text: string, marks?: unknown[]) => ({
+    type: "doc" as const,
+    content: [
+      { type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] },
+    ],
   });
 
-  test("a switch never adds or removes the Answers set, even with no answers left", () => {
-    const deck = [
-      ...ROMANS,
-      ...endAnswerSlides(answerGroupsOf(ROMANS), getTheme("splash", "ks2"), "ks2"),
-    ];
-    // The questions lost their answers since: the Answers slides still re-lay from what they show.
-    const bare = deck.map((s) =>
+  for (const [what, edit] of [
+    ["an edited answer", (e: TextElement) => ({ ...e, doc: para("Firm roads, faster carts.") })],
+    [
+      "a bold answer",
+      (e: TextElement) => ({ ...e, doc: para(docToPlainText(e.doc), [{ type: "bold" }]) }),
+    ],
+    ["an added box", (e: TextElement) => [e, { ...e, id: "mine", doc: para("Ask Sam.") }]],
+  ] as const)
+    test(`edited (${what}): left exactly as it is`, () => {
+      const deck = editFirst(deckIn(ROMANS, "splash"), edit as never);
+      const before = JSON.stringify(deck);
+      expect(relay(deck, "splash", "paper")).toBeNull();
+      expect(JSON.stringify(deck)).toBe(before);
+    });
+
+  test("a removed Answers slide, or questions changed since: left as they are", () => {
+    const deck = deckIn(longLesson, "paper");
+    expect(
+      relay(
+        deck.filter((s, i) => i !== deck.length - 1),
+        "paper",
+        "splash",
+      ),
+    ).toBeNull();
+    const changed = deck.map((s) =>
       s.answersRole ? s : { ...s, question: { type: "open-response" as const } },
     );
-    const relaid = relayEndAnswers(bare, getTheme("paper", "ks2"), "ks2") as Slide[];
-    expect(relaid.filter((s) => s.answersRole).length).toBeGreaterThan(1);
-    expect(problems(relaid, getTheme("paper", "ks2"))).toEqual([]);
-    // Every answer deleted from the Answers slides: nothing to lay out, so nothing changes.
-    const emptied = deck.map((s) =>
-      s.answersRole === "answers"
-        ? { ...s, elements: s.elements.filter((e) => !ANSWER_NAMES.has(e.name ?? "")) }
-        : s,
-    );
-    expect(relayEndAnswers(emptied, getTheme("paper", "ks2"), "ks2")).toBeNull();
-    // A deck whose guard the teacher removed gets none back.
-    const unguarded = deck.filter((s) => s.answersRole !== "guard");
-    const again = relayEndAnswers(unguarded, getTheme("paper", "ks2"), "ks2") as Slide[];
-    expect(again.some((s) => s.answersRole === "guard")).toBe(false);
+    expect(relay(changed, "paper", "splash")).toBeNull();
   });
 
-  test("a teacher's edited answer survives the switch", () => {
-    const deck = [
-      ...ROMANS,
-      ...endAnswerSlides(answerGroupsOf(ROMANS), getTheme("splash", "ks2"), "ks2"),
-    ];
-    const edited = "Firm, straight roads let carts travel quickly in all weathers.";
-    let done = false;
-    const mine = deck.map((s) => {
-      if (s.answersRole !== "answers" || done) return s;
-      return {
-        ...s,
-        elements: s.elements.map((e) => {
-          if (done || e.type !== "text" || e.name !== ANSWERS_NAMES.sentence) return e;
-          done = true;
-          return {
-            ...e,
-            doc: {
-              type: "doc" as const,
-              content: [{ type: "paragraph", content: [{ type: "text", text: edited }] }],
-            },
-          };
-        }),
-      };
-    });
-    const relaid = relayEndAnswers(mine, getTheme("paper", "ks2"), "ks2") as Slide[];
-    const texts = relaid.flatMap((s) => answerBoxes(s)).map((e) => docToPlainText(e.doc));
-    expect(texts).toContain(edited);
-    expect(texts).not.toContain(ROMANS_ANSWERS[0]?.[0]);
-  });
-
-  test("a deck with no Answers slides is left alone", () => {
-    expect(relayEndAnswers(lessonSlides, getTheme("paper", "ks2"), "ks2")).toBeNull();
+  test("a deck with no Answers slides gets none", () => {
+    expect(relay(ROMANS, "splash", "paper")).toBeNull();
   });
 });

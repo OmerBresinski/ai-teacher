@@ -27,9 +27,10 @@ import { tidySlide } from "./tidy";
  * template measures every word in the new face and steps the title to its floor, or names it in
  * `over`.
  *
- * The deck's guard and Answers slides re-fit in the same pass (`relayEndAnswers`): their rows are
- * each answer's wrapped height in the old theme's faces, so a wider face ran one answer into the
- * next (TEACH-191 part c).
+ * The deck's guard and Answers slides re-fit in the same pass on a theme switch (`relayEndAnswers`):
+ * their rows are each answer's wrapped height in the old theme's faces, so a wider face ran one
+ * answer into the next. Untouched, they are built again in the new faces; edited, they are left as
+ * they are (TEACH-191 part c).
  */
 
 export type RethemeOutcome = {
@@ -55,7 +56,7 @@ export function slidesNeedingFit(lesson: Lesson, theme: Theme, measure: Measurer
  * (a moved group keeps its offset, a resized one its size: `placeInto`). A layout whose template
  * cannot lay out stays as it was; with no template code loaded (`kit` null) nothing changes.
  */
-export function relayLayouts(lesson: Lesson, kit: LayoutKit | null): Lesson {
+export function relayLayouts(lesson: Lesson, kit: LayoutKit | null, prev?: Lesson): Lesson {
   if (!kit) return lesson;
   const theme = renderTheme(lesson);
   let changed = false;
@@ -74,9 +75,20 @@ export function relayLayouts(lesson: Lesson, kit: LayoutKit | null): Lesson {
     changed = true;
     return { ...slide, elements };
   });
-  // The deck's guard and Answers slides re-fit the same way: built again by their template in this
-  // theme's faces, so each row is as tall as its answer wraps here (TEACH-191 part c).
-  const answered = kit.relayEndAnswers(slides, theme, kit.stageOf(theme, lesson.ageBand));
+  // On a theme switch (`prev`, the lesson before it), the deck's guard and Answers slides are built
+  // again in this theme's faces when the teacher has not touched them (TEACH-191 part c).
+  const prevTheme = prev && renderTheme(prev);
+  const answered =
+    prev && prevTheme
+      ? kit.relayEndAnswers(
+          prev.slides,
+          prevTheme,
+          kit.stageOf(prevTheme, prev.ageBand),
+          slides,
+          theme,
+          kit.stageOf(theme, lesson.ageBand),
+        )
+      : null;
   if (answered) return { ...lesson, slides: answered };
   return changed ? { ...lesson, slides } : lesson;
 }
@@ -89,9 +101,10 @@ export function fitLessonToTheme(
   lesson: Lesson,
   measure: Measurer,
   kit: LayoutKit | null = layoutKit(),
+  prev?: Lesson,
 ): { lesson: Lesson; outcome: RethemeOutcome } {
   const theme = renderTheme(lesson);
-  let out = relayLayouts(lesson, kit);
+  let out = relayLayouts(lesson, kit, prev);
   const tidied: Id[] = [];
   const overflow: Id[] = [];
   for (const id of slidesNeedingFit(out, theme, measure)) {
@@ -146,7 +159,7 @@ export function rethemeLesson(
   const to = renderTheme(lesson, themeId);
   const themed = reducers.setTheme(lesson, themeId);
   const recoloured = { ...themed, slides: themed.slides.map((s) => recolourSlide(s, from, to)) };
-  return fitLessonToTheme(recoloured, measure, kit);
+  return fitLessonToTheme(recoloured, measure, kit, lesson);
 }
 
 /** `fitLessonToTheme` in reducer shape, for `history.dispatch`. */
