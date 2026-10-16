@@ -5,6 +5,7 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
+import { safeError } from "@tj/domain";
 import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
@@ -1152,7 +1153,7 @@ export function createWriterPictures(opts: {
         slot.miss = "budget";
         const key = [...slots].find(([, s]) => s === slot)?.[0];
         opts.deps.logger.warn(
-          { stage: "illustrate", picture: key, miss: "budget", err: error },
+          { stage: "illustrate", picture: key, miss: "budget", err: safeError(error) },
           "picture call refused by the lesson budget; slot left empty",
         );
         return;

@@ -3,6 +3,7 @@ import { BudgetReservationError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Lesson, PhotoSource } from "@tj/domain/documents";
 import { encodePng, type ImageGenerator, type PhotoResult, type StoredPhoto } from "@tj/images";
+import pino from "pino";
 import { FICTION_IN_PERIOD_IS_HISTORICAL } from "../period";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
@@ -262,20 +263,68 @@ describe("writer pictures: stops are never swallowed", () => {
   });
 
   test("a budget refusal of one picture call leaves that slot empty; settle and the lesson go on (TEACH-110 part z)", async () => {
+    const lines: string[] = [];
+    const logger = pino({ level: "warn" }, { write: (line: string) => void lines.push(line) });
+    const ai = createFakeAi({
+      script: [
+        verdict({
+          pick: "p7",
+          onSubject: true,
+          clear: true,
+          fits: true,
+          visible: ["sheep"],
+          count: "one",
+        }),
+      ],
+    });
+    const sheep = direction({
+      route: "pexels",
+      pictures: [
+        {
+          shows: "A sheep in a field",
+          mustShow: ["sheep"],
+          queries: ["sheep field"],
+          imagePrompt: "A sheep.",
+        },
+      ],
+    });
     const pictures = createWriterPictures({
       lesson: sampleBriefLesson(),
       country: "UK",
-      images: images({}),
-      deps: recordingDeps(createFakeAi({ script: [] })),
-      direct: async () => {
+      images: images({ pexels: [photo("p7")] }),
+      deps: recordingDeps(ai, { logger }),
+      direct: async (input) => {
+        if (JSON.stringify(input).includes("sheep")) return sheep;
         throw new Error("stream failed", { cause: new BudgetReservationError("usd") });
       },
     });
     pictures.start(2, ask(), slide);
+    pictures.start(
+      3,
+      ask({ shows: "A sheep in a field", mustSee: ["sheep"], named: false }),
+      slide,
+    );
     await expect(pictures.settle(1_000)).resolves.toBeUndefined();
-    expect(pictures.state(2, ask().key)).toEqual({ status: "failed" });
-    // Unaffordable now: the stage does not ask for it again.
-    expect(pictures.retryable(2, ask().key)).toBe(false);
+    // The refused slot: empty, its miss is "budget" (the line the stage reads), not asked again.
+    expect(pictures.state(2, "picture")).toEqual({ status: "failed" });
+    expect(pictures.vetoed(2, "picture")).toBe(
+      "The picture search stopped at this lesson's spending limit.",
+    );
+    expect(pictures.retryable(2, "picture")).toBe(false);
+    // Its sibling was not cancelled: it is placed with a src.
+    const sibling = pictures.state(3, "picture");
+    expect(sibling.status).toBe("photo");
+    if (sibling.status === "photo") expect(sibling.photo.src.length).toBeGreaterThan(0);
+    // One warn, naming the slot and the error's type only (no message from the cause chain).
+    const warns = lines.map((l) => JSON.parse(l)).filter((l) => l.level === 40);
+    expect(warns).toHaveLength(1);
+    expect(warns[0]).toMatchObject({
+      stage: "illustrate",
+      picture: "2:picture",
+      miss: "budget",
+      err: { type: "Error" },
+    });
+    expect(JSON.stringify(warns[0])).not.toContain("stream failed");
   });
 
   test("spend over the cap in a picture call still fails settle", async () => {

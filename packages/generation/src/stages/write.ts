@@ -1,3 +1,4 @@
+import { safeError } from "@tj/domain";
 import {
   type AgeBand,
   DEFAULT_SLIDE_TIER,
@@ -541,7 +542,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         stage: "write",
         phase: editableSaved ? "after-editable" : "writing",
         slide: newest >= 0 ? newest + 1 : null,
-        err: error,
+        err: safeError(error),
       },
       "write stage failed",
     );
