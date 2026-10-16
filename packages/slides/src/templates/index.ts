@@ -44,6 +44,7 @@ import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
+import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
@@ -244,6 +245,11 @@ export type TemplateInput = {
   sides?: SplitSide[];
   /** Split compare: the seam marker's word ("vs" when absent). */
   marker?: string | null;
+  /**
+   * Steps with a model (TEACH-75 part af): one step, its number, do line and optional see line,
+   * beside the library model in `figure`. A steps slide without it lays out as before.
+   */
+  step?: StepModel;
   /** An exact substring of the heading shown in the accent (ignored when it is not one). */
   accentWord?: string | null;
   /**
@@ -2234,13 +2240,20 @@ function layoutOnce(
     case "equation-hero":
       equationHero(c, input);
       break;
-    case "steps":
+    case "steps": {
+      // TEACH-75 part af: one step with its library model (title, one line, stage).
+      const step = stepModelOf(input);
+      if (step) {
+        layoutStepModel(c, input, step, stage);
+        break;
+      }
       heading(c, input.heading);
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
         figurePanel(c, input.figure);
       } else if (!(c.processLine && processLine(c, raw))) numbered(c, pts, G.margin, 720, "steps");
       break;
+    }
     case "hinge":
       layoutHinge(c, input);
       break;

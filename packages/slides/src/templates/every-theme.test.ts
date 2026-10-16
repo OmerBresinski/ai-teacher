@@ -138,3 +138,35 @@ describe("never throws", () => {
         }
     });
 });
+
+// TEACH-75 part af (C8): a step with its library model, on every theme and stage.
+describe("steps with a model on every theme", () => {
+  const svg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" class="slide tk theme-primary" viewBox="0 0 990 450"><g><rect width="90" height="90"/><text x="9" y="40">Sand</text></g></svg>',
+  )}`;
+  const input: TemplateInput = {
+    template: "steps",
+    heading: "Filter",
+    step: { n: 2, do: "Pour the mixture through filter paper.", see: "Water drips through." },
+    figure: { drawn: { src: svg, aspect: 2.2, bare: true } },
+  };
+  for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
+    test(`${stage}: nothing over, every stored size its role's at the stage, none under the floor`, () => {
+      for (const theme of THEMES) {
+        const r = layoutTemplate(input, theme, stage);
+        expect(r.over).toEqual([]);
+        for (const e of r.slide.elements as {
+          type: string;
+          style?: { fontSize?: number; preset?: "body" | "heading" | "small" };
+        }[]) {
+          const size = e.style?.fontSize;
+          if (e.type !== "text" || size === undefined) continue;
+          expect(size).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
+          const style = { ...e.style, preset: e.style?.preset ?? ("body" as const) };
+          expect(resolveTextStyle(style as never, atKeyStage(theme, stage), "body").fontSize).toBe(
+            size,
+          );
+        }
+      }
+    });
+});
