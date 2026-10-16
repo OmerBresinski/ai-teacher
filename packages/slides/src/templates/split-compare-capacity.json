@@ -121,7 +121,7 @@
       "text": {
         "title": {
           "cap": 22,
-          "hardMax": 47,
+          "hardMax": 41,
           "words": 4
         },
         "text": {
@@ -134,14 +134,14 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 22,
-          "hardMax": 22,
-          "words": 4
+          "cap": 37,
+          "hardMax": 37,
+          "words": 7
         },
         "text": {
-          "cap": 32,
+          "cap": 29,
           "hardMax": 41,
-          "words": 6
+          "words": 5
         }
       },
       "quote": {
@@ -164,13 +164,13 @@
       "text": {
         "title": {
           "cap": 22,
-          "hardMax": 37,
+          "hardMax": 51,
           "words": 4
         },
         "text": {
-          "cap": 80,
+          "cap": 74,
           "hardMax": 88,
-          "words": 16
+          "words": 15
         }
       }
     }
@@ -185,7 +185,7 @@
         },
         "text": {
           "cap": 69,
-          "hardMax": 108,
+          "hardMax": 125,
           "words": 14
         }
       },

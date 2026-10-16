@@ -193,7 +193,8 @@ export function v2Colors(theme: Theme, accent?: string): V2Colors {
     surface: theme.colors.surface,
     ink,
     muted: n.muted ?? theme.colors.muted,
-    heading: theme.v2 ? fam.deep : (theme.colors.heading ?? ink),
+    // Ink headings with one accent word (ruling 259); the deep tone stays for panels and markers.
+    heading: theme.v2 ? ink : (theme.colors.heading ?? ink),
     accent: fam.accent,
     soft: fam.soft,
     wash: fam.wash,

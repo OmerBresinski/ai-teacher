@@ -162,10 +162,10 @@
       },
       {
         "n": 4,
-        "cap": 33,
-        "hardMax": 33,
-        "words": 6,
-        "hardWords": 6
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
       }
     ],
     "practice+figure": [
@@ -185,10 +185,10 @@
       },
       {
         "n": 4,
-        "cap": 33,
-        "hardMax": 33,
-        "words": 6,
-        "hardWords": 6
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
       }
     ],
     "exit": [
