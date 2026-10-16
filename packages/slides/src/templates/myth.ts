@@ -131,10 +131,24 @@ export type MythCap = { cap: number; hardMax: number };
 export type MythField = "title" | "claim" | "fact" | "factPicture" | "proof";
 type Table = Record<Age, Record<MythField, MythCap>>;
 let TABLE = CAPACITY as unknown as Partial<Table>;
+/** Measuring geometry alone (the capacity script): no row is a fault while the table is built. */
+let MEASURING = false;
 /** Lays out with no caps table, so the capacity script measures geometry alone. */
 export function withoutMythCaps<T>(f: () => T): T {
   const kept = TABLE;
   TABLE = {};
+  MEASURING = true;
+  try {
+    return f();
+  } finally {
+    TABLE = kept;
+    MEASURING = false;
+  }
+}
+/** Lays out against another caps table (tests: an age or field with no row). */
+export function withMythCaps<T>(table: Partial<Table>, f: () => T): T {
+  const kept = TABLE;
+  TABLE = table;
   try {
     return f();
   } finally {
@@ -756,7 +770,19 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
   });
   const src =
     lib && medal
-      ? lib.iconMedalImageSrc(id, { medal, colours: col.icon, px: Math.round(b.w * 2) })
+      ? lib.iconMedalImageSrc(id, {
+          medal,
+          // As every layout's icons (iconSvgForTheme): the theme's slots, the age's drawing and
+          // the size's line weights, so the feather keeps its outline at medal size.
+          colours: lib.iconColoursFor({
+            colors: c.t.colors,
+            iconSlots: col.icon,
+            keyStage: keyStageOf(c.t) ?? undefined,
+          }),
+          age: lib.iconAgeFor(keyStageOf(c.t) ?? undefined),
+          size: lib.iconSizeFor(b.w * 0.8),
+          px: Math.round(b.w * 2),
+        })
       : "";
   return {
     id: uid(),
@@ -773,15 +799,16 @@ function report(age: Age, heading: string, m: MythInput, picture: boolean): Fiel
   const caps = mythCapsOf(age);
   const row = (field: string, value: string, cap?: MythCap): FieldReport => {
     const n = words(value);
-    // A cap of 0 holds nothing: any content is over (never "no cap").
-    const over = !!cap && n > cap.hardMax;
+    // A cap of 0 holds nothing, and a missing row is an unknown combination: both are over,
+    // never "no cap" (only the capacity script, measuring geometry, lays out without a table).
+    const over = MEASURING ? false : !cap || n > cap.hardMax;
     return {
       field,
       path: field,
       chars: n,
       cap: cap?.cap ?? 0,
       hardMax: cap?.hardMax ?? 0,
-      tight: !!cap && n > cap.cap,
+      tight: MEASURING ? false : !cap || n > cap.cap,
       over,
     };
   };

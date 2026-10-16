@@ -11,7 +11,7 @@ import { resolveTextStyle } from "../text-style";
 import { v2Colors } from "../theme-v2";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { MYTH_NAMES, withoutMythCaps } from "./myth";
+import { MYTH_NAMES, withMythCaps, withoutMythCaps } from "./myth";
 import { measureMythCaps } from "./myth-capacity";
 import CAPS from "./myth-capacity.json" with { type: "json" };
 import { MYTH_CASES } from "./myth-fixtures";
@@ -162,6 +162,20 @@ describe("myth and fact: caps and fit", () => {
         expect(cell.cap).toBeLessThanOrEqual(cell.hardMax);
         expect(cell.hardMax).toBeGreaterThan(0);
       }
+  });
+
+  test("an age or a field with no caps row is over, never no cap", () => {
+    const k = caseOf("y6-falling").input;
+    // No row for the age at all: every field with words is over.
+    const noAge = withMythCaps({ secondary: CAPS.secondary }, () => lay(k, "ks2"));
+    expect(noAge.over).toEqual(
+      expect.arrayContaining(["heading", "myth.claim", "myth.fact", "myth.proof.line"]),
+    );
+    // The age's row without the proof field: only the proof line is over.
+    const { proof: _p, ...rest } = CAPS.primary;
+    const noProof = withMythCaps({ primary: rest as typeof CAPS.primary }, () => lay(k, "ks2"));
+    expect(noProof.over).toEqual(["myth.proof.line"]);
+    expect(lay(k, "ks2").over).toEqual([]);
   });
 
   test("the caps table is what the renderer measures", () => {

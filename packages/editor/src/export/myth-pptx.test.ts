@@ -72,6 +72,9 @@ describe("myth and fact in PowerPoint (TEACH-75 part ag)", () => {
     expect(s1).not.toContain("Without air resistance");
     expect(s2).toContain("Without air resistance");
     expect(s2).toContain("land together.");
+    // The payoff is plain bold ink: no fill or highlight box behind it (the gold has none).
+    expect(s2).not.toContain("<a:highlight");
+    expect(s2).toMatch(/b="1"[^>]*>(?:(?!<\/a:r>).)*?<a:t>land together\.<\/a:t>/);
     // Card and the two chips are rounded rects; the stamp, seam and halo discs are ellipses.
     expect(count(s0 as string, "roundRect")).toBeGreaterThanOrEqual(3);
     expect(count(s2 as string, "ellipse")).toBe(3);
