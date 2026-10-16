@@ -1,5 +1,5 @@
 import type { AiCallContext } from "@tj/ai";
-import { costUsd, withGenerationBudget } from "@tj/ai";
+import { costUsd, type TokenUsage, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
 import { imageMediaType, providerOptionsFor } from "../call";
 import type { PipelineDeps } from "../types";
@@ -36,13 +36,29 @@ export function writerRoute(_cls: unknown, context: AiCallContext | undefined): 
 export const onWriterModel = (model: string | undefined) =>
   model === WRITER_MODEL || `openai/${model}` === WRITER_MODEL;
 
-const usdOf = (modelId: string, u: { inputTokens?: number; outputTokens?: number } | undefined) => {
+const usdOf = (
+  modelId: string,
+  u:
+    | {
+        inputTokens?: number | undefined;
+        outputTokens?: number | undefined;
+        inputTokenDetails?: {
+          cacheReadTokens?: number | undefined;
+          cacheWriteTokens?: number | undefined;
+        };
+      }
+    | undefined,
+) => {
+  // Cache reads and writes priced at their own rates, so a hit (and a miss's write) shows in the
+  // stage's cost.
+  const usage: TokenUsage = {
+    inputTokens: u?.inputTokens ?? 0,
+    outputTokens: u?.outputTokens ?? 0,
+    cachedInputTokens: u?.inputTokenDetails?.cacheReadTokens ?? 0,
+    cacheWriteInputTokens: u?.inputTokenDetails?.cacheWriteTokens ?? 0,
+  };
   return nonFatalSync(
-    () =>
-      costUsd(modelId, {
-        inputTokens: u?.inputTokens ?? 0,
-        outputTokens: u?.outputTokens ?? 0,
-      } as never) ?? 0,
+    () => costUsd(modelId, usage) ?? 0,
     () => 0,
   );
 };
@@ -100,7 +116,31 @@ export function chatUserTurn(r: Pick<ChatReq, "user" | "images">) {
   };
 }
 
-/** The writer call's options: strict JSON and a `system` message, as base4f-p123 sent them. */
+/**
+ * The writer's prompt cache (TEACH-202 part k). The system text and the schema are the same for
+ * every lesson and come first; only the user turn is the lesson's. GPT-5.6 and later (the
+ * writer's gpt-6.1-sol included) cache at
+ * breakpoints, and the implicit one sits on the latest message, the lesson's own, so every call
+ * wrote ~13.7k tokens at the write rate and the next lesson, differing in its last message, never
+ * read them. An explicit breakpoint on the system message caches the shared prefix (schema and
+ * system text) instead; the cache key keeps writer calls on the same cache, and the 30-minute
+ * floor outlives a quiet spell. `30m` is the only TTL and the default, with no surcharge; a write
+ * costs 1.25x uncached input, the `cacheWriteInputPerMTok` row (OpenAI prompt-caching guide, read
+ * 12 Oct 2026). The text the model reads is unchanged: the system message goes as one text part
+ * carrying the breakpoint instead of a bare string.
+ */
+export const WRITER_CACHE_KEY = WRITER_VERSION;
+const WRITER_CACHE_BREAKPOINT = { openai: { promptCacheBreakpoint: { mode: "explicit" } } };
+
+/** The writer's system text as a system message marked as the end of the cached prefix. */
+export function writerSystem(system: string) {
+  return { role: "system" as const, content: system, providerOptions: WRITER_CACHE_BREAKPOINT };
+}
+
+/**
+ * The writer call's options: strict JSON and a `system` message, as base4f-p123 sent them, and
+ * the prompt cache (explicit breakpoints only, keyed, 30 minutes).
+ */
 export function writerProviderOptions(model: string, effort: WriterReq["effort"]) {
   const base = providerOptionsFor(model, effort, true) as {
     providerOptions?: Record<string, Record<string, unknown>>;
@@ -109,7 +149,12 @@ export function writerProviderOptions(model: string, effort: WriterReq["effort"]
   return {
     providerOptions: {
       ...base.providerOptions,
-      openai: { ...base.providerOptions.openai, systemMessageMode: "system" },
+      openai: {
+        ...base.providerOptions.openai,
+        systemMessageMode: "system",
+        promptCacheKey: WRITER_CACHE_KEY,
+        promptCacheOptions: { mode: "explicit", ttl: "30m" },
+      },
     },
   };
 }
@@ -165,7 +210,8 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
           streamError ??= error;
         },
         model,
-        system: r.system,
+        // The same text, marked as the end of the cached prefix.
+        system: writerSystem(r.system),
         prompt: r.user,
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         maxOutputTokens: r.maxTokens,
