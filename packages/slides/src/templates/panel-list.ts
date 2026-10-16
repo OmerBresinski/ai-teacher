@@ -6,7 +6,8 @@
  * pilot draws at 1440 x 810 px, so every pilot length here is x 2/3 (slide points).
  *
  * - Comfortable up to the measured `PANEL_COMFORT` rows, at the sizes the renderer draws. 2-line
- *   rows at 4+ are `tight`.
+ *   rows at 4+ are `tight`. Three rows or fewer read at least at the deck's body step and spread
+ *   evenly down the column.
  * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
  *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
  *   Words are never cut: when the slide does not fit, a field past its measured hard maximum is
@@ -469,9 +470,13 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const gapMin = n <= 3 ? 37 : 12;
   // Every size is the step the renderer draws (the deck's one key-stage scale snaps any stored
   // size to a step of its role), so what is measured here is what the browser lays out.
+  // Three rows or fewer never read under the deck's own body step (TEACH-75 part ar): the gold's
+  // 2- and 3-row lines are a step over its 5-row ones, so the name and line snap up to the step the
+  // deck's body draws at (the name's heading role bottoms out at that step), never down past it.
+  const deckBody = n <= 3 ? resolveTextStyle({ preset: "body" }, c.t, "body").fontSize : 0;
   const sizesAt = (k: number) => ({
-    name: drawn(c.t, "heading", Math.max(L.floors.name, L.sizes.name * 0.87 * k * f)),
-    body: drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.94 * k * f)),
+    name: drawn(c.t, "heading", Math.max(L.floors.name, L.sizes.name * 0.87 * k * f, deckBody)),
+    body: drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.94 * k * f, deckBody)),
   });
   const comfortName = drawn(c.t, "heading", L.comfort.name);
   const comfortBody = drawn(c.t, "body", L.comfort.body);
@@ -497,8 +502,15 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     });
     const sum = blocks.reduce((a, b) => a + b.rh, 0);
     const fits = n === 0 || (sum + (n - 1) * gapMin <= H + 0.5 && blocks.every((b) => b.whole));
-    // Row tops: three or fewer centred with a fixed gap, more spread to fill the column.
-    const gap = n <= 3 ? gapMin : n > 1 ? Math.max(gapMin, (H - sum) / (n - 1)) : 0;
+    // Row tops: three or fewer spread evenly down the column, the space above, between and below
+    // them equal (the gold's 2 and 3 rows sit at its thirds and quarters, TEACH-75 part ar); more
+    // fill it edge to edge.
+    const gap =
+      n <= 3
+        ? Math.max(gapMin, (H - sum) / (n + 1))
+        : n > 1
+          ? Math.max(gapMin, (H - sum) / (n - 1))
+          : 0;
     const total = sum + (n - 1) * gap;
     let y = top + (n <= 3 ? Math.max(0, (H - total) / 2) : 0);
     const ys = blocks.map((b) => {

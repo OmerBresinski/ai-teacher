@@ -12,25 +12,25 @@
         "words": 7
       },
       "name": {
-        "cap": 82,
+        "cap": 58,
         "hardMax": 88,
-        "words": 15
+        "words": 11
       },
       "text": {
-        "cap": 108,
-        "hardMax": 122,
-        "words": 19
+        "cap": 66,
+        "hardMax": 96,
+        "words": 12
       },
       "withLead": {
         "name": {
-          "cap": 66,
+          "cap": 42,
           "hardMax": 66,
-          "words": 12
+          "words": 8
         },
         "text": {
-          "cap": 82,
-          "hardMax": 119,
-          "words": 15
+          "cap": 42,
+          "hardMax": 70,
+          "words": 8
         }
       },
       "pictures": {
@@ -45,25 +45,25 @@
           "words": 7
         },
         "name": {
-          "cap": 66,
+          "cap": 48,
           "hardMax": 76,
-          "words": 12
+          "words": 9
         },
         "text": {
-          "cap": 82,
-          "hardMax": 108,
-          "words": 15
+          "cap": 52,
+          "hardMax": 82,
+          "words": 10
         },
         "withLead": {
           "name": {
-            "cap": 58,
+            "cap": 35,
             "hardMax": 58,
-            "words": 11
+            "words": 7
           },
           "text": {
-            "cap": 66,
-            "hardMax": 96,
-            "words": 12
+            "cap": 52,
+            "hardMax": 58,
+            "words": 10
           }
         }
       }
@@ -80,14 +80,14 @@
         "words": 7
       },
       "name": {
-        "cap": 42,
+        "cap": 21,
         "hardMax": 42,
-        "words": 8
+        "words": 4
       },
       "text": {
-        "cap": 58,
-        "hardMax": 58,
-        "words": 11
+        "cap": 27,
+        "hardMax": 48,
+        "words": 5
       },
       "withLead": {
         "name": {
@@ -96,9 +96,9 @@
           "words": 4
         },
         "text": {
-          "cap": 30,
-          "hardMax": 30,
-          "words": 6
+          "cap": 21,
+          "hardMax": 21,
+          "words": 4
         }
       },
       "pictures": {
@@ -113,14 +113,14 @@
           "words": 7
         },
         "name": {
-          "cap": 42,
+          "cap": 21,
           "hardMax": 42,
-          "words": 8
+          "words": 4
         },
         "text": {
-          "cap": 58,
-          "hardMax": 58,
-          "words": 11
+          "cap": 21,
+          "hardMax": 48,
+          "words": 4
         },
         "withLead": {
           "name": {
@@ -129,9 +129,9 @@
             "words": 4
           },
           "text": {
-            "cap": 30,
-            "hardMax": 30,
-            "words": 6
+            "cap": 21,
+            "hardMax": 27,
+            "words": 4
           }
         }
       }
@@ -354,25 +354,25 @@
         "words": 8
       },
       "name": {
-        "cap": 122,
-        "hardMax": 132,
-        "words": 22
+        "cap": 96,
+        "hardMax": 126,
+        "words": 17
       },
       "text": {
-        "cap": 126,
-        "hardMax": 171,
-        "words": 23
+        "cap": 105,
+        "hardMax": 122,
+        "words": 18
       },
       "withLead": {
         "name": {
-          "cap": 88,
-          "hardMax": 108,
-          "words": 16
+          "cap": 96,
+          "hardMax": 96,
+          "words": 17
         },
         "text": {
-          "cap": 132,
-          "hardMax": 132,
-          "words": 24
+          "cap": 88,
+          "hardMax": 88,
+          "words": 16
         }
       },
       "pictures": {
@@ -387,25 +387,25 @@
           "words": 8
         },
         "name": {
-          "cap": 88,
+          "cap": 76,
           "hardMax": 108,
-          "words": 16
+          "words": 14
         },
         "text": {
-          "cap": 96,
-          "hardMax": 142,
-          "words": 17
+          "cap": 76,
+          "hardMax": 96,
+          "words": 14
         },
         "withLead": {
           "name": {
-            "cap": 70,
+            "cap": 88,
             "hardMax": 88,
-            "words": 13
+            "words": 16
           },
           "text": {
-            "cap": 119,
-            "hardMax": 119,
-            "words": 21
+            "cap": 76,
+            "hardMax": 76,
+            "words": 14
           }
         }
       }
@@ -427,9 +427,9 @@
         "words": 10
       },
       "text": {
-        "cap": 70,
-        "hardMax": 70,
-        "words": 13
+        "cap": 58,
+        "hardMax": 58,
+        "words": 11
       },
       "withLead": {
         "name": {
@@ -438,9 +438,9 @@
           "words": 9
         },
         "text": {
-          "cap": 66,
-          "hardMax": 66,
-          "words": 12
+          "cap": 30,
+          "hardMax": 30,
+          "words": 6
         }
       },
       "pictures": {
@@ -460,9 +460,9 @@
           "words": 10
         },
         "text": {
-          "cap": 70,
-          "hardMax": 70,
-          "words": 13
+          "cap": 58,
+          "hardMax": 58,
+          "words": 11
         },
         "withLead": {
           "name": {
@@ -471,9 +471,9 @@
             "words": 9
           },
           "text": {
-            "cap": 70,
-            "hardMax": 70,
-            "words": 13
+            "cap": 30,
+            "hardMax": 30,
+            "words": 6
           }
         }
       }
@@ -696,25 +696,25 @@
         "words": 9
       },
       "name": {
-        "cap": 179,
-        "hardMax": 189,
-        "words": 31
+        "cap": 148,
+        "hardMax": 186,
+        "words": 26
       },
       "text": {
-        "cap": 235,
-        "hardMax": 249,
-        "words": 39
+        "cap": 153,
+        "hardMax": 179,
+        "words": 27
       },
       "withLead": {
         "name": {
-          "cap": 142,
-          "hardMax": 160,
-          "words": 25
+          "cap": 153,
+          "hardMax": 153,
+          "words": 27
         },
         "text": {
-          "cap": 193,
-          "hardMax": 208,
-          "words": 34
+          "cap": 122,
+          "hardMax": 142,
+          "words": 22
         }
       },
       "pictures": {
@@ -729,25 +729,25 @@
           "words": 10
         },
         "name": {
-          "cap": 126,
-          "hardMax": 160,
-          "words": 23
+          "cap": 108,
+          "hardMax": 148,
+          "words": 19
         },
         "text": {
-          "cap": 179,
-          "hardMax": 208,
-          "words": 31
+          "cap": 114,
+          "hardMax": 148,
+          "words": 20
         },
         "withLead": {
           "name": {
-            "cap": 108,
-            "hardMax": 132,
-            "words": 19
+            "cap": 122,
+            "hardMax": 122,
+            "words": 22
           },
           "text": {
-            "cap": 142,
-            "hardMax": 179,
-            "words": 25
+            "cap": 96,
+            "hardMax": 122,
+            "words": 17
           }
         }
       }
@@ -769,9 +769,9 @@
         "words": 16
       },
       "text": {
-        "cap": 122,
-        "hardMax": 122,
-        "words": 22
+        "cap": 76,
+        "hardMax": 76,
+        "words": 14
       },
       "withLead": {
         "name": {
@@ -780,9 +780,9 @@
           "words": 11
         },
         "text": {
-          "cap": 82,
-          "hardMax": 82,
-          "words": 15
+          "cap": 70,
+          "hardMax": 70,
+          "words": 13
         }
       },
       "pictures": {
@@ -802,9 +802,9 @@
           "words": 16
         },
         "text": {
-          "cap": 122,
-          "hardMax": 122,
-          "words": 22
+          "cap": 70,
+          "hardMax": 70,
+          "words": 13
         },
         "withLead": {
           "name": {
@@ -813,9 +813,9 @@
             "words": 11
           },
           "text": {
-            "cap": 82,
-            "hardMax": 82,
-            "words": 15
+            "cap": 70,
+            "hardMax": 70,
+            "words": 13
           }
         }
       }

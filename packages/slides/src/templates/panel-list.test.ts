@@ -810,3 +810,52 @@ describe("the slide's own measurement wins over the worst-case table (writer smo
     expect(r.over).toEqual(["rows[0].text", "rows[1].text", "rows[2].text", "rows[3].text"]);
   });
 });
+
+/*
+ * TEACH-75 part ar: at three rows or fewer the row name and line read at least at the deck's body
+ * step (they snapped down a step under it, KS3 21), and the rows spread evenly down the column as
+ * the gold's 2 and 3 rows do (at its thirds and quarters), instead of floating mid-column.
+ */
+describe("panel-list few rows read at the deck's body step", () => {
+  const STAGES_ALL: Stage[] = ["ks1", "ks2", "ks3", "ks4"];
+  for (const theme of THEMES)
+    for (const stage of STAGES_ALL)
+      test(`${theme.id} ${stage}: 2 and 3 rows at cap, name and line at or over the body step`, () => {
+        const t = atKeyStage(theme, stage);
+        const body = resolveTextStyle({ preset: "body" }, t, "body").fontSize;
+        const faults: string[] = [];
+        for (const n of [2, 3]) {
+          const r = layoutTemplate(
+            {
+              ...input(n, "none"),
+              rows: Array.from({ length: n }, (_, i) => ({
+                name: sampleOf(must(panelCapsFor(ageOf(stage), n)).name.cap, i),
+                text: sampleOf(must(panelCapsFor(ageOf(stage), n)).text.cap, i + 5),
+              })),
+            } as TemplateInput,
+            theme,
+            stage,
+          );
+          for (const name of [PANEL_NAMES.name, PANEL_NAMES.line])
+            for (const e of named(r.slide.elements, name) as TextElement[]) {
+              const size = resolveTextStyle(e.style, t, e.style?.preset ?? "body").fontSize;
+              if (size < body) faults.push(`${n} ${name} ${size} < ${body}`);
+            }
+        }
+        expect(faults).toEqual([]);
+      });
+
+  test("2 and 3 rows spread evenly down the column", () => {
+    for (const n of [2, 3]) {
+      const r = layoutTemplate(input(n, "none"), T0, "ks3");
+      const discs = named(r.slide.elements, PANEL_NAMES.disc) as ShapeElement[];
+      const mids = discs.map((d) => d.y + d.h / 2);
+      // Equal space above, between and below: the centres sit at the column's (n+1)ths.
+      const col = { top: 43, h: 540 - 43 - 43 };
+      mids.forEach((m, i) => {
+        const want = col.top + ((i + 1) * col.h) / (n + 1);
+        expect(Math.abs(m - want)).toBeLessThan(col.h * 0.06);
+      });
+    }
+  });
+});
