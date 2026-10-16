@@ -206,10 +206,11 @@ describe("re-theme re-lays adaptive layouts in the new theme's faces", () => {
       );
   };
 
-  for (const [heading, to] of [
-    ["Brothers and sisters", "treehouse"],
-    ["Find the resultant", "crayon"],
-  ] as const) {
+  // 16 Oct 2026, TEACH-215 part d: at the golds' 45.3 heading no word breaks in stale Crayon (or any
+  // other theme tried) without also breaking in Studio, so this case has no stale fit to repair.
+  // Follow-up: find a heading and theme pair at the new sizes that breaks only after the re-theme.
+  test.todo(`"Find the resultant" in crayon: no word breaks`, () => {});
+  for (const [heading, to] of [["Brothers and sisters", "treehouse"]] as const) {
     test(`"${heading}" in ${to}: no word breaks`, () => {
       const base = laid(heading);
       expect(brokenWords(base)).toEqual([]);
