@@ -275,7 +275,9 @@ describe("re-theme: the Answers slides follow the new faces", () => {
     ...generated("splash"),
     ageBand: "ks2",
     // A writer lesson, so it renders at KS2 like the theme its Answers were built in (TEACH-191 d).
-    generation: { promptVersions: { planned: "lesson-writer.v4.4" } },
+    generation: {
+      promptVersions: { planned: "lesson-writer.v4.4" },
+    } as unknown as Lesson["generation"],
     slides: [...practice, ...endAnswerSlides(answerGroupsOf(practice), splash, "ks2")],
   });
   const answerBoxes = (lesson: Lesson) =>

@@ -94,45 +94,50 @@ describe("live end Answers slides: wrapped rows never overlap", () => {
       expect(pages.length).toBeLessThanOrEqual(3);
     });
   }
-  test("an edited old-size Answers slide survives a switch byte for byte", () => {
-    const saved = (LIVE as unknown as Record<string, Saved>)["20261016-1221/y4-romans"] as Saved;
-    const i = saved.slides.findIndex((s) => s.answersRole === "answers");
-    const page = saved.slides[i] as Slide;
-    const edited = saved.slides.map((s, k) =>
-      k === i
-        ? {
-            ...page,
-            elements: page.elements.map((e) =>
-              e.type === "text" && e.name === "Model answer"
-                ? {
-                    ...e,
-                    doc: {
-                      type: "doc",
-                      content: [
-                        { type: "paragraph", content: [{ type: "text", text: "Firm roads." }] },
-                      ],
-                    } as never,
-                  }
-                : e,
-            ),
-          }
-        : s,
-    );
-    const lesson = lessonOf(saved, edited);
-    const { lesson: out } = rethemeLesson(
-      lesson,
-      "paper",
-      measureHeadless(renderTheme(lesson, "paper")),
-      layoutKit(),
-    );
-    const kept = (ss: readonly Slide[]) =>
-      // Ids, places, sizes and words as they were; only the theme's colours follow the switch.
-      JSON.stringify(
-        ss.filter((s) => s.answersRole),
-        (k, v) => (k === "color" || k === "fill" ? undefined : v),
+  const docOf = (text: string) =>
+    ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }) as never;
+  /** Each way a teacher can touch an old-size Answers slide: every one keeps all of them. */
+  const EDITS: [string, (e: Slide["elements"][number]) => Slide["elements"][number]][] = [
+    [
+      "an answer's words",
+      (e) => (e.name === "Model answer" ? { ...e, doc: docOf("Firm roads.") } : e),
+    ],
+    [
+      "the heading",
+      (e) => (e.name === "Heading" ? { ...e, doc: docOf("Answers for Thursday") } : e),
+    ],
+    ["a kicker", (e) => (e.name === "Kicker" ? { ...e, doc: docOf("HOMEWORK") } : e)],
+    ["a source title", (e) => (e.name === "Source title" ? { ...e, doc: docOf("Roads") } : e)],
+    [
+      "the teacher pill",
+      (e) =>
+        e.type === "text" && e.name === "answers:teacher-only" ? { ...e, doc: docOf("Mine") } : e,
+    ],
+    ["a reveal step", (e) => (e.revealStep === 2 ? { ...e, revealStep: 1 } : e)],
+  ];
+  for (const [what, edit] of EDITS)
+    test(`an edit to ${what} on an old-size Answers slide survives a switch`, () => {
+      const saved = (LIVE as unknown as Record<string, Saved>)["20261016-1221/y4-romans"] as Saved;
+      const i = saved.slides.findIndex((s) => s.answersRole === "answers");
+      const edited = saved.slides.map((s, k) =>
+        k === i ? { ...s, elements: s.elements.map(edit) } : s,
       );
-    expect(kept(out.slides)).toBe(kept(lesson.slides));
-  });
+      expect(JSON.stringify(edited)).not.toBe(JSON.stringify(saved.slides));
+      const lesson = lessonOf(saved, edited);
+      const { lesson: out } = rethemeLesson(
+        lesson,
+        "paper",
+        measureHeadless(renderTheme(lesson, "paper")),
+        layoutKit(),
+      );
+      const kept = (ss: readonly Slide[]) =>
+        // Ids, places, sizes, words and steps as they were; only the theme's colours follow.
+        JSON.stringify(
+          ss.filter((s) => s.answersRole),
+          (k, v) => (k === "color" || k === "fill" ? undefined : v),
+        );
+      expect(kept(out.slides)).toBe(kept(lesson.slides));
+    });
 
   test("page counts", () => console.log(JSON.stringify(PAGES)));
 });

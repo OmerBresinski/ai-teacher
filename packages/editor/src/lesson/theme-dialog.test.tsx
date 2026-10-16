@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
+import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
@@ -14,6 +15,12 @@ import { renderEditor } from "./test-harness";
 afterEach(cleanup);
 
 describe("ThemeDialog", () => {
+  // Done waits for the template code before its final re-fit (TEACH-191 part d); load it up front
+  // so these tests time the undo step and the save, not the first import.
+  beforeAll(async () => {
+    await loadLayoutKit();
+  });
+
   test("Theme → Playground sets lesson.themeId, the tile is checked, Done closes as one undo step and one save", async () => {
     const { read, onSave } = renderEditor();
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
