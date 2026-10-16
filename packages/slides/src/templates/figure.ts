@@ -23,6 +23,7 @@ import type { ImageElement, RichDoc, ShapeElement, TextElement } from "@tj/domai
 import { styledRun } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { FONT_STACKS } from "../fonts";
+import { iconsLoaded, loadIcons } from "../icons/loader";
 import FIGURE_CAPACITY from "./figure-capacity.json" with { type: "json" };
 import { FIGURE_CAPTION_CAP } from "./figure-rules";
 import {
@@ -31,7 +32,6 @@ import {
   type Figure,
   G,
   kit,
-  mix,
   type Stage,
   type TemplateInput,
 } from "./index";
@@ -145,41 +145,106 @@ function plateMedal(
   cy: number,
   d: number,
   tile: boolean,
+  age: FigureAge,
 ) {
   const col = v2Colors(c.t);
-  const shape = (extra: Partial<ShapeElement> & { x: number; y: number; w: number; h: number }) =>
-    c.els.push({ id: uid(), type: "shape", shape: "ellipse", ...extra } as ShapeElement);
   const x = Math.round(cx - d / 2);
   const y = Math.round(cy - d / 2);
-  if (!tile)
-    shape({
-      x: x - HALO,
-      y: y - HALO,
-      w: d + 2 * HALO,
-      h: d + 2 * HALO,
-      fill: mix(col.surface, col.sand, 0.4),
-      name: FIGURE_NAMES.halo,
-    });
-  shape({
-    x,
-    y,
-    w: d,
-    h: d,
-    fill: col.surface,
-    ...(tile ? { shape: "rounded", radius: Math.round(d * TILE_RADIUS) } : {}),
-    name: FIGURE_NAMES.medal,
-  });
-  const g = Math.round(d * (tile ? 0.72 : 0.76));
-  const image = iconImage(
-    concept,
-    c.t,
-    { x: Math.round(cx - g / 2), y: Math.round(cy - g / 2), w: g, h: g },
-    col.accent,
-    FIGURE_NAMES.icon,
-    alt,
-  );
-  // Before the icon library has loaded, the face alone; the same box once it has.
-  if (image.src) c.els.push(image);
+  if (tile) {
+    // From KS3 a quiet rounded tile (the items row's tile): the surface face, the drawing at 72%.
+    c.els.push({
+      id: uid(),
+      type: "shape",
+      shape: "rounded",
+      x,
+      y,
+      w: d,
+      h: d,
+      fill: col.surface,
+      radius: Math.round(d * TILE_RADIUS),
+      name: FIGURE_NAMES.medal,
+    } as ShapeElement);
+    const g = Math.round(d * 0.72);
+    const image = iconImage(
+      concept,
+      c.t,
+      { x: Math.round(cx - g / 2), y: Math.round(cy - g / 2), w: g, h: g },
+      col.accent,
+      FIGURE_NAMES.icon,
+      alt,
+    );
+    if (image.src) c.els.push(image);
+    return;
+  }
+  // KS1-2: a paper halo, then the shared icon medal (TEACH-310 part c) with the theme's medal tokens.
+  c.els.push({
+    id: uid(),
+    type: "shape",
+    shape: "ellipse",
+    x: x - HALO,
+    y: y - HALO,
+    w: d + 2 * HALO,
+    h: d + 2 * HALO,
+    fill: col.background,
+    name: FIGURE_NAMES.halo,
+  } as ShapeElement);
+  // The medal is drawn by the lazily loaded icon library; before it loads, the face alone.
+  const icons = iconsLoaded();
+  if (!icons) void loadIcons();
+  const src = icons
+    ? icons.iconMedalImageSrc(concept, {
+        medal: icons.medalColoursFor({
+          dark: !!(c.t as { dark?: boolean }).dark,
+          colors: c.t.colors,
+        }),
+        colours: col.icon,
+        age,
+      } as never)
+    : "";
+  if (src)
+    c.els.push({
+      id: uid(),
+      type: "image",
+      x,
+      y,
+      w: d,
+      h: d,
+      src,
+      alt,
+      fit: "contain",
+      radius: Math.round(d / 2),
+      name: FIGURE_NAMES.icon,
+    } as ImageElement);
+  else
+    c.els.push({
+      id: uid(),
+      type: "shape",
+      shape: "ellipse",
+      x,
+      y,
+      w: d,
+      h: d,
+      fill: col.surface,
+      name: FIGURE_NAMES.medal,
+    } as ShapeElement);
+}
+
+/** The longest run of the caption's words that, with an ellipsis, stays on one line. */
+function oneLine(c: Ctx, caption: string): string {
+  const words = caption.split(/\s+/);
+  const lineH = c.s[CAPTION_ROLE] * kit.LH[CAPTION_ROLE];
+  let lo = 1;
+  let hi = words.length - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const t = `${words.slice(0, mid).join(" ")}…`;
+    if (Math.round(kit.measure(c, t, CAPTION_ROLE, G.width) / lineH) <= 1) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${words
+    .slice(0, lo)
+    .join(" ")
+    .replace(/[,;:.]$/, "")}…`;
 }
 
 /** Lays the figure slide: title, the stage's one figure (or its plate), the caption. */
@@ -221,7 +286,11 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
   } else if (isPhoto(f)) {
     const a = f.aspect ?? 4 / 3;
     box = figureBox(st, Math.max(PHOTO_MIN_ASPECT, a));
-    kit.photoBox(c, f, box);
+    if (a < PHOTO_MIN_ASPECT) {
+      // A very tall photo is shown whole on the figure's sand plate (no blind crop), held at 3:4.
+      kit.box(c, box, v2Colors(c.t).sand, { name: FIGURE_NAMES.plate, radius: c.t.radius });
+      kit.photoBox(c, f, box, false);
+    } else kit.photoBox(c, f, box);
   } else {
     // No figure: a sand plate the stage's size, the topic's icon in the age's medal at its centre.
     kit.box(c, st, v2Colors(c.t).sand, { name: FIGURE_NAMES.plate, radius: c.t.radius });
@@ -230,13 +299,16 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
     if (label && !concept) c.iconMisses = [...(c.iconMisses ?? []), label];
     if (concept) {
       const d = Math.min(MEDAL, Math.round(st.h * 0.6));
-      plateMedal(c, concept, label, st.x + st.w / 2, st.y + st.h / 2, d, age === "secondary");
+      plateMedal(c, concept, label, st.x + st.w / 2, st.y + st.h / 2, d, age === "secondary", age);
     } else c.over.push("figure has no drawing and no icon");
   }
   if (caption) {
+    // Over one line the caption is flagged for repair; meanwhile it shows as one line cut at a word
+    // with an ellipsis (never two lines, never smaller). The full words stay in the field report.
+    const shown = capLines > 1 ? oneLine(c, caption) : caption;
     kit.text(
       c,
-      caption,
+      shown,
       CAPTION_ROLE,
       { x: G.margin, y: box.y + box.h + FIGURE_CAPTION_GAP, w: G.width },
       { color: c.t.colors.muted, name: FIGURE_NAMES.caption },

@@ -98,7 +98,13 @@ describe("figure slide: the open stage", () => {
       (lay().slide.elements.find((e) => e.name === "Caption") as TextElement | undefined)?.style
         .fontSize,
     );
-    expect(JSON.stringify(cap?.doc)).toContain("never lost.");
+    // Meanwhile it shows as one line, cut at a word with an ellipsis: never two lines.
+    const text = JSON.stringify(cap?.doc);
+    expect(text).toContain("…");
+    expect(text).not.toContain("never lost.");
+    const lineH = (cap?.style.fontSize ?? 0) * (cap?.style.lineHeight ?? 0);
+    expect(Math.round((cap?.h ?? 0) / lineH)).toBe(1);
+    expect(f?.chars).toBe(long.length);
   });
 
   test("the caption cap is the writer's cap under the measured one-line fit, per age", () => {
@@ -134,7 +140,10 @@ describe("figure slide: the open stage", () => {
     const r = lay({ figure: { photo: "https://x.test/p.jpg", aspect: 0.35, alt: "Tall" } });
     const [p] = named(r.slide.elements, "Photo") as ImageElement[];
     expect(p).toBeDefined();
-    const panel = r.slide.elements.find((e) => e.name === "Photo panel") ?? p;
+    // Shown whole on the figure's sand plate (a theme role), never an accent wash.
+    const panel = r.slide.elements.find((e) => e.name === FIGURE_NAMES.plate) as ShapeElement;
+    expect(panel.fill).toBe(v2Colors(atKeyStage(paper, "ks2")).sand);
+    expect(r.slide.elements.find((e) => e.name === "Photo panel")).toBeUndefined();
     expect(Math.abs((panel?.w ?? 0) / (panel?.h ?? 1) - 0.75)).toBeLessThan(0.02);
   });
 });
@@ -147,10 +156,11 @@ describe("figure slide: the model failed", () => {
       const r = plate(stage, "plant");
       expect(named(r.slide.elements, FIGURE_NAMES.plate)).toHaveLength(1);
       expect(named(r.slide.elements, FIGURE_NAMES.halo)).toHaveLength(1);
-      expect((named(r.slide.elements, FIGURE_NAMES.medal)[0] as ShapeElement).shape).toBe(
-        "ellipse",
-      );
-      expect(named(r.slide.elements, FIGURE_NAMES.icon)).toHaveLength(1);
+      // The shared icon medal (TEACH-310 part c) on a paper halo, never an accent ring.
+      const [halo] = named(r.slide.elements, FIGURE_NAMES.halo) as ShapeElement[];
+      expect(halo?.fill).toBe(v2Colors(atKeyStage(paper, stage)).background);
+      const [icon] = named(r.slide.elements, FIGURE_NAMES.icon) as ImageElement[];
+      expect(decodeURIComponent(icon?.src ?? "")).toContain('<circle cx="120" cy="120" r="120"');
       expect(r.over).toEqual([]);
     }
     const r3 = plate("ks3", "volcano");
@@ -174,7 +184,7 @@ describe("figure slide: every theme", () => {
           const [cap] = named(r.slide.elements, FIGURE_NAMES.caption) as TextElement[];
           expect(cap?.style.color).toBe(t.colors.muted);
           const v = v2Colors(t);
-          const roles = [v.sand, v.surface, mix(v.surface, v.sand, 0.4)];
+          const roles = [v.sand, v.surface, v.background];
           for (const e of r.slide.elements)
             if (e.type === "shape") expect(roles).toContain(String((e as ShapeElement).fill));
         }
