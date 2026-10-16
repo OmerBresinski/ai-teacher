@@ -209,7 +209,12 @@ function contentOf(slide: Slide, sizes = true): string {
       : v && typeof v === "object"
         ? Object.fromEntries(
             Object.keys(v)
-              .filter((k) => !(top ? k === "id" : drop.has(k)))
+              // Empty notes are no notes: a loaded lesson gives every slide `notes: ""`.
+              .filter((k) =>
+                top
+                  ? k !== "id" && !(k === "notes" && !(v as { notes?: unknown }).notes)
+                  : !drop.has(k),
+              )
               .sort()
               .map((k) => [k, norm((v as Record<string, unknown>)[k])]),
           )

@@ -28,8 +28,14 @@ type Saved = {
   generation: unknown;
   slides: Slide[];
 };
+// Every slide gets `notes: ""` as a loaded lesson's slides do, so the replay matches the app.
 const lessonOf = (s: Saved, slides = s.slides) =>
-  ({ id: "l", title: "Live", ...s, slides }) as unknown as Lesson;
+  ({
+    id: "l",
+    title: "Live",
+    ...s,
+    slides: slides.map((x) => ({ notes: "", ...x })),
+  }) as unknown as Lesson;
 
 /** Every way two of a slide's words cross, each box measured at its drawn size in `theme`. */
 function overlaps(slide: Slide, theme: Theme): string[] {
@@ -125,7 +131,7 @@ describe("live end Answers slides: wrapped rows never overlap", () => {
         ss.filter((s) => s.answersRole),
         (k, v) => (k === "color" || k === "fill" ? undefined : v),
       );
-    expect(kept(out.slides)).toBe(kept(edited));
+    expect(kept(out.slides)).toBe(kept(lesson.slides));
   });
 
   test("page counts", () => console.log(JSON.stringify(PAGES)));
