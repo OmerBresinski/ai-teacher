@@ -34,7 +34,6 @@ import type {
 import { styledRun } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { iconsLoaded, loadIcons } from "../icons/loader";
-import { medalColoursFor } from "../icons/medal";
 import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
@@ -750,14 +749,15 @@ function closedPath(pts: readonly (readonly [number, number])[], colour: string)
 function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>): ImageElement {
   const lib = iconsLoaded();
   if (!lib) void loadIcons();
-  const medal = medalColoursFor({
+  const medal = lib?.medalColoursFor({
     dark: c.t.dark,
     colors: { background: col.background, surface: col.surface, accent: col.accent },
     fields: col.fields,
   });
-  const src = lib
-    ? lib.iconMedalImageSrc(id, { medal, colours: col.icon, px: Math.round(b.w * 2) })
-    : "";
+  const src =
+    lib && medal
+      ? lib.iconMedalImageSrc(id, { medal, colours: col.icon, px: Math.round(b.w * 2) })
+      : "";
   return {
     id: uid(),
     type: "image",
