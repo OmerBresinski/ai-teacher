@@ -88,5 +88,45 @@ describe("live end Answers slides: wrapped rows never overlap", () => {
       expect(pages.length).toBeLessThanOrEqual(3);
     });
   }
+  test("an edited old-size Answers slide survives a switch byte for byte", () => {
+    const saved = (LIVE as unknown as Record<string, Saved>)["20261016-1221/y4-romans"] as Saved;
+    const i = saved.slides.findIndex((s) => s.answersRole === "answers");
+    const page = saved.slides[i] as Slide;
+    const edited = saved.slides.map((s, k) =>
+      k === i
+        ? {
+            ...page,
+            elements: page.elements.map((e) =>
+              e.type === "text" && e.name === "Model answer"
+                ? {
+                    ...e,
+                    doc: {
+                      type: "doc",
+                      content: [
+                        { type: "paragraph", content: [{ type: "text", text: "Firm roads." }] },
+                      ],
+                    } as never,
+                  }
+                : e,
+            ),
+          }
+        : s,
+    );
+    const lesson = lessonOf(saved, edited);
+    const { lesson: out } = rethemeLesson(
+      lesson,
+      "paper",
+      measureHeadless(renderTheme(lesson, "paper")),
+      layoutKit(),
+    );
+    const kept = (ss: readonly Slide[]) =>
+      // Ids, places, sizes and words as they were; only the theme's colours follow the switch.
+      JSON.stringify(
+        ss.filter((s) => s.answersRole),
+        (k, v) => (k === "color" || k === "fill" ? undefined : v),
+      );
+    expect(kept(out.slides)).toBe(kept(edited));
+  });
+
   test("page counts", () => console.log(JSON.stringify(PAGES)));
 });

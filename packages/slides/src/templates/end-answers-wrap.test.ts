@@ -151,14 +151,17 @@ describe("Answers rows are as tall as their wrapped words", () => {
 
 describe("relayEndAnswers: untouched Answers are rebuilt in the new faces, edited ones are kept", () => {
   const OPTS = { skipWithKey: false } as const;
-  // Two practice slides of four long answers: at KS1 the faces decide between 3 and 5 pages.
+  // Two practice slides of six long answers: at KS1 the faces decide between 4 and 5 pages. (At the
+  // stage's drawn sizes, TEACH-191 d, four answers each give 4 pages in every face.)
   const longLesson = [0, 1].map((i) => ({
     id: `l${i}`,
     kind: "open-response",
     elements: [],
     question: {
       type: "open-response",
-      modelAnswer: [0, 1, 2, 3].map((n) => `${n + 1}. ${LONG[(i + n) % LONG.length]}`).join("\n"),
+      modelAnswer: [0, 1, 2, 3, 4, 5]
+        .map((n) => `${n + 1}. ${LONG[(i + n) % LONG.length]}`)
+        .join("\n"),
     },
   })) as unknown as Slide[];
   const deckIn = (lesson: Slide[], id: string, stage: Stage = "ks2") => [
