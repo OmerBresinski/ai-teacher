@@ -1,10 +1,18 @@
+import { SHORT_ANSWER_WORDS } from "@tj/slides/templates/end-answers";
+import END_ANSWERS_CAPACITY from "@tj/slides/templates/end-answers-capacity.json" with {
+  type: "json",
+};
+import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import ITEMS_ROW_CAPACITY from "@tj/slides/templates/items-row-capacity.json" with { type: "json" };
 import PANEL_LIST_CAPACITY from "@tj/slides/templates/panel-list-capacity.json" with {
   type: "json",
 };
+import PRACTICE_CAPACITY from "@tj/slides/templates/practice-capacity.json" with { type: "json" };
+import QUICK_CAPACITY from "@tj/slides/templates/question-set-capacity.json" with { type: "json" };
 import SPLIT_COMPARE_CAPACITY from "@tj/slides/templates/split-compare-capacity.json" with {
   type: "json",
 };
+import HINGE_CARDS from "./hinge-cards.gen.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 
 /*
@@ -316,6 +324,11 @@ const fitsSides = (a: Age) =>
           `${n} sides ${ZONE_LABEL[z]}: up to ${sideBudget(a, n, z)} words each${z === "q" ? `, plus a quote of up to ${quoteBudget(a, n)} words` : ""}`,
       ),
   ).join("; ");
+/** The side counts split-compare's table measures at an age: "2 or 3". */
+const sideSpan = (a: Age) => {
+  const ns = [...new Set(SC_KEYS[a].map((k) => Number(k[0])))].sort();
+  return ns.length > 1 ? `${ns.slice(0, -1).join(", ")} or ${ns.at(-1)}` : `${ns[0]}`;
+};
 const titleWords = (a: Age) =>
   Math.min(
     ...SC_KEYS[a].map((k) =>
@@ -368,27 +381,193 @@ const byStage = (line: (a: Age) => string) =>
 // writer-prompt: owned by TEACH-110 s
 export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const more = NUMW[(allNs("items-row", a).at(-1) ?? 0) + 1] ?? "";
-  return `- items-row: ${countWords("items-row", a)} named parts that work together, or the named stages of one short process (flow shape parts of a whole, or sequence), in a row on a connecting line, each a name pupils learn and one short line; ordered is true for stages. ${more} or more parts go to a labelled diagram or two slides, ${more.toLowerCase()} or more stages to steps. Not for steps pupils carry out (steps), an idea with its reasons (explain), a set of kinds or examples (panel-list), or a contrast (split-compare). Stages each told by a picture and its name go to picture-sequence; stages that each need a line on what happens come here, ordered. motif: vessel for circulation, river for water or journeys, road for routes or history, stem for growth, else null (a plain line). Fits: ${fitsRow(a)}.`;
+  return `- items-row: ${countWords("items-row", a)} named parts of one whole that work together (flow shape parts of a whole), in a row on a connecting line, each a name pupils learn and its job in one short line. ${more} or more parts go to a labelled diagram or two slides. Never the steps of a method or calculation, even in order (steps or equation-hero), or the stages of a process (steps or picture-sequence); not for an idea with its reasons (explain), a set of kinds or examples (panel-list), or a contrast (split-compare). motif: vessel for circulation, stem for a plant, else null (a plain line). Fits: ${fitsRow(a)}.`;
 });
 
 // writer-prompt: owned by TEACH-110 s
 export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together and stages go to items-row; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null; rules, reasons and ideas take picture null. Otherwise the panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null; rules, reasons and ideas take picture null. Otherwise the panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
 );
 
 // writer-prompt: owned by TEACH-110 s
 export const SPLIT_COMPARE_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- split-compare: a vs: 2 or 3 things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and a sentence or two, when the contrast is the point: opposites, two or three viewpoints, before and after, or two kinds that differ on the same features, each side answering the same question in the same order. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
+    `- split-compare: a vs: ${sideSpan(a)} things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and a sentence or two, when the contrast is the point: opposites, viewpoints, before and after a change in the world, or two kinds that differ on the same features, each side answering the same question in the same order. Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
 );
+
+/*
+ * The question layouts (TEACH-110 part v, the B wave): hinge (TEACH-256 b), quick check
+ * (`question-set`, TEACH-101 g), practice and exit ticket (TEACH-230 b). Their numbers come from
+ * the same tables the templates fit with: `hinge-cards.gen.json` (the hinge's writer table, per
+ * option count), `question-set-capacity.json` and `practice-capacity.json`. The end-of-deck
+ * Answers slides are built by code from the practice and exit answers and are never offered.
+ */
+/** A practice task or exit question is at most this many words, whatever the slide holds. */
+const TASK_SENT: Record<Age, number> = { early: 15, primary: 25, secondary: 30 };
+/** Below this a task, question or option count is not offered. */
+const MIN_TASK: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
+const MIN_QUICK_Q = 4;
+const MIN_OPTION = 2;
+/** Practice with a picture at KS1 holds at most 3 tasks (the gold's default, practice-exit NOTES). */
+const PIC_MAX: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
+/**
+ * Hinge picture-tile names: the gold's 2 words. No capacity table measures tile labels;
+ * question-offer.test.ts renders a full row of tiles at this length on every stage and theme.
+ */
+export const TILE_WORDS = 2;
+/**
+ * The end Answers ledger's answer forms (TEACH-191 part b): a short answer is what the ledger
+ * parses as one (`SHORT_ANSWER_WORDS`, `end-answers.ts` `answerItem`), and the longest model
+ * sentence is the longest sentence class the ledger's capacity table measures
+ * (`end-answers-capacity.json`, "N-word sentences"). Working is one calculation line, the form the
+ * table measures for worked answers.
+ */
+const longestSentence = Math.max(
+  ...Object.values(END_ANSWERS_CAPACITY as Record<string, Record<string, number>>).flatMap((k) =>
+    Object.keys(k).map((x) => Number(/^(\d+)-word sentences$/.exec(x)?.[1] ?? 0)),
+  ),
+);
+export const ANSWER_WORDS = { short: SHORT_ANSWER_WORDS, sentence: longestSentence } as const;
+
+type QuickCell = { questions: CapCell; answers: CapCell };
+const QUICK = QUICK_CAPACITY as unknown as Record<Age, Record<string, QuickCell>>;
+type WorkCell = { n: number; cap: number };
+const WORK = PRACTICE_CAPACITY as unknown as Record<
+  Age,
+  Record<"practice" | "practice+picture" | "practice+figure" | "exit", WorkCell[]>
+>;
+const HINGE = (
+  HINGE_CARDS as { groups: Record<WriterStage, { stem: number; options: Record<string, number> }> }
+).groups;
+
+const quickOffer = (a: Age) =>
+  Object.entries(QUICK[a] ?? {})
+    .map(([n, c]) => ({
+      n: Number(n),
+      q: menuWords(c.questions.cap, a),
+      a: menuWords(c.answers.cap, a),
+    }))
+    .filter((x) => x.q >= MIN_QUICK_Q && x.a >= 1)
+    .sort((x, y) => x.n - y.n);
+const workBudget = (a: Age, cells: WorkCell[], max = 99): [number, number][] =>
+  cells
+    .filter((c) => c.n <= max)
+    .map((c): [number, number] => [c.n, Math.min(TASK_SENT[a], menuWords(c.cap, a))])
+    .filter(([, w]) => w >= MIN_TASK[a]);
+const practiceOffer = (a: Age) => ({
+  plain: workBudget(a, WORK[a].practice),
+  // A picture and a figure are measured apart: offer the smaller per count.
+  pic: workBudget(a, WORK[a]["practice+picture"], PIC_MAX[a]).map(([n, w]): [number, number] => {
+    const f = WORK[a]["practice+figure"].find((c) => c.n === n);
+    return [n, f ? Math.min(w, menuWords(f.cap, a)) : w];
+  }),
+});
+const exitOffer = (a: Age) => workBudget(a, WORK[a].exit);
+/**
+ * The hinge's option offer is #539's renderer-measured `hinge-capacity.json`: one word budget per
+ * age, measured with the most options the age takes (3 at KS1, 4 otherwise), so it holds for fewer.
+ * The question's budget is the writer's hinge card table (`hinge-cards.gen.json`, regenerated by
+ * #539 from the same layout).
+ */
+type HingeCap = { words: number; options: number };
+const HINGE_CAP = HINGE_CAPACITY as unknown as Record<Age, HingeCap>;
+const hingeOffer = (a: Age) => {
+  const g = HINGE[STAGE_OF[a]];
+  const c = HINGE_CAP[a];
+  if (!g || !c) throw new Error(`layout menu: no hinge table for ${a}`);
+  return {
+    question: menuWords(g.stem, a),
+    options: Array.from({ length: c.options - 1 }, (_, i): [number, number] => [i + 2, c.words]),
+  };
+};
+const ends = (p: [number, number][], what: string) => {
+  const lo = p[0]?.[0];
+  const hi = p.at(-1)?.[0];
+  if (lo === undefined || hi === undefined) throw new Error(`layout menu: ${what} offers nothing`);
+  return [lo, hi] as const;
+};
+/** Runs of counts with one budget, each clause whole: "3 to 4 tasks: up to 10 words each". */
+const countClauses = (pairs: [number, number][], one: string, many: string) =>
+  runs(pairs)
+    .map(
+      ([x, y, w]) =>
+        `${span(x, y)} ${x === y && x === 1 ? one : many}: up to ${w} words${y > 1 ? " each" : ""}`,
+    )
+    .join("; ");
+
+// writer-prompt: owned by TEACH-110 v
+export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
+  const o = hingeOffer(a);
+  const [lo, hi] = ends(o.options, `hinge at ${a}`);
+  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.`;
+});
+
+// writer-prompt: owned by TEACH-110 v
+export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
+  const q = quickOffer(a);
+  const [lo, hi] = ends(
+    q.map((x): [number, number] => [x.n, x.q]),
+    `question-set at ${a}`,
+  );
+  const ans = (w: number) =>
+    w === 1 ? "each answer one word or number" : `each answer up to ${w} words`;
+  const parts: string[] = [];
+  for (let i = 0; i < q.length; ) {
+    let j = i;
+    while (j + 1 < q.length && q[j + 1]?.q === q[i]?.q && q[j + 1]?.a === q[i]?.a) j += 1;
+    const x = q[i] as (typeof q)[number];
+    parts.push(`${span(x.n, q[j]?.n ?? x.n)} questions: up to ${x.q} words each, ${ans(x.a)}`);
+    i = j + 1;
+  }
+  return `- question-set: a quick check: ${span(lo, hi)} short questions pupils answer at once from memory, aloud or on whiteboards (flow shape recall or check), each with its answer, which the slide reveals one click at a time. Each question fits one line; each answer is a number, a word or a short phrase. Not for one question whose wrong options are beliefs to spot (hinge), tasks that take pupils time to work out or write (practice), or the closing check (exit-ticket); questions about a picture or diagram go to practice. Fits: ${parts.join("; ")}. Each limit holds only for its own question count.`;
+});
+
+// writer-prompt: owned by TEACH-110 v
+export const PRACTICE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
+  const p = practiceOffer(a);
+  const [lo, hi] = ends(p.plain, `practice at ${a}`);
+  return `- practice: ${span(lo, hi)} tasks pupils work on alone in their books, each taking time to work out, calculate or write (flow shape check), each with the answer a pupil should reach, and a picture or diagram when the tasks work from one. More tasks take a second practice slide. Not for quick recall answered at once (question-set), one multiple-choice question (hinge), or the closing check (exit-ticket). Fits: ${countClauses(p.plain, "task", "tasks")}; with a picture or diagram: ${countClauses(p.pic, "task", "tasks")}. Each limit holds only for its own task count and whether the slide has a picture or diagram.`;
+});
+
+// writer-prompt: owned by TEACH-110 v
+export const EXIT_TICKET_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
+  const e = exitOffer(a);
+  const [lo, hi] = ends(e, `exit-ticket at ${a}`);
+  return `- exit-ticket: ${span(lo, hi)} questions pupils answer alone at the end of the lesson (flow shape check), where the context puts the exit ticket, each with its answer, together checking the lesson's objectives. Not for checks during the lesson (question-set, hinge or practice). Fits: ${countClauses(e, "question", "questions")}.`;
+});
+
+// writer-prompt: owned by TEACH-110 v. One line for the three layouts that carry answers.
+export const ANSWERS_RULE = `Answers on question-set, practice and exit-ticket are what a pupil should write, never a mark scheme: a number with its unit, a word or a phrase of up to ${ANSWER_WORDS.short} words, or True or False with a few words correcting a false statement; on practice and exit-ticket, an explain or describe task's answer may be one model sentence of up to ${ANSWER_WORDS.sentence} words, and the steps of a calculation go in working, as one calculation line, else null; the answer itself holds no working. Code reveals a quick check's answers on its slide and gathers the practice and exit-ticket answers onto Answers slides at the end of the deck.`;
+
+/** What the question layouts offer at a stage: the schema's array bounds come from here. */
+export function questionOffer(stage: WriterStage) {
+  const a = MENU_AGE[stage];
+  const q = quickOffer(a);
+  const p = practiceOffer(a);
+  return {
+    hinge: ends(hingeOffer(a).options, "hinge"),
+    "question-set": ends(
+      q.map((x): [number, number] => [x.n, x.q]),
+      "question-set",
+    ),
+    practice: ends(p.plain, "practice"),
+    "exit-ticket": ends(exitOffer(a), "exit-ticket"),
+  };
+}
 
 /** Each layout's menu, by the slot name its line takes in a system template (`{{menu:<layout>}}`). */
 export const LAYOUT_WRITER_MENUS = {
   "items-row": ITEMS_ROW_WRITER_MENU,
   "panel-list": PANEL_LIST_WRITER_MENU,
   "split-compare": SPLIT_COMPARE_WRITER_MENU,
+  hinge: HINGE_WRITER_MENU,
+  "question-set": QUESTION_SET_WRITER_MENU,
+  practice: PRACTICE_WRITER_MENU,
+  "exit-ticket": EXIT_TICKET_WRITER_MENU,
 } as const;
+/** Shared rules a template takes by slot (`{{rule:<name>}}`), each exactly once. */
+export const WRITER_RULES = { answers: ANSWERS_RULE } as const;
 
 /**
  * A writer system text from its template: each `{{menu:<layout>}}` slot (exactly once each) becomes
@@ -403,7 +582,14 @@ export function assembleWriterSystem(template: string, stage: WriterStage): stri
       throw new Error(`writer system: ${slot} must appear exactly once`);
     out = out.replace(slot, () => menu[stage]);
   }
-  if (out.includes("{{menu:")) throw new Error("writer system: an unknown {{menu:...}} slot");
+  for (const [name, rule] of Object.entries(WRITER_RULES)) {
+    const slot = `{{rule:${name}}}`;
+    if (out.split(slot).length !== 2)
+      throw new Error(`writer system: ${slot} must appear exactly once`);
+    out = out.replace(slot, () => rule);
+  }
+  if (out.includes("{{menu:") || out.includes("{{rule:"))
+    throw new Error("writer system: an unknown {{menu:...}} or {{rule:...}} slot");
   for (const layout of Object.keys(LAYOUT_WRITER_MENUS))
     if (out.split(`\n- ${layout}: `).length !== 2)
       throw new Error(`writer system: ${layout} has a second menu line`);

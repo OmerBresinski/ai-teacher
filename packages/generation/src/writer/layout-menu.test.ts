@@ -23,7 +23,7 @@ import { type WriterStage, writerSchema } from "./schema";
  */
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const TEMPLATE = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
-const dir = new URL("./bundles/pilot-v4.6-menu/", import.meta.url);
+const dir = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, dir), "utf8");
 const must = <T>(x: T | null | undefined, what = "value"): T => {
   if (x === null || x === undefined) throw new Error(`missing ${what}`);

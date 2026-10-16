@@ -1033,7 +1033,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     )
       log({ ev: "hinge-first-unmet", slide: idx + 1, correct: s.correct ?? null });
     // The hinge's correct option lands at a seeded, uniform position.
-    s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
+    s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? s.heading ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
     const look = lookOf(plan.flow?.find((x) => x.slide === idx + 1));

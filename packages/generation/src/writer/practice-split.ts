@@ -14,8 +14,10 @@ export function continuePractice(
   fits: (s: S) => boolean,
 ): { first: S; rest: S[] } | undefined {
   if (slide.template !== "practice") return undefined;
-  const qs = Array.isArray(slide.questions) ? slide.questions : [];
-  const as = Array.isArray(slide.answers) ? slide.answers : undefined;
+  // The writer's `items: [{ question, answer, working }]` (TEACH-110 part v) split as one list.
+  const items = Array.isArray(slide.items) ? (slide.items as unknown[]) : undefined;
+  const qs = items ?? (Array.isArray(slide.questions) ? slide.questions : []);
+  const as = !items && Array.isArray(slide.answers) ? slide.answers : undefined;
   if (qs.length < 4 || fits(slide)) return undefined;
   for (let k = 2; k <= Math.min(MOST_PARTS, Math.floor(qs.length / 2)); k++) {
     const size = Math.ceil(qs.length / k);
@@ -23,7 +25,9 @@ export function continuePractice(
     for (let j = 0; j * size < qs.length; j++)
       parts.push({
         ...slide,
-        questions: qs.slice(j * size, (j + 1) * size),
+        ...(items
+          ? { items: qs.slice(j * size, (j + 1) * size) }
+          : { questions: qs.slice(j * size, (j + 1) * size) }),
         ...(as ? { answers: as.slice(j * size, (j + 1) * size) } : {}),
         ...(j > 0 ? { picture: null, figure: null } : {}),
       });

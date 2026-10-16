@@ -16,10 +16,14 @@ import b61 from "./bundles/pilot-v4.6/base-KS1.schema.json" with { type: "json" 
 import b62 from "./bundles/pilot-v4.6/base-KS2.schema.json" with { type: "json" };
 import b63 from "./bundles/pilot-v4.6/base-KS3.schema.json" with { type: "json" };
 import l46 from "./bundles/pilot-v4.6/layouts.json" with { type: "json" };
-import t61 from "./bundles/pilot-v4.6-menu/system-KS1.template.txt" with { type: "text" };
-import t62 from "./bundles/pilot-v4.6-menu/system-KS2.template.txt" with { type: "text" };
-import t63 from "./bundles/pilot-v4.6-menu/system-KS3.template.txt" with { type: "text" };
-import { assembleWriterSystem, layoutFieldCaps } from "./layout-menu";
+import s61 from "./bundles/pilot-v4.6/system-KS1.txt" with { type: "text" };
+import s62 from "./bundles/pilot-v4.6/system-KS2.txt" with { type: "text" };
+import s63 from "./bundles/pilot-v4.6/system-KS3.txt" with { type: "text" };
+import l47 from "./bundles/pilot-v4.7/layouts.json" with { type: "json" };
+import t71 from "./bundles/pilot-v4.7-menu/system-KS1.template.txt" with { type: "text" };
+import t72 from "./bundles/pilot-v4.7-menu/system-KS2.template.txt" with { type: "text" };
+import t73 from "./bundles/pilot-v4.7-menu/system-KS3.template.txt" with { type: "text" };
+import { assembleWriterSystem, layoutFieldCaps, questionOffer } from "./layout-menu";
 import type { WriterStage } from "./schema";
 
 /*
@@ -40,6 +44,8 @@ export type PilotPack = {
     stages: Record<string, { $defs: J }>;
     /** JSON pointers into the base schema and the node each one becomes (v4.5 on). */
     basePatches?: J;
+    /** Base defs a pack layout replaces, by exact key, removed before the pack's defs go in (v4.7). */
+    replaced?: string[];
   };
   base: Record<Ks, J>;
   system: Record<Ks, string>;
@@ -50,6 +56,8 @@ export type PilotPack = {
   uncapped?: boolean;
   /** The pack whose request carries the caps code checks against (slot-fill's cap table). */
   capsFrom?: string;
+  /** The question layouts' defs come from the capacity tables (`questionDefs`, v4.7 on). */
+  questionDefs?: boolean;
 };
 
 export const PILOT_PACKS = {
@@ -73,20 +81,34 @@ export const PILOT_PACKS = {
     id: "v4.6",
     layouts: l46 as PilotPack["layouts"],
     base: { KS1: b61, KS2: b62, KS3: b63 },
+    // Frozen as shipped (the snapshot `assembleWriterSystem` made on 15 Oct): v4.7 now owns the
+    // menu constants.
+    system: { KS1: s61, KS2: s62, KS3: s63 },
+    uncapped: true,
+    capsFrom: "v4.5",
+  },
+  // v4.7 (TEACH-110 part v): the question layouts as one def each (hinge, quick check, practice,
+  // exit ticket) with their answers, choose retired into the hinge (ruling 230), items-row parts
+  // only (ruling 227) and the contrast, parts and set boundaries stated at the flow step.
+  "v4.7": {
+    id: "v4.7",
+    layouts: l47 as PilotPack["layouts"],
+    base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
     system: {
-      KS1: assembleWriterSystem(t61, "KS1"),
-      KS2: assembleWriterSystem(t62, "KS2"),
-      KS3: assembleWriterSystem(t63, "KS3-5"),
+      KS1: assembleWriterSystem(t71, "KS1"),
+      KS2: assembleWriterSystem(t72, "KS2"),
+      KS3: assembleWriterSystem(t73, "KS3-5"),
     },
     uncapped: true,
     capsFrom: "v4.5",
+    questionDefs: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.6";
+export const PILOT_PACK_ID: PilotPackId = "v4.7";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
@@ -151,8 +173,15 @@ export function pilotRequest(
     fp.items.properties.teaches = pf.items.properties.teaches;
   }
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
-  const defs = pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {};
-  const refs = schema.properties.slides.items.anyOf as J[];
+  const replaced = new Set(pack.layouts.replaced ?? []);
+  for (const k of replaced) delete schema.$defs[k];
+  const defs = {
+    ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
+    ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
+  };
+  const refs = (schema.properties.slides.items.anyOf as J[]).filter(
+    (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),
+  );
   for (const [k, d] of Object.entries(defs)) {
     schema.$defs[k] = d;
     // Shared defs (the icon names) are referenced by the layouts, never offered as a slide.
@@ -164,6 +193,11 @@ export function pilotRequest(
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
+  // Nothing a pack replaced or retired may still be reachable: the writer would use it.
+  const sent = JSON.stringify(schema);
+  for (const k of [...replaced, ...pack.layouts.retired])
+    if (sent.includes(`"#/$defs/${k}"`) || sent.includes(`"#/$defs/${k}~`))
+      throw new Error(`pilot pack ${id}: ${k} is still reachable`);
   if (pack.uncapped) {
     // The other layouts' caps come from the capped pack (production's library models still cap
     // their strings); the pilot layouts' caps come from the measured tables, as the menu's do.
@@ -252,4 +286,56 @@ export function pilotRepairSchema(repair: J, writer: J, template: string): J {
   out.$defs = keep;
   // A capped repair would cut its own fix, as the writer's decoder did.
   return stripStringCaps(out);
+}
+
+const str = { type: "string" };
+const strOrNull = { anyOf: [{ type: "string" }, { type: "null" }] };
+const obj = (properties: J): J => ({
+  type: "object",
+  additionalProperties: false,
+  required: Object.keys(properties),
+  properties,
+});
+const list = (items: J, [min, max]: readonly [number, number]): J => ({
+  type: "array",
+  items,
+  minItems: min,
+  maxItems: max,
+});
+
+/**
+ * The question layouts' defs (TEACH-110 part v): one def each, item counts from the capacity
+ * tables (`questionOffer`, the same numbers as their menu lines), no string caps (the templates
+ * measure every field at its drawn size). Each answer sits inside its question; the hinge writes
+ * its correct option first and keeps no counted key; the question of a hinge is its heading.
+ */
+export function questionDefs(stage: WriterStage): J {
+  const o = questionOffer(stage);
+  const worked = obj({ question: str, answer: str, working: strOrNull });
+  return {
+    hinge: obj({
+      template: { type: "string", enum: ["hinge"] },
+      heading: str,
+      options: {
+        ...list(obj({ text: str, icon: { $ref: "#/$defs/layout-icon" }, why: strOrNull }), o.hinge),
+        description: "the correct option first; pupils see them shuffled",
+      },
+    }),
+    "question-set": obj({
+      template: { type: "string", enum: ["question-set"] },
+      heading: str,
+      items: list(obj({ question: str, answer: str }), o["question-set"]),
+    }),
+    practice: obj({
+      template: { type: "string", enum: ["practice"] },
+      heading: str,
+      picture: { $ref: "#/$defs/figure" },
+      items: list(worked, o.practice),
+    }),
+    "exit-ticket": obj({
+      template: { type: "string", enum: ["exit-ticket"] },
+      heading: str,
+      items: list(worked, o["exit-ticket"]),
+    }),
+  };
 }

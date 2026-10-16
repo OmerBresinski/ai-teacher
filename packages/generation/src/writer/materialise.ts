@@ -105,15 +105,29 @@ export type Materialised = {
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
-/** A quick check's answers, from its items or its answers list (TEACH-101 part g). */
+/**
+ * A question slide's answers, from its items or its answers list (TEACH-101 part g; practice and
+ * exit too, TEACH-110 part v). A worked answer's working follows " — ", which the end Answers
+ * ledger reads back as its working line; code writes the separator, the writer never does.
+ */
 const quickAnswers = (s: S): string[] =>
   Array.isArray(s.items)
-    ? s.items.map((i) => str((i as S | null)?.answer))
+    ? s.items.map((i0) => {
+        const i = (i0 ?? {}) as S;
+        const a = str(i.answer)
+          .replace(/\s+[—–]\s+/g, ", ")
+          .trim();
+        const w = str(i.working).trim();
+        return a && w ? `${a} — ${w}` : a;
+      })
     : Array.isArray(s.answers)
       ? s.answers.map((a) => str(a))
       : [];
+/** Strings, or each object's `question` (question items) or `text` (hinge options). */
 const strs = (v: unknown) =>
-  Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : str((x as S)?.question))) : [];
+  Array.isArray(v)
+    ? v.map((x) => (typeof x === "string" ? x : str((x as S)?.question) || str((x as S)?.text)))
+    : [];
 /**
  * Support points: a string, `{label, text}` (a key card) or `{kind, text}` (a typed callout card,
  * ruling 203). A blank label is no label; an unknown kind is no kind.
@@ -625,9 +639,7 @@ export function toInput(
         // TEACH-101 part g: a quick check comes as `items: [{ question, answer }]` (or as
         // `questions` with `answers`); a set that carries its answers draws as the quick check.
         questions: strs(Array.isArray(s.items) ? s.items : s.questions),
-        ...(template === "question-set" && quickAnswers(s).length
-          ? { answers: quickAnswers(s) }
-          : {}),
+        ...(quickAnswers(s).some(Boolean) ? { answers: quickAnswers(s) } : {}),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
@@ -985,9 +997,9 @@ export function codeTitle(brief: Brief, ctx: { theme: Theme; stage: Stage }): Ma
 /** The questions on a slide (the answerable check and the notes' answers). */
 export function questionsOf(raw: S): string[] {
   const s = normalise(raw);
-  if (s.template === "hinge") return [str(s.stem)];
+  if (s.template === "hinge") return [str(s.stem) || str(s.heading)];
   if (["question-set", "practice", "exit-ticket"].includes(str(s.template)))
-    return strs(s.questions);
+    return strs(Array.isArray(s.items) ? s.items : s.questions);
   // A discussion question has no one answer: it is not checked for one.
   return [];
 }
