@@ -23,7 +23,13 @@ import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } f
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
-import { answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
+import {
+  ANSWERS_NAMES,
+  ANSWERS_WORDS,
+  type AnswerGroup,
+  type AnswerItem,
+  endAnswerSlides,
+} from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
@@ -174,13 +180,82 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
   return asStage((theme as { keyStage?: unknown }).keyStage) ?? asStage(ageBand) ?? "ks3";
 }
 
+/** A text or shape element's words. */
+const wordsOf = (node: unknown): string =>
+  !node || typeof node !== "object"
+    ? ""
+    : "text" in node && typeof node.text === "string"
+      ? node.text
+      : "content" in node && Array.isArray(node.content)
+        ? node.content.map(wordsOf).join("")
+        : "";
+
+/**
+ * The answer groups an existing set of Answers slides shows, read from the slides themselves, so a
+ * teacher's edits to an answer, a working line, a correction or a source title are what gets laid
+ * out again. A group carried over onto the next page (same kicker and title, numbers continuing)
+ * is joined back into one.
+ */
+export function answerGroupsOnSlides(slides: readonly Slide[]): AnswerGroup[] {
+  const out: AnswerGroup[] = [];
+  for (const slide of slides) {
+    if (slide.answersRole !== "answers") continue;
+    let group: AnswerGroup | undefined;
+    let n = 0;
+    let last: AnswerItem | undefined;
+    const pageGroups: AnswerGroup[] = [];
+    for (const el of slide.elements) {
+      const name = el.name ?? "";
+      const words = "doc" in el && el.doc ? wordsOf(el.doc).trim() : "";
+      if (el.type === "text" && name === ANSWERS_NAMES.kicker) {
+        const exit = words.toUpperCase() === ANSWERS_WORDS.exit.toUpperCase();
+        group = { kind: exit ? "exit" : "practice", title: "", items: [] };
+        pageGroups.push(group);
+        last = undefined;
+      } else if (!group) {
+      } else if (el.type === "text" && name === ANSWERS_NAMES.source) {
+        group.title = words;
+      } else if (el.type === "shape" && name === "surface:badge") {
+        n = Number(words) || group.items.length + 1;
+      } else if (el.type === "text" && name === ANSWERS_NAMES.sentence) {
+        last = { n, s: words };
+        group.items.push(last);
+      } else if (el.type === "text" && name === ANSWERS_NAMES.answer) {
+        last = { n, a: words };
+        group.items.push(last);
+      } else if (el.type === "text" && name === ANSWERS_NAMES.chip) {
+        last = { n, tf: words.toLowerCase() === ANSWERS_WORDS.yes.toLowerCase() };
+        group.items.push(last);
+      } else if (el.type === "text" && name === ANSWERS_NAMES.work && last && "a" in last) {
+        if (words) last.work = words;
+      } else if (el.type === "text" && name === ANSWERS_NAMES.why && last && "tf" in last) {
+        if (words) last.why = words;
+      }
+    }
+    for (const g of pageGroups) {
+      const prev = out[out.length - 1];
+      const first = g.items[0]?.n ?? 0;
+      const tail = prev?.items[prev.items.length - 1]?.n ?? 0;
+      if (prev && prev.kind === g.kind && prev.title === g.title && first > tail && out.length)
+        prev.items.push(...g.items);
+      else out.push(g);
+    }
+  }
+  return out.filter((g) => g.items.length > 0);
+}
+
 /**
  * The deck's guard and Answers slides laid out again in `theme` (TEACH-191 part c), or null when
- * the deck has none. They are built by the deck from the practice and exit answers, never written
- * by hand, and their row heights are each answer's wrapped height measured in the faces of the
- * theme they were built in: drawn in a theme with wider faces, a wrapped answer runs into the next
- * row. So a re-theme builds them again from the questions, where the first one stood; a group that
- * no longer fits splits onto another Answers page. The old slide ids are kept in order.
+ * there is nothing to re-lay. Their row heights are each answer's wrapped height measured in the
+ * faces of the theme they were built in: drawn in a theme with wider faces, a wrapped answer runs
+ * into the next row. So a theme switch lays them out again in its own faces, where the first one
+ * stood, from what the slides show now (a teacher's edits included), and a group that no longer
+ * fits splits onto another Answers page.
+ *
+ * A theme switch never adds or removes the Answers set: it runs only on a deck that has Answers
+ * slides, the worksheet-key rule is not asked again (it was decided when they were made), a deck
+ * whose guard was removed gets none back, and when nothing can be laid out the slides stay as they
+ * are. The old slide ids are kept in order.
  */
 export function relayEndAnswers(
   slides: readonly Slide[],
@@ -190,12 +265,18 @@ export function relayEndAnswers(
   const at = slides.findIndex((s) => s.answersRole);
   if (at < 0) return null;
   const old = slides.filter((s) => s.answersRole);
-  const lesson = slides.filter((s) => !s.answersRole);
-  // They exist, so they are wanted: the worksheet-key rule decided that when they were made.
-  const made = endAnswerSlides(answerGroupsOf(lesson), theme, stage).map((s, i) => {
+  const groups = answerGroupsOnSlides(old);
+  if (!groups.length) return null;
+  const hadGuard = old.some((s) => s.answersRole === "guard");
+  const built = endAnswerSlides(groups, theme, stage, { skipWithKey: false }).filter(
+    (s) => hadGuard || s.answersRole !== "guard",
+  );
+  if (!built.some((s) => s.answersRole === "answers")) return null;
+  const made = built.map((s, i) => {
     const prev = old[i];
     return prev && prev.answersRole === s.answersRole ? { ...s, id: prev.id } : s;
   });
+  const lesson = slides.filter((s) => !s.answersRole);
   const before = slides.slice(0, at).filter((s) => !s.answersRole);
   return [...before, ...made, ...lesson.slice(before.length)];
 }
