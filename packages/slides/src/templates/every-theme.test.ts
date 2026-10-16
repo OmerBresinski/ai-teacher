@@ -40,6 +40,8 @@ const ALL: TemplateId[] = [
   "source",
   // TEACH-75 part ad (C5).
   "reasons",
+  // TEACH-75 part ag (G1).
+  "myth",
 ];
 
 type Sized = {

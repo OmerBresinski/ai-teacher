@@ -42,6 +42,8 @@ import { layoutFigure } from "./figure";
 import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
+// TEACH-75 part ag (G1): myth and fact.
+import { layoutMyth, type MythInput } from "./myth";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 // TEACH-75 part ae (C6).
 import { layoutPictureText, type PictureText, pictureTextOf } from "./picture-text";
@@ -61,6 +63,8 @@ import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
 export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+// TEACH-75 part ag (G1).
+export { MYTH_NAMES, type MythInput, type MythProof } from "./myth";
 export { REASON_PENDING_ICON } from "./reasons";
 export { SPLIT_SIDE_DIAGRAM_KINDS } from "./split-compare";
 // TEACH-75 part ac (C4).
@@ -198,6 +202,8 @@ export type TemplateId =
   | "figure"
   | "source"
   | "reasons"
+  // TEACH-75 part ag (G1).
+  | "myth"
   | ActivityId;
 
 export type TemplateInput = {
@@ -275,6 +281,11 @@ export type TemplateInput = {
    * library icon label and an optional picture. Any stage with neither: the items row's ordered look.
    */
   stages?: StageItem[];
+  /**
+   * Myth and fact (TEACH-75 part ag): a plain claim, its verdict (myth or true), the fact and one
+   * small proof; a vote ("True or false?") or a straight opening.
+   */
+  myth?: MythInput;
   /** Split compare: the seam marker's word ("vs" when absent). */
   marker?: string | null;
   /**
@@ -1385,6 +1396,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   // TEACH-75 part ab (C2).
   source: "content",
   reasons: "content",
+  // TEACH-75 part ag (G1): the vote is a prompt, never the lesson's check.
+  myth: "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2409,6 +2422,10 @@ function layoutOnce(
       break;
     case "reasons":
       layoutReasons(c, input);
+      break;
+    // TEACH-75 part ag (G1).
+    case "myth":
+      layoutMyth(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

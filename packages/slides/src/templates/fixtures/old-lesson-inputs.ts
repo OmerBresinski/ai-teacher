@@ -27,6 +27,7 @@ const NEWER = new Set<string>([
   "stages",
   "figure",
   "source",
+  "myth",
 ]);
 // TEACH-75 part ad (C5): reasons came after the snapshot too; kept out of the old-lesson set.
 NEWER.add("reasons");

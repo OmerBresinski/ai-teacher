@@ -31,6 +31,7 @@
     "./templates/reasons-capacity.json": "./src/templates/reasons-capacity.json",
     "./templates/split-compare-capacity.json": "./src/templates/split-compare-capacity.json",
     "./templates/stages-capacity.json": "./src/templates/stages-capacity.json",
+    "./templates/myth-capacity.json": "./src/templates/myth-capacity.json",
     "./templates/question-set-capacity.json": "./src/templates/question-set-capacity.json",
     "./templates/end-answers": "./src/templates/end-answers.ts",
     "./templates/end-answers-capacity.json": "./src/templates/end-answers-capacity.json",
