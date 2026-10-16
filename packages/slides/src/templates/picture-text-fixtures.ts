@@ -174,6 +174,19 @@ export const PT_CASES: Record<string, { stage: Stage; input: TemplateInput }> = 
     },
   },
 };
+// The gold's own KS3 text, past the measured word cap: laid in full and reported over.
+PT_CASES["ks3-composite-gold-text"] = {
+  stage: "ks3",
+  input: {
+    ...(PT_CASES["ks3-composite"]?.input as TemplateInput),
+    lead: "Composite volcanoes form where an oceanic plate sinks beneath a continental plate and melts.",
+    points: [
+      "The magma that rises is rich in silica, so it is thick and sticky and traps gas as it climbs.",
+      "Pressure builds beneath a plug of cooled rock until the vent gives way and the gas expands in an instant.",
+      "The blast throws out ash, pumice and pyroclastic flows that race downhill at over 100 km/h.",
+    ],
+  },
+};
 PT_CASES["ks2-wrapping-nopic"] = {
   stage: "ks2",
   input: { ...(PT_CASES["ks2-wrapping"]?.input as TemplateInput), figure: undefined },

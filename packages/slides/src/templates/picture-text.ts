@@ -214,6 +214,21 @@ const RUNGS: Rung[] = [
   { lead: "body", pts: "small", k: 0.55 },
 ];
 
+/**
+ * The model on its own sand panel with every part shown (the gold: the slide does not build, so a
+ * part that a later build takes away, such as the open switch, stays drawn). One extra `<style>`
+ * after the restyle's; the panel is the field-b role's fill.
+ */
+function onSandPanel(src: string, t: Ctx["t"]): string {
+  const m = /^data:image\/svg\+xml;charset=utf-8,/.exec(src);
+  if (!m) return src;
+  const svg = decodeURIComponent(src.slice(m[0].length));
+  const fill = surfacesOf(t).roles["field-b"].fill;
+  const css = `svg.slide.tk[class][class]{--bg:${fill};--paper:${fill}}.slide [data-f][data-f][data-f]{opacity:1}`;
+  const out = svg.replace(/<\/svg>\s*$/, `<style data-restyle="tj-panel">${css}</style></svg>`);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(out)}`;
+}
+
 export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText, stage: Stage) {
   c.bodyFromHeading = true;
   const key = !!pt.cards?.length;
@@ -296,7 +311,7 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
         y: fieldBox.y,
         w,
         h,
-        src: restyleModelSvg(model.drawn.src, c.t),
+        src: onSandPanel(restyleModelSvg(model.drawn.src, c.t), c.t),
         alt: model.drawn.alt ?? "",
         fit: "contain",
         ...(model.drawn.source ? { diagram: model.drawn.source } : {}),
@@ -304,12 +319,14 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
     } else if (other) {
       kit.figurePanel(c, other, { ...fieldBox, x: fieldBox.x + 16, w: fieldBox.w - 32 }, true);
     } else if (icon) {
-      const d = Math.round(Math.min(fw, fieldBox.h) * 0.46);
+      // The gold's medal: 288 / 268 / 240 at 1440 (early, primary, secondary).
+      const d = Math.min(Math.round(fw * 0.8), stage === "ks1" ? 192 : stage === "ks2" ? 179 : 160);
       const mx = Math.round(fieldBox.x + (fw - d) / 2);
       const my = Math.round(fieldBox.y + (fieldBox.h - d) / 2);
       const m = paintSurface({ id: uid(), role: "medal", box: { x: mx, y: my, w: d, h: d } }, c.t);
       if (m) c.els.push({ ...m, name: PT_NAMES.medal } as ShapeElement);
-      const g = Math.round(d * 0.72);
+      // The library drawing carries its own margin: drawn the medal's size it reads as the gold's 72%.
+      const g = Math.round(d * 0.95);
       const src = iconSrc(icon, c.t, g);
       if (src)
         c.els.push({

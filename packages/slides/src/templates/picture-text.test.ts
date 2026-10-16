@@ -33,7 +33,7 @@ const named = (r: ReturnType<typeof layoutTemplate>, n: string) =>
 
 describe("picture and text: every gold case on every theme", () => {
   for (const theme of THEMES)
-    for (const [name, c] of Object.entries(PT_CASES))
+    for (const [name, c] of Object.entries(PT_CASES).filter(([n]) => !n.endsWith("-gold-text")))
       test(`${name} on ${theme.id}: nothing over, sizes on the stage's steps`, () => {
         const r = layoutTemplate(c.input, theme, c.stage);
         expect(r.over).toEqual([]);
@@ -121,6 +121,16 @@ describe("picture and text: hierarchy", () => {
 });
 
 describe("picture and text: caps flag, never clip", () => {
+  test("the gold's full KS3 text is reported over and every word is drawn", () => {
+    const c = PT_CASES["ks3-composite-gold-text"];
+    const r = lay("ks3-composite-gold-text");
+    expect(r.over.some((o) => o.startsWith("picture-text words "))).toBe(true);
+    const drawn = r.slide.elements
+      .filter((e) => e.name === PT_NAMES.lead || e.name === PT_NAMES.point)
+      .map((e) => JSON.stringify((e as { doc?: unknown }).doc));
+    for (const t of [c?.input.lead ?? "", ...((c?.input.points ?? []) as string[])])
+      expect(drawn.some((d) => d.includes(t))).toBe(true);
+  });
   test("past the caps: named in over, every word still drawn", () => {
     const input: TemplateInput = {
       ...(PT_CASES["ks2-wrapping"]?.input as TemplateInput),

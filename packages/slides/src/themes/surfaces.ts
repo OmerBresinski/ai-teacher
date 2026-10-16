@@ -488,6 +488,7 @@ export function paintSurface(
     points: roundRectPoints(box.w, box.h, r),
     closed: true,
     fill,
-    ...lines,
+    // A path with no stroke would draw the renderer's default ink line: a role with no line says 0.
+    ...(stroke ? lines : { strokeWidth: 0 }),
   };
 }
