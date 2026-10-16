@@ -34,11 +34,28 @@ if (!t.ok) console.warn(`skipping @tj/jobs integration tests: ${t.reason}`);
 
 const STEP_MS = 300;
 
-/** Same shape (and 300 ms steps, above the 250 ms progress window) as `apps/worker/src/jobs/ping.ts`. */
+/** Waits `ms`, or less: an abort wakes it at once, as `apps/worker/src/jobs/ping.ts` does. */
+function nap(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const wake = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", wake);
+      resolve();
+    };
+    const timer = setTimeout(wake, ms);
+    signal.addEventListener("abort", wake, { once: true });
+  });
+}
+
+/**
+ * Same shape (and 300 ms steps, above the 250 ms progress window) as `apps/worker/src/jobs/ping.ts`.
+ * A cancel wakes the step's wait: the latency `cancel after started` measures is the runtime's
+ * (`cancel()`, the 250 ms poll, the `cancelled` write), not where in a step the cancel landed.
+ */
 const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
   for (let i = 1; i <= payload.steps; i++) {
     if (signal.aborted) return;
-    await Bun.sleep(STEP_MS);
+    await nap(STEP_MS, signal);
     if (signal.aborted) return;
     if (payload.failAt !== undefined && i === payload.failAt) {
       throw new NonRetryableError(`ping asked to fail at step ${i}/${payload.steps}`);

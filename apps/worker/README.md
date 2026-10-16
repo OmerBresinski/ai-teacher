@@ -36,7 +36,7 @@ is `stopping`/`stopped`) once shutdown has begun, so a load balancer drains the 
 
 `src/jobs/index.ts` exports `registry: JobRegistry` — a mapped type over `JobName`, so adding a
 name in `@tj/domain` without a handler here fails `typecheck`. `src/jobs/ping.ts` is the ADR 0012
-demo: `steps` progress events 300 ms apart, `signal.aborted` checked between steps,
+demo: `steps` progress events 300 ms apart, stopping as soon as `signal` aborts (mid-step too),
 `NonRetryableError` at `failAt`. See `@tj/jobs` README for the event contract, retry policy and
 cancel semantics.
 

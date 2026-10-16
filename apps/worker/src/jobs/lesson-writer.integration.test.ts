@@ -216,15 +216,20 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
   test("C2: slides are saved read-only while the writer streams, before it ends", async () => {
     // TEACH-110 part h: the writer's answer arrives in paced pieces (a model writing over time).
+    // The deck is saved at most once a second, so the stream must outlast the first slide plus a
+    // second's wait plus a save: 55 pieces 60 ms apart is about 3.2 s, the first slide closing at
+    // about 0.8 s. The stream's end is read off the fake when its last piece goes out, never
+    // worked out from the pace: under CI load the timers run late and a computed end comes early.
     const PIECE = 150;
-    const PACE = 40;
-    const pieces = Math.ceil(fixture.main.length / PIECE);
-    let writerStart = 0;
+    const PACE = 60;
+    let writerEnd = Number.POSITIVE_INFINITY;
     const paced = labAi({
       extra: (call) => {
         if (call.context?.promptVersion === `${WRITER_VERSION}/lesson`) {
-          writerStart = performance.now();
-          return { text: fixture.main, stream: { pieceChars: PIECE, paceMs: PACE } };
+          const onEnd = () => {
+            writerEnd = performance.now();
+          };
+          return { text: fixture.main, stream: { pieceChars: PIECE, paceMs: PACE, onEnd } };
         }
         return writerAnswers(call);
       },
@@ -237,16 +242,17 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
       ...ctxFor(genJob, { lessonId, revision: 1 }, depsWith(paced, "writer")),
       progress: async (_percent: number, message: string) => {
         if (message !== "Writing slides" && message !== "Slides written") return;
+        // The save has landed when its progress is sent: stamp it before this test's own read.
+        const at = performance.now();
         const r = await row(lessonId);
         seen.push({
-          at: performance.now(),
+          at,
           message,
           kinds: r.lesson.slides.map((x) => x.kind),
           states: Object.values(r.lesson.generation?.slideStates ?? {}),
         });
       },
     } as never);
-    const writerEnd = writerStart + (pieces - 1) * PACE;
     const first = seen[0];
     expect(first?.message).toBe("Writing slides");
     // the first save lands while the writer is still streaming
