@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PathElement, ShapeElement, SlideElement } from "@tj/domain/documents";
 import { loadIcons } from "../icons/loader";
+import { blockArrow } from "../paths/arrow";
 import { addItem, relayout, removeItem } from "../relayout";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
@@ -191,6 +192,49 @@ describe("stages: pictures and fallbacks", () => {
     const six = caseOf("09").input;
     expect(lay(six, "ks1").over).toContain("stages");
     expect(lay(six, "ks3").over).toEqual([]);
+  });
+});
+
+describe("stages: a cap of 0 is over, never silent", () => {
+  const pictured = (k: string, n: number) => {
+    const input = structuredClone(caseOf(k).input);
+    input.stages = (input.stages ?? []).slice(0, n).map((s) => ({
+      ...s,
+      picture: { photo: "https://images.test/stage.jpg", alt: s.name },
+    }));
+    return input;
+  };
+  test("5 pictures at early (cap 0): every name and line is over", () => {
+    const r = lay(pictured("05", 5), "ks1");
+    expect(r.over).toContain("stages[0].name");
+    expect(r.over).toContain("stages[4].line");
+    expect(r.tight).toBe(true);
+  });
+  test("6 pictures at primary (cap 0) are over; 3 short pictured stages at early are not", () => {
+    expect(lay(pictured("09", 6), "ks2").over).toContain("stages[0].line");
+    expect(lay(pictured("01", 3), "ks1").over).toEqual([]);
+  });
+});
+
+describe("blockArrow (the arrow primitive, TEACH-75 part ac)", () => {
+  test("seven points, the tip on the shaft's line, symmetric about it", () => {
+    const p = blockArrow([0, 50], [100, 50], { shaft: 40, head: 92, headLen: 44 }).map(([x, y]) => [
+      x,
+      y,
+    ]) as [number, number][];
+    expect(p).toHaveLength(7);
+    expect(p[3]).toEqual([100, 50]);
+    for (const [a, b] of [
+      [0, 6],
+      [1, 5],
+      [2, 4],
+    ] as const) {
+      const [pa, pb] = [p[a] as [number, number], p[b] as [number, number]];
+      expect(pa[0]).toBeCloseTo(pb[0], 6);
+      expect(pa[1] + pb[1]).toBeCloseTo(100, 6);
+    }
+    expect(p[0]).toEqual([0, 30]);
+    expect(p[2]).toEqual([56, 4]);
   });
 });
 

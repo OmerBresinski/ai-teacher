@@ -948,13 +948,9 @@ export function whatIs(word: string, language = false): string | undefined {
 }
 
 /** Pilot layouts kept as re-layable groups (prototype, see `materialise`). */
-const ADAPTIVE = new Set([
-  "items-row",
-  "panel-list",
-  "split-compare",
-  // TEACH-75 part ac (C4).
-  "stages",
-]);
+const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
+// TEACH-75 part ac (C4).
+ADAPTIVE.add("stages");
 
 /**
  * Layouts whose drafts and closed slide share ids (draft mode, TEACH-110 s): the pilot layouts,

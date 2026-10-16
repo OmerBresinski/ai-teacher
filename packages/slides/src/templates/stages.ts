@@ -19,6 +19,7 @@
  */
 import type { PathElement, ShapeElement, TextPreset } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
@@ -82,16 +83,6 @@ const LINE_GAP = 12 * K;
 const NAME_LH = 1.08;
 const ROW_TOP = 196 * K;
 const UNDER_TITLE = 52 * K;
-/** The block arrow's outline on a unit box (pilot `markers`, arrow=block). */
-const ARROW: readonly [number, number][] = [
-  [0.04, 0.3],
-  [0.52, 0.3],
-  [0.52, 0.04],
-  [0.96, 0.5],
-  [0.52, 0.96],
-  [0.52, 0.7],
-  [0.04, 0.7],
-];
 /** The arrow's paper halo (pilot stroke 7px, painted under the fill). */
 const HALO = 7 * K;
 
@@ -299,10 +290,13 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
     const k = Math.min(1, (picH * 0.55) / (mk * 0.92));
     const w = mk * 1.25 * k;
     const h = mk * 0.92 * k;
-    const pts = ARROW.map(([u, v]) => ({
-      x: round1(sx - w / 2 + u * w),
-      y: round1(sy - h / 2 + v * h),
-    }));
+    // The gold's block arrow (pilot `markers`, arrow=block) from the arrow primitive: the shaft
+    // 40% of the box's height, the head its full 92% and 44% of its width long.
+    const pts = blockArrow([sx - w / 2 + 0.04 * w, sy], [sx - w / 2 + 0.96 * w, sy], {
+      shaft: 0.4 * h,
+      head: 0.92 * h,
+      headLen: 0.44 * w,
+    }).map(([x, y]) => ({ x: round1(x), y: round1(y) }));
     arrowPath(c, pts, col.background, STAGES_NAMES.halo, HALO);
     arrowPath(c, pts, col.accent, STAGES_NAMES.arrow);
   }
@@ -531,14 +525,17 @@ function report(age: Age, input: TemplateInput, items: StageItem[], vis: StageVi
   const row = (field: string, value: string, m?: StageCap, word = false): FieldReport => {
     const chars = word ? Math.max(0, ...value.split(/\s+/).map((w) => w.length)) : value.length;
     const cap = m?.hardMax ? m : undefined;
+    // A measured cell that holds nothing (5-up early or 6-up primary with pictures): any content
+    // is over, so the layout is never chosen silently.
+    const none = !!m && m.hardMax === 0 && chars > 0;
     return {
       field,
       path: field.replace(/\[(\d+)\]/g, ".$1"),
       chars,
       cap: cap ? cap.cap : 0,
       hardMax: cap ? cap.hardMax : 0,
-      tight: !!cap && chars > cap.cap,
-      over: !!cap && chars > cap.hardMax,
+      tight: none || (!!cap && chars > cap.cap),
+      over: none || (!!cap && chars > cap.hardMax),
     };
   };
   const out: FieldReport[] = [row("heading", input.heading.trim())];
