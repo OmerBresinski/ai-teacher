@@ -5,7 +5,8 @@
  * - the two arms sit symmetric about the shaft's end tangent, at ±32°, each 3.2 × the stroke long;
  * - head and shaft share one stroke, with round caps and joins, so nothing pokes past the tip.
  * Dashed and dotted shafts are phased (`stroke-dashoffset`) so a dash or dot ends under the head.
- * Filled block arrows are shapes, not line arrows, and do not use this. Pure geometry and strings.
+ * Filled block arrows are shapes, not line arrows: `blockArrow` (below) gives their closed outline
+ * on the same tip and direction as `arrowHead`. Pure geometry and strings.
  */
 
 export type Pt = readonly [number, number];
@@ -477,4 +478,34 @@ export function canonicalArrows(svg: string): string {
       /<(?:line|path)\b[^<]*?\/><polygon points="(-?[\d.]+,-?[\d.]+) [^"]*" fill="[^"]*"\/>/g,
       "ARROW($1)",
     );
+}
+
+/** A block arrow's proportions: the shaft's and the head's full widths, and the head's length. */
+export interface BlockArrowSize {
+  shaft: number;
+  head: number;
+  headLen: number;
+}
+
+/**
+ * A filled block arrow from `tail` to `tip` (TEACH-75 part ac, stages): the closed seven-point
+ * outline, shaft then head, symmetric about the line through `tip` along `arrowHead`'s direction.
+ * Points run from the tail's left edge (left of the direction of travel) round to its right edge.
+ */
+export function blockArrow(tail: Pt, tip: Pt, s: BlockArrowSize): Pt[] {
+  const [ux, uy] = arrowHead(tip, tail, 1).dir;
+  // The normal on the left of the direction of travel (y down: "up" for a rightward arrow).
+  const nx = uy;
+  const ny = -ux;
+  const neck: Pt = [tip[0] - ux * s.headLen, tip[1] - uy * s.headLen];
+  const at = (p: Pt, k: number): Pt => [p[0] + nx * k, p[1] + ny * k];
+  return [
+    at(tail, s.shaft / 2),
+    at(neck, s.shaft / 2),
+    at(neck, s.head / 2),
+    tip,
+    at(neck, -s.head / 2),
+    at(neck, -s.shaft / 2),
+    at(tail, -s.shaft / 2),
+  ];
 }

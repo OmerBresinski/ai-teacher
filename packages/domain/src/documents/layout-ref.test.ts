@@ -63,6 +63,7 @@ describe("LayoutRef (TEACH-205 part b)", () => {
       "hinge",
       // TEACH-17 part b (C1).
       "worked",
+      "stages",
     ]);
     expect(LayoutRefSchema.safeParse({ template: "items-row", input: {} }).success).toBe(true);
   });

@@ -44,6 +44,8 @@ import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
+// TEACH-75 part ac (C4): stages.
+import { layoutStages, type StageItem } from "./stages";
 import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
 // TEACH-17 part b (C1): the worked example.
 import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
@@ -51,6 +53,8 @@ import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
 export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+// TEACH-75 part ac (C4).
+export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
 export type {
   ActivityCard,
   ActivityId,
@@ -175,6 +179,8 @@ export type TemplateId =
   | "items-row"
   // TEACH-17 part b (C1).
   | "worked"
+  // TEACH-75 part ac (C4).
+  | "stages"
   | ActivityId;
 
 export type TemplateInput = {
@@ -247,6 +253,11 @@ export type TemplateInput = {
    * sentence or two, with all-or-none zones (a matched picture pair, a quote each, or words only).
    */
   sides?: SplitSide[];
+  /**
+   * Stages (TEACH-75 part ac): 3-6 named frames of one linear process, each a name, one line, a
+   * library icon label and an optional picture. Any stage with neither: the items row's ordered look.
+   */
+  stages?: StageItem[];
   /** Split compare: the seam marker's word ("vs" when absent). */
   marker?: string | null;
   /**
@@ -1329,6 +1340,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   "side-by-side": "content",
   // TEACH-17 part b (C1).
   worked: "worked-example",
+  // TEACH-75 part ac (C4).
+  stages: "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2332,6 +2345,10 @@ function layoutOnce(
       break;
     case "side-by-side":
       layoutSideBySide(c, input);
+      break;
+    // TEACH-75 part ac (C4).
+    case "stages":
+      layoutStages(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);

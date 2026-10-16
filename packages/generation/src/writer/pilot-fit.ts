@@ -25,6 +25,8 @@ export const isPilot = (s: S | undefined): boolean =>
 
 /** The laid template's input path as the writer wrote it (panel-list rows are `items`). */
 export function writerPath(laid: string, writerTemplate: string, path: string): string {
+  // TEACH-75 part ac (C4): the writer's stages are `items`.
+  if (writerTemplate === "stages") return path.replace(/^stages\./, "items.");
   if (writerTemplate !== "panel-list") return path;
   if (laid === "side-by-side")
     return path.replace(/^sides\.(\d+)\.title$/, "items.$1.name").replace(/^sides\./, "items.");
@@ -161,7 +163,7 @@ export function relayMembers(s: S, ctx: MaterialiseCtx): S | undefined {
   const list = Array.isArray(s[k]) ? (s[k] as S[]) : [];
   const items = list.map((m) => ({
     name: String((k === "sides" ? m?.title : m?.name) ?? ""),
-    text: String(m?.text ?? ""),
+    text: String(m?.text ?? m?.line ?? ""),
     icon: k === "items" && typeof m?.icon === "string" ? m.icon : null,
     picture: null,
   }));
