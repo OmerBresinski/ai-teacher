@@ -22,7 +22,11 @@ import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
 import { docToPlainText } from "../text/static";
-import { choiceMarks } from "./elements/choice";
+import { choiceMarks, HINGE_KEY } from "./elements/choice";
+
+/** The hinge reveal (TEACH-256 part b) loads on demand: its surface roles stay out of these chunks. */
+const HingeMarks = lazy(() => import("./elements/HingeMarks"));
+
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
@@ -483,6 +487,12 @@ function ChoiceMarks({
   );
   if (marks.length === 0) return null;
   const placed = placedById(slide.elements);
+  if (slide.elements.some((e) => e.name === HINGE_KEY))
+    return (
+      <Suspense fallback={null}>
+        <HingeMarks slide={slide} theme={theme} marks={marks} placed={placed} />
+      </Suspense>
+    );
   return (
     <>
       {marks.map(({ id, state }) => {

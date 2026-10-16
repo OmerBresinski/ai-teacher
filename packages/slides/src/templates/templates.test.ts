@@ -264,7 +264,9 @@ describe("round 2: title, hinge and compare fit", () => {
       "ks4",
     );
     expect(r.over).toEqual([]);
-    for (const e of r.slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(500);
+    // The sand stage is full bleed by design (TEACH-256 part b); everything on it stops short of the foot.
+    for (const e of r.slide.elements)
+      if (e.name !== "surface:field-b") expect(e.y + e.h).toBeLessThanOrEqual(500);
   });
 });
 

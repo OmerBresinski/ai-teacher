@@ -1,0 +1,23 @@
+{
+  "early": {
+    "words": 8,
+    "maxWords": 16,
+    "chars": 41,
+    "maxChars": 85,
+    "options": 3
+  },
+  "primary": {
+    "words": 9,
+    "maxWords": 9,
+    "chars": 49,
+    "maxChars": 49,
+    "options": 4
+  },
+  "secondary": {
+    "words": 11,
+    "maxWords": 21,
+    "chars": 58,
+    "maxChars": 119,
+    "options": 4
+  }
+}

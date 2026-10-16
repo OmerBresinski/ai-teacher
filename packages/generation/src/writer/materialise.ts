@@ -559,7 +559,23 @@ export function toInput(
         template,
         heading,
         stem: str(s.stem),
-        options: strs(s.options),
+        options: (Array.isArray(s.options) ? s.options : []).map((o) =>
+          o && typeof o === "object" ? str((o as S).text) : str(o),
+        ),
+        // TEACH-256 part b: an option may carry an icon label (all icons: picture tiles) and, when
+        // wrong, the belief behind it (speaker notes only, ruling 241).
+        ...(Array.isArray(s.options) && s.options.some((o) => o && typeof o === "object")
+          ? {
+              choices: s.options.map((o0) => {
+                const o = (o0 && typeof o0 === "object" ? o0 : { text: o0 }) as S;
+                return {
+                  text: str(o.text),
+                  ...(o.icon ? { icon: str(o.icon) } : {}),
+                  ...(o.why ? { why: str(o.why) } : {}),
+                };
+              }),
+            }
+          : {}),
         ...(s.correct !== undefined ? { correct: Number(s.correct) } : {}),
         ...(s.explanation ? { explanation: str(s.explanation) } : {}),
         // TEACH-75 part d: the figure the question is about, beside the options.

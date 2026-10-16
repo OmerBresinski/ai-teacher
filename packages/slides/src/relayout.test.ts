@@ -21,8 +21,8 @@ import {
   stageOf,
 } from "./relayout";
 import type { FieldReport } from "./templates";
-import { resolveTextStyle } from "./text-style";
-import { getTheme } from "./themes";
+import { resolveFontSize, resolveTextStyle } from "./text-style";
+import { atKeyStage, getTheme } from "./themes";
 
 /** A template's field report as master's `FieldReport` (only path, cap and hardMax are read here). */
 const report = (path: string, cap: number, hardMax: number): FieldReport => ({
@@ -368,5 +368,49 @@ describe("field states follow the layout's own measure", () => {
     const heart = r.fields.find((f) => f.path === "items.0.text");
     expect(r.result.over).toContain("items[0].text");
     expect(heart?.state).toBe("over");
+  });
+});
+
+describe("hinge (TEACH-256 part b)", () => {
+  const hingeRef = (n: number, stem?: string) =>
+    ({
+      template: "hinge",
+      input: {
+        heading: "Which of these metals is magnetic?",
+        ...(stem ? { stem } : {}),
+        options: ["Copper", "Iron", "Aluminium", "All of them"].slice(0, n),
+        correct: 2,
+      },
+    }) as never;
+  test("add up to 4 (3 at KS1), remove down to 2", () => {
+    const three = addItem(hingeRef(3), 3, "ks2");
+    expect(three.ok).toBe(true);
+    if (three.ok) expect(addItem(three.ref, 4, "ks2").ok).toBe(false);
+    expect(addItem(hingeRef(3), 3, "ks1").ok).toBe(false);
+    const two = removeItem(hingeRef(3), 0);
+    expect(two.ok).toBe(true);
+    if (two.ok) expect(removeItem(two.ref, 0).ok).toBe(false);
+  });
+  test("a blank option keeps its siblings' look (a short blank joins the grid)", () => {
+    const r = addItem(hingeRef(3), 3, "ks2");
+    if (!r.ok) throw new Error("refused");
+    const laid = relayout(r.ref, getTheme("paper"), "ks2");
+    const cards = laid.elements.filter((e) => e.name === "Option");
+    expect(cards).toHaveLength(4);
+    expect(new Set(cards.map((c) => c.y)).size).toBe(2);
+  });
+  test("the title binds to the stem when there is one, each card's words to its option", () => {
+    const laid = relayout(hingeRef(4, "Which metal is magnetic?"), getTheme("paper"), "ks2", "g");
+    const paths = laid.elements.map((e) => boundPath("g", e.id)).filter(Boolean);
+    expect(paths).toEqual(["stem", "options.0", "options.1", "options.2", "options.3"]);
+  });
+  test("every stored font size is the size the renderer draws at the bound stage", () => {
+    const theme = atKeyStage(getTheme("paper"), "ks3");
+    const laid = relayout(hingeRef(4), getTheme("paper"), "ks3");
+    for (const e of laid.elements)
+      if (e.type === "text" && e.style?.fontSize)
+        expect(resolveFontSize(theme, e.style.preset ?? "body", e.style.fontSize)).toBe(
+          e.style.fontSize,
+        );
   });
 });
