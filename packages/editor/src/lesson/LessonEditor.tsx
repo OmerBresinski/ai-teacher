@@ -29,6 +29,7 @@ import { createMeasurer } from "../layout/measure";
 import { rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
+import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
 import { renderTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
@@ -476,16 +477,21 @@ export function LessonEditor({
       undo: () => historyRef.current.undo(),
       goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
       retheme: (themeId) => {
-        const h = historyRef.current;
-        const current = lessonRef.current;
-        if (!current || current.themeId === themeId) return;
-        h.flushTransactions();
-        h.dispatch(
-          rethemeFromReducer,
-          current,
-          themeId,
-          createMeasurer(renderTheme(current, themeId)),
-        );
+        const run = () => {
+          const h = historyRef.current;
+          const current = lessonRef.current;
+          if (!current || current.themeId === themeId) return;
+          h.flushTransactions();
+          h.dispatch(
+            rethemeFromReducer,
+            current,
+            themeId,
+            createMeasurer(renderTheme(current, themeId)),
+          );
+        };
+        // Adaptive layouts re-lay in the new theme's faces: their template code first, once.
+        if (layoutKit()) run();
+        else void loadLayoutKit().then(run, run);
       },
     }),
     [session, autosave],

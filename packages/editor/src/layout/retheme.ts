@@ -1,5 +1,7 @@
-import type { Id, Lesson, Slide, Theme } from "@tj/domain/documents";
+import type { GroupElement, Id, Lesson, Slide, Theme } from "@tj/domain/documents";
+import { layoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
+import { type LayoutKit, placeInto, tryRelayout } from "../model/reducers/layout";
 import { renderTheme } from "../model/themes";
 import { measureInputsOf } from "./fit-plan";
 import { lintAsDrawn } from "./lint";
@@ -17,6 +19,13 @@ import { tidySlide } from "./tidy";
  * Positions across the slide (x, w) stay where the old theme put them; only heights, the vertical
  * stack and type steps move. The recipes differ between themes in those too, but re-laying a
  * teacher's slide from its recipe would throw away their edits.
+ *
+ * An adaptive layout (a group with a `LayoutRef`) is the exception: its words live on the ref, so
+ * it is re-laid by its template under the new theme first (TEACH-75 part aq). Its sizes were
+ * measured in the old theme's faces; a Studio title at 44 in a 189-wide panel breaks Treehouse's
+ * wider serif inside a word ("Brother / s and sisters"), which no lint of box heights sees. The
+ * template measures every word in the new face and steps the title to its floor, or names it in
+ * `over`.
  */
 
 export type RethemeOutcome = {
@@ -33,16 +42,47 @@ export function slidesNeedingFit(lesson: Lesson, theme: Theme, measure: Measurer
     .map((slide) => slide.id);
 }
 
-/** Pure: every slide the linter flags under the lesson's own theme, tidied. */
+/**
+ * Pure: every adaptive layout re-laid by its template under the lesson's own theme, where it is
+ * (a moved group keeps its offset, a resized one its size: `placeInto`). A layout whose template
+ * cannot lay out stays as it was; with no template code loaded (`kit` null) nothing changes.
+ */
+export function relayLayouts(lesson: Lesson, kit: LayoutKit | null): Lesson {
+  if (!kit) return lesson;
+  const theme = renderTheme(lesson);
+  let changed = false;
+  const slides = lesson.slides.map((slide) => {
+    let touched = false;
+    const elements = slide.elements.map((el) => {
+      if (el.type !== "group" || !el.layout) return el;
+      const relaid = tryRelayout(el.layout, lesson, kit, el.id);
+      if (!relaid) return el;
+      const g: GroupElement = { ...el };
+      placeInto(g, el.layout, relaid, theme);
+      touched = true;
+      return g;
+    });
+    if (!touched) return slide;
+    changed = true;
+    return { ...slide, elements };
+  });
+  return changed ? { ...lesson, slides } : lesson;
+}
+
+/**
+ * Pure: every adaptive layout re-laid under the lesson's own theme (`relayLayouts`), then every
+ * slide the linter flags under it, tidied.
+ */
 export function fitLessonToTheme(
   lesson: Lesson,
   measure: Measurer,
+  kit: LayoutKit | null = layoutKit(),
 ): { lesson: Lesson; outcome: RethemeOutcome } {
   const theme = renderTheme(lesson);
-  let out = lesson;
+  let out = relayLayouts(lesson, kit);
   const tidied: Id[] = [];
   const overflow: Id[] = [];
-  for (const id of slidesNeedingFit(lesson, theme, measure)) {
+  for (const id of slidesNeedingFit(out, theme, measure)) {
     const made = tidySlide(out, id, measure);
     out = made.lesson;
     if (made.outcome.changed) tidied.push(id);
@@ -87,13 +127,14 @@ export function rethemeLesson(
   lesson: Lesson,
   themeId: string,
   measure: Measurer,
+  kit: LayoutKit | null = layoutKit(),
 ): { lesson: Lesson; outcome: RethemeOutcome } {
   if (lesson.themeId === themeId) return { lesson, outcome: { tidied: [], overflow: [] } };
   const from = renderTheme(lesson);
   const to = renderTheme(lesson, themeId);
   const themed = reducers.setTheme(lesson, themeId);
   const recoloured = { ...themed, slides: themed.slides.map((s) => recolourSlide(s, from, to)) };
-  return fitLessonToTheme(recoloured, measure);
+  return fitLessonToTheme(recoloured, measure, kit);
 }
 
 /** `fitLessonToTheme` in reducer shape, for `history.dispatch`. */

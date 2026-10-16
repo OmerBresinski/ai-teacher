@@ -16,3 +16,14 @@ export function setLayoutKit(kit: LayoutKit | null): void {
 export function layoutKit(): LayoutKit | null {
   return current;
 }
+
+/**
+ * Load the template code now, if it has not loaded yet: a re-theme re-lays every adaptive layout
+ * in the new theme's faces (TEACH-75 part aq), so the theme picker asks for it when it opens.
+ */
+export async function loadLayoutKit(): Promise<LayoutKit> {
+  if (current) return current;
+  const kit = await import("@tj/slides/relayout");
+  current ??= kit;
+  return current;
+}

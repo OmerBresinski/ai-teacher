@@ -34,6 +34,7 @@ import { uid } from "../factories";
 import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
+import { MIN_FONT_SIZE } from "../themes";
 import {
   type Ctx,
   type FieldReport,
@@ -329,9 +330,11 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const whole = !head || kit.wordsFit(c, head, preset, cushioned(TITLE_W), size, L.displayWeight);
     return { size, preset, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
   };
+  // Down to the theme's heading floor, never past it: a word that is still too wide there leaves
+  // the title over (`geomOver`), so the writer or a re-lay acts; the browser never splits it.
   let tk = 1;
   let title = titleAt(tk);
-  while (!title.ok && tk > 0.62) {
+  while (!title.ok && title.size > MIN_FONT_SIZE.heading && tk > 0.3) {
     tk = Math.round((tk - 0.02) * 100) / 100;
     title = titleAt(tk);
   }
