@@ -35,7 +35,7 @@ Layouts. A heading is up to 8 words. Fits gives each fit's most words: its lead 
 - discussion: one short question for pupils to talk about, shown large, with a picture if one helps; a question that needs a setup or source goes in practice. Fits: bare, fig 30.
 - explain: teaching in words alone, for an idea no picture or diagram would show: a lead sentence and up to 3 points. A point may carry a short label naming its idea: one labelled point shows as a key card, for a slide that teaches one named idea, in place of a list. Fits: points-0 30; points-2 28, each 18; points-3 27, each 18; points-1-key 30, each label 2 + text 23; points-2-key 13, each label 2 + text 8.
 Callouts: on explain or visual-text, a key card may be a callout instead, a kind and its text: remember (a fact to keep), watch-out (a misconception pupils plausibly hold, put right), key-point (the one idea to take away), example (one concrete case), fun-fact (a true, surprising detail).
-Icons, leads and accents: on items-row and panel-list, give only the items the content has, fewer rather than filler: a line that restates its name or the heading ("Harvest: the farmer harvests the crop") is padding, while a few words adding one fact ("Mercury: closest to the Sun") are a full line. An item's icon is one of the icon names the schema lists, the one that shows that item itself; give every item one, or every item null when any item has no listed name that shows it, and code numbers the items; never stretch a name to fit. Items with pictures take icon null. lead is null or one short line under the heading that frames the items, never repeating them or the heading. accentWord copies one to three words of the heading exactly, or is null.
+Icons, leads and accents: on items-row and panel-list, give only the items the content has, fewer rather than filler: a line that restates its name or the heading ("Harvest: the farmer harvests the crop") is padding, while a few words adding one fact ("Mercury: closest to the Sun") are a full line. An item's icon is the icon name the schema lists that is closest to that item: the item itself, else the object or symbol most tied to it (a clock for time, a magnifying glass for checking). Give every item its closest name; set every icon null only when no item has a fitting name, and code then numbers the items. A name that would mislead pupils about the item is not a fit. Items with pictures take icon null. lead is null or one short line under the heading that frames the items, never repeating them or the heading. accentWord copies one to three words of the heading exactly, or is null.
 {{menu:hinge}}
 {{menu:question-set}}
 {{menu:practice}}
@@ -82,8 +82,8 @@ Example slides from other lessons, each written as one item of slides:
 
 Fill shapes for the layouts above, each written as one item of slides:
 {"template":"items-row","heading":"…","accentWord":null,"lead":null,"motif":null,"items":[{"name":"…","text":"…","icon":"heart"}]}
-{"template":"panel-list","heading":"…","lead":null,"panel":null,"items":[{"name":"…","text":"…","icon":null,"picture":null}]}
-{"template":"split-compare","heading":"…","accentWord":null,"sides":[{"title":"…","text":"…","quote":null,"picture":null}]}
+{"template":"panel-list","heading":"…","lead":null,"panel":{"picture":{"shows":"…","must_see":["…"],"subject":"generic"}},"items":[{"name":"…","text":"…","icon":"…","picture":null}]}
+{"template":"split-compare","heading":"…","accentWord":null,"sides":[{"title":"…","text":"…","quote":null,"picture":{"shows":"…","must_see":["…"],"subject":"generic"}}]}
 {"template":"hinge","heading":"…","options":[{"text":"…","icon":null,"why":null},{"text":"…","icon":null,"why":"…"}]}
 {"template":"question-set","heading":"…","items":[{"question":"…","answer":"…"}]}
 {"template":"exit-ticket","heading":"…","items":[{"question":"…","answer":"…","working":null}]}

@@ -208,12 +208,20 @@ const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "") =>
 
 const quoteBudget = (a: Age, n: number) =>
   Math.min(QUOTE, menuWords(must(sideCaps(a, n, "q"), `quote ${a} ${n}`).quote ?? 0, a));
+/**
+ * Pictured sides are offered this share of their measured comfortable characters (PROCESS 7.2's 80%
+ * headroom). Past the cap the words win and the pictures shrink to slivers: y4-romans s3 (16 Oct)
+ * wrote 112 characters against KS2's 101 under a 15-word line, and its photos fell to 29% of the
+ * field (build/PICS-TRACE-16OCT.md). Words-only and quote sides overflow into type, not pictures.
+ */
+export const PIC_SIDE_HEADROOM = 0.8;
 function sideBudget(a: Age, n: number, z: SideZone): number {
   const caps = must(sideCaps(a, n, z), `split-compare ${a} ${n}${z}`);
+  const chars = (caps.text ?? 0) * (z === "p" ? PIC_SIDE_HEADROOM : 1);
   return Math.min(
     Math.floor(SLIDE_WORDS / n) - (z === "q" ? quoteBudget(a, n) : 0),
     SIDE_SENT[a],
-    menuWords(caps.text ?? 0, a),
+    menuWords(chars, a),
   );
 }
 const zoneOk = (a: Age, n: number, z: SideZone) =>
@@ -343,10 +351,10 @@ const titleWords = (a: Age) =>
   );
 const no3 = (a: Age, z: SideZone) => (SC_KEYS[a].includes(`3${z}`) ? "2 or 3" : "2");
 function media(a: Age): string {
-  let pic = `All sides or none carry a picture${no3(a, "p") === "2 or 3" ? "" : " (2 sides only)"}, a diagram when the difference is in how each is built or works`;
+  let pic = `When each side is a thing a camera or diagram can show (an object, a place, a living thing, a scene before or after a change), every side carries a picture${no3(a, "p") === "2 or 3" ? "" : " (2 sides only)"}, or a diagram when the difference is in how each is built or works`;
   if (SC_KEYS[a].some((k) => k.endsWith("q")))
-    pic += `, or for people's viewpoints a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
-  return `${pic}.`;
+    pic += `; when the sides are people's viewpoints, every side carries a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
+  return `${pic}. Sides carry neither only when they are ideas that no picture, diagram or quote shows.`;
 }
 const NUMW: Record<number, string> = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
 const countWords = (c: ListLayout, a: Age) => {
@@ -387,7 +395,7 @@ export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
 // writer-prompt: owned by TEACH-110 s
 export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null; rules, reasons and ideas take picture null. Otherwise the panel holds a photo of the whole group, a pie of the items' shares of one known whole, or nothing. Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together (the tools on a workbench, the instruments of a band); it is null only when neither fits. Rules, reasons and ideas take picture null and an icon on every item (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
 );
 
 // writer-prompt: owned by TEACH-110 s
