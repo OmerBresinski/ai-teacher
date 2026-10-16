@@ -1022,7 +1022,7 @@ export function wordsOf(raw: S): string {
  * The deck as it ships: the practice and exit answers collected on Answers slides behind the guard
  * at the very end (ruling 240), laid out by `@tj/slides` from the slides' own answers. Code, not the
  * writer: the writer's prompt and schema never name the layout. A rebuild replaces the old end.
- * With a worksheet answer sheet the answers live on the sheet and the deck carries none.
+ * A worksheet answer sheet keeps them too (r3 gold), unless `ANSWERS_SKIP_WITH_WORKSHEET_KEY` flips.
  */
 export function withEndAnswers(
   slides: Slide[],

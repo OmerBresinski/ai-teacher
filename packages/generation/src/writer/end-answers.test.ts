@@ -41,12 +41,15 @@ describe("withEndAnswers", () => {
     expect(out.slice(3).map((s) => s.answersRole)).toEqual(["guard", "answers"]);
   });
 
-  test("a rebuild replaces the old end; a worksheet answer sheet leaves the deck as it was", () => {
+  test("a rebuild replaces the old end; a worksheet answer sheet keeps them (r3 gold)", () => {
     const once = withEndAnswers(deck(), { theme, stage: "ks2", worksheetAnswerKey: false });
     const twice = withEndAnswers(once, { theme, stage: "ks2", worksheetAnswerKey: false });
     expect(twice.map((s) => s.answersRole)).toEqual(once.map((s) => s.answersRole));
+    // r3 gold (the default): a worksheet answer sheet still keeps the Answers slides.
     expect(
-      withEndAnswers(once, { theme, stage: "ks2", worksheetAnswerKey: true }).map((s) => s.id),
-    ).toEqual(["s0", "s1", "s2"]);
+      withEndAnswers(once, { theme, stage: "ks2", worksheetAnswerKey: true }).map(
+        (s) => s.answersRole,
+      ),
+    ).toEqual(once.map((s) => s.answersRole));
   });
 });

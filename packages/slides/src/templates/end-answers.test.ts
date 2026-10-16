@@ -368,7 +368,14 @@ describe("the deck builder", () => {
       "guard",
       "answers",
     ]);
-    expect(endAnswerSlides(groups, paper, "ks2", { worksheetAnswerKey: true })).toEqual([]);
+    // r3 gold by default: a worksheet with its own key still gets the Answers slides.
+    expect(
+      endAnswerSlides(groups, paper, "ks2", { worksheetAnswerKey: true }).length,
+    ).toBeGreaterThan(0);
+    // Ruling 240 behind the one-line switch.
+    expect(
+      endAnswerSlides(groups, paper, "ks2", { worksheetAnswerKey: true, skipWithKey: true }),
+    ).toEqual([]);
     expect(endAnswerSlides([], paper, "ks2")).toEqual([]);
   });
 

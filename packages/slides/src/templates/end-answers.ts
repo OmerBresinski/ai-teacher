@@ -704,12 +704,22 @@ export function layoutAnswersGuard(t: Theme, stage: Stage): AnswersLayout {
 /* ------------------------------------------------------------------ */
 
 /**
- * Whether the deck carries the guard and Answers slides (ruling 240: they follow whether the
- * lesson has a worksheet answer sheet; ruling 231: with no worksheet the practice and exit answers
- * go on the end Answers slides). There must be answers to show.
+ * Ruling 240 vs the r3 gold, still open with Greg. Ruling 240 drops the Answers slides when the
+ * worksheet has its own answer sheet; the r3 gold (the default here, on the coordinator's
+ * recommendation) builds them anyway. Flip this one line to follow ruling 240.
  */
-export function answersWanted(groups: readonly AnswerGroup[], worksheetAnswerKey: boolean) {
-  return !worksheetAnswerKey && groups.some((g) => g.items.length > 0);
+export const ANSWERS_SKIP_WITH_WORKSHEET_KEY = false;
+
+/**
+ * Whether the deck carries the guard and Answers slides: there must be answers to show (ruling
+ * 231 keeps them off the practice and exit slides), and see `ANSWERS_SKIP_WITH_WORKSHEET_KEY`.
+ */
+export function answersWanted(
+  groups: readonly AnswerGroup[],
+  worksheetAnswerKey: boolean,
+  skipWithKey = ANSWERS_SKIP_WITH_WORKSHEET_KEY,
+) {
+  return !(skipWithKey && worksheetAnswerKey) && groups.some((g) => g.items.length > 0);
 }
 
 /**
@@ -720,10 +730,10 @@ export function endAnswerSlides(
   groups: readonly AnswerGroup[],
   t: Theme,
   stage: Stage,
-  opts: { worksheetAnswerKey?: boolean } = {},
+  opts: { worksheetAnswerKey?: boolean; skipWithKey?: boolean } = {},
 ): Slide[] {
   const kept = groups.filter((g) => g.items.length && g.items.every(answered));
-  if (!answersWanted(kept, opts.worksheetAnswerKey ?? false)) return [];
+  if (!answersWanted(kept, opts.worksheetAnswerKey ?? false, opts.skipWithKey)) return [];
   return [
     layoutAnswersGuard(t, stage).slide,
     ...paginateAnswers(t, stage, kept).map((p) => layoutAnswersPage(p, t, stage).slide),
