@@ -103,7 +103,9 @@ describe("a stop is never swallowed", () => {
     expect(out.lesson.generation?.stage).toBe("generated");
     // TEACH-251: with no image placer every picture slot fails, so its slide is restaged
     // text-only (one overflowed into a continuation slide) and no placeholder ships.
-    expect(out.lesson.slides.filter((sl) => !/c\d+$/.test(sl.id)).length).toBe(12);
+    expect(out.lesson.slides.filter((sl) => !sl.answersRole && !/c\d+$/.test(sl.id)).length).toBe(
+      12,
+    );
     const srcs = out.lesson.slides.flatMap((sl) =>
       sl.elements.flatMap((e) => (e.type === "image" ? [e.src] : [])),
     );

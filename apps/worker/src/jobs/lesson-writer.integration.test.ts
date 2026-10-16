@@ -202,7 +202,13 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
     expect(done.lock).toBeNull();
     expect(done.lesson.generation?.stage).toBe("generated");
-    expect(done.lesson.slides.length).toBe(12);
+    // 12 written slides, then the guard and two Answers pages (TEACH-191 part b).
+    expect(done.lesson.slides.length).toBe(15);
+    expect(done.lesson.slides.slice(12).map((s) => s.answersRole)).toEqual([
+      "guard",
+      "answers",
+      "answers",
+    ]);
     expect(done.lesson.slides.slice(0, 2).map((s) => s.kind)).toEqual(["title", "objectives"]);
   });
 
@@ -255,7 +261,7 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(editable?.states.every((x) => x === "done")).toBe(true);
     const done = await row(lessonId);
     expect(done.lesson.generation?.stage).toBe("generated");
-    expect(done.lesson.slides.length).toBe(12);
+    expect(done.lesson.slides.filter((s) => !s.answersRole).length).toBe(12);
   });
 
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {
