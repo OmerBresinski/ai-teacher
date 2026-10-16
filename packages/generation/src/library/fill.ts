@@ -315,16 +315,41 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
   return out;
 }
 
+/** `grownTextFault`'s reason when a word is split across a label's lines or lost. */
+export const WORDS_SPLIT = "its words split or change across lines";
+/** The label-word split rule's step (TEACH-239 part b): the type scale steps down by this. */
+export const WHOLE_WORD_STEP = 0.05;
+
+/**
+ * The label-word split rule (TEACH-239 part b): from a grown drawing at `scale` whose words split,
+ * step the type scale down by 0.05 and redraw until every word is whole. Back at the kit's size, or
+ * when a redraw fails, the base drawing (whole words at scale 1) is kept: split words never ship.
+ */
+export async function wholeWordDrawing<D extends { svg: string }>(
+  grown: D,
+  scale: number,
+  base: D,
+  splits: (svg: string) => boolean,
+  redraw: (typeScale: number) => Promise<D | string>,
+): Promise<{ drawing: D; scale: number }> {
+  let drawing = grown;
+  let kept = scale;
+  while (kept > 1 && splits(drawing.svg)) {
+    const ts = Math.round((kept - WHOLE_WORD_STEP) * 100) / 100;
+    const down = ts > 1 ? await redraw(ts) : "at the kit's size";
+    if (typeof down === "string") return { drawing: base, scale: 1 };
+    drawing = down;
+    kept = ts;
+  }
+  return { drawing, scale: kept };
+}
+
 /**
  * What went wrong with a drawing's words once its type grew (the label floor), against the same
  * drawing at the kit's own sizes: a word split across lines or lost ("Oxygen-p" / "oor"), or a
  * line set less than 0.9 of its type size below the one above (lines on top of one another).
  * Undefined when neither.
  */
-/** `grownTextFault`'s reason when a word is split across a label's lines or lost. */
-export const WORDS_SPLIT = "its words split or change across lines";
-/** The label-word split rule's step (TEACH-239 part b): the type scale steps down by this. */
-export const WHOLE_WORD_STEP = 0.05;
 export function grownTextFault(baseSvg: string, grownSvg: string): string | undefined {
   const words = (svg: string) =>
     drawnLines(svg)
@@ -508,21 +533,14 @@ export async function libraryDiagram(
         () => grownTextFault(baseSvg, svg) === WORDS_SPLIT,
         () => false,
       );
-    while (keptScale > 1 && splits(full.svg)) {
-      const ts = Math.round((keptScale - WHOLE_WORD_STEP) * 100) / 100;
-      if (ts <= 1) {
-        full = baseDrawing;
-        keptScale = 1;
-        break;
-      }
-      const down = await nonFatal(
+    const whole = await wholeWordDrawing(full, keptScale, baseDrawing, splits, (ts) =>
+      nonFatal(
         () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
         (e) => String(e).slice(0, 160),
-      );
-      if (typeof down === "string") break;
-      full = down;
-      keptScale = ts;
-    }
+      ),
+    );
+    full = whole.drawing;
+    keptScale = whole.scale;
     typeScale = keptScale;
     log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
     if (typeScale !== 1) {

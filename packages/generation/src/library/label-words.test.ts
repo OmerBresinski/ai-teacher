@@ -1,52 +1,61 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { grownTextFault, libraryDiagram, WHOLE_WORD_STEP, WORDS_SPLIT } from "./fill";
+import { grownTextFault, WHOLE_WORD_STEP, WORDS_SPLIT, wholeWordDrawing } from "./fill";
 import { drawLibraryModel, endDrawThread } from "./guard";
 import { kit, loadModel } from "./render";
 
 /*
- * TEACH-239 part b (C7), the label-word split rule (figure gold finding 1): growing a model's type
- * for the label floor broke "Reception" mid-word on the y2 "my life" timeline at 1.15. A grown
- * size that splits a word steps down by 0.05 until every word is whole, never falling back.
+ * TEACH-239 part b (C7), the label-word split rule (figure gold finding 1): growing the y2 "my
+ * life" timeline's type to 1.15 for the label floor breaks "Reception" mid-word. A grown size that
+ * splits a word steps down by 0.05 until every word is whole; a failed redraw keeps the base
+ * drawing, so split words never ship.
  */
 afterAll(() => endDrawThread());
 
 const myLife = async () => {
   const m = await loadModel("timeline");
-  const i = m?.presets.findIndex((p) => /life/i.test(JSON.stringify(p).slice(0, 200))) ?? -1;
-  return {
-    m,
-    params: (await kit()).withDefaults(m?.params ?? { properties: {} }, {
-      ...(m?.presets[Math.max(0, i)]?.params ?? {}),
-    } as Record<string, unknown>),
-    raw: { ...(m?.presets[Math.max(0, i)]?.params ?? {}) } as Record<string, unknown>,
-  };
+  const raw = m?.presets.find((p) => (p as { id?: string }).id === "y2-my-life")?.params ?? {};
+  return (await kit()).withDefaults(m?.params ?? { properties: {} }, { ...raw } as never);
 };
 
 describe("label floor: whole words", () => {
-  test("the step is 0.05 and a word split is named as such", () => {
-    expect(WHOLE_WORD_STEP).toBe(0.05);
-    expect(grownTextFault("<svg></svg>", "<svg></svg>")).toBeUndefined();
-  });
-  test("a wide timeline grown for the floor keeps every word whole", async () => {
-    const { params, raw } = await myLife();
-    const base = await drawLibraryModel("timeline", params);
-    const r = await libraryDiagram(
-      {
-        key: "d",
-        model: "timeline",
-        intent: "",
-        words: "",
-        heading: "",
-        caption: "",
-        yearGroup: "Year 2",
-        lesson: "x",
-        labelFloor: true,
-        // The figure slide's stage for a 3.4:1 model at KS1, on the 960 grid.
-        place: { x: 64, y: 140, w: 832, h: 245 },
-      } as never,
-      async () => raw,
+  test("the y2 timeline really splits a word at 1.15, and steps down to whole words", async () => {
+    const p = await myLife();
+    const base = await drawLibraryModel("timeline", p);
+    const grown = await drawLibraryModel("timeline", p, { typeScale: 1.15 });
+    expect(grownTextFault(base.svg, grown.svg)).toBe(WORDS_SPLIT);
+    const splits = (svg: string) => grownTextFault(base.svg, svg) === WORDS_SPLIT;
+    const r = await wholeWordDrawing(grown, 1.15, base, splits, (ts) =>
+      drawLibraryModel("timeline", p, { typeScale: ts }),
     );
-    if (r.ok) expect(grownTextFault(base.svg, r.drawing.svg)).not.toBe(WORDS_SPLIT);
-    else expect(r.reason).not.toContain("split");
+    expect(splits(r.drawing.svg)).toBe(false);
+    expect(r.scale).toBeLessThan(1.15);
+    expect(r.scale).toBeGreaterThanOrEqual(1);
+    expect(Math.round(((1.15 - r.scale) / WHOLE_WORD_STEP) * 1000) % 1000).toBe(0);
+  });
+
+  test("a redraw that fails keeps the base drawing, never the split one", async () => {
+    const base = { svg: "base" };
+    const r = await wholeWordDrawing(
+      { svg: "split" },
+      1.3,
+      base,
+      (svg) => svg === "split",
+      async () => "it did not draw",
+    );
+    expect(r).toEqual({ drawing: base, scale: 1 });
+  });
+
+  test("back at the kit's size the base drawing is kept", async () => {
+    const base = { svg: "base" };
+    const r = await wholeWordDrawing(
+      { svg: "split" },
+      1.05,
+      base,
+      () => true,
+      async () => ({
+        svg: "split",
+      }),
+    );
+    expect(r).toEqual({ drawing: base, scale: 1 });
   });
 });

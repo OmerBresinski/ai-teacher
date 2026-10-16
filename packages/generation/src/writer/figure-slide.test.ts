@@ -65,6 +65,19 @@ describe("writer: the figure slide", () => {
       ).template,
     ).toBe("big-diagram");
   });
+  test("ruling 229: a wide big-visual model earlier takes the lesson's one figure slide", () => {
+    const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
+    const lesson = [big, { template: "explain" }, figureSlide];
+    const laid = lesson.map(
+      (s, i) =>
+        toInput(
+          s,
+          ctx(lesson, i, () => drawn(2.27)),
+        ).template,
+    );
+    expect(laid).toEqual(["figure", "explain", "big-diagram"]);
+    expect(laid.filter((t) => t === "figure")).toHaveLength(1);
+  });
   test("a failed model is the icon plate; with no icon the words stand alone", () => {
     const failed = () => ({ status: "failed" });
     const plate = toInput(figureSlide, ctx([figureSlide], 0, failed));

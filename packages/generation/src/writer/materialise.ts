@@ -815,7 +815,8 @@ export function toInput(
       const caption = str(s.caption ?? s.lead).trim();
       const icon = str(s.icon).trim();
       const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
-      if (!figureSlideAllowed(ctx.plan.slides, ctx.index))
+      // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
+      if (!figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
         return f
           ? {
               template: "photo" in f ? "big-picture" : "big-diagram",
