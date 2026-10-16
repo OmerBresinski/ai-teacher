@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { newSlide } from "../model/factories";
+import { loadLayoutKit } from "../model/layout-kit";
 import { getTheme, renderTheme, THEMES } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
@@ -67,6 +68,11 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   const [opening] = useState(lesson);
   const tx = useRef<number | null>(null);
   const [applying, setApplying] = useState(false);
+
+  // A re-theme re-lays every adaptive layout in the new faces: fetch the template code on open.
+  useEffect(() => {
+    void loadLayoutKit();
+  }, []);
 
   // Opened in an effect (never during render), rolled back if the panel unmounts still open.
   // Opening first commits whatever else was in flight, so Cancel can never discard another edit.
