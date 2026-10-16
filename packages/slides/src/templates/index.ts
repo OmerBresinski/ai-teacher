@@ -880,6 +880,8 @@ function tilePanel(
 }
 /** The warnings of a diagram element drawn under `diagramWarnings`, read when the result is built. */
 const WARNED = new WeakMap<object, string[]>();
+/** Marks an element a template drew with warnings outside `figurePanel` (split compare's sides). */
+export const warnDrawn = (el: object, warnings: string[]) => WARNED.set(el, warnings);
 
 function figurePanel(
   c: Ctx,

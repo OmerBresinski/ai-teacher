@@ -38,18 +38,21 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
+import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { SAFE, SPACE } from "../grid";
 import { resolveFontSize } from "../text-style";
 import { MIN_FONT_SIZE, typeScale } from "../themes";
 import {
   type Ctx,
+  diagramFailed,
   type FieldCount,
   type Figure,
   kit,
   mix,
   type Stage,
   type TemplateInput,
+  warnDrawn,
 } from "./index";
 import SET_CAPACITY from "./side-by-side-capacity.json" with { type: "json" };
 import CAPACITY from "./split-compare-capacity.json" with { type: "json" };
@@ -240,6 +243,33 @@ function pictureOf(s: SplitSide): Pic | null {
   return null;
 }
 
+/**
+ * A side whose picture is a diagram spec (`{diagram}`, the form the live drawer hands back: no
+ * pre-drawn SVG) with that diagram drawn at the side's width (TEACH-110 part ad), so it takes the
+ * picture zone like a pre-drawn one. A spec that does not draw readably there leaves the side with
+ * no picture, and the sides fall to words (zones are all or none), as before.
+ */
+function withDrawn(c: Ctx, s: SplitSide, box: { w: number; h: number }): SplitSide {
+  const f = s.picture;
+  if (!f || !("diagram" in f)) return s;
+  if (diagramFailed(f.diagram)) return { ...s, picture: null };
+  const r = drawDiagram(f.diagram, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
+  // A spec that does not draw is reported (`fails`), so the writer stage sees the dropped drawing.
+  // One that draws only with label warnings is drawn, its warnings on the result: the side has no
+  // other room to try, and the editor's group re-flows it with no warnings pass (a planned visual
+  // is never lost, Greg 10 Oct).
+  if (!r.ok || !r.element.src || !(r.element.w > 0 && r.element.h > 0)) {
+    c.fails?.push(...(r.ok ? ["it does not draw"] : r.reasons));
+    return { ...s, picture: null };
+  }
+  const drawn = { src: r.element.src, aspect: r.element.w / r.element.h, alt: r.element.alt ?? "" };
+  const figure = { drawn } as Figure;
+  if (r.warnings) SIDE_WARNED.set(figure, r.warnings);
+  return { ...s, picture: figure };
+}
+/** The warnings a side's diagram drew with, carried to its image element. */
+const SIDE_WARNED = new WeakMap<object, string[]>();
+
 export function zoneOf(sides: SplitSide[]): SplitZone {
   if (sides.length && sides.every((s) => pictureOf(s))) return "picture";
   if (sides.length && sides.every((s) => s.quote?.trim())) return "quote";
@@ -272,8 +302,8 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const all = input.sides ?? [];
   if (all.length < SPLIT_MIN) c.over.push(`sides ${all.length}/${SPLIT_MIN}`);
   if (all.length > SPLIT_MAX) c.over.push(`sides ${all.length}/${SPLIT_MAX}`);
-  const sides = all.slice(0, SPLIT_MAX);
-  const n = Math.max(SPLIT_MIN, sides.length);
+  const given = all.slice(0, SPLIT_MAX);
+  const n = Math.max(SPLIT_MIN, given.length);
   const tones = splitTones(c.t);
   const stage = stageOf(c);
   const voice = quoteVoice(c.t, stage);
@@ -301,6 +331,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const frame = frameOf(look, n);
   const fw = frame.w;
   const cellW = frame.cellW;
+  const sides = given.map((s) => withDrawn(c, s, { w: cellW, h: Math.round(fh * PIC_GROW) }));
   const zone = zoneOf(sides);
   const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
   const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);
@@ -720,6 +751,8 @@ function picture(
       alt: f.drawn.alt ?? "",
       fit: "contain",
     } as ImageElement);
+    const warned = SIDE_WARNED.get(f);
+    if (warned) warnDrawn(c.els[c.els.length - 1] as object, warned);
     return;
   }
   if (!("photo" in f)) return;

@@ -423,6 +423,37 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
       );
     }
   });
+
+  // TEACH-110 part ad: the live drawer hands back the spec itself (`{status: "diagram", spec}`, no
+  // pre-drawn `drawn`), so the side is `{diagram: spec}`. The split compare template drew only
+  // photos and pre-drawn SVGs, laid these sides as words only. Replays the forces lesson's sides.
+  const live = JSON.parse(
+    readFileSync(new URL("./fixtures/split-side-diagrams.json", import.meta.url), "utf8"),
+  ) as Record<string, S>;
+  for (const [name, s] of Object.entries(live))
+    test(`a-hinge-y9-forces ${name}: both side diagrams are drawn`, () => {
+      const specs = (s.sides as S[]).map((d) => (d.picture as S).diagram);
+      const asked = visualsOf(s, 3, { ...ctxAt(3) } as never);
+      expect(asked.map((a) => [a.key, a.type])).toEqual([
+        ["side.0", "diagram"],
+        ["side.1", "diagram"],
+      ]);
+      const drawer = ((k: string) => ({
+        status: "diagram",
+        spec: specs[Number(k.split(".")[1])],
+      })) as unknown as (k: string) => never;
+      // Two of the three draw at side size only with label warnings: drawn, warnings on the result.
+      const m = materialise(s, { ...ctxAt(3), visual: drawer });
+      expect(m.diagram).toBeUndefined();
+      const kids = (m.slide.elements as unknown as G[])[0]?.children ?? [];
+      const pics = kids.filter(
+        (c) => c.type === "image" && (c.src ?? "").startsWith("data:image/svg"),
+      ) as unknown as { x: number; w: number }[];
+      expect(pics).toHaveLength(2);
+      const [a, b] = [...pics].sort((p, q) => p.x - q.x);
+      expect((a?.x ?? 0) + (a?.w ?? 0)).toBeLessThanOrEqual(480);
+      expect(b?.x ?? 0).toBeGreaterThanOrEqual(480);
+    });
 });
 
 describe("slot-fill reads a pilot slide as written, not as a writer fault (TEACH-110 part s)", () => {
