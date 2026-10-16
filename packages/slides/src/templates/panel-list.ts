@@ -9,7 +9,8 @@
  *   rows at 4+ are `tight`.
  * - Fit order: discs give way (to 75%) while the rows overflow, then type down to the comfort
  *   sizes; past that the slide is `tight` and type goes on to the floors only until it fits.
- *   Words are never cut: a field past its measured hard maximum is named in `over`.
+ *   Words are never cut: when the slide does not fit, a field past its measured hard maximum is
+ *   named in `over`. When it does, the measurement wins over the table: nothing is over.
  * - Row pictures (Greg's D1 pick, 14 Oct): a row may lead with a small rounded photo tile in
  *   place of its disc. All rows or none; a row whose picture is still being made shows the empty
  *   slot (`PLACEHOLDER_IMAGE`), so nothing vanishes. With row pictures the panel takes no picture,
@@ -670,12 +671,18 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         ? table.withLead[key]
         : table[key]
       : undefined;
+  // The table is the worst case (every row equally long, a pie panel); this slide was measured at
+  // the sizes the renderer draws. When it fits with every word whole, each field's hard maximum is
+  // at least its length, and when it is comfortable so is each cap (writer smoke 16 Oct: y4-romans
+  // s3 and y8-rivers s8 drew whole with room to spare, yet were named over by the table alone).
+  const fitsHere = m.fits && titleFits && leadLines <= 2;
+  const comfyHere = fitsHere && !tight;
   const fields: FieldReport[] = [];
   const add = (field: string, key: "heading" | "lead" | "name" | "text", s: string) => {
     const cp = capOf(key);
     const chars = s.length;
-    const cap = cp?.cap ?? 0;
-    const hardMax = cp?.hardMax ?? 0;
+    const cap = cp ? (comfyHere ? Math.max(cp.cap, chars) : cp.cap) : 0;
+    const hardMax = cp ? (fitsHere ? Math.max(cp.hardMax, chars) : cp.hardMax) : 0;
     fields.push({
       field,
       path: field.replace(/\[(\d+)\]/g, ".$1"),

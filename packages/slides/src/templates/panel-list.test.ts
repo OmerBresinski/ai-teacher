@@ -748,3 +748,65 @@ describe("panel-list row pictures", () => {
     // Measuring every cell in the real text renderer takes 5–7 s on CI runners.
   }, 30_000);
 });
+
+describe("the slide's own measurement wins over the worst-case table (writer smoke, 16 Oct)", () => {
+  const PIC = { photo: "https://x.test/p.jpg", aspect: 844 / 1080, alt: "" } as const;
+  const row = (name: string, text: string, picture?: typeof PIC) => ({
+    name,
+    text,
+    icon: null,
+    ...(picture ? { picture } : {}),
+  });
+  // y4-romans s3: four rows beside pictures, a one-line lead (KS2).
+  const romans = (texts: string[]): TemplateInput => ({
+    template: "panel-list",
+    heading: "Four Roman changes",
+    lead: "Roman rule changed places and daily life.",
+    rows: ["Roads", "Towns", "Baths", "Latin"].map((n, i) => row(n, texts[i] ?? "", PIC)),
+  });
+  // y8-rivers s8: three rows, a photo in the panel (KS3).
+  const rivers: TemplateInput = {
+    template: "panel-list",
+    heading: "Carrying more load",
+    lead: "Transport occurs throughout the river course.",
+    rows: [
+      row("Faster flow", "Greater speed can move larger particles."),
+      row("Greater discharge", "More water passing each second can carry more total load."),
+      row(
+        "Downstream pattern",
+        "Discharge usually rises downstream as tributaries join, keeping transport important.",
+      ),
+    ],
+    panel: { picture: PIC },
+  };
+
+  test("real writer slides that draw whole are never named over, on every theme", () => {
+    const final = romans([
+      "They helped people and goods travel.",
+      "They grew as centres for trade.",
+      "People washed and met at baths.",
+      "Romans used Latin for laws and messages.",
+    ]);
+    for (const t of THEMES) {
+      for (const [input, stage] of [
+        [final, "ks2"],
+        [rivers, "ks3"],
+      ] as const) {
+        const r = layoutTemplate(input, t, stage);
+        expect(r.over).toEqual([]);
+        for (const f of r.fields ?? []) expect(f.chars).toBeLessThanOrEqual(f.hardMax ?? 0);
+      }
+    }
+  });
+
+  test("a list that does not fit still names its fields over", () => {
+    const draft = romans([
+      "Linked places so soldiers, messengers and goods could travel.",
+      "Grew as centres for markets, government and trade.",
+      "Public places where people washed and met others.",
+      "Used for Roman laws, official messages and inscriptions.",
+    ]);
+    const r = layoutTemplate(draft, must(THEMES[0]), "ks2");
+    expect(r.over).toEqual(["rows[0].text", "rows[1].text", "rows[2].text", "rows[3].text"]);
+  });
+});

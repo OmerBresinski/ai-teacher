@@ -132,11 +132,11 @@ describe("items-row on the writer's layout", () => {
     expect(r.slide.elements.filter((e) => e.name === "Number")).toHaveLength(3);
   });
 
-  test("unordered with no icons: neutral marks, no numbers", () => {
+  test("unordered with no icons: no medals and no numbers", () => {
     const items = (row.items as S[]).map((it) => ({ ...it, icon: null }));
     const r = run({ ...row, items, ordered: false });
     expect(r.slide.elements.filter((e) => e.name === "Number")).toHaveLength(0);
-    expect(r.slide.elements.filter((e) => e.name === "Mark")).toHaveLength(3);
+    expect(r.slide.elements.filter((e) => e.name === "Circle")).toHaveLength(0);
   });
 
   test("an icon the library misses numbers every item", () => {

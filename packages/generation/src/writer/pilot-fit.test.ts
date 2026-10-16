@@ -276,7 +276,14 @@ describe("one repair, then whole sentences", () => {
     expect(thrown.path).toBe("still-over");
   });
   test("no budget: straight to the code step", async () => {
-    expect((await fitPilot(panel, ctxAt(3))).steps).toHaveLength(1);
+    // Over the slide's own measured fit, not only the capacity table: every row runs past what the
+    // column holds at the floors (a single long row now fits whole and is only tight, TEACH-75 part ao).
+    const over: S = {
+      ...panel,
+      items: (panel.items as { name: string }[]).map((it) => ({ ...it, text: `${long} ${long}` })),
+    };
+    expect(pilotOvers(over, ctxAt(3)).overs.some((o) => o.clipped)).toBe(true);
+    expect((await fitPilot(over, ctxAt(3))).steps).toHaveLength(1);
   });
   test("the repair schema carries only what the slide's own layout reaches", () => {
     const { schema } = pilotRequest("v4.5", "KS2", {}, (sc) => sc);
