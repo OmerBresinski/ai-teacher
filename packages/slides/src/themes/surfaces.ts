@@ -84,6 +84,10 @@ export type ThemeSurfaces = {
   cardFlat: { line: string; width: number };
   /** Locked: the same in every theme (the "AI picture" label on a photo). */
   scrim: { fill: string; ink: string };
+  /** The four colour slots, rose, blue, amber, teal (ruling 248; `slots.ts` makes them). */
+  slots: { fill: string; ink: string }[];
+  /** The faintest text that still reads (ruling 248): never fade text, use this. */
+  dim: string;
   roles: Record<SurfaceRole, SurfaceStyle>;
   states: Partial<Record<`${SurfaceRole}:${SurfaceState}`, SurfaceStyle>>;
   /** A zone's band, or null when the zone is never banded or the theme has no band. */
@@ -166,6 +170,8 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     chipQuiet: { fill: need("chip-quiet-fill"), ink: need("chip-quiet-ink") },
     cardFlat: { line: need("card-flat-line"), width: px(need("card-flat-lw")) },
     scrim: { fill: need("scrim"), ink: need("scrim-ink") },
+    slots: [1, 2, 3, 4].map((n) => ({ fill: need(`cat-${n}-fill`), ink: need(`cat-${n}-ink`) })),
+    dim: need("dim"),
     roles,
     states: {
       "badge:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
@@ -268,13 +274,8 @@ const LIVE_BASE: readonly [string, keyof Theme["colors"]][] = [
   ["rule", "line"],
 ];
 
-/**
- * Tokens a live theme's own palette needs retuned: Reading Room's final dim is set for the round 5
- * ground, which part c ships; on today's warmer ground it is deepened to keep AA.
- */
-const LIVE_RETUNE: Readonly<Record<string, SurfaceTokens>> = {
-  "reading-room": { dim: "#706A5F" },
-};
+/** Tokens a live theme's own palette needs retuned (none since the round 5 palettes, part c). */
+const LIVE_RETUNE: Readonly<Record<string, SurfaceTokens>> = {};
 
 /**
  * The token set a live theme paints with: its final tokens (or Night Lab's) with the theme's own
