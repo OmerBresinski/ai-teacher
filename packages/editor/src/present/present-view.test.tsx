@@ -468,4 +468,21 @@ describe("PresentView: end-of-deck answers", () => {
       container.querySelector("[data-slide-mode='present'] [data-element-id='pill']"),
     ).toBeNull();
   });
+
+  it("the overview on the projector leaves the Answers slides out until they are shown, never with the pill", async () => {
+    const user = userEvent.setup();
+    renderPresent({ lesson: answersLesson() });
+    const tiles = () =>
+      [...document.querySelectorAll<HTMLElement>("[data-slide-index]")].map(
+        (e) => e.dataset.slideIndex,
+      );
+    key("o");
+    expect(tiles()).toEqual(["0", "1"]);
+    expect(screen.getByText(/· 2 slides/)).toBeTruthy();
+    key("o");
+    await user.click(screen.getByRole("button", { name: "Show answers to class" }));
+    key("o");
+    expect(tiles()).toEqual(["0", "1", "2"]);
+    expect(document.querySelector("[role='dialog'] [data-element-id='pill']")).toBeNull();
+  });
 });

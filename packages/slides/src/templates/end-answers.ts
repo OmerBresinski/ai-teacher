@@ -804,8 +804,5 @@ export function answerGroupsOf(slides: readonly Slide[]): AnswerGroup[] {
   return out;
 }
 
-/** A slide as the class sees it: an Answers slide loses its "Teacher only" pill when projected. */
-export function projected(slide: Slide): Slide {
-  if (slide.answersRole !== "answers") return slide;
-  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
-}
+/** One home for the projector view of a slide: `@tj/domain` (TEACH-191 part b). */
+export { projected } from "@tj/domain/documents";

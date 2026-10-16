@@ -2,10 +2,10 @@ import type { Lesson, Slide, SlideElement, Theme, TransitionId } from "@tj/domai
 import {
   answerStepsTaken,
   hasRevealableAnswer,
+  projected,
   SLIDE_H,
   SLIDE_W,
   slideStepCount,
-  TEACHER_ONLY_MARK,
 } from "@tj/domain/documents";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
@@ -28,12 +28,6 @@ import { usePresent } from "./use-present-session";
 const DURATION = 320;
 
 type LayerSpec = { index: number; step: number };
-
-/** A slide as the class sees it: an Answers slide's "Teacher only" pill is never projected. */
-export function projected(slide: Slide): Slide {
-  if (slide.answersRole !== "answers") return slide;
-  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
-}
 
 export type StageProps = {
   lesson: Lesson;

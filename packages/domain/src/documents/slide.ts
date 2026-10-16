@@ -110,6 +110,12 @@ export type AnswersRole = "guard" | "answers";
 /** The "Teacher only" pill's element name on an Answers slide: drawn for the teacher, never projected. */
 export const TEACHER_ONLY_MARK = "answers:teacher-only";
 
+/** A slide as the class sees it: an Answers slide's "Teacher only" pill is never projected. */
+export function projected(slide: Slide): Slide {
+  if (slide.answersRole !== "answers") return slide;
+  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
+}
+
 /* ------------------------------------------------------------------ */
 /* Question data                                                       */
 /* ------------------------------------------------------------------ */

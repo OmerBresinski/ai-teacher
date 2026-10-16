@@ -1,7 +1,13 @@
-import type { Lesson, Slide, TextElement, Theme } from "@tj/domain/documents";
+import {
+  type Lesson,
+  projected,
+  type Slide,
+  type TextElement,
+  type Theme,
+} from "@tj/domain/documents";
 import { Card, cn, Dialog, DialogContent, DialogTitle } from "@tj/ui";
 import { X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SlideStatic } from "../slide/SlideStatic";
 import { docToPlainText } from "../text/static";
 import { StageButton } from "./StageButton";
@@ -29,11 +35,41 @@ export function Overview({ lesson, theme }: { lesson: Lesson; theme: Theme }) {
   const { state } = usePresent();
   if (!state.overviewOpen) return null;
   // Remounting on open is what resets the cursor to the current slide.
-  return <OverviewGrid key={state.index} lesson={lesson} theme={theme} index={state.index} />;
+  return (
+    <OverviewGrid
+      key={state.index}
+      lesson={lesson}
+      theme={theme}
+      index={state.index}
+      showAnswers={state.showAnswers}
+    />
+  );
 }
 
-function OverviewGrid({ lesson, theme, index }: { lesson: Lesson; theme: Theme; index: number }) {
+/**
+ * The overview is on the projector: with "Show answers to class" off it leaves the Answers slides
+ * out (the guard stays), and no tile ever carries the "Teacher only" pill (TEACH-191 part b, gold
+ * answers/NOTES.md). The presenter's own list of them is the notes panel.
+ */
+function OverviewGrid({
+  lesson,
+  theme,
+  index,
+  showAnswers,
+}: {
+  lesson: Lesson;
+  theme: Theme;
+  index: number;
+  showAnswers: boolean;
+}) {
   const { dispatch } = usePresent();
+  const tiles = useMemo(
+    () =>
+      lesson.slides
+        .map((slide, i) => ({ slide: projected(slide), i }))
+        .filter(({ slide }) => showAnswers || slide.answersRole !== "answers"),
+    [lesson.slides, showAnswers],
+  );
   const close = () => dispatch({ type: "setOverviewOpen", open: false });
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -55,21 +91,27 @@ function OverviewGrid({ lesson, theme, index }: { lesson: Lesson; theme: Theme; 
   // Capture phase, so nothing else sees the arrows while the grid owns them.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const last = lesson.slides.length - 1;
+      // Moves step over the tiles shown, so a hidden Answers slide is never landed on.
+      const last = tiles.length - 1;
       const move = (to: number) => {
         e.preventDefault();
         e.stopPropagation();
-        focusCursor(Math.max(0, Math.min(last, to)));
+        const k = Math.max(0, Math.min(last, to));
+        focusCursor(tiles[k]?.i ?? cursor);
       };
+      const pos = Math.max(
+        0,
+        tiles.findIndex((t) => t.i === cursor),
+      );
       switch (e.key) {
         case "ArrowRight":
-          return move(cursor + 1);
+          return move(pos + 1);
         case "ArrowLeft":
-          return move(cursor - 1);
+          return move(pos - 1);
         case "ArrowDown":
-          return move(cursor + columns());
+          return move(pos + columns());
         case "ArrowUp":
-          return move(cursor - columns());
+          return move(pos - columns());
         case "Home":
           return move(0);
         case "End":
@@ -80,7 +122,7 @@ function OverviewGrid({ lesson, theme, index }: { lesson: Lesson; theme: Theme; 
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [cursor, lesson.slides.length, focusCursor, columns]);
+  }, [cursor, tiles, focusCursor, columns]);
 
   useEffect(() => {
     gridRef.current
@@ -107,7 +149,7 @@ function OverviewGrid({ lesson, theme, index }: { lesson: Lesson; theme: Theme; 
         <div className="flex h-full flex-col">
           <div className="flex h-11 shrink-0 items-center justify-between px-5">
             <DialogTitle className="font-ui text-body text-foreground">
-              {lesson.title} · {lesson.slides.length} slides
+              {lesson.title} · {tiles.length} slides
             </DialogTitle>
             <StageButton label="Close overview" onClick={close}>
               <X size={16} strokeWidth={1.5} />
@@ -127,7 +169,7 @@ function OverviewGrid({ lesson, theme, index }: { lesson: Lesson; theme: Theme; 
                 justifyContent: "start",
               }}
             >
-              {lesson.slides.map((slide, i) => {
+              {tiles.map(({ slide, i }) => {
                 const current = i === index;
                 const focused = i === cursor;
                 const title = slideTitle(slide);
