@@ -37,6 +37,8 @@ import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
+// TEACH-75 part ad (C5).
+import { REASONS_MAX, REASONS_MIN, reasonsPaths } from "./templates/reasons";
 import { SOURCE_MAX, SOURCE_MIN, sourcePaths } from "./templates/source";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 // TEACH-75 part ac (C4).
@@ -196,6 +198,17 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: true,
     noun: "notes",
     paths: sourcePaths,
+  },
+  // TEACH-75 part ad (C5): reasons under `reasons`, 2-3 at KS1 and 2-4 from KS2. A question is
+  // never split: over is flagged and the teacher merges or cuts.
+  reasons: {
+    items: "reasons",
+    min: REASONS_MIN,
+    max: (stage) => REASONS_MAX[ageProfileOf(stage)],
+    blank: () => ({ head: "New reason", line: "Add a sentence here." }),
+    continuation: false,
+    noun: "reasons",
+    paths: reasonsPaths,
   },
 };
 

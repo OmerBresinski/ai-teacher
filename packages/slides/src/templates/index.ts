@@ -47,6 +47,8 @@ import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
 import { layoutPictureText, type PictureText, pictureTextOf } from "./picture-text";
 import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
+// TEACH-75 part ad (C5): reasons.
+import { layoutReasons, type ReasonItem } from "./reasons";
 // TEACH-75 part ab (C2): a source, a verbatim extract with notes pinned to their lines.
 import { layoutSource, type SourceForm, type SourceNote } from "./source";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
@@ -59,6 +61,7 @@ import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
 export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
 export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+export { REASON_PENDING_ICON } from "./reasons";
 export { SPLIT_SIDE_DIAGRAM_KINDS } from "./split-compare";
 // TEACH-75 part ac (C4).
 export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
@@ -68,6 +71,7 @@ export type {
   GridCard,
   PanelRow,
   PanelVisual,
+  ReasonItem,
   RowItem,
   RowMotif,
   SourceForm,
@@ -193,6 +197,7 @@ export type TemplateId =
   // TEACH-239 part b (C7).
   | "figure"
   | "source"
+  | "reasons"
   | ActivityId;
 
 export type TemplateInput = {
@@ -283,6 +288,10 @@ export type TemplateInput = {
    * the key card look's cards. A picture-text slide without it lays out as before.
    */
   pictureText?: PictureText;
+  /** Reasons (TEACH-75 part ad): 2-4 reasons answering the heading's "why?" question, one per click. */
+  reasons?: ReasonItem[];
+  /** Reasons: a consequence chain (3 links, A led to B led to C) rather than a fan of reasons. */
+  chain?: boolean;
   /** An exact substring of the heading shown in the accent (ignored when it is not one). */
   accentWord?: string | null;
   /**
@@ -1375,6 +1384,7 @@ const KIND: Record<TemplateId, SlideKind> = {
   figure: "diagram",
   // TEACH-75 part ab (C2).
   source: "content",
+  reasons: "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
@@ -2396,6 +2406,9 @@ function layoutOnce(
       break;
     case "source":
       layoutSource(c, input);
+      break;
+    case "reasons":
+      layoutReasons(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);
