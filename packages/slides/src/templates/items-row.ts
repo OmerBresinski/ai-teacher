@@ -83,6 +83,7 @@ export const ROW_NAMES = {
   name: "Item name",
   text: "Item line",
   lead: "Lead",
+  ground: "Background",
 } as const;
 
 export { PLACEHOLDER_ICON } from "./items-row-deps";
@@ -198,6 +199,13 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const items = all.slice(0, ROW_DRAW_MAX.primary);
   const n = items.length;
 
+  // The layout's own ground under everything, so its inks (all from this theme) read on it on any
+  // deck theme (TEACH-75 part ap: Splash's inks on Night Lab's dark ground read at 2.5:1).
+  kit.box(c, { x: 0, y: 0, w: 960, h: 540 }, col.background, {
+    shape: "rect",
+    radius: 0,
+    name: ROW_NAMES.ground,
+  });
   // Heading: measured, the stage starts under it (ruling 198), the accent word coloured.
   let top = 40;
   let headLines = 0;
@@ -206,6 +214,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
     const n0 = c.over.length;
     const el = kit.heading(c, head);
     c.over.length = n0;
+    el.style = { ...el.style, color: col.heading };
     headLines = Math.round(el.h / ((el.style?.fontSize ?? c.s.heading) * kit.LH.heading));
     accent(el, head, input.accentWord, col.accent);
     top = el.y + el.h;

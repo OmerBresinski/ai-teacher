@@ -29,8 +29,13 @@ export type SplitTones = {
   deep: string;
   /** The words on the deep disc. */
   onDeep: string;
-  /** The paper between the fields and round the marker. */
+  /** The paper between the fields and round the marker, and under the heading. */
   paper: string;
+  /**
+   * The heading's ink, read with the paper from one theme (TEACH-75 part ap): left to the deck's
+   * theme, a layout laid out in Splash and drawn in Night Lab put pale ink on the pale paper.
+   */
+  heading: string;
   /** The medal's face. */
   face: string;
   /**
@@ -48,6 +53,7 @@ export function splitTones(t: Theme): SplitTones {
     deep: col.deep,
     onDeep: col.onDeep,
     paper: col.background,
+    heading: col.heading,
     face: col.surface,
     sand: col.sand,
   };

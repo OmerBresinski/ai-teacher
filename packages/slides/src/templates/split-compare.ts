@@ -323,6 +323,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
     const n0 = c.over.length;
     const el = kit.heading(c, head);
     c.over.length = n0;
+    el.style = { ...el.style, color: tones.heading };
     accent(c, el, input.accentWord);
     top = el.y + el.h;
   }
