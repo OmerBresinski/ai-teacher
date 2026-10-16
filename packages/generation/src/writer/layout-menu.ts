@@ -351,10 +351,10 @@ const titleWords = (a: Age) =>
   );
 const no3 = (a: Age, z: SideZone) => (SC_KEYS[a].includes(`3${z}`) ? "2 or 3" : "2");
 function media(a: Age): string {
-  let pic = `When each side is a thing a camera or diagram can show (an object, a place, a living thing, a scene before or after a change), every side carries a picture${no3(a, "p") === "2 or 3" ? "" : " (2 sides only)"}, or a diagram when the difference is in how each is built or works`;
+  let pic = `When each side is a thing a camera or diagram can show, every side carries a picture${no3(a, "p") === "2 or 3" ? "" : " (2 sides only)"}, or a diagram when the difference is in how each is built or works`;
   if (SC_KEYS[a].some((k) => k.endsWith("q")))
-    pic += `; when the sides are people's viewpoints, every side carries a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
-  return `${pic}. Sides carry neither only when they are ideas that no picture, diagram or quote shows.`;
+    pic += `; for people's viewpoints, every side carries a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
+  return `${pic}. Sides carry neither only when nothing can show them.`;
 }
 const NUMW: Record<number, string> = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
 const countWords = (c: ListLayout, a: Age) => {
@@ -395,7 +395,7 @@ export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
 // writer-prompt: owned by TEACH-110 s
 export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together (the tools on a workbench, the instruments of a band); it is null only when neither fits. Rules, reasons and ideas take picture null, and icons when every item has a fitting one (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
 );
 
 // writer-prompt: owned by TEACH-110 s
