@@ -25,6 +25,7 @@ import {
   referentFault,
   slideNoEmDash,
 } from "./checks";
+import { closedSlides, withClose } from "./close";
 import { contractSystem } from "./contract";
 import { countMiss } from "./count";
 import { writerDrawerSystem } from "./diagram-contract.gen";
@@ -646,7 +647,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const slotFill = pilot
     ? Object.keys(pilot.schema.$defs ?? {}).some((k) => k.includes("~"))
     : (run.slotFill ?? P.features?.slotFill ?? false);
-  const schema = slotFill && !pilot ? withSlotFill(unsplit, stageKey) : unsplit;
+  // The lesson's last slide is its own required field (TEACH-110 part ab): the exit ticket, or the
+  // closing slide that sends the class to the worksheet's.
+  const schema = withClose(
+    slotFill && !pilot ? withSlotFill(unsplit, stageKey) : unsplit,
+    brief.exitTicketOnSlides,
+  );
   const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
@@ -1198,7 +1204,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     flow?: Plan["flow"];
     title?: S;
     slides?: S[];
+    close?: S | null;
   };
+  // Every lesson ends with its check: `close` goes back at the end, and a lesson whose exit ticket
+  // belongs on the slides and has none fails here, before anything is laid or stored.
+  const closed = closedSlides(out, brief.exitTicketOnSlides);
+  if (closed.missing) {
+    log({ ev: "exit-ticket-missing", level: "error", slides: closed.slides.length });
+    throw new WriterIncompleteError(closed.missing);
+  }
+  if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
+  out.slides = closed.slides;
   // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
   const miss =
     brief.slides.min === brief.slides.max

@@ -62,12 +62,13 @@ export function writerIncomplete(o: {
     return "finish_reason content-filter";
   if (o.finishReason === "error") return "finish_reason error";
   const out = nonFatalSync(
-    () => JSON.parse(o.text) as { slides?: unknown[] },
+    () => JSON.parse(o.text) as { slides?: unknown[]; close?: unknown },
     () => undefined,
   );
   if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
-  const n = Array.isArray(out?.slides) ? out.slides.length : 0;
+  // `close` is the lesson's last slide, its own field (TEACH-110 part ab).
+  const n = (Array.isArray(out?.slides) ? out.slides.length : 0) + (out?.close ? 1 : 0);
   // A small count miss (up to 2 under, or any over) ships as written and is logged (count.ts,
   // ADR 0036); more than 2 under the count, title and objectives included, is incomplete.
   if (n + 2 < o.minSlides - 2)
