@@ -95,7 +95,18 @@ export function withThemeColours(
   const elements = slide.elements.map((e) => themedElement(e, theme, docs));
   return {
     ...slide,
-    elements: elements.map((_e, i) => readable(slide.elements, elements, i, theme)),
+    elements: elements.map((e, i) => {
+      const read = readable(slide.elements, elements, i, theme);
+      // A stored layout group (TEACH-75 part ap): its children are drawn as laid out, so words a
+      // layout put straight on the slide (a pilot slide saved before layouts painted their own
+      // ground) sit on whatever ground the deck's theme now draws.
+      const kids = (e as { children?: SlideElement[] }).children;
+      if (e.type !== "group" || !kids?.length) return read;
+      return {
+        ...read,
+        children: kids.map((_k, k) => readable(kids, kids, k, theme, true)),
+      } as SlideElement;
+    }),
   };
 }
 
@@ -148,6 +159,7 @@ function readable(
   els: SlideElement[],
   i: number,
   theme: Theme,
+  laidOut = false,
 ): SlideElement {
   const e = els[i] as SlideElement & {
     style?: Record<string, unknown>;
@@ -164,8 +176,9 @@ function readable(
   const style = e[key];
   const r = resolveTextStyle(style, theme, label ? "heading" : "body");
   const own = (given[i] as unknown as Record<string, { color?: string } | undefined>)[key]?.color;
-  // Words straight on the slide sit on its ground and art, which the move draws in the new theme.
-  if (j < 0) return e;
+  // Words a teacher put straight on the slide sit on its ground and art, which the move draws in the
+  // new theme; only a layout's own words are read against the slide's ground.
+  if (j < 0 && !laidOut) return e;
   const moved = was !== now || r.color !== own;
   if (!moved || !HEX.test(now)) return e;
   const need = r.fontSize >= 24 || (r.fontSize >= 18.66 && r.fontWeight >= 700) ? 3 : 4.5;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Theme } from "@tj/domain/documents";
+import type { Slide, Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { resolveTextStyle } from "../text-style";
 import { withThemeColours } from "../theme-colours";
@@ -91,6 +91,44 @@ describe("a flat layout's words read after the lesson moves to any theme", () =>
             for (const deck of THEMES) {
               const els = withThemeColours({ id: "s", ...slide }, deck).elements as unknown as El[];
               for (const f of faults(els, deck)) found.push(`${stage} to ${deck.id}: ${f}`);
+            }
+          }
+        expect(found).toEqual([]);
+      });
+});
+
+/*
+ * Saved as a layout group before layouts painted their own ground (the 16 Oct live run: a Studio
+ * panel list in a Night Lab lesson, its navy row names on Night Lab's near-black): the group's
+ * words must still read on whatever ground the deck's theme draws.
+ */
+describe("a stored layout group with no ground reads after the lesson moves to any theme", () => {
+  for (const template of TEMPLATES)
+    for (const theme of THEMES)
+      test(`${template} laid out on ${theme.id} without its ground, switched to every theme`, () => {
+        const found: string[] = [];
+        for (const input of templateSamples().filter((s) => s.template === template))
+          for (const stage of STAGES) {
+            const kids = layoutTemplate(input, theme, stage).slide.elements.filter(
+              (e) => e.name !== "Background",
+            );
+            const group = {
+              id: "g",
+              type: "group",
+              name: "Layout",
+              x: 0,
+              y: 0,
+              w: 960,
+              h: 540,
+              children: kids,
+            };
+            const slide = { id: "s", kind: "content", elements: [group] } as unknown as Slide;
+            for (const deck of THEMES) {
+              const [drawn] = withThemeColours(slide, deck).elements as unknown as {
+                children: El[];
+              }[];
+              for (const f of faults(drawn?.children ?? [], deck))
+                found.push(`${stage} to ${deck.id}: ${f}`);
             }
           }
         expect(found).toEqual([]);
