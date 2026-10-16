@@ -717,7 +717,23 @@ export async function landPr(
       continue;
     }
     if (state.mergeStateStatus === "DIRTY") {
-      throw new UserFacingError(`PR #${pr} has merge conflicts.`);
+      // GitHub merges without `.gitattributes` drivers, so two layout PRs that each add a block to
+      // a union-merged registry (TEACH-106 part b) show DIRTY there. A local rebase applies the
+      // driver; a real conflict still stops the rebase, and the PR is refused as before.
+      if (rebaseRounds >= MAX_REBASE_ROUNDS) {
+        throw new UserFacingError(`PR #${pr} has merge conflicts.`);
+      }
+      rebaseRounds += 1;
+      log.step(
+        `GitHub reports conflicts; rebasing ${state.headRefName} onto origin/master locally`,
+      );
+      try {
+        await rebaseBranch(state, deps);
+      } catch (error) {
+        const why = error instanceof Error ? error.message : String(error);
+        throw new UserFacingError(`PR #${pr} has merge conflicts (${why}).`);
+      }
+      continue;
     }
     if (state.mergeStateStatus === "BLOCKED") {
       const checks = await statusChecks(pr, deps);

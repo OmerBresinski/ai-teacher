@@ -1,5 +1,13 @@
 * text=auto eol=lf
 
+# Layout registries (TEACH-106 part b): two layout PRs each add a block, so the lines from both
+# sides are kept. Only additive, order-free lists live in these files (packages/slides/AGENTS.md,
+# "Adding a layout"). GitHub may still mark such a PR DIRTY; `bun run land` then rebases it
+# locally, where this driver applies.
+packages/slides/src/templates/registered.ts merge=union
+packages/generation/src/writer/registered.ts merge=union
+packages/domain/src/documents/adaptive-template-ids.ts merge=union
+
 # Vendored agent skills (TEACH-27): keep them out of language stats.
 **/.agents/** linguist-vendored
 **/.claude/** linguist-vendored

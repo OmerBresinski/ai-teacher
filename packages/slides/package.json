@@ -23,6 +23,7 @@
     "./templates/pupil-words": "./src/templates/pupil-words.ts",
     "./templates/activities": "./src/templates/activities.ts",
     "./templates/activity-capacity.json": "./src/templates/activity-capacity.json",
+    "./templates/*-capacity.json": "./src/templates/*-capacity.json",
     "./templates/cards-grid-capacity.json": "./src/templates/cards-grid-capacity.json",
     "./templates/items-row-capacity.json": "./src/templates/items-row-capacity.json",
     "./templates/banner-text-capacity.json": "./src/templates/banner-text-capacity.json",

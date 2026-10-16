@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REGISTERED_ADAPTIVE_IDS } from "./adaptive-template-ids";
 
 /*
  * Adaptive layouts (TEACH-205 part b; UX rulings 215, 199). A layout the writer lays out from a
@@ -27,6 +28,8 @@ export const ADAPTIVE_TEMPLATE_IDS = [
   "source",
   // TEACH-75 part ad (C5).
   "reasons",
+  // TEACH-106 part b: the adaptive layouts registered in `adaptive-template-ids.ts`.
+  ...REGISTERED_ADAPTIVE_IDS,
 ] as const;
 
 export type AdaptiveTemplateId = (typeof ADAPTIVE_TEMPLATE_IDS)[number];

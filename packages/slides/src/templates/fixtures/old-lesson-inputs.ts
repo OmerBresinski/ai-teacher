@@ -1,4 +1,5 @@
 import type { TemplateInput } from "../index";
+import { REGISTERED } from "../registered";
 import { templateSamples } from "../samples";
 
 /**
@@ -31,6 +32,8 @@ const NEWER = new Set<string>([
 ]);
 // TEACH-75 part ad (C5): reasons came after the snapshot too; kept out of the old-lesson set.
 NEWER.add("reasons");
+// TEACH-106 part b: every layout registered in `registered.ts` came after the snapshot too.
+for (const id of Object.keys(REGISTERED)) NEWER.add(id);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
   ...templateSamples()
     .filter((s) => !NEWER.has(s.template))

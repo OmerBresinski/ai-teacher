@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateId, type TemplateInput } from "./index";
+import { REGISTERED } from "./registered";
 import { templateSamples } from "./samples";
 
 /*
@@ -42,6 +43,8 @@ const ALL: TemplateId[] = [
   "reasons",
   // TEACH-75 part ag (G1).
   "myth",
+  // TEACH-106 part b: every layout registered in `registered.ts`.
+  ...(Object.keys(REGISTERED) as TemplateId[]),
 ];
 
 type Sized = {

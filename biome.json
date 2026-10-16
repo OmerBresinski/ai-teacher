@@ -65,5 +65,14 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "packages/slides/src/templates/registered.ts",
+        "packages/generation/src/writer/registered.ts"
+      ],
+      "assist": { "actions": { "source": { "organizeImports": "off" } } }
+    }
+  ]
 }
