@@ -150,7 +150,6 @@ describe("Answers rows are as tall as their wrapped words", () => {
 });
 
 describe("relayEndAnswers: untouched Answers are rebuilt in the new faces, edited ones are kept", () => {
-  const OPTS = { skipWithKey: false } as const;
   // Two practice slides of six long answers: at KS1 the faces decide between 4 and 5 pages. (At the
   // stage's drawn sizes, TEACH-191 d, four answers each give 4 pages in every face.)
   const longLesson = [0, 1].map((i) => ({
@@ -166,7 +165,7 @@ describe("relayEndAnswers: untouched Answers are rebuilt in the new faces, edite
   })) as unknown as Slide[];
   const deckIn = (lesson: Slide[], id: string, stage: Stage = "ks2") => [
     ...lesson,
-    ...endAnswerSlides(answerGroupsOf(lesson), getTheme(id, stage), stage, OPTS),
+    ...endAnswerSlides(answerGroupsOf(lesson), getTheme(id, stage), stage),
   ];
   const relay = (deck: Slide[], from: string, to: string, stage: Stage = "ks2") =>
     relayEndAnswers(deck, getTheme(from, stage), stage, deck, getTheme(to, stage), stage);

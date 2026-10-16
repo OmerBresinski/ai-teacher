@@ -349,20 +349,45 @@ export function relayEndAnswers(
   const old = prev.filter((s) => s.answersRole);
   const at = slides.findIndex((s) => s.answersRole);
   if (!old.length || at < 0) return null;
-  const groups = answerGroupsOf(prev.filter((s) => !s.answersRole));
-  const opts = { skipWithKey: false } as const;
-  const expected = endAnswerSlides(groups, prevTheme, prevStage, opts);
-  const same =
-    expected.length === old.length &&
-    expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
-  if (!same && !untouchedAnswers(old, groups, prevTheme, prevStage)) return null;
-  const made = endAnswerSlides(groups, theme, stage, opts).map((s, i) => {
-    const was = old[i];
-    return was && was.answersRole === s.answersRole ? { ...s, id: was.id } : s;
-  });
+  if (!endAnswersUntouched(prev, prevTheme, prevStage)) return null;
+  const made = withIds(buildEndAnswers(prev, theme, stage), old);
   const lesson = slides.filter((s) => !s.answersRole);
   const before = slides.slice(0, at).filter((s) => !s.answersRole);
   return [...before, ...made, ...lesson.slice(before.length)];
+}
+
+/**
+ * The guard and Answers slides the builder makes from the deck's own questions, in `theme` (the
+ * deck's Answers slides themselves are skipped). Turning "Answers slides" back on in the editor
+ * puts these at the end of the deck (ruling 260).
+ */
+export function buildEndAnswers(slides: readonly Slide[], theme: Theme, stage: Stage): Slide[] {
+  return endAnswerSlides(answerGroupsOf(slides.filter((s) => !s.answersRole)), theme, stage);
+}
+
+/**
+ * True when the deck's guard and Answers slides are exactly what the builder makes from its
+ * questions in `theme` (elements, words, formatting and reveal steps compared; positions and ids
+ * ignored): nothing of the teacher's is on them. False when the teacher has edited one, or when
+ * the deck has none.
+ */
+export function endAnswersUntouched(slides: readonly Slide[], theme: Theme, stage: Stage): boolean {
+  const old = slides.filter((s) => s.answersRole);
+  if (!old.length) return false;
+  const groups = answerGroupsOf(slides.filter((s) => !s.answersRole));
+  const expected = endAnswerSlides(groups, theme, stage);
+  const same =
+    expected.length === old.length &&
+    expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
+  return same || untouchedAnswers(old, groups, theme, stage);
+}
+
+/** Built slides keep the ids of the ones they replace, in order, where the role matches. */
+export function withIds(made: readonly Slide[], old: readonly Slide[]): Slide[] {
+  return made.map((s, i) => {
+    const was = old[i];
+    return was && was.answersRole === s.answersRole ? { ...s, id: was.id } : s;
+  });
 }
 
 /* ------------------------------------------------------------------ */

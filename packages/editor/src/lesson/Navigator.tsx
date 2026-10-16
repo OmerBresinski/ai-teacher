@@ -28,6 +28,7 @@ import { renderTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
+import { SHOW_ANSWERS_LABEL, useSetAnswersSlides } from "./answers-slides";
 import { useHistory, useLesson } from "./document-context";
 import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
@@ -108,6 +109,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   const session = useSessionActions();
   const activeSlideId = useActiveSlideId();
   const { clipboardSlide } = useSessionUi();
+  const setAnswersSlides = useSetAnswersSlides();
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const { bySlide: residuals } = useResidualFindings();
   const { busySlideIds, onRegenerate, writingSlideIds } = useProposals();
@@ -515,6 +517,15 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => menuAt && regenerateSlide(deps, menuAt.id)}>
                 Regenerate slide…
+              </DropdownMenuItem>
+            </>
+          ) : null}
+          {lesson.answersOff ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* The way back for hidden Answers slides (ruling 260): they are not in the rail. */}
+              <DropdownMenuItem data-show-answers onSelect={() => void setAnswersSlides(true)}>
+                {SHOW_ANSWERS_LABEL}
               </DropdownMenuItem>
             </>
           ) : null}

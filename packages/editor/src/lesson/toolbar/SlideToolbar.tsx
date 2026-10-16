@@ -21,6 +21,7 @@ import { type TidyOutcome, tidyMessage, tidySlideReducer } from "../../layout/ti
 import { SLIDE_KIND_LABELS, SLIDE_KIND_ORDER } from "../../model/layouts";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
+import { HideAnswersButton } from "../answers-slides";
 import { useHistory } from "../document-context";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
@@ -72,6 +73,12 @@ export const SlideToolbar = memo(function SlideToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Slide" data-slide-toolbar>
+      {slide.answersRole ? (
+        <>
+          <HideAnswersButton />
+          <PanelSeparator />
+        </>
+      ) : null}
       <LazyFreeLayoutSwitch slide={slide} />
       <DropTrigger label="Slide layout" value={slide.kind} text={SLIDE_KIND_LABELS[slide.kind]}>
         <DropdownMenuLabel>Convert this slide to</DropdownMenuLabel>
