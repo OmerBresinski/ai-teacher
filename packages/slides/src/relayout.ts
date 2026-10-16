@@ -23,7 +23,15 @@ import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } f
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
-import { answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
+import {
+  ANSWERS_NAMES,
+  type AnswerGroup,
+  type AnswersPage,
+  answerGroupsOf,
+  endAnswerSlides,
+  layoutAnswersGuard,
+  layoutAnswersPage,
+} from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
@@ -201,20 +209,87 @@ export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage
 }
 
 /** A slide's content without its id or any element's id and geometry, keys sorted. */
-function contentOf(slide: Slide): string {
-  const drop = new Set(["id", "x", "y", "w", "h"]);
+function contentOf(slide: Slide, sizes = true): string {
+  const drop = new Set([
+    "id",
+    "x",
+    "y",
+    "w",
+    "h",
+    ...(sizes ? [] : ["fontSize", "lineHeight", "radius"]),
+  ]);
   const norm = (v: unknown, top = false): unknown =>
     Array.isArray(v)
       ? v.map((x) => norm(x))
       : v && typeof v === "object"
         ? Object.fromEntries(
             Object.keys(v)
-              .filter((k) => !(top ? k === "id" : drop.has(k)))
+              // Empty notes are no notes: a loaded lesson gives every slide `notes: ""`.
+              .filter((k) =>
+                top
+                  ? k !== "id" && !(k === "notes" && !(v as { notes?: unknown }).notes)
+                  : !drop.has(k),
+              )
               .sort()
               .map((k) => [k, norm((v as Record<string, unknown>)[k])]),
           )
         : v;
   return JSON.stringify(norm(JSON.parse(JSON.stringify(slide)), true));
+}
+
+/**
+ * The stored Answers slides' page split, read back as the builder's pages: each band (a kicker,
+ * then one badge per answer) takes the next answers of `groups` in order. Null when the slides do
+ * not hold exactly the groups' answers in that order.
+ */
+function storedPages(old: readonly Slide[], groups: readonly AnswerGroup[]): AnswersPage[] | null {
+  const pages: AnswerGroup[][] = [];
+  let gi = 0;
+  let ii = 0;
+  for (const slide of old.filter((s) => s.answersRole === "answers")) {
+    const bands: number[] = [];
+    for (const e of slide.elements) {
+      if (e.name === ANSWERS_NAMES.kicker) bands.push(0);
+      else if (e.name === "surface:badge" && bands.length)
+        bands[bands.length - 1] = (bands[bands.length - 1] as number) + 1;
+    }
+    const page: AnswerGroup[] = [];
+    for (const n of bands) {
+      const g = groups[gi];
+      const items = g?.items.slice(ii, ii + n) ?? [];
+      if (!g || n === 0 || items.length !== n) return null;
+      page.push({ ...g, items });
+      ii += n;
+      if (ii === g.items.length) [gi, ii] = [gi + 1, 0];
+    }
+    pages.push(page);
+  }
+  if (gi !== groups.length || ii !== 0) return null;
+  return pages.map((p, k) => ({ groups: p, page: k + 1, of: pages.length }));
+}
+
+/**
+ * Answers slides built before their sizes were the drawn sizes (TEACH-191 part d) never match a
+ * rebuild exactly. They still count as untouched when every slide is exactly what the builder
+ * makes for the same answers in the same page split, sizes, radii and places aside: every
+ * element, word, format, colour and reveal step is compared, so any edit keeps them all.
+ */
+function untouchedAnswers(
+  old: readonly Slide[],
+  groups: readonly AnswerGroup[],
+  theme: Theme,
+  stage: Stage,
+): boolean {
+  const pages = storedPages(old, groups);
+  if (!pages) return false;
+  const rebuilt = [
+    layoutAnswersGuard(theme, stage).slide,
+    ...pages.map((p) => layoutAnswersPage(p, theme, stage).slide),
+  ];
+  return (
+    rebuilt.length === old.length &&
+    rebuilt.every((s, i) => contentOf(s, false) === contentOf(old[i] as Slide, false))
+  );
 }
 
 /**
@@ -244,8 +319,10 @@ export function relayEndAnswers(
   const groups = answerGroupsOf(prev.filter((s) => !s.answersRole));
   const opts = { skipWithKey: false } as const;
   const expected = endAnswerSlides(groups, prevTheme, prevStage, opts);
-  if (expected.length !== old.length) return null;
-  if (expected.some((s, i) => contentOf(s) !== contentOf(old[i] as Slide))) return null;
+  const same =
+    expected.length === old.length &&
+    expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
+  if (!same && !untouchedAnswers(old, groups, prevTheme, prevStage)) return null;
   const made = endAnswerSlides(groups, theme, stage, opts).map((s, i) => {
     const was = old[i];
     return was && was.answersRole === s.answersRole ? { ...s, id: was.id } : s;

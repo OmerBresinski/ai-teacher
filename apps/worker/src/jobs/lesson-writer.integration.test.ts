@@ -202,10 +202,12 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
     expect(done.lock).toBeNull();
     expect(done.lesson.generation?.stage).toBe("generated");
-    // 12 written slides, then the guard and two Answers pages (TEACH-191 part b).
-    expect(done.lesson.slides.length).toBe(15);
+    // 12 written slides, then the guard and three Answers pages (TEACH-191 parts b and d): measured
+    // at the size KS2 draws them, the sentence answers no longer fit two pages without overlapping.
+    expect(done.lesson.slides.length).toBe(16);
     expect(done.lesson.slides.slice(12).map((s) => s.answersRole)).toEqual([
       "guard",
+      "answers",
       "answers",
       "answers",
     ]);

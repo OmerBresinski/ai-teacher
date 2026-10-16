@@ -22,7 +22,7 @@ import { type Slide, type SlideElement, TEACHER_ONLY_MARK, type Theme } from "@t
 import { uid } from "../factories";
 import { contrastRatio } from "../look";
 import { lineWidth } from "../text-measure";
-import { resolveTextStyle } from "../text-style";
+import { resolveFontSize, resolveTextStyle } from "../text-style";
 import {
   paintSurface,
   type SurfaceRole,
@@ -89,7 +89,14 @@ export const ANSWER_TYPE: Record<Stage, { top: number; comfort: number }> = {
   ks5: { top: 27, comfort: 20 },
 };
 /** The caption floor for the kicker and the pill (gold label floor 22, or 26 at KS1). */
-const labelSize = (stage: Stage) => (stage === "ks1" ? 17 : 15);
+const labelSize = (t: Theme, stage: Stage) => px(t, stage === "ks1" ? 17 : 15);
+
+/**
+ * The size `size` is drawn at in `t`: a writer lesson's theme is bound to its key stage, and there
+ * a body box's size snaps to the stage's steps (KS2 29 or 25, never 22), so every box is measured
+ * and placed at the size the slide will show, never at the size asked for (TEACH-191 part d).
+ */
+const px = (t: Theme, size: number) => resolveFontSize(t, "body", size);
 
 const BODY_TOP = 146;
 const FOOT = 512;
@@ -118,13 +125,16 @@ function widthAt(t: Theme, text: string, size: number, weight: number): number {
 }
 
 type Sized = { size: number; sub: number; badge: number; rowGap: number; groupGap: number };
-const sizedAt = (size: number, stage: Stage, spread = 1): Sized => ({
-  size,
-  sub: Math.max(20, Math.round(size * 0.78)),
-  badge: Math.round(size * 1.25),
-  rowGap: snap(size * 0.6 * spread),
-  groupGap: snap(size * 0.9 * spread) + (stage === "ks1" ? 2 : 0),
-});
+const sizedAt = (t: Theme, asked: number, stage: Stage, spread = 1): Sized => {
+  const size = px(t, asked);
+  return {
+    size,
+    sub: px(t, Math.max(20, Math.round(size * 0.78))),
+    badge: Math.round(size * 1.25),
+    rowGap: snap(size * 0.6 * spread),
+    groupGap: snap(size * 0.9 * spread) + (stage === "ks1" ? 2 : 0),
+  };
+};
 
 /**
  * The columns rule (gold "Columns"): short answers up to 4 across, only as many as hold the
@@ -137,7 +147,7 @@ export function answerColumns(t: Theme, stage: Stage, items: readonly AnswerItem
   if (n <= 1) return 1;
   const short = items.every((it) => ("a" in it && !it.work) || ("tf" in it && !it.why));
   if (!short) return 1;
-  const top = sizedAt(ANSWER_TYPE[stage].top, stage);
+  const top = sizedAt(t, ANSWER_TYPE[stage].top, stage);
   const widest = Math.max(
     ...items.map((it) =>
       "tf" in it ? chipWidth(t, top.size) : widthAt(t, plainItem(it), top.size, 700),
@@ -155,10 +165,10 @@ export function answerColumns(t: Theme, stage: Stage, items: readonly AnswerItem
 }
 
 /** The verdict chip's label size: a label under the answer, never under the caption floor. */
-const chipSize = (size: number) => Math.max(17, Math.round(size * 0.72));
+const chipSize = (t: Theme, size: number) => px(t, Math.max(17, Math.round(size * 0.72)));
 /** A chip's width round its own word; corrections line up after the wider "False" chip. */
 const chipWidth = (t: Theme, size: number, yes = false) => {
-  const k = chipSize(size);
+  const k = chipSize(t, size);
   const word = yes ? ANSWERS_WORDS.yes : ANSWERS_WORDS.no;
   return Math.round(k * 0.62 + k * 0.9 + k * 0.38 + widthAt(t, word, k, 700) + k * 0.78);
 };
@@ -170,7 +180,7 @@ type Laid = { h: number; draw: (y: number, stepOf?: StepOf) => void };
 /** A group's band at `z`: the rail and the answers side by side, drawn from `y`. */
 function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const t = c.t;
-  const kick = labelSize(stage);
+  const kick = labelSize(t, stage);
   const sub = z.sub;
   const railTitleH = measureAt(c, g.title, RAIL.w, sub, 500, 1.2);
   const railH = Math.round(kick * 1.2) + 6 + railTitleH;
@@ -233,7 +243,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
           name: ANSWERS_NAMES.sentence,
         });
       } else if ("tf" in it) {
-        const ch = Math.round(chipSize(z.size) * 1.6);
+        const ch = Math.round(chipSize(t, z.size) * 1.6);
         const cw = chipWidth(t, z.size, it.tf);
         chip(c, it.tf, { x: tx, y: rowY + Math.round((line - ch) / 2), w: cw, h: ch }, z.size);
         if (it.why)
@@ -279,7 +289,8 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
 const kickerWord = (g: AnswerGroup) =>
   (g.kind === "exit" ? ANSWERS_WORDS.exit : ANSWERS_WORDS.practice).toUpperCase();
 
-function measureAt(c: Ctx, value: string, w: number, size: number, weight: number, lh: number) {
+function measureAt(c: Ctx, value: string, w: number, asked: number, weight: number, lh: number) {
+  const size = px(c.t, asked);
   const s = c.s;
   c.s = { ...s, body: size };
   const lines = Math.round(kit.measure(c, value, "body", w, weight) / (size * kit.LH.body));
@@ -291,11 +302,12 @@ function text(
   c: Ctx,
   value: string,
   rect: { x: number; y: number; w: number },
-  size: number,
+  asked: number,
   weight: number,
   lh: number,
   extra: { color: string; name: string; align?: "left" | "center" },
 ) {
+  const size = px(c.t, asked);
   const s = c.s;
   c.s = { ...s, body: size };
   const el = kit.text(c, value, "body", rect, {
@@ -364,7 +376,7 @@ function chip(
   box: { x: number; y: number; w: number; h: number },
   answerSize: number,
 ) {
-  const size = chipSize(answerSize);
+  const size = chipSize(c.t, answerSize);
   const role: SurfaceRole = yes ? "verdict-right" : "verdict-wrong";
   const fill = surfaceStyle(c.t, role).fill.slice(0, 7);
   c.els.push({
@@ -442,7 +454,7 @@ function hiddenDisc(c: Ctx, x: number, y: number, d: number, step: number) {
 
 /** The "Teacher only" pill on the title line: drawn for the teacher, never projected (r2 marker). */
 function teacherPill(c: Ctx, stage: Stage, lineY: number) {
-  const size = labelSize(stage);
+  const size = labelSize(c.t, stage);
   const label = ANSWERS_WORDS.teacherOnly;
   const icon = Math.round(size * 1.1);
   const w =
@@ -501,8 +513,13 @@ export function answersSize(
 ): number | undefined {
   const c = freshCtx(t, stage);
   const { top, comfort } = ANSWER_TYPE[stage];
-  for (let size = top; size >= comfort; size--)
-    if (pageHeight(c, stage, groups, sizedAt(size, stage)) <= BODY_H) return size;
+  let last: number | undefined;
+  for (let asked = top; asked >= comfort; asked--) {
+    const size = px(t, asked);
+    if (size === last) continue;
+    last = size;
+    if (pageHeight(c, stage, groups, sizedAt(t, size, stage)) <= BODY_H) return size;
+  }
   return undefined;
 }
 
@@ -585,13 +602,13 @@ export function layoutAnswersPage(
   if (opts.teacherOnly !== false)
     teacherPill(c, stage, head.y + Math.round((c.s.heading * kit.LH.heading) / 2));
   const { comfort } = ANSWER_TYPE[stage];
-  const size = answersSize(t, stage, page.groups) ?? comfort;
-  let z = sizedAt(size, stage);
+  const size = answersSize(t, stage, page.groups) ?? px(t, comfort);
+  let z = sizedAt(t, size, stage);
   let h = pageHeight(c, stage, page.groups, z);
   if (h > BODY_H) c.over.push(`answers ${h}/${BODY_H}pt`);
   // Leftover height spreads the gaps (never past three times the plain gap) toward the fill target.
   for (let spread = 1.1; spread <= 3.001 && h < BODY_H * FILL; spread += 0.1) {
-    const wider = sizedAt(size, stage, spread);
+    const wider = sizedAt(t, size, stage, spread);
     const wh = pageHeight(c, stage, page.groups, wider);
     if (wh > BODY_H * FILL) break;
     z = wider;

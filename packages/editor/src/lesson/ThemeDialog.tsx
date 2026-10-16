@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { newSlide } from "../model/factories";
-import { loadLayoutKit } from "../model/layout-kit";
+import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { getTheme, renderTheme, THEMES } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
@@ -96,6 +96,16 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   const commit = () => {
     if (tx.current === null) return;
     const themeId = lessonRef.current.themeId;
+    if (themeId === opening.themeId || layoutKit()) return settle(themeId);
+    // The template code is still loading: the final re-fit waits for it, or a saved deck's Answers
+    // slides and adaptive layouts keep the old theme's measurements (TEACH-191 part d).
+    void loadLayoutKit().then(
+      () => settle(themeId),
+      () => settle(themeId),
+    );
+  };
+  const settle = (themeId: string) => {
+    if (tx.current === null) return;
     if (themeId !== opening.themeId) {
       // The faces are loaded now: measure again, from the opening lesson, with the real type.
       const theme = getTheme(themeId);
