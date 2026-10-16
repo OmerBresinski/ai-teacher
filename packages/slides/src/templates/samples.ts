@@ -179,5 +179,15 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
       ],
       check: "3 × *5* + 5 = 20",
     },
+    // TEACH-75 part ac (C4).
+    {
+      template: "stages",
+      heading: "Where a river goes",
+      stages: [
+        { name: "Starts", line: "Up in the hills.", icon: "mountain-spring" },
+        { name: "Falls", line: "Over the rocks.", icon: "waterfall" },
+        { name: "Ends", line: "In the sea.", icon: "estuary" },
+      ],
+    },
   ];
 }

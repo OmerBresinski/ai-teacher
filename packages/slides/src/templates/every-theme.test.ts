@@ -32,6 +32,8 @@ const ALL: TemplateId[] = [
   "items-row",
   // TEACH-17 part b (C1).
   "worked",
+  // TEACH-75 part ac (C4).
+  "stages",
 ];
 
 type Sized = {

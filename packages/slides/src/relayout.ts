@@ -30,6 +30,8 @@ import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./t
 import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
+// TEACH-75 part ac (C4).
+import { blankStage, STAGES_MAX, STAGES_MIN, stagesPaths } from "./templates/stages";
 // TEACH-17 part b (C1).
 import { WORKED_MIN, workedMax, workedPaths } from "./templates/worked";
 import { resolveTextStyle } from "./text-style";
@@ -152,6 +154,16 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     continuation: false,
     noun: "options",
     paths: hingePaths,
+  }, // TEACH-75 part ac (C4): 3-6 stages (5 at early); a 7th is over and Split makes two slides.
+  stages: {
+    items: "stages",
+    min: STAGES_MIN,
+    max: (stage) => STAGES_MAX[ageProfileOf(stage)],
+    blank: blankStage,
+    placeholderIcon: PLACEHOLDER_ICON,
+    continuation: true,
+    noun: "stages",
+    paths: stagesPaths,
   },
   // TEACH-17 part b (C1): one working line per row; the check is its own field, not a line.
   worked: {

@@ -237,7 +237,12 @@ export function keepSidePictures(s: S): S {
  * `open` is where the open string sits (`SlideDraft.open`); a string anywhere else is whole.
  */
 export function iconsFromNames(s: S, open?: readonly (string | number)[]): S {
-  if ((s.template !== "items-row" && s.template !== "panel-list") || !Array.isArray(s.items))
+  // TEACH-75 part ac (C4): stages hold their icons the same way, so the strip never flips to the
+  // item row's ordered look and back while it streams.
+  if (
+    (s.template !== "items-row" && s.template !== "panel-list" && s.template !== "stages") ||
+    !Array.isArray(s.items)
+  )
     return s;
   const items = s.items as unknown[];
   const live = items.filter((it): it is S => !!it && typeof it === "object");

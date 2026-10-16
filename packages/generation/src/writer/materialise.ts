@@ -691,6 +691,32 @@ export function toInput(
           };
         }),
       };
+    // TEACH-75 part ac (C4): stages. A picture still to come holds its tile in a draft; a picture
+    // that failed leaves the stage its icon; a stage with neither lays the item row's ordered look.
+    case "stages":
+      return {
+        template,
+        heading,
+        ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
+        ...(typeof s.motif === "string" ? { motif: motifOf(s.motif) } : {}),
+        stages: (Array.isArray(s.items) ? s.items : []).map((i0, n) => {
+          const i = (i0 ?? {}) as S;
+          const p = isPic(i.picture)
+            ? figureNow(`stage.${n}`, i.picture as Pic, ctx, mark)
+            : undefined;
+          const held =
+            ctx.draft && isPic(i.picture) && !p ? { photo: PLACEHOLDER_IMAGE, alt: "" } : null;
+          const picture = p ?? held;
+          return {
+            name: str(i.name),
+            line: str(i.line ?? i.text),
+            ...(typeof i.icon === "string" && i.icon.trim() && i.icon.trim() !== PLACEHOLDER_ICON
+              ? { icon: i.icon }
+              : {}),
+            ...(picture ? { picture: picture as Figure } : {}),
+          };
+        }),
+      } as TemplateInput;
     // The pilot sets and contrasts (TEACH-110 part s).
     // Row and side pictures go through figureNow, so a pending one is the open slot.
     case "panel-list": {
@@ -922,7 +948,13 @@ export function whatIs(word: string, language = false): string | undefined {
 }
 
 /** Pilot layouts kept as re-layable groups (prototype, see `materialise`). */
-const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
+const ADAPTIVE = new Set([
+  "items-row",
+  "panel-list",
+  "split-compare",
+  // TEACH-75 part ac (C4).
+  "stages",
+]);
 
 /**
  * Layouts whose drafts and closed slide share ids (draft mode, TEACH-110 s): the pilot layouts,
