@@ -453,7 +453,16 @@ export type Arrival = {
  * never silently accepted, and never repaired here (slot-fill never drops or rewrites words).
  */
 /** Layouts written as one def, without a `fit` (the pilot pack). */
-const PILOT_LAYOUTS = new Set(["items-row", "panel-list", "split-compare"]);
+const PILOT_LAYOUTS = new Set([
+  "items-row",
+  "panel-list",
+  "split-compare",
+  // TEACH-110 part v: the question layouts, one def each.
+  "hinge",
+  "question-set",
+  "practice",
+  "exit-ticket",
+]);
 
 export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arrival {
   const { fit, ...slide } = raw;

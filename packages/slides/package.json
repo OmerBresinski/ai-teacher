@@ -32,6 +32,7 @@
     "./templates/question-set-capacity.json": "./src/templates/question-set-capacity.json",
     "./templates/end-answers": "./src/templates/end-answers.ts",
     "./templates/end-answers-capacity.json": "./src/templates/end-answers-capacity.json",
+    "./templates/practice-capacity.json": "./src/templates/practice-capacity.json",
     "./diagram-builds": "./src/diagrams/builds.ts",
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
