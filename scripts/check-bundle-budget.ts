@@ -152,7 +152,8 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
   // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
-  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 125 },
+  // 16 Oct 2026: print 125→160 (about 30% headroom, Greg 15 Oct standing rule): measured 125.5 KB with the wave C layouts.
+  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 160 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
   // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
   { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 50 },

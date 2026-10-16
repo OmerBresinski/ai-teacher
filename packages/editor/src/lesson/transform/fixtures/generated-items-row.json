@@ -5,15 +5,27 @@
       "type": "group",
       "name": "Layout",
       "x": 0,
-      "y": 38,
+      "y": 0,
       "w": 960,
-      "h": 483,
+      "h": 521,
       "children": [
+        {
+          "id": "d-s5-layout:~Background-0",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 960,
+          "h": 540,
+          "fill": "#EDF8FC",
+          "radius": 0,
+          "name": "Background"
+        },
         {
           "id": "d-s5-layout:heading",
           "type": "text",
           "x": 64,
-          "y": 8,
+          "y": 46,
           "w": 832,
           "h": 54,
           "doc": {
@@ -49,14 +61,15 @@
             "fontSize": 48,
             "lineHeight": 1.12,
             "fontWeight": 600,
-            "padding": 0
+            "padding": 0,
+            "color": "#0A5CA2"
           }
         },
         {
           "id": "d-s5-layout:~Connecting_line-0",
           "type": "path",
           "x": 0,
-          "y": 106,
+          "y": 144,
           "w": 960,
           "h": 93,
           "points": [
@@ -98,7 +111,7 @@
           "id": "d-s5-layout:~Connecting_dots-0",
           "type": "path",
           "x": 0,
-          "y": 106,
+          "y": 144,
           "w": 960,
           "h": 93,
           "points": [
@@ -143,7 +156,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 138,
-          "y": 108,
+          "y": 146,
           "w": 90,
           "h": 90,
           "fill": "#ddedf6",
@@ -154,7 +167,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 148,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "fill": "#FFFFFF",
@@ -165,7 +178,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 148,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "name": "Number",
@@ -197,7 +210,7 @@
           "id": "d-s5-layout:items.0.name",
           "type": "text",
           "x": 53,
-          "y": 201,
+          "y": 239,
           "w": 260,
           "h": 32,
           "doc": {
@@ -230,7 +243,7 @@
           "id": "d-s5-layout:items.0.text",
           "type": "text",
           "x": 53,
-          "y": 239,
+          "y": 277,
           "w": 260,
           "h": 65,
           "doc": {
@@ -264,7 +277,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 435,
-          "y": 108,
+          "y": 146,
           "w": 90,
           "h": 90,
           "fill": "#ddedf6",
@@ -275,7 +288,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 445,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "fill": "#FFFFFF",
@@ -286,7 +299,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 445,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "name": "Number",
@@ -318,7 +331,7 @@
           "id": "d-s5-layout:items.1.name",
           "type": "text",
           "x": 350,
-          "y": 201,
+          "y": 239,
           "w": 260,
           "h": 32,
           "doc": {
@@ -351,7 +364,7 @@
           "id": "d-s5-layout:items.1.text",
           "type": "text",
           "x": 350,
-          "y": 239,
+          "y": 277,
           "w": 260,
           "h": 227.5,
           "doc": {
@@ -387,7 +400,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 732,
-          "y": 108,
+          "y": 146,
           "w": 90,
           "h": 90,
           "fill": "#ddedf6",
@@ -398,7 +411,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 742,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "fill": "#FFFFFF",
@@ -409,7 +422,7 @@
           "type": "shape",
           "shape": "ellipse",
           "x": 742,
-          "y": 117,
+          "y": 155,
           "w": 71,
           "h": 71,
           "name": "Number",
@@ -441,7 +454,7 @@
           "id": "d-s5-layout:items.2.name",
           "type": "text",
           "x": 647,
-          "y": 201,
+          "y": 239,
           "w": 260,
           "h": 32,
           "doc": {
@@ -474,7 +487,7 @@
           "id": "d-s5-layout:items.2.text",
           "type": "text",
           "x": 647,
-          "y": 239,
+          "y": 277,
           "w": 260,
           "h": 65,
           "doc": {
@@ -529,9 +542,9 @@
         },
         "frame": {
           "x": 0,
-          "y": 38,
+          "y": 0,
           "w": 960,
-          "h": 483
+          "h": 521
         }
       },
       "authoredBy": "ai"

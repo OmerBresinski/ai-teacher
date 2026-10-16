@@ -144,6 +144,7 @@ export const PANEL_NAMES = {
   wedge: "Pie slice",
   groupIcon: "Panel icon",
   rowPicture: "Row picture",
+  ground: "Background",
 } as const;
 
 /* Geometry (960 x 540; the pilot's 1440 px x 2/3). */
@@ -307,6 +308,13 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const TITLE_W = panelW - TITLE_X - TITLE_RIGHT;
   const ROWS_X = panelW + ROWS_GAP;
   const ROWS_W = ROWS_RIGHT - ROWS_X;
+  // The layout's own ground under the rows, so their inks (all from this theme) read on it on any
+  // deck theme (TEACH-75 part ap: Splash's inks on Night Lab's dark ground read at 2.5:1).
+  kit.box(c, { x: 0, y: 0, w: 960, h: SLIDE_H }, L.paper, {
+    shape: "rect",
+    radius: 0,
+    name: PANEL_NAMES.ground,
+  });
   kit.box(c, { x: 0, y: 0, w: panelW, h: SLIDE_H }, L.deep, {
     shape: "rect",
     radius: 0,

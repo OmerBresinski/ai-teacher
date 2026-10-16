@@ -35,6 +35,8 @@ export const ageOf = (stage: string | undefined): AgeKey => ageProfileOf(stage);
 /** What panel-list draws with, in slide points (960 x 540). */
 export type PanelLook = {
   age: AgeKey;
+  /** The layout's own ground, under the rows (TEACH-75 part ap). */
+  paper: string;
   deep: string;
   onDeep: string;
   wash: string;
@@ -76,6 +78,7 @@ export function panelLook(theme: Theme): PanelLook {
   const floorName = Math.max(p.floors.name, MIN_FONT_SIZE.body);
   return {
     age: p.age,
+    paper: col.background,
     deep: col.deep,
     onDeep: col.onDeep,
     wash: col.wash,

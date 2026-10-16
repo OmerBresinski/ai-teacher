@@ -134,7 +134,8 @@ describe("items-row on every theme, age and count", () => {
               for (const o of r.over)
                 if (!(n > 4 && o === "items")) faults.push(`${tag} over: ${o}`);
               for (const e of r.slide.elements) {
-                if (e.type === "path") continue;
+                // The full-bleed ground is the only element meant to reach the slide's edges.
+                if (e.type === "path" || e.name === ROW_NAMES.ground) continue;
                 if (e.y < 0 || e.y + e.h > 540 - 16) faults.push(`${tag} ${e.name} off the slide`);
                 if (e.x < 0 || e.x + e.w > 960) faults.push(`${tag} ${e.name} off the side`);
                 const s = sizeOf(e);
