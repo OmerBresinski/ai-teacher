@@ -15,6 +15,7 @@ import type {
   GroupElement,
   LayoutFrame,
   LayoutRef,
+  Slide,
   SlideElement,
   Theme,
 } from "@tj/domain/documents";
@@ -22,6 +23,7 @@ import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } f
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
 import CARDS_GRID_CAPACITY from "./templates/cards-grid-capacity.json" with { type: "json" };
 // TEACH-230 part b (B2).
+import { answerGroupsOf, endAnswerSlides } from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
 import { blankRowItem, PLACEHOLDER_ICON, ROW_MAX, ROW_MIN, ROW_NAMES } from "./templates/items-row";
@@ -170,6 +172,32 @@ const asStage = (v: unknown): Stage | undefined =>
  */
 export function stageOf(theme: Theme, ageBand: string | null | undefined): Stage {
   return asStage((theme as { keyStage?: unknown }).keyStage) ?? asStage(ageBand) ?? "ks3";
+}
+
+/**
+ * The deck's guard and Answers slides laid out again in `theme` (TEACH-191 part c), or null when
+ * the deck has none. They are built by the deck from the practice and exit answers, never written
+ * by hand, and their row heights are each answer's wrapped height measured in the faces of the
+ * theme they were built in: drawn in a theme with wider faces, a wrapped answer runs into the next
+ * row. So a re-theme builds them again from the questions, where the first one stood; a group that
+ * no longer fits splits onto another Answers page. The old slide ids are kept in order.
+ */
+export function relayEndAnswers(
+  slides: readonly Slide[],
+  theme: Theme,
+  stage: Stage,
+): Slide[] | null {
+  const at = slides.findIndex((s) => s.answersRole);
+  if (at < 0) return null;
+  const old = slides.filter((s) => s.answersRole);
+  const lesson = slides.filter((s) => !s.answersRole);
+  // They exist, so they are wanted: the worksheet-key rule decided that when they were made.
+  const made = endAnswerSlides(answerGroupsOf(lesson), theme, stage).map((s, i) => {
+    const prev = old[i];
+    return prev && prev.answersRole === s.answersRole ? { ...s, id: prev.id } : s;
+  });
+  const before = slides.slice(0, at).filter((s) => !s.answersRole);
+  return [...before, ...made, ...lesson.slice(before.length)];
 }
 
 /* ------------------------------------------------------------------ */

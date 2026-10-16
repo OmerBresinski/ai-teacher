@@ -17,6 +17,7 @@ import {
   type SlideSpec,
 } from "@tj/slides";
 import * as kit from "@tj/slides/relayout";
+import { ANSWERS_NAMES, answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 import * as reducers from "../model/reducers";
 import { getTheme, THEMES } from "../model/themes";
 import { renderedHeights } from "./fit-plan";
@@ -218,4 +219,75 @@ describe("re-theme re-lays adaptive layouts in the new theme's faces", () => {
       expect(g.layout?.input).toEqual(before?.layout?.input);
     });
   }
+});
+
+/*
+ * TEACH-191 part c: the deck's Answers slides are built in the theme they are drawn in. Built in
+ * Splash and drawn in Paper's wider faces, a wrapped answer ran into the next row (live Year 4
+ * Romans, slide 13); a re-theme now builds them again from the questions.
+ */
+describe("re-theme: the Answers slides follow the new faces", () => {
+  const doc = (text: string) => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  });
+  const live = [
+    [
+      "Explain the changes",
+      "The straight route shortens the journey, and the firm surface helps the cart travel in wet weather.",
+      "The farmer has a place to sell grain, and townspeople have a place to buy food.",
+    ],
+    [
+      "Use the clues",
+      "The aqueduct brings water into town, and public baths give people a shared place to wash and meet.",
+      "Its name suggests a Roman fort, but physical remains would provide more evidence.",
+    ],
+  ];
+  const practice = live.map(([title, ...answers], i) => ({
+    id: `p${i}`,
+    kind: "open-response",
+    elements: [
+      {
+        id: `h${i}`,
+        type: "text",
+        name: "Heading",
+        x: 64,
+        y: 46,
+        w: 832,
+        h: 54,
+        style: { preset: "heading" },
+        doc: doc(title as string),
+      },
+    ],
+    question: {
+      type: "open-response",
+      modelAnswer: answers.map((a, n) => `${n + 1}. ${a}`).join("\n"),
+    },
+  })) as unknown as Slide[];
+  const splash = getTheme("splash", "ks2");
+  const deck = (): Lesson => ({
+    ...generated("splash"),
+    ageBand: "ks2",
+    slides: [...practice, ...endAnswerSlides(answerGroupsOf(practice), splash, "ks2")],
+  });
+  const answerBoxes = (lesson: Lesson) =>
+    lesson.slides
+      .filter((s) => s.answersRole === "answers")
+      .flatMap((s) => s.elements)
+      .filter((e) => e.type === "text" && e.name === ANSWERS_NAMES.sentence);
+
+  test("Splash to Paper: the answer boxes are rebuilt, the guard keeps its id", () => {
+    const base = deck();
+    const after = rethemeLesson(base, "paper", measureHeadless(getTheme("paper")), kit).lesson;
+    expect(after.slides.slice(0, 2)).toEqual(practice);
+    expect(after.slides[2]?.id).toBe(base.slides[2]?.id);
+    const fresh = endAnswerSlides(answerGroupsOf(practice), getTheme("paper", "ks2"), "ks2");
+    expect(answerBoxes(after).map((e) => [e.y, e.h])).toEqual(
+      answerBoxes({ ...base, slides: fresh }).map((e) => [e.y, e.h]),
+    );
+    // Without the template code the old boxes stay, too short for Paper's wider face: the bug.
+    const stale = rethemeLesson(base, "paper", measureHeadless(getTheme("paper")), null).lesson;
+    expect(answerBoxes(stale).map((e) => e.h)).toEqual(answerBoxes(base).map((e) => e.h));
+    expect(answerBoxes(after).map((e) => e.h)).not.toEqual(answerBoxes(base).map((e) => e.h));
+  });
 });

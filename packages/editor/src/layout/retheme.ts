@@ -26,6 +26,10 @@ import { tidySlide } from "./tidy";
  * wider serif inside a word ("Brother / s and sisters"), which no lint of box heights sees. The
  * template measures every word in the new face and steps the title to its floor, or names it in
  * `over`.
+ *
+ * The deck's guard and Answers slides are rebuilt the same way (`relayEndAnswers`): their rows are
+ * each answer's wrapped height in the old theme's faces, so a wider face ran one answer into the
+ * next (TEACH-191 part c).
  */
 
 export type RethemeOutcome = {
@@ -35,10 +39,14 @@ export type RethemeOutcome = {
   overflow: Id[];
 };
 
-/** Every slide that does not lint clean under `theme`, measured as the renderer draws it. */
+/**
+ * Every slide that does not lint clean under `theme`, measured as the renderer draws it. The deck's
+ * guard and Answers slides are left out: their template lays them out (a badge over its hidden
+ * disc is an overlap by design), and a re-theme builds them again instead (`relayEndAnswers`).
+ */
 export function slidesNeedingFit(lesson: Lesson, theme: Theme, measure: Measurer): Id[] {
   return lesson.slides
-    .filter((slide) => !lintAsDrawn(slide, measure, theme).ok)
+    .filter((slide) => !slide.answersRole && !lintAsDrawn(slide, measure, theme).ok)
     .map((slide) => slide.id);
 }
 
@@ -134,7 +142,13 @@ export function rethemeLesson(
   const to = renderTheme(lesson, themeId);
   const themed = reducers.setTheme(lesson, themeId);
   const recoloured = { ...themed, slides: themed.slides.map((s) => recolourSlide(s, from, to)) };
-  return fitLessonToTheme(recoloured, measure, kit);
+  // The deck's Answers slides are built again in the new theme's faces (TEACH-191 part c).
+  const answered = kit?.relayEndAnswers(recoloured.slides, to, kit.stageOf(to, lesson.ageBand));
+  return fitLessonToTheme(
+    answered ? { ...recoloured, slides: answered } : recoloured,
+    measure,
+    kit,
+  );
 }
 
 /** `fitLessonToTheme` in reducer shape, for `history.dispatch`. */
