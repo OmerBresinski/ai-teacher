@@ -3,7 +3,7 @@ import c1 from "./bundles/pilot-v4.5/base-KS1.schema.json" with { type: "json" }
 import c2 from "./bundles/pilot-v4.5/base-KS2.schema.json" with { type: "json" };
 import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" };
 import type { WriterStage } from "./schema";
-import { MIN_SHOWN_WORDS, offerable, shownWords } from "./shown-cap";
+import { MIN_SHOWN_WORDS, offerable, PLAN_SHARE, shownWords } from "./shown-cap";
 import { defCaps, fitsLines } from "./slot-fill";
 
 /*
@@ -119,7 +119,10 @@ export function headingWords(stage: WriterStage): number {
   return Number(fitSlots(stage).heading);
 }
 
-/** Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's `Fits: ….` */
+/**
+ * Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's
+ * `Fits: ….`, and `plan-share` (the flow step's headroom, `PLAN_SHARE`).
+ */
 export function fitSlots(stage: WriterStage): Record<string, string> {
   const offer = fitOffer(stage);
   const $defs: J = {};
@@ -140,6 +143,8 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
   }
   for (const id of FIT_ACTIVITIES)
     out[id] = `Fits: ${activityFitsLine(id as WriterActivity, stage)}.`;
+  // The flow step's headroom (loop 1b): a share of the shown Fits, never a typed number.
+  out["plan-share"] = `${Math.round(PLAN_SHARE * 100)}%`;
   return out;
 }
 

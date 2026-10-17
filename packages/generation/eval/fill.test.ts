@@ -242,6 +242,26 @@ describe("plan-only fit check", () => {
     expect(r.slides[5]?.layout).toBe("exit-ticket");
   });
 
+  test("a flow that names its layout is checked against that layout, not its shape", () => {
+    const flow = [
+      { slide: 1, shape: "hook", layout: "title", size: "Title" },
+      { slide: 2, shape: "one big idea", layout: "objectives", size: "Objectives" },
+      // The shape would say panel-list; the declared layout is split-compare.
+      {
+        slide: 3,
+        shape: "a set of kinds or examples",
+        layout: "split-compare",
+        size: "Two sides, up to twenty-five words each",
+      },
+      { slide: 4, shape: "one big idea", layout: "visual-text points-2-fig", size: "Two points" },
+      { slide: 5, shape: "check", layout: "hinge", size: "Three options, five words each" },
+    ];
+    const r = planFit(flow, "KS2");
+    expect(r.slides.map((s) => s.layout)).toEqual([null, null, "split-compare", null, "hinge"]);
+    expect(r.slides[2]?.verdict).toBe("over");
+    expect(r.slides[3]?.verdict).toBe("unchecked");
+  });
+
   test("parses number words and digits", () => {
     expect(parseSize("Four pictured items, four words each", ["items"])).toEqual({
       count: 4,

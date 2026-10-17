@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { droppedFits, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
 import { fitTable } from "./fixes";
 import { assembleWriterSystem, LAYOUT_WRITER_MENUS, WRITER_RULES } from "./layout-menu";
-import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { flowLayoutOf, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
-import { MIN_SHOWN_WORDS } from "./shown-cap";
+import { MIN_SHOWN_WORDS, PLAN_SHARE } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
 
 /*
@@ -164,4 +164,37 @@ describe("the checked caps are the measured fit table", () => {
       }
       expect(diffs).toEqual([]);
     });
+});
+
+/*
+ * Loop 1b (17 Oct 2026): the flow names each slide's layout and fit before its size, so an idea is
+ * counted against its fit while a split is still possible; the headroom share is generated.
+ */
+describe("the flow chooses the layout before the slide count is final", () => {
+  for (const stage of STAGES)
+    test(`${KS[stage]}: flow layout is an enum of the offered slides, before size`, () => {
+      const { schema } = pilotRequest("v4.8", KS[stage], {}, (sc) => sc);
+      const entry = schema.properties.flow.items as J;
+      const keys = Object.keys(entry.properties);
+      expect(keys.indexOf("layout")).toBe(keys.indexOf("look_at") + 1);
+      expect(keys.indexOf("size")).toBe(keys.indexOf("layout") + 1);
+      expect(keys.at(-1)).toBe("teaches");
+      expect(entry.required).toEqual(keys);
+      const offered = (schema.properties.slides.items.anyOf as J[]).map((r) =>
+        flowLayoutOf(String(r.$ref).split("/").pop() ?? ""),
+      );
+      expect(entry.properties.layout.enum).toEqual(["title", "objectives", ...offered]);
+      // A dropped fit is not offered to the flow either.
+      for (const k of droppedFits(stage))
+        expect(entry.properties.layout.enum).not.toContain(flowLayoutOf(k));
+      // The headroom is the code's share, rendered once, never typed.
+      const text = PILOT_PACKS["v4.8"].system[KS[stage]];
+      const share = `more than about ${Math.round(PLAN_SHARE * 100)}% of its fit's words`;
+      expect(text.split(share).length).toBe(2);
+    });
+
+  test("v4.7 stays as shipped: no flow layout", () => {
+    const { schema } = pilotRequest("v4.7", "KS2", {}, (sc) => sc);
+    expect(Object.keys(schema.properties.flow.items.properties)).not.toContain("layout");
+  });
 });

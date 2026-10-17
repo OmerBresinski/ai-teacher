@@ -34,6 +34,13 @@ export const SHOWN_SHARE = 0.75;
  */
 export const MIN_SHOWN_WORDS = 5;
 
+/**
+ * Planning headroom (loop 1b, Greg 17 Oct 2026): at the flow step, an idea whose counted words
+ * need more than this share of its fit's shown words takes a roomier fit or two slides, decided
+ * while the slide count can still change. Rendered into the prompt by `{{fits:plan-share}}`.
+ */
+export const PLAN_SHARE = 0.8;
+
 /** A writer stage from a stage key (`KS1`, `KS2`, `KS3`, `KS4`, `KS3-5`, `KS5`). */
 export function writerStageOfKey(stageKey: string): WriterStage {
   if (stageKey === "KS1" || stageKey === "KS2") return stageKey;

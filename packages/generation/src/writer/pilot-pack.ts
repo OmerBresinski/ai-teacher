@@ -74,7 +74,22 @@ export type PilotPack = {
   catalogueIcons?: boolean;
   /** Fits not offered at the floor or past a cliff leave the schema too (`droppedFits`, v4.8). */
   fitFloor?: boolean;
+  /**
+   * Each flow entry names its slide's layout and fit (`layout`, before `size`), so the fit is
+   * chosen and the idea counted against it while a split is still possible (loop 1b, v4.8).
+   */
+  flowLayout?: boolean;
 };
+
+/** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
+const FLOW_SIZE_COUNTED = {
+  type: "string",
+  description:
+    "the words the idea needs, counted from the idea: how many items, the words each item needs, then the lead's or stem's words",
+};
+
+/** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
+export const flowLayoutOf = (defKey: string): string => defKey.replace("~", " ");
 
 export const PILOT_PACKS = {
   "v4.4": {
@@ -123,7 +138,7 @@ export const PILOT_PACKS = {
   // (ruling 261); and the list and contrast layouts' text length generated from their budgets.
   "v4.8": {
     id: "v4.8",
-    layouts: l47 as PilotPack["layouts"],
+    layouts: { ...(l47 as PilotPack["layouts"]), flowSize: FLOW_SIZE_COUNTED },
     base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
@@ -138,6 +153,7 @@ export const PILOT_PACKS = {
     questionDefs: true,
     catalogueIcons: true,
     fitFloor: true,
+    flowLayout: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -244,6 +260,24 @@ export function pilotRequest(
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
+  if (pack.flowLayout) {
+    // The layouts a slide may take, as the flow names them; slides 1 and 2 are the title and
+    // the objectives. Placed before `size`, so the idea is counted against the fit it names.
+    const offered = (schema.properties.slides.items.anyOf as J[]).map((r) =>
+      flowLayoutOf(String(r.$ref).split("/").pop() ?? ""),
+    );
+    const layout = {
+      type: "string",
+      description: "the layout and fit this slide is written in (the Layout step)",
+      enum: ["title", "objectives", ...offered],
+    };
+    const { size, ...rest } = fp.items.properties;
+    const before = Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "teaches"));
+    fp.items.properties = { ...before, layout, ...(size ? { size } : {}), teaches: rest.teaches };
+    const req = (fp.items.required as string[]).filter((k) => k !== "layout");
+    const at = req.indexOf(size ? "size" : "teaches");
+    fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
+  }
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
   for (const k of [...replaced, ...pack.layouts.retired, ...floored])
