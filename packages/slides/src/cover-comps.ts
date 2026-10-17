@@ -9,6 +9,7 @@ import type {
 } from "@tj/domain/documents";
 import { uid } from "./factories";
 import { SAFE } from "./grid";
+import { layoutSlide } from "./layouts";
 import { docPlainText } from "./sentences";
 import { countLines } from "./text-measure";
 import { MIN_FONT_SIZE } from "./themes";
@@ -272,7 +273,22 @@ export function coverColumn(
   return out;
 }
 
-function hexShape(p: Parts, t: Theme): SlideElement[] {
+/**
+ * The split layout's caption and title boxes. The hexagon cover replaces whichever picture
+ * variant it is given (split, photo-band, photo-band-long), so its column starts where the split
+ * starts it (cover5 `.col`), not low in a band variant's photo band.
+ */
+function splitColumn(p: Parts, t: Theme): Parts {
+  const split = layoutSlide("title", t.id, "split");
+  const at = (preset: string) =>
+    split.elements.find((e): e is TextElement => e.type === "text" && e.style.preset === preset);
+  const move = (e: TextElement | undefined, to: TextElement | undefined) =>
+    e && to ? { ...e, x: to.x, y: to.y, w: to.w, h: to.h } : e;
+  return { ...p, caption: move(p.caption, at("caption")), title: move(p.title, at("title")) };
+}
+
+function hexShape(p0: Parts, t: Theme): SlideElement[] {
+  const p = splitColumn(p0, t);
   const hex = { x: 507, y: 71, w: 413, h: 373 };
   // cover5 `.col` is 600px (400pt) wide beside the hexagon.
   const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)));
