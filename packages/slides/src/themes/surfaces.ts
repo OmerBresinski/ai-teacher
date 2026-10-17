@@ -128,7 +128,15 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     title: s(need("title-band"), { ink: need("title-ink") }),
     kicker: s("transparent", { ink: need("title-muted") }),
     "field-a": s(need("fa-fill"), { ink: need("fa-ink"), corner: field }),
-    "field-b": s(need("fb-fill"), { ink: need("fb-ink"), corner: field }),
+    // The field grain (THEMING.md look table: Scrapbook's kraft fields "with a grain pattern"):
+    // the grain's dot colour, kept as the slot `pattern` (themes.css: rgb(120 90 40 / .07) dots on
+    // the kraft, flattened to one hex so the 1.3:1 quiet rule can read it). The renderer draws the
+    // dots; one that cannot leaves the plain fill (THEMING.md: "field grain ... dropped in PPTX").
+    "field-b": s(need("fb-fill"), {
+      ink: need("fb-ink"),
+      corner: field,
+      ...(t["fb-pattern"] ? { pattern: t["fb-pattern"] } : {}),
+    }),
     card: s(need("card-fill"), {
       ink: need("card-ink"),
       line: cardLine,
@@ -314,6 +322,19 @@ export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntr
  */
 const tableId = (theme: Pick<Theme, "id" | "dark">): string =>
   theme.id in SURFACE_TOKEN_SETS ? theme.id : theme.dark ? "dark-slate" : "paper";
+
+/**
+ * A theme's title band (THEMING.md look table: Poster's full-bleed teal band, cream ink, yellow
+ * accent), or null when its title sits on the ground.
+ */
+export function titleBand(
+  theme: Pick<Theme, "id">,
+): { fill: string; ink: string; accent: string } | null {
+  const k = SURFACE_TOKEN_SETS[theme.id];
+  const fill = k?.["title-band"];
+  if (!k || !fill || isClear(fill)) return null;
+  return { fill, ink: k["title-ink"] ?? "", accent: k["title-accent"] ?? "" };
+}
 
 /** A theme's surfaces; one the table does not know takes Paper's, or Slate's when dark. */
 export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>

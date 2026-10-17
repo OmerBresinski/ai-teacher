@@ -32,7 +32,8 @@ import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
+import TOKENS from "../themes/tokens.json";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
@@ -136,6 +137,18 @@ export function templateScale(theme: Theme, stage: Stage): Scale {
 /** Room past a fixed title's line boxes for its ink (descenders, accents), as a share of its size. */
 const TITLE_INK_MARGIN = 0.2;
 const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
+/**
+ * A role's line height on a theme. A round 5 face that needs a taller title line (Scrapbook's
+ * Playpen Sans, tokens `lh-title` 1.14: its "y" and "g" hang below a 1.06 line box) takes it for
+ * the cover title, the one fixed box that clips; a heading grows with its lines and never clips.
+ * Every other theme keeps the kit's leading byte for byte.
+ */
+function lhOf(t: Theme, role: Role): number {
+  const base = LH[role];
+  if (role !== "title" || !ROUND5_THEME_IDS.has(t.id)) return base;
+  const own = Number((TOKENS as Record<string, Record<string, string>>)[t.id]?.["lh-title"]);
+  return Number.isFinite(own) && own > base ? own : base;
+}
 
 /* ------------------------------------------------------------------ */
 /* Inputs                                                              */
@@ -506,7 +519,7 @@ function measure(
     weight ?? weightOf(role, c.t),
     size,
   );
-  return Math.ceil(lines * size * (lh ?? LH[role]));
+  return Math.ceil(lines * size * (lh ?? lhOf(c.t, role)));
 }
 
 function text(
@@ -540,7 +553,7 @@ function text(
       preset: presetOf(role),
       autoHeight: true,
       fontSize: c.s[role],
-      lineHeight: extra.lineHeight ?? LH[role],
+      lineHeight: extra.lineHeight ?? lhOf(c.t, role),
       fontWeight: extra.weight ?? weightOf(role, c.t),
       ...(extra.fixedSize ? { fixedSize: true } : {}),
       padding: 0,
@@ -689,7 +702,7 @@ function heading(c: Ctx, value: string) {
     { name: "Heading" },
   );
   if (el.y + el.h > G.band.y - 6)
-    c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
+    c.over.push(`heading ${Math.round(el.h / (c.s.heading * lhOf(c.t, "heading")))} lines`);
   c.s = { ...c.s, heading: full };
   return el;
 }
@@ -1928,6 +1941,9 @@ function layoutOnce(
       // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
       // every theme, `coverType`) until its words fit the column in the gold's three lines.
       const cv = coverType(c.t);
+      // A round 5 face whose descenders need a taller line (Scrapbook, Crayon: tokens `lh-title` 1.14)
+      // keeps it; every other theme takes the gold's line.
+      const titleLh = lhOf(c.t, "title") > LH.title ? lhOf(c.t, "title") : cv.titleLineHeight;
       let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
       // "hyperinfla/tion"). Stepping down is the design, not a fault.
@@ -1937,7 +1953,7 @@ function layoutOnce(
         Math.ceil(
           countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) *
             size *
-            cv.titleLineHeight,
+            titleLh,
         );
       // The question under the title at the cover's question size, regular weight.
       const leadH = input.lead
@@ -1974,7 +1990,7 @@ function layoutOnce(
         ...titleEl.style,
         fontSize: size,
         fixedSize: true,
-        lineHeight: cv.titleLineHeight,
+        lineHeight: titleLh,
       };
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
@@ -1984,7 +2000,7 @@ function layoutOnce(
       // on every side, padded by the same, so the words wrap and sit exactly where they did and
       // only the clip edge moves clear of the descenders (TEACH-152 part b). v2 themes only: an
       // old lesson on a v1 theme stays byte-identical (typed-callout guard).
-      if (input.lead && c.t.v2) {
+      if (input.lead && (c.t.v2 || ROUND5_THEME_IDS.has(c.t.id))) {
         const m = Math.ceil(size * TITLE_INK_MARGIN);
         Object.assign(titleEl, {
           x: titleEl.x - m,

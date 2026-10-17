@@ -390,7 +390,7 @@ const BASE: Theme[] = [
       correct: "#1C7E37",
       incorrect: "#D3213A",
     },
-    fonts: { title: FONT_STACKS.publicSans, body: FONT_STACKS.lexend },
+    fonts: { title: FONT_STACKS.bricolage, body: FONT_STACKS.lexend },
     ...type([
       [50, 1.08],
       [42, 1.14],
@@ -703,6 +703,17 @@ export function typeScale(t: Theme): TypeScale | undefined {
 }
 
 /** The picker's themes, the final sixteen in ruling 246's order (light, then the two dark). */
+/** The round 5 themes (TEACH-215 part c): no old lesson was laid out on them. */
+export const ROUND5_THEME_IDS: ReadonlySet<string> = new Set([
+  "poster",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "geometric",
+  "dark-slate",
+  "dark-ember",
+]);
+
 export const THEME_ORDER = [
   "paper",
   "poster",

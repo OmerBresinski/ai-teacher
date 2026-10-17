@@ -16,6 +16,7 @@ import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { readingLeading, readingSize } from "./text-style";
+import { titleBand } from "./themes/surfaces";
 
 export { contrastRatio, mix };
 
@@ -236,7 +237,8 @@ function cover(slide: Slide, t: Theme): Slide {
   const soft = readableSoft(ink, fill);
   const elements = slide.elements.map((el): SlideElement => {
     if (el.type === "shape") {
-      if (el.name === "Accent rule") return { ...el, fill: ink };
+      // A banded cover's rule wears the band's accent (Poster's yellow on teal); others the ink.
+      if (el.name === "Accent rule") return { ...el, fill: titleBand(t)?.accent || ink };
       // The `agenda` title's hairline between the title and the objectives.
       return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
     }
@@ -259,6 +261,9 @@ function cover(slide: Slide, t: Theme): Slide {
 export function coverColours(t: Theme): { fill: string; ink: string } {
   const deep = t.v2?.accents[t.v2.defaultAccent]?.deep;
   if (t.v2 && deep) return { fill: deep, ink: t.v2.colors.onDeep };
+  // A theme with a title band (Poster's teal, round 5) wears it as its cover, in the band's ink.
+  const band = titleBand(t);
+  if (band) return { fill: band.fill, ink: band.ink };
   return { fill: t.colors.accent, ink: t.colors.onAccent };
 }
 

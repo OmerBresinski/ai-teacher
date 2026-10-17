@@ -1,6 +1,7 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { DIAGRAM_NAME } from "@tj/slides";
+import { surfacesOf } from "@tj/slides/surfaces";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
 import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
@@ -96,6 +97,11 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
   const strokeWidth = element.strokeWidth ?? (stroke ? 2 : 0);
   const fill = element.fill ?? theme.colors.surface;
   const radius = shapeRadius(element, theme);
+  // A theme's field grain (Scrapbook's kraft, THEMING.md look table) over a painted field: the
+  // slot's dot colour, under the label and never hit-tested. Decoration only; PPTX drops it.
+  const grain = element.name?.startsWith("surface:field-b")
+    ? surfacesOf(theme).roles["field-b"].pattern
+    : undefined;
 
   const label = element.doc && !isDocEmpty(element.doc) ? element.doc : null;
   const r = resolveTextStyle(
@@ -125,6 +131,19 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
           {shapeNode(element.shape, w, h, radius)}
         </g>
       </svg>
+      {grain ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            // themes.css's grain: a 1pt dot every 9pt, in the slot's colour.
+            background: `radial-gradient(${grain} 1px, transparent 1.4px) 0 0 / 9px 9px`,
+            borderRadius: element.shape === "rect" ? 0 : radius,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       {editor ? (
         <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
           {editor}
