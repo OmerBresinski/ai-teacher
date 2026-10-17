@@ -356,6 +356,29 @@ function media(a: Age): string {
     pic += `; for people's viewpoints, every side carries a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
   return `${pic}. Sides carry neither only when nothing can show them.`;
 }
+/**
+ * A layout's text length in words the description can say, generated from the same budgets as its
+ * Fits, so the description never promises more than the tightest cell holds (a "sentence or two"
+ * over a 7-word side read as a target and crammed; build/CRAMMING-ROOT-CAUSE.md, TEACH-110 part ae).
+ */
+const lengthWord = (w: number) =>
+  w <= 6 ? "a phrase" : w <= 12 ? "a short sentence" : "a sentence or two";
+const lengthSpan = (budgets: number[]) => {
+  const lo = lengthWord(Math.min(...budgets));
+  const hi = lengthWord(Math.max(...budgets));
+  return lo === hi ? lo : `${lo} to ${hi}`;
+};
+/** Every item budget a list layout's Fits offer at an age: plain, row variant, and with a lead. */
+const itemLength = (c: ListLayout, a: Age) =>
+  lengthSpan(
+    (["", c === "items-row" ? "num" : "pics"] as const).flatMap((v) => [
+      ...NS(c, a, v).map((n) => itemBudget(c, a, n, false, v)),
+      ...leadNs(c, a, v).map((n) => itemBudget(c, a, n, true, v)),
+    ]),
+  );
+/** Every side budget split-compare's Fits offer at an age. */
+const sideLength = (a: Age) =>
+  lengthSpan(SC_KEYS[a].map((k) => sideBudget(a, Number(k[0]), k.slice(1) as SideZone)));
 const NUMW: Record<number, string> = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
 const countWords = (c: ListLayout, a: Age) => {
   const ns = allNs(c, a);
@@ -395,13 +418,13 @@ export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
 // writer-prompt: owned by TEACH-110 s
 export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact, in ${itemLength("panel-list", a)}, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
 );
 
 // writer-prompt: owned by TEACH-110 s
 export const SPLIT_COMPARE_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- split-compare: a vs: ${sideSpan(a)} things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and a sentence or two, when the contrast is the point: opposites, viewpoints, before and after a change in the world, or two kinds that differ on the same features, each side answering the same question in the same order. Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
+    `- split-compare: a vs: ${sideSpan(a)} things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and ${sideLength(a)}, when the contrast is the point: opposites, viewpoints, before and after a change in the world, or two kinds that differ on the same features, each side answering the same question in the same order. Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
 );
 
 /*
