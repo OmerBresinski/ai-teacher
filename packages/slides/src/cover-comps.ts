@@ -11,6 +11,7 @@ import { uid } from "./factories";
 import { SAFE } from "./grid";
 import { docPlainText } from "./sentences";
 import { countLines } from "./text-measure";
+import { MIN_FONT_SIZE } from "./themes";
 import { innerSides, tornPoints } from "./themes/marks";
 import { surfacesOf, titleBand } from "./themes/surfaces";
 
@@ -204,8 +205,76 @@ function collage(p: Parts, t: Theme): SlideElement[] {
   ]);
 }
 
+/**
+ * The text column of a picture-beside cover, restacked on measured lines: the title at its own
+ * size on the lines it really takes, the question under it in the small step on as many lines as
+ * it needs (never clipped: it steps down to the floor, then the column grows into the foot room).
+ * Round 5's cover question is the small body step, not the split layout's subtitle.
+ */
+export function coverColumn(
+  p: Parts,
+  t: Theme,
+  width: number,
+): { title?: TextElement; subtitle?: TextElement } {
+  const foot = H - SAFE.y;
+  // The column starts where the layout put the title (under the eyebrow) and never rises over it.
+  const top0 = p.title?.y ?? (p.caption ? p.caption.y + p.caption.h + 12 : SAFE.y);
+  const sub = p.subtitle;
+  const words = sub ? docPlainText(sub.doc) : "";
+  const lhS = t.lineHeights.small ?? 1.3;
+  const subSize = t.sizes.small;
+  const subH = (s: number) =>
+    sub ? Math.ceil(countLines(words, "small", t, width, 400, s) * s * lhS) + 4 : 0;
+  const title = p.title;
+  const tSize0 = title?.style.fontSize ?? t.sizes.title;
+  const tLh = title?.style.lineHeight ?? t.lineHeights.title;
+  const titleH = (s: number) =>
+    title
+      ? Math.ceil(
+          Math.max(
+            1,
+            countLines(docPlainText(title.doc), "title", t, width, title.style.fontWeight, s),
+          ) *
+            s *
+            tLh,
+        ) + 4
+      : 0;
+  // cover2's fixed title box: the size steps down to 62% (never below 56px = 37pt) before the
+  // question does; the question then steps to the projector floor.
+  const tFloor = Math.max(37, Math.round(tSize0 * 0.62));
+  let ts = tSize0;
+  let ss = subSize;
+  const total = () => titleH(ts) + (sub ? 20 + subH(ss) : 0);
+  while (top0 + total() > foot && ts > tFloor) ts -= 1;
+  while (top0 + total() > foot && ss > Math.min(subSize, MIN_FONT_SIZE.small)) ss -= 1;
+  const out: { title?: TextElement; subtitle?: TextElement } = {};
+  let y = top0;
+  if (title) {
+    const h = titleH(ts);
+    out.title = {
+      ...title,
+      y,
+      w: width,
+      h,
+      style: { ...title.style, fontSize: ts, valign: "top" },
+    };
+    y += h;
+  }
+  if (sub)
+    out.subtitle = {
+      ...sub,
+      y: y + 20,
+      w: width,
+      h: subH(ss),
+      style: { ...sub.style, preset: "small", fontSize: ss, lineHeight: lhS, valign: "top" },
+    };
+  return out;
+}
+
 function hexShape(p: Parts, t: Theme): SlideElement[] {
   const hex = { x: 507, y: 71, w: 413, h: 373 };
+  // cover5 `.col` is 600px (400pt) wide beside the hexagon.
+  const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)));
   const cap = p.caption;
   const capW = cap ? captionWidth(cap, t) : 0;
   const kick = cap ? { x: cap.x - 9, y: cap.y - 6, w: capW + 26, h: cap.h + 12 } : null;
@@ -238,8 +307,8 @@ function hexShape(p: Parts, t: Theme): SlideElement[] {
         }
       : undefined,
     cap ? ink({ ...cap, w: capW + 2 }, t.colors.background, { fontWeight: 700 }) : undefined,
-    p.title,
-    p.subtitle,
+    col.title,
+    col.subtitle,
     ...p.rest,
   ]);
 }

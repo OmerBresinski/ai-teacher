@@ -2,7 +2,14 @@ import { describe, expect, test } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { THEMES } from "../themes";
-import { dimGround, dimInk, SURFACE_TOKEN_SETS, surfaceStyle } from "../themes/surfaces";
+import {
+  dimGround,
+  dimInk,
+  markLook,
+  SURFACE_TOKEN_SETS,
+  surfaceStyle,
+  surfacesOf,
+} from "../themes/surfaces";
 import { HINGE_NAMES } from "./hinge";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
@@ -42,15 +49,18 @@ describe("hinge letter keys", () => {
           });
           const keys = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.key);
           expect(keys).toHaveLength(n);
-          // The gold's key: the card's ink, the letter in the card's fill (never the key role's red).
+          // The gold's key: the card's ink, the letter in the card's fill (never the key role's red);
+          // a theme whose key family is the accent (Geometric's gold) takes the key role's fill.
           const card = surfaceStyle(theme, "card");
-          const role = { fill: card.ink };
+          const accent = surfacesOf(theme).marks.keyFill === "accent";
+          const fill = accent ? surfaceStyle(theme, "key").fill : card.ink;
+          const shape = markLook(theme, "key", 30, fill ?? "#000", "#fff").shape;
           for (const k of keys) {
-            expect(k.shape).toBe("rounded");
-            expect(k.fill).toBe(role.fill);
+            expect(k.shape).toBe(shape);
+            expect(k.fill).toBe(fill);
             expect(
               contrastRatio(k.textStyle?.color as string, k.fill as string),
-            ).toBeGreaterThanOrEqual(3);
+            ).toBeGreaterThanOrEqual(accent ? 4.5 : 3);
           }
         }
   });

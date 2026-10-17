@@ -26,7 +26,7 @@ import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documen
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
 import { MIN_FONT_SIZE } from "../themes";
-import { type Corners, markLook, paintSurface, surfaceStyle } from "../themes/surfaces";
+import { type Corners, markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import CAPACITY from "./hinge-capacity.json" with { type: "json" };
 import { type Ctx, type FieldReport, kit, type TemplateInput } from "./index";
 import { type Age, iconImage, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
@@ -564,7 +564,12 @@ function key(c: Ctx, letter: string, x: number, y: number, d: number) {
   // with a dark letter); the `key` role's accent would be a second red on the slide.
   const card = surfaceStyle(c.t, "card");
   // The theme's key family (THEMING.md section 6: outline, sticky, notch ...), never its badge.
-  const look = markLook(c.t, "key", d, card.ink ?? c.t.colors.ink, card.fill);
+  const s = surfacesOf(c.t);
+  // A theme whose gold keys wear its accent (Geometric) takes the `key` role's fill and ink.
+  const look =
+    s.marks.keyFill === "accent"
+      ? markLook(c.t, "key", d, s.roles.key.fill, s.roles.key.ink ?? c.t.colors.onAccent)
+      : markLook(c.t, "key", d, card.ink ?? c.t.colors.ink, card.fill);
   const st = { fill: look.fill, ink: look.ink };
   c.els.push({
     id: uid(),

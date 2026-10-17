@@ -36,6 +36,8 @@ import { uid } from "../factories";
 import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
+import { MIN_FONT_SIZE } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
 import {
   type Ctx,
   type FieldReport,
@@ -606,12 +608,14 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     // Beside a pie the disc is its wedge's swatch, so it keeps the full colour unless asked.
     const back: PanelIconBack = icons ? (c.panelIconBack ?? (shares ? "ring" : "soft")) : "ring";
     // From KS3 an icon's back is a rounded square (icon option 2); numbers stay on a disc.
-    const tile = icons && L.medalShape === "tile";
+    // A theme with hexagon medals (Geometric, THEMING.md section 6) draws every medal as one.
+    const hex = surfacesOf(c.t).marks.medal === "hex";
+    const tile = !hex && icons && L.medalShape === "tile";
     if (back !== "none" && !pic)
       c.els.push({
         id: uid(),
         type: "shape",
-        shape: tile ? "rounded" : "ellipse",
+        shape: hex ? "hexagon" : tile ? "rounded" : "ellipse",
         ...(tile ? { radius: Math.round(m.d * TILE_RADIUS) } : {}),
         x: ROWS_X,
         y: Math.round(dy),
@@ -651,7 +655,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
         src,
         alt: r.icon ?? "",
         fit: "contain",
-        ...(back === "ring" ? { radius: Math.round(g / 2) } : {}),
+        ...(back === "ring" && !hex ? { radius: Math.round(g / 2) } : {}),
         name: PANEL_NAMES.icon,
       } as ImageElement);
     }

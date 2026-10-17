@@ -331,11 +331,15 @@ const dots = (x: number, y: number, w: number, h: number) =>
       return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
     }).join(""),
   );
-// Round 4 kept the dot grid over the whole ground (round4/NOTES.md); round 5 renders it full.
+// Round 5 renders the dot grid over the whole ground, but art never meets an element (ruling 107),
+// so a full-ground layer would always be dropped: the grid keeps master's margin strips (logged
+// deviation, LOG-A8-rebuild.md).
 const GEOMETRIC: Art = {
-  title: [dots(0, 0, 960, 540)],
-  content: [dots(0, 0, 960, 540)],
-  picture: [dots(0, 0, 960, 540)],
+  title: [dots(0, 400, 960, 128)],
+  content: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
+  // The hexagon cover reaches both margins (the photo and its offset outline on one side, the
+  // column on the other), so a picture slide takes no strip.
+  picture: [],
 };
 
 export const THEME_ART: Record<string, Art> = {

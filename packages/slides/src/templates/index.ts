@@ -33,6 +33,7 @@ import { contrastRatio, coverColours } from "../look";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
 import TOKENS from "../themes/tokens.json";
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
@@ -645,7 +646,8 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: str
   c.els.push({
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    // A theme with hexagon badges (Geometric, THEMING.md section 6) draws every number marker so.
+    shape: surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse",
     x,
     y: Math.round(y),
     w: d,

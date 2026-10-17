@@ -742,7 +742,13 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const stripW = tx + pt(60) + pt(36) - COL_L;
     const box = { x: COL_L, y: p.checkTop, w: stripW, h: p.checkH };
     const strip = paintSurface(
-      { id: uid(), role: p.model ? "card" : "field-b", box, own: [10, 10, 10, 10] },
+      {
+        id: uid(),
+        // An outline-card theme (Geometric's gold) sets the check on an outlined card on white.
+        role: p.model || surfacesOf(c.t).marks.card === "outline" ? "card" : "field-b",
+        box,
+        own: [10, 10, 10, 10],
+      },
       c.t,
     );
     if (strip)

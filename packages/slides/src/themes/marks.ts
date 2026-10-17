@@ -67,6 +67,8 @@ export type ThemeMarks = {
   offset: { d: number; color: string } | null;
   /** The sticky key's paper and tilt (Scrapbook), or null. */
   sticky: { fill: string; tilt: number } | null;
+  /** The hinge key's face: the card's ink (default) or the theme's accent (Geometric's gold). */
+  keyFill: "ink" | "accent";
   /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
   footBar: number;
 };
@@ -104,6 +106,7 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     notch: Math.min(NOTCH_MAX, num(t["notch"])),
     offset: offset > 0 ? { d: offset, color: t["offset-color"] ?? t["ink"] ?? "#000000" } : null,
     sticky: sticky ? { fill: sticky, tilt: clampAbs(num(t["sticky-tilt"]), TILT_MAX) } : null,
+    keyFill: t["key-fill"] === "accent" ? "accent" : "ink",
     footBar: Math.max(0, num(t["foot-bar"])),
   };
 }
