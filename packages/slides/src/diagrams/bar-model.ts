@@ -448,9 +448,12 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   if (need > inner) x.faults?.push(`the ${p.unknown} cells are too narrow for "${num(xv)}"`);
   // Each cell a block of its own (the gold): its fill, then a thin ink outline with a small
   // radius, drawn as two shapes so the flat finish keeps the outline.
+  // A theme's own tile (Geometric: rx 10px, a 3px ink line, the wash) over the drawing's default.
+  const rx = x.tile?.radius ?? 5;
+  const lw = x.tile?.line ?? 2;
   const cell = (cx: number, cy: number, cw: number, fill: string) => {
-    const box = `x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="5"`;
-    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" stroke-width="2"/>`;
+    const box = `x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="${n(rx)}"`;
+    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" stroke-width="${n(lw)}"/>`;
   };
   const ghost = (cx: number, cy: number, cw: number) =>
     `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
@@ -468,7 +471,7 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
     let g = "";
     for (let i = 0; i < p.a; i++) {
       const cx = bx + i * xw;
-      g += cell(cx, top, xw, c.tint);
+      g += cell(cx, top, xw, x.tile?.fill ?? c.tint);
       if (key === "check") {
         // A small x tag in the cell's top-left corner (the gold), the value under it with clear
         // space between: the value steps down (never under the floor) in a short cell.

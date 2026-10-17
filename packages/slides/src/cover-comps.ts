@@ -354,6 +354,24 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
       : undefined,
     col.title,
     col.subtitle,
+    // cover5 `.ai`: a generated picture says so, small and muted under the hexagon (ruling 158).
+    p.photo.source?.provider === "generated"
+      ? ({
+          id: uid(),
+          type: "text",
+          name: "AI picture label",
+          locked: true,
+          x: 573,
+          y: hex.y + hex.h + 22,
+          w: 200,
+          h: 16,
+          doc: {
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "AI picture" }] }],
+          },
+          style: { preset: "caption", color: t.colors.muted, align: "center", valign: "top" },
+        } as TextElement)
+      : undefined,
     // The photo-band variants' band backs text set on the photo; here the photo is in the hexagon.
     ...p.rest.filter((e) => e.name !== "Band"),
   ]);

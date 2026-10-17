@@ -88,3 +88,18 @@ describe("(d) outlined proof icons", () => {
     for (const t of others) expect(surfacesOf(t).marks.iconOutline).toBe(false);
   });
 });
+
+describe("round 5 follow-ups (Geometric only)", () => {
+  test("the bar-model tile, the rail ahead and the card line come from Geometric's tokens", () => {
+    expect(surfacesOf(geo).marks.railAhead).toBe("#9AA8C0");
+    for (const t of others) expect(surfacesOf(t).marks.railAhead).toBeNull();
+    const w = WORKED_CASES["y8-panel"]!;
+    const srcs = layoutTemplate(w.input, geo, w.stage)
+      .slide.elements.map((e) =>
+        "src" in e && typeof e.src === "string" ? decodeURIComponent(e.src) : "",
+      )
+      .join(" ");
+    expect(srcs).toContain('rx="6.67"');
+    expect(surfacesOf(geo).roles.card.lineWidth).toBeCloseTo(1.33, 2);
+  });
+});

@@ -8,6 +8,7 @@ import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
 import { arrowLine } from "../paths/arrow";
 import { type KeyStage, keyStageOf, typeScale } from "../themes";
+import THEME_TOKENS from "../themes/tokens.json";
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */
@@ -46,6 +47,11 @@ export type Ctx = {
    * fills, a highlight on counters; refined (Studio and the KS3-5 themes): fine lines, flat fills.
    */
   finish?: "warm" | "refined";
+  /**
+   * A theme's own bar-model tile (tokens `tile-radius`, `tile-line`, `tile-fill`: Geometric's
+   * worked gold, rx 10px, 3px ink line, the accent wash). Absent: the drawing's defaults.
+   */
+  tile?: { radius?: number; line?: number; fill?: string };
   /** The label size in slide points: never below the type floor, 18 (the back of the room). */
   fs: number;
   /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
@@ -139,6 +145,24 @@ export function isMathLabel(s: string): boolean {
   return t.split(/\s+/).filter((w) => /^[A-Za-z]{4,}$/.test(w)).length <= 1;
 }
 
+/** A theme's bar-model tile tokens, typed; nothing when it sets none. */
+function tileOf(t: Theme): { tile?: Ctx["tile"] } {
+  const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[t.id];
+  const num = (v?: string) =>
+    v && Number.isFinite(Number.parseFloat(v)) ? Number.parseFloat(v) : undefined;
+  const radius = num(tk?.["tile-radius"]);
+  const line = num(tk?.["tile-line"]);
+  const fill = /^#[0-9a-f]{6}$/i.test(tk?.["tile-fill"] ?? "") ? tk?.["tile-fill"] : undefined;
+  if (radius === undefined && line === undefined && !fill) return {};
+  return {
+    tile: {
+      ...(radius !== undefined ? { radius } : {}),
+      ...(line !== undefined ? { line } : {}),
+      ...(fill ? { fill } : {}),
+    },
+  };
+}
+
 export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
   const bg = t.colors.background;
   const surface = t.colors.panel ?? t.colors.surface;
@@ -157,6 +181,7 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
     ...(keyStageOf(t) ? { stage: keyStageOf(t) } : {}),
     dark: !!t.dark,
     finish: WARM_THEMES.has(t.id) ? "warm" : "refined",
+    ...tileOf(t),
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,

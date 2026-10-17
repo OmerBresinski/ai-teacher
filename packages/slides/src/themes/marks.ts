@@ -77,6 +77,8 @@ export type ThemeMarks = {
   emphasis: string | null;
   /** Proof medals' icons drawn with an ink outline (Geometric's gold), else as they come. */
   iconOutline: boolean;
+  /** The worked rail's colour ahead of the step (Geometric's gold #9AA8C0), or null for the rule. */
+  railAhead: string | null;
   /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
   footBar: number;
 };
@@ -123,6 +125,7 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     kickerTracking: em(t["kicker-tracking"]),
     emphasis: /^#[0-9a-f]{6}$/i.test(t["emphasis"] ?? "") ? (t["emphasis"] as string) : null,
     iconOutline: t["icon-outline"] === "ink",
+    railAhead: /^#[0-9a-f]{6}$/i.test(t["rail-ahead"] ?? "") ? (t["rail-ahead"] as string) : null,
     footBar: Math.max(0, num(t["foot-bar"])),
   };
 }

@@ -572,7 +572,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     };
     c.els.push(el);
   };
-  if (badgeY.length > 1) railPart(WORKED_NAMES.rail, first, last, col.rule);
+  // The rail still to come: the theme's own colour when it sets one (Geometric), else the rule.
+  const ahead = surfacesOf(c.t).marks.railAhead ?? col.rule;
+  if (badgeY.length > 1) railPart(WORKED_NAMES.rail, first, last, ahead);
   badgeY.forEach((y, i) => {
     if (i > 0) railPart(WORKED_NAMES.railFill, badgeY[i - 1] as number, y, ink, i + 1);
   });
@@ -659,7 +661,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         closed: true,
         fill: surfaceStyle(c.t, "plate").fill,
         stroke: accent,
-        strokeWidth: 1.5,
+        strokeWidth: 1.33,
         revealStep: R,
         reveal: "fade",
       } as PathElement);
