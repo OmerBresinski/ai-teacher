@@ -824,6 +824,46 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     example: { fill: "#DCEBD8", line: "#A7C7A2", ink: "#1F4A2C", icon: "#2F6B44" },
     "key-words": { fill: "#F7E5B9", line: "#D8B86A", ink: "#4E3604", icon: "#8A5800" },
   },
+  // Round 5 themes (TEACH-215 part c), derived from tokens.json by one recipe. Hues: watch-out
+  // sem-incorrect-ink, example sem-correct-ink, key words cat-3-ink. Light: a pale tint at
+  // lightness 0.90 (amber 0.86), the hairline 0.13 darker, ink and icon the hue darkened to 7:1 and
+  // 4.5:1 on the tint (Calm: muted tints, icons at 7:1). Dark: a wash 0.09 above the ground, the
+  // hairline 0.2 above, ink and icon the hue lightened to 7:1 and 4.5:1.
+  poster: {
+    "watch-out": { fill: "#FAD1D7", line: "#F395A3", ink: "#861525", icon: "#BB1D33" },
+    example: { fill: "#D4F7DD", line: "#8EEBA8", ink: "#145B28", icon: "#1C7C36" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD161", ink: "#644804", icon: "#7A5805" },
+  },
+  storytime: {
+    "watch-out": { fill: "#F9D2D7", line: "#F197A3", ink: "#851726", icon: "#BB2135" },
+    example: { fill: "#D5F6DE", line: "#9FEAB3", ink: "#175A29", icon: "#207C39" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD775", ink: "#644804", icon: "#7A5805" },
+  },
+  scrapbook: {
+    "watch-out": { fill: "#F9D2D7", line: "#F296A3", ink: "#861726", icon: "#BB2035" },
+    example: { fill: "#D4F7DE", line: "#98EBAF", ink: "#155A28", icon: "#1D7B37" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD46B", ink: "#644804", icon: "#7A5805" },
+  },
+  calm: {
+    "watch-out": { fill: "#F1DADF", line: "#DEAAB6", ink: "#920122", icon: "#920122" },
+    example: { fill: "#DAF1E2", line: "#ABDEBD", ink: "#025A20", icon: "#025A20" },
+    "key-words": { fill: "#EBE2CC", line: "#D8C79C", ink: "#5D4301", icon: "#5D4301" },
+  },
+  geometric: {
+    "watch-out": { fill: "#F9D2D7", line: "#F197A3", ink: "#851726", icon: "#BB2135" },
+    example: { fill: "#D5F6DE", line: "#9FE9B3", ink: "#195A2A", icon: "#227C39" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD775", ink: "#644804", icon: "#7A5805" },
+  },
+  "dark-slate": {
+    "watch-out": { fill: "#473330", line: "#684B47", ink: "#EFBDB5", icon: "#E8A196" },
+    example: { fill: "#364139", line: "#4F6055", ink: "#B7DBC3", icon: "#93C9A5" },
+    "key-words": { fill: "#4B402C", line: "#6E5E41", ink: "#F9DBA6", icon: "#F9DBA6" },
+  },
+  "dark-ember": {
+    "watch-out": { fill: "#402C27", line: "#63443C", ink: "#F4AD9C", icon: "#F2A08C" },
+    example: { fill: "#2D3A31", line: "#46594C", ink: "#9AD4AD", icon: "#8FCFA4" },
+    "key-words": { fill: "#433824", line: "#675638", ink: "#FFDA97", icon: "#FFDA97" },
+  },
 };
 
 export { OPTION_TONES, optionTones } from "./option-tones";

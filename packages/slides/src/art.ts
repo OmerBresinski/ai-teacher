@@ -1,4 +1,5 @@
 import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import TOKENS from "./themes/tokens.json";
 
 /*
  * The ten themes' art per role (UX ruling 107), in slide points (960x540). Each theme keeps one
@@ -288,6 +289,55 @@ const NIGHT_LAB: Art = {
 };
 const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
 
+/* -------------------------------------------- round 5 themes (TEACH-215 part c), Greg's look table */
+/*
+ * Only what THEMING.md's approved look table describes, in each theme's own tokens. Poster's 14px
+ * accent bar in the bleed ring is the look's accent bar (ACCENT_BAR_H, 9pt = 13.5px at 1440), so it
+ * needs no layer. Calm (by rule), Storytime (nothing described), Slate and Ember (flat, like night)
+ * have none. A ground pattern sits in the zones the layouts leave free, as Crayon's ruled lines do.
+ */
+
+const tok = TOKENS as Record<string, Record<string, string>>;
+/** Scrapbook: lined paper with a red margin rule (the look table's 30pt pitch, margin at 58px). */
+const scrapRules = (y: number, h: number) =>
+  svg(
+    0,
+    y,
+    960,
+    h,
+    Array.from(
+      { length: Math.floor(h / 30) },
+      (_, i) =>
+        `<rect x='0' y='${14 + i * 30}' width='960' height='1.3' fill='${tok.scrapbook?.["set-b"]}'/>`,
+    ).join(""),
+  );
+const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
+const SCRAPBOOK: Art = {
+  title: [scrapMargin, scrapRules(404, 127)],
+  content: [scrapMargin],
+  picture: [scrapMargin],
+};
+
+/** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
+const dots = (x: number, y: number, w: number, h: number) =>
+  svg(
+    x,
+    y,
+    w,
+    h,
+    Array.from({ length: Math.floor(w / 21.3) * Math.floor(h / 21.3) }, (_, i) => {
+      const cols = Math.floor(w / 21.3);
+      const cx = 10.65 + (i % cols) * 21.3;
+      const cy = 10.65 + Math.floor(i / cols) * 21.3;
+      return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
+    }).join(""),
+  );
+const GEOMETRIC: Art = {
+  title: [dots(0, 400, 960, 128)],
+  content: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
+  picture: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
+};
+
 export const THEME_ART: Record<string, Art> = {
   chalk: CHALK,
   playground: PLAYGROUND,
@@ -299,6 +349,8 @@ export const THEME_ART: Record<string, Art> = {
   "exam-hall": EXAM_HALL,
   "night-lab": NIGHT_LAB,
   beacon: BEACON,
+  scrapbook: SCRAPBOOK,
+  geometric: GEOMETRIC,
 };
 
 /**

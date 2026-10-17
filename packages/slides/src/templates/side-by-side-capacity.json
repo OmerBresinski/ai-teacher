@@ -29,9 +29,9 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 13,
+          "cap": 18,
           "hardMax": 32,
-          "words": 2
+          "words": 3
         },
         "text": {
           "cap": 22,
@@ -150,7 +150,7 @@
       "text": {
         "title": {
           "cap": 22,
-          "hardMax": 41,
+          "hardMax": 37,
           "words": 4
         },
         "text": {
