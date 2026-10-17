@@ -1,10 +1,15 @@
-import { describe, expect, test } from "bun:test";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, mock, test } from "bun:test";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
-import { ThemeProvider, Toaster, toast } from "@tj/ui";
 import { newLesson } from "../model/factories";
 import { renderTheme } from "../model/themes";
+
+// The notice is read from sonner's call, as the other editor tests do (the queue is process-wide).
+const toastSpy = mock((..._args: unknown[]) => "t");
+const actualUi = await import("@tj/ui");
+mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
+
 import { ANSWERS_HIDDEN_NOTICE, SHOW_ANSWERS_LABEL } from "./answers-slides";
 import { openLessonActions, pointer, renderEditor } from "./test-harness";
 
@@ -131,18 +136,16 @@ describe("Hide answers / Show answers slides", () => {
   });
 
   test("the hidden notice's Show button brings them back", async () => {
-    toast.dismiss(); // sonner's queue outlives a test: earlier tests' notices would show here
-    render(
-      <ThemeProvider>
-        <Toaster />
-      </ThemeProvider>,
-    );
+    toastSpy.mockClear();
     const { read } = renderEditor(answeredLesson());
     selectRow(read().slides.length - 1);
     fireEvent.click(within(slideToolbar()).getByRole("button", { name: "Hide answers" }));
     await waitFor(() => expect(roles(read())).toEqual([]));
-    await screen.findByText(ANSWERS_HIDDEN_NOTICE);
-    fireEvent.click(await screen.findByRole("button", { name: "Show" }));
+    const [message, options] = toastSpy.mock.calls.at(-1) ?? [];
+    expect(message).toBe(ANSWERS_HIDDEN_NOTICE);
+    const action = (options as { action?: { label: string; onClick: () => void } }).action;
+    expect(action?.label).toBe("Show");
+    action?.onClick();
     await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
     expect(read().answersOff).toBeUndefined();
   });
