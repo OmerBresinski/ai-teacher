@@ -67,7 +67,7 @@ const sizes = (els: readonly unknown[]): { name: string; size: number }[] =>
 describe("every writer template on every theme", () => {
   test("the samples cover all 17 templates and there are 9 themes", () => {
     expect(templateSamples().map((s) => s.template)).toEqual(ALL);
-    expect(THEMES).toHaveLength(10);
+    expect(THEMES).toHaveLength(16); // the round 5 sixteen (TEACH-215 part c, 16 Oct 2026)
   });
 
   for (const theme of THEMES)

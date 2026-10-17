@@ -146,3 +146,44 @@ export function buildSlots(t: SlotInput): { slots: Slot[]; dim: Hex } {
   });
   return { slots, dim: dimInk(t) };
 }
+
+/** The closest tone to `from` (moving from `to`) that still reads `need` on `on`. */
+function ease(from: Hex, to: Hex, on: Hex, need: number): Hex {
+  let best = to;
+  for (let f = 0; f <= 1.0001; f += 0.02) {
+    const h = mixOk(to, from, f);
+    if (contrast(h, on) >= need) best = h;
+    else break;
+  }
+  return best;
+}
+
+/**
+ * Calm's 7:1 rule on the slots (the pilot's `final/build-tokens.mjs`): each slot ink deepens, same
+ * hue, until it reads `need` on the ground, the surface and its own fill; the fill eases toward the
+ * ground only if the ink runs out of depth. Dim becomes the faintest muted tone at `need`.
+ */
+export function slotsAt(
+  built: { slots: Slot[]; dim: Hex },
+  t: SlotInput,
+  need: number,
+): { slots: Slot[]; dim: Hex } {
+  const slots = built.slots.map((s) => {
+    const [L0, C0, H0] = rgb2oklch(s.ink);
+    let L = L0;
+    let ink = s.ink;
+    let fill = s.fill;
+    while ([t.ground, t.surface, fill].some((g) => contrast(ink, g) < need) && L > 0.15) {
+      L -= 0.005;
+      ink = ok(L, C0, H0);
+    }
+    for (let f = 0; contrast(ink, fill) < need && f <= 1; f += 0.02)
+      fill = mixOk(s.fill, t.ground, f);
+    return { ...s, ink, fill };
+  });
+  const dim = [t.ground, t.surface].reduce(
+    (d, g) => (contrast(d, g) >= need ? d : ease(g, t.ink, g, need)),
+    ease(t.ground, t.muted, t.ground, need),
+  );
+  return { slots, dim };
+}

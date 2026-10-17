@@ -176,7 +176,12 @@ describe("theme art per slide role (UX ruling 107)", () => {
       expect(themeArt(t, "content")).toEqual([]);
       expect(themeArt(t, "picture")).toEqual([]);
     }
-    for (const t of THEMES.filter((x) => !x.v2)) expect(hasArtVariants(t)).toBe(true);
+    // The round 5 themes (TEACH-215 part c, 16 Oct 2026): art only where Greg's look table
+    // describes it; Poster's bar is the look's accent bar, the rest are flat.
+    const flat = ["poster", "storytime", "calm", "dark-slate", "dark-ember"];
+    for (const t of THEMES.filter((x) => !x.v2 && !flat.includes(x.id)))
+      expect(hasArtVariants(t)).toBe(true);
+    for (const id of flat) expect(hasArtVariants(getTheme(id))).toBe(false);
     // Theme v2 is the golds' plain paper (TEACH-152 part b): no art on any role.
     expect(hasArtVariants(getTheme("paper"))).toBe(false);
   });

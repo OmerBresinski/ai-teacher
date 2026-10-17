@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
-import { THEMES } from "../themes";
+import { ALL_THEMES } from "../themes";
 import DRAWER from "./drawer-specs.fixture.json";
 import MASTER from "./flow-draws.fixture.json";
 import { DIAGRAM_SAMPLES, renderDiagram } from "./index";
@@ -52,8 +52,9 @@ describe("TEACH-247 ac: no flow that drew on master is blank now", () => {
     const drawn: string[] = [];
     const perCase: Record<string, [number, number]> = {};
     const master = new Set(MASTER as string[]);
+    // Every theme a lesson can name, Night Lab included (TEACH-215 part c, 16 Oct 2026).
     for (const [name, spec] of flows)
-      for (const t of THEMES)
+      for (const t of ALL_THEMES)
         for (const z of ZONES) {
           const key = `${name}|${t.id}|${z.w}x${z.h}`;
           const ok = drawsSomething(renderDiagram(spec, t, z));

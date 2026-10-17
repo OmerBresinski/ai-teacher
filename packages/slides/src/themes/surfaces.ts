@@ -1,6 +1,6 @@
 import type { PathElement, ShapeElement, Theme } from "@tj/domain/documents";
 import { contrastRatio, mix } from "../colour-contrast";
-import { THEMES } from "../themes";
+import { ALL_THEMES } from "../themes";
 import TOKENS from "./tokens.json";
 
 /*
@@ -296,7 +296,8 @@ export function liveTokens(theme: Pick<Theme, "id" | "colors">): SurfaceTokens |
 export const SURFACE_TOKEN_SETS: Readonly<Record<string, SurfaceTokens>> = {
   ...SURFACE_TOKENS,
   ...Object.fromEntries(
-    THEMES.map((t) => [t.id, liveTokens(t)] as const).filter(
+    // Every theme a lesson can name: Night Lab left the picker (part c) but keeps its surfaces.
+    ALL_THEMES.map((t) => [t.id, liveTokens(t)] as const).filter(
       (e): e is readonly [string, SurfaceTokens] => e[1] != null,
     ),
   ),

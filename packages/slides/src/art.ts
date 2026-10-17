@@ -315,7 +315,6 @@ const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
 const SCRAPBOOK: Art = {
   title: [scrapMargin, scrapRules(404, 127)],
   content: [scrapMargin],
-  picture: [scrapMargin],
 };
 
 /** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
@@ -335,7 +334,8 @@ const dots = (x: number, y: number, w: number, h: number) =>
 const GEOMETRIC: Art = {
   title: [dots(0, 400, 960, 128)],
   content: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
-  picture: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
+  // The strip away from the picture (a picture on the right takes the mirror).
+  picture: [dots(906, 0, 54, 531)],
 };
 
 export const THEME_ART: Record<string, Art> = {

@@ -527,7 +527,8 @@ describe("the writer stage on a fake model", () => {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
       "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
-      "91d913cd0a1a4a18ca40659c11d798d72875dbe5fcc50db26935818e82d56010",
+      // TEACH-215 part c: KS1 items-row lead 30 -> 26 chars on the round 5 themes (was 91d913cd).
+      "53148fca5b7a31d9da98c27b530d8f81ef92f12eaa758ec0d780d4e2a97e9376",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
