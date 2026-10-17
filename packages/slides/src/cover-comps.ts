@@ -12,7 +12,7 @@ import { SAFE } from "./grid";
 import { docPlainText } from "./sentences";
 import { countLines } from "./text-measure";
 import { MIN_FONT_SIZE } from "./themes";
-import { innerSides, notchPoints, tornPoints } from "./themes/marks";
+import { hexagonPoints, innerSides, notchPoints, tornPoints } from "./themes/marks";
 import { surfacesOf, titleBand } from "./themes/surfaces";
 
 /*
@@ -256,7 +256,8 @@ export function coverColumn(
       y,
       w: width,
       h,
-      style: { ...title.style, fontSize: ts, valign: "top" },
+      // The size is only written when the ladder stepped it: an untouched title keeps its preset.
+      style: { ...title.style, ...(ts === tSize0 ? {} : { fontSize: ts }), valign: "top" },
     };
     y += h;
   }
@@ -282,18 +283,20 @@ function hexShape(p: Parts, t: Theme): SlideElement[] {
   return keep([
     {
       id: uid(),
-      type: "shape",
-      shape: "hexagon",
+      // Drawn as a stroked path (decoration, never a block in the overlap lint; box fractions, so
+      // it mirrors for RTL).
+      type: "path",
       name: "Cover outline",
       locked: true,
       x: hex.x + 20,
       y: hex.y + 20,
       w: hex.w,
       h: hex.h,
-      fill: "transparent",
+      points: hexagonPoints(),
+      closed: true,
       stroke: t.colors.accent,
       strokeWidth: 2,
-    } satisfies ShapeElement,
+    } satisfies PathElement,
     { ...p.photo, ...hex, radius: 0, mask: "hexagon" },
     kick
       ? {
@@ -313,7 +316,8 @@ function hexShape(p: Parts, t: Theme): SlideElement[] {
       : undefined,
     col.title,
     col.subtitle,
-    ...p.rest,
+    // The photo-band variants' band backs text set on the photo; here the photo is in the hexagon.
+    ...p.rest.filter((e) => e.name !== "Band"),
   ]);
 }
 
