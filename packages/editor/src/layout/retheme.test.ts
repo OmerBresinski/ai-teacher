@@ -1,21 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import {
-  type GroupElement,
-  type LayoutRef,
-  type Lesson,
-  richDocToPlainText,
-  type Slide,
-  type TextElement,
-} from "@tj/domain/documents";
-import {
-  countLines,
-  DEMO_LESSON_SPECS,
-  demoLessonSlides,
-  measureHeadless,
-  resolveTextStyle,
-  type SlideSpec,
-} from "@tj/slides";
+import type { Lesson, Slide } from "@tj/domain/documents";
+import { DEMO_LESSON_SPECS, demoLessonSlides, measureHeadless, type SlideSpec } from "@tj/slides";
 import * as kit from "@tj/slides/relayout";
 import { ANSWERS_NAMES, answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 import * as reducers from "../model/reducers";
@@ -167,45 +153,6 @@ describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
  * A re-theme now re-lays every layout group by its template in the new faces.
  */
 describe("re-theme re-lays adaptive layouts in the new theme's faces", () => {
-  const rows = [
-    { name: "Same direction", text: "Add: 6 N right + 4 N right = 10 N right.", icon: null },
-    { name: "Opposite directions", text: "Subtract: 9 N right − 4 N left.", icon: null },
-    { name: "Equal and opposite", text: "6 N right and 6 N left give 0 N.", icon: null },
-  ];
-  const laid = (heading: string): Lesson => {
-    const ref = {
-      template: "panel-list",
-      input: { heading, lead: "Read aloud.", rows, panel: null },
-    } as unknown as LayoutRef;
-    const studio = getTheme("studio");
-    const r = kit.relayout(ref, studio, kit.stageOf(studio, undefined), "g");
-    const group = {
-      id: "g",
-      type: "group",
-      name: "Layout",
-      ...r.frame,
-      children: r.elements.map((e) => ({ ...e, x: e.x - r.frame.x, y: e.y - r.frame.y })),
-      layout: { ...ref, frame: r.frame },
-    };
-    const base = generated("studio");
-    const slide = { ...base.slides[1], id: "s-pl", elements: [group] } as unknown as Slide;
-    return { ...base, slides: [slide] } as Lesson;
-  };
-  const brokenWords = (lesson: Lesson) => {
-    const theme = getTheme(lesson.themeId);
-    const g = lesson.slides[0]?.elements[0] as GroupElement;
-    const h = g.children.find((c) => c.name === "Heading") as TextElement;
-    const text = richDocToPlainText(h.doc);
-    const preset = h.style.preset ?? "title";
-    const pad = resolveTextStyle({ preset }, theme).padding;
-    return text
-      .split(" ")
-      .filter(
-        (w) =>
-          countLines(w, preset, theme, h.w + 2 * pad, h.style.fontWeight, h.style.fontSize) > 1,
-      );
-  };
-
   // 16 Oct 2026, TEACH-215 part d: at the golds' 45.3 heading no word breaks in stale Crayon (or any
   // other theme tried) without also breaking in Studio, so this case has no stale fit to repair.
   // Follow-up: find a heading and theme pair at the new sizes that breaks only after the re-theme.
@@ -214,22 +161,6 @@ describe("re-theme re-lays adaptive layouts in the new theme's faces", () => {
   // 257), so "Brothers and sisters" no longer breaks in stale Treehouse; twelve long headings across
   // nine themes found no other pair that breaks only after the re-theme. Same follow-up as above.
   test.todo(`"Brothers and sisters" in treehouse: no word breaks`, () => {});
-  for (const [heading, to] of [] as (readonly [string, string])[]) {
-    test(`"${heading}" in ${to}: no word breaks`, () => {
-      const base = laid(heading);
-      expect(brokenWords(base)).toEqual([]);
-      const measure = measureHeadless(getTheme(to));
-      // The bug: the theme alone, the layout left at Studio's sizes.
-      const stale = rethemeLesson(base, to, measure, null).lesson;
-      expect(brokenWords(stale).length).toBeGreaterThan(0);
-      const after = rethemeLesson(base, to, measure, kit).lesson;
-      expect(brokenWords(after)).toEqual([]);
-      const g = after.slides[0]?.elements[0] as GroupElement;
-      // The teacher's words are the ref's: the re-lay keeps them.
-      const before = base.slides[0]?.elements[0] as GroupElement | undefined;
-      expect(g.layout?.input).toEqual(before?.layout?.input);
-    });
-  }
 });
 
 /*

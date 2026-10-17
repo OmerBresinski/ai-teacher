@@ -15,7 +15,8 @@
  * - Row pictures (Greg's D1 pick, 14 Oct): a row may lead with a small rounded photo tile in
  *   place of its disc. All rows or none; a row whose picture is still being made shows the empty
  *   slot (`PLACEHOLDER_IMAGE`), so nothing vanishes. With row pictures the panel takes no picture,
- *   pie or icon of its own (it narrows), and row icons are not drawn: pictures win over icons.
+ *   pie or icon of its own (it keeps its width, ruling 257), and row icons are not drawn: pictures
+ *   win over icons.
  * - Icons are all or none (matched through the icon library); any miss draws numbers and is
  *   reported in `iconMisses`. With icons or a pie the discs take the category colours, so each
  *   row's disc is the swatch of its wedge.
@@ -153,7 +154,7 @@ export const PANEL_W = 313;
 const TITLE_X = 40;
 /**
  * The title's right margin inside the panel: the same as its left (Greg's y/n, 13 Oct: the pilot's
- * 21 put "Volcano hazards" against the narrow panel's edge).
+ * 21 put "Volcano hazards" against the panel's edge).
  */
 const TITLE_RIGHT = TITLE_X;
 const TITLE_TOP = 64;
@@ -196,7 +197,7 @@ export type PanelCaps = {
   name: Cap;
   text: Cap;
   withLead: { name: Cap; text: Cap };
-  /** The same fields when every row carries a picture (the narrow panel, a tile per row). */
+  /** The same fields when every row carries a picture (a tile per row; the panel keeps its width). */
   pictures?: Omit<PanelCaps, "pictures">;
 };
 const TABLE = CAPACITY as unknown as Partial<Record<AgeKey, Record<string, PanelCaps>>>;
@@ -685,7 +686,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
 
   // Fields, the live counters, against the measured caps (ruling 215).
   const caps = panelCapsFor(L.age, Math.max(PANEL_MIN, n));
-  // Beside row pictures the rows are narrower and the panel narrow: their own measured caps.
+  // Beside row pictures each row's words sit beside a tile: the rows take their own measured caps.
   const table = rowPics ? (caps?.pictures ?? caps) : caps;
   const capOf = (key: "heading" | "lead" | "name" | "text") =>
     table

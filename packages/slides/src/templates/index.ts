@@ -429,7 +429,7 @@ export type Ctx = {
   /** `LayoutOptions.objectiveCards` (UX ruling 203). */
   objectiveCards?: boolean;
   /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
-  panelNoVisual?: "narrow" | "icon";
+  panelNoVisual?: "plain" | "icon";
   /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
   panelIconBack?: "ring" | "none" | "soft";
   /** `LayoutOptions.setTint` (TEACH-75 part w). */
@@ -1737,8 +1737,8 @@ export type LayoutOptions = {
   processLine?: boolean;
   /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
   objectiveCards?: boolean;
-  /** Panel list with no visual: a narrower panel (the default) or the group's icon large in it. */
-  panelNoVisual?: "narrow" | "icon";
+  /** Panel list with no visual: the title alone in the panel (the default) or the group's icon large in it. */
+  panelNoVisual?: "plain" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
   panelIconBack?: "ring" | "none" | "soft";
   /** Side by side: the cards in the theme's soft neutral, its sand (the default), or the accent's soft tint. */

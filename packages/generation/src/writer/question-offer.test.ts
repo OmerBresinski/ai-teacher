@@ -206,13 +206,17 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     for (const ks of ["KS1", "KS2", "KS3"] as const) {
       // The panel-list line is left out: its numbers follow the measured table (TEACH-205 part d
       // shortened the side title), not the question layouts this compares.
+      // v4.7's line is cut by the menu's own text; v4.6 is frozen text with no builder, so its
+      // line goes by prefix. Each cut must remove exactly one line, so neither can miss silently.
+      const line = LAYOUT_WRITER_MENUS["panel-list"][ks === "KS3" ? "KS3-5" : ks];
       const size = (id: "v4.6" | "v4.7") => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
-        const system = r.system
-          .split("\n")
-          .filter((l) => !l.startsWith("- panel-list: "))
-          .join("\n");
-        return system.length + JSON.stringify(r.schema).length;
+        const lines = r.system.split("\n");
+        const kept = lines.filter((l) =>
+          id === "v4.7" ? l !== line : !l.startsWith("- panel-list: "),
+        );
+        expect(lines.length - kept.length, `${id} ${ks}: one panel-list line`).toBe(1);
+        return kept.join("\n").length + JSON.stringify(r.schema).length;
       };
       expect(size("v4.7")).toBeLessThan(size("v4.6"));
     }

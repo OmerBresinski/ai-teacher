@@ -327,7 +327,7 @@ describe("panel-list", () => {
   });
 
   test("the title keeps the same inner padding on both sides of the panel, at every stage", () => {
-    // Greg's y/n (13 Oct): "Volcano hazards" ran to within 21 pt of the narrow panel's edge.
+    // Greg's y/n (13 Oct): "Volcano hazards" ran to within 21 pt of the panel's edge.
     for (const theme of THEMES)
       for (const stage of STAGES)
         for (const visual of ["none", "photo", "pie"]) {
@@ -884,13 +884,19 @@ describe("panel-list title fit: shrink only for the longest word, never below th
       const rowName = Math.max(...sized(r, PANEL_NAMES.name));
       expect(size).toBeLessThan(full);
       expect(size).toBeGreaterThanOrEqual(rowName);
-      if (!r.over.includes("heading")) {
-        const t = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
-        const st = atKeyStage(T0, stage);
-        const shown = resolveTextStyle(t.style ?? {}, st, t.style?.preset ?? "title");
-        // Whole on one line: the word alone measures one line in the title's box.
-        expect(countLines("Photosynthesis", shown.preset, st, t.w, shown.fontWeight, size)).toBe(1);
+      if (stage === "ks1") {
+        // KS1's row names draw at 33: there the word is wider than the title box less the 6%
+        // display cushion, so the title stops at the row names and is reported over (17 Oct).
+        expect(size).toBe(rowName);
+        expect(r.over).toContain("heading");
+        return;
       }
+      expect(r.over).not.toContain("heading");
+      const t = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+      const st = atKeyStage(T0, stage);
+      const shown = resolveTextStyle(t.style ?? {}, st, t.style?.preset ?? "title");
+      // Whole on one line: the word alone measures one line in the title's box.
+      expect(countLines("Photosynthesis", shown.preset, st, t.w, shown.fontWeight, size)).toBe(1);
     });
     test(`${stage}: never below the row names; a word too wide there is reported over`, () => {
       const word = "Pneumonoultramicroscopicsilicovolcanoconiosis";
@@ -903,6 +909,25 @@ describe("panel-list title fit: shrink only for the longest word, never below th
       }
     });
   }
+  test("a long side title with a photo: the picture box sits in the panel, under the title (PR #571 review)", () => {
+    // The photo no longer shrinks the title (ruling 256), so a 3 or 4 line title leaves less room
+    // for the picture. While the title fits, the picture is a full-width box under it; the small
+    // inset at the title's left is reached only once the title is reported over (17 Oct probe).
+    for (const heading of ["Unbalanced forces change motion", "How the water cycle moves water"])
+      for (const stage of STAGES)
+        for (const theme of THEMES) {
+          const r = titleOf(heading, stage, theme, "photo");
+          const at = `${heading} ${theme.id} ${stage}`;
+          const img = must(named(r.slide.elements, PANEL_NAMES.photo)[0]) as ImageElement;
+          const title = must(named(r.slide.elements, PANEL_NAMES.title)[0]) as TextElement;
+          expect(img.x, at).toBeGreaterThanOrEqual(0);
+          expect(img.x + img.w, at).toBeLessThanOrEqual(PANEL_W);
+          expect(img.y + img.h, at).toBeLessThanOrEqual(540);
+          if (r.over.includes("heading")) continue;
+          expect(img.y, at).toBeGreaterThanOrEqual(title.y + title.h);
+          expect(img.w, at).toBe(PANEL_W);
+        }
+  });
   test("Unbalanced forces change motion, KS2 and KS3, every theme: the title is at or over the row names", () => {
     for (const stage of ["ks2", "ks3"] as Stage[])
       for (const theme of THEMES)
