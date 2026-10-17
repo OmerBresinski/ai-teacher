@@ -352,7 +352,7 @@ Fetching deployments in omerbresinskis-projects
       ["fetch", "origin"],
       ["checkout", "chore/land-pr-script"],
       ["rebase", "origin/master"],
-      ["push", "--force-with-lease"],
+      ["push", "--force-with-lease=chore/land-pr-script:head"],
       ["checkout", "fix/next-thing"],
     ]);
   });
@@ -481,9 +481,21 @@ Fetching deployments in omerbresinskis-projects
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(true);
   });
 
+  test("leases the push against the head GitHub reported, and names a refused push", async () => {
+    const lease = ["push", "--force-with-lease=chore/land-pr-script:head"];
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [lease] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "Could not push the rebased chore/land-pr-script: the remote branch is no longer head",
+    );
+    expect(fake.calls.git).toContainEqual(lease);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
   test("refuses a DIRTY PR whose local rebase conflicts, and aborts the rebase", async () => {
     const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [["rebase", "origin/master"]] });
-    await expect(landPr(42, {}, fake.deps)).rejects.toThrow("merge conflicts");
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "merge conflicts a local rebase could not resolve",
+    );
     expect(fake.calls.git).toContainEqual(["rebase", "--abort"]);
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
   });

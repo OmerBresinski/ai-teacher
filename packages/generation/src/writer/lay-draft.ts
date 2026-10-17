@@ -17,6 +17,7 @@ import {
   materialise,
 } from "./materialise";
 import { quickCheckDraft, withoutReveals } from "./question-set-draft";
+import { registeredWriter } from "./registered";
 import { nonFatalSync } from "./services";
 
 type S = Record<string, unknown>;
@@ -106,6 +107,8 @@ export function layDraft(
       // TEACH-75 part ab (C2): a source waits for its whole `form` ("ver" is not yet verse), so its
       // extract is never laid as prose and then swapped for verse lines under new ids.
       if (draft.template === "source" && draft.open?.[0] === "form") return undefined;
+      // TEACH-106 part b: a registered layout's own hold rule.
+      if (registeredWriter(draft.template)?.holdDraft?.(draft)) return undefined;
       let s: S = slideNoEmDash({ template: draft.template, ...fields } as S) as S;
       if (isWriterActivity(s.template)) s = fromWriterActivity(s, stageKey, ctx.brief).slide;
       const look = lookOf(ctx.plan.flow?.find((x) => x.slide === ctx.index + 1));
@@ -134,7 +137,11 @@ export function layDraft(
       // TEACH-75 part ab (C2): a source's notes are not answers either; they show as they are
       // written, so nothing vanishes at the hand-over (the closed slide reveals one per click).
       const shown =
-        s.template === "worked" || s.template === "source" ? m.slide : withoutReveals(m.slide);
+        s.template === "worked" ||
+        s.template === "source" ||
+        registeredWriter(s.template)?.showsRevealsInDraft
+          ? m.slide
+          : withoutReveals(m.slide);
       // A pilot slide laid without its group (a diagram it could not hold) is named like any other.
       const ided = isStableGroupSlide(shown, ctx.index)
         ? (({ question: _q, ...rest }) => rest)(shown)
@@ -246,7 +253,11 @@ export function iconsFromNames(s: S, open?: readonly (string | number)[]): S {
   // TEACH-75 part ac (C4): stages hold their icons the same way, so the strip never flips to the
   // item row's ordered look and back while it streams.
   if (
-    (s.template !== "items-row" && s.template !== "panel-list" && s.template !== "stages") ||
+    (s.template !== "items-row" &&
+      s.template !== "panel-list" &&
+      s.template !== "stages" &&
+      // TEACH-106 part b: a registered layout whose items hold named icons.
+      !registeredWriter(s.template)?.itemIcons) ||
     !Array.isArray(s.items)
   )
     return s;

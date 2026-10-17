@@ -443,15 +443,25 @@ async function prState(pr: number, deps: LandPrDeps): Promise<PrState> {
 async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
   const restore = await startingCheckout(state, deps);
   try {
-    for (const args of [
-      ["fetch", "origin"],
-      ["checkout", state.headRefName],
-      ["rebase", "origin/master"],
-      ["push", "--force-with-lease"],
-    ]) {
+    // The push leases against the head GitHub reported (`headRefOid`), not the ref the fetch just
+    // moved: a commit pushed to the branch after land read it is refused, never overwritten.
+    const branch = state.headRefName;
+    const steps: [string[], string][] = [
+      [["fetch", "origin"], "Could not fetch origin"],
+      [["checkout", branch], `Could not check out ${branch}`],
+      [
+        ["rebase", "origin/master"],
+        `${branch} has merge conflicts a local rebase could not resolve`,
+      ],
+      [
+        ["push", `--force-with-lease=${branch}:${state.headRefOid}`],
+        `Could not push the rebased ${branch}: the remote branch is no longer ${state.headRefOid} (or the push failed)`,
+      ],
+    ];
+    for (const [args, why] of steps) {
       const result = await deps.git(args);
       if (result.exitCode !== 0 && args[0] === "rebase") await deps.git(["rebase", "--abort"]);
-      requireSuccess(result, `git ${args.join(" ")}`);
+      requireSuccess(result, `${why}: git ${args.join(" ")}`);
     }
   } finally {
     // Cleanup must never replace the error that brought us here: a failed restore is reported,
@@ -727,12 +737,8 @@ export async function landPr(
       log.step(
         `GitHub reports conflicts; rebasing ${state.headRefName} onto origin/master locally`,
       );
-      try {
-        await rebaseBranch(state, deps);
-      } catch (error) {
-        const why = error instanceof Error ? error.message : String(error);
-        throw new UserFacingError(`PR #${pr} has merge conflicts (${why}).`);
-      }
+      // Each failed step names itself (fetch, checkout, conflicts, a refused push).
+      await rebaseBranch(state, deps);
       continue;
     }
     if (state.mergeStateStatus === "BLOCKED") {

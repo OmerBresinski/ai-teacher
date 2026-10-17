@@ -1,11 +1,13 @@
 /*
- * Where a new layout registers (TEACH-106 part b). Every list below takes one block per layout,
- * added at the end of the list. `.gitattributes` merges this file with `merge=union`, so two
- * layout PRs that each add a block here merge cleanly in either order. Rules that keep the union
- * safe:
- * - Only add. Edit or remove an existing block in a PR of its own, never beside a new layout.
- * - Keep each block on consecutive lines, and end each entry with a comma.
- * - Nothing here may depend on the order of the blocks. Imports are not sorted in this file
+ * Where a new layout registers (TEACH-106 part b). Each list below takes ONE LINE per layout, and
+ * the line names the layout (`myth: mythDef,`, `import { mythDef } from "./myth";`); the def
+ * itself lives in the layout's own file. `.gitattributes` merges this file with `merge=union`, so
+ * two layout PRs that each add their lines here merge cleanly in either order. Rules that keep the
+ * union safe:
+ * - One line per entry, naming the layout. A multi-line block is not safe: the union merges away
+ *   a line the two blocks share (`  },`, `kind: "content",`) and leaves broken code.
+ * - Only add, at the end of each list. Edit or remove a line in a PR of its own.
+ * - Nothing here may depend on the order of the lines. Imports are not sorted in this file
  *   (biome.json turns organizeImports off for it), so add yours at the end of the imports.
  * The templates that came before this file stay registered by hand in `index.ts`.
  * `packages/slides/AGENTS.md` ("Adding a layout") has the whole recipe.
@@ -16,9 +18,8 @@ import type { Ctx, TemplateInput } from "./index";
 
 /**
  * Each registered layout's own input fields, keyed by its template id, e.g.
- * `myth: { myth?: MythInput };`. The keys join `TemplateId` and the fields join `TemplateInput`.
+ * `myth: MythFields;` (the type exported by `./myth`). The keys join `TemplateId` and the fields join `TemplateInput`.
  */
-// biome-ignore lint/suspicious/noEmptyInterface: new layouts add their entries here.
 export interface RegisteredInputs {
   // Add entries below this line.
 }
@@ -36,7 +37,7 @@ export type TemplateDef = {
   adaptive?: AdaptiveSpec;
 };
 
-/** One entry per registered layout: `myth: { kind: "content", layout: layoutMyth, ... },`. */
+/** One line per registered layout: `myth: mythDef,` (a `TemplateDef` exported by `./myth`). */
 export const REGISTERED: { [K in RegisteredId]: TemplateDef } = {
   // Add entries below this line.
 };

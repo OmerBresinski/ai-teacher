@@ -72,7 +72,8 @@
         "packages/slides/src/templates/registered.ts",
         "packages/generation/src/writer/registered.ts"
       ],
-      "assist": { "actions": { "source": { "organizeImports": "off" } } }
+      "assist": { "actions": { "source": { "organizeImports": "off" } } },
+      "linter": { "rules": { "suspicious": { "noEmptyInterface": "off" } } }
     }
   ]
 }

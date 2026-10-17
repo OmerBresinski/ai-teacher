@@ -23,36 +23,40 @@ function git(cwd: string, ...args: string[]) {
   return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
 }
 
-/** Inserts `text` before the only occurrence of `anchor`. */
-function before(src: string, anchor: string, text: string): string {
+/** Inserts `line` (one line, no newline) before the only occurrence of `anchor`. */
+function before(src: string, anchor: string, line: string): string {
   expect(src.split(anchor).length).toBe(2);
-  return src.replace(anchor, text + anchor);
+  return src.replace(anchor, `${line}\n${anchor}`);
 }
 
-/** Registers a dummy layout `id` in all three registries, as a layout PR would. */
+/**
+ * Registers a dummy layout `id` in all three registries, as a layout PR would: one line per list,
+ * each naming the layout, with the def (layout, samples, lay-draft rules) in the layout's own file.
+ */
 function addLayout(dir: string, id: string) {
-  const name = id[0]?.toUpperCase() + id.slice(1);
   const edit = (path: string, f: (s: string) => string) =>
     writeFileSync(join(dir, path), f(readFileSync(join(dir, path), "utf8")));
   edit(SLIDES, (s) => {
-    let out = before(
-      s,
-      "\n\n/**\n * Each registered",
-      `\nimport { layout${name} } from "./${id}";`,
-    );
-    out = out.replace(`${MARK}}\n`, `${MARK}  ${id}: { ${id}?: string[] };\n}\n`);
-    return out.replace(
-      `${MARK}};\n`,
-      `${MARK}  ${id}: {\n    kind: "content",\n    layout: layout${name},\n  },\n};\n`,
-    );
+    let out = before(s, "\n/**\n * Each registered", `import { ${id}Def } from "./${id}";`);
+    out = out.replace(`${MARK}}\n`, `${MARK}  ${id}: ${id}Fields;\n}\n`);
+    out = before(out, "\n/**\n * Each registered", `import type { ${id}Fields } from "./${id}";`);
+    return out.replace(`${MARK}};\n`, `${MARK}  ${id}: ${id}Def,\n};\n`);
   });
-  edit(WRITER, (s) =>
-    s.replace(
-      `${MARK}};\n`,
-      `${MARK}  ${id}: { toInput: ({ heading }) => ({ template: "${id}", heading }) },\n};\n`,
-    ),
-  );
+  // The writer def carries its lay-draft rules too (`holdDraft`, `itemIcons`), so a layout that
+  // needs a draft rule still adds one line here and nothing in `lay-draft.ts`.
+  edit(WRITER, (s) => {
+    const out = before(s, "\n/** What `toInput`", `import { ${id}Writer } from "./${id}";`);
+    return out.replace(`${MARK}};\n`, `${MARK}  ${id}: ${id}Writer,\n};\n`);
+  });
   edit(DOMAIN, (s) => s.replace(`${MARK}] as const;\n`, `${MARK}  "${id}",\n] as const;\n`));
+}
+
+/** The lines a branch added to `path`, against master. */
+function added(dir: string, branch: string, path: string): string[] {
+  return git(dir, "diff", "-U0", "master", branch, "--", path)
+    .out.split("\n")
+    .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
+    .map((l) => l.slice(1));
 }
 
 function scratchRepo(withAttributes: boolean): string {
@@ -81,13 +85,14 @@ describe("layout registries merge (TEACH-106 part b)", () => {
     expect(merged.code).toBe(0);
     const tree = merged.out.split("\n")[0] ?? "";
     for (const f of [SLIDES, WRITER, DOMAIN]) {
-      const body = git(dir, "show", `${tree}:${f}`).out;
-      expect(body).toContain("alpha");
-      expect(body).toContain("zeta");
+      const base = git(dir, "show", `master:${f}`).out.split("\n");
+      const body = git(dir, "show", `${tree}:${f}`).out.split("\n");
+      const lines = [...added(dir, "alpha", f), ...added(dir, "zeta", f)];
+      expect(lines.length).toBeGreaterThan(0);
+      // Every added line survives, once: the union kept both blocks whole and merged no line away.
+      for (const l of lines) expect(body.filter((b) => b === l).length, `${f}: ${l}`).toBe(1);
+      expect(body.length).toBe(base.length + lines.length);
     }
-    const slides = git(dir, "show", `${tree}:${SLIDES}`).out;
-    expect(slides).toContain('import { layoutAlpha } from "./alpha";');
-    expect(slides).toContain('import { layoutZeta } from "./zeta";');
   });
 
   test("without the union driver the same branches conflict", () => {
