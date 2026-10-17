@@ -125,21 +125,35 @@ function dimmedPart(e: SlideElement, dim: string, ground: string): SlideElement 
  * takes the same ground, so it reads on the dim key as the words read on the card. The editor
  * draws these over the card; the PowerPoint build slide draws them too.
  *
- * The redraw covers the original only when the card is a shape with an opaque fill; any other card
- * would let its full-ink words show through, so it throws rather than draw a reveal that lies.
+ * The redraw always lays an opaque `dimGround` card first, so the original's full-ink words never
+ * show through. A generated hinge card is a shape with an opaque fill (tested); a card a teacher made
+ * see-through, or one that is not a shape, still gets that ground card under its dim words, so the
+ * reveal keeps 4.5:1 and never throws in the middle of a render (a dev build warns).
  */
 export function hingeDimParts(slide: Slide, theme: Theme, id: string): SlideElement[] {
   const card = slide.elements.find((e) => e.id === id);
   if (!card || card.type === "option") return [];
-  if (!isHingeCard(card))
-    throw new Error(
-      `hinge card ${id} is a ${card.type} without an opaque fill: its dim redraw would not cover its words`,
-    );
+  if (!isHingeCard(card) && process.env.NODE_ENV !== "production")
+    console.warn(`hinge card ${id} has no opaque fill: its reveal draws it on the theme ground`);
   const dim = dimInk(theme);
   const ground = dimGround(theme);
   const inside = (e: SlideElement) =>
     e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
-  const quiet: HingeCard = { ...card, fill: ground };
+  const quiet: HingeCard =
+    card.type === "shape"
+      ? { ...card, fill: ground }
+      : {
+          id: card.id,
+          type: "shape",
+          shape: "rounded",
+          x: card.x,
+          y: card.y,
+          w: card.w,
+          h: card.h,
+          rotation: card.rotation,
+          radius: Math.min(theme.radius, 16),
+          fill: ground,
+        };
   return [
     quiet,
     ...slide.elements

@@ -111,6 +111,33 @@ describe("PPTX hinge reveal", () => {
         }
       }
     }, 30_000);
+
+  it("a wrong card a teacher made see-through exports without throwing, its dim words on the ground", async () => {
+    const theme = atKeyStage(getTheme("paper", null), "ks2");
+    const { lesson } = await hingeDeck("paper");
+    const slide = lesson.slides[0] as Slide;
+    const [wrong] = choiceMarks(slide, true, Number.POSITIVE_INFINITY).filter(
+      (m) => m.state === "dim",
+    );
+    const card = slide.elements.find((e) => e.id === wrong?.id) as SlideElement;
+    const clear = {
+      ...lesson,
+      slides: [
+        {
+          ...slide,
+          elements: slide.elements.map((e) =>
+            e.id === card.id && e.type === "shape" ? { ...e, fill: "transparent" } : e,
+          ),
+        },
+      ],
+    } as Lesson;
+    const zip = await JSZip.loadAsync(await (await exportLessonPptx(clear, theme)).arrayBuffer());
+    const reveal = (await zip.file("ppt/slides/slide2.xml")?.async("string")) ?? "";
+    const atCard = shapes(reveal).filter(
+      (s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text,
+    );
+    expect(atCard.at(-1)?.fill).toBe(hex(dimGround(theme)));
+  }, 30_000);
 });
 
 type Sp = { x: number; y: number; text: string; fill?: string; runs: string[] };
