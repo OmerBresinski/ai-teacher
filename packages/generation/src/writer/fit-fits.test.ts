@@ -37,7 +37,8 @@ const ALLOWED = [
 ];
 /**
  * The diagram kinds' limits are figure rules from the diagram contract, not layout Fits; they stay
- * typed per stage until that contract renders them (follow-up in LOG-loop1-prompt.md).
+ * typed per stage as a listed guard exception until that contract renders them (decision desk,
+ * 17 Oct 2026; follow-up ticket).
  */
 const DIAGRAM_KINDS = /\nDiagram kinds:\n(- [^\n]*\n)+/;
 

@@ -7,8 +7,9 @@ import type { WriterStage } from "../src/writer/schema";
  * planned fits its layout's cap before a word is written. A port of the lab's
  * `writer-smoke/fill.py` (CRAMMING-ROOT-CAUSE.md, 17 Oct 2026) with one change: the caps come from
  * `menuWordCaps` (the numbers the menu prints, as data), never from parsing the prompt's prose.
- * Fit layouts (no menu line of their own) are scored from the stage's `slot-fill` log events,
- * whose `capWords` are the slot-fill table's. No model calls.
+ * Fit layouts (no menu line of their own) are scored from the stage's `slot-fill` log events:
+ * their `shownWords` (the generated Fits the writer saw), else `capWords` (the slot-fill table's,
+ * logs before TEACH-110 part ae). No model calls.
  */
 
 type J = Record<string, unknown>;
@@ -35,7 +36,8 @@ export interface WriterEvent {
   slide?: number;
   route?: string;
   path?: string;
-  fields?: { path: string; words: number; capWords: number }[];
+  /** `shownWords` (TEACH-110 part ae) is the cap the writer was shown; older logs lack it. */
+  fields?: { path: string; words: number; capWords: number; shownWords?: number }[];
 }
 
 /** A pilot-fit outcome that left the slide over its measured room (fill.py's "measured"). */
@@ -158,8 +160,9 @@ export function deckFields(
   stage: WriterStage,
   events: WriterEvent[],
   lesson = "",
+  /** The menu the deck was written against; a saved deck from an older menu passes its own. */
+  caps: MenuWordCaps = menuWordCaps(stage),
 ): FieldFill[] {
-  const caps = menuWordCaps(stage);
   const slotFill = new Map<number, WriterEvent>();
   for (const e of events)
     if (e.ev === "slot-fill" && e.slide !== undefined) slotFill.set(e.slide, e);
@@ -178,7 +181,7 @@ export function deckFields(
       for (const f of slotFill.get(no)?.fields ?? []) {
         if (seen.has(f.path)) continue;
         seen.add(f.path);
-        fields.push({ path: f.path, words: f.words, cap: f.capWords });
+        fields.push({ path: f.path, words: f.words, cap: f.shownWords ?? f.capWords });
       }
     }
     for (const f of fields)
@@ -434,8 +437,11 @@ function layoutForPlan(
   return null;
 }
 
-export function planFit(flow: unknown, stage: WriterStage): PlanFitReport {
-  const caps = menuWordCaps(stage);
+export function planFit(
+  flow: unknown,
+  stage: WriterStage,
+  caps: MenuWordCaps = menuWordCaps(stage),
+): PlanFitReport {
   const rows = arr(flow);
   const slides: PlannedSlide[] = rows.map((r, i) => {
     const shape = String(r.shape ?? "");
