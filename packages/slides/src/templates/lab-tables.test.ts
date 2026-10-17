@@ -35,6 +35,8 @@ const FULL = process.env.LAB_FULL === "1";
 
 // TEACH-230 part b: practice and exit-ticket cells in catalogue.json are re-pinned to the "work
 // alone" layouts (measureTemplate at this commit); the lab's cells were the old numbered list.
+// Ruling 21 A (TEACH-215 part e): the title cells are re-pinned to the cover's gold sizes
+// (`coverType`: an 82 px title stepping to 56 px), measureTemplate at this commit.
 describe("capacities equal the lab's pinned tables (spot check)", () => {
   const cells = TEMPLATE_DOCS.flatMap((doc) =>
     STAGES.flatMap(({ key, stage, theme }) =>

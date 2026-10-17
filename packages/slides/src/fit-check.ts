@@ -80,7 +80,8 @@ export function stepsTaken(slide: Slide, theme: Theme): number {
   for (const el of slide.elements) {
     if (isFrozen(el)) continue;
     const parts = textPartsOf(el, slide);
-    if (!parts || parts.style?.fontSize === undefined) continue;
+    // A layout's fixed size (ruling 21 A) is its own table's step, not a fit step-down.
+    if (!parts || parts.style?.fontSize === undefined || parts.style.fixedSize) continue;
     const own = resolveFontSize(theme, parts.preset, undefined, parts.role);
     const set = resolveFontSize(theme, parts.preset, parts.style.fontSize, parts.role);
     const n = stops.filter((s) => s < own - 0.5 && s >= set - 0.5).length;

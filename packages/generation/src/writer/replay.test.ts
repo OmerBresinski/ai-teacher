@@ -183,6 +183,19 @@ describe.each(LESSONS)("replay %s", (b) => {
           });
           continue;
         }
+        // Ruling 21 A (TEACH-215 part e): the cover's title and question take the gold's sizes
+        // (`coverType`), so their boxes' heights, and the stack's top, are not the lab's; every
+        // other field still is, and the stack stays on the slide.
+        if (want.kind === "title" && (w.name === "Title" || w.name === "Subtitle")) {
+          const { y, h, ...rest } = stable(e);
+          const { y: _wy, h: _wh, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          expect(Number(y) >= 0 && Number(y) + Number(h) <= 540).toBe(true);
+          continue;
+        }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;

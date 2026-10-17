@@ -25,7 +25,6 @@
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
-import { resolveFontSize } from "../text-style";
 import { MIN_FONT_SIZE } from "../themes";
 import { type Corners, paintSurface, surfaceStyle } from "../themes/surfaces";
 import CAPACITY from "./hinge-capacity.json" with { type: "json" };
@@ -59,8 +58,10 @@ const W = 960;
 const H = 540;
 const X0 = 64;
 const X1 = 896;
-/** Gold px x 2/3. */
+/** Gold px x 2/3, rounded: geometry. */
 const pt = (px: number) => Math.round((px * 2) / 3);
+/** Gold px x 2/3, exact: type sizes (ruling 21 A, drawn as given with `fixedSize`). */
+const ex = (px: number) => (px * 2) / 3;
 const GAP = pt(20);
 const FOOT = pt(64);
 const FIELD_ABOVE = pt(40);
@@ -70,6 +71,8 @@ const FIG_GAP = pt(48);
 
 type AgeSpec = {
   key: number;
+  /** The gold's comfort size: the roomy rows' smallest type (`floor + 4` px). */
+  comfort: number;
   floor: number;
   ceil: number;
   grid: number;
@@ -79,7 +82,11 @@ type AgeSpec = {
   tileLabel: number;
   iconMax: number;
 };
-/** The gold's `AGE` table (hinge.html) in points; floors never under master's body floor. */
+/**
+ * The gold's `AGE` table and fit ladders (hinge.html: `AGE`, `tryGrid`'s start size, `tryTiles`'
+ * label size) in points: geometry rounded, type exact. Floors never under master's body floor;
+ * `plan` then holds every type size at the stage's reading floor (ruling 162).
+ */
 function AGES(): Record<Age, AgeSpec> {
   const raw = {
     early: [72, 34, 48, 56, 44, 200, 470, 48, 280],
@@ -88,22 +95,32 @@ function AGES(): Record<Age, AgeSpec> {
   } as const;
   const out = {} as Record<Age, AgeSpec>;
   for (const [age, v] of Object.entries(raw) as [Age, readonly number[]][]) {
-    const [key, floor, ceil, grid, gridFloor, cellMax, tileMax, tileLabel, iconMax] = v.map(
-      pt,
-    ) as number[];
+    const [key, floor, ceil, grid, gridFloor, cellMax, tileMax, tileLabel, iconMax] = v as number[];
     const f = MIN_FONT_SIZE.body;
     out[age] = {
-      key: key as number,
-      floor: Math.max(f, floor as number),
-      ceil: Math.max(f, ceil as number),
-      grid: Math.max(f, grid as number),
-      gridFloor: Math.max(f, gridFloor as number),
-      cellMax: cellMax as number,
-      tileMax: tileMax as number,
-      tileLabel: Math.max(f, tileLabel as number),
-      iconMax: iconMax as number,
+      key: pt(key as number),
+      comfort: Math.max(f, ex((floor as number) + 4)),
+      floor: Math.max(f, ex(floor as number)),
+      ceil: Math.max(f, ex(ceil as number)),
+      grid: Math.max(f, ex(grid as number)),
+      gridFloor: Math.max(f, ex(gridFloor as number)),
+      cellMax: pt(cellMax as number),
+      tileMax: pt(tileMax as number),
+      tileLabel: Math.max(f, ex(tileLabel as number)),
+      iconMax: pt(iconMax as number),
     };
   }
+  return out;
+}
+
+/**
+ * A fit ladder: `top` down to `floor` in `step`s, the floor itself last (the gold steps whole px,
+ * so its floor is reached only when it is a whole px). Largest first.
+ */
+function rungs(top: number, floor: number, step: number): number[] {
+  const out: number[] = [];
+  for (let s = top; s > floor + 1e-6; s -= step) out.push(s);
+  out.push(floor);
   return out;
 }
 
@@ -203,7 +220,7 @@ function ageOf(c: Ctx): Age {
 
 function linesAt(c: Ctx, s: string, w: number, size: number, weight: number): number {
   if (FRACTION.test(s)) return 2;
-  return countLines(optionText(s), "body", c.t, w, weight, resolveFontSize(c.t, "body", size));
+  return countLines(optionText(s), "body", c.t, w, weight, size);
 }
 
 function tryTiles(
@@ -216,7 +233,7 @@ function tryTiles(
   const n = ch.length;
   const tw = (g.w - (n - 1) * GAP) / n;
   const h = Math.min(g.bottom - g.top, a.tileMax);
-  const size = resolveFontSize(c.t, "body", a.tileLabel);
+  const size = a.tileLabel;
   const inner = tw - 2 * pt(24);
   const fits = ch.every(
     (o) =>
@@ -247,9 +264,10 @@ function tryGrid(c: Ctx, ch: HingeChoice[], g: Geo, a: AgeSpec, keyPx: number): 
   const key = keyPx;
   const cellW = (g.w - (cols - 1) * GAP) / cols;
   const tw = cellW - pt(32) - key - pt(32) - pt(72);
-  const cellH = Math.min(pt(a.cellMax), Math.floor((g.bottom - g.top - (rows - 1) * GAP) / rows));
-  for (let s = a.grid; s >= a.gridFloor; s -= 1) {
-    const size = resolveFontSize(c.t, "body", s);
+  // `cellMax` is already in points (it was converted twice, so cards stood at 2/3 of the gold's).
+  const cellH = Math.min(a.cellMax, Math.floor((g.bottom - g.top - (rows - 1) * GAP) / rows));
+  // The gold's grid ladder: its start size down to its grid floor in 2 px steps.
+  for (const size of rungs(a.grid, a.gridFloor, ex(2))) {
     if (ch.every((o) => FRACTION.test(o.text) || linesAt(c, o.text, tw, size, 600) === 1))
       return {
         look: "grid",
@@ -267,8 +285,8 @@ function tryGrid(c: Ctx, ch: HingeChoice[], g: Geo, a: AgeSpec, keyPx: number): 
   return null;
 }
 
-/** The gold's comfort size (NOTES caps): 30px from KS2, 38px (floor + 4) at KS1. */
-const comfortOf = (a: AgeSpec) => Math.max(MIN_FONT_SIZE.body, a.key > pt(70) ? pt(38) : pt(30));
+/** The gold's comfort size (`floor + 4` px), held at the stage's reading floor by `plan`. */
+const comfortOf = (a: AgeSpec) => a.comfort;
 
 function tryRows(c: Ctx, ch: HingeChoice[], g: Geo, a: AgeSpec, keyPx: number): Plan {
   const n = ch.length;
@@ -282,18 +300,19 @@ function tryRows(c: Ctx, ch: HingeChoice[], g: Geo, a: AgeSpec, keyPx: number): 
   for (const sp of specs) {
     const tw = g.w - pt(28) - sp.key - pt(28) - Math.round(sp.key * 0.78) - pt(48);
     let best: { s: number; wraps: number; h: number } | null = null;
-    for (let s0 = a.ceil; s0 >= sp.min; s0 -= 1) {
-      const s = resolveFontSize(c.t, "body", s0);
+    // The gold's rows ladder: its ceiling down to the rung's smallest size in 1 px steps.
+    for (const s of rungs(a.ceil, sp.min, ex(1))) {
       const ls = ch.map((o) => linesAt(c, o.text, tw, s, 500));
       if (ls.some((l) => l > 2)) continue;
       const py = Math.round(s * sp.py);
       const h = Math.ceil(Math.max(sp.key, Math.max(...ls) * s * LINE_H) + 2 * py);
       if (h * n + sp.gap * (n - 1) > room + 0.5) continue;
       const wraps = ls.filter((l) => l > 1).length;
-      // Largest size that fits wins; a smaller one only if it saves every wrap and costs <= 3pt.
+      // Largest size that fits wins; a smaller one only if it saves every wrap and costs <= 4px.
       if (!best) best = { s, wraps, h };
-      else if (wraps === 0 && best.wraps > 0 && best.s - s <= 3) best = { s, wraps: 0, h };
-      if (wraps === 0 || best.s - s > 3) break;
+      else if (wraps === 0 && best.wraps > 0 && best.s - s <= ex(4) + 1e-6)
+        best = { s, wraps: 0, h };
+      if (wraps === 0 || best.s - s > ex(4) + 1e-6) break;
     }
     if (best)
       return {
@@ -311,7 +330,7 @@ function tryRows(c: Ctx, ch: HingeChoice[], g: Geo, a: AgeSpec, keyPx: number): 
   }
   // Nothing fits: the floor and compact cards, flagged.
   const sp = specs[2] as (typeof specs)[number];
-  const s = resolveFontSize(c.t, "body", a.floor);
+  const s = a.floor;
   const tw = g.w - pt(28) - sp.key - pt(28) - Math.round(sp.key * 0.78) - pt(48);
   const ls = ch.map((o) => linesAt(c, o.text, tw, s, 500));
   const py = Math.round(s * sp.py);
@@ -344,17 +363,9 @@ function plan(
   const { choices } = keptHinge(input);
   const fig = !!input.figure;
   const g = geometry(c, input, headBottom, choices.length, fig);
-  // Master's key-stage scale (ruling 91) sets body and one step under it: the gold's px ceilings
-  // sit under some stages' body step, so the ladder starts at body at least.
-  const g0 = AGES()[ageOf(c)];
-  const body = c.s.body;
-  const a = {
-    ...g0,
-    ceil: Math.max(g0.ceil, body),
-    grid: Math.max(g0.grid, body),
-    gridFloor: Math.max(g0.gridFloor, body),
-    floor: Math.min(g0.floor, body),
-  };
+  // Ruling 21 A: the gold's own ladders, never under the stage's reading floor (ruling 162,
+  // bodySmall: KS1 28, KS2 25, KS3+ 21pt). The sizes are drawn as given (`fixedSize`).
+  const a = heldAt(AGES()[ageOf(c)], c.s.small);
   const labels = choices.map((o) => o.icon?.trim() ?? "");
   const res = labels.every(Boolean) ? resolveIcons(labels) : null;
   const iconOk = !!res?.complete && !fig;
@@ -363,6 +374,20 @@ function plan(
     tryGrid(c, choices, g, a, a.key) ??
     tryRows(c, choices, g, a, a.key);
   return { ...p, geo: g, choices };
+}
+
+/** The gold's sizes held at `floor` (the stage's reading floor). */
+function heldAt(g0: AgeSpec, floor: number): AgeSpec {
+  const at = (s: number) => Math.max(s, floor);
+  return {
+    ...g0,
+    comfort: at(g0.comfort),
+    floor: at(g0.floor),
+    ceil: at(g0.ceil),
+    grid: at(g0.grid),
+    gridFloor: at(g0.gridFloor),
+    tileLabel: at(g0.tileLabel),
+  };
 }
 
 /** The speaker notes line for each wrong option's why (ruling 241). */
@@ -511,7 +536,10 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
   const notes = hingeNotes(choices, right || undefined, letters);
   if (notes) c.notes = notes;
   c.fields = fieldsOf(choices, age);
-  c.tight = p.ok && p.look === "rows" && (p.gap < GAP || p.size < comfortOf(AGES()[age]));
+  c.tight =
+    p.ok &&
+    p.look === "rows" &&
+    (p.gap < GAP || p.size < comfortOf(heldAt(AGES()[age], c.s.small)) - 1e-6);
 }
 
 function cardOf(
@@ -550,7 +578,9 @@ function key(c: Ctx, letter: string, x: number, y: number, d: number) {
     doc: kit.doc(letter),
     textStyle: {
       preset: "heading",
-      fontSize: resolveFontSize(c.t, "heading", Math.round(d * 0.52)),
+      // The gold's letter is the key's size x 0.52 (hinge.html `.key`), a layout size.
+      fontSize: d * 0.52,
+      fixedSize: true,
       fontWeight: 700,
       color: st.ink ?? c.t.colors.onAccent,
       align: "center",
@@ -573,7 +603,8 @@ function optionWords(
   const ink = surfaceStyle(c.t, "card").ink ?? c.t.colors.ink;
   const m = FRACTION.exec(value);
   if (m) {
-    const s = resolveFontSize(c.t, "body", Math.round(size * 0.92));
+    // The gold's stacked fraction is 0.92 of the option size, held at the reading floor.
+    const s = Math.max(size * 0.92, c.s.small);
     const lineH = Math.ceil(s * 1.05);
     const total = 2 * lineH + 3;
     const y = rect.h != null ? rect.y + (rect.h - total) / 2 : rect.y;
@@ -629,6 +660,7 @@ function textAt(
       preset: "body",
       autoHeight: true,
       fontSize: size,
+      fixedSize: true,
       lineHeight: lh,
       fontWeight: weight,
       padding: 0,

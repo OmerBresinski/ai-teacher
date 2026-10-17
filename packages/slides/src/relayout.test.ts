@@ -21,7 +21,7 @@ import {
   stageOf,
 } from "./relayout";
 import type { FieldReport } from "./templates";
-import { resolveFontSize, resolveTextStyle } from "./text-style";
+import { resolveTextStyle } from "./text-style";
 import { atKeyStage, getTheme } from "./themes";
 
 /** A template's field report as master's `FieldReport` (only path, cap and hardMax are read here). */
@@ -409,9 +409,9 @@ describe("hinge (TEACH-256 part b)", () => {
     const laid = relayout(hingeRef(4), getTheme("paper"), "ks3");
     for (const e of laid.elements)
       if (e.type === "text" && e.style?.fontSize)
-        expect(resolveFontSize(theme, e.style.preset ?? "body", e.style.fontSize)).toBe(
-          e.style.fontSize,
-        );
+        // What the renderer draws (`resolveTextStyle`): a gold size (`fixedSize`, ruling 21 A)
+        // is drawn as stored, every other size snapped to the stage's steps.
+        expect(resolveTextStyle(e.style, theme).fontSize).toBe(e.style.fontSize);
   });
 });
 
@@ -463,7 +463,7 @@ describe("worked example (TEACH-17 part b)", () => {
       for (const e of laid.elements) {
         const st = e.type === "text" ? e.style : e.type === "shape" ? e.textStyle : undefined;
         if (st?.fontSize)
-          expect(resolveFontSize(theme, st.preset ?? "body", st.fontSize)).toBe(st.fontSize);
+          expect(resolveTextStyle(st, theme, st.preset ?? "body").fontSize).toBe(st.fontSize);
       }
     }
   });

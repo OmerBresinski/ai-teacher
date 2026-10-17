@@ -25,6 +25,7 @@ export * from "./fit-slide";
 export * from "./fonts";
 export * from "./geometry";
 export * from "./grid";
+export * from "./layout-sizes";
 export * from "./layouts";
 export * from "./lint";
 export * from "./look";
