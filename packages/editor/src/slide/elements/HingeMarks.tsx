@@ -2,8 +2,14 @@
  * The hinge's reveal (TEACH-256 part b, v13 gold), loaded on demand by `SlideView`'s
  * `ChoiceMarks` so the surface role table stays out of the present, view and print chunks.
  */
-import type { Slide, SlideElement, TextElement, Theme } from "@tj/domain/documents";
-import { dimGround, dimInk, surfaceStyle } from "@tj/slides/surfaces";
+import {
+  mapRunColours,
+  type ShapeElement,
+  type Slide,
+  type SlideElement,
+  type Theme,
+} from "@tj/domain/documents";
+import { dimGround, dimInk, isClear, splitAlpha, surfaceStyle } from "@tj/slides/surfaces";
 import { choiceText, HINGE_KEY } from "./choice";
 import { ElementBody } from "./ElementBody";
 
@@ -79,24 +85,36 @@ export function hingeMarkOf(
   };
 }
 
-/** Every colour a text's runs set, turned to `ink`, so no run keeps the card's full ink. */
-function inkRuns(doc: TextElement["doc"], ink: string): TextElement["doc"] {
-  const walk = (n: unknown): unknown => {
-    if (!n || typeof n !== "object") return n;
-    const node = n as { content?: unknown[]; marks?: { type: string; attrs?: object }[] };
-    return {
-      ...node,
-      ...(node.content ? { content: node.content.map(walk) } : {}),
-      ...(node.marks
-        ? {
-            marks: node.marks.map((m) =>
-              m.attrs && "color" in m.attrs ? { ...m, attrs: { ...m.attrs, color: ink } } : m,
-            ),
-          }
-        : {}),
-    };
-  };
-  return walk(doc) as TextElement["doc"];
+/** A hinge card the reveal can redraw: a shape with an opaque fill, so its redraw hides the original. */
+type HingeCard = ShapeElement & { fill: string };
+
+const isHingeCard = (e: SlideElement): e is HingeCard =>
+  e.type === "shape" &&
+  typeof e.fill === "string" &&
+  !isClear(e.fill) &&
+  splitAlpha(e.fill).opacity === undefined;
+
+/** A wrong option's part, recoloured: words, key, bars and icon to the dim tone; a picture stepped back. */
+function dimmedPart(e: SlideElement, dim: string, ground: string): SlideElement {
+  switch (e.type) {
+    case "text":
+      return { ...e, style: { ...e.style, color: dim }, doc: mapRunColours(e.doc, () => dim) };
+    case "shape":
+      if (e.name === HINGE_KEY)
+        return {
+          ...e,
+          fill: dim,
+          textStyle: { ...e.textStyle, color: ground },
+          ...(e.doc ? { doc: mapRunColours(e.doc, () => ground) } : {}),
+        };
+      return e.name === HINGE_BAR ? { ...e, fill: dim } : e;
+    case "icon":
+      return { ...e, color: dim };
+    case "image":
+      return { ...e, opacity: DIM_PICTURE };
+    default:
+      return e;
+  }
 }
 
 /**
@@ -106,26 +124,28 @@ function inkRuns(doc: TextElement["doc"], ink: string): TextElement["doc"] {
  * that ground); its picture stepped back. Never an opacity wash over the words. The key's letter
  * takes the same ground, so it reads on the dim key as the words read on the card. The editor
  * draws these over the card; the PowerPoint build slide draws them too.
+ *
+ * The redraw covers the original only when the card is a shape with an opaque fill; any other card
+ * would let its full-ink words show through, so it throws rather than draw a reveal that lies.
  */
 export function hingeDimParts(slide: Slide, theme: Theme, id: string): SlideElement[] {
   const card = slide.elements.find((e) => e.id === id);
   if (!card || card.type === "option") return [];
+  if (!isHingeCard(card))
+    throw new Error(
+      `hinge card ${id} is a ${card.type} without an opaque fill: its dim redraw would not cover its words`,
+    );
   const dim = dimInk(theme);
   const ground = dimGround(theme);
   const inside = (e: SlideElement) =>
     e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
-  const dimmed = (e: SlideElement): SlideElement => {
-    if (e.type === "text")
-      return { ...e, style: { ...e.style, color: dim }, doc: inkRuns(e.doc, dim) };
-    if (e.type === "shape" && e.name === HINGE_KEY)
-      return { ...e, fill: dim, textStyle: { ...e.textStyle, color: ground } } as SlideElement;
-    if (e.type === "shape" && e.name === HINGE_BAR) return { ...e, fill: dim };
-    if (e.type === "icon") return { ...e, color: dim };
-    if (e.type === "image") return { ...e, opacity: DIM_PICTURE };
-    return e;
-  };
-  const quiet = "fill" in card ? ({ ...card, fill: ground } as SlideElement) : card;
-  return [quiet, ...slide.elements.filter((e) => e.id !== id && inside(e)).map(dimmed)];
+  const quiet: HingeCard = { ...card, fill: ground };
+  return [
+    quiet,
+    ...slide.elements
+      .filter((e) => e.id !== id && inside(e))
+      .map((e) => dimmedPart(e, dim, ground)),
+  ];
 }
 
 type Placed = Map<string, { x: number; y: number; w: number; h: number }>;
@@ -157,7 +177,10 @@ export default function HingeMarks({
               key={id}
               data-answer-anim=""
               data-choice-mark={state}
+              // A redrawn copy of words the slide already holds: assistive tech reads them once.
+              aria-hidden
               style={{
+                userSelect: "none",
                 position: "absolute",
                 left: r.x,
                 top: r.y,
@@ -178,6 +201,8 @@ export default function HingeMarks({
                     width: el.w,
                     height: el.h,
                     opacity: el.opacity ?? 1,
+                    // As the slide and the PowerPoint path draw a turned part.
+                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
                   }}
                 >
                   <ElementBody

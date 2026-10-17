@@ -1,4 +1,5 @@
 import type { PathElement, ShapeElement, Theme } from "@tj/domain/documents";
+import { contrastRatio, mix } from "../colour-contrast";
 import { THEMES } from "../themes";
 import TOKENS from "./tokens.json";
 
@@ -305,26 +306,51 @@ export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntr
   Object.entries(SURFACE_TOKEN_SETS).map(([id, t]) => [id, surfacesFromTokens(t)] as const),
 );
 
+/**
+ * The token set a theme paints with: its own, or for a theme the table does not know Paper's (Slate's
+ * when dark). `surfacesOf` and the dim tones read this one fallback.
+ */
+const tableId = (theme: Pick<Theme, "id" | "dark">): string =>
+  theme.id in SURFACE_TOKEN_SETS ? theme.id : theme.dark ? "dark-slate" : "paper";
+
 /** A theme's surfaces; one the table does not know takes Paper's, or Slate's when dark. */
 export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>
-  SURFACES[theme.id] ?? (SURFACES[theme.dark ? "dark-slate" : "paper"] as ThemeSurfaces);
+  SURFACES[tableId(theme)] as ThemeSurfaces;
 
-const tokensOf = (theme: Pick<Theme, "id" | "dark">): SurfaceTokens =>
-  SURFACE_TOKEN_SETS[theme.id] ??
-  SURFACE_TOKEN_SETS[theme.dark ? "dark-slate" : "paper"] ??
-  NIGHT_LAB;
+/** The least contrast the dim tone keeps on its ground (ruling 248, WCAG AA body text). */
+export const DIM_CONTRAST = 4.5;
 
 /**
- * The theme's dim text tone (ruling 248, at least 4.5:1 on its grounds and cards): text that steps
- * back, such as a hinge's wrong options after the reveal (ruling 258), never faded or see-through.
+ * The dim tone and the ground it sits on. A theme in the table takes its own `dim` and `bg` tokens
+ * (each set is tested at 4.5:1). A custom or unknown theme takes its own background and its muted
+ * ink, stepped toward its ink, then to black or white, until it reads at 4.5:1 there: Paper's
+ * tokens on another theme's ground would promise a contrast nobody measured.
  */
-export const dimInk = (theme: Pick<Theme, "id" | "dark">): string => String(tokensOf(theme).dim);
+function dimPair(theme: Pick<Theme, "id" | "dark" | "colors">): { ink: string; ground: string } {
+  const own = SURFACE_TOKEN_SETS[theme.id];
+  if (own?.dim && own.bg) return { ink: own.dim, ground: own.bg };
+  const ground = theme.colors.background;
+  const { muted, ink } = theme.colors;
+  for (let amount = 0; amount <= 1; amount += 0.05) {
+    const tone = mix(ink, muted, amount);
+    if (contrastRatio(tone, ground) >= DIM_CONTRAST) return { ink: tone, ground };
+  }
+  const black = contrastRatio("#000000", ground) >= contrastRatio("#FFFFFF", ground);
+  return { ink: black ? "#000000" : "#FFFFFF", ground };
+}
 
 /**
- * The ground a stepped-back card takes (TEACH-256 part d): the slide's own ground token, quieter
- * than a card, which the dim tone reads on at 4.5:1 or better (ruling 248, "dim on ground").
+ * The theme's dim text tone (ruling 248, at least 4.5:1 on `dimGround`): text that steps back,
+ * such as a hinge's wrong options after the reveal (ruling 258), never faded or see-through.
  */
-export const dimGround = (theme: Pick<Theme, "id" | "dark">): string => String(tokensOf(theme).bg);
+export const dimInk = (theme: Pick<Theme, "id" | "dark" | "colors">): string => dimPair(theme).ink;
+
+/**
+ * The ground a stepped-back card takes (TEACH-256 part d): the slide's own ground, quieter than a
+ * card, which the dim tone reads on at 4.5:1 or better (ruling 248, "dim on ground").
+ */
+export const dimGround = (theme: Pick<Theme, "id" | "dark" | "colors">): string =>
+  dimPair(theme).ground;
 
 /** The style for a role in a state (a state the theme does not set paints as the plain role). */
 export function surfaceStyle(

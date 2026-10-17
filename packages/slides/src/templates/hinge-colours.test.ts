@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { THEMES } from "../themes";
 import { dimGround, dimInk, SURFACE_TOKEN_SETS, surfaceStyle } from "../themes/surfaces";
@@ -67,7 +68,8 @@ describe("hinge letter keys", () => {
 /*
  * TEACH-256 part d (rulings 258, 248): after the reveal a wrong card takes the theme's ground (quieter
  * than a card) and its words the dim tone, never an opacity fade, so a pupil still reads them at
- * 4.5:1 or better on every theme. Measured against the ground the card is drawn in.
+ * 4.5:1 or better on every theme. The tones are tested here; the redrawn cards themselves, each
+ * card's own fill against each of its words, in `@tj/editor`'s `hinge-dim.test.ts`.
  */
 describe("hinge reveal: the wrong options' dim tone", () => {
   test("every token set: the dim tone reads at 4.5:1 or better on the wrong card's ground", () => {
@@ -77,47 +79,38 @@ describe("hinge reveal: the wrong options' dim tone", () => {
     }
   });
 
-  const looks: [string, TemplateInput][] = [
+  /*
+   * A theme outside the table (a teacher's own, or one added later) gets its dim tone from its own
+   * palette, measured on its own ground, not Paper's or Slate's tokens on a ground they never met.
+   */
+  const custom = (id: string, dark: boolean, colors: Partial<Theme["colors"]>): Theme => {
+    const base = THEMES.find((t) => Boolean(t.dark) === dark) as Theme;
+    return { ...base, id, dark, colors: { ...base.colors, ...colors } };
+  };
+  test.each([
     [
-      "tiles",
-      {
-        template: "hinge",
-        heading: "Which part makes seeds?",
-        options: ["Leaf", "Root", "Flower"],
-        choices: [
-          { text: "Leaf", icon: "leaf" },
-          { text: "Root", icon: "root" },
-          { text: "Flower", icon: "flower" },
-        ],
-        correct: 2,
-      },
+      "custom-cream: a faint muted is stepped toward the ink",
+      custom("custom-cream", false, { background: "#F3E6CF", muted: "#C9B79A", ink: "#3B2F2F" }),
     ],
     [
-      "2x2",
-      {
-        template: "hinge",
-        heading: "Which of these metals is magnetic?",
-        options: ["Copper", "Iron", "Aluminium", "All of them"],
-        correct: 2,
-      },
+      "custom-ink: a dark ground",
+      custom("custom-ink", true, { background: "#14213D", muted: "#3C4A66", ink: "#E5E5E5" }),
     ],
-    ["rows", hinge(4)],
-  ];
-  test("every live theme, tiles, 2x2 and rows: dim on the faded card reads at 4.5:1 or better", () => {
-    for (const theme of THEMES)
-      for (const [look, input] of looks) {
-        const r = layoutTemplate(input, theme, "ks2");
-        const cards = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.card);
-        expect(cards.length).toBeGreaterThan(1);
-        for (const c of cards) {
-          expect(c.fill).toBeDefined();
-          const ratio = contrastRatio(dimInk(theme), dimGround(theme));
-          expect({ theme: theme.id, look, ok: ratio >= 4.5 }).toEqual({
-            theme: theme.id,
-            look,
-            ok: true,
-          });
-        }
-      }
+    [
+      "custom-mid: neither muted nor ink reads",
+      custom("custom-mid", false, { background: "#808080", muted: "#8A8A8A", ink: "#999999" }),
+    ],
+  ])("%s: the dim tone reads at 4.5:1 on that theme's own ground", (_, theme) => {
+    expect(theme.id in SURFACE_TOKEN_SETS).toBe(false);
+    expect(dimGround(theme)).toBe(theme.colors.background);
+    expect(contrastRatio(dimInk(theme), dimGround(theme))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("a theme in the table keeps its own tested tokens", () => {
+    for (const theme of THEMES) {
+      const t = SURFACE_TOKEN_SETS[theme.id];
+      if (!t) continue;
+      expect([dimInk(theme), dimGround(theme)]).toEqual([t.dim as string, t.bg as string]);
+    }
   });
 });

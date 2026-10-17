@@ -193,6 +193,29 @@ export function styledRun(text: string, attrs: RunStyleAttrs): RichNode {
     : { type: "text", text, marks: [{ type: "textStyle", attrs: clean }] };
 }
 
+/**
+ * `doc` with every run colour (a `textStyle` mark's `color`) passed through `to`: one definition of
+ * "a run's colour" for re-theming a doc (`withThemeColours`) and recolouring one (the hinge's dim
+ * options). Marks without a colour, and every other attribute, are kept as they are.
+ */
+export function mapRunColours(doc: RichDoc, to: (color: string) => string | undefined): RichDoc {
+  const walk = (nodes: RichNode[] | undefined): RichNode[] | undefined =>
+    nodes?.map((n) => ({
+      ...n,
+      ...(n.marks
+        ? {
+            marks: n.marks.map((m) =>
+              m.type === "textStyle" && typeof m.attrs?.color === "string"
+                ? { ...m, attrs: { ...m.attrs, color: to(m.attrs.color) } }
+                : m,
+            ),
+          }
+        : {}),
+      ...(n.content ? { content: walk(n.content) } : {}),
+    }));
+  return { ...doc, content: walk(doc.content) ?? [] };
+}
+
 /** The latest step any myth strike in `doc` names (0 when none): it is a step of the slide. */
 export function richDocMaxStrikeStep(doc: RichDoc | RichNode): number {
   let max = 0;

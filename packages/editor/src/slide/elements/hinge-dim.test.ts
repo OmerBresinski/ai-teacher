@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Slide, SlideElement } from "@tj/domain/documents";
+import type { RichNode, Slide, SlideElement } from "@tj/domain/documents";
 import { contrastRatio } from "@tj/slides";
 import { dimInk } from "@tj/slides/surfaces";
 import { layoutTemplate, type TemplateInput } from "@tj/slides/templates";
@@ -47,13 +47,33 @@ const LOOKS: [string, TemplateInput][] = [
   ],
 ];
 
-const colourOf = (e: SlideElement): string | undefined =>
-  e.type === "text" ? e.style.color : undefined;
+/** Every colour a text part's words are drawn in: its style, and each run that sets its own. */
+function wordColours(e: SlideElement): string[] {
+  if (e.type !== "text") return [];
+  const out = [e.style.color].filter((c): c is string => typeof c === "string");
+  const stack: RichNode[] = [...(e.doc.content ?? [])];
+  for (let n = stack.pop(); n; n = stack.pop()) {
+    for (const m of n.marks ?? [])
+      if (m.type === "textStyle" && typeof m.attrs?.color === "string") out.push(m.attrs.color);
+    stack.push(...(n.content ?? []));
+  }
+  return out;
+}
+
+const fillOf = (e: SlideElement | undefined): string =>
+  e?.type === "shape" && e.fill ? e.fill : "(no fill)";
+
+const inside = (card: SlideElement) => (e: SlideElement) =>
+  e.id !== card.id &&
+  e.x >= card.x &&
+  e.y >= card.y &&
+  e.x + e.w <= card.x + card.w &&
+  e.y + e.h <= card.y + card.h;
 
 describe("hinge reveal: wrong options in the dim tone", () => {
   for (const theme of THEMES)
     for (const [look, input] of LOOKS)
-      test(`${theme.id}, ${look}: every wrong option's words read at 4.5:1 on its card`, () => {
+      test(`${theme.id}, ${look}: each wrong card's words read at 4.5:1 on that card's own fill`, () => {
         const r = layoutTemplate(input, theme, "ks2");
         const slide = { id: "s1", ...r.slide } as Slide;
         const marks = choiceMarks(slide, true, 0);
@@ -64,19 +84,55 @@ describe("hinge reveal: wrong options in the dim tone", () => {
         const dim = dimInk(theme);
         for (const { id } of wrong) {
           const [card, ...parts] = hingeDimParts(slide, theme, id);
-          const fill = card && "fill" in card ? (card.fill as string) : "";
+          // The redraw is the card itself, opaque, so nothing of the full-ink original shows.
+          expect(card?.id).toBe(id);
+          const fill = fillOf(card);
+          expect(fill).toMatch(/^#[0-9a-f]{6}$/i);
           const words = parts.filter((p) => p.type === "text");
           expect(words.length).toBeGreaterThan(0);
           for (const w of words) {
-            expect(colourOf(w)).toBe(dim);
+            const colours = wordColours(w);
+            expect(colours.length).toBeGreaterThan(0);
             expect(w.opacity ?? 1).toBe(1);
-            expect(contrastRatio(dim, fill)).toBeGreaterThanOrEqual(4.5);
+            for (const c of colours)
+              expect({ id: w.id, c, ratio: contrastRatio(c, fill) >= 4.5 }).toEqual({
+                id: w.id,
+                c: dim,
+                ratio: true,
+              });
           }
-          // The key's letter (the card's fill) on the dim key reads as the words do on the card.
+          // The key's letter on the dim key reads as the words do on the card.
           const key = parts.find((p) => p.name === "Hinge key");
-          expect(key && "fill" in key ? key.fill : null).toBe(dim);
+          const keyFill = fillOf(key);
           const letter = key?.type === "shape" ? key.textStyle?.color : undefined;
-          expect(contrastRatio(letter as string, dim)).toBeGreaterThanOrEqual(4.5);
+          expect(contrastRatio(letter as string, keyFill)).toBeGreaterThanOrEqual(4.5);
         }
+        // The right card is never redrawn, and its words keep their full ink.
+        const [rightMark] = right;
+        const rightCard = slide.elements.find((e) => e.id === rightMark?.id) as SlideElement;
+        const rightWords = slide.elements
+          .filter(inside(rightCard))
+          .filter((e) => e.type === "text");
+        expect(rightWords.length).toBeGreaterThan(0);
+        for (const w of rightWords)
+          for (const c of wordColours(w)) {
+            expect(c).not.toBe(dim);
+            expect(contrastRatio(c, fillOf(rightCard))).toBeGreaterThanOrEqual(4.5);
+          }
       });
+
+  test("a card the redraw cannot cover fails loudly, never keeping its full-ink words", () => {
+    const theme = THEMES[0] as (typeof THEMES)[number];
+    const r = layoutTemplate(LOOKS[2]?.[1] as TemplateInput, theme, "ks2");
+    const slide = { id: "s1", ...r.slide } as Slide;
+    const [wrong] = choiceMarks(slide, true, 0).filter((m) => m.state === "dim");
+    const id = wrong?.id as string;
+    const clear: Slide = {
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.id === id && e.type === "shape" ? { ...e, fill: `${fillOf(e)}80` } : e,
+      ),
+    };
+    expect(() => hingeDimParts(clear, theme, id)).toThrow(/opaque fill/);
+  });
 });
