@@ -27,6 +27,7 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
+import { composeCover } from "../cover-comps";
 import { uid } from "../factories";
 import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
@@ -2046,6 +2047,22 @@ function layoutOnce(
       }
       if (total > 444) c.over.push(`title ${total}/444pt`);
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
+      // A theme with its own cover composition (Geometric's hexagon, `marks.cover`) sets a
+      // generated cover in it, as the look does a hand-made one: on its own ground (dot grid), the
+      // title and question in the theme's ink, the photo in the composition's frame.
+      if (f && "photo" in f && surfacesOf(c.t).marks.cover !== "type") {
+        background = {};
+        const plain = c.els.map((e) =>
+          e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
+            ? { ...e, style: { ...e.style, color: undefined, valign: "top" as const } }
+            : e,
+        );
+        const composed = composeCover(
+          { id: "cover", kind: "title", elements: plain, background: {} } as Slide,
+          c.t,
+        );
+        c.els.splice(0, c.els.length, ...composed.elements);
+      }
       break;
     }
     case "objectives": {

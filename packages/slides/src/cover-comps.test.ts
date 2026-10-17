@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { TextElement } from "@tj/domain/documents";
 import { layoutSlide } from "./layouts";
 import { applyLook } from "./look";
+import { layoutTemplate } from "./templates/index";
 import { atKeyStage, getTheme, MIN_FONT_SIZE } from "./themes";
 
 const run = (text: string) => ({ type: "text", text });
@@ -48,4 +49,26 @@ describe("geometric hexagon cover column (round 5 cover)", () => {
         expect(q.x + q.w).toBeLessThanOrEqual(507);
         expect(t.x + t.w).toBeLessThanOrEqual(507);
       });
+});
+
+describe("a generated cover (the title template) takes the theme's cover composition", () => {
+  const input = {
+    template: "title",
+    heading: "River processes",
+    lead: "Recall: what have you seen moving water carry away?",
+    figure: { photo: "/x.jpg", alt: "A river", aspect: 1.5 },
+  } as never;
+  test("Geometric: the hexagon frame on the dot ground, no accent ground", () => {
+    const r = layoutTemplate(input, atKeyStage(getTheme("geometric"), "ks3"), "ks3");
+    expect(r.slide.background?.color).toBeUndefined();
+    const photo = r.slide.elements.find((e) => e.type === "image" && e.name === "Photo");
+    expect(photo && "mask" in photo ? photo.mask : undefined).toBe("hexagon");
+    expect(r.slide.elements.some((e) => e.name === "Cover outline")).toBe(true);
+    expect(r.over).toEqual([]);
+  });
+  test("a theme without one keeps the accent ground and a plain photo", () => {
+    const r = layoutTemplate(input, atKeyStage(getTheme("paper"), "ks3"), "ks3");
+    expect(r.slide.background?.color).toBeTruthy();
+    expect(r.slide.elements.some((e) => e.name === "Cover outline")).toBe(false);
+  });
 });
