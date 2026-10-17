@@ -9,7 +9,7 @@
  * that count is never comfortable even beside short siblings: a field that gives 0 beside the
  * stand-in rows is re-measured beside `TINY` ones, so a 0 left in the table means the count itself
  * does not hold there (six rows at early and primary), never that a stand-in overflowed. `pictures` is the same table measured with a 4:3 photo on every
- * row (Greg's D1 pick, 14 Oct): the panel then narrows and each row's words sit beside a tile. Regenerate: `bun packages/slides/src/templates/panel-list-capacity.ts`.
+ * row (Greg's D1 pick, 14 Oct): each row's words then sit beside a tile; the panel keeps its width. Regenerate: `bun packages/slides/src/templates/panel-list-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
 import type { Theme } from "@tj/domain/documents";
