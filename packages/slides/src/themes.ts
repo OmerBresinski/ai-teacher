@@ -702,7 +702,6 @@ export function typeScale(t: Theme): TypeScale | undefined {
   return ks ? scaleAt(t.sizes, ks) : undefined;
 }
 
-/** The picker's themes, the final sixteen in ruling 246's order (light, then the two dark). */
 /** The round 5 themes (TEACH-215 part c): no old lesson was laid out on them. */
 export const ROUND5_THEME_IDS: ReadonlySet<string> = new Set([
   "poster",
@@ -714,6 +713,7 @@ export const ROUND5_THEME_IDS: ReadonlySet<string> = new Set([
   "dark-ember",
 ]);
 
+/** The picker's themes, the final sixteen in ruling 246's order (light, then the two dark). */
 export const THEME_ORDER = [
   "paper",
   "poster",

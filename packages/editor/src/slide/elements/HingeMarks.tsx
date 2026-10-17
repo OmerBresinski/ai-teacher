@@ -50,11 +50,6 @@ export type HingeMark = {
   tick: { d: number; right: number; top: number };
 };
 
-/**
- * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring, tick and the right card's
- * key in the theme's correct colour (`verdict-right` and `key:right` are built from it). A wrong
- * card is redrawn by `hingeDimParts`. Null for any other choice card, which keeps the generic marks.
- */
 const KEY_SHAPES = ["rounded", "notch", "hexagon", "octagon", "ellipse", "rect"] as const;
 type KeyShape = (typeof KEY_SHAPES)[number];
 function keyShape(e: SlideElement): KeyShape {
@@ -77,6 +72,11 @@ function keyClip(shape: string, w: number, h: number, radius?: number): string |
     : undefined;
 }
 
+/**
+ * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring, tick and the right card's
+ * key in the theme's correct colour (`verdict-right` and `key:right` are built from it). A wrong
+ * card is redrawn by `hingeDimParts`. Null for any other choice card, which keeps the generic marks.
+ */
 /** The hinge reveal's theme roles: `verdict-right` (ring, tick) and `key:right` (the key). */
 export type HingeRoles = { ring: string; keyFill: string; keyInk: string };
 

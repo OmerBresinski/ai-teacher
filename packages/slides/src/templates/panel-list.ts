@@ -36,7 +36,6 @@ import { uid } from "../factories";
 import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
-import { MIN_FONT_SIZE } from "../themes";
 import { surfacesOf } from "../themes/surfaces";
 import {
   type Ctx,
