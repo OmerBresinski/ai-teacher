@@ -180,6 +180,8 @@ const TOL = 0.34;
 /** The photo zone's reserved height and the gap above it (pilot 300 / 48 px). */
 const PHOTO_ROOM = 200;
 const PHOTO_GAP = 32;
+/** The smallest the inset picture (at the title's left) is drawn; with less room it is left off. */
+const INSET_MIN_H = 40;
 /** The pie's square and its offsets from the panel's left and foot (pilot 300 / 80 / 70 px). */
 const PIE = 200;
 const PIE_X = 53;
@@ -359,6 +361,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
 
   // The photo zone: the tallest safe standard shape that fits under the title.
   let picBox: { x: number; y: number; w: number; h: number; inset: boolean } | null = null;
+  let picDropped = false;
   if (photo) {
     // The frame never depends on the photo, so pending and landed draw the same box.
     const aspect = PANEL_PIC_ASPECT;
@@ -376,8 +379,8 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     if (!picBox) {
       const h = Math.round(PANEL_W / aspect);
       if (h <= avail()) picBox = { x: 0, y: SLIDE_H - h, w: PANEL_W, h, inset: false };
-      else {
-        const ih = Math.max(40, Math.min(avail() - INSET, TITLE_W / aspect));
+      else if (avail() - INSET >= INSET_MIN_H) {
+        const ih = Math.min(avail() - INSET, TITLE_W / aspect);
         const iw = Math.round(ih * aspect);
         picBox = {
           x: TITLE_X,
@@ -386,6 +389,12 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
           h: Math.round(ih),
           inset: true,
         };
+      } else {
+        // No room for the inset at its minimum: the picture never overlaps the title, and it is
+        // never shrunk below the minimum, so it is left off this slide and reported over, so the
+        // writer or the fit report can pick a roomier layout (PR #571 review).
+        picDropped = true;
+        geomOver.push("panel.picture");
       }
     }
   }
@@ -698,7 +707,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   // the sizes the renderer draws. When it fits with every word whole, each field's hard maximum is
   // at least its length, and when it is comfortable so is each cap (writer smoke 16 Oct: y4-romans
   // s3 and y8-rivers s8 drew whole with room to spare, yet were named over by the table alone).
-  const fitsHere = m.fits && titleFits && leadLines <= 2;
+  const fitsHere = m.fits && titleFits && leadLines <= 2 && !picDropped;
   const comfyHere = fitsHere && !tight;
   const fields: FieldReport[] = [];
   const add = (field: string, key: "heading" | "lead" | "name" | "text", s: string) => {
@@ -737,7 +746,7 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   for (const o of [...geomOver, ...past]) if (!c.over.includes(o)) c.over.push(o);
   c.tight = tight || fields.some((x) => x.tight) || c.over.length > 0;
   GEOMETRY.set(c.els, {
-    fits: m.fits && titleFits && leadLines <= 2,
+    fits: m.fits && titleFits && leadLines <= 2 && !picDropped,
     comfortable: m.fits && !tight,
   });
 }

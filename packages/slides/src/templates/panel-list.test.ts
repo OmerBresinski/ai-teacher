@@ -909,24 +909,47 @@ describe("panel-list title fit: shrink only for the longest word, never below th
       }
     });
   }
-  test("a long side title with a photo: the picture box sits in the panel, under the title (PR #571 review)", () => {
-    // The photo no longer shrinks the title (ruling 256), so a 3 or 4 line title leaves less room
-    // for the picture. While the title fits, the picture is a full-width box under it; the small
-    // inset at the title's left is reached only once the title is reported over (17 Oct probe).
-    for (const heading of ["Unbalanced forces change motion", "How the water cycle moves water"])
+  test("a long side title with a photo: the picture never overlaps the title or the rows (PR #571 review)", () => {
+    // The photo no longer shrinks the title (ruling 256), so a long title leaves less room for the
+    // picture: a full-width box under it, else a small inset at the title's left, else (no room for
+    // the inset at its 40 pt minimum) no picture on this slide, reported over as panel.picture.
+    const pending = { photo: PLACEHOLDER_IMAGE, alt: "" } as typeof wide;
+    const headings = [
+      "Food groups",
+      "Unbalanced forces change motion",
+      "How the water cycle moves water",
+      "How the water cycle moves water around the world",
+      "Why do volcanoes erupt and what happens next to the land",
+    ];
+    let dropped = 0;
+    for (const heading of headings)
       for (const stage of STAGES)
-        for (const theme of THEMES) {
-          const r = titleOf(heading, stage, theme, "photo");
-          const at = `${heading} ${theme.id} ${stage}`;
-          const img = must(named(r.slide.elements, PANEL_NAMES.photo)[0]) as ImageElement;
-          const title = must(named(r.slide.elements, PANEL_NAMES.title)[0]) as TextElement;
-          expect(img.x, at).toBeGreaterThanOrEqual(0);
-          expect(img.x + img.w, at).toBeLessThanOrEqual(PANEL_W);
-          expect(img.y + img.h, at).toBeLessThanOrEqual(540);
-          if (r.over.includes("heading")) continue;
-          expect(img.y, at).toBeGreaterThanOrEqual(title.y + title.h);
-          expect(img.w, at).toBe(PANEL_W);
-        }
+        for (const theme of THEMES)
+          for (const fig of [wide, tall, pending])
+            for (const lead of [undefined, "Read each one aloud."]) {
+              const base = { ...input(3, "none", lead), heading, panel: { picture: fig } };
+              const r = layoutTemplate(base, theme, stage);
+              const at = `${heading} ${theme.id} ${stage} ${fig.photo} ${lead ?? "-"}`;
+              const imgs = named(r.slide.elements, PANEL_NAMES.photo) as ImageElement[];
+              if (imgs.length === 0) {
+                dropped++;
+                expect(r.over, at).toContain("panel.picture");
+                continue;
+              }
+              expect(r.over, at).not.toContain("panel.picture");
+              const img = must(imgs[0]);
+              const title = must(named(r.slide.elements, PANEL_NAMES.title)[0]) as TextElement;
+              expect(img.x, at).toBeGreaterThanOrEqual(0);
+              expect(img.x + img.w, at).toBeLessThanOrEqual(PANEL_W);
+              expect(img.y + img.h, at).toBeLessThanOrEqual(540);
+              expect(img.h, at).toBeGreaterThanOrEqual(40);
+              expect(img.y, at).toBeGreaterThanOrEqual(title.y + title.h);
+              for (const t of [PANEL_NAMES.name, PANEL_NAMES.lead, PANEL_NAMES.disc])
+                for (const e of named(r.slide.elements, t) as TextElement[])
+                  expect(e.x, `${at} ${t}`).toBeGreaterThanOrEqual(img.x + img.w);
+            }
+    // The over-long titles do reach the drop (17 Oct probe), so the branch is exercised.
+    expect(dropped).toBeGreaterThan(0);
   });
   test("Unbalanced forces change motion, KS2 and KS3, every theme: the title is at or over the row names", () => {
     for (const stage of ["ks2", "ks3"] as Stage[])
