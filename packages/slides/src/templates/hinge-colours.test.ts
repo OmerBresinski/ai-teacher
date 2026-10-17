@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { THEMES } from "../themes";
-import { surfaceStyle } from "../themes/surfaces";
+import { dimGround, dimInk, SURFACE_TOKEN_SETS, surfaceStyle } from "../themes/surfaces";
 import { HINGE_NAMES } from "./hinge";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
@@ -61,5 +62,55 @@ describe("hinge letter keys", () => {
     const q = r.slide.question as { options: { id: string; correct: boolean }[] };
     expect(q.options.map((o) => o.correct)).toEqual([true, false, false, false]);
     expect(q.options.map((o) => o.id)).toEqual(cards.map((c) => c.id));
+  });
+});
+
+/*
+ * TEACH-256 part d (rulings 258, 248): after the reveal a wrong card takes the theme's ground (quieter
+ * than a card) and its words the dim tone, never an opacity fade, so a pupil still reads them at
+ * 4.5:1 or better on every theme. The tones are tested here; the redrawn cards themselves, each
+ * card's own fill against each of its words, in `@tj/editor`'s `hinge-dim.test.ts`.
+ */
+describe("hinge reveal: the wrong options' dim tone", () => {
+  test("every token set: the dim tone reads at 4.5:1 or better on the wrong card's ground", () => {
+    for (const [id, t] of Object.entries(SURFACE_TOKEN_SETS)) {
+      const ratio = contrastRatio(t.dim as string, t.bg as string);
+      expect({ id, ok: ratio >= 4.5 }).toEqual({ id, ok: true });
+    }
+  });
+
+  /*
+   * A theme outside the table (a teacher's own, or one added later) gets its dim tone from its own
+   * palette, measured on its own ground, not Paper's or Slate's tokens on a ground they never met.
+   */
+  const custom = (id: string, dark: boolean, colors: Partial<Theme["colors"]>): Theme => {
+    const base = THEMES.find((t) => Boolean(t.dark) === dark) as Theme;
+    return { ...base, id, dark, colors: { ...base.colors, ...colors } };
+  };
+  test.each([
+    [
+      "custom-cream: a faint muted is stepped toward the ink",
+      custom("custom-cream", false, { background: "#F3E6CF", muted: "#C9B79A", ink: "#3B2F2F" }),
+    ],
+    [
+      "custom-ink: a dark ground",
+      custom("custom-ink", true, { background: "#14213D", muted: "#3C4A66", ink: "#E5E5E5" }),
+    ],
+    [
+      "custom-mid: neither muted nor ink reads",
+      custom("custom-mid", false, { background: "#808080", muted: "#8A8A8A", ink: "#999999" }),
+    ],
+  ])("%s: the dim tone reads at 4.5:1 on that theme's own ground", (_, theme) => {
+    expect(theme.id in SURFACE_TOKEN_SETS).toBe(false);
+    expect(dimGround(theme)).toBe(theme.colors.background);
+    expect(contrastRatio(dimInk(theme), dimGround(theme))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("a theme in the table keeps its own tested tokens", () => {
+    for (const theme of THEMES) {
+      const t = SURFACE_TOKEN_SETS[theme.id];
+      if (!t) continue;
+      expect([dimInk(theme), dimGround(theme)]).toEqual([t.dim as string, t.bg as string]);
+    }
   });
 });

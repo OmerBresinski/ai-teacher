@@ -2,16 +2,24 @@
  * The hinge's reveal (TEACH-256 part b, v13 gold), loaded on demand by `SlideView`'s
  * `ChoiceMarks` so the surface role table stays out of the present, view and print chunks.
  */
-import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { surfaceStyle } from "@tj/slides/surfaces";
+import {
+  mapRunColours,
+  type ShapeElement,
+  type Slide,
+  type SlideElement,
+  type Theme,
+} from "@tj/domain/documents";
+import { dimGround, dimInk, isClear, splitAlpha, surfaceStyle } from "@tj/slides/surfaces";
 import { choiceText, HINGE_KEY } from "./choice";
+import { ElementBody } from "./ElementBody";
 
 /** The hinge's element names (`@tj/slides` templates/hinge.ts `HINGE_NAMES`). */
 const HINGE_ICON = "Option icon";
-const HINGE_STAGE = "surface:field-b";
+const HINGE_BAR = "Fraction bar";
+/** A wrong card's picture steps back with its words; pictures carry no text contrast. */
+const DIM_PICTURE = 0.4;
 
 export type HingeMark = {
-  wash: string;
   ring: string;
   keyFill: string;
   keyInk: string;
@@ -30,8 +38,8 @@ export type HingeMark = {
 
 /**
  * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring, tick and the right card's
- * key in the theme's correct colour (`verdict-right` and `key:right` are built from it), a wrong card faded to about a third into
- * the sand stage. Null for any other choice card, which keeps the generic marks.
+ * key in the theme's correct colour (`verdict-right` and `key:right` are built from it). A wrong
+ * card is redrawn by `hingeDimParts`. Null for any other choice card, which keeps the generic marks.
  */
 /** The hinge reveal's theme roles: `verdict-right` (ring, tick) and `key:right` (the key). */
 export type HingeRoles = { ring: string; keyFill: string; keyInk: string };
@@ -54,19 +62,12 @@ export function hingeMarkOf(
     keyFill: k.fill,
     keyInk: k.ink ?? theme.colors.onAccent,
   };
-  const stage = slide.elements.find((e) => e.name === HINGE_STAGE);
-  const ground =
-    stage && "fill" in stage && typeof stage.fill === "string"
-      ? stage.fill
-      : theme.colors.background;
   const tiles = slide.elements.some((e) => e.name === HINGE_ICON && inside(e));
   const d = Math.round(keyEl.w * 0.78);
   const radius = keyEl.type === "shape" && keyEl.radius ? keyEl.radius : Math.round(keyEl.w * 0.24);
   const fontSize = keyEl.type === "shape" ? Number(keyEl.textStyle?.fontSize ?? 20) : 20;
   return {
-    // 66% of the stage over the card: the card reads at about a third (the gold's 0.34).
     ...roles,
-    wash: `${ground.slice(0, 7)}A8`,
     radius:
       "radius" in card && typeof card.radius === "number"
         ? card.radius
@@ -84,9 +85,89 @@ export function hingeMarkOf(
   };
 }
 
+/** A hinge card the reveal can redraw: a shape with an opaque fill, so its redraw hides the original. */
+type HingeCard = ShapeElement & { fill: string };
+
+const isHingeCard = (e: SlideElement): e is HingeCard =>
+  e.type === "shape" &&
+  typeof e.fill === "string" &&
+  !isClear(e.fill) &&
+  splitAlpha(e.fill).opacity === undefined;
+
+/** A wrong option's part, recoloured: words, key, bars and icon to the dim tone; a picture stepped back. */
+function dimmedPart(e: SlideElement, dim: string, ground: string): SlideElement {
+  switch (e.type) {
+    case "text":
+      return { ...e, style: { ...e.style, color: dim }, doc: mapRunColours(e.doc, () => dim) };
+    case "shape":
+      if (e.name === HINGE_KEY)
+        return {
+          ...e,
+          fill: dim,
+          textStyle: { ...e.textStyle, color: ground },
+          ...(e.doc ? { doc: mapRunColours(e.doc, () => ground) } : {}),
+        };
+      return e.name === HINGE_BAR ? { ...e, fill: dim } : e;
+    case "icon":
+      return { ...e, color: dim };
+    case "image":
+      return { ...e, opacity: DIM_PICTURE };
+    default:
+      return e;
+  }
+}
+
+/**
+ * A wrong hinge card after the reveal (ruling 258, TEACH-256 part d): the card redrawn on the
+ * theme's quieter ground (`dimGround`), so it still reads as not the answer beside the right card,
+ * and its words, letter key, fraction bars and icon in the dim tone (`dimInk`, at least 4.5:1 on
+ * that ground); its picture stepped back. Never an opacity wash over the words. The key's letter
+ * takes the same ground, so it reads on the dim key as the words read on the card. The editor
+ * draws these over the card; the PowerPoint build slide draws them too.
+ *
+ * The redraw always lays an opaque `dimGround` card first, so the original's full-ink words never
+ * show through. A generated hinge card is a shape with an opaque fill (tested); a card a teacher made
+ * see-through, or one that is not a shape, still gets that ground card under its dim words, so the
+ * reveal keeps 4.5:1 and never throws in the middle of a render (a dev build warns).
+ */
+export function hingeDimParts(slide: Slide, theme: Theme, id: string): SlideElement[] {
+  const card = slide.elements.find((e) => e.id === id);
+  if (!card || card.type === "option") return [];
+  if (!isHingeCard(card) && process.env.NODE_ENV !== "production")
+    console.warn(`hinge card ${id} has no opaque fill: its reveal draws it on the theme ground`);
+  const dim = dimInk(theme);
+  const ground = dimGround(theme);
+  const inside = (e: SlideElement) =>
+    e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
+  const quiet: HingeCard =
+    card.type === "shape"
+      ? { ...card, fill: ground }
+      : {
+          id: card.id,
+          type: "shape",
+          shape: "rounded",
+          x: card.x,
+          y: card.y,
+          w: card.w,
+          h: card.h,
+          rotation: card.rotation,
+          radius: Math.min(theme.radius, 16),
+          fill: ground,
+        };
+  return [
+    quiet,
+    ...slide.elements
+      .filter((e) => e.id !== id && inside(e))
+      .map((e) => dimmedPart(e, dim, ground)),
+  ];
+}
+
 type Placed = Map<string, { x: number; y: number; w: number; h: number }>;
 
-/** The editor's hinge reveal: wash, `verdict-right` ring and tick, the key in `key:right`. */
+/**
+ * The editor's hinge reveal: each wrong card redrawn in the dim tone, the right one ringed and
+ * ticked in `verdict-right`, its key in `key:right`.
+ */
 export default function HingeMarks({
   slide,
   theme,
@@ -104,8 +185,54 @@ export default function HingeMarks({
         const r = placed.get(id);
         const m = hingeMarkOf(slide, theme, id);
         if (!r || !m) return null;
-        const right = state === "right";
-        const k = right ? m.key : null;
+        if (state === "dim")
+          return (
+            <div
+              key={id}
+              data-answer-anim=""
+              data-choice-mark={state}
+              // A redrawn copy of words the slide already holds: assistive tech reads them once.
+              aria-hidden
+              style={{
+                userSelect: "none",
+                position: "absolute",
+                left: r.x,
+                top: r.y,
+                width: r.w,
+                height: r.h,
+                zIndex: 800,
+                pointerEvents: "none",
+              }}
+            >
+              {hingeDimParts(slide, theme, id).map((el) => (
+                <div
+                  key={el.id}
+                  data-dim-part={el.id}
+                  style={{
+                    position: "absolute",
+                    left: el.x - r.x,
+                    top: el.y - r.y,
+                    width: el.w,
+                    height: el.h,
+                    opacity: el.opacity ?? 1,
+                    // As the slide and the PowerPoint path draw a turned part.
+                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                  }}
+                >
+                  <ElementBody
+                    element={el}
+                    theme={theme}
+                    mode="capture"
+                    slideId={slide.id}
+                    hidden={false}
+                    ghost={false}
+                    revealAnswer={false}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        const k = m.key;
         const flex = {
           display: "flex",
           alignItems: "center",
@@ -127,8 +254,7 @@ export default function HingeMarks({
               zIndex: 800,
               pointerEvents: "none",
               borderRadius: m.radius,
-              background: right ? undefined : m.wash,
-              boxShadow: right ? `0 0 0 3px ${m.ring}` : undefined,
+              boxShadow: `0 0 0 3px ${m.ring}`,
             }}
           >
             {k ? (
@@ -149,26 +275,24 @@ export default function HingeMarks({
                 {k.letter}
               </span>
             ) : null}
-            {right ? (
-              <span
-                role="img"
-                aria-label="Correct answer"
-                style={{
-                  ...flex,
-                  position: "absolute",
-                  right: m.tick.right,
-                  top: m.tick.top,
-                  width: m.tick.d,
-                  height: m.tick.d,
-                  borderRadius: m.tick.d,
-                  background: m.ring,
-                  color: m.keyInk,
-                  fontSize: Math.round(m.tick.d * 0.6),
-                }}
-              >
-                ✓
-              </span>
-            ) : null}
+            <span
+              role="img"
+              aria-label="Correct answer"
+              style={{
+                ...flex,
+                position: "absolute",
+                right: m.tick.right,
+                top: m.tick.top,
+                width: m.tick.d,
+                height: m.tick.d,
+                borderRadius: m.tick.d,
+                background: m.ring,
+                color: m.keyInk,
+                fontSize: Math.round(m.tick.d * 0.6),
+              }}
+            >
+              ✓
+            </span>
           </div>
         );
       })}

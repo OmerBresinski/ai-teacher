@@ -1,4 +1,10 @@
-import type { RichDoc, RichNode, Slide, SlideElement, Theme } from "@tj/domain/documents";
+import {
+  mapRunColours,
+  type RichDoc,
+  type Slide,
+  type SlideElement,
+  type Theme,
+} from "@tj/domain/documents";
 import { resolveTextStyle } from "./text-style";
 import { THEMES } from "./themes";
 
@@ -49,23 +55,8 @@ export function themedColour(colour: string | undefined, theme: Theme): string |
   return token === "heading" ? theme.colors.ink : token === "panel" ? theme.colors.surface : colour;
 }
 
-function themedDoc(doc: RichDoc, theme: Theme): RichDoc {
-  const walk = (nodes: RichNode[] | undefined): RichNode[] | undefined =>
-    nodes?.map((n) => ({
-      ...n,
-      ...(n.marks
-        ? {
-            marks: n.marks.map((m) =>
-              m.type === "textStyle" && typeof m.attrs?.color === "string"
-                ? { ...m, attrs: { ...m.attrs, color: themedColour(m.attrs.color, theme) } }
-                : m,
-            ),
-          }
-        : {}),
-      ...(n.content ? { content: walk(n.content) } : {}),
-    })) as RichNode[] | undefined;
-  return { ...doc, content: walk(doc.content) ?? [] } as RichDoc;
-}
+const themedDoc = (doc: RichDoc, theme: Theme): RichDoc =>
+  mapRunColours(doc, (c) => themedColour(c, theme));
 
 function themedElement(e: SlideElement, theme: Theme, docs: boolean): SlideElement {
   const out = { ...e } as Record<string, unknown> & SlideElement;

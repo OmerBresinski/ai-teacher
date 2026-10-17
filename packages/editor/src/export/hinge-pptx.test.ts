@@ -1,10 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import type { Lesson } from "@tj/domain/documents";
+import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { surfaceStyle } from "@tj/slides/surfaces";
+import { dimGround, dimInk, surfaceStyle } from "@tj/slides/surfaces";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
+import { choiceMarks, choiceText } from "../slide/elements/choice";
 import { buildSlidePlan, exportLessonPptx } from "./pptx";
 
 /*
@@ -62,7 +63,101 @@ describe("PPTX hinge reveal", () => {
       expect(geoms(reveal).filter((g) => g === "ellipse").length).toBe(
         geoms(ask).filter((g) => g === "ellipse").length + 1,
       );
-      // Three washes; ring, key and tick; the key letter and tick glyph as text boxes.
-      expect(geoms(reveal).length).toBe(geoms(ask).length + 3 + 3 + 2);
+      expect(reveal).not.toContain("Reveal wash");
+      expect(reveal).not.toContain("<a:alpha");
     }, 30_000);
+
+  /*
+   * Part d (ruling 258): each wrong card is redrawn opaque on `dimGround` with its words in the dim
+   * tone; the right card's words keep their ink. Read per card from the shapes PowerPoint draws: the
+   * last shape drawn at a card's place is the one a pupil sees.
+   */
+  for (const id of ["paper", "dark-slate", "dark-ember"])
+    it(`${id}: each wrong card's words are dim on the ground, the right card's keep their ink`, async () => {
+      const { ask, reveal, theme, lesson } = await hingeDeck(id);
+      const dim = hex(dimInk(theme));
+      const ground = hex(dimGround(theme));
+      const slide = lesson.slides[0] as Slide;
+      const words = new Map(
+        slide.elements.filter((e) => e.type === "text").map((e) => [e, choiceText(slide, e.id)]),
+      );
+      const drawn = shapes(reveal);
+      const marks = choiceMarks(slide, true, Number.POSITIVE_INFINITY);
+      expect(marks.filter((m) => m.state === "dim")).toHaveLength(3);
+      for (const { id: cardId, state } of marks) {
+        const card = slide.elements.find((e) => e.id === cardId) as SlideElement;
+        const [word] = [...words].find(([e]) => within(e, card)) ?? [];
+        const text = word ? (words.get(word) as string) : "";
+        expect(text.length).toBeGreaterThan(0);
+        const asked = shapes(ask).filter((s) => s.text === text);
+        const shown = drawn.filter((s) => s.text === text);
+        expect(asked).toHaveLength(1);
+        expect(asked[0]?.runs.some((c) => c === dim)).toBe(false);
+        const top = shown.at(-1);
+        const atCard = drawn.filter((s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text);
+        if (state === "dim") {
+          // Drawn twice: the original, then the dim redraw over it on an opaque ground card.
+          expect(shown).toHaveLength(2);
+          expect(top?.runs.length).toBeGreaterThan(0);
+          expect(top?.runs.every((c) => c === dim)).toBe(true);
+          expect(atCard.at(-1)?.fill).toBe(ground);
+          expect(drawn.indexOf(atCard.at(-1) as Sp)).toBeGreaterThan(-1);
+          expect(drawn.indexOf(atCard.at(-1) as Sp)).toBeLessThan(drawn.indexOf(top as Sp));
+        } else {
+          expect(shown).toHaveLength(1);
+          expect(top?.runs.length).toBeGreaterThan(0);
+          expect(top?.runs.some((c) => c === dim)).toBe(false);
+          expect(atCard.some((s) => s.fill === ground)).toBe(false);
+        }
+      }
+    }, 30_000);
+
+  it("a wrong card a teacher made see-through exports without throwing, its dim words on the ground", async () => {
+    const theme = atKeyStage(getTheme("paper", null), "ks2");
+    const { lesson } = await hingeDeck("paper");
+    const slide = lesson.slides[0] as Slide;
+    const [wrong] = choiceMarks(slide, true, Number.POSITIVE_INFINITY).filter(
+      (m) => m.state === "dim",
+    );
+    const card = slide.elements.find((e) => e.id === wrong?.id) as SlideElement;
+    const clear = {
+      ...lesson,
+      slides: [
+        {
+          ...slide,
+          elements: slide.elements.map((e) =>
+            e.id === card.id && e.type === "shape" ? { ...e, fill: "transparent" } : e,
+          ),
+        },
+      ],
+    } as Lesson;
+    const zip = await JSZip.loadAsync(await (await exportLessonPptx(clear, theme)).arrayBuffer());
+    const reveal = (await zip.file("ppt/slides/slide2.xml")?.async("string")) ?? "";
+    const atCard = shapes(reveal).filter(
+      (s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text,
+    );
+    expect(atCard.at(-1)?.fill).toBe(hex(dimGround(theme)));
+  }, 30_000);
 });
+
+type Sp = { x: number; y: number; text: string; fill?: string; runs: string[] };
+const hex = (c: string) => c.slice(1, 7).toUpperCase();
+const emu = (pt: number) => Math.round(pt * 12700);
+const within = (e: SlideElement, card: SlideElement) =>
+  e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
+/** The slide's shapes in drawing order: place, words, shape fill and each run's colour. */
+function shapes(xml: string): Sp[] {
+  return [...xml.matchAll(/<p:sp>([\s\S]*?)<\/p:sp>/g)].map(([, sp = ""]) => {
+    const off = /<a:off x="(\d+)" y="(\d+)"/.exec(sp);
+    const spPr = /<p:spPr>([\s\S]*?)<\/p:spPr>/.exec(sp)?.[1] ?? "";
+    const fill = /^(?:(?!<a:ln)[\s\S])*?<a:solidFill><a:srgbClr val="(\w+)"/.exec(spPr)?.[1];
+    const runs = [...sp.matchAll(/<a:r>([\s\S]*?)<\/a:r>/g)];
+    return {
+      x: Number(off?.[1]),
+      y: Number(off?.[2]),
+      text: runs.map((r) => /<a:t>([^<]*)/.exec(r[1] ?? "")?.[1] ?? "").join(""),
+      fill,
+      runs: runs.flatMap((r) => /<a:srgbClr val="(\w+)"/.exec(r[1] ?? "")?.[1] ?? []),
+    };
+  });
+}

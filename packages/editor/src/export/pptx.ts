@@ -1669,7 +1669,7 @@ export async function exportLessonPptx(
           keyFill: surfaceStyle(theme, "key", "right").fill,
           keyInk: surfaceStyle(theme, "key", "right").ink ?? theme.colors.onAccent,
         }))
-          drawShape(pptxSlide, mark, theme);
+          await drawElement(pptxSlide, mark, theme, ctx, NO_FRAME);
 
       const notes = slide.notes?.trim();
       const stepNote = steps > 1 ? `Reveal ${step + 1} of ${steps}.` : "";

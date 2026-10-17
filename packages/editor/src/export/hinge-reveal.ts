@@ -2,9 +2,9 @@
  * The hinge's one-click reveal as PowerPoint shapes (TEACH-256 part b), kept out of the slide
  * renderer's chunks: only the export draws it.
  */
-import type { ShapeElement, Slide, Theme } from "@tj/domain/documents";
+import type { ShapeElement, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { choiceMarks } from "../slide/elements/choice";
-import { type HingeRoles, hingeMarkOf } from "../slide/elements/HingeMarks";
+import { type HingeRoles, hingeDimParts, hingeMarkOf } from "../slide/elements/HingeMarks";
 
 /** A slide whose answer shows in one click (the hinge): PowerPoint gives it one more build slide. */
 export const oneStepReveal = (slide: Slide): boolean =>
@@ -12,26 +12,19 @@ export const oneStepReveal = (slide: Slide): boolean =>
 
 /**
  * The hinge's revealed state as plain shapes for the PowerPoint build slide (TEACH-256 part b):
- * a wash over each wrong card, a `verdict-right` ring on the right card, its key in `key:right`
- * and the tick disc, where the editor's `ChoiceMarks` draws them.
+ * each wrong card redrawn with its words in the theme's dim tone (`hingeDimParts`, ruling 258), a
+ * `verdict-right` ring on the right card, its key in `key:right` and the tick disc, where the
+ * editor's `ChoiceMarks` draws them.
  */
-export function hingeRevealShapes(slide: Slide, theme: Theme, roles: HingeRoles): ShapeElement[] {
-  const out: ShapeElement[] = [];
+export function hingeRevealShapes(slide: Slide, theme: Theme, roles: HingeRoles): SlideElement[] {
+  const out: SlideElement[] = [];
   for (const { id, state } of choiceMarks(slide, true, Number.POSITIVE_INFINITY)) {
     const card = slide.elements.find((e) => e.id === id);
     const m = card ? hingeMarkOf(slide, theme, id, roles) : null;
     if (!card || !m) continue;
     const base = { x: card.x, y: card.y, w: card.w, h: card.h, radius: m.radius };
     if (state === "dim") {
-      out.push({
-        ...base,
-        id: `${id}-wash`,
-        type: "shape",
-        shape: "rounded",
-        fill: m.wash.slice(0, 7),
-        opacity: 0.66,
-        name: "Reveal wash",
-      });
+      out.push(...hingeDimParts(slide, theme, id).map((e) => ({ ...e, id: `${e.id}-dim` })));
       continue;
     }
     out.push({
