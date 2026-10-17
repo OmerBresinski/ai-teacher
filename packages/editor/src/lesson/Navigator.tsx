@@ -28,7 +28,7 @@ import { renderTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
-import { SHOW_ANSWERS_LABEL, useSetAnswersSlides } from "./answers-slides";
+import { SHOW_ANSWERS_LABEL, touchesAnswers, useSetAnswersSlides } from "./answers-slides";
 import { useHistory, useLesson } from "./document-context";
 import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
@@ -289,17 +289,27 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
     if (made) setPicked({ ids: [made], forActive: made });
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (list.length <= ids.length) return;
     const firstIdx = Math.min(...ids.map((id) => index.get(id) ?? 0));
-    history.beginTransaction();
     let next = lesson;
-    for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;
-    history.endTransaction();
+    if (touchesAnswers(lesson, ids)) {
+      // Deleting the guard or an Answers slide hides them all, as "Hide answers" does (ruling
+      // 260), so they are kept and "Show answers slides" brings them back.
+      const plain = ids.filter((id) => !lesson.slides.find((s) => s.id === id)?.answersRole);
+      next = (await setAnswersSlides(false, plain)) ?? lesson;
+    } else {
+      history.beginTransaction();
+      for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;
+      history.endTransaction();
+    }
     // The rail lands on the survivor at the first removed position (or the new last slide).
     const survivor = next.slides[Math.min(firstIdx, next.slides.length - 1)];
     if (next !== lesson && survivor) choose([survivor.id], survivor.id);
   };
+
+  // While answers are hidden, the Add slide picker offers them back (ruling 260).
+  const showAnswers = lesson.answersOff ? () => void setAnswersSlides(true) : undefined;
 
   const addAfterCurrent = (kind: SlideKind) => {
     const made = addSlideAfter(deps, activeId, kind);
@@ -551,6 +561,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
       facts={lesson.facts}
       onPick={addAfterCurrent}
       onInsert={insertAfterCurrent}
+      onShowAnswers={showAnswers}
       side="top"
       trigger={
         label ? (
@@ -821,6 +832,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
           facts={lesson.facts}
           onPick={addAfterCurrent}
           onInsert={insertAfterCurrent}
+          onShowAnswers={showAnswers}
           side="top"
           trigger={
             <Button variant="ghost" size="sm" className="h-6 flex-1 justify-start px-1.5">

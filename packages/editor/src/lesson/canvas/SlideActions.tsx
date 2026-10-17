@@ -11,6 +11,7 @@ import { ChevronDown, ChevronUp, Copy, MoreHorizontal, Plus, Trash2 } from "luci
 import { type ReactNode, type RefObject, useMemo } from "react";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { AddSlidePicker } from "../AddSlidePicker";
+import { useSetAnswersSlides } from "../answers-slides";
 import { useHistory, useLesson } from "../document-context";
 import { hint } from "../keys";
 import {
@@ -63,6 +64,7 @@ export function SlideActions({
   const activeSlideId = useActiveSlideId();
   const slideCount = lesson.slides.length;
   const index = lesson.slides.findIndex((sl) => sl.id === slide.id);
+  const setAnswersSlides = useSetAnswersSlides();
 
   const avoidRefs = useMemo(
     () => [toolbarRef, tabsRef].filter((ref) => ref !== undefined),
@@ -77,6 +79,9 @@ export function SlideActions({
   if (!inline && (hidden || !frame)) return null;
   const id = slide.id;
   const deps = { history, lesson, session };
+  // Deleting the guard or an Answers slide hides them all, as "Hide answers" does (ruling 260).
+  const remove = () =>
+    slide.answersRole ? void setAnswersSlides(false) : deleteSlide(deps, id, activeSlideId);
 
   const { left, top: placedTop } = frame
     ? placeSlideActions({
@@ -145,7 +150,7 @@ export function SlideActions({
           label={only ? "Delete slide. A lesson needs at least one slide" : "Delete slide"}
           tooltipLabel={only ? "A lesson needs at least one slide" : undefined}
           disabled={only}
-          onClick={() => deleteSlide(deps, id, activeSlideId)}
+          onClick={() => remove()}
         >
           <Trash2 aria-hidden {...ICON} />
         </PillButton>
@@ -167,10 +172,7 @@ export function SlideActions({
                 <Copy aria-hidden size={16} strokeWidth={1.5} />
                 Duplicate slide
               </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={only}
-                onSelect={() => deleteSlide(deps, id, activeSlideId)}
-              >
+              <DropdownMenuItem disabled={only} onSelect={() => remove()}>
                 <Trash2 aria-hidden size={16} strokeWidth={1.5} />
                 Delete slide
               </DropdownMenuItem>

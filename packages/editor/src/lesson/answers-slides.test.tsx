@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
+import { ThemeProvider, Toaster, toast } from "@tj/ui";
 import { newLesson } from "../model/factories";
 import { renderTheme } from "../model/themes";
+import { ANSWERS_HIDDEN_NOTICE, SHOW_ANSWERS_LABEL } from "./answers-slides";
 import { openLessonActions, pointer, renderEditor } from "./test-harness";
 
 /*
@@ -96,5 +98,71 @@ describe("Hide answers / Show answers slides", () => {
     renderEditor(answeredLesson());
     openLessonActions();
     expect(within(screen.getByLabelText("Lesson actions")).queryByText(/Answers/)).toBeNull();
+  });
+
+  test("Delete on the rail (key or menu) hides them as Hide answers does; Show brings them back", async () => {
+    const { read } = renderEditor(answeredLesson());
+    const ids = read()
+      .slides.filter((s) => s.answersRole)
+      .map((s) => s.id);
+    selectRow(read().slides.length - 1);
+    fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "Delete" });
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    expect(read().answersOff?.kept.map((s) => s.id)).toEqual(ids);
+    await showFromRail();
+    await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
+    expect(
+      read()
+        .slides.filter((s) => s.answersRole)
+        .map((s) => s.id),
+    ).toEqual(ids);
+
+    // The rail menu's Delete on the guard, together with a plain slide: one undo step.
+    const before = read().slides.length;
+    const guard = read().slides.findIndex((s) => s.answersRole === "guard");
+    selectRow(guard);
+    fireEvent.contextMenu(rows()[guard] as HTMLElement, { clientX: 40, clientY: 120 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    expect(read().answersOff).toBeDefined();
+    expect(read().slides).toHaveLength(before - 2);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(roles(read())).toEqual(["guard", "answers"]);
+  });
+
+  test("the hidden notice's Show button brings them back", async () => {
+    toast.dismiss(); // sonner's queue outlives a test: earlier tests' notices would show here
+    render(
+      <ThemeProvider>
+        <Toaster />
+      </ThemeProvider>,
+    );
+    const { read } = renderEditor(answeredLesson());
+    selectRow(read().slides.length - 1);
+    fireEvent.click(within(slideToolbar()).getByRole("button", { name: "Hide answers" }));
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    await screen.findByText(ANSWERS_HIDDEN_NOTICE);
+    fireEvent.click(await screen.findByRole("button", { name: "Show" }));
+    await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
+    expect(read().answersOff).toBeUndefined();
+  });
+
+  test("Add slide offers Show answers slides only while they are hidden", async () => {
+    const { read } = renderEditor(answeredLesson());
+    const openAdd = () => fireEvent.click(screen.getByRole("button", { name: "Add slide" }));
+    const footer = () => screen.queryByRole("button", { name: SHOW_ANSWERS_LABEL });
+    openAdd();
+    await screen.findByRole("menu", { name: "Slide kinds" });
+    expect(footer()).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu", { name: "Slide kinds" })).toBeNull());
+
+    selectRow(read().slides.length - 1);
+    fireEvent.click(within(slideToolbar()).getByRole("button", { name: "Hide answers" }));
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    openAdd();
+    fireEvent.click(await screen.findByRole("button", { name: SHOW_ANSWERS_LABEL }));
+    await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
+    await waitFor(() => expect(footer()).toBeNull());
   });
 });
