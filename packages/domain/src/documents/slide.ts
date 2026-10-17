@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  type DirStamp,
+  DirStampSchema,
+  type ElementRtl,
+  ElementRtlSchema,
+  LanguageTagSchema,
+} from "./direction";
 import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
 import { type LayoutRef, LayoutRefSchema } from "./layout-ref";
@@ -93,6 +100,12 @@ export type Slide = {
    * unless the teacher turns "Show answers to class" on.
    */
   answersRole?: AnswersRole;
+  /**
+   * Which way the slide's geometry is laid out (TEACH-75 part z): "rtl" once it has been mirrored
+   * for a right-to-left lesson, absent for left to right. The lesson's language decides which it
+   * should be (`dirOf`); a slide is mirrored only when its stamp differs.
+   */
+  dir?: DirStamp;
 };
 
 /** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
@@ -163,6 +176,12 @@ type ElementBase = {
   reveal?: "fade" | "rise" | "none";
   /** Shared across slides for the 'morph' transition. */
   morphKey?: string;
+  /**
+   * The element's exception to the right-to-left mirror (TEACH-75 part z): `keep` moves the box
+   * and changes nothing inside it (maths, code, figures); `flip` draws a directional glyph flipped.
+   * Absent: the element's type decides.
+   */
+  rtl?: ElementRtl;
 } & Provenance;
 
 export type TextPreset = "title" | "subtitle" | "heading" | "body" | "small" | "caption";
@@ -177,6 +196,11 @@ export type TextStyle = {
   color?: string;
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
+  /**
+   * BCP-47 language of the text when it differs from the lesson's (TEACH-75 part z): Arabic words
+   * on an English slide. Absent: the lesson's language.
+   */
+  lang?: string;
   /** Grow height to fit content (default true for new text). */
   autoHeight?: boolean;
   /** Shrink font to fit the box when content overflows. */
@@ -436,6 +460,8 @@ export type GroupElement = ElementBase & {
    * re-lays the group from it when an item is edited, added or removed. Ungrouping drops it.
    */
   layout?: LayoutRef;
+  /** A `layout` group's direction stamp, in its own frame, as `Slide.dir` (TEACH-75 part z). */
+  dir?: DirStamp;
 };
 
 export type SlideElement =
@@ -471,6 +497,7 @@ const elementBase = {
   revealStep: z.number().optional(),
   reveal: z.enum(["fade", "rise", "none"]).optional(),
   morphKey: z.string().optional(),
+  rtl: ElementRtlSchema.optional(),
   // F06 / F07 provenance (ADR 0025 §2). Declared here because `z.object` strips unknown keys.
   ...provenanceFields,
 };
@@ -493,6 +520,7 @@ export const TextStyleSchema = z.object({
   color: z.string().optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   valign: z.enum(["top", "middle", "bottom"]).optional(),
+  lang: LanguageTagSchema.optional(),
   autoHeight: z.boolean().optional(),
   autoFit: z.boolean().optional(),
   padding: z.number().optional(),
@@ -745,6 +773,7 @@ const GroupElementSchema = z.object({
   alt: z.string().optional(),
   figure: FigureRefSchema.optional(),
   layout: LayoutRefSchema.optional(),
+  dir: DirStampSchema.optional(),
 });
 
 export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion("type", [
@@ -859,6 +888,7 @@ export const SlideSchema = z
       })
       .optional(),
     answersRole: z.enum(["guard", "answers"]).optional(),
+    dir: DirStampSchema.optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential
