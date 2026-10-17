@@ -120,10 +120,11 @@ export interface WriterRow {
   /** The writer call's reported usage (full runs; a plan-only call is cut before it reports). */
   writerUsage: { inputTokens: number; outputTokens: number; reasoningTokens: number | null } | null;
   /**
-   * Plan-only: the writer call's cost without its reasoning, which a cut call never reports: the
-   * budget's (upper-biased) input estimate plus the plan's text at about 4 characters a token.
+   * Plan-only, estimated: what the cut writer call was charged to the budget (`settleCut`): its
+   * upper-biased input estimate, the plan's text at about 4 characters a token, and
+   * `CUT_REASONING_BOUND` reasoning tokens. A cut call never reports its usage.
    */
-  planWriterUsdNoReasoning?: number | null;
+  planWriterUsdEstimate?: number | null;
   planFit?: PlanFitReport;
   fill?: FillReport;
 }
@@ -321,13 +322,12 @@ export async function runPaidEval(
     planner?: Planner;
     writer?: "full" | "plan-only";
     /** Each brief's run, documents and writer tap included (the deck files are written from it). */
-    onRun?: (run: BriefRun, brief: EvalBrief, uncertain: BudgetUsage | null) => Promise<void>;
+    onRun?: (run: BriefRun, brief: EvalBrief) => Promise<void>;
   } = {},
 ): Promise<BriefResult[]> {
   const results: BriefResult[] = [];
   for (const brief of briefs) {
     if (budget.exceeded() || budget.lastRefusal()) break;
-    const before = budget.totals().uncertain;
     const run = await runBrief(brief, {
       ai,
       budget,
@@ -339,17 +339,7 @@ export async function runPaidEval(
       ...(options.planner ? { planner: options.planner } : {}),
       ...(options.writer ? { writer: options.writer } : {}),
     });
-    const after = budget.totals().uncertain;
-    // What this brief left uncertain (a plan-only writer call is cut, so it never settles).
-    const uncertain = after
-      ? {
-          calls: after.calls - (before?.calls ?? 0),
-          inputTokens: after.inputTokens - (before?.inputTokens ?? 0),
-          outputTokens: after.outputTokens - (before?.outputTokens ?? 0),
-          costUsd: after.costUsd === null ? null : after.costUsd - (before?.costUsd ?? 0),
-        }
-      : null;
-    await options.onRun?.(run, brief, uncertain);
+    await options.onRun?.(run, brief);
     results.push(run.result);
   }
   return results;
@@ -413,7 +403,6 @@ export function parseEvalArgs(argv: string[]): EvalArgs {
 export function writerRow(
   run: Pick<BriefRun, "result" | "lesson" | "writer">,
   mode: "full" | "plan-only",
-  uncertain: BudgetUsage | null,
 ): { row: WriterRow; fields: FieldFill[]; events: WriterEvent[] } | null {
   if (!run.writer) return null;
   const { tap, events } = run.writer;
@@ -428,14 +417,9 @@ export function writerRow(
     }
   }
   const flow = (full ?? plan)?.flow;
-  const fields = full ? deckFields(full, stage, events) : [];
-  const planUsd =
-    mode === "plan-only" && uncertain
-      ? costUsd(WRITER_MODEL, {
-          inputTokens: uncertain.inputTokens,
-          outputTokens: Math.ceil(tap.text.length / 4),
-        })
-      : undefined;
+  const fields = full ? deckFields(full, stage, events, run.result.id) : [];
+  const cut = run.writer.cut;
+  const planUsd = cut ? costUsd(WRITER_MODEL, cut) : undefined;
   return {
     row: {
       id: run.result.id,
@@ -444,12 +428,12 @@ export function writerRow(
       plannedSlides: Array.isArray(flow) ? flow.length : null,
       slidesKeyMs: tap.slidesKeyMs,
       writerUsage: tap.usage,
-      ...(planUsd !== undefined ? { planWriterUsdNoReasoning: planUsd } : {}),
+      ...(planUsd !== undefined ? { planWriterUsdEstimate: planUsd } : {}),
       ...(Array.isArray(flow) ? { planFit: planFit(flow, stage) } : {}),
       ...(full ? { fill: fillReport(fields, events) } : {}),
     },
     fields,
-    events,
+    events: events.map((e) => ({ ...e, lesson: run.result.id })),
   };
 }
 
@@ -532,18 +516,13 @@ if (import.meta.main) {
       : {}),
     ...(planner ? { planner } : {}),
     ...(writer ? { writer } : {}),
-    onRun: async (run, brief, uncertain) => {
-      const measured = writerRow(run, mode, uncertain);
+    onRun: async (run, brief) => {
+      const measured = writerRow(run, mode);
       if (!measured || !run.writer) return;
       lessons.push(measured.row);
-      // Pool by lesson: slide numbers repeat across lessons, so offset them apart.
-      const offset = pooled.fields.length ? 1000 * lessons.length : 0;
-      pooled.fields.push(...measured.fields.map((f) => ({ ...f, slide: f.slide + offset })));
-      pooled.events.push(
-        ...measured.events.map((e) =>
-          e.slide === undefined ? e : { ...e, slide: e.slide + offset },
-        ),
-      );
+      // Fields and events carry their lesson, so slides of different lessons never mix.
+      pooled.fields.push(...measured.fields);
+      pooled.events.push(...measured.events);
       await mkdir(deckDir, { recursive: true });
       const deck = {
         id: brief.id,
@@ -586,7 +565,7 @@ if (import.meta.main) {
     bands: {
       secondary: bandTotals(
         briefRows.filter((r) => secondaryIds.has(r.id)),
-        [...secondaryIds].length,
+        secondaryIds.size,
       ),
       primary: bandTotals(
         briefRows.filter((r) => !secondaryIds.has(r.id)),

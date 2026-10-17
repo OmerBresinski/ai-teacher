@@ -15,6 +15,8 @@ type J = Record<string, unknown>;
 
 /** One capped field: what the writer wrote against what it was shown. */
 export interface FieldFill {
+  /** The lesson (brief id) the field is from, so a pooled report keeps lessons apart. */
+  lesson: string;
   /** Deck position: title 1, objectives 2, `slides[i]` is i + 3, the close follows them. */
   slide: number;
   template: string;
@@ -27,6 +29,8 @@ export interface FieldFill {
 
 /** The writer's own log events the scorer reads (`ev: "slot-fill"`, `ev: "pilot-fit"`). */
 export interface WriterEvent {
+  /** Set when events of several lessons are pooled (`fillReport`). */
+  lesson?: string;
   ev?: string;
   slide?: number;
   route?: string;
@@ -149,7 +153,12 @@ export function menuSlideFields(
 }
 
 /** Every capped field in a writer output: its slides and its close, menu or slot-fill caps. */
-export function deckFields(writer: J, stage: WriterStage, events: WriterEvent[]): FieldFill[] {
+export function deckFields(
+  writer: J,
+  stage: WriterStage,
+  events: WriterEvent[],
+  lesson = "",
+): FieldFill[] {
   const caps = menuWordCaps(stage);
   const slotFill = new Map<number, WriterEvent>();
   for (const e of events)
@@ -175,6 +184,7 @@ export function deckFields(writer: J, stage: WriterStage, events: WriterEvent[])
     for (const f of fields)
       if (f.cap && f.cap > 0)
         out.push({
+          lesson,
           slide: no,
           template,
           path: f.path,
@@ -213,9 +223,14 @@ export interface FillReport {
   all: FillStats;
   byLayout: Record<string, FillStats>;
   /** Slides with a field over cap, a measured overflow, or half their body fields at 90%+. */
-  crammed: { slide: number; template: string; why: "over cap" | "measured" | "dense" }[];
+  crammed: {
+    lesson: string;
+    slide: number;
+    template: string;
+    why: "over cap" | "measured" | "dense";
+  }[];
   /** Slides the renderer's fit left over their measured room (pilot-fit) or slot-fill blamed. */
-  clippedSlides: number[];
+  clippedSlides: { lesson: string; slide: number }[];
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -253,26 +268,36 @@ export function fillReport(fields: FieldFill[], events: WriterEvent[]): FillRepo
     list.push(ratio(f));
     byLayout[f.template] = list;
   }
-  const measured = new Set<number>();
+  // Slides are numbered per lesson: a slide is its lesson and number.
+  const key = (lesson: string | undefined, slide: number) => `${lesson ?? ""}#${slide}`;
+  const measured = new Map<string, { lesson: string; slide: number }>();
   for (const e of events) {
     if (e.slide === undefined) continue;
-    if (e.ev === "pilot-fit" && e.path !== undefined && MEASURED_OVER.has(e.path))
-      measured.add(e.slide);
-    if (e.ev === "slot-fill" && e.route === "writer-fault") measured.add(e.slide);
+    const over =
+      (e.ev === "pilot-fit" && e.path !== undefined && MEASURED_OVER.has(e.path)) ||
+      (e.ev === "slot-fill" && e.route === "writer-fault");
+    if (over) measured.set(key(e.lesson, e.slide), { lesson: e.lesson ?? "", slide: e.slide });
+  }
+  const bySlide = new Map<string, FieldFill[]>();
+  for (const f of fields) {
+    const k = key(f.lesson, f.slide);
+    bySlide.set(k, [...(bySlide.get(k) ?? []), f]);
   }
   const crammed: FillReport["crammed"] = [];
-  for (const slide of [...new Set(fields.map((f) => f.slide))].sort((a, b) => a - b)) {
-    const own = fields.filter((f) => f.slide === slide);
+  for (const [k, own] of bySlide) {
+    const first = own[0];
+    if (!first) continue;
     const ownBody = own.filter((f) => f.body);
     const hi = ownBody.filter((f) => ratio(f) >= 0.9).length;
     const why = own.some((f) => f.words > f.cap)
       ? "over cap"
-      : measured.has(slide)
+      : measured.has(k)
         ? "measured"
         : ownBody.length > 0 && hi * 2 >= ownBody.length
           ? "dense"
           : null;
-    if (why) crammed.push({ slide, template: own[0]?.template ?? "", why });
+    if (why)
+      crammed.push({ lesson: first.lesson, slide: first.slide, template: first.template, why });
   }
   return {
     body: fillStats(body.map(ratio)),
@@ -281,7 +306,7 @@ export function fillReport(fields: FieldFill[], events: WriterEvent[]): FillRepo
       Object.entries(byLayout).map(([t, rs]) => [t, fillStats(rs)] as const),
     ),
     crammed,
-    clippedSlides: [...measured].sort((a, b) => a - b),
+    clippedSlides: [...measured.values()],
   };
 }
 
@@ -351,11 +376,29 @@ export interface PlannedSlide {
 }
 
 export interface PlanFitReport {
+  /**
+   * Always true: the writer's flow names a shape and a free-text size, never a layout id or an
+   * item count, so the layout is inferred from the shape and the count read from the size.
+   */
+  approximate: true;
   planned: number;
   checked: number;
   counts: Record<PlanVerdict, number>;
   slides: PlannedSlide[];
 }
+
+/**
+ * The flow shapes the writer prompt names (its step 2 list) that a menu layout takes. Matched
+ * against the plan's `shape`; fill.test.ts checks every one is still in each stage's system text,
+ * so a renamed shape fails a test instead of turning slides `unchecked`.
+ */
+export const PLAN_SHAPES = {
+  parts: "parts of a whole",
+  set: "a set of kinds or examples",
+  contrast: "a contrast",
+  check: "check",
+  recall: "recall",
+} as const;
 
 const ITEM_UNITS = [
   "items",
@@ -377,11 +420,11 @@ function layoutForPlan(
 ): { layout: string; units: string[] } | null {
   const shape = p.shape.toLowerCase();
   const size = p.size.toLowerCase();
-  if (shape.includes("parts of a whole")) return { layout: "items-row", units: ITEM_UNITS };
-  if (shape.includes("set of kinds")) return { layout: "panel-list", units: ITEM_UNITS };
-  if (shape.includes("contrast"))
+  if (shape.includes(PLAN_SHAPES.parts)) return { layout: "items-row", units: ITEM_UNITS };
+  if (shape.includes(PLAN_SHAPES.set)) return { layout: "panel-list", units: ITEM_UNITS };
+  if (shape.includes(PLAN_SHAPES.contrast))
     return { layout: "split-compare", units: ["sides", "things", "columns"] };
-  if (shape === "check" || shape === "recall") {
+  if (shape === PLAN_SHAPES.check || shape === PLAN_SHAPES.recall) {
     if (/\boptions?\b|choices?\b/.test(size))
       return { layout: "hinge", units: ["options", "choices"] };
     if (/\btasks?\b/.test(size)) return { layout: "practice", units: ["tasks", "questions"] };
@@ -457,6 +500,7 @@ export function planFit(flow: unknown, stage: WriterStage): PlanFitReport {
   };
   for (const s of slides) if (s.verdict !== "unchecked") counts[s.verdict] += 1;
   return {
+    approximate: true,
     planned: slides.length,
     checked: slides.filter((s) => s.verdict !== "unchecked").length,
     counts,

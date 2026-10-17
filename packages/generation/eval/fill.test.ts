@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { menuWordCaps } from "../src/writer/layout-menu";
+import { PILOT_PACK_ID } from "../src/writer/pilot-pack";
 import type { WriterStage } from "../src/writer/schema";
 import {
   deckFields,
@@ -9,6 +10,7 @@ import {
   fillReport,
   fillStats,
   menuSlideFields,
+  PLAN_SHAPES,
   parseSize,
   planFit,
   type WriterEvent,
@@ -40,13 +42,13 @@ const load = (id: string) => ({
 function pooled(withClose: boolean) {
   const fields: FieldFill[] = [];
   const events: WriterEvent[] = [];
-  LESSONS.forEach(([id, stage], k) => {
+  for (const [id, stage] of LESSONS) {
     const { writer, events: ev } = load(id);
     const last = (writer.slides as unknown[]).length + 2;
-    for (const f of deckFields(writer, stage, ev))
-      if (withClose || f.slide <= last) fields.push({ ...f, slide: f.slide + 1000 * k });
-    for (const e of ev) events.push({ ...e, slide: (e.slide ?? 0) + 1000 * k });
-  });
+    for (const f of deckFields(writer, stage, ev, id))
+      if (withClose || f.slide <= last) fields.push(f);
+    for (const e of ev) events.push({ ...e, lesson: id });
+  }
   return { fields, events };
 }
 
@@ -65,13 +67,14 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
       hinge: 8,
       "panel-list": 4,
     });
+    const F = "a-hinge-y9-forces";
     expect(r.crammed).toEqual([
-      { slide: 5, template: "equation-hero", why: "over cap" },
-      { slide: 7, template: "visual-text", why: "dense" },
-      { slide: 1006, template: "visual-text", why: "dense" },
+      { lesson: F, slide: 5, template: "equation-hero", why: "over cap" },
+      { lesson: F, slide: 7, template: "visual-text", why: "dense" },
+      { lesson: "y4-romans", slide: 6, template: "visual-text", why: "dense" },
     ]);
     // forces s5: slot-fill blamed the writer (formula 40 characters, room 28).
-    expect(r.clippedSlides).toEqual([5]);
+    expect(r.clippedSlides).toEqual([{ lesson: F, slide: 5 }]);
   });
 
   test("scores the close (exit ticket) too, against the menu's cap for its count", () => {
@@ -168,6 +171,25 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
 });
 
 describe("plan-only fit check", () => {
+  test("is labelled approximate, and every shape it maps is still in the writer prompt", () => {
+    expect(planFit([], "KS2").approximate).toBe(true);
+    for (const ks of ["KS1", "KS2", "KS3"]) {
+      const system = readFileSync(
+        join(
+          import.meta.dir,
+          "..",
+          "src",
+          "writer",
+          "bundles",
+          `pilot-${PILOT_PACK_ID}-menu`,
+          `system-${ks}.snapshot.txt`,
+        ),
+        "utf8",
+      );
+      for (const shape of Object.values(PLAN_SHAPES)) expect(system).toContain(shape);
+    }
+  });
+
   test("reads the planned count and words and checks them against the layout's cap", () => {
     const { writer } = load("y4-romans");
     const r = planFit(writer.flow, "KS2");

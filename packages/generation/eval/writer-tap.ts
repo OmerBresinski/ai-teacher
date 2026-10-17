@@ -1,4 +1,4 @@
-import type { AiCallContext, CreatedAi } from "@tj/ai";
+import type { AiCallContext, Budget, BudgetReservation, CreatedAi, TokenUsage } from "@tj/ai";
 import { wrapLanguageModel } from "ai";
 
 /*
@@ -96,4 +96,67 @@ export function tapWriter(
     });
   };
   return { ai: { ...ai, model } as CreatedAi, tap };
+}
+
+/**
+ * A cut writer call's reasoning is never reported; this bounds it when the call is settled. Low
+ * effort reasoned for 113 tokens on the 17 Oct proof lesson; 2,000 is a generous ceiling.
+ */
+export const CUT_REASONING_BOUND = 2000;
+
+/** One reservation a brief took on the shared budget. */
+interface Held {
+  modelId: string;
+  estimate: TokenUsage;
+  reservation: BudgetReservation;
+}
+
+/**
+ * The shared budget as one brief sees it: every reservation it takes is remembered, so the ones a
+ * plan-only cut leaves uncertain can be settled after the brief (`settleCut`) instead of holding
+ * their full upper-biased estimate against the cap for the rest of the run.
+ */
+export function trackReservations(budget: Budget): { budget: Budget; held: Held[] } {
+  const held: Held[] = [];
+  return {
+    held,
+    budget: {
+      ...budget,
+      reserve(modelId, estimate) {
+        const admitted = budget.reserve(modelId, estimate);
+        if ("reservation" in admitted)
+          held.push({ modelId, estimate, reservation: admitted.reservation });
+        return admitted;
+      },
+    },
+  };
+}
+
+/**
+ * Settle what a cut brief left open, once it has ended. The writer call is charged its input
+ * estimate plus the text it streamed (about 4 characters a token) and `CUT_REASONING_BOUND`, never
+ * more than its reservation's output; any other open call at its full estimate. Calls that settled
+ * themselves are untouched (`settle` is inert on them). Returns what the writer call was charged.
+ */
+export function settleCut(
+  budget: Budget,
+  held: Held[],
+  tap: WriterTap,
+  writerModelId: string,
+): { inputTokens: number; outputTokens: number } | null {
+  let writer: { inputTokens: number; outputTokens: number } | null = null;
+  for (const h of held) {
+    const isWriter: boolean = h.modelId === writerModelId && writer === null;
+    const usage: TokenUsage = isWriter
+      ? {
+          inputTokens: h.estimate.inputTokens,
+          outputTokens: Math.min(
+            h.estimate.outputTokens,
+            Math.ceil(tap.text.length / 4) + CUT_REASONING_BOUND,
+          ),
+        }
+      : { inputTokens: h.estimate.inputTokens, outputTokens: h.estimate.outputTokens };
+    if (budget.settle(h.reservation, usage) && isWriter) writer = usage;
+  }
+  return writer;
 }

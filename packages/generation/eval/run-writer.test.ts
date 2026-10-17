@@ -43,7 +43,7 @@ describe("eval:paid arguments (TEACH-110 part af)", () => {
 
 describe("writer row", () => {
   test("full: fill score and the plan check from the finished output", () => {
-    const m = writerRow({ result, lesson, writer: { tap: tap(raw), events } }, "full", null);
+    const m = writerRow({ result, lesson, writer: { tap: tap(raw), events } }, "full");
     expect(m?.row).toMatchObject({
       id: "y4-romans",
       stage: "KS2",
@@ -57,12 +57,15 @@ describe("writer row", () => {
     );
   });
 
-  test("plan-only: the plan check alone, and the cut call's cost without reasoning", () => {
+  test("plan-only: the plan check alone, and the cut call's settled cost", () => {
     const cut = raw.slice(0, raw.indexOf('"slides"') + 12);
     const m = writerRow(
-      { result: { ...result, ok: false }, lesson, writer: { tap: tap(cut), events: [] } },
+      {
+        result: { ...result, ok: false },
+        lesson,
+        writer: { tap: tap(cut), events: [], cut: { inputTokens: 5000, outputTokens: 2700 } },
+      },
       "plan-only",
-      { calls: 1, inputTokens: 5000, outputTokens: 9000, costUsd: 0.1 },
     );
     expect(m?.row.fill).toBeUndefined();
     expect(m?.row.deckLength).toBeNull();
@@ -73,10 +76,7 @@ describe("writer row", () => {
       "no-cell": 0,
       unparsed: 0,
     });
-    // 5000 input at $2/M plus the plan's ~cut.length/4 tokens at $10/M (Sol 6.1's prices).
-    expect(m?.row.planWriterUsdNoReasoning).toBeCloseTo(
-      0.01 + Math.ceil(cut.length / 4) * 10e-6,
-      6,
-    );
+    // What settleCut charged, at Sol 6.1's $2 / $10 per million: 5000 in + 2700 out.
+    expect(m?.row.planWriterUsdEstimate).toBeCloseTo(0.037, 9);
   });
 });

@@ -11,11 +11,12 @@ import {
   SPEC_RULE_CHECK,
   StageFailure,
 } from "../src";
+import { WRITER_MODEL } from "../src/writer/services";
 import type { EvalBrief } from "./briefs";
 import type { WriterEvent } from "./fill";
 import type { RubricDimension } from "./rubric-prompt";
 import { type EvalScores, scoreLesson } from "./scorers";
-import { tapWriter, type WriterTap } from "./writer-tap";
+import { settleCut, tapWriter, trackReservations, type WriterTap } from "./writer-tap";
 
 /*
  * One eval brief through the real pipeline (ADR 0025 §23), with the worker's `persist` contract
@@ -83,7 +84,12 @@ export interface BriefRun {
   lesson: Lesson;
   worksheet?: Worksheet;
   /** The writer call as the tap saw it, and the stage's own log events (`writer` set only). */
-  writer?: { tap: WriterTap; events: WriterEvent[] };
+  writer?: {
+    tap: WriterTap;
+    events: WriterEvent[];
+    /** Plan-only: what the cut writer call was charged (`settleCut`); null when nothing was cut. */
+    cut?: { inputTokens: number; outputTokens: number } | null;
+  };
 }
 
 export interface RunBriefOptions {
@@ -140,10 +146,12 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
       })
     : undefined;
   const events: WriterEvent[] = [];
+  // Plan-only: the cut leaves the writer's reservation uncertain; settle it after the brief.
+  const tracked = options.writer === "plan-only" ? trackReservations(options.budget) : undefined;
   const context = { lessonId: lesson.id, jobId: `eval-job-${brief.id}` };
   const deps: PipelineDeps = {
     ai: tapped?.ai ?? options.ai,
-    budget: options.budget,
+    budget: tracked?.budget ?? options.budget,
     signal,
     // Warnings reach the run's output: a schema miss logs its issue paths and messages
     // (content-free, ADR 0015) and nothing else, so a failed brief can be read from it. Info
@@ -209,6 +217,10 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   }
   // The lesson's own time: the judge that follows is measurement, not generation.
   const durationMs = Date.now() - startedAt;
+  const cut =
+    tracked && tapped
+      ? settleCut(tracked.budget, tracked.held, tapped.tap, WRITER_MODEL)
+      : undefined;
 
   const after = options.budget.totals();
   const scored = ok
@@ -264,6 +276,8 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     result,
     lesson,
     ...(worksheet ? { worksheet } : {}),
-    ...(tapped ? { writer: { tap: tapped.tap, events } } : {}),
+    ...(tapped
+      ? { writer: { tap: tapped.tap, events, ...(cut !== undefined ? { cut } : {}) } }
+      : {}),
   };
 }
