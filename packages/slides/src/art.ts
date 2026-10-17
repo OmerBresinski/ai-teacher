@@ -331,11 +331,11 @@ const dots = (x: number, y: number, w: number, h: number) =>
       return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
     }).join(""),
   );
+// Round 4 kept the dot grid over the whole ground (round4/NOTES.md); round 5 renders it full.
 const GEOMETRIC: Art = {
-  title: [dots(0, 400, 960, 128)],
-  content: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
-  // The strip away from the picture (a picture on the right takes the mirror).
-  picture: [dots(906, 0, 54, 531)],
+  title: [dots(0, 0, 960, 540)],
+  content: [dots(0, 0, 960, 540)],
+  picture: [dots(0, 0, 960, 540)],
 };
 
 export const THEME_ART: Record<string, Art> = {

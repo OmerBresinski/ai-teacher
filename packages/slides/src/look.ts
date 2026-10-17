@@ -9,6 +9,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
 import { contrastRatio, mix } from "./colour-contrast";
+import { composeCover } from "./cover-comps";
 import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
@@ -216,8 +217,9 @@ function readableSoft(ink: string, accent: string): string {
 }
 
 function cover(slide: Slide, t: Theme): Slide {
-  // A title set beside a photograph keeps its own composition; the cover is the typographic one.
-  if (slide.elements.some((e) => e.type === "image")) return slide;
+  // A title set beside a photograph takes the theme's cover composition (bleed, collage, hexagon,
+  // masthead, frame; `cover-comps.ts`), or keeps the layout's own (split) when the theme has none.
+  if (slide.elements.some((e) => e.type === "image")) return composeCover(slide, t);
   // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
   // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
   if (artOf(t)?.title?.length) {

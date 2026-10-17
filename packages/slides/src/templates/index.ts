@@ -65,6 +65,7 @@ import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-co
 // TEACH-75 part ac (C4): stages.
 import { layoutStages, type StageItem } from "./stages";
 import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
+import { withTitleBand } from "./title-band";
 // TEACH-17 part b (C1): the worked example.
 import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 
@@ -1786,6 +1787,21 @@ export function layoutTemplate(
   theme: Theme,
   stage: Stage,
   opts: LayoutOptions = {},
+): TemplateResult {
+  return banded(layoutFitted(input, theme, stage, opts), theme);
+}
+
+/** The theme's title band under a content slide's heading, measured on the laid slide. */
+function banded(r: TemplateResult, theme: Theme): TemplateResult {
+  withTitleBand(r.slide.elements, theme);
+  return r;
+}
+
+function layoutFitted(
+  input: TemplateInput,
+  theme: Theme,
+  stage: Stage,
+  opts: LayoutOptions,
 ): TemplateResult {
   const { result, bodyFromHeading } = layoutOnce(input, theme, stage, opts);
   if (bodyFromHeading) return result;

@@ -1,6 +1,7 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { DIAGRAM_NAME } from "@tj/slides";
+import { hexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import { surfacesOf } from "@tj/slides/surfaces";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
@@ -37,10 +38,20 @@ export function shapeNode(kind: ShapeKind, w: number, h: number, radius: number)
       return <polygon points={starPoints(w, h)} />;
     case "speech":
       return <path d={speechPath(w, h, radius)} />;
+    case "hexagon":
+      return <polygon points={fracPoints(hexagonPoints(), w, h)} />;
+    case "octagon":
+      return <polygon points={fracPoints(octagonPoints(w, h), w, h)} />;
+    case "notch":
+      return <polygon points={fracPoints(notchPoints(w, h, radius), w, h)} />;
     default:
       return <rect x={0} y={0} width={w} height={h} />;
   }
 }
+
+/** Box-fraction points (`@tj/slides/marks`) as an SVG `points` list in the box's units. */
+const fracPoints = (pts: readonly { x: number; y: number }[], w: number, h: number): string =>
+  pts.map((p) => `${p.x * w},${p.y * h}`).join(" ");
 
 function starPoints(w: number, h: number): string {
   const cx = w / 2;
@@ -121,6 +132,16 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         aria-hidden
         focusable="false"
       >
+        {element.shadow ? (
+          // An offset block (Poster): the same outline in the block's colour, moved, no line.
+          <g
+            fill={element.shadow.color}
+            stroke="none"
+            transform={`translate(${element.shadow.x} ${element.shadow.y})`}
+          >
+            {shapeNode(element.shape, w, h, radius)}
+          </g>
+        ) : null}
         <g
           fill={fill}
           stroke={stroke ?? "none"}

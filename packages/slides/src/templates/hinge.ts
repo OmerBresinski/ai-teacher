@@ -26,7 +26,7 @@ import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documen
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
 import { MIN_FONT_SIZE } from "../themes";
-import { type Corners, paintSurface, surfaceStyle } from "../themes/surfaces";
+import { type Corners, markLook, paintSurface, surfaceStyle } from "../themes/surfaces";
 import CAPACITY from "./hinge-capacity.json" with { type: "json" };
 import { type Ctx, type FieldReport, kit, type TemplateInput } from "./index";
 import { type Age, iconImage, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
@@ -563,16 +563,21 @@ function key(c: Ctx, letter: string, x: number, y: number, d: number) {
   // The gold's key is the card's ink with the letter in the card's fill (on dark themes a pale key
   // with a dark letter); the `key` role's accent would be a second red on the slide.
   const card = surfaceStyle(c.t, "card");
-  const st = { fill: card.ink ?? c.t.colors.ink, ink: card.fill };
+  // The theme's key family (THEMING.md section 6: outline, sticky, notch ...), never its badge.
+  const look = markLook(c.t, "key", d, card.ink ?? c.t.colors.ink, card.fill);
+  const st = { fill: look.fill, ink: look.ink };
   c.els.push({
     id: uid(),
     type: "shape",
-    shape: "rounded",
+    shape: look.shape,
     x: Math.round(x),
     y: Math.round(y),
     w: d,
     h: d,
-    radius: Math.round(d * 0.24),
+    ...(look.radius != null ? { radius: look.radius } : {}),
+    ...(look.stroke ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
+    ...(look.rotation ? { rotation: look.rotation } : {}),
+    ...(look.shadow ? { shadow: look.shadow } : {}),
     fill: st.fill,
     name: HINGE_NAMES.key,
     doc: kit.doc(letter),

@@ -6,6 +6,7 @@ import {
   SURFACE_TOKEN_SETS,
   type SurfaceSpec,
   surfaceStyle,
+  surfacesOf,
 } from "@tj/slides/surfaces";
 import JSZip from "jszip";
 import { exportLessonPptx } from "./pptx";
@@ -14,6 +15,7 @@ import {
   GROUND_PX,
   groundArtSvg,
   groundRaster,
+  MARK_PPTX,
   SURFACE_PPTX,
   shareMedia,
 } from "./pptx-surfaces";
@@ -63,8 +65,13 @@ const geometries = (xml: string): string[] =>
 beforeEach(clearGroundCache);
 
 describe("a fixture deck per role exports the listed shapes (row 4)", () => {
-  for (const id of ["paper", "beacon", "night-lab"]) {
+  for (const id of ["paper", "beacon", "night-lab", "geometric"]) {
     const theme = getTheme(id);
+    // Each theme's declared mark family, not a fixed "badge -> ellipse" (TICKETS-DRAFT 38-41 is
+    // superseded by the approved shapes).
+    const marks = surfacesOf(theme).marks;
+    const mark = (f: "badge" | "medal" | "chip", wide = false) =>
+      MARK_PPTX[marks[f]]?.[wide ? "wide" : "square"] ?? "";
     it(id, async () => {
       const cases: [string, Omit<SurfaceSpec, "id">, string][] = [
         [
@@ -72,21 +79,21 @@ describe("a fixture deck per role exports the listed shapes (row 4)", () => {
           { role: "field-b", box: { x: 480, y: 0, w: 480, h: 540 }, own: [34, 0, 0, 34] },
           SURFACE_PPTX["own-corners"],
         ],
-        ["badge", { role: "badge", box: { x: 100, y: 100, w: 44, h: 44 } }, SURFACE_PPTX.badge],
+        ["badge", { role: "badge", box: { x: 100, y: 100, w: 44, h: 44 } }, mark("badge")],
         [
           "badge now",
           { role: "badge", state: "now", box: { x: 100, y: 100, w: 44, h: 44 } },
-          SURFACE_PPTX.badge,
+          mark("badge"),
         ],
         [
           "medal tint",
           { role: "medal", state: "tint", box: { x: 100, y: 100, w: 96, h: 96 } },
-          SURFACE_PPTX.medal,
+          mark("medal"),
         ],
         [
           "chip quiet",
           { role: "chip", state: "quiet", box: { x: 100, y: 100, w: 140, h: 32 } },
-          SURFACE_PPTX.chip,
+          mark("chip", true),
         ],
         ["track", { role: "track", box: { x: 60, y: 300, w: 840, h: 44 } }, SURFACE_PPTX.track],
         ["scrim", { role: "scrim", box: { x: 100, y: 100, w: 120, h: 28 } }, SURFACE_PPTX.scrim],

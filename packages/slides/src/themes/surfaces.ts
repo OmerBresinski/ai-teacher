@@ -1,6 +1,18 @@
 import type { PathElement, ShapeElement, Theme } from "@tj/domain/documents";
 import { contrastRatio, mix } from "../colour-contrast";
 import { ALL_THEMES } from "../themes";
+
+/** Unlabelled surfaces: a cut corner is drawn as a closed path in box fractions (RTL mirrors it). */
+const FIELD_LIKE: ReadonlySet<string> = new Set(["field-a", "field-b", "card", "plate", "frame"]);
+
+import {
+  innerSides,
+  type MarkShape,
+  marksFromTokens,
+  notchPoints,
+  type ThemeMarks,
+  tornPoints,
+} from "./marks";
 import TOKENS from "./tokens.json";
 
 /*
@@ -57,6 +69,16 @@ export type SurfaceStyle = {
   edge?: number;
   shadow?: { x: number; y: number; color: string };
   ink?: string;
+  /**
+   * The drawn outline when it is not a rectangle, disc or pill (THEMING.md section 6 families):
+   * a hexagon, an octagon, two cut corners (`edge` is the leg) or a torn edge (`edge` is the
+   * depth; only the sides inside the slide tear). Every one stays inside the measured box.
+   */
+  shape?: "hexagon" | "octagon" | "notch" | "torn";
+  /** A rule drawn as dashes or dots instead of a solid bar. */
+  dash?: "dashed" | "dotted";
+  /** Degrees; a sticky key's tilt (≤ 3°). */
+  tilt?: number;
 };
 
 /** A notch or fold may not reach the content: field 16, card 10, plate 6 (THEME-FIT checks). */
@@ -65,6 +87,10 @@ export const EDGE_BUDGET: Partial<Record<SurfaceRole, number>> = {
   "field-b": 16,
   card: 10,
   plate: 6,
+  // A small mark's cut corner (Geometric's notched key): inside its own box, clear of its glyph.
+  key: 8,
+  badge: 8,
+  chip: 8,
 };
 /** An offset (shadow) block sits at most this far from its surface. */
 export const SHADOW_MAX = 8;
@@ -92,6 +118,8 @@ export type ThemeSurfaces = {
   states: Partial<Record<`${SurfaceRole}:${SurfaceState}`, SurfaceStyle>>;
   /** A zone's band, or null when the zone is never banded or the theme has no band. */
   zones: Record<TitleZone, SurfaceStyle | null>;
+  /** The theme's mark keywords (badge shape, card treatment, cover ...). */
+  marks: ThemeMarks;
 };
 
 export type SurfaceTokens = Record<string, string>;
@@ -100,6 +128,121 @@ const px = (v: string | undefined): number => Number.parseFloat(v ?? "0") || 0;
 /** True when a colour paints nothing: `transparent` or an `#RRGGBB00`. */
 export const isClear = (c: string | undefined): boolean =>
   !c || c === "transparent" || /^#[0-9a-f]{6}00$/i.test(c);
+
+/** A small mark's look: its shape family as corner, outline, fill and tilt (THEMING.md section 6). */
+export function markStyle(
+  base: SurfaceStyle,
+  shape: MarkShape,
+  marks: ThemeMarks,
+  _ground: string,
+): SurfaceStyle {
+  const { shape: _s, tilt: _t, shadow: _o, ...plain } = base;
+  switch (shape) {
+    case "disc":
+    case "pill":
+      return { ...plain, corner: "full" };
+    case "square":
+      return { ...plain, corner: 0 };
+    case "tile":
+      return {
+        ...plain,
+        corner: 0,
+        ...(marks.offset
+          ? {
+              shadow: { x: 6, y: 6, color: marks.offset.color },
+              line: marks.offset.color,
+              lineWidth: 3,
+            }
+          : {}),
+      };
+    case "rounded":
+    case "tag":
+      return { ...plain, corner: 6 };
+    case "hex":
+      return { ...plain, corner: 0, shape: "hexagon" };
+    case "notch":
+      return {
+        ...plain,
+        corner: 0,
+        shape: "notch",
+        edge: Math.max(4, Math.min(marks.notch || 8, 8)),
+      };
+    case "outline":
+      // A ring in the mark's own colour on the ground, its glyph in that colour.
+      return {
+        ...plain,
+        fill: "transparent",
+        line: isClear(base.fill) ? base.line : base.fill,
+        lineWidth: 2.5,
+        ink: isClear(base.fill) ? base.ink : base.fill,
+        corner: plain.corner === "full" ? "full" : 6,
+      };
+    case "sticky":
+      return marks.sticky
+        ? { ...plain, fill: marks.sticky.fill, corner: 2, tilt: marks.sticky.tilt }
+        : plain;
+  }
+}
+
+/** Lays a theme's mark keywords over its role styles, in place. */
+function withMarks(
+  roles: Record<SurfaceRole, SurfaceStyle>,
+  states: ThemeSurfaces["states"],
+  marks: ThemeMarks,
+  ground: string,
+): void {
+  // A family at its plain default (disc, pill, rounded key) keeps the role exactly as it was.
+  if (marks.badge !== "disc") roles.badge = markStyle(roles.badge, marks.badge, marks, ground);
+  if (marks.medal !== "disc") roles.medal = markStyle(roles.medal, marks.medal, marks, ground);
+  if (marks.chip !== "pill") roles.chip = markStyle(roles.chip, marks.chip, marks, ground);
+  if (marks.key !== "rounded") roles.key = markStyle(roles.key, marks.key, marks, ground);
+  // A state keeps its family's outline but is filled: the now badge is the solid one.
+  const solid = (st: SurfaceStyle | undefined, shape: MarkShape): SurfaceStyle | undefined => {
+    if (!st) return st;
+    const m = markStyle(
+      st,
+      shape === "outline" ? (marks.badge === "outline" ? "disc" : "rounded") : shape,
+      marks,
+      ground,
+    );
+    return m;
+  };
+  if (marks.badge !== "disc")
+    for (const k of ["badge:now", "badge:inverse", "badge:ghost"] as const)
+      states[k] = solid(states[k], marks.badge);
+  if (marks.chip !== "pill")
+    for (const k of ["chip:now", "chip:quiet"] as const) states[k] = solid(states[k], marks.chip);
+  if (marks.key !== "rounded") states["key:right"] = solid(states["key:right"], marks.key);
+  if (marks.medal !== "disc") states["medal:tint"] = solid(states["medal:tint"], marks.medal);
+  const offset = marks.offset
+    ? { x: marks.offset.d, y: marks.offset.d, color: marks.offset.color }
+    : undefined;
+  if (marks.card === "offset" && offset) {
+    roles.card = { ...roles.card, shadow: offset };
+    roles.plate = { ...roles.plate, shadow: offset, lineWidth: 3 };
+    for (const k of ["card:flat", "card:right"] as const) {
+      const st = states[k];
+      if (st) states[k] = { ...st, shadow: offset };
+    }
+  }
+  if (marks.frame === "offset" && offset) roles.frame = { ...roles.frame, shadow: offset };
+  if (marks.field === "torn") {
+    for (const r of ["field-a", "field-b"] as const)
+      roles[r] = { ...roles[r], shape: "torn", edge: 5, corner: 0 };
+  }
+  if (marks.field === "notch" && marks.notch > 0) {
+    const n = { shape: "notch" as const, edge: marks.notch, corner: 0 };
+    for (const r of ["field-a", "field-b", "plate"] as const)
+      roles[r] = { ...roles[r], ...n, edge: Math.min(n.edge, EDGE_BUDGET[r] ?? n.edge) };
+    roles.card = { ...roles.card, ...n };
+    for (const k of ["card:flat", "card:right"] as const) {
+      const st = states[k];
+      if (st) states[k] = { ...st, ...n };
+    }
+  }
+  if (marks.rule === "dashed") roles.rule = { ...roles.rule, dash: "dashed" };
+  if (marks.rule === "dots") roles.rule = { ...roles.rule, dash: "dotted" };
+}
 
 /** The kebab token record a theme file holds, as typed surfaces. */
 export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
@@ -119,6 +262,7 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     corner: 0,
     ...rest,
   });
+  const marks = marksFromTokens(t);
   const band = isClear(need("title-band"))
     ? null
     : s(need("title-band"), { ink: need("title-ink") });
@@ -166,6 +310,37 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     track: s(need("track-fill"), { ink: need("track-ink") }),
     scrim: s(need("scrim"), { ink: need("scrim-ink"), corner: 6 }),
   };
+  const states: ThemeSurfaces["states"] = {
+    "badge:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
+    "badge:inverse": s(need("now-ink"), { ink: need("badge-now"), corner: "full" }),
+    "badge:ghost": s("transparent", {
+      ink: need("muted"),
+      line: need("rule"),
+      lineWidth: 2,
+      corner: "full",
+    }),
+    "chip:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
+    "chip:quiet": s(need("chip-quiet-fill"), { ink: need("chip-quiet-ink"), corner: "full" }),
+    "card:flat": s(need("card-fill"), {
+      ink: need("card-ink"),
+      line: flatLine,
+      lineWidth: flatLine ? px(need("card-flat-lw")) : undefined,
+      corner: field,
+    }),
+    "card:right": s(need("card-fill"), {
+      ink: need("card-ink"),
+      line: need("sem-correct"),
+      lineWidth: Math.max(2, px(need("card-lw"))),
+      corner: field,
+    }),
+    "key:right": s(need("sem-correct"), { ink: need("key-ink"), corner: "full" }),
+    "medal:tint": s(need("medal-tint"), {
+      line: lineOf(need("medal-line")),
+      lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
+      corner: "full",
+    }),
+  };
+  withMarks(roles, states, marks, need("bg"));
   return {
     mode: need("mode") === "dark" ? "dark" : "light",
     ground: need("bg"),
@@ -181,37 +356,9 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     slots: [1, 2, 3, 4].map((n) => ({ fill: need(`cat-${n}-fill`), ink: need(`cat-${n}-ink`) })),
     dim: need("dim"),
     roles,
-    states: {
-      "badge:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
-      "badge:inverse": s(need("now-ink"), { ink: need("badge-now"), corner: "full" }),
-      "badge:ghost": s("transparent", {
-        ink: need("muted"),
-        line: need("rule"),
-        lineWidth: 2,
-        corner: "full",
-      }),
-      "chip:now": s(need("badge-now"), { ink: need("now-ink"), corner: "full" }),
-      "chip:quiet": s(need("chip-quiet-fill"), { ink: need("chip-quiet-ink"), corner: "full" }),
-      "card:flat": s(need("card-fill"), {
-        ink: need("card-ink"),
-        line: flatLine,
-        lineWidth: flatLine ? px(need("card-flat-lw")) : undefined,
-        corner: field,
-      }),
-      "card:right": s(need("card-fill"), {
-        ink: need("card-ink"),
-        line: need("sem-correct"),
-        lineWidth: Math.max(2, px(need("card-lw"))),
-        corner: field,
-      }),
-      "key:right": s(need("sem-correct"), { ink: need("key-ink"), corner: "full" }),
-      "medal:tint": s(need("medal-tint"), {
-        line: lineOf(need("medal-line")),
-        lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
-        corner: "full",
-      }),
-    },
+    states,
     zones: { top: band, "top-box": band, hero: null, inline: null },
+    marks,
   };
 }
 
@@ -530,15 +677,67 @@ export function paintSurface(
   };
   const stroke = style.line && !isClear(style.line) ? style.line : undefined;
   const lines = stroke ? { stroke, strokeWidth: style.lineWidth ?? 2 } : {};
+  const extra = {
+    ...(style.shadow ? { shadow: { ...style.shadow } } : {}),
+    ...(style.tilt ? { rotation: style.tilt } : {}),
+  };
+  // A dashed or dotted rule: one stroke along the bar's middle, as thick as the bar.
+  if (spec.role === "rule" && style.dash) {
+    return {
+      ...base,
+      type: "path",
+      points: [
+        { x: 0, y: 0.5 },
+        { x: 1, y: 0.5 },
+      ],
+      stroke: fill,
+      strokeWidth: Math.max(1.5, box.h),
+      dash: style.dash,
+      dashGap: style.dash === "dotted" ? 1.6 : 1.2,
+    };
+  }
+  // A theme's mark shape (THEMING.md section 6): a labelled mark stays a native shape kind so
+  // it keeps its label; a torn field is a closed path, its slide-edge sides kept straight.
+  if (style.shape === "torn") {
+    return {
+      ...base,
+      type: "path",
+      points: tornPoints(box.w, box.h, innerSides(box), style.edge ?? 5),
+      closed: true,
+      fill,
+      ...(stroke ? lines : { strokeWidth: 0 }),
+    };
+  }
+  if (style.shape === "notch" && FIELD_LIKE.has(spec.role)) {
+    return {
+      ...base,
+      type: "path",
+      points: notchPoints(box.w, box.h, style.edge ?? 8),
+      closed: true,
+      fill: isClear(style.fill) ? "transparent" : fill,
+      ...(stroke ? lines : { strokeWidth: 0 }),
+    };
+  }
+  if (style.shape) {
+    return {
+      ...base,
+      type: "shape",
+      shape: style.shape,
+      ...(style.shape === "notch" ? { radius: style.edge ?? 8 } : {}),
+      fill: isClear(style.fill) ? "transparent" : fill,
+      ...lines,
+      ...extra,
+    };
+  }
   const r = cornerRadii(style, box, spec.own);
   const same = r.every((c) => c === r[0]);
   if (style.corner === "full" && box.w === box.h) {
-    return { ...base, type: "shape", shape: "ellipse", fill, ...lines };
+    return { ...base, type: "shape", shape: "ellipse", fill, ...lines, ...extra };
   }
   if (style.corner === "full") {
-    return { ...base, type: "shape", shape: "pill", fill, ...lines };
+    return { ...base, type: "shape", shape: "pill", fill, ...lines, ...extra };
   }
-  if (same) {
+  if (same || style.shadow) {
     return {
       ...base,
       type: "shape",
@@ -546,6 +745,7 @@ export function paintSurface(
       ...(r[0] > 0 ? { radius: r[0] } : {}),
       fill,
       ...lines,
+      ...extra,
     };
   }
   return {
@@ -557,4 +757,72 @@ export function paintSurface(
     // A path with no stroke would draw the renderer's default ink line: a role with no line says 0.
     ...(stroke ? lines : { strokeWidth: 0 }),
   };
+}
+
+/** A labelled mark's drawing: the shape kind and its paint, for a layout that sets its own colours. */
+export type MarkLook = {
+  shape: ShapeElement["shape"];
+  radius?: number;
+  fill: string;
+  stroke?: string;
+  strokeWidth?: number;
+  /** The glyph's colour. */
+  ink: string;
+  rotation?: number;
+  shadow?: { x: number; y: number; color: string };
+};
+
+/**
+ * A badge, key, medal or chip in the theme's family (THEMING.md section 6), for a layout that
+ * picks its own fill and glyph colours (the worked rail's now and done badges, the hinge key):
+ * a disc stays a disc, a hex a hexagon, an outline a ring in the fill colour on no fill, a sticky
+ * key the theme's sticky paper with the ink letter, tilted.
+ */
+export function markLook(
+  theme: Pick<Theme, "id" | "dark">,
+  family: "badge" | "key" | "medal" | "chip",
+  d: number,
+  fill: string,
+  ink: string,
+): MarkLook {
+  const m = surfacesOf(theme).marks;
+  const kind = m[family];
+  switch (kind) {
+    case "disc":
+      return { shape: "ellipse", fill, ink };
+    case "pill":
+      return { shape: "pill", fill, ink };
+    case "square":
+      return { shape: "rect", fill, ink };
+    case "tile":
+      return {
+        shape: "rect",
+        fill,
+        ink,
+        ...(m.offset ? { shadow: { x: 4, y: 4, color: m.offset.color } } : {}),
+      };
+    case "rounded":
+    case "tag":
+      return { shape: "rounded", radius: Math.round(d * 0.24), fill, ink };
+    case "hex":
+      return { shape: "hexagon", fill, ink };
+    case "notch":
+      return { shape: "notch", radius: Math.max(4, Math.round(d * 0.22)), fill, ink };
+    case "outline":
+      return {
+        shape: family === "badge" ? "ellipse" : "rounded",
+        radius: Math.round(d * 0.16),
+        fill: "transparent",
+        stroke: fill,
+        strokeWidth: 2.5,
+        ink: fill,
+      };
+    case "sticky":
+      return {
+        shape: "rect",
+        fill: m.sticky?.fill ?? fill,
+        ink: surfacesOf(theme).roles.card.ink ?? ink,
+        rotation: m.sticky?.tilt ?? 0,
+      };
+  }
 }

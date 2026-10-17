@@ -53,6 +53,7 @@
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
     "./surfaces": "./src/themes/surfaces.ts",
+    "./marks": "./src/themes/marks.ts",
     "./arrow": "./src/paths/arrow.ts"
   },
   "scripts": {

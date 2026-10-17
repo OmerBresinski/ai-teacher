@@ -38,7 +38,7 @@ import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
-import { paintSurface, type SurfaceRole } from "../themes/surfaces";
+import { paintSurface, type SurfaceRole, surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, type TemplateInput } from "./index";
 import { type Age, ageProfileOf, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
 import CAPACITY from "./myth-capacity.json" with { type: "json" };
@@ -512,10 +512,13 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-a", fp, at.fact, MYTH_NAMES.factPanel, 0);
   const cx = SEAM + GAP / 2;
   const cy = band + SEAM_TOP + SEAM_D / 2;
+  // The seam takes the theme's badge family (Geometric's hexagon, THEMING.md section 6).
+  const seamShape: ShapeElement["shape"] =
+    surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
   const halo: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({
       x: cx - SEAM_D / 2 - GAP,
       y: cy - SEAM_D / 2 - GAP,
@@ -528,7 +531,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const seam: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({ x: cx - SEAM_D / 2, y: cy - SEAM_D / 2, w: SEAM_D, h: SEAM_D }),
     fill: col.deep,
   };
@@ -772,6 +775,7 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     lib && medal
       ? lib.iconMedalImageSrc(id, {
           medal,
+          ...(surfacesOf(c.t).marks.medal === "hex" ? { shape: "hex" as const } : {}),
           // As every layout's icons (iconSvgForTheme): the theme's slots, the age's drawing and
           // the size's line weights, so the feather keeps its outline at medal size.
           colours: lib.iconColoursFor({
@@ -791,7 +795,7 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     src,
     alt: id,
     fit: "contain",
-    radius: Math.round(b.w / 2),
+    ...(surfacesOf(c.t).marks.medal === "hex" ? {} : { radius: Math.round(b.w / 2) }),
   };
 }
 

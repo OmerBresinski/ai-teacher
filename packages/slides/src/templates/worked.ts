@@ -21,6 +21,7 @@
  */
 import {
   type ImageElement,
+  type PathElement,
   type RichDoc,
   type RunStyleAttrs,
   type ShapeElement,
@@ -35,7 +36,7 @@ import { arrowCubic } from "../paths/arrow";
 import { countLines, lineWidth } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
-import { paintSurface } from "../themes/surfaces";
+import { markLook, paintSurface, surfacesOf } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -412,6 +413,12 @@ function textEl(
   return el;
 }
 
+/** The theme's offset block (Poster), in a given colour and at most 5pt off a small plate. */
+const offsetOf = (c: Ctx, color: string): Pick<ShapeElement, "shadow"> => {
+  const o = surfacesOf(c.t).marks.offset;
+  return o ? { shadow: { x: Math.min(5, o.d), y: Math.min(5, o.d), color } } : {};
+};
+
 function shape(c: Ctx, el: Omit<ShapeElement, "id" | "type">, step?: number): ShapeElement {
   const s = {
     id: uid(),
@@ -537,35 +544,47 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const railX = X0 + BADGE / 2 - 1.5;
   const first = badgeY[0] ?? p.row1;
   const last = badgeY.at(-1) ?? first;
-  if (badgeY.length > 1)
-    shape(c, {
-      shape: "rect",
-      name: WORKED_NAMES.rail,
+  // A theme with dashed or dotted rules (Scrapbook, Geometric) draws its rail the same way.
+  const railDash = surfacesOf(c.t).roles.rule.dash;
+  const railPart = (name: string, y0: number, y1: number, fill: string, step?: number) => {
+    if (!railDash) {
+      shape(c, { shape: "rect", name, x: railX, y: y0, w: 3, h: y1 - y0, fill }, step);
+      return;
+    }
+    const el: PathElement = {
+      id: uid(),
+      type: "path",
+      name,
       x: railX,
-      y: first,
+      y: y0,
       w: 3,
-      h: last - first,
-      fill: col.rule,
-    });
+      h: y1 - y0,
+      points: [
+        { x: 0.5, y: 0 },
+        { x: 0.5, y: 1 },
+      ],
+      stroke: fill,
+      strokeWidth: 2.5,
+      dash: railDash,
+      dashGap: railDash === "dotted" ? 1.8 : 1.4,
+      ...(step ? { revealStep: step } : {}),
+    };
+    c.els.push(el);
+  };
+  if (badgeY.length > 1) railPart(WORKED_NAMES.rail, first, last, col.rule);
   badgeY.forEach((y, i) => {
-    if (i > 0)
-      shape(
-        c,
-        {
-          shape: "rect",
-          name: WORKED_NAMES.railFill,
-          x: railX,
-          y: badgeY[i - 1] as number,
-          w: 3,
-          h: y - (badgeY[i - 1] as number),
-          fill: ink,
-        },
-        i + 1,
-      );
+    if (i > 0) railPart(WORKED_NAMES.railFill, badgeY[i - 1] as number, y, ink, i + 1);
   });
+  const ghostLook = markLook(c.t, "badge", BADGE, c.t.colors.background, col.rule);
   for (const y of badgeY)
     shape(c, {
-      shape: "ellipse",
+      shape:
+        ghostLook.shape === "rounded" || ghostLook.shape === "notch"
+          ? ghostLook.shape
+          : ghostLook.shape === "hexagon"
+            ? "hexagon"
+            : "ellipse",
+      ...(ghostLook.radius != null ? { radius: ghostLook.radius } : {}),
       name: WORKED_NAMES.ghost,
       x: X0,
       y: y - BADGE / 2,
@@ -578,23 +597,29 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const badgeSize = stop(c, "body", BADGE * 0.46);
   // The newest row's badge is the accent (gold: `.lb.now`); the next click lays the ink badge over
   // it, so only the latest row is red. The last row's badge stays red.
-  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) =>
-    shape(
+  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
+    // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
+    const look = markLook(c.t, "badge", BADGE, fill, ink2);
+    const solid = look.fill === "transparent" && name === WORKED_NAMES.badge;
+    return shape(
       c,
       {
-        shape: "ellipse",
+        shape: look.shape,
+        ...(look.radius != null ? { radius: look.radius } : {}),
+        ...(look.stroke && !solid ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
         name,
         x: X0,
         y: y - BADGE / 2,
         w: BADGE,
         h: BADGE,
-        fill,
+        // An outline family's done badge is a ring on the ground (the rail shows through no hole).
+        fill: solid ? fill : look.fill === "transparent" ? c.t.colors.background : look.fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
           preset: "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
           fontWeight: 700,
-          color: ink2,
+          color: solid ? ink2 : look.ink,
           align: "center",
           valign: "middle",
           padding: 0,
@@ -602,6 +627,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       },
       step,
     );
+  };
   const onAccent = c.t.colors.onAccent ?? c.t.colors.background;
   for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, accent, onAccent, i + 1);
   for (const [i, y] of badgeY.entries())
@@ -628,6 +654,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
           fill: col.wash,
           stroke: accent,
           strokeWidth: 3,
+          ...offsetOf(c, accent),
         },
         R,
       );

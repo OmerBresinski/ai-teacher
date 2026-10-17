@@ -87,6 +87,8 @@ export function medalColoursFor(theme: MedalThemeInput): MedalColours {
 }
 
 export interface MedalSvgOptions extends IconSvgOptions {
+  /** The medal outline: a disc (default) or a theme's hexagon (Geometric). */
+  shape?: "disc" | "hex";
   medal: MedalColours;
   /** which face: the plain fill (default) or the tint */
   face?: "fill" | "tint";
@@ -164,6 +166,33 @@ export function iconMedalSvg(id: string, opts: MedalSvgOptions): string {
   const face = faceOf(opts);
   const ring = opts.ring ? safeHex(opts.ring, "") : "";
   const line = ringOf(opts.medal.line);
+  // Geometric's hexagon medal (THEMING.md section 6 `--medal-shape: hex`): the same face and
+  // ring as a flat-topped hexagon, the editor's and PPTX's 25% side cut.
+  if (opts.shape === "hex") {
+    const hex = (i: number) =>
+      [
+        `${60 + i / 2},${i}`,
+        `${180 - i / 2},${i}`,
+        `${240 - i},120`,
+        `${180 - i / 2},${240 - i}`,
+        `${60 + i / 2},${240 - i}`,
+        `${i},120`,
+      ].join(" ");
+    const edge = ring || line;
+    const w = ring ? CATEGORY_RING : QUIET_RING;
+    const rim = medalRim(id, opts);
+    const inset = Math.round(120 * (1 - ICON_SHARE));
+    const svgParts = [
+      `<polygon points="${hex(0)}" style="fill:${face}"/>`,
+      ...(edge
+        ? [
+            `<polygon points="${hex(w / 2)}" style="fill:none;stroke:${edge};stroke-width:${w};stroke-linejoin:round"/>`,
+          ]
+        : []),
+      `<g transform="translate(${inset} ${inset}) scale(${ICON_SHARE})">${rim ? `<g style="opacity:0.9">${rimOf(body, rim)}</g>` : ""}${body}</g>`,
+    ];
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"${pxAttrs(opts.px)}>${svgParts.join("")}</svg>`;
+  }
   const parts = [`<circle cx="120" cy="120" r="120" style="fill:${face}"/>`];
   if (ring) {
     const r = 120 - CATEGORY_RING / 2;
