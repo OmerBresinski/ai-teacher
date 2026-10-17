@@ -35,7 +35,6 @@ import { uid } from "../factories";
 import { PLACEHOLDER_IMAGE } from "../layouts";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
-import { MIN_FONT_SIZE } from "../themes";
 import {
   type Ctx,
   type FieldReport,
@@ -149,9 +148,8 @@ export const PANEL_NAMES = {
 
 /* Geometry (960 x 540; the pilot's 1440 px x 2/3). */
 const SLIDE_H = 540;
+/** The side column, with or without a visual: 313 at 960 (the gold's 470 at 1440; ruling 257). */
 export const PANEL_W = 313;
-/** The panel with no visual (option A, the default): about 28% of the slide, the title at its top. */
-export const PANEL_W_NARROW = 269;
 const TITLE_X = 40;
 /**
  * The title's right margin inside the panel: the same as its left (Greg's y/n, 13 Oct: the pilot's
@@ -299,12 +297,12 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const photo = figure && "photo" in figure ? figure : null;
   const cat = icons || !!shares;
 
-  // Panel and title. With no visual the panel narrows (A, the default), or keeps its width and
-  // shows the group's icon large (B, `panelNoVisual: "icon"`, when the first row's icon resolves).
+  // Panel and title. The panel is one width with or without a visual (ruling 257); with none it
+  // may show the group's icon large (B, `panelNoVisual: "icon"`, when the first row's icon resolves).
   const head = clean(input.heading);
   const visual = !!(shares || figure);
   const groupIcon = !visual && c.panelNoVisual === "icon" && icons ? (matched[0] ?? null) : null;
-  const panelW = visual || groupIcon ? PANEL_W : PANEL_W_NARROW;
+  const panelW = PANEL_W;
   const TITLE_W = panelW - TITLE_X - TITLE_RIGHT;
   const ROWS_X = panelW + ROWS_GAP;
   const ROWS_W = ROWS_RIGHT - ROWS_X;
@@ -337,15 +335,24 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const lines = head ? lines_(c.t, head, preset, L.displayWeight, size, TITLE_W) : 0;
     const h = Math.ceil(lines * size * L.lineHeights.title);
     const whole = !head || kit.wordsFit(c, head, preset, cushioned(TITLE_W), size, L.displayWeight);
-    return { size, preset, h, lines, ok: lines <= 4 && h <= titleRoom && whole };
+    return { size, preset, h, lines, whole, ok: lines <= 4 && h <= titleRoom && whole };
   };
-  // Down to the theme's heading floor, never past it: a word that is still too wide there leaves
-  // the title over (`geomOver`), so the writer or a re-lay acts; the browser never splits it.
+  // The title steps down only while its longest word is not whole on one line, and never below
+  // the size the row names draw at (ruling 256: the title stays the biggest text on the slide). A
+  // title still over there (a word too wide, too many lines) is reported over (`geomOver`), so the
+  // writer repairs it or the teacher is offered Shorten (ruling 215); the browser never splits it.
+  const f = n >= 6 ? 0.92 : n <= 3 ? 1.12 : 1;
+  const deckBody = n <= 3 ? resolveTextStyle({ preset: "body" }, c.t, "body").fontSize : 0;
+  const nameAt = (k: number) =>
+    drawn(c.t, "heading", Math.max(L.floors.name, L.sizes.name * 0.87 * k * f, deckBody));
+  const titleFloor = nameAt(1);
   let tk = 1;
   let title = titleAt(tk);
-  while (!title.ok && title.size > MIN_FONT_SIZE.heading && tk > 0.3) {
+  while (!title.whole && tk > 0.3) {
+    const next = titleAt(Math.round((tk - 0.02) * 100) / 100);
+    if (next.size < titleFloor) break;
     tk = Math.round((tk - 0.02) * 100) / 100;
-    title = titleAt(tk);
+    title = next;
   }
   const titleFits = title.ok;
 
@@ -356,24 +363,16 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
     const aspect = PANEL_PIC_ASPECT;
     const facts = factsOf(aspect);
     const avail = () => SLIDE_H - (TITLE_TOP + title.h + PHOTO_GAP);
-    const tk0 = tk;
+    // The title keeps its size for the picture (ruling 256: it shrinks only for its longest word).
     const shapes = [...SHAPES].filter(([, r]) => shapeMode(facts, r)).sort((a, b) => a[1] - b[1]);
     for (const [, r] of shapes) {
       const h = Math.round(PANEL_W / r);
-      tk = tk0;
-      title = titleAt(tk);
-      while (h > avail() && tk > 0.8) {
-        tk = Math.round((tk - 0.02) * 100) / 100;
-        title = titleAt(tk);
-      }
       if (h <= avail()) {
         picBox = { x: 0, y: SLIDE_H - h, w: PANEL_W, h, inset: false };
         break;
       }
     }
     if (!picBox) {
-      tk = tk0;
-      title = titleAt(tk);
       const h = Math.round(PANEL_W / aspect);
       if (h <= avail()) picBox = { x: 0, y: SLIDE_H - h, w: PANEL_W, h, inset: false };
       else {
@@ -474,16 +473,14 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   // Rows: discs give way first, then type, until the column is comfortable.
   const H = SLIDE_H - ROWS_FOOT - top;
   const d0 = L.disc * (n >= 6 ? 0.86 : n <= 3 ? 1.2 : 1);
-  const f = n >= 6 ? 0.92 : n <= 3 ? 1.12 : 1;
   const gapMin = n <= 3 ? 37 : 12;
   // Every size is the step the renderer draws (the deck's one key-stage scale snaps any stored
   // size to a step of its role), so what is measured here is what the browser lays out.
   // Three rows or fewer never read under the deck's own body step (TEACH-75 part ar): the gold's
   // 2- and 3-row lines are a step over its 5-row ones, so the name and line snap up to the step the
   // deck's body draws at (the name's heading role bottoms out at that step), never down past it.
-  const deckBody = n <= 3 ? resolveTextStyle({ preset: "body" }, c.t, "body").fontSize : 0;
   const sizesAt = (k: number) => ({
-    name: drawn(c.t, "heading", Math.max(L.floors.name, L.sizes.name * 0.87 * k * f, deckBody)),
+    name: nameAt(k),
     body: drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.94 * k * f, deckBody)),
   });
   const comfortName = drawn(c.t, "heading", L.comfort.name);

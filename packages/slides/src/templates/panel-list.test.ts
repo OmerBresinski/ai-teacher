@@ -20,7 +20,6 @@ import {
   PANEL_COMFORT,
   PANEL_NAMES,
   PANEL_W,
-  PANEL_W_NARROW,
   type PanelRow,
   PENDING_ICON,
   panelCapsFor,
@@ -310,17 +309,18 @@ describe("panel-list", () => {
       }
   });
 
-  test("no visual (option A, the default): the panel narrows and the title sits near the top", () => {
+  test("no visual (option A, the default): the panel is 313 wide (ruling 257) and the title sits near the top", () => {
     const r = layoutTemplate(input(4, "none"), T0, "ks2");
     const [panel] = named(r.slide.elements, PANEL_NAMES.panel) as ShapeElement[];
-    expect(panel?.w).toBe(PANEL_W_NARROW);
-    expect(PANEL_W_NARROW / 960).toBeCloseTo(0.28, 2);
+    expect(panel?.w).toBe(PANEL_W);
+    expect(PANEL_W).toBe(313);
     const title = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
     expect(title.y).toBeLessThan(100);
-    expect(title.x + title.w).toBeLessThanOrEqual(PANEL_W_NARROW);
-    // The rows move left with the panel.
+    expect(title.x + title.w).toBeLessThanOrEqual(PANEL_W);
+    // The rows start past the panel.
     const disc = named(r.slide.elements, PANEL_NAMES.disc)[0] as ShapeElement;
-    expect(disc.x).toBeLessThan(PANEL_W_NARROW + 60);
+    expect(disc.x).toBeGreaterThan(PANEL_W);
+    expect(disc.x).toBeLessThan(PANEL_W + 60);
     // With a visual the panel keeps its full width.
     const pie = layoutTemplate(input(4, "pie"), T0, "ks2");
     expect((named(pie.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
@@ -437,7 +437,7 @@ describe("panel-list", () => {
     const b = layoutTemplate(input(4, "none", undefined, plain), T0, "ks2", {
       panelNoVisual: "icon",
     });
-    expect((named(b.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W_NARROW);
+    expect((named(b.slide.elements, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
   });
 
   test("the heading is measured with the display-weight margin and reported when it cannot hold", () => {
@@ -477,10 +477,11 @@ describe("panel-list", () => {
       expect(caps?.text.cap, age).toBeGreaterThan(0);
       expect(caps?.text.words, age).toBeGreaterThan(0);
     }
-    // The audit's KS2 targets: heading about 7 words, 3 rows about 11, 4 rows about 6.
+    // The audit's KS2 targets: 3 rows about 11, 4 rows about 6. The heading is capped shorter
+    // (ruling 256: the title shrinks only for its longest word, so a long title is the writer's).
     expect(panelCapsFor("primary", 3)?.text.words).toBeGreaterThanOrEqual(11);
     expect(panelCapsFor("primary", 4)?.text.words).toBeGreaterThanOrEqual(6);
-    expect(panelCapsFor("primary", 3)?.heading.words).toBeGreaterThanOrEqual(6);
+    expect(panelCapsFor("primary", 3)?.heading.words).toBeGreaterThanOrEqual(3);
   });
 
   test("odd input never throws", () => {
@@ -607,13 +608,13 @@ describe("panel-list row pictures", () => {
       expect(faults).toEqual([]);
     });
 
-  test("the panel drops its own picture, pie and icon beside row pictures, and narrows", () => {
+  test("the panel drops its own picture, pie and icon beside row pictures, at the same width", () => {
     for (const visual of ["photo", "pie"]) {
       const r = layoutTemplate({ ...pictured(3), panel: input(3, visual).panel }, T0, "ks2");
       const els = r.slide.elements;
       expect(named(els, PANEL_NAMES.photo)).toHaveLength(0);
       expect(named(els, PANEL_NAMES.wedge)).toHaveLength(0);
-      expect((named(els, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W_NARROW);
+      expect((named(els, PANEL_NAMES.panel)[0] as ShapeElement).w).toBe(PANEL_W);
       expect(r.over).toEqual([]);
     }
     const icon = layoutTemplate(pictured(3), T0, "ks2", { panelNoVisual: "icon" });
@@ -857,5 +858,60 @@ describe("panel-list few rows read at the deck's body step", () => {
         expect(Math.abs(m - want)).toBeLessThan(col.h * 0.06);
       });
     }
+  });
+});
+
+describe("panel-list title fit: shrink only for the longest word, never below the row names (ruling 256)", () => {
+  const sized = (r: ReturnType<typeof layoutTemplate>, name: string) =>
+    named(r.slide.elements, name).map((e) => {
+      const t = e as TextElement;
+      return t.style?.fontSize ?? 0;
+    });
+  const titleOf = (heading: string, stage: Stage, theme: Theme = T0, visual = "none") =>
+    layoutTemplate({ ...input(3, visual), heading }, theme, stage);
+  for (const stage of STAGES) {
+    test(`${stage}: a short title keeps the full size`, () => {
+      const full = must(sized(titleOf("Food", stage), PANEL_NAMES.title)[0]);
+      for (const h of ["Food groups", "Our pets", "Big cats"]) {
+        const r = titleOf(h, stage);
+        expect(sized(r, PANEL_NAMES.title)[0], h).toBe(full);
+      }
+    });
+    test(`${stage}: a long single word steps down until it is whole, staying at or over the row names`, () => {
+      const full = must(sized(titleOf("Food", stage), PANEL_NAMES.title)[0]);
+      const r = titleOf("Photosynthesis", stage);
+      const size = must(sized(r, PANEL_NAMES.title)[0]);
+      const rowName = Math.max(...sized(r, PANEL_NAMES.name));
+      expect(size).toBeLessThan(full);
+      expect(size).toBeGreaterThanOrEqual(rowName);
+      if (!r.over.includes("heading")) {
+        const t = named(r.slide.elements, PANEL_NAMES.title)[0] as TextElement;
+        const st = atKeyStage(T0, stage);
+        const shown = resolveTextStyle(t.style ?? {}, st, t.style?.preset ?? "title");
+        // Whole on one line: the word alone measures one line in the title's box.
+        expect(countLines("Photosynthesis", shown.preset, st, t.w, shown.fontWeight, size)).toBe(1);
+      }
+    });
+    test(`${stage}: never below the row names; a word too wide there is reported over`, () => {
+      const word = "Pneumonoultramicroscopicsilicovolcanoconiosis";
+      for (const theme of THEMES) {
+        const r = titleOf(word, stage, theme);
+        const size = must(sized(r, PANEL_NAMES.title)[0]);
+        const rowName = Math.max(...sized(r, PANEL_NAMES.name));
+        expect(size, theme.id).toBeGreaterThanOrEqual(rowName);
+        expect(r.over, theme.id).toContain("heading");
+      }
+    });
+  }
+  test("Unbalanced forces change motion, KS2 and KS3, every theme: the title is at or over the row names", () => {
+    for (const stage of ["ks2", "ks3"] as Stage[])
+      for (const theme of THEMES)
+        for (const visual of ["none", "pie", "photo"]) {
+          const r = titleOf("Unbalanced forces change motion", stage, theme, visual);
+          const size = must(sized(r, PANEL_NAMES.title)[0]);
+          expect(size, `${theme.id} ${stage} ${visual}`).toBeGreaterThanOrEqual(
+            Math.max(...sized(r, PANEL_NAMES.name)),
+          );
+        }
   });
 });

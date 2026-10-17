@@ -204,9 +204,15 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
   }
   test("the request is smaller than v4.6's: the per-count twins go", () => {
     for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      // The panel-list line is left out: its numbers follow the measured table (TEACH-205 part d
+      // shortened the side title), not the question layouts this compares.
       const size = (id: "v4.6" | "v4.7") => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
-        return r.system.length + JSON.stringify(r.schema).length;
+        const system = r.system
+          .split("\n")
+          .filter((l) => !l.startsWith("- panel-list: "))
+          .join("\n");
+        return system.length + JSON.stringify(r.schema).length;
       };
       expect(size("v4.7")).toBeLessThan(size("v4.6"));
     }

@@ -210,7 +210,11 @@ describe("re-theme re-lays adaptive layouts in the new theme's faces", () => {
   // other theme tried) without also breaking in Studio, so this case has no stale fit to repair.
   // Follow-up: find a heading and theme pair at the new sizes that breaks only after the re-theme.
   test.todo(`"Find the resultant" in crayon: no word breaks`, () => {});
-  for (const [heading, to] of [["Brothers and sisters", "treehouse"]] as const) {
+  // 17 Oct 2026, TEACH-205 part d: the side column is 313 wide with or without a visual (ruling
+  // 257), so "Brothers and sisters" no longer breaks in stale Treehouse; twelve long headings across
+  // nine themes found no other pair that breaks only after the re-theme. Same follow-up as above.
+  test.todo(`"Brothers and sisters" in treehouse: no word breaks`, () => {});
+  for (const [heading, to] of [] as (readonly [string, string])[]) {
     test(`"${heading}" in ${to}: no word breaks`, () => {
       const base = laid(heading);
       expect(brokenWords(base)).toEqual([]);
