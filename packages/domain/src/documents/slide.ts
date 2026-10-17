@@ -205,6 +205,12 @@ export type TextStyle = {
   autoHeight?: boolean;
   /** Shrink font to fit the box when content overflows. */
   autoFit?: boolean;
+  /**
+   * `fontSize` is a size the layout took from its own age table (UX ruling 21 A, the approved
+   * golds' sizes), drawn as given rather than snapped to the key stage's type scale. Only layout
+   * recipes set it, and they keep their own floors.
+   */
+  fixedSize?: boolean;
   padding?: number;
   background?: string;
   radius?: number;
@@ -523,6 +529,7 @@ export const TextStyleSchema = z.object({
   lang: LanguageTagSchema.optional(),
   autoHeight: z.boolean().optional(),
   autoFit: z.boolean().optional(),
+  fixedSize: z.boolean().optional(),
   padding: z.number().optional(),
   background: z.string().optional(),
   radius: z.number().optional(),

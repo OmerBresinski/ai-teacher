@@ -35,7 +35,6 @@ import { arrowCubic } from "../paths/arrow";
 import { countLines, lineWidth } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
-import { MIN_FONT_SIZE } from "../themes";
 import { paintSurface } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
@@ -90,8 +89,15 @@ const EQ_LH = 1.2;
 const SAY_LH = 1.12;
 /** The narrowest move column (two lines of a six-word move). */
 const MOVE_MIN_W = pt(200);
-/** The gold's move size per age. */
+/**
+ * The gold's sizes per age (ruling 21 A; `northstars-v12/worked/worked.css`: `--eq` 70 px and
+ * `--say` 36 px, primary 54 px and 34 px). The gold has no early sizes: KS1 reads primary's.
+ */
 const SAY_BASE: Record<AgeKey, number> = { early: pt(34), primary: pt(34), secondary: pt(36) };
+const EQ_BASE: Record<AgeKey, number> = { early: pt(54), primary: pt(54), secondary: pt(70) };
+/** The gold's smallest move (28 px) and check sum (30 px), before the stage's reading floor. */
+const SAY_MIN = pt(28);
+const CHECK_MIN = pt(30);
 
 const NEG = "−";
 const NBSP = " ";
@@ -290,16 +296,29 @@ const EQ_SQUEEZE: Record<AgeKey, number> = { early: 0.7, primary: 0.7, secondary
 export const eqFloorOf = (stage: Stage): number => EQ_FLOOR[ageOf(stage)];
 
 /**
- * The equations' size: the largest step on the theme's heading ladder that fits 0.7 of the row
- * pitch (the theme's own heading size at most); under the floor, the smallest step over it when
- * the pitch still has room for it.
+ * The equations' size (the gold's `worked.js`): the age's size, at most 0.62 of the row pitch, and
+ * 0.92 of that beside the panel. Under the floor, the floor itself when the pitch still has room
+ * for it.
  */
-function eqSize(c: Ctx, pitch: number, age: AgeKey): number {
-  const l = ladder(c, "heading");
-  const eq = stop(c, "heading", pitch * 0.7);
+function eqSize(pitch: number, age: AgeKey, model: boolean): number {
+  const eq = Math.min(EQ_BASE[age], pitch * 0.62) * (model ? 0.92 : 1);
   if (eq >= EQ_FLOOR[age]) return eq;
-  const up = [...l].reverse().find((s) => s >= EQ_FLOOR[age]);
-  return up !== undefined && up <= pitch * EQ_SQUEEZE[age] ? up : eq;
+  return EQ_FLOOR[age] <= pitch * EQ_SQUEEZE[age] ? EQ_FLOOR[age] : eq;
+}
+
+/** The smallest move: the gold's 28 px, held at the stage's reading floor (ruling 162). */
+const sayFloorOf = (c: Ctx) => Math.max(SAY_MIN, c.s.small);
+
+/**
+ * A fit ladder: `top` down to `floor` in `step`s, the floor itself last. Largest first. The gold's
+ * sizes step by whole px, so they sit between the stage's type steps and are drawn as given
+ * (`fixedSize`).
+ */
+function rungs(top: number, floor: number, step: number): number[] {
+  const out: number[] = [];
+  for (let s = top; s > floor + 1e-6; s -= step) out.push(s);
+  out.push(Math.min(top, floor));
+  return out;
 }
 
 type Plan = {
@@ -330,8 +349,8 @@ function plan(
   const checkTop = H - FOOT - checkH;
   const lastY = check ? checkTop - pt(70) : H - FOOT - pt(60);
   const pitch = nEq > 1 ? Math.min(PITCH_MAX, (lastY - row1) / (nEq - 1)) : PITCH_MAX;
-  const eq = eqSize(c, pitch, age);
-  const say = stop(c, "body", Math.max(MIN_FONT_SIZE.body, Math.min(SAY_BASE[age], pitch * 0.42)));
+  const eq = eqSize(pitch, age, model);
+  const say = Math.max(sayFloorOf(c), Math.min(SAY_BASE[age], pitch * 0.42));
   const right = model ? W - PANEL_W - pt(44) : W - X0;
   return {
     rows: nEq + (check ? 1 : 0),
@@ -374,8 +393,9 @@ function textEl(
     doc: docOf(runs),
     style: {
       preset,
-      // Stored at the size every renderer draws at the bound stage; maths keeps the body face.
-      fontSize: resolveFontSize(c.t, preset, size),
+      // The gold's size (ruling 21 A), drawn as given at every stage; maths keeps the body face.
+      fontSize: size,
+      fixedSize: true,
       ...(preset === "heading" ? { fontFamily: c.t.fonts.body } : {}),
       lineHeight: EQ_LH,
       fontWeight: 500,
@@ -473,7 +493,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   };
   // Moves need a column: the equations step down the ladder (not under the floor) to make one;
   // a panel that still leaves none goes, and the text-only base stands on its own.
-  const sayMin = Math.min(...ladder(c, "body").filter((s) => s >= MIN_FONT_SIZE.body));
+  const sayMin = sayFloorOf(c);
   const roomy = (eq: number, model: boolean) => {
     if (!hasMoves) return true;
     const w = geom(eq, model).sayW;
@@ -483,7 +503,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     );
   };
   const down = (model: boolean) =>
-    ladder(c, "heading").find((s) => s <= p.eq && s >= floor && roomy(s, model));
+    rungs(p.eq, floor, pt(1)).find((s) => s >= floor && roomy(s, model));
   if (!roomy(p.eq, p.model)) {
     const eq = down(p.model);
     if (eq !== undefined) p = { ...p, eq };
@@ -506,7 +526,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   // A move takes one line if it fits, else two; type steps down only when two will not fit the pitch.
   const moveLines = (m: string, size: number) => countLines(m, "body", c.t, sayW, 600, size);
   const roomFor = (size: number) => Math.min(2, Math.floor((p.pitch + 4) / (size * SAY_LH)));
-  for (const s of ladder(c, "body").filter((s) => s < p.say && s >= MIN_FONT_SIZE.body))
+  for (const s of rungs(p.say, sayMin, pt(1)).slice(1))
     if (lines.some((l) => l.move && moveLines(l.move, p.say) > roomFor(p.say))) p.say = s;
 
   // The rail of badges: ghosts from the start, each row's badge and rail segment on its step.
@@ -678,8 +698,10 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const R = badgeY.length;
     const checkText = mathText(input.check.trim());
     const label = "Check:";
-    const steps = ladder(c, "heading");
-    let ce = stop(c, "heading", Math.min(pt(54), p.eq - 2));
+    // The gold's check sum: 0.8 of the equations (54 px at most), 1 px smaller until it fits.
+    const ceMin = Math.max(CHECK_MIN, c.s.small);
+    const steps = rungs(Math.max(ceMin, Math.min(pt(54), p.eq * 0.8)), ceMin, pt(1));
+    let ce = steps[0] as number;
     const labW = pt(170);
     const room = p.right - COL_L - pt(36) - labW - pt(32) - pt(60) - pt(28) - pt(36);
     for (const s of steps.filter((s) => s < ce))
@@ -701,7 +723,8 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         revealStep: R,
         reveal: "fade",
       } as ShapeElement);
-    const labSize = stop(c, "body", pt(40));
+    // The gold's "Check:" is 40 px, held at the stage's reading floor.
+    const labSize = Math.max(pt(40), c.s.small);
     textEl(
       c,
       WORKED_NAMES.checkLabel,
