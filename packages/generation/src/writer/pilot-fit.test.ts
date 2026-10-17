@@ -25,6 +25,7 @@ import {
 } from "./pilot-fit";
 import {
   layoutIconNames,
+  PILOT_PACK_ID,
   PILOT_PACKS,
   pilotRepairSchema,
   pilotRequest,
@@ -302,7 +303,7 @@ describe("one repair, then whole sentences", () => {
     );
     expect(want).toContain("root");
     for (const ks of ["KS1", "KS2", "KS3"]) {
-      const { schema } = pilotRequest("v4.7", ks, {}, (sc) => sc);
+      const { schema } = pilotRequest(PILOT_PACK_ID, ks, {}, (sc) => sc);
       const icon = schema.$defs["layout-icon"];
       expect(icon.anyOf[0].enum).toEqual(want);
       expect(icon.anyOf[1]).toEqual({ type: "null" });

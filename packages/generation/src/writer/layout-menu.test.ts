@@ -242,7 +242,7 @@ describe("split-compare at KS2: three pictured sides stay off the menu", () => {
  */
 describe("layout descriptions match their budgets", () => {
   const word = (w: number) =>
-    w <= 6 ? "a phrase" : w <= 12 ? "a short sentence" : "a sentence or two";
+    w <= 6 ? "a phrase" : w <= 14 ? "a short sentence" : "a sentence or two";
   const LENGTH = "(a phrase|a short sentence|a sentence or two)";
   for (const stage of STAGES)
     test(`${stage}: panel-list and split-compare name the tightest cell's length first`, () => {

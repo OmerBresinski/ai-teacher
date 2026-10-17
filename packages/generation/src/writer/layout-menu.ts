@@ -369,7 +369,7 @@ function media(a: Age): string {
  * over a 7-word side read as a target and crammed; build/CRAMMING-ROOT-CAUSE.md, TEACH-110 part ae).
  */
 const lengthWord = (w: number) =>
-  w <= 6 ? "a phrase" : w <= 12 ? "a short sentence" : "a sentence or two";
+  w <= 6 ? "a phrase" : w <= 14 ? "a short sentence" : "a sentence or two";
 const lengthSpan = (budgets: number[]) => {
   const lo = lengthWord(Math.min(...budgets));
   const hi = lengthWord(Math.max(...budgets));
