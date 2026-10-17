@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { Lesson } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { surfaceStyle } from "@tj/slides/surfaces";
+import { dimInk, surfaceStyle } from "@tj/slides/surfaces";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
@@ -62,7 +62,12 @@ describe("PPTX hinge reveal", () => {
       expect(geoms(reveal).filter((g) => g === "ellipse").length).toBe(
         geoms(ask).filter((g) => g === "ellipse").length + 1,
       );
-      // Three washes; ring, key and tick; the key letter and tick glyph as text boxes.
-      expect(geoms(reveal).length).toBe(geoms(ask).length + 3 + 3 + 2);
+      // Part d (ruling 258): the three wrong cards are redrawn with words in the dim tone, never
+      // washed over with a see-through shape.
+      const dim = dimInk(theme).slice(1).toUpperCase();
+      expect(ask).not.toContain(`val="${dim}"`);
+      expect(reveal).toContain(`val="${dim}"`);
+      expect(reveal).not.toContain("Reveal wash");
+      expect(reveal).not.toContain("<a:alpha");
     }, 30_000);
 });

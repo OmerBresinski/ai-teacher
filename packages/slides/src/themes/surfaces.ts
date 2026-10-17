@@ -309,6 +309,23 @@ export const SURFACES: Readonly<Record<string, ThemeSurfaces>> = Object.fromEntr
 export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>
   SURFACES[theme.id] ?? (SURFACES[theme.dark ? "dark-slate" : "paper"] as ThemeSurfaces);
 
+const tokensOf = (theme: Pick<Theme, "id" | "dark">): SurfaceTokens =>
+  SURFACE_TOKEN_SETS[theme.id] ??
+  SURFACE_TOKEN_SETS[theme.dark ? "dark-slate" : "paper"] ??
+  NIGHT_LAB;
+
+/**
+ * The theme's dim text tone (ruling 248, at least 4.5:1 on its grounds and cards): text that steps
+ * back, such as a hinge's wrong options after the reveal (ruling 258), never faded or see-through.
+ */
+export const dimInk = (theme: Pick<Theme, "id" | "dark">): string => String(tokensOf(theme).dim);
+
+/**
+ * The ground a stepped-back card takes (TEACH-256 part d): the slide's own ground token, quieter
+ * than a card, which the dim tone reads on at 4.5:1 or better (ruling 248, "dim on ground").
+ */
+export const dimGround = (theme: Pick<Theme, "id" | "dark">): string => String(tokensOf(theme).bg);
+
 /** The style for a role in a state (a state the theme does not set paints as the plain role). */
 export function surfaceStyle(
   theme: Pick<Theme, "id" | "dark">,

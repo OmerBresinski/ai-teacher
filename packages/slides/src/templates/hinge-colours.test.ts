@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { contrastRatio } from "../look";
 import { THEMES } from "../themes";
-import { surfaceStyle } from "../themes/surfaces";
+import { dimGround, dimInk, SURFACE_TOKEN_SETS, surfaceStyle } from "../themes/surfaces";
 import { HINGE_NAMES } from "./hinge";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
@@ -61,5 +61,63 @@ describe("hinge letter keys", () => {
     const q = r.slide.question as { options: { id: string; correct: boolean }[] };
     expect(q.options.map((o) => o.correct)).toEqual([true, false, false, false]);
     expect(q.options.map((o) => o.id)).toEqual(cards.map((c) => c.id));
+  });
+});
+
+/*
+ * TEACH-256 part d (rulings 258, 248): after the reveal a wrong card takes the theme's ground (quieter
+ * than a card) and its words the dim tone, never an opacity fade, so a pupil still reads them at
+ * 4.5:1 or better on every theme. Measured against the ground the card is drawn in.
+ */
+describe("hinge reveal: the wrong options' dim tone", () => {
+  test("every token set: the dim tone reads at 4.5:1 or better on the wrong card's ground", () => {
+    for (const [id, t] of Object.entries(SURFACE_TOKEN_SETS)) {
+      const ratio = contrastRatio(t.dim as string, t.bg as string);
+      expect({ id, ok: ratio >= 4.5 }).toEqual({ id, ok: true });
+    }
+  });
+
+  const looks: [string, TemplateInput][] = [
+    [
+      "tiles",
+      {
+        template: "hinge",
+        heading: "Which part makes seeds?",
+        options: ["Leaf", "Root", "Flower"],
+        choices: [
+          { text: "Leaf", icon: "leaf" },
+          { text: "Root", icon: "root" },
+          { text: "Flower", icon: "flower" },
+        ],
+        correct: 2,
+      },
+    ],
+    [
+      "2x2",
+      {
+        template: "hinge",
+        heading: "Which of these metals is magnetic?",
+        options: ["Copper", "Iron", "Aluminium", "All of them"],
+        correct: 2,
+      },
+    ],
+    ["rows", hinge(4)],
+  ];
+  test("every live theme, tiles, 2x2 and rows: dim on the faded card reads at 4.5:1 or better", () => {
+    for (const theme of THEMES)
+      for (const [look, input] of looks) {
+        const r = layoutTemplate(input, theme, "ks2");
+        const cards = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.card);
+        expect(cards.length).toBeGreaterThan(1);
+        for (const c of cards) {
+          expect(c.fill).toBeDefined();
+          const ratio = contrastRatio(dimInk(theme), dimGround(theme));
+          expect({ theme: theme.id, look, ok: ratio >= 4.5 }).toEqual({
+            theme: theme.id,
+            look,
+            ok: true,
+          });
+        }
+      }
   });
 });
