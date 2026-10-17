@@ -1,7 +1,7 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { DIAGRAM_NAME } from "@tj/slides";
-import { hexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
+import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import { surfacesOf } from "@tj/slides/surfaces";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
@@ -39,7 +39,7 @@ export function shapeNode(kind: ShapeKind, w: number, h: number, radius: number)
     case "speech":
       return <path d={speechPath(w, h, radius)} />;
     case "hexagon":
-      return <polygon points={fracPoints(hexagonPoints(), w, h)} />;
+      return <polygon points={fracPoints(markHexagonPoints(), w, h)} />;
     case "octagon":
       return <polygon points={fracPoints(octagonPoints(w, h), w, h)} />;
     case "notch":

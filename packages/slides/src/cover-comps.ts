@@ -11,7 +11,8 @@ import { uid } from "./factories";
 import { SAFE } from "./grid";
 import { layoutSlide } from "./layouts";
 import { docPlainText } from "./sentences";
-import { countLines } from "./text-measure";
+import { countLines, runWidth } from "./text-measure";
+import { resolveTextStyle } from "./text-style";
 import { MIN_FONT_SIZE } from "./themes";
 import { hexagonPoints, innerSides, notchPoints, tornPoints } from "./themes/marks";
 import { surfacesOf, titleBand } from "./themes/surfaces";
@@ -306,13 +307,23 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
   const cap = p.caption;
   // A theme's own kicker tracking (Geometric 0.10em) widens the caption by the extra per letter.
   const kTrack = surfacesOf(t).marks.kickerTracking;
-  const extra =
-    cap && kTrack
-      ? Math.max(0, Number.parseFloat(kTrack) - 0.08) *
-        (cap.style.fontSize ?? t.sizes.caption) *
-        docPlainText(cap.doc).length
-      : 0;
-  const capW = cap ? Math.ceil(captionWidth(cap, t) + extra) : 0;
+  // The plate hugs the kicker's real width: its face's advances, 700, uppercase, tracked. The
+  // kicker's middle dot (U+00B7) is outside the advance tables and fell back to an average letter,
+  // 18px too wide at 1440 (Greg 17 Oct, item 23); in Lexend it is as wide as a full stop, so it is
+  // measured as one (checked in Chromium: both strings 309.4px).
+  const capW = cap
+    ? Math.ceil(
+        runWidth(
+          docPlainText(cap.doc)
+            .toUpperCase()
+            .replace(/\u00B7/g, "."),
+          resolveTextStyle({ ...cap.style, fontWeight: 700 }, t).fontFamily,
+          700,
+          cap.style.fontSize ?? t.sizes.caption,
+          Number.parseFloat(kTrack ?? "0.08"),
+        ) + 2,
+      )
+    : 0;
   // cover5 `.kick`: flush with the text margin, padding 12/22/12/18px, one 16px cut top right.
   const kick = cap ? { x: cap.x, y: cap.y - 5, w: capW + 27, h: cap.h + 10 } : null;
   return keep([
@@ -323,10 +334,12 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
       type: "path",
       name: "Cover outline",
       locked: true,
-      x: hex.x + 20,
-      y: hex.y + 20,
-      w: hex.w,
-      h: hex.h,
+      // cover5 `.hexo` draws its 3px line inside its 620×560 box: the path is inset by half
+      // the 2pt stroke, so the line's outer edge is the box's.
+      x: hex.x + 20 + 1,
+      y: hex.y + 20 + 1,
+      w: hex.w - 2,
+      h: hex.h - 2,
       points: hexagonPoints(),
       closed: true,
       stroke: t.colors.accent,

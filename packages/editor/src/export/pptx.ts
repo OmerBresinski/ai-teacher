@@ -71,7 +71,7 @@ import {
 } from "@tj/slides";
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
-import { notchPoints } from "@tj/slides/marks";
+import { MARK_HEX_V, notchPoints } from "@tj/slides/marks";
 import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -1097,6 +1097,12 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     line: stroke && strokeWidth > 0 ? { color: stroke, width: strokeWidth } : { type: "none" },
   };
   if (element.shape === "rounded" || element.shape === "pill") options.rectRadius = inches(radius);
+  // A hexagon mark's top and bottom edges sit 4% inside its box, as on screen (`markHexagonPoints`);
+  // the preset fills the box it is given, so it gets the inner box. Its text keeps the full box.
+  if (element.shape === "hexagon") {
+    options.y = inches(element.y + element.h * MARK_HEX_V);
+    options.h = inches(element.h * (1 - 2 * MARK_HEX_V));
+  }
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const transparency = transparencyOf(element.opacity);
   if (transparency != null && options.fill) options.fill = { ...options.fill, transparency };

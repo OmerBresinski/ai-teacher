@@ -808,7 +808,8 @@ export function markLook(
     case "hex":
       return { shape: "hexagon", fill, ink };
     case "notch":
-      return { shape: "notch", radius: Math.max(4, Math.round(d * 0.22)), fill, ink };
+      // roles2.css notch key: `polygon(22% 0, ...)`, the cut 22% of the key (14px of 64), unrounded.
+      return { shape: "notch", radius: Math.max(4, Math.round(d * 22) / 100), fill, ink };
     case "outline":
       return {
         shape: family === "badge" ? "ellipse" : "rounded",

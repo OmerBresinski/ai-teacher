@@ -13,6 +13,8 @@
  *   the disc, and a quiet ring (L + 0.14) so the edge holds on a panel of a close tone. Light faces
  *   on a dark slide were "too light, garish and obscure the icons".
  */
+
+import { MARK_HEX_V } from "../themes/marks";
 import { type IconSvgOptions, iconBody, iconSignificantColours, pxAttrs } from "./library";
 import { contrast, fromOklch, mixOklab, safeHex, toOklch } from "./treatment";
 
@@ -167,15 +169,17 @@ export function iconMedalSvg(id: string, opts: MedalSvgOptions): string {
   const ring = opts.ring ? safeHex(opts.ring, "") : "";
   const line = ringOf(opts.medal.line);
   // Geometric's hexagon medal (THEMING.md section 6 `--medal-shape: hex`): the same face and
-  // ring as a flat-topped hexagon, the editor's and PPTX's 25% side cut.
+  // ring as a flat-topped hexagon, the editor's and PPTX's 25% side cut, its top and bottom 4%
+  // inside the box (`MARK_HEX_V`, roles2.css medal clip).
   if (opts.shape === "hex") {
+    const v = 240 * MARK_HEX_V;
     const hex = (i: number) =>
       [
-        `${60 + i / 2},${i}`,
-        `${180 - i / 2},${i}`,
+        `${60 + i / 2},${v + i}`,
+        `${180 - i / 2},${v + i}`,
         `${240 - i},120`,
-        `${180 - i / 2},${240 - i}`,
-        `${60 + i / 2},${240 - i}`,
+        `${180 - i / 2},${240 - v - i}`,
+        `${60 + i / 2},${240 - v - i}`,
         `${i},120`,
       ].join(" ");
     const edge = ring || line;

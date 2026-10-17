@@ -79,6 +79,11 @@ export type ThemeMarks = {
   iconOutline: boolean;
   /** The worked rail's colour ahead of the step (Geometric's gold #9AA8C0), or null for the rule. */
   railAhead: string | null;
+  /**
+   * The hinge's right-answer ring drawn inside the card at this width (Geometric: roles2.css
+   * `inset 0 0 0 4px`, 2.67pt), or 0 for the default 3pt ring outside it.
+   */
+  rightRingInset: number;
   /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
   footBar: number;
 };
@@ -127,6 +132,7 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     iconOutline: t["icon-outline"] === "ink",
     railAhead: /^#[0-9a-f]{6}$/i.test(t["rail-ahead"] ?? "") ? (t["rail-ahead"] as string) : null,
     footBar: Math.max(0, num(t["foot-bar"])),
+    rightRingInset: Math.min(4, Math.max(0, num(t["right-ring-inset"]))),
   };
 }
 
@@ -139,16 +145,27 @@ const frac = (pts: Pt[], w: number, h: number): Pt[] =>
  * A flat-topped hexagon filling the box, in box fractions: the sides cut in by `inset` of the
  * width (cover5's `polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)` at 0.25).
  */
-export function hexagonPoints(inset = 0.25): Pt[] {
+export function hexagonPoints(inset = 0.25, vInset = 0): Pt[] {
   return [
-    { x: inset, y: 0 },
-    { x: 1 - inset, y: 0 },
+    { x: inset, y: vInset },
+    { x: 1 - inset, y: vInset },
     { x: 1, y: 0.5 },
-    { x: 1 - inset, y: 1 },
-    { x: inset, y: 1 },
+    { x: 1 - inset, y: 1 - vInset },
+    { x: inset, y: 1 - vInset },
     { x: 0, y: 0.5 },
   ];
 }
+
+/**
+ * A hexagon mark's top and bottom edges sit this far inside its square box (round 2 roles2.css,
+ * badge/key/chip/medal `polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%)`), so a 48px
+ * badge is 48 wide and 44 tall, not 48 square (Greg, 17 Oct: "the hexagons feel taller than the
+ * gold"). The cover's picture hexagon fills its box (cover5 `.hex`).
+ */
+export const MARK_HEX_V = 0.04;
+
+/** The outline of a hexagon mark (`ShapeKind` "hexagon": badges, keys, medals, the myth seam). */
+export const markHexagonPoints = (): Pt[] => hexagonPoints(0.25, MARK_HEX_V);
 
 /** The hexagon inset that keeps a small mark's sides at 60° whatever its aspect (w ≥ h·0.58). */
 export const hexInset = (w: number, h: number): number =>

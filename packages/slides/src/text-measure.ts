@@ -80,6 +80,20 @@ export function emWidth(
   return w;
 }
 
+/**
+ * One line of `text` in a face, in points: the font's own advances plus `trackingEm` per letter
+ * (the cover kicker plate is sized from it, not from an average letter width).
+ */
+export function runWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  trackingEm = 0,
+): number {
+  return emWidth(text, advancesFor(stack, weight), trackingEm) * size;
+}
+
 /** The resolved type a line count depends on. */
 export type LineType = Pick<
   ResolvedText,

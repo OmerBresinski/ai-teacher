@@ -51,7 +51,21 @@ export type Ctx = {
    * A theme's own bar-model tile (tokens `tile-radius`, `tile-line`, `tile-fill`: Geometric's
    * worked gold, rx 10px, 3px ink line, the accent wash). Absent: the drawing's defaults.
    */
-  tile?: { radius?: number; line?: number; fill?: string };
+  tile?: {
+    radius?: number;
+    line?: number;
+    fill?: string;
+    /** The gap between cells (Geometric's gold: 0, the cells share their edges). */
+    gap?: number;
+    /** The share of the drawing's width the bars take, centred (the gold's 368 of 480px panel). */
+    span?: number;
+    /** Every cell one width, b's cell as wide as an x cell: still neutral, never x to scale. */
+    even?: boolean;
+    /** The weight of the plain numbers (the b cell, the total): the gold's 500. */
+    weight?: number;
+    /** The unknown's face: the theme's maths face (Geometric: Source Serif 4 italic). */
+    math?: string;
+  };
   /** The label size in slide points: never below the type floor, 18 (the back of the room). */
   fs: number;
   /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
@@ -153,12 +167,24 @@ function tileOf(t: Theme): { tile?: Ctx["tile"] } {
   const radius = num(tk?.["tile-radius"]);
   const line = num(tk?.["tile-line"]);
   const fill = /^#[0-9a-f]{6}$/i.test(tk?.["tile-fill"] ?? "") ? tk?.["tile-fill"] : undefined;
+  const gap = num(tk?.["tile-gap"]);
+  const span0 = num(tk?.["tile-span"]);
+  const span = span0 !== undefined && span0 > 0.5 && span0 <= 1 ? span0 : undefined;
+  const even = tk?.["tile-cells"] === "even";
+  const weight = num(tk?.["tile-weight"]);
+  // The theme's maths face (`text-measure.ts mathFaceOf`), by its font key.
+  const math = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
   if (radius === undefined && line === undefined && !fill) return {};
   return {
     tile: {
       ...(radius !== undefined ? { radius } : {}),
       ...(line !== undefined ? { line } : {}),
       ...(fill ? { fill } : {}),
+      ...(gap !== undefined ? { gap: Math.max(0, gap) } : {}),
+      ...(span !== undefined ? { span } : {}),
+      ...(even ? { even } : {}),
+      ...(weight !== undefined ? { weight } : {}),
+      ...(math ? { math: family(math) } : {}),
     },
   };
 }

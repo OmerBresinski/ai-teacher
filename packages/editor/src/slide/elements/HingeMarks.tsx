@@ -9,8 +9,15 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { hexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
-import { dimGround, dimInk, isClear, splitAlpha, surfaceStyle } from "@tj/slides/surfaces";
+import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
+import {
+  dimGround,
+  dimInk,
+  isClear,
+  splitAlpha,
+  surfaceStyle,
+  surfacesOf,
+} from "@tj/slides/surfaces";
 import { choiceText, HINGE_KEY } from "./choice";
 import { ElementBody } from "./ElementBody";
 
@@ -22,6 +29,8 @@ const DIM_PICTURE = 0.4;
 
 export type HingeMark = {
   ring: string;
+  /** The ring's width inside the card (Geometric), or 0 for the 3pt ring outside it. */
+  ringInset: number;
   keyFill: string;
   keyInk: string;
   radius: number;
@@ -59,7 +68,7 @@ function keyClip(shape: string, w: number, h: number, radius?: number): string |
     shape === "notch"
       ? notchPoints(w, h, radius ?? Math.round(w * 0.22))
       : shape === "hexagon"
-        ? hexagonPoints()
+        ? markHexagonPoints()
         : shape === "octagon"
           ? octagonPoints(w, h)
           : null;
@@ -97,6 +106,7 @@ export function hingeMarkOf(
     keyEl.type === "shape" ? keyClip(keyEl.shape, keyEl.w, keyEl.h, keyEl.radius) : undefined;
   return {
     ...roles,
+    ringInset: surfacesOf(theme).marks.rightRingInset,
     radius:
       "radius" in card && typeof card.radius === "number"
         ? card.radius
@@ -285,7 +295,8 @@ export default function HingeMarks({
               zIndex: 800,
               pointerEvents: "none",
               borderRadius: m.radius,
-              boxShadow: `0 0 0 3px ${m.ring}`,
+              boxShadow:
+                m.ringInset > 0 ? `inset 0 0 0 ${m.ringInset}px ${m.ring}` : `0 0 0 3px ${m.ring}`,
             }}
           >
             {k ? (

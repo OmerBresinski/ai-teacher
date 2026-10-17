@@ -412,12 +412,17 @@ function drawPercent(p: Extract<BarPanel, { model: "percent" }>, x: Ctx, w: numb
 const MATH_FAMILY =
   "'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'STIX Two Text', 'Times New Roman', serif";
 
+/** One gold pixel (1440 wide) in the drawing's units (slide points). */
+const PX = 2 / 3;
+
 /** ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale. */
 function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
   const { c } = x;
   const L = panelFs(x, w, h);
-  const bx = 2;
-  const bw = w - 4;
+  // A theme's tile span (Geometric's gold: the bars 368 of the 480px panel) centres the bars.
+  const span = x.tile?.span;
+  const bx = span ? (w * (1 - span)) / 2 : 2;
+  const bw = span ? w * span : w - 4;
   const bh = Math.max(L * 2, Math.min((h - L * 2.8) / 2, w * 0.24, L * 3.6));
   const gap = Math.max(L * 1.1, Math.min(bh * 0.45, h - 2 * bh - L * 1.4));
   const used = bh * 2 + gap;
@@ -426,11 +431,14 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   const bot = top + bh + gap;
   const xv = (p.c - p.b) / p.a;
   const bLabel = num(p.b);
-  const cut = Math.max(2, look().gap * x.fs);
+  const cut = x.tile?.gap ?? Math.max(2, look().gap * x.fs);
+  const numW = x.tile?.weight ?? 600;
   // Neutral: b takes a fixed share (or the room its number needs); the x cells share the rest
-  // equally, whatever x is.
+  // equally, whatever x is. A theme's even cells give b an x cell's width (the gold's row of four
+  // equal tiles), still the same whatever x is.
   const cells = (size: number) => {
-    const bW = Math.max(bw / (p.a + 2), textWidth(bLabel, x, size, 600) + L * 0.6);
+    const share = x.tile?.even ? p.a + 1 : p.a + 2;
+    const bW = Math.max(bw / share, textWidth(bLabel, x, size, numW) + L * 0.6);
     const xw = (bw - bW) / p.a;
     return { bW, xw, inner: xw - cut - x.minFs * 0.2 };
   };
@@ -451,20 +459,25 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   // A theme's own tile (Geometric: rx 10px, a 3px ink line, the wash) over the drawing's default.
   const rx = x.tile?.radius ?? 5;
   const lw = x.tile?.line ?? 2;
+  // A theme's own line width is set as a style, so the stroke ladder (`laddered`) keeps it.
+  const lwAttr =
+    x.tile?.line !== undefined ? `style="stroke-width:${n(lw)}"` : `stroke-width="${n(lw)}"`;
   const cell = (cx: number, cy: number, cw: number, fill: string) => {
     const box = `x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="${n(rx)}"`;
-    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" stroke-width="${n(lw)}"/>`;
+    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" ${lwAttr}/>`;
   };
   const ghost = (cx: number, cy: number, cw: number) =>
     `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
   const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink) =>
-    text(x, cx, cy, [p.unknown], { fs, weight: 500, fill, family: MATH_FAMILY }).replace(
-      "<text ",
-      '<text font-style="italic" ',
-    );
+    text(x, cx, cy, [p.unknown], {
+      fs,
+      weight: 500,
+      fill,
+      family: x.tile?.math ?? MATH_FAMILY,
+    }).replace("<text ", '<text font-style="italic" ');
   const mid = (y: number) => y + bh / 2;
-  const tickMark = (tx: number, ty: number, s: number) =>
-    `<path d="M${n(tx - s * 0.5)},${n(ty)} L${n(tx - s * 0.15)},${n(ty + s * 0.35)} L${n(tx + s * 0.55)},${n(ty - s * 0.4)}" fill="none" stroke="${c.accent}" stroke-width="${n(s * 0.14)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const tickMark = (tx: number, ty: number, s: number, k = 0.14) =>
+    `<path d="M${n(tx - s * 0.5)},${n(ty)} L${n(tx - s * 0.15)},${n(ty + s * 0.35)} L${n(tx + s * 0.55)},${n(ty - s * 0.4)}" fill="none" stroke="${c.accent}" ${k === 0.14 ? `stroke-width="${n(s * k)}"` : `style="stroke-width:${n(s * k)}"`} stroke-linecap="round" stroke-linejoin="round"/>`;
   const keys = barPanelFrames(p);
   const layer = (x: Ctx, k: number) => {
     const key = keys[k] as string;
@@ -478,8 +491,21 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
         const tagH = x.minFs * 1.15;
         const vfs = Math.max(x.minFs, Math.min(big, bh - tagH - x.minFs * 0.35));
         if (tagH + x.minFs * 0.2 + vfs > bh) x.faults?.push("the bars are too short for the check");
-        g += letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
-        const vy = Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
+        // A theme's own tile (Geometric) sets the tag and value where its gold does (worked.js:
+        // the tag's centre 22px in and 24px down, the value 6px under the cell's middle) when the
+        // two stay clear of each other.
+        const goldTag = { x: cx + 22 * PX, y: top + 24 * PX };
+        const goldVy = mid(top) + 6 * PX;
+        const gold =
+          !!x.tile &&
+          goldVy - vfs * 0.36 >= goldTag.y + x.minFs * 0.3 &&
+          goldVy + vfs * 0.36 <= top + bh;
+        g += gold
+          ? letter(x, goldTag.x, goldTag.y, x.minFs, c.muted)
+          : letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
+        const vy = gold
+          ? goldVy
+          : Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
         g += text(x, cx + xw / 2, Math.min(vy, top + bh - vfs * 0.55), [num(xv)], {
           fs: vfs,
           weight: 700,
@@ -491,23 +517,28 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
     if (taken)
       g +=
         ghost(xEnd, top, bW) +
-        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: 600, fill: c.muted });
+        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW, fill: c.muted });
     else
       g +=
         cell(xEnd, top, bW, c.surface) +
-        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: 600 });
+        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW });
     if (key === "whole" || key === "check") {
       g += cell(bx, bot, bw, c.surface);
       const cl = num(p.c);
-      const off = key === "check" ? L * 0.8 : 0;
-      g += text(x, bx + bw / 2 - off, mid(bot), [cl], { fs: big, weight: 600 });
+      // A theme's own tile (Geometric) places the total and its tick as its gold does
+      // (worked.js: the total 24px left of the middle, a 40px tick 48px right of it).
+      const goldTick = !!x.tile && textWidth(cl, x, big, numW) / 2 - 24 * PX < 28 * PX;
+      const off = key === "check" ? (goldTick ? 24 * PX : L * 0.8) : 0;
+      g += text(x, bx + bw / 2 - off, mid(bot), [cl], { fs: big, weight: numW });
       if (key === "check")
-        g += tickMark(bx + bw / 2 + textWidth(cl, x, big, 600) / 2 + L * 0.4, mid(bot), L * 1.1);
+        g += goldTick
+          ? tickMark(bx + bw / 2 + 48 * PX, mid(bot), 40 * PX, 0.16)
+          : tickMark(bx + bw / 2 + textWidth(cl, x, big, numW) / 2 + L * 0.4, mid(bot), L * 1.1);
     } else {
       if (key === "take")
         g +=
           cell(bx, bot, p.a * xw, c.surface) +
-          text(x, bx + (p.a * xw) / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: 600 });
+          text(x, bx + (p.a * xw) / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
       else
         for (let i = 0; i < p.a; i++)
           g +=
@@ -519,7 +550,7 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
             });
       g +=
         ghost(xEnd, bot, bW) +
-        text(x, xEnd + bW / 2, mid(bot), [bLabel], { fs: big, weight: 600, fill: c.muted });
+        text(x, xEnd + bW / 2, mid(bot), [bLabel], { fs: big, weight: numW, fill: c.muted });
       if (key === "take")
         g += `<line x1="${n(xEnd)}" x2="${n(xEnd)}" y1="${n(top - L * 0.6)}" y2="${n(bot + bh + L * 0.6)}" stroke="${c.accent}" stroke-width="3" stroke-linecap="round"/>`;
     }
