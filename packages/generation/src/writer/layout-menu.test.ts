@@ -194,8 +194,10 @@ describe("layout menu lines", () => {
       expect(faults).toEqual([]);
       expect(layoutOffer(stage)["split-compare"].sides).toEqual(keys);
       expect(keys).toContain("2");
-      expect(keys).toContain("3");
-      expect(line.startsWith("- split-compare: a vs: 2 or 3 things")).toBe(true);
+      // Three sides are offered only while their shown cap keeps the floor and no cliff (loop 1).
+      expect(
+        line.startsWith(`- split-compare: a vs: ${keys.includes("3") ? "2 or 3" : "2"} things`),
+      ).toBe(true);
     });
   }
 });

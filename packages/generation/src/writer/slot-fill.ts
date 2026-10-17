@@ -1,4 +1,5 @@
 import { charsOver, fitTable } from "./fixes";
+import { shownWords, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
 
 /*
@@ -42,13 +43,10 @@ type FitVariant = {
 /** Labels the fit table measured with a fixed length (fit-table.ts KEY_LABEL, COLUMN_LABEL). */
 const KEY_LABEL = 16;
 const COLUMN_LABEL = 12;
-/**
- * Characters per word (spaces included) used to turn a `maxLength` cap into the words the writer
- * is shown. On-slide strings average about 6 characters a word but reach 8 at the 95th
- * percentile, so at 8 a field written to its word budget fits its cap; the schema's `maxLength`
- * stays the hard backstop.
+/*
+ * A `maxLength` cap becomes words only through `shown-cap.ts` (per-stage characters a word, the
+ * writer shown about 75% of a body cap); the schema's `maxLength` stays the hard backstop.
  */
-export const CHARS_PER_WORD = 8;
 const LISTS = ["points", "questions", "options", "columns", "sequence", "items"] as const;
 
 const REF = (n: string): J => ({ $ref: `#/$defs/${n}` });
@@ -303,7 +301,12 @@ export const SHAPES = [
 const sfIntro = (heading: number, label?: number) =>
   `Layouts. A heading is up to ${heading} words${label ? `, a label ${label}` : ""}. Fits gives each fit's most words: its lead or stem, then "each" item, a phrase or one short sentence, never cut off. More words take a fit with fewer items; never cram.`;
 
-const words = (chars: number) => Math.max(1, Math.floor(chars / CHARS_PER_WORD));
+/** A body cap as the writer is shown it; `label` for headings and labels (their measured words). */
+const wordsAt = (stage: string) => {
+  const ws = writerStageOfKey(stage);
+  return (chars: number, label = false) =>
+    Math.max(1, label ? wordsWithin(chars, ws) : shownWords(chars, ws));
+};
 
 /** A variant def's caps, in field order: `[path, maxLength]`, e.g. `["points[].text", 92]`. */
 function defCaps(x: unknown, path = ""): [string, number][] {
@@ -324,7 +327,12 @@ function defCaps(x: unknown, path = ""): [string, number][] {
  * One fit's budget in words, from its strict def: `points-1-key-fig 22, each 15`. The lead or
  * stem goes unnamed; a card or column label is named only when labels differ across the menu.
  */
-function fitBudget(key: string, def: J, namedLabels: boolean): string {
+function fitBudget(
+  key: string,
+  def: J,
+  namedLabels: boolean,
+  words: (chars: number, label?: boolean) => number,
+): string {
   const parts: string[] = [];
   const props = (def.properties ?? {}) as Record<string, J>;
   for (const [path, n] of defCaps(def)) {
@@ -334,7 +342,7 @@ function fitBudget(key: string, def: J, namedLabels: boolean): string {
     // A list held at 0 items has no slot to describe.
     if (leaf !== undefined && props[list as string]?.maxItems === 0) continue;
     if (leaf === "label") {
-      if (namedLabels) parts.push(`each label ${words(n)}`);
+      if (namedLabels) parts.push(`each label ${words(n, true)}`);
     } else if (leaf === "text" && parts.at(-1)?.startsWith("each label"))
       parts.push(`${parts.pop()} + text ${words(n)}`);
     else if (leaf !== undefined) parts.push(`each ${words(n)}`);
@@ -349,11 +357,15 @@ function fitBudget(key: string, def: J, namedLabels: boolean): string {
  * budgets the writer reads are the caps it is held to. A layout whose budgets equal an earlier
  * layout's points to it. `label` is set when every label in the menu has one word budget.
  */
-export function fitsLines(schema: J): {
+export function fitsLines(
+  schema: J,
+  stage: string,
+): {
   heading?: number;
   label?: number;
   lines: Record<string, string>;
 } {
+  const words = wordsAt(stage);
   const defs = (schema.$defs ?? {}) as Record<string, J>;
   const variants = Object.entries(defs).flatMap(([name, def]) => {
     const [layout, key] = name.split("~");
@@ -363,8 +375,8 @@ export function fitsLines(schema: J): {
   const labels = new Set<number>();
   for (const { def } of variants) {
     for (const [path, n] of defCaps(def)) {
-      if (path === "heading") heading = Math.max(heading ?? 0, words(n));
-      if (path.endsWith("[].label")) labels.add(words(n));
+      if (path === "heading") heading = Math.max(heading ?? 0, words(n, true));
+      if (path.endsWith("[].label")) labels.add(words(n, true));
     }
   }
   const label = labels.size === 1 ? [...labels][0] : undefined;
@@ -373,7 +385,7 @@ export function fitsLines(schema: J): {
   for (const { layout, key, def } of variants) {
     const m = fits[layout] ?? new Map<string, string[]>();
     fits[layout] = m;
-    const budget = fitBudget("", def, label === undefined).trim();
+    const budget = fitBudget("", def, label === undefined, words).trim();
     m.set(budget, [...(m.get(budget) ?? []), key]);
   }
   const pairs = (m: Map<string, string[]>) =>
@@ -397,8 +409,8 @@ export function fitsLines(schema: J): {
  * schema, the menu intro by the slot rules; step 2 names each slide's shape and plans what does
  * not fit one slide, and step 3 fits shape first.
  */
-export function slotFillSystem(system: string, schema: J): string {
-  const { heading, label, lines } = fitsLines(schema);
+export function slotFillSystem(system: string, schema: J, stage: string): string {
+  const { heading, label, lines } = fitsLines(schema, stage);
   return system
     .split("\n")
     .map((line) => {
@@ -442,8 +454,12 @@ export type Arrival = {
    * holding more than one sentence) that does not end a sentence. Logged `cut: true`.
    */
   cuts: string[];
-  /** Every capped field's length against its cap, in words. */
-  fields: { path: string; words: number; capWords: number }[];
+  /**
+   * Every capped field's length against its cap, in words, in the shape the fill scorer reads
+   * (`build/writer-smoke/fill.py`: path, words, capWords): `capWords` is the measured cap in words
+   * (the hard limit), `shownWords` what the writer was shown for it (`shown-cap.ts`).
+   */
+  fields: { path: string; words: number; capWords: number; shownWords: number }[];
   /** The writer's measure (`charsOver`): the slide overflows its layout. Logged, not repaired. */
   over: string[];
   route: "as-written" | "writer-fault";
@@ -496,7 +512,8 @@ export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arr
         fields.push({
           path,
           words: wordsIn(v),
-          capWords: Math.floor(s.maxLength / CHARS_PER_WORD),
+          capWords: wordsWithin(s.maxLength, writerStageOfKey(stage)),
+          shownWords: shownWords(s.maxLength, writerStageOfKey(stage)),
         });
         const t = v.trim();
         const sentence =

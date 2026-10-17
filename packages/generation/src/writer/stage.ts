@@ -692,7 +692,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     throw new WriterIncompleteError(NO_EXIT_LAYOUT);
   const schema = withClose(closable, brief.exitTicketOnSlides);
   const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
-  const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
+  const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
