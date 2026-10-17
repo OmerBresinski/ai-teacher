@@ -60,6 +60,7 @@ import {
   fittedFontSize,
   growFixedText,
   HIGHLIGHT_FALLBACK_FILLS,
+  mathFaceOf,
   type PathSegment,
   pathSegments,
   presentedSlide,
@@ -255,6 +256,9 @@ export type RunStyle = {
   bulletCode?: string;
   /** The face a `font: "quote"` run is set in, and whether the theme sets quotes italic. */
   quoteFace?: string;
+  /** A maths variable's face (`mathFaceOf`) and whether it is set italic. */
+  mathFace?: string;
+  mathItalic?: boolean;
   quoteItalic?: boolean;
 };
 
@@ -329,6 +333,10 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
         options.fontFace = style.quoteFace;
         if (style.quoteItalic) options.italic = true;
       }
+      if (run.font === "math" && style.mathFace) {
+        options.fontFace = style.mathFace;
+        if (style.mathItalic) options.italic = true;
+      }
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
@@ -346,6 +354,8 @@ const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
   fontFace: fontFaceFor(r.fontFamily || theme.fonts.body),
   quoteFace: fontFaceFor(v2Profile(theme).fonts.quote),
   quoteItalic: v2Profile(theme).quoteStyle === "italic",
+  mathFace: fontFaceFor(mathFaceOf(theme).family),
+  mathItalic: mathFaceOf(theme).italic,
   fontSize: r.fontSize,
   color: hexColor(r.color) ?? hexColor(theme.colors.ink),
   bold: r.fontWeight >= 600,

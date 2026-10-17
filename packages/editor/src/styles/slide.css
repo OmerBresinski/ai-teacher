@@ -48,6 +48,11 @@
   font-family: var(--td-font-quote, inherit);
   font-style: var(--td-quote-style, normal);
 }
+/* `data-font="math"`: a maths variable in the theme's maths face (`--td-font-math`, `SlideView`). */
+[data-font="math"] {
+  font-family: var(--td-font-math, var(--td-font-quote, inherit));
+  font-style: var(--td-math-style, var(--td-quote-style, normal));
+}
 [data-hl] {
   padding: 0.04em 0.14em;
   margin: 0 -0.14em;

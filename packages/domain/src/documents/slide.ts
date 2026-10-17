@@ -198,6 +198,8 @@ export type TextStyle = {
   preset: TextPreset;
   /** Overrides. Absent = inherit from theme for the preset. */
   fontFamily?: string;
+  /** Tracking in em (`"0.1em"`); absent = the preset's own (a title's theme tracking, a caption's 0.08em). */
+  letterSpacing?: string;
   fontSize?: number;
   lineHeight?: number;
   fontWeight?: number;
@@ -539,6 +541,10 @@ export const TextPresetSchema = z.enum([
 export const TextStyleSchema = z.object({
   preset: TextPresetSchema,
   fontFamily: z.string().optional(),
+  letterSpacing: z
+    .string()
+    .regex(/^-?(0|0?\.\d{1,3})em$/)
+    .optional(),
   fontSize: z.number().optional(),
   lineHeight: z.number().optional(),
   fontWeight: z.number().optional(),

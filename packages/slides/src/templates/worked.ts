@@ -149,7 +149,7 @@ function mathRuns(s: string, vars: readonly string[], hot: string, all?: string)
       const i = m.index ?? 0;
       if (i > at)
         out.push(colour ? styled(t.slice(at, i), { color: colour }) : { text: t.slice(at, i) });
-      out.push(styled(m[0], { font: "quote", ...(colour ? { color: colour } : {}) }));
+      out.push(styled(m[0], { font: "math", ...(colour ? { color: colour } : {}) }));
       at = i + m[0].length;
     }
     if (at < t.length)

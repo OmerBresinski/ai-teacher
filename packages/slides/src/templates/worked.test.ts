@@ -98,11 +98,13 @@ describe("worked example: maths typesetting (W-d6)", () => {
     expect(mathText("M_r = 44")).toBe("Mr = 44");
     expect(mathText("Work out the 12-year-old's age")).toBe("Work out the 12-year-old's age");
   });
-  test("variables are set in the quote face, never a hyphen on the slide", () => {
+  // Variables are math runs: the theme's maths face, which is its quote face unless the theme names
+  // one (Geometric's Source Serif italic, `mathFaceOf`).
+  test("variables are set in the maths face, never a hyphen on the slide", () => {
     const els = lay("stress").slide.elements as El[];
     const all = els.map(words).join("");
     expect(all).not.toContain(" - ");
-    expect(JSON.stringify(els)).toContain('"font":"quote"');
+    expect(JSON.stringify(els)).toContain('"font":"math"');
     const moles = lay("moles")
       .slide.elements.map((e) => words(e as El))
       .join("");

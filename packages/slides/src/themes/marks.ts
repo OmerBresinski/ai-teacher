@@ -69,6 +69,14 @@ export type ThemeMarks = {
   sticky: { fill: string; tilt: number } | null;
   /** The hinge key's face: the card's ink (default) or the theme's accent (Geometric's gold). */
   keyFill: "ink" | "accent";
+  /** Tracking on the myth's MYTH / FACT tags (Geometric 0.08em), or null for the preset's own. */
+  tagTracking: string | null;
+  /** Tracking on the cover kicker (Geometric 0.10em), or null for the caption's own 0.08em. */
+  kickerTracking: string | null;
+  /** The emphasis colour inside a fact or field (Geometric's `--fa-accent` #1842B8), or null for the accent. */
+  emphasis: string | null;
+  /** Proof medals' icons drawn with an ink outline (Geometric's gold), else as they come. */
+  iconOutline: boolean;
   /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
   footBar: number;
 };
@@ -86,6 +94,10 @@ const pick = <T extends string>(all: readonly T[], v: string | undefined, d: T):
   v != null && (all as readonly string[]).includes(v) ? (v as T) : d;
 const num = (v: string | undefined): number => Number.parseFloat(v ?? "0") || 0;
 const clampAbs = (v: number, max: number) => Math.max(-max, Math.min(max, v));
+
+/** An em tracking token ("0.08em"), or null when missing or malformed. */
+const em = (v: string | undefined): string | null =>
+  v && /^-?(0|0?\.\d{1,3})em$/.test(v) ? v : null;
 
 /** The keyword tokens a theme sets, typed; an unknown or missing keyword takes the plain default. */
 export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks {
@@ -107,6 +119,10 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     offset: offset > 0 ? { d: offset, color: t["offset-color"] ?? t["ink"] ?? "#000000" } : null,
     sticky: sticky ? { fill: sticky, tilt: clampAbs(num(t["sticky-tilt"]), TILT_MAX) } : null,
     keyFill: t["key-fill"] === "accent" ? "accent" : "ink",
+    tagTracking: em(t["tag-tracking"]),
+    kickerTracking: em(t["kicker-tracking"]),
+    emphasis: /^#[0-9a-f]{6}$/i.test(t["emphasis"] ?? "") ? (t["emphasis"] as string) : null,
+    iconOutline: t["icon-outline"] === "ink",
     footBar: Math.max(0, num(t["foot-bar"])),
   };
 }

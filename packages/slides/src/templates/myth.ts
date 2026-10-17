@@ -283,7 +283,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const inner = { x: fp.x + FP_L, y: fp.y + TOP, w: fp.w - FP_L - FP_R, h: fp.h - TOP - FOOT };
   const factW = Math.min(MAX_TEXT, inner.w);
   const lineDocV = proof ? lineDoc(proof.line.trim(), col.muted) : null;
-  const factDocV = factDoc(factText, m.factEm, col.accent);
+  // The fact's emphasis: the theme's emphasis token (Geometric's `--fa-accent`), else the accent.
+  const factDocV = factDoc(factText, m.factEm, surfacesOf(c.t).marks.emphasis ?? col.accent);
   const factWt = v2.displayWeight;
   const fitFact = (disc: number) => {
     const shown = disc ? iconIds : [];
@@ -710,7 +711,11 @@ function tagEl(
     { ...b, y: b.y + (TAG_H - size) / 2, h: size },
     color,
   );
-  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12) + 4);
+  // A theme's tag tracking (Geometric 0.08em) adds its em per letter to the measured width.
+  const track = surfacesOf(c.t).marks.tagTracking;
+  const extra = track ? Number.parseFloat(track) * size * word.length : 0;
+  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12 + extra) + 4);
+  if (track) el.style = { ...el.style, letterSpacing: track };
   return el;
 }
 
@@ -806,6 +811,8 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
       ? lib.iconMedalImageSrc(id, {
           medal,
           ...(surfacesOf(c.t).marks.medal === "hex" ? { shape: "hex" as const } : {}),
+          // A theme whose gold outlines its proof icons in ink (Geometric) draws the outlined style.
+          ...(surfacesOf(c.t).marks.iconOutline ? { style: "pilot" as const } : {}),
           // As every layout's icons (iconSvgForTheme): the theme's slots, the age's drawing and
           // the size's line weights, so the feather keeps its outline at medal size.
           colours: lib.iconColoursFor({

@@ -4,6 +4,7 @@ import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
 import { fontFloor, keyStageOf } from "./themes";
+import THEME_TOKENS from "./themes/tokens.json";
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before
@@ -225,6 +226,17 @@ export function quoteFaceOf(theme: Theme): { family: string; italic: boolean } {
   return { family: theme.fonts.body, italic: false };
 }
 
+/**
+ * The face a `font: "math"` run (a maths variable) is set in: a theme's own tokens `math-face` and
+ * `math-style` (Geometric: Source Serif 4 italic, the worked gold's `.v`), else its quote face, so
+ * a theme without one draws its variables as before.
+ */
+export function mathFaceOf(theme: Theme): { family: string; italic: boolean } {
+  const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[theme.id];
+  const own = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
+  return own ? { family: own, italic: tk?.["math-style"] === "italic" } : quoteFaceOf(theme);
+}
+
 /** The family a `font: "quote"` run is measured and drawn in. */
 export const quoteFamilyOf = (theme: Theme): string => quoteFaceOf(theme).family;
 
@@ -248,7 +260,10 @@ export const ORDERED_INDENT_EM = 1.45;
 export function runsOf(node: RichNode, bold = false): Run[] {
   const b = bold || !!node.marks?.some((m) => m.type === "bold");
   if (node.type === "text") {
-    const quote = node.marks?.some((m) => m.type === "textStyle" && m.attrs?.font === "quote");
+    // A maths variable is measured in the quote advances (a single serif glyph: the nearest table).
+    const quote = node.marks?.some(
+      (m) => m.type === "textStyle" && (m.attrs?.font === "quote" || m.attrs?.font === "math"),
+    );
     return [{ text: node.text ?? "", bold: b, quote, node }];
   }
   if (node.type === "hardBreak") return [{ text: "\n" }];

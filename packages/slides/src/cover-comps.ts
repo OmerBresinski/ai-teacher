@@ -293,7 +293,15 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
   // cover5 `.col` is 600px (400pt) wide beside the hexagon.
   const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)));
   const cap = p.caption;
-  const capW = cap ? captionWidth(cap, t) : 0;
+  // A theme's own kicker tracking (Geometric 0.10em) widens the caption by the extra per letter.
+  const kTrack = surfacesOf(t).marks.kickerTracking;
+  const extra =
+    cap && kTrack
+      ? Math.max(0, Number.parseFloat(kTrack) - 0.08) *
+        (cap.style.fontSize ?? t.sizes.caption) *
+        docPlainText(cap.doc).length
+      : 0;
+  const capW = cap ? Math.ceil(captionWidth(cap, t) + extra) : 0;
   // cover5 `.kick`: flush with the text margin, padding 12/22/12/18px, one 16px cut top right.
   const kick = cap ? { x: cap.x, y: cap.y - 5, w: capW + 27, h: cap.h + 10 } : null;
   return keep([
@@ -328,7 +336,10 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
         }
       : undefined,
     cap
-      ? ink({ ...cap, x: cap.x + 12, w: capW + 2 }, t.colors.background, { fontWeight: 700 })
+      ? ink({ ...cap, x: cap.x + 12, w: capW + 2 }, t.colors.background, {
+          fontWeight: 700,
+          ...(kTrack ? { letterSpacing: kTrack } : {}),
+        })
       : undefined,
     col.title,
     col.subtitle,
