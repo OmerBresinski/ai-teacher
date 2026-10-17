@@ -828,7 +828,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       c.t,
     );
     if (made?.ok) {
-      const cy = (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2;
+      // The gold (v12 worked.js): the bars centre 8px under the middle of the equation rows.
+      const cy =
+        (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2 + pt(8);
       const ph = Math.min(pt(560), H - 2 * pt(48));
       const box = {
         x: W - PANEL_W + pt(16),

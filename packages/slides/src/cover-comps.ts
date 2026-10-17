@@ -217,10 +217,14 @@ export function coverColumn(
   p: Parts,
   t: Theme,
   width: number,
+  /** The composition's own spacing: the title's drop under the eyebrow and the question's gap. */
+  space: { drop?: number; gap?: number } = {},
 ): { title?: TextElement; subtitle?: TextElement } {
   const foot = H - SAFE.y;
   // The column starts where the layout put the title (under the eyebrow) and never rises over it.
-  const top0 = p.title?.y ?? (p.caption ? p.caption.y + p.caption.h + 12 : SAFE.y);
+  const top0 =
+    (p.title?.y ?? (p.caption ? p.caption.y + p.caption.h + 12 : SAFE.y)) + (space.drop ?? 0);
+  const gap = space.gap ?? 20;
   const sub = p.subtitle;
   const words = sub ? docPlainText(sub.doc) : "";
   const lhS = t.lineHeights.small ?? 1.3;
@@ -257,9 +261,11 @@ export function coverColumn(
   const tFloor = Math.max(37, Math.round(tSize0 * 0.62));
   let ts = tSize0;
   let ss = subSize;
-  const total = () => titleH(ts) + (sub ? 20 + subH(ss) : 0);
+  const total = () => titleH(ts) + (sub ? gap + subH(ss) : 0);
   while (top0 + total() > foot && ts > tFloor) ts -= 1;
   while (top0 + total() > foot && ss > Math.min(subSize, MIN_FONT_SIZE.small)) ss -= 1;
+  // A column too tall for the gold's spacing even at the title floor closes up to the split stack.
+  if ((space.drop || space.gap) && top0 + total() > foot) return coverColumn(p, t, width);
   const out: { title?: TextElement; subtitle?: TextElement } = {};
   let y = top0;
   if (title) {
@@ -277,7 +283,7 @@ export function coverColumn(
   if (sub)
     out.subtitle = {
       ...sub,
-      y: y + 20,
+      y: y + gap,
       w: width,
       h: subH(ss),
       style: { ...sub.style, preset: "small", fontSize: ss, lineHeight: lhS, valign: "top" },
@@ -303,7 +309,12 @@ function hexShape(p0: Parts, t: Theme): SlideElement[] {
   const p = splitColumn(p0, t);
   const hex = { x: 507, y: 71, w: 413, h: 373 };
   // cover5 `.col` is 600px (400pt) wide beside the hexagon.
-  const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)));
+  // The gold's shape comp (cover5.html): the title 34px under the plate, the question 64px under
+  // the title, measured on the gold's ink as 18pt and 38pt over the split layout's stack.
+  const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)), {
+    drop: 18,
+    gap: 38,
+  });
   const cap = p.caption;
   // A theme's own kicker tracking (Geometric 0.10em) widens the caption by the extra per letter.
   const kTrack = surfacesOf(t).marks.kickerTracking;
