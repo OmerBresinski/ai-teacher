@@ -183,6 +183,36 @@ describe.each(LESSONS)("replay %s", (b) => {
           });
           continue;
         }
+        // Ruling 21 A (TEACH-215 part e): the cover's title and question take the gold's sizes
+        // (`coverType`), so their boxes' heights, and the stack's top, are not the lab's; every
+        // other field still is. The title stands above the question, and both on the slide.
+        if (want.kind === "title" && (w.name === "Title" || w.name === "Subtitle")) {
+          const { y: _y, h: _h, ...rest } = stable(e);
+          const { y: _wy, h: _wh, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          const box = (name: string) => {
+            const x = got.find((g) => g.name === name);
+            return x ? { name, y: Number(x.y), h: Number(x.h) } : undefined;
+          };
+          const title = box("Title");
+          const sub = box("Subtitle");
+          for (const b of [title, sub])
+            if (b)
+              expect({ at: `s${i + 1} ${b.name}`, y: b.y >= 0, foot: b.y + b.h <= 540 }).toEqual({
+                at: `s${i + 1} ${b.name}`,
+                y: true,
+                foot: true,
+              });
+          if (title && sub)
+            expect({ at: `s${i + 1}`, above: title.y + title.h <= sub.y }).toEqual({
+              at: `s${i + 1}`,
+              above: true,
+            });
+          continue;
+        }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;

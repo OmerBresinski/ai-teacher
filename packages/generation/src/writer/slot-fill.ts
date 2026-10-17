@@ -35,6 +35,8 @@ type FitVariant = {
   stem?: number;
   keyLabel?: number;
   columnLabel?: number;
+  /** The layout's own heading cap (the cover's title, `cover-fits.ts`), over the group's. */
+  heading?: number;
 };
 
 /** Labels the fit table measured with a fixed length (fit-table.ts KEY_LABEL, COLUMN_LABEL). */
@@ -223,7 +225,7 @@ export function withSlotFill(schema0: J, stage: string): J {
     if (!base || !vs?.length) return undefined;
     const refs: J[] = [];
     for (const v of vs) {
-      const d = variantDef(layout, base, v, F.heading, formula, defs);
+      const d = variantDef(layout, base, v, v.heading ?? F.heading, formula, defs);
       if (!d) continue;
       const name = variantDefName(layout, fitKey(v));
       defs[name] = d;

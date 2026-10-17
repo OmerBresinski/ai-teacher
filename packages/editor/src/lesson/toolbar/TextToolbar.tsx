@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import type { TextElement, TextPreset, Theme } from "@tj/domain/documents";
+import { unfixed } from "@tj/slides";
 import {
   Button,
   DropdownMenu,
@@ -116,9 +117,13 @@ export function TextToolbar({
   const atFloor = size <= floor;
   const atCeiling = size >= MAX_FONT_SIZE;
 
+  // A size or preset the teacher picks is theirs: a layout's fixed size lets go (`unfixed`).
   const setStyle = (patch: Partial<TextElement["style"]>) =>
     history.dispatch(reducers.updateElement, slideId, element.id, {
-      style: { ...element.style, ...patch },
+      style: {
+        ...("fontSize" in patch || "preset" in patch ? unfixed(element.style) : element.style),
+        ...patch,
+      },
     } as Partial<TextElement>);
   const setDoc = (doc: TextElement["doc"]) =>
     history.dispatch(reducers.updateElement, slideId, element.id, { doc } as Partial<TextElement>);

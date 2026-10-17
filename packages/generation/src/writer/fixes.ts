@@ -1,6 +1,7 @@
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
+import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
@@ -258,12 +259,15 @@ type FitVariant = {
   figure: boolean;
   keyCards?: boolean;
   chars: number;
+  /** The layout's own heading cap (the cover's title), over the group's `heading`. */
+  heading?: number;
   instruction?: number;
   charsNoInstruction?: number;
   stem?: number;
   keyLabel?: number;
   columnLabel?: number;
 };
+type FitLayout = { fields: string[]; variants: FitVariant[] };
 type FitGroup = {
   heading: number;
   formula: number;
@@ -290,6 +294,7 @@ function extraLayouts(group: string): FitGroup["layouts"] {
     "items-row": rowFit(group),
     "banner-text": bannerFit(group),
     hook: hookFit(group),
+    ...(coverFit(group) ? { title: coverFit(group) as FitLayout } : {}),
   };
 }
 /**
@@ -364,7 +369,8 @@ export function charsOver(slide: unknown, stage: string): string[] {
     if (cap && t.length > cap)
       out.push(`${field}: ${t.length} characters, room ${cap} (${t.length - cap} over)`);
   };
-  over("heading", s.heading, F.heading, false);
+  // A layout's own title cap (the cover's three lines, `cover-fits.ts`) wins over the group's.
+  over("heading", s.heading, v.heading ?? F.heading, false);
   if (typeof s.lead === "string") over("lead", s.lead, lim.item);
   if (typeof s.instruction === "string")
     over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
