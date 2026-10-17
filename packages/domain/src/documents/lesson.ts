@@ -76,7 +76,21 @@ export type Lesson = {
   sources?: SourceRef[];
   /** ADR 0029: the plan revision the teacher is looking at, and whether it is confirmed. */
   plan?: LessonPlan;
+  /**
+   * Set when the teacher turned "Answers slides" off (ruling 260); unset reads as on, so a lesson
+   * stored before the field keeps its Answers slides. `kept` is the guard and Answers slides as
+   * they were. `edited` says the teacher had worked on them: turning the setting on puts those
+   * back unchanged; otherwise they are built again from the lesson's current questions.
+   */
+  answersOff?: AnswersOff;
 };
+
+export type AnswersOff = { kept: Slide[]; edited: boolean };
+
+export const AnswersOffSchema = z.strictObject({
+  kept: z.array(SlideSchema),
+  edited: z.boolean(),
+});
 
 export type LessonArtefacts = { worksheetId: Id };
 
@@ -135,6 +149,8 @@ export const LessonSchema = z.object({
   sources: z.array(SourceRefSchema).optional(),
   // ADR 0029.
   plan: LessonPlanSchema.optional(),
+  // Ruling 260 (TEACH-191 part e): unset reads as on.
+  answersOff: AnswersOffSchema.optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {

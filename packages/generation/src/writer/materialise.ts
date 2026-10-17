@@ -1251,17 +1251,10 @@ export function wordsOf(raw: S): string {
  * The deck as it ships: the practice and exit answers collected on Answers slides behind the guard
  * at the very end (ruling 240), laid out by `@tj/slides` from the slides' own answers. Code, not the
  * writer: the writer's prompt and schema never name the layout. A rebuild replaces the old end.
- * A worksheet answer sheet keeps them too (r3 gold), unless `ANSWERS_SKIP_WITH_WORKSHEET_KEY` flips.
+ * A worksheet with its own answer key keeps them too; the teacher turns them off in the editor
+ * (ruling 260).
  */
-export function withEndAnswers(
-  slides: Slide[],
-  ctx: { theme: Theme; stage: Stage; worksheetAnswerKey: boolean },
-): Slide[] {
+export function withEndAnswers(slides: Slide[], ctx: { theme: Theme; stage: Stage }): Slide[] {
   const lesson = slides.filter((s) => !s.answersRole);
-  return [
-    ...lesson,
-    ...endAnswerSlides(answerGroupsOf(lesson), ctx.theme, ctx.stage, {
-      worksheetAnswerKey: ctx.worksheetAnswerKey,
-    }),
-  ];
+  return [...lesson, ...endAnswerSlides(answerGroupsOf(lesson), ctx.theme, ctx.stage)];
 }

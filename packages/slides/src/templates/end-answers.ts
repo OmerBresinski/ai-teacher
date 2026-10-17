@@ -721,36 +721,21 @@ export function layoutAnswersGuard(t: Theme, stage: Stage): AnswersLayout {
 /* ------------------------------------------------------------------ */
 
 /**
- * Ruling 240 vs the r3 gold, still open with Greg. Ruling 240 drops the Answers slides when the
- * worksheet has its own answer sheet; the r3 gold (the default here, on the coordinator's
- * recommendation) builds them anyway. Flip this one line to follow ruling 240.
- */
-export const ANSWERS_SKIP_WITH_WORKSHEET_KEY = false;
-
-/**
  * Whether the deck carries the guard and Answers slides: there must be answers to show (ruling
- * 231 keeps them off the practice and exit slides), and see `ANSWERS_SKIP_WITH_WORKSHEET_KEY`.
+ * 231 keeps them off the practice and exit slides). A worksheet with its own answer key keeps them
+ * too (ruling 260); the teacher turns them off in the editor.
  */
-export function answersWanted(
-  groups: readonly AnswerGroup[],
-  worksheetAnswerKey: boolean,
-  skipWithKey = ANSWERS_SKIP_WITH_WORKSHEET_KEY,
-) {
-  return !(skipWithKey && worksheetAnswerKey) && groups.some((g) => g.items.length > 0);
+export function answersWanted(groups: readonly AnswerGroup[]) {
+  return groups.some((g) => g.items.length > 0);
 }
 
 /**
  * The end of the deck: the guard, then every Answers slide (`answersRole` set), or nothing. A
  * group with a missing answer is dropped by the builder, never drawn as an empty row.
  */
-export function endAnswerSlides(
-  groups: readonly AnswerGroup[],
-  t: Theme,
-  stage: Stage,
-  opts: { worksheetAnswerKey?: boolean; skipWithKey?: boolean } = {},
-): Slide[] {
+export function endAnswerSlides(groups: readonly AnswerGroup[], t: Theme, stage: Stage): Slide[] {
   const kept = groups.filter((g) => g.items.length && g.items.every(answered));
-  if (!answersWanted(kept, opts.worksheetAnswerKey ?? false, opts.skipWithKey)) return [];
+  if (!answersWanted(kept)) return [];
   return [
     layoutAnswersGuard(t, stage).slide,
     ...paginateAnswers(t, stage, kept).map((p) => layoutAnswersPage(p, t, stage).slide),
