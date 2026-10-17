@@ -26,8 +26,8 @@ describe("ThemeDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     const dialog = await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    // Every catalogue theme, once (nine since Chalk & Cream was retired, ruling 202, and Paper, theme v2).
-    expect(tiles).toHaveLength(10);
+    // Every catalogue theme, once: the round 5 sixteen (TEACH-215 part c, 17 Oct 2026).
+    expect(tiles).toHaveLength(16);
     const paper = tiles.find((t) => t.getAttribute("data-theme-tile") === "playground");
     if (!paper) throw new Error("no playground tile");
     fireEvent.click(paper);
@@ -186,14 +186,14 @@ describe("while the lesson is being made (ruling 123)", () => {
       .getAttribute("data-theme-callout");
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     let dialog = await screen.findByRole("dialog", { name: "Theme" });
-    const nightLab = () =>
-      screen.getAllByRole("radio").find((t) => t.getAttribute("data-theme-tile") === "night-lab");
-    fireEvent.click(nightLab() as HTMLElement);
-    expect(nightLab()).toHaveAttribute("aria-checked", "true");
+    const slate = () =>
+      screen.getAllByRole("radio").find((t) => t.getAttribute("data-theme-tile") === "dark-slate");
+    fireEvent.click(slate() as HTMLElement);
+    expect(slate()).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     const callout = screen.getByRole("button", { name: /^Theme:/ });
-    expect(callout).toHaveAttribute("data-theme-callout", "night-lab");
+    expect(callout).toHaveAttribute("data-theme-callout", "dark-slate");
 
     fireEvent.click(callout);
     dialog = await screen.findByRole("dialog", { name: "Theme" });
@@ -205,9 +205,9 @@ describe("while the lesson is being made (ruling 123)", () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /^Theme:/ })).toHaveAttribute(
       "data-theme-callout",
-      "night-lab",
+      "dark-slate",
     );
-    expect(changes).toEqual(["night-lab", opening ?? "", "night-lab"]);
+    expect(changes).toEqual(["dark-slate", opening ?? "", "dark-slate"]);
   });
 });
 

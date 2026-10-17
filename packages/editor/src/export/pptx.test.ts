@@ -122,11 +122,12 @@ describe("hexColor", () => {
 describe("fontFaceFor", () => {
   it("maps every theme font stack to a real family name", () => {
     expect(fontFaceFor(theme.fonts.body)).toBe("Nunito");
-    expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
+    // Round 5 (TEACH-215 part c): Reading Room's titles are Outfit.
+    expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Outfit");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");
     expect(fontFaceFor(getTheme("crayon").fonts.body)).toBe("Playpen Sans");
-    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Literata");
+    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Figtree");
   });
 
   it("falls back to the first real family, then to Arial", () => {
