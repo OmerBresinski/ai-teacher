@@ -9,7 +9,7 @@ import {
   withClose,
   withCloseLine,
 } from "./close";
-import { PILOT_PACKS, type PilotPackId, pilotRequest } from "./pilot-pack";
+import { PILOT_PACK_ID, PILOT_PACKS, type PilotPackId, pilotRequest } from "./pilot-pack";
 import { replayRun } from "./replay-fixture";
 import { runWriter, WriterIncompleteError } from "./stage";
 
@@ -28,7 +28,7 @@ const isExit = (n: string | undefined) => String(n).split("~")[0] === "exit-tick
 describe("withClose: the last slide is a required field", () => {
   for (const ks of ["KS1", "KS2", "KS3"] as const) {
     test(`${ks}, exit ticket on the slides: close takes only the exit ticket, slides never`, () => {
-      const base = pilotRequest("v4.7", ks, {}, (sc) => sc).schema as J;
+      const base = pilotRequest(PILOT_PACK_ID, ks, {}, (sc) => sc).schema as J;
       const s = withClose(base, true) as J;
       expect(s.required).toEqual(Object.keys(s.properties));
       const keys = Object.keys(s.properties);
@@ -42,7 +42,7 @@ describe("withClose: the last slide is a required field", () => {
       expect(names(base.properties.slides.items.anyOf).some(isExit)).toBe(true);
     });
     test(`${ks}, exit ticket on the worksheet: close is the closing slide, no exit ticket anywhere`, () => {
-      const s = withClose(pilotRequest("v4.7", ks, {}, (sc) => sc).schema as J, false) as J;
+      const s = withClose(pilotRequest(PILOT_PACK_ID, ks, {}, (sc) => sc).schema as J, false) as J;
       expect(names(s.properties.close.anyOf)).toEqual([CLOSING_DEF]);
       expect(s.properties.close.description).toContain("worksheet");
       const def = s.$defs[CLOSING_DEF];

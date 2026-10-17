@@ -3,8 +3,8 @@ import { writerBundle } from "./bundle";
 import { charsOver, fitTable } from "./fixes";
 import { replayRun, replayServices } from "./replay-fixture";
 import { type WriterStage, writerSchema } from "./schema";
+import { shownWords, writerStageOfKey } from "./shown-cap";
 import {
-  CHARS_PER_WORD,
   fitKey,
   fitsLines,
   SHAPES,
@@ -217,7 +217,7 @@ describe("the prompt", () => {
       const sys = (writerBundle("base4g") as unknown as Record<string, string>)[keys[st]] ?? "";
       if (!sys) continue;
       const schema = split(st);
-      const out = slotFillSystem(sys, schema);
+      const out = slotFillSystem(sys, schema, st);
       // NET LENGTH MUST NOT GROW (Greg, 10 Oct).
       expect(out.length).toBeLessThanOrEqual(sys.length);
       expect(out).not.toMatch(/TODO-PROMPT/);
@@ -235,7 +235,7 @@ describe("the prompt", () => {
         enum: [...SHAPES],
       });
       // What the writer reads is what it is held to: each variant's numbers come from its def.
-      const { lines } = fitsLines(schema);
+      const { lines } = fitsLines(schema, st);
       for (const [name, def] of Object.entries(defsOf(schema))) {
         const [layout, key] = name.split("~");
         if (!layout || !key) continue;
@@ -247,7 +247,7 @@ describe("the prompt", () => {
         if (typeof lead?.maxLength === "number")
           expect(line).toMatch(
             new RegExp(
-              `\\b${key}\\b[^;]* ${Math.max(1, Math.floor(lead.maxLength / CHARS_PER_WORD))}\\b`,
+              `\\b${key}\\b[^;]* ${Math.max(1, shownWords(lead.maxLength, writerStageOfKey(st)))}\\b`,
             ),
           );
       }

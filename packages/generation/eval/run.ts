@@ -36,6 +36,7 @@ import {
 import { z } from "zod";
 import { type PhotoPlacer, type Planner, writerRoute } from "../src";
 import { stageOf } from "../src/stages/write";
+import { type MenuWordCaps, menuWordCaps } from "../src/writer/layout-menu";
 import { WRITER_MODEL } from "../src/writer/services";
 import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
 import {
@@ -403,10 +404,13 @@ export function parseEvalArgs(argv: string[]): EvalArgs {
 export function writerRow(
   run: Pick<BriefRun, "result" | "lesson" | "writer">,
   mode: "full" | "plan-only",
+  /** The menu's caps; defaults to the current menu at the lesson's stage (a saved deck passes its own). */
+  menuCaps?: MenuWordCaps,
 ): { row: WriterRow; fields: FieldFill[]; events: WriterEvent[] } | null {
   if (!run.writer) return null;
   const { tap, events } = run.writer;
   const stage = writerStageOf(stageOf(run.lesson.ageBand, run.lesson.yearGroup));
+  const caps = menuCaps ?? menuWordCaps(stage);
   const plan = planOf(tap.text);
   let full: Record<string, unknown> | null = null;
   if (mode === "full") {
@@ -417,7 +421,7 @@ export function writerRow(
     }
   }
   const flow = (full ?? plan)?.flow;
-  const fields = full ? deckFields(full, stage, events, run.result.id) : [];
+  const fields = full ? deckFields(full, stage, events, run.result.id, caps) : [];
   const cut = run.writer.cut;
   const planUsd = cut ? costUsd(WRITER_MODEL, cut) : undefined;
   return {
@@ -429,7 +433,7 @@ export function writerRow(
       slidesKeyMs: tap.slidesKeyMs,
       writerUsage: tap.usage,
       ...(planUsd !== undefined ? { planWriterUsdEstimate: planUsd } : {}),
-      ...(Array.isArray(flow) ? { planFit: planFit(flow, stage) } : {}),
+      ...(Array.isArray(flow) ? { planFit: planFit(flow, stage, caps) } : {}),
       ...(full ? { fill: fillReport(fields, events) } : {}),
     },
     fields,

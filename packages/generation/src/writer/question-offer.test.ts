@@ -93,7 +93,8 @@ describe("question layout menu lines", () => {
         expect(fitsIn(w, cell("practice+figure", n), stage)).toBe(true);
       }
       const exit = clauses(fitsOf(EXIT_TICKET_WRITER_MENU[stage]), /questions?/);
-      expect(exit.map(([n]) => n)).toEqual([1, 2, 3]);
+      // From 1, contiguous; a count whose shown cap goes under the floor or halves is dropped.
+      expect(exit.map(([n]) => n)).toEqual(exit.map((_, i) => i + 1));
       expect(monotonic(exit)).toBe(true);
       for (const [n, w] of exit) expect(fitsIn(w, cell("exit", n), stage)).toBe(true);
     });
@@ -141,11 +142,11 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.7", () => {
-    expect(PILOT_PACK_ID).toBe("v4.7");
+  test("production runs v4.8", () => {
+    expect(PILOT_PACK_ID).toBe("v4.8");
   });
   for (const stage of STAGES) {
-    const req = pilotRequest("v4.7", KS[stage], {}, (sc) => sc);
+    const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
     const defs = req.schema.$defs as J;
     const refs = (req.schema.properties.slides.items.anyOf as J[]).map((r) =>
       String(r.$ref).split("/").pop(),
@@ -204,11 +205,11 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
   }
   test("the request is smaller than v4.6's: the per-count twins go", () => {
     for (const ks of ["KS1", "KS2", "KS3"] as const) {
-      const size = (id: "v4.6" | "v4.7") => {
+      const size = (id: "v4.6" | typeof PILOT_PACK_ID) => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
         return r.system.length + JSON.stringify(r.schema).length;
       };
-      expect(size("v4.7")).toBeLessThan(size("v4.6"));
+      expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {
@@ -244,7 +245,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     expect(ANSWERS_RULE).not.toMatch(/working, up to \d+/);
   });
   test("the answers rule slot is required exactly once", () => {
-    const t = PILOT_PACKS["v4.7"].system.KS2;
+    const t = PILOT_PACKS[PILOT_PACK_ID].system.KS2;
     expect(t).toContain("Answers on question-set");
     expect(() => assembleWriterSystem("{{menu:items-row}}", "KS2")).toThrow();
   });

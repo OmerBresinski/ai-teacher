@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   ITEMS_ROW_WRITER_MENU,
@@ -14,6 +15,7 @@ import {
   SPLIT_COMPARE_WRITER_MENU,
   sideCaps,
 } from "./layout-menu";
+import { PILOT_PACKS } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 
 /*
@@ -24,7 +26,7 @@ import { type WriterStage, writerSchema } from "./schema";
  */
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const TEMPLATE = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
-const dir = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+const dir = new URL("./bundles/pilot-v4.8-menu/", import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, dir), "utf8");
 const must = <T>(x: T | null | undefined, what = "value"): T => {
   if (x === null || x === undefined) throw new Error(`missing ${what}`);
@@ -193,8 +195,10 @@ describe("layout menu lines", () => {
       expect(faults).toEqual([]);
       expect(layoutOffer(stage)["split-compare"].sides).toEqual(keys);
       expect(keys).toContain("2");
-      expect(keys).toContain("3");
-      expect(line.startsWith("- split-compare: a vs: 2 or 3 things")).toBe(true);
+      // Three sides are offered only while their shown cap keeps the floor and no cliff (loop 1).
+      expect(
+        line.startsWith(`- split-compare: a vs: ${keys.includes("3") ? "2 or 3" : "2"} things`),
+      ).toBe(true);
     });
   }
 });
@@ -209,7 +213,7 @@ describe("writer system text", () => {
           template.includes(`\n- ${layout}: `),
           `${ks} template holds a copy of ${layout}`,
         ).toBe(false);
-      const text = assembleWriterSystem(template, stage);
+      const text = withFits(assembleWriterSystem(template, stage), stage);
       for (const menu of Object.values(LAYOUT_WRITER_MENUS))
         expect(text.split("\n")).toContain(menu[stage]);
       // A deliberate change regenerates the snapshot from assembleWriterSystem, never by hand.
@@ -223,4 +227,36 @@ describe("writer system text", () => {
     expect(() => assembleWriterSystem(`${t}\n{{menu:steps}}`, "KS2")).toThrow();
     expect(() => assembleWriterSystem(`${t}\n${PANEL_LIST_WRITER_MENU.KS2}`, "KS2")).toThrow();
   });
+});
+
+/*
+ * TEACH-110 part ae (build/CRAMMING-ROOT-CAUSE.md): a description that promised "a sentence or two"
+ * over a 7-word cell read as a length to reach. The length it names starts at the tightest cell.
+ */
+describe("layout descriptions match their budgets", () => {
+  const word = (w: number) =>
+    w <= 6 ? "a phrase" : w <= 14 ? "a short sentence" : "a sentence or two";
+  const LENGTH = "(a phrase|a short sentence|a sentence or two)";
+  for (const stage of STAGES)
+    test(`${stage}: panel-list and split-compare name the tightest cell's length first`, () => {
+      const lines = [
+        [PANEL_LIST_WRITER_MENU[stage], new RegExp(`one fact, in ${LENGTH}`)],
+        [SPLIT_COMPARE_WRITER_MENU[stage], new RegExp(`each a title and ${LENGTH}`)],
+      ] as const;
+      for (const [line, re] of lines) {
+        const fits = line.slice(line.indexOf("Fits:"));
+        const each = [...fits.matchAll(/up to (\d+) words each/g)].map((m) => Number(m[1]));
+        expect(re.exec(line)?.[1]).toBe(word(Math.min(...each)));
+      }
+    });
+});
+
+describe("pilot pack v4.7 is frozen as shipped", () => {
+  const v47 = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+  for (const ks of ["KS1", "KS2", "KS3"] as const)
+    test(`${ks}: byte for byte its last assembled snapshot`, () => {
+      expect(PILOT_PACKS["v4.7"].system[ks]).toBe(
+        readFileSync(new URL(`system-${ks}.snapshot.txt`, v47), "utf8"),
+      );
+    });
 });

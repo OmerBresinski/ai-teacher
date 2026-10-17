@@ -2,12 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Lesson } from "@tj/domain/documents";
+import type { MenuWordCaps } from "../src/writer/layout-menu";
 import { evalBriefs } from "./briefs";
 import type { WriterEvent } from "./fill";
 import { formatWriterTable, parseEvalArgs, pickBriefs, writerRow } from "./run";
 import type { BriefResult } from "./run-brief";
 
 const DIR = join(import.meta.dir, "fixtures", "writer-fill");
+/** The v4.7 menu's KS2 caps (fill.test's V47): the menu this saved deck was written against. */
+const V47KS2 = (
+  JSON.parse(readFileSync(join(DIR, "menu-word-caps-v4.7.json"), "utf8")) as Record<
+    string,
+    MenuWordCaps
+  >
+).KS2;
 const raw = readFileSync(join(DIR, "y4-romans.writer-raw.txt"), "utf8");
 const events = readFileSync(join(DIR, "y4-romans.events.jsonl"), "utf8")
   .trim()
@@ -66,6 +74,7 @@ describe("writer row", () => {
         writer: { tap: tap(cut), events: [], cut: { inputTokens: 5000, outputTokens: 2700 } },
       },
       "plan-only",
+      V47KS2,
     );
     expect(m?.row.fill).toBeUndefined();
     expect(m?.row.deckLength).toBeNull();
