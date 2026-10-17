@@ -17,6 +17,7 @@ export * from "./checks";
 export * from "./class-context";
 export * from "./continuation";
 export * from "./create-lesson";
+export * from "./direction";
 export * from "./figure";
 export * from "./generated-from";
 export * from "./generation";
