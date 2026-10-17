@@ -14,6 +14,7 @@ import {
   SPLIT_COMPARE_WRITER_MENU,
   sideCaps,
 } from "./layout-menu";
+import { PILOT_PACKS } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 
 /*
@@ -24,7 +25,7 @@ import { type WriterStage, writerSchema } from "./schema";
  */
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const TEMPLATE = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
-const dir = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+const dir = new URL("./bundles/pilot-v4.8-menu/", import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, dir), "utf8");
 const must = <T>(x: T | null | undefined, what = "value"): T => {
   if (x === null || x === undefined) throw new Error(`missing ${what}`);
@@ -233,4 +234,36 @@ describe("split-compare at KS2: three pictured sides stay off the menu", () => {
     expect(line).toContain("every side carries a picture (2 sides only)");
     expect(line).not.toContain("3 sides with pictures");
   });
+});
+
+/*
+ * TEACH-110 part ae (build/CRAMMING-ROOT-CAUSE.md): a description that promised "a sentence or two"
+ * over a 7-word cell read as a length to reach. The length it names starts at the tightest cell.
+ */
+describe("layout descriptions match their budgets", () => {
+  const word = (w: number) =>
+    w <= 6 ? "a phrase" : w <= 12 ? "a short sentence" : "a sentence or two";
+  const LENGTH = "(a phrase|a short sentence|a sentence or two)";
+  for (const stage of STAGES)
+    test(`${stage}: panel-list and split-compare name the tightest cell's length first`, () => {
+      const lines = [
+        [PANEL_LIST_WRITER_MENU[stage], new RegExp(`one fact, in ${LENGTH}`)],
+        [SPLIT_COMPARE_WRITER_MENU[stage], new RegExp(`each a title and ${LENGTH}`)],
+      ] as const;
+      for (const [line, re] of lines) {
+        const fits = line.slice(line.indexOf("Fits:"));
+        const each = [...fits.matchAll(/up to (\d+) words each/g)].map((m) => Number(m[1]));
+        expect(re.exec(line)?.[1]).toBe(word(Math.min(...each)));
+      }
+    });
+});
+
+describe("pilot pack v4.7 is frozen as shipped", () => {
+  const v47 = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+  for (const ks of ["KS1", "KS2", "KS3"] as const)
+    test(`${ks}: byte for byte its last assembled snapshot`, () => {
+      expect(PILOT_PACKS["v4.7"].system[ks]).toBe(
+        readFileSync(new URL(`system-${ks}.snapshot.txt`, v47), "utf8"),
+      );
+    });
 });

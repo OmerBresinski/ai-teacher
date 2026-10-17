@@ -141,11 +141,11 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.7", () => {
-    expect(PILOT_PACK_ID).toBe("v4.7");
+  test("production runs v4.8", () => {
+    expect(PILOT_PACK_ID).toBe("v4.8");
   });
   for (const stage of STAGES) {
-    const req = pilotRequest("v4.7", KS[stage], {}, (sc) => sc);
+    const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
     const defs = req.schema.$defs as J;
     const refs = (req.schema.properties.slides.items.anyOf as J[]).map((r) =>
       String(r.$ref).split("/").pop(),
@@ -209,16 +209,16 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
       // v4.7's line is cut by the menu's own text; v4.6 is frozen text with no builder, so its
       // line goes by prefix. Each cut must remove exactly one line, so neither can miss silently.
       const line = LAYOUT_WRITER_MENUS["panel-list"][ks === "KS3" ? "KS3-5" : ks];
-      const size = (id: "v4.6" | "v4.7") => {
+      const size = (id: "v4.6" | typeof PILOT_PACK_ID) => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
         const lines = r.system.split("\n");
         const kept = lines.filter((l) =>
-          id === "v4.7" ? l !== line : !l.startsWith("- panel-list: "),
+          id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
         expect(lines.length - kept.length, `${id} ${ks}: one panel-list line`).toBe(1);
         return kept.join("\n").length + JSON.stringify(r.schema).length;
       };
-      expect(size("v4.7")).toBeLessThan(size("v4.6"));
+      expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {
@@ -254,7 +254,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     expect(ANSWERS_RULE).not.toMatch(/working, up to \d+/);
   });
   test("the answers rule slot is required exactly once", () => {
-    const t = PILOT_PACKS["v4.7"].system.KS2;
+    const t = PILOT_PACKS[PILOT_PACK_ID].system.KS2;
     expect(t).toContain("Answers on question-set");
     expect(() => assembleWriterSystem("{{menu:items-row}}", "KS2")).toThrow();
   });
