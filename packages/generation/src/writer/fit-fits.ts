@@ -40,7 +40,8 @@ export const FIT_ACTIVITIES = ["pair", "group-sort", "sequence", "odd-one-out"] 
  * Fields the floor does not apply to, since words are not their unit: a heading or key label (the
  * measured words, as layout-menu.ts keeps headings and side titles), a picture-sequence caption
  * (it only names its stage), and equation-hero's points (one calculation line each). Their numbers
- * are still generated and shown at the same share. Ruling for Greg (LOG-loop1-prompt.md).
+ * are still generated and shown at the same share. Settled by the decision desk, 17 Oct 2026
+ * (LOG-loop1-prompt.md, LOG-loop1-live.md).
  */
 function floored(layout: string, path: string): boolean {
   if (path === "heading" || path === "formula" || path.endsWith("[].label")) return false;
@@ -107,6 +108,15 @@ export function droppedFits(stage: WriterStage): string[] {
       .map(([k]) => k)
       .filter((k) => !offer[layout]?.includes(k.slice(layout.length + 1))),
   );
+}
+
+/**
+ * A slide heading's words at a stage: the measured heading cap the v4.5 request checks (KS1 5,
+ * KS2 10, KS3-5 10 at 17 Oct). Headings are labels, so the measured words, not the 75% share; the
+ * menu layouts' headings rise to it too (decision desk, 17 Oct 2026).
+ */
+export function headingWords(stage: WriterStage): number {
+  return Number(fitSlots(stage).heading);
 }
 
 /** Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's `Fits: ….` */

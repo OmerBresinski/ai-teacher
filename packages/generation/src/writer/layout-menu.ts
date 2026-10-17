@@ -12,6 +12,7 @@ import QUICK_CAPACITY from "@tj/slides/templates/question-set-capacity.json" wit
 import SPLIT_COMPARE_CAPACITY from "@tj/slides/templates/split-compare-capacity.json" with {
   type: "json",
 };
+import { headingWords } from "./fit-fits";
 import HINGE_CARDS from "./hinge-cards.gen.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 import {
@@ -65,7 +66,16 @@ const MIN_SIDE = MIN_SHOWN_WORDS;
 /** A quote is a few words in a person's voice, a label more than body text. */
 const MIN_QUOTE = 3;
 const MIN_LEAD = MIN_SHOWN_WORDS;
-const HEAD_WORDS: Record<Age, number> = { early: 4, primary: 8, secondary: 9 };
+/**
+ * A heading's words by age: the measured slide-heading cap (`headingWords`, fit-fits.ts), the
+ * same number the fit layouts show; was typed 4 / 8 / 9 (decision desk, 17 Oct 2026: headings rise
+ * to the measured caps). A cell that measures a shorter heading still says so in its line.
+ */
+const HEAD_WORDS: Record<Age, number> = {
+  early: headingWords("KS1"),
+  primary: headingWords("KS2"),
+  secondary: headingWords("KS3-5"),
+};
 const TITLE_CHARS = 24;
 /** The counts each list layout may offer before the tables decide (panel-list 2-5: Greg, 14 Oct). */
 const EDIT_COUNTS = { "items-row": [2, 4], "panel-list": [2, 5] } as const;
@@ -489,7 +499,6 @@ const MIN_TASK: Record<Age, number> = {
  * drop question-set at every stage (a product ruling, not an engineering one; loop 1, 17 Oct).
  */
 const MIN_QUICK_Q = 3;
-const MIN_OPTION = 2;
 /** Practice with a picture at KS1 holds at most 3 tasks (the gold's default, practice-exit NOTES). */
 const PIC_MAX: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
 /**
