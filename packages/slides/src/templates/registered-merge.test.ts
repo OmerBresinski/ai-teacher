@@ -102,3 +102,36 @@ describe("layout registries merge (TEACH-106 part b)", () => {
     expect(merged.out).toContain("CONFLICT");
   });
 });
+
+/*
+ * The real registries keep one line per entry. The union driver is only safe for one-line entries
+ * (a line two multi-line blocks share is merged away), so an import or entry the formatter wrapped
+ * over several lines fails here before it can break a merge.
+ */
+describe("the real registries hold one line per entry (TEACH-106 part b)", () => {
+  const HOW =
+    'see packages/slides/AGENTS.md, "Adding a layout": one line per entry, naming the layout';
+  const balanced = (l: string) =>
+    [..."{(["].every((o, i) => l.split(o).length === l.split("})]"[i] ?? "").length);
+  for (const f of [SLIDES, WRITER, DOMAIN]) {
+    test(f, () => {
+      const lines = readFileSync(join(ROOT, f), "utf8").split("\n");
+      lines.forEach((l, n) => {
+        if (l.startsWith("import "))
+          expect(
+            /^import .* from "[^"]+";$/.test(l),
+            `${f}:${n + 1} import spans lines; ${HOW}`,
+          ).toBe(true);
+      });
+      const marks = lines.flatMap((l, n) => (l === MARK.slice(0, -1) ? [n] : []));
+      expect(marks.length).toBeGreaterThan(0);
+      for (const m of marks) {
+        for (let n = m + 1; !/^(\}|\};|\] as const;)$/.test(lines[n] ?? "}"); n++) {
+          const l = lines[n] ?? "";
+          const whole = /^ {2}\S.*[,;]$/.test(l) && balanced(l);
+          expect(whole, `${f}:${n + 1} entry spans lines ("${l.trim()}"); ${HOW}`).toBe(true);
+        }
+      }
+    });
+  }
+});
