@@ -135,9 +135,10 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
         template: "panel-list",
         heading: w(3),
         lead: w(6),
-        items: [1, 2, 3, 4].map(() => ({ text: w(5), picture: {} })),
+        items: [1, 2, 3, 4].map(() => ({ text: w(4), picture: {} })),
       }),
-    ).toEqual(["heading:3/3", "lead:6/6", ...[0, 1, 2, 3].map((i) => `items[${i}].text:5/5`)]);
+      // Four picture rows beside a lead: 4 words each in the 313 column (TEACH-205 part d).
+    ).toEqual(["heading:3/3", "lead:6/6", ...[0, 1, 2, 3].map((i) => `items[${i}].text:4/4`)]);
     expect(
       kinds({
         template: "items-row",
