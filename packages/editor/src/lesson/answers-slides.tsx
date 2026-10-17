@@ -25,7 +25,7 @@ export const ANSWERS_HIDDEN_NOTE = "Answers slides are hidden.";
 export const ANSWERS_SHOWN_NOTICE = "Answers slides added at the end of the lesson.";
 
 /** The hidden notice stays long enough to reach its Show button. */
-const HIDDEN_NOTICE_MS = 8000;
+export const HIDDEN_NOTICE_MS = 8000;
 
 /**
  * Hide (false) or show (true) the guard and Answers slides in one undo step, with a notice. A
@@ -41,11 +41,16 @@ export function useSetAnswersSlides(): (
     async function apply(on: boolean, alsoDelete: readonly Id[] = []) {
       // The builder loads with the layout code (bundle budget), as the theme picker loads it.
       const kit = await loadLayoutKit();
-      const token = history.beginTransaction();
-      for (const id of alsoDelete) history.dispatch(reducers.deleteSlide, id);
-      const out = history.dispatch(reducers.setAnswersSlides, on, kit);
-      history.endTransaction(token);
-      if (!out || reducers.answersSlidesOn(out) !== on) return null;
+      // One reducer step over the lesson as it is now (not as it was before the await): it judges
+      // the Answers slides, drops `alsoDelete` and keeps a lesson slide, or changes nothing.
+      let changed = false;
+      const out = history.dispatch((lesson: Lesson) => {
+        const next = reducers.setAnswersSlides(lesson, on, kit, alsoDelete);
+        changed = next !== lesson;
+        return next;
+      });
+      // Nothing to say when nothing changed (a Show after the hide was undone, say).
+      if (!out || !changed) return null;
       if (on) toast(ANSWERS_SHOWN_NOTICE);
       else
         toast(out.answersOff?.edited ? ANSWERS_HIDDEN_EDITED_NOTICE : ANSWERS_HIDDEN_NOTICE, {

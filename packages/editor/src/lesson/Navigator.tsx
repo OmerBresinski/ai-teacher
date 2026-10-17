@@ -290,14 +290,18 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   };
 
   const remove = async () => {
-    if (list.length <= ids.length) return;
+    // A lesson keeps at least one of its own slides; the guard and Answers slides do not count.
+    if (reducers.plainSlidesLeft(lesson, ids) < 1) return;
     const firstIdx = Math.min(...ids.map((id) => index.get(id) ?? 0));
     let next = lesson;
     if (touchesAnswers(lesson, ids)) {
       // Deleting the guard or an Answers slide hides them all, as "Hide answers" does (ruling
-      // 260), so they are kept and "Show answers slides" brings them back.
+      // 260), so they are kept and "Show answers slides" brings them back. The hide runs on the
+      // lesson as it is after the layout code loads, and this rail moves only if it changed.
       const plain = ids.filter((id) => !lesson.slides.find((s) => s.id === id)?.answersRole);
-      next = (await setAnswersSlides(false, plain)) ?? lesson;
+      const hidden = await setAnswersSlides(false, plain);
+      if (!hidden) return;
+      next = hidden;
     } else {
       history.beginTransaction();
       for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;

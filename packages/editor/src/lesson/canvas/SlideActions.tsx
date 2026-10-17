@@ -10,6 +10,7 @@ import {
 import { ChevronDown, ChevronUp, Copy, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, type RefObject, useMemo } from "react";
 import { Panel, PanelSeparator } from "../../kit/Panel";
+import * as reducers from "../../model/reducers";
 import { AddSlidePicker } from "../AddSlidePicker";
 import { useSetAnswersSlides } from "../answers-slides";
 import { useHistory, useLesson } from "../document-context";
@@ -93,7 +94,8 @@ export function SlideActions({
     : { left: 0, top: 0 };
   // Floating chrome never rides nearer the top than the bar plus the panel gap (72px).
   const top = Math.max(placedTop, CHROME_MIN_TOP);
-  const only = slideCount <= 1;
+  // A lesson keeps at least one of its own slides; the guard and Answers slides do not count.
+  const only = reducers.plainSlidesLeft(lesson, [slide.id]) < 1;
   // A slide too narrow for the toolbar and the full pill side by side above it (a reserved pane on
   // a small screen): the pill keeps Add and folds Duplicate and Delete into More, so it still sits
   // in the toolbar's row instead of dropping onto the slide.

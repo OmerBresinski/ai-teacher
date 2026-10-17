@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
 import { newLesson } from "../model/factories";
@@ -10,7 +11,7 @@ const toastSpy = mock((..._args: unknown[]) => "t");
 const actualUi = await import("@tj/ui");
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
-import { ANSWERS_HIDDEN_NOTICE, SHOW_ANSWERS_LABEL } from "./answers-slides";
+import { ANSWERS_HIDDEN_NOTICE, HIDDEN_NOTICE_MS, SHOW_ANSWERS_LABEL } from "./answers-slides";
 import { openLessonActions, pointer, renderEditor } from "./test-harness";
 
 /*
@@ -121,18 +122,47 @@ describe("Hide answers / Show answers slides", () => {
         .slides.filter((s) => s.answersRole)
         .map((s) => s.id),
     ).toEqual(ids);
+  });
 
-    // The rail menu's Delete on the guard, together with a plain slide: one undo step.
-    const before = read().slides.length;
-    const guard = read().slides.findIndex((s) => s.answersRole === "guard");
-    selectRow(guard);
-    fireEvent.contextMenu(rows()[guard] as HTMLElement, { clientX: 40, clientY: 120 });
+  test("a rail delete of a plain slide and the guard together is one step, judged before removal", async () => {
+    const { read } = renderEditor(answeredLesson());
+    const start = read();
+    const q = start.slides.findIndex((s) => s.id === "q1");
+    selectRow(q);
+    const guardRow = rows()[q + 1] as HTMLElement;
+    fireEvent.pointerDown(guardRow, pointer(20, 20, { shiftKey: true }));
+    fireEvent.pointerUp(guardRow, pointer(20, 20, { shiftKey: true }));
+    fireEvent.contextMenu(guardRow, { clientX: 40, clientY: 120 });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
     await waitFor(() => expect(roles(read())).toEqual([]));
-    expect(read().answersOff).toBeDefined();
-    expect(read().slides).toHaveLength(before - 2);
+    expect(read().slides.map((s) => s.id)).not.toContain("q1");
+    expect(read().slides).toHaveLength(start.slides.length - 3);
+    // Untouched Answers slides: judged against the deck before q1 went, so not "edited".
+    expect(read().answersOff?.edited).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(read().slides.map((s) => s.id)).toEqual(start.slides.map((s) => s.id));
+  });
+
+  test("with no lesson slide left, the rail and the canvas cannot delete an Answers slide", async () => {
+    const full = answeredLesson();
+    const only = { ...full, slides: full.slides.filter((s) => s.answersRole) };
+    const { read } = renderEditor(only);
+    selectRow(only.slides.length - 1);
+    fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "Delete" });
+    await new Promise((r) => setTimeout(r, 50));
     expect(roles(read())).toEqual(["guard", "answers"]);
+    expect(read().answersOff).toBeUndefined();
+    const del = screen.getByRole("button", { name: /^Delete slide/ });
+    expect(del.hasAttribute("disabled") || del.getAttribute("aria-disabled") === "true").toBe(true);
+  });
+
+  test("the last lesson slide cannot be deleted while Answers slides remain", () => {
+    const full = answeredLesson();
+    const one = { ...full, slides: full.slides.filter((s) => s.answersRole || s.id === "q1") };
+    const { read } = renderEditor(one);
+    selectRow(0);
+    fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "Delete" });
+    expect(read().slides.map((s) => s.id)).toEqual(one.slides.map((s) => s.id));
   });
 
   test("the hidden notice's Show button brings them back", async () => {
@@ -145,6 +175,7 @@ describe("Hide answers / Show answers slides", () => {
     expect(message).toBe(ANSWERS_HIDDEN_NOTICE);
     const action = (options as { action?: { label: string; onClick: () => void } }).action;
     expect(action?.label).toBe("Show");
+    expect((options as { duration?: number }).duration).toBe(HIDDEN_NOTICE_MS);
     action?.onClick();
     await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
     expect(read().answersOff).toBeUndefined();
@@ -167,5 +198,21 @@ describe("Hide answers / Show answers slides", () => {
     fireEvent.click(await screen.findByRole("button", { name: SHOW_ANSWERS_LABEL }));
     await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
     await waitFor(() => expect(footer()).toBeNull());
+  });
+
+  test("Show answers slides in Add slide is reached by Tab; focus goes back to Add slide", async () => {
+    const user = userEvent.setup();
+    const { read } = renderEditor(answeredLesson());
+    selectRow(read().slides.length - 1);
+    fireEvent.click(within(slideToolbar()).getByRole("button", { name: "Hide answers" }));
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    const trigger = screen.getByRole("button", { name: "Add slide" });
+    await user.click(trigger);
+    const show = await screen.findByRole("button", { name: SHOW_ANSWERS_LABEL });
+    for (let i = 0; i < 80 && document.activeElement !== show; i++) await user.tab();
+    expect(document.activeElement).toBe(show);
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });

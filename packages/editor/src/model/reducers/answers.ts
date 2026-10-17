@@ -13,7 +13,7 @@
  * The builder (`@tj/slides/relayout`) comes in as `kit`, the way the layout reducers take it.
  */
 
-import type { Lesson } from "@tj/domain/documents";
+import type { Id, Lesson } from "@tj/domain/documents";
 import { renderTheme } from "../themes";
 import { edit } from "./core";
 import type { LayoutKit } from "./layout";
@@ -26,16 +26,34 @@ export type AnswersKit = Pick<
 /** On unless the teacher turned it off; a lesson stored before the setting reads as on. */
 export const answersSlidesOn = (lesson: Lesson): boolean => !lesson.answersOff;
 
-/** Turn the guard and Answers slides off or on; the same lesson when it is already so. */
-export function setAnswersSlides(lesson: Lesson, on: boolean, kit: AnswersKit): Lesson {
+/** How many lesson slides (not the guard or Answers) stay when `ids` go. */
+export const plainSlidesLeft = (lesson: Lesson, ids: readonly Id[]): number => {
+  const gone = new Set(ids);
+  return lesson.slides.filter((s) => !s.answersRole && !gone.has(s.id)).length;
+};
+
+/**
+ * Turn the guard and Answers slides off or on; the same lesson when it is already so. Turning them
+ * off can take plain slides with it (`alsoDelete`, a rail delete of a mixed selection) in the same
+ * step: whether the teacher edited the Answers slides is judged on the deck before anything goes,
+ * and nothing happens when no lesson slide would be left.
+ */
+export function setAnswersSlides(
+  lesson: Lesson,
+  on: boolean,
+  kit: AnswersKit,
+  alsoDelete: readonly Id[] = [],
+): Lesson {
   if (on === answersSlidesOn(lesson)) return lesson;
   const theme = renderTheme(lesson);
   const stage = kit.stageOf(theme, lesson.ageBand);
   if (!on) {
+    if (plainSlidesLeft(lesson, alsoDelete) < 1) return lesson;
+    const gone = new Set(alsoDelete);
     const kept = lesson.slides.filter((s) => s.answersRole);
     const edited = kept.length > 0 && !kit.endAnswersUntouched(lesson.slides, theme, stage);
     return edit(lesson, (l) => {
-      l.slides = l.slides.filter((s) => !s.answersRole);
+      l.slides = l.slides.filter((s) => !s.answersRole && !gone.has(s.id));
       l.answersOff = { kept, edited };
     });
   }
