@@ -93,7 +93,8 @@ describe("question layout menu lines", () => {
         expect(fitsIn(w, cell("practice+figure", n), stage)).toBe(true);
       }
       const exit = clauses(fitsOf(EXIT_TICKET_WRITER_MENU[stage]), /questions?/);
-      expect(exit.map(([n]) => n)).toEqual([1, 2, 3]);
+      // From 1, contiguous; a count whose shown cap goes under the floor or halves is dropped.
+      expect(exit.map(([n]) => n)).toEqual(exit.map((_, i) => i + 1));
       expect(monotonic(exit)).toBe(true);
       for (const [n, w] of exit) expect(fitsIn(w, cell("exit", n), stage)).toBe(true);
     });

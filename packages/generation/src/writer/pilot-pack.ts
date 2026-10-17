@@ -27,7 +27,12 @@ import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
 import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
 import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
 import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
-import { assembleWriterSystem, layoutFieldCaps, questionOffer } from "./layout-menu";
+import {
+  assembleWriterSystem,
+  layoutFieldCaps,
+  questionFieldCaps,
+  questionOffer,
+} from "./layout-menu";
 import type { WriterStage } from "./schema";
 
 /*
@@ -309,6 +314,23 @@ export function capPilotDefs(defs: J, stage: WriterStage): J {
     if (m?.properties)
       for (const k of f.member)
         if (m.properties[k]) m.properties[k] = capString(m.properties[k], c[k]);
+    out[layout] = d;
+  }
+  // The question layouts (loop 1, 17 Oct): capped too, so every hinge, practice and exit field is
+  // logged against its measured cap like the list layouts' (v4.8 logged none of them).
+  const q = questionFieldCaps(stage);
+  for (const [layout, f] of Object.entries(q)) {
+    const def = defs?.[layout];
+    if (!def) continue;
+    const d = structuredClone(def) as J;
+    for (const [path, cap] of Object.entries(f)) {
+      const [list, leaf] = path.split("[].");
+      if (!leaf) d.properties[path] = capString(d.properties[path], cap);
+      else {
+        const m = d.properties[list as string]?.items;
+        if (m?.properties?.[leaf]) m.properties[leaf] = capString(m.properties[leaf], cap);
+      }
+    }
     out[layout] = d;
   }
   return out;
