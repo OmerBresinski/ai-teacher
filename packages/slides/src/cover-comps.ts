@@ -229,16 +229,27 @@ export function coverColumn(
   const title = p.title;
   const tSize0 = title?.style.fontSize ?? t.sizes.title;
   const tLh = title?.style.lineHeight ?? t.lineHeights.title;
+  // A padded title (the template's ink margin, TEACH-152 part b) wraps inside its padding.
+  const tPad = typeof title?.style.padding === "number" ? title.style.padding : 0;
   const titleH = (s: number) =>
     title
       ? Math.ceil(
           Math.max(
             1,
-            countLines(docPlainText(title.doc), "title", t, width, title.style.fontWeight, s),
+            countLines(
+              docPlainText(title.doc),
+              "title",
+              t,
+              width - 2 * tPad,
+              title.style.fontWeight,
+              s,
+            ),
           ) *
             s *
             tLh,
-        ) + 4
+        ) +
+        4 +
+        2 * tPad
       : 0;
   // cover2's fixed title box: the size steps down to 62% (never below 56px = 37pt) before the
   // question does; the question then steps to the projector floor.
