@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import * as kit from "@tj/slides/relayout";
 import { newLesson } from "../model/factories";
+import { loadLayoutKit } from "../model/layout-kit";
 import { renderTheme } from "../model/themes";
 
 // The notice is read from sonner's call, as the other editor tests do (the queue is process-wide).
@@ -149,20 +150,24 @@ describe("Hide answers / Show answers slides", () => {
     const { read } = renderEditor(only);
     selectRow(only.slides.length - 1);
     fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "Delete" });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(roles(read())).toEqual(["guard", "answers"]);
+    // The delete waits for the layout code; once that has loaded, nothing has changed.
+    await loadLayoutKit();
+    await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
     expect(read().answersOff).toBeUndefined();
     const del = screen.getByRole("button", { name: /^Delete slide/ });
     expect(del.hasAttribute("disabled") || del.getAttribute("aria-disabled") === "true").toBe(true);
   });
 
-  test("the last lesson slide cannot be deleted while Answers slides remain", () => {
+  test("the last lesson slide cannot be deleted while Answers slides remain", async () => {
     const full = answeredLesson();
     const one = { ...full, slides: full.slides.filter((s) => s.answersRole || s.id === "q1") };
     const { read } = renderEditor(one);
     selectRow(0);
     fireEvent.keyDown(screen.getByRole("listbox", { name: "Slides" }), { key: "Delete" });
-    expect(read().slides.map((s) => s.id)).toEqual(one.slides.map((s) => s.id));
+    await loadLayoutKit();
+    await waitFor(() =>
+      expect(read().slides.map((s) => s.id)).toEqual(one.slides.map((s) => s.id)),
+    );
   });
 
   test("the hidden notice's Show button brings them back", async () => {
@@ -175,10 +180,30 @@ describe("Hide answers / Show answers slides", () => {
     expect(message).toBe(ANSWERS_HIDDEN_NOTICE);
     const action = (options as { action?: { label: string; onClick: () => void } }).action;
     expect(action?.label).toBe("Show");
+    expect(HIDDEN_NOTICE_MS).toBe(8000);
     expect((options as { duration?: number }).duration).toBe(HIDDEN_NOTICE_MS);
     action?.onClick();
     await waitFor(() => expect(roles(read())).toEqual(["guard", "answers"]));
     expect(read().answersOff).toBeUndefined();
+  });
+
+  test("Show on the notice after the hide was undone changes nothing and says nothing", async () => {
+    toastSpy.mockClear();
+    const { read } = renderEditor(answeredLesson());
+    selectRow(read().slides.length - 1);
+    fireEvent.click(within(slideToolbar()).getByRole("button", { name: "Hide answers" }));
+    await waitFor(() => expect(roles(read())).toEqual([]));
+    const [, options] = toastSpy.mock.calls.at(-1) ?? [];
+    const action = (options as { action?: { onClick: () => void } }).action;
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const before = read();
+    expect(roles(before)).toEqual(["guard", "answers"]);
+    toastSpy.mockClear();
+    action?.onClick();
+    await loadLayoutKit();
+    await new Promise((r) => queueMicrotask(() => r(null)));
+    expect(read()).toBe(before);
+    expect(toastSpy).not.toHaveBeenCalled();
   });
 
   test("Add slide offers Show answers slides only while they are hidden", async () => {
