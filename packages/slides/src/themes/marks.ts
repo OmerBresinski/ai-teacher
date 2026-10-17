@@ -76,7 +76,7 @@ export type ThemeMarks = {
 /** An offset block may sit at most this far from its surface (THEMING.md section 6: card ≤ 8). */
 export const OFFSET_MAX = 8;
 /** A notch leg is held under the card budget (10) so it never reaches content. */
-export const NOTCH_MAX = 10;
+export const NOTCH_MAX = 11;
 /** A torn edge bites at most this far in (inside the field budget of 16). */
 export const TORN_DEPTH = 5;
 /** A sticky key tilts at most this much (THEMING.md section 6: tilt ≤ 3°). */
@@ -158,20 +158,47 @@ export function octagonPoints(w: number, h: number, cut = 0.29): Pt[] {
  * A rectangle with its top-left and bottom-right corners cut by `leg` points (Geometric's
  * `--frame-clip`, PPTX `snip2DiagRect`), in box fractions.
  */
-export function notchPoints(w: number, h: number, leg: number): Pt[] {
+/**
+ * Which corners a notch cuts: `diag` top-left and bottom-right (the hinge key, round 2's
+ * `polygon(22% 0, ..., 0 22%)`), `all` four (Geometric's fields and plate), `tr` the top-right only
+ * (the cover kicker, cover5 `.kick`). Mirrored for RTL as box fractions (x to 1 - x).
+ */
+export type NotchCorners = "diag" | "all" | "tr";
+
+export function notchPoints(
+  w: number,
+  h: number,
+  leg: number,
+  corners: NotchCorners = "diag",
+): Pt[] {
   const n = Math.max(0, Math.min(leg, w / 2, h / 2));
-  return frac(
-    [
-      { x: n, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: h - n },
-      { x: w - n, y: h },
-      { x: 0, y: h },
-      { x: 0, y: n },
-    ],
-    w,
-    h,
-  );
+  const tl = corners !== "tr";
+  const tr = corners === "all" || corners === "tr";
+  const br = corners !== "tr";
+  const bl = corners === "all";
+  const pts: Pt[] = [
+    ...(tl ? [{ x: n, y: 0 }] : [{ x: 0, y: 0 }]),
+    ...(tr
+      ? [
+          { x: w - n, y: 0 },
+          { x: w, y: n },
+        ]
+      : [{ x: w, y: 0 }]),
+    ...(br
+      ? [
+          { x: w, y: h - n },
+          { x: w - n, y: h },
+        ]
+      : [{ x: w, y: h }]),
+    ...(bl
+      ? [
+          { x: n, y: h },
+          { x: 0, y: h - n },
+        ]
+      : [{ x: 0, y: h }]),
+    ...(tl ? [{ x: 0, y: n }] : []),
+  ];
+  return frac(pts, w, h);
 }
 
 /** Which sides of a box are torn; a side flush with the slide edge stays straight (rule 3). */

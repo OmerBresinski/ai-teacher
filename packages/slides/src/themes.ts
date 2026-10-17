@@ -528,7 +528,7 @@ const BASE: Theme[] = [
       [13, 1.2],
     ]),
     weights: { title: 700, heading: 700, body: 400 },
-    titleTracking: "-0.01em",
+    titleTracking: "-0.02em",
     radius: 0,
   },
   {

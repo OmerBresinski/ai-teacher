@@ -42,7 +42,7 @@ export function hingeRevealShapes(slide: Slide, theme: Theme, roles: HingeRoles)
       out.push({
         id: `${id}-key`,
         type: "shape",
-        shape: "rounded",
+        shape: k.shape,
         x: k.x,
         y: k.y,
         w: k.w,

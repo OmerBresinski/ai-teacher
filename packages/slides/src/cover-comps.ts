@@ -12,7 +12,7 @@ import { SAFE } from "./grid";
 import { docPlainText } from "./sentences";
 import { countLines } from "./text-measure";
 import { MIN_FONT_SIZE } from "./themes";
-import { innerSides, tornPoints } from "./themes/marks";
+import { innerSides, notchPoints, tornPoints } from "./themes/marks";
 import { surfacesOf, titleBand } from "./themes/surfaces";
 
 /*
@@ -277,7 +277,8 @@ function hexShape(p: Parts, t: Theme): SlideElement[] {
   const col = coverColumn(p, t, Math.min(400, hex.x - 24 - (p.title?.x ?? SAFE.x)));
   const cap = p.caption;
   const capW = cap ? captionWidth(cap, t) : 0;
-  const kick = cap ? { x: cap.x - 9, y: cap.y - 6, w: capW + 26, h: cap.h + 12 } : null;
+  // cover5 `.kick`: flush with the text margin, padding 12/22/12/18px, one 16px cut top right.
+  const kick = cap ? { x: cap.x, y: cap.y - 5, w: capW + 27, h: cap.h + 10 } : null;
   return keep([
     {
       id: uid(),
@@ -297,16 +298,19 @@ function hexShape(p: Parts, t: Theme): SlideElement[] {
     kick
       ? {
           id: uid(),
-          type: "shape",
-          shape: "notch",
+          type: "path",
           name: "Cover kicker",
           locked: true,
           ...kick,
-          radius: 8,
+          points: notchPoints(kick.w, kick.h, 10.67, "tr"),
+          closed: true,
           fill: t.colors.ink,
+          strokeWidth: 0,
         }
       : undefined,
-    cap ? ink({ ...cap, w: capW + 2 }, t.colors.background, { fontWeight: 700 }) : undefined,
+    cap
+      ? ink({ ...cap, x: cap.x + 12, w: capW + 2 }, t.colors.background, { fontWeight: 700 })
+      : undefined,
     col.title,
     col.subtitle,
     ...p.rest,

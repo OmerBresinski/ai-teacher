@@ -7,7 +7,7 @@ import {
   type ThemeArtLayer,
   type ThemeArtRole,
 } from "@tj/domain/documents";
-import { artOf } from "./art";
+import { artOf, groundArt, isGroundArt } from "./art";
 import { figureGroupOf } from "./figures";
 import { AGENDA_DIVIDER } from "./layouts";
 import { DIAGRAM_NAME } from "./look";
@@ -86,7 +86,7 @@ export function elementBoxes(slide: Slide): ArtBox[] {
 /** The layers of `art` that meet an element on the slide. */
 export function artCollisions(art: ThemeArtLayer[], slide: Slide): ThemeArtLayer[] {
   const boxes = elementBoxes(slide);
-  return art.filter((l) => boxes.some((b) => meets(l, b)));
+  return art.filter((l) => !isGroundArt(l) && boxes.some((b) => meets(l, b)));
 }
 
 /** The role a slide's art choice asks for, or null for the plain ground. */
@@ -104,13 +104,16 @@ export function slideArtVariant(slide: Slide): ThemeArtRole | "plain" {
   return requested(slide)?.role ?? "plain";
 }
 
-/** The layers a slide draws: its chosen role's art, less any layer that would meet an element. */
+/** The layers a slide draws: its chosen role's art, less any layer that would meet an element, then the ground texture. */
 export function slideArtLayers(theme: Theme, slide: Slide): ThemeArtLayer[] {
   const want = requested(slide);
   if (!want) return [];
   const art = themeArt(theme, want.role, want.side);
   const hit = new Set(artCollisions(art, slide));
-  return art.filter((l) => !hit.has(l));
+  // The theme's ground texture (Geometric's dot grid) goes last, under the art: it is the ground,
+  // drawn under every element, so it never counts as a collision.
+  const ground = groundArt(theme);
+  return [...art.filter((l) => !hit.has(l)), ...(ground ? [ground] : [])];
 }
 
 /** One layer as a CSS `background` layer. */

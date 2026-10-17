@@ -36,7 +36,8 @@ import { arrowCubic } from "../paths/arrow";
 import { countLines, lineWidth } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
-import { markLook, paintSurface, surfacesOf } from "../themes/surfaces";
+import { notchPoints } from "../themes/marks";
+import { markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -639,7 +640,30 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const y = yOf(i);
     const r = parts[i] as (typeof parts)[number];
     const lx = eqx - signW / 2 - g - r.lw;
-    if (l.answer) {
+    if (l.answer && surfacesOf(c.t).marks.field === "notch") {
+      // Geometric's plate (round 2 `--plate-notch: 6px`, `--plate-fill: #FFFFFF`): white, a thin
+      // accent line, all four corners cut, as path geometry so it mirrors (RTL-DESIGN.md).
+      const pad = pt(26);
+      const box = {
+        x: Math.round(lx - pad),
+        y: Math.round(y - (p.eq * 1.5) / 2),
+        w: Math.round(r.lw + r.rw + signW + 2 * g + 2 * pad),
+        h: Math.round(p.eq * 1.5),
+      };
+      c.els.push({
+        id: uid(),
+        type: "path",
+        name: WORKED_NAMES.plate,
+        ...box,
+        points: notchPoints(box.w, box.h, 4, "all"),
+        closed: true,
+        fill: surfaceStyle(c.t, "plate").fill,
+        stroke: accent,
+        strokeWidth: 1.5,
+        revealStep: R,
+        reveal: "fade",
+      } as PathElement);
+    } else if (l.answer) {
       const pad = pt(26);
       shape(
         c,
@@ -758,7 +782,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         revealStep: R,
         reveal: "fade",
       } as ShapeElement);
-    // The gold's "Check:" is 40 px, held at the stage's reading floor.
+    // The gold's "Check:" is 40 px, held at the stage's reading floor, in the display face, 800
+    // (worked.html `.ck b`) on an outline-card theme.
+    const labFace = surfacesOf(c.t).marks.card === "outline" ? "heading" : "body";
     const labSize = Math.max(pt(40), c.s.small);
     textEl(
       c,
@@ -768,6 +794,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       labSize,
       { valign: "middle", fontWeight: 800 },
       R,
+      ...(labFace === "heading" ? (["heading"] as const) : []),
     );
     textEl(
       c,

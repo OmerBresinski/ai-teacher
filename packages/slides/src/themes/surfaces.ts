@@ -81,6 +81,9 @@ export type SurfaceStyle = {
   tilt?: number;
 };
 
+/** The roles whose notch cuts all four corners (Geometric's fields and plate). */
+const ALL_CUT = new Set<SurfaceRole>(["field-a", "field-b", "plate"]);
+
 /** A notch or fold may not reach the content: field 16, card 10, plate 6 (THEME-FIT checks). */
 export const EDGE_BUDGET: Partial<Record<SurfaceRole, number>> = {
   "field-a": 16,
@@ -231,14 +234,12 @@ function withMarks(
       roles[r] = { ...roles[r], shape: "torn", edge: 5, corner: 0 };
   }
   if (marks.field === "notch" && marks.notch > 0) {
+    // Round 2/5 Geometric: fields cut all four corners (`--fb-notch: 16px`), the plate 6px
+    // (`--plate-notch`, 4pt); cards stay square outlines (`--card-radius: 0`).
     const n = { shape: "notch" as const, edge: marks.notch, corner: 0 };
-    for (const r of ["field-a", "field-b", "plate"] as const)
+    for (const r of ["field-a", "field-b"] as const)
       roles[r] = { ...roles[r], ...n, edge: Math.min(n.edge, EDGE_BUDGET[r] ?? n.edge) };
-    roles.card = { ...roles.card, ...n };
-    for (const k of ["card:flat", "card:right"] as const) {
-      const st = states[k];
-      if (st) states[k] = { ...st, ...n };
-    }
+    roles.plate = { ...roles.plate, ...n, edge: Math.min(4, EDGE_BUDGET.plate ?? 4) };
   }
   if (marks.rule === "dashed") roles.rule = { ...roles.rule, dash: "dashed" };
   if (marks.rule === "dots") roles.rule = { ...roles.rule, dash: "dotted" };
@@ -712,7 +713,7 @@ export function paintSurface(
     return {
       ...base,
       type: "path",
-      points: notchPoints(box.w, box.h, style.edge ?? 8),
+      points: notchPoints(box.w, box.h, style.edge ?? 8, ALL_CUT.has(spec.role) ? "all" : "diag"),
       closed: true,
       fill: isClear(style.fill) ? "transparent" : fill,
       ...(stroke ? lines : { strokeWidth: 0 }),

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { PathElement, ShapeElement } from "@tj/domain/documents";
+import { groundArt } from "../art";
 import { getTheme } from "../themes";
 import {
   CARD_TREATS,
@@ -134,7 +135,7 @@ describe("theme-family guard", () => {
     }
   });
 
-  test("Geometric: hexagon badges, notched keys and cards, dotted rules, hexagon cover", () => {
+  test("Geometric: hexagon badges, notched keys and fields, square cards, dotted rules, hexagon cover", () => {
     const t = getTheme("geometric");
     expect(marksFromTokens(SURFACE_TOKENS.geometric ?? {})).toMatchObject({
       badge: "hex",
@@ -146,9 +147,17 @@ describe("theme-family guard", () => {
       cover: "shape",
       ground: "dots",
     });
+    // Round 2/5: fields cut all four corners at 16px (10.67pt); cards are square outlines.
+    const field = paintSurface(
+      { id: "f", role: "field-b", box: { x: 80, y: 120, w: 300, h: 200 } },
+      t,
+    );
+    expect(field?.type).toBe("path");
+    expect((field as PathElement).points).toEqual(notchPoints(300, 200, 10.67, "all"));
     const card = paintSurface({ id: "c", role: "card", box: { x: 80, y: 120, w: 300, h: 200 } }, t);
-    expect(card?.type).toBe("path");
-    expect((card as PathElement).points).toEqual(notchPoints(300, 200, 10));
+    expect(card?.type).toBe("shape");
+    expect(groundArt(t)).toBeTruthy();
+    expect(groundArt(getTheme("paper"))).toBeNull();
   });
 });
 
@@ -163,21 +172,42 @@ describe("marks mirror with their box (RTL)", () => {
     x: 960 - e.x - e.w,
     points: e.points.map((p) => ({ x: Math.round((1 - p.x) * 10000) / 10000, y: p.y })),
   });
-  test("a Geometric card's notch moves to the top-right and bottom-left", () => {
-    const t = getTheme("geometric");
-    const card = paintSurface(
-      { id: "c", role: "card", box: { x: 80, y: 120, w: 300, h: 200 } },
-      t,
-    ) as PathElement;
-    const m = mirror(card);
+  test("a one-corner notch (the Geometric cover kicker) moves from the top-right to the top-left", () => {
+    const kick: PathElement = {
+      id: "k",
+      type: "path",
+      x: 80,
+      y: 120,
+      w: 300,
+      h: 40,
+      points: notchPoints(300, 40, 10.67, "tr"),
+      closed: true,
+    } as PathElement;
+    const m = mirror(kick);
     expect(m.x).toBe(580);
     const cut = (pts: { x: number; y: number }[], cx: number, cy: number) =>
       !pts.some((p) => p.x === cx && p.y === cy);
-    expect(cut(card.points, 0, 0)).toBe(true);
-    expect(cut(card.points, 1, 0)).toBe(false);
-    expect(cut(m.points, 1, 0)).toBe(true);
-    expect(cut(m.points, 0, 1)).toBe(true);
-    expect(cut(m.points, 0, 0)).toBe(false);
+    expect(cut(kick.points, 1, 0)).toBe(true);
+    expect(cut(kick.points, 0, 0)).toBe(false);
+    expect(cut(m.points, 0, 0)).toBe(true);
+    expect(cut(m.points, 1, 0)).toBe(false);
+    expect(cut(m.points, 0, 1)).toBe(false);
+  });
+  test("a Geometric field cuts all four corners, so its mirror cuts all four", () => {
+    const f = paintSurface(
+      { id: "f", role: "field-a", box: { x: 80, y: 120, w: 300, h: 200 } },
+      getTheme("geometric"),
+    ) as PathElement;
+    const m = mirror(f);
+    const cut = (pts: { x: number; y: number }[], cx: number, cy: number) =>
+      !pts.some((p) => p.x === cx && p.y === cy);
+    for (const [cx, cy] of [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ] as const)
+      expect(cut(m.points, cx, cy)).toBe(true);
   });
   test("a hexagon badge is its own mirror", () => {
     const h = hexagonPoints();

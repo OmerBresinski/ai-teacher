@@ -108,7 +108,7 @@ const CARD_IN = 72 * K;
 const CARD_FOOT = 72 * K;
 const TAG_H = 30 * K;
 const TAG_GAP = 24 * K;
-const STAMP_DISC = 30 * K;
+const STAMP_DISC_0 = 30 * K;
 const SEAM_D = 84 * K;
 const SEAM_TOP = 86 * K;
 const ASK_GAP = 48 * K;
@@ -319,8 +319,10 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const claimW = SEAM - PAD_L - 64 * K;
   const claimRoom = H - FOOT - claimTop;
   let claimSize = drawn("heading", Math.max(floorBody, v2.sizes.quote * 1.2));
+  // Geometric's struck claim is 600 (round 5 myth); measured at the weight it is drawn in.
+  const claimWt = surfacesOf(c.t).marks.badge === "hex" ? 600 : 500;
   const claimH = (s: number, w = claimW, l = LH.claim) =>
-    heightOf(claimDoc(claimText), "heading", s, w, 500) * (l / lh);
+    heightOf(claimDoc(claimText), "heading", s, w, claimWt) * (l / lh);
   while (claimH(claimSize) > claimRoom + 0.5 && claimSize > drawn("heading", floorBody))
     claimSize = drawn("heading", claimSize - 1);
   const claimOver = claimH(claimSize) > claimRoom + 0.5;
@@ -462,6 +464,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-b", { x: 0, y: band, w: SEAM, h: stageH }, at.verdict, MYTH_NAMES.panel, 0);
   const sy = band + TOP;
   const right = verdict === "true";
+  // Geometric's verdict disc is 42px (28pt, round 5 myth); the other golds' 30px.
+  const STAMP_DISC = surfacesOf(c.t).marks.badge === "hex" ? 42 * K : STAMP_DISC_0;
   const stampFill =
     paintSurface(
       { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
@@ -500,7 +504,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       "heading",
       claimSize,
       LH.claim,
-      500,
+      claimWt,
       { x: PAD_L, y: claimTop, w: claimW, h: claimH(claimSize) },
       right ? col.ink : col.muted,
     ),
@@ -527,7 +531,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     }),
     fill: col.background,
   };
-  push(halo, at.fact, MYTH_NAMES.halo);
+  // Geometric's seam (round 5 myth) sits straight on the panels: no halo.
+  if (seamShape !== "hexagon") push(halo, at.fact, MYTH_NAMES.halo);
   const seam: ShapeElement = {
     id: uid(),
     type: "shape",
@@ -537,12 +542,37 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
-  const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
-    shaft: aw * 0.22,
-    head: aw * 0.7,
-    headLen: aw * 0.45,
-  });
-  push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+  if (seamShape === "hexagon") {
+    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px.
+    const w = 20 * K;
+    const h = 16 * K;
+    push(
+      {
+        id: uid(),
+        type: "path",
+        ...rnd({ x: cx - w / 2, y: cy - h / 2, w, h }),
+        points: [
+          { x: 0, y: 0.5 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 0 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 1 },
+        ],
+        closed: false,
+        stroke: col.onDeep,
+        strokeWidth: 3,
+      } as PathElement,
+      at.fact,
+      MYTH_NAMES.seamArrow,
+    );
+  } else {
+    const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
+      shaft: aw * 0.22,
+      head: aw * 0.7,
+      headLen: aw * 0.45,
+    });
+    push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+  }
   // The label in accent-deep for AA on the field tint; on a dark theme the deep is the dark end, so
   // the accent itself reads there.
   push(

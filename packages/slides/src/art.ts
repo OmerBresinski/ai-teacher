@@ -331,16 +331,23 @@ const dots = (x: number, y: number, w: number, h: number) =>
       return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
     }).join(""),
   );
-// Round 5 renders the dot grid over the whole ground, but art never meets an element (ruling 107),
-// so a full-ground layer would always be dropped: the grid keeps master's margin strips (logged
-// deviation, LOG-A8-rebuild.md).
-const GEOMETRIC: Art = {
-  title: [dots(0, 400, 960, 128)],
-  content: [dots(0, 0, 54, 531), dots(906, 0, 54, 531)],
-  // The hexagon cover reaches both margins (the photo and its offset outline on one side, the
-  // column on the other), so a picture slide takes no strip.
-  picture: [],
-};
+// Round 5 draws the dot grid over the whole ground: that is `groundArt` below, not role art.
+const GEOMETRIC: Art = {};
+
+/**
+ * A theme's ground texture (tokens `ground-art`): Geometric's dot grid over the whole slide, as the
+ * gold's `--ground-pattern`. It is the ground, not art: it sits under every element, so the
+ * art-collision rule (ruling 107) does not apply to it, and the "plain" art choice still removes it.
+ */
+const GROUND = new WeakSet<ThemeArtLayer>();
+const GROUND_DOTS = dots(0, 0, 960, 540);
+GROUND.add(GROUND_DOTS);
+export function groundArt(theme: Theme): ThemeArtLayer | null {
+  const t = (TOKENS as Record<string, Record<string, string>>)[theme.id];
+  return t?.["ground-art"] === "dots" ? GROUND_DOTS : null;
+}
+/** Whether a layer is a ground texture (never an art collision). */
+export const isGroundArt = (l: ThemeArtLayer): boolean => GROUND.has(l);
 
 export const THEME_ART: Record<string, Art> = {
   chalk: CHALK,

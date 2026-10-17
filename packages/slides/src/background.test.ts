@@ -178,7 +178,8 @@ describe("theme art per slide role (UX ruling 107)", () => {
     }
     // The round 5 themes (TEACH-215 part c, 16 Oct 2026): art only where Greg's look table
     // describes it; Poster's bar is the look's accent bar, the rest are flat.
-    const flat = ["poster", "storytime", "calm", "dark-slate", "dark-ember"];
+    // Geometric's dot grid is its ground (`groundArt`, under every element), not role art.
+    const flat = ["poster", "storytime", "calm", "dark-slate", "dark-ember", "geometric"];
     for (const t of THEMES.filter((x) => !x.v2 && !flat.includes(x.id)))
       expect(hasArtVariants(t)).toBe(true);
     for (const id of flat) expect(hasArtVariants(getTheme(id))).toBe(false);
