@@ -128,10 +128,10 @@ describe("colour slots (ruling 248)", () => {
     const { slots, dim } = slotsAt(buildSlots(input), input, 7);
     expect({ slots: slots.map(({ fill, ink }) => ({ fill, ink })), dim }).toEqual({
       slots: [1, 2, 3, 4].map((n) => ({
-        fill: (TOKENS as Record<string, Record<string, string>>).calm?.[`cat-${n}-fill`],
-        ink: (TOKENS as Record<string, Record<string, string>>).calm?.[`cat-${n}-ink`],
+        fill: (TOKENS as Record<string, Record<string, string>>).calm?.[`cat-${n}-fill`] as string,
+        ink: (TOKENS as Record<string, Record<string, string>>).calm?.[`cat-${n}-ink`] as string,
       })),
-      dim: (TOKENS as Record<string, Record<string, string>>).calm?.dim,
+      dim: (TOKENS as Record<string, Record<string, string>>).calm?.dim as string,
     });
     for (const s of slots)
       for (const g of [calm.colors.background, calm.colors.surface, s.fill])
