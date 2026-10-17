@@ -137,6 +137,7 @@ export function SlideActions({
         side="bottom"
         onPick={(kind) => addSlideAfter(deps, id, kind)}
         onInsert={(slide) => insertSlideAfter(deps, id, slide)}
+        onShowAnswers={lesson.answersOff ? () => void setAnswersSlides(true) : undefined}
         trigger={
           <PillButton label="Add slide after">
             <Plus aria-hidden {...ICON} />
