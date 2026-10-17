@@ -357,9 +357,6 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
 /* Question reveal chrome                                              */
 /* ------------------------------------------------------------------ */
 
-const EXPLANATION_GAP = ANSWER_LINE_GAP;
-const RULE_W = ANSWER_LINE_RULE_W;
-
 /**
  * Reveal copy, under the options. Never overlaps them and never moves a card — and when
  * the lane is too short for the copy it steps the type down one stop and, failing that,
@@ -393,6 +390,7 @@ function Explanation({
   return (
     <div
       data-answer-anim=""
+      data-answer-line=""
       style={{
         position: "absolute",
         left: x,
@@ -401,15 +399,15 @@ function Explanation({
         maxHeight: available,
         overflow: "hidden",
         display: "flex",
-        gap: EXPLANATION_GAP,
+        gap: ANSWER_LINE_GAP,
         zIndex: 900,
       }}
     >
       <span
         aria-hidden
         style={{
-          flex: `0 0 ${RULE_W}px`,
-          width: RULE_W,
+          flex: `0 0 ${ANSWER_LINE_RULE_W}px`,
+          width: ANSWER_LINE_RULE_W,
           background: theme.colors.accent,
           borderRadius: 2,
         }}

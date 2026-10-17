@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { type Slide, type SlideElement, slideStepCount } from "@tj/domain/documents";
+import { type Slide, type SlideElement, slideStepCount, type Theme } from "@tj/domain/documents";
 import { layoutTemplate, type Stage, type TemplateInput } from "@tj/slides/templates";
 import { atKeyStage, THEMES } from "@tj/slides/themes";
-import { explanationText } from "../slide/elements/kit";
+import { renderToStaticMarkup } from "react-dom/server";
+import { SlideView } from "../slide/SlideView";
 import { answerLineLayout } from "./explanation";
 
 /*
@@ -42,13 +43,17 @@ const hasText = (e: SlideElement): boolean =>
     typeof (e as { text?: unknown }).text === "string" &&
     !!(e as { text?: string }).text?.trim());
 
+/** The answer line SlideView draws at `step` (its text), or null when it draws none. */
+function drawnAnswerLine(slide: Slide, theme: Theme, step: number, reveal: boolean) {
+  const html = renderToStaticMarkup(
+    <SlideView slide={slide} theme={theme} mode="capture" step={step} revealAnswer={reveal} />,
+  );
+  const m = html.match(/data-answer-line=""[^>]*>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/);
+  return m ? (m[1] as string) : null;
+}
+
 /** The text boxes the pupil sees at `step`, with the answer state on or off. */
-function visibleText(
-  slide: Slide,
-  theme: ReturnType<typeof atKeyStage>,
-  step: number,
-  reveal: boolean,
-) {
+function visibleText(slide: Slide, theme: Theme, step: number, reveal: boolean) {
   const shown = (e: SlideElement) => (e.revealStep ?? 0) <= step;
   const covers = slide.elements.filter((e) => e.name === COVER && shown(e));
   const boxes: Box[] = slide.elements
@@ -56,8 +61,10 @@ function visibleText(
     // A "?" chip under its cover is hidden.
     .filter((e) => !(e.name === WAIT && covers.some((c) => meets(c, e))))
     .map((e) => ({ x: e.x, y: e.y, w: e.w, h: e.h, what: `${e.name ?? e.type}` }));
-  const text = reveal ? explanationText(slide) : null;
-  if (text) {
+  // What the renderer really draws: SlideView's answer line, read from its markup (not from the
+  // function that decides it), placed at the box the component lays it out at.
+  const text = drawnAnswerLine(slide, theme, step, reveal);
+  if (text !== null) {
     const line = answerLineLayout({ slide, theme, text });
     boxes.push({ x: line.x, y: line.y, w: line.w, h: line.h, what: "answer line" });
   }
