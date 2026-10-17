@@ -51,6 +51,12 @@ import { layoutPractice } from "./practice";
 import { isQuickCheck, layoutQuestionSet } from "./question-set";
 // TEACH-75 part ad (C5): reasons.
 import { layoutReasons, type ReasonItem } from "./reasons";
+import {
+  type RegisteredId,
+  type RegisteredInputs,
+  registeredDef,
+  registeredDefs,
+} from "./registered";
 // TEACH-75 part ab (C2): a source, a verbatim extract with notes pinned to their lines.
 import { layoutSource, type SourceForm, type SourceNote } from "./source";
 import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
@@ -204,9 +210,19 @@ export type TemplateId =
   | "reasons"
   // TEACH-75 part ag (G1).
   | "myth"
+  // TEACH-106 part b: every layout registered in `registered.ts`.
+  | RegisteredId
   | ActivityId;
 
-export type TemplateInput = {
+/** The registered layouts' own input fields, all optional, merged into `TemplateInput`. */
+type Both<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
+  ? I
+  : never;
+type RegisteredFields = [RegisteredId] extends [never]
+  ? unknown
+  : Both<RegisteredInputs[RegisteredId]>;
+
+export type TemplateInput = RegisteredFields & {
   template: TemplateId;
   heading: string;
   /** Title slide: the enquiry line under the title. Others: the one lead sentence. */
@@ -1404,6 +1420,11 @@ const KIND: Record<TemplateId, SlideKind> = {
   choose: "multiple-choice",
   "odd-one-out": "multiple-choice",
   label: "fill-gap",
+  // TEACH-106 part b: the registered layouts' kinds.
+  ...(Object.fromEntries(registeredDefs().map(([id, d]) => [id, d.kind])) as Record<
+    RegisteredId,
+    SlideKind
+  >),
 };
 
 /**
@@ -2458,6 +2479,10 @@ function layoutOnce(
       }
       break;
     }
+    // TEACH-106 part b: a layout registered in `registered.ts`.
+    default:
+      registeredDef(tpl)?.layout(c, input);
+      break;
   }
   const result: TemplateResult = {
     slide: {

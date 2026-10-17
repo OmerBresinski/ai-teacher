@@ -352,7 +352,7 @@ Fetching deployments in omerbresinskis-projects
       ["fetch", "origin"],
       ["checkout", "chore/land-pr-script"],
       ["rebase", "origin/master"],
-      ["push", "--force-with-lease"],
+      ["push", "--force-with-lease=chore/land-pr-script:head"],
       ["checkout", "fix/next-thing"],
     ]);
   });
@@ -466,9 +466,37 @@ Fetching deployments in omerbresinskis-projects
     expect(fake.deps.now()).toBe(60_000);
   });
 
-  test("refuses a PR with merge conflicts", async () => {
-    const fake = fakeDeps({ states: ["DIRTY"] });
+  test("refuses a PR that stays DIRTY after two local rebases", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "DIRTY", "DIRTY"] });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("merge conflicts");
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
+  // TEACH-106 part b: GitHub ignores the union driver on the layout registries; a local rebase
+  // applies it, so a DIRTY PR is rebased once before it is refused.
+  test("lands a DIRTY PR that a local rebase clears", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"] });
+    await landPr(42, {}, fake.deps);
+    expect(fake.calls.git).toContainEqual(["rebase", "origin/master"]);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(true);
+  });
+
+  test("leases the push against the head GitHub reported, and names a refused push", async () => {
+    const lease = ["push", "--force-with-lease=chore/land-pr-script:head"];
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [lease] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "Could not push the rebased chore/land-pr-script: the remote branch is no longer head",
+    );
+    expect(fake.calls.git).toContainEqual(lease);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
+  test("refuses a DIRTY PR whose local rebase conflicts, and aborts the rebase", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [["rebase", "origin/master"]] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "merge conflicts a local rebase could not resolve",
+    );
+    expect(fake.calls.git).toContainEqual(["rebase", "--abort"]);
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
   });
 

@@ -1,4 +1,5 @@
 import type { Figure, TemplateInput } from "./index";
+import { registeredDefs } from "./registered";
 
 /**
  * One filled sample per writer template (a Year 1 life-cycles lesson, short enough for KS1's
@@ -241,5 +242,7 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         },
       },
     },
+    // TEACH-106 part b: the registered layouts' samples, after the hand-kept ones.
+    ...registeredDefs().flatMap(([, d]) => d.samples?.(photo) ?? []),
   ];
 }

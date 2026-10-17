@@ -39,6 +39,7 @@ import { PANEL_MAX, PANEL_MIN, panelListPaths } from "./templates/panel-list";
 import { PRACTICE_MAX, PRACTICE_MIN, workPaths } from "./templates/practice";
 // TEACH-75 part ad (C5).
 import { REASONS_MAX, REASONS_MIN, reasonsPaths } from "./templates/reasons";
+import { registeredDefs } from "./templates/registered";
 import { SOURCE_MAX, SOURCE_MIN, sourcePaths } from "./templates/source";
 import { SPLIT_MAX, SPLIT_MIN, splitPaths } from "./templates/split-compare";
 // TEACH-75 part ac (C4).
@@ -93,7 +94,7 @@ function itemsRowPaths(els: SlideElement[]): (string | undefined)[] {
  * The adaptive templates. The three pilot layouts are listed so they plug in when their recipes
  * land in `layoutTemplate` (until then `relayout` refuses them: the template is not live).
  */
-export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
+export const ADAPTIVE_SPECS = {
   "cards-grid": {
     items: "grid",
     min: 2,
@@ -210,7 +211,14 @@ export const ADAPTIVE_SPECS: Record<AdaptiveTemplateId, AdaptiveSpec> = {
     noun: "reasons",
     paths: reasonsPaths,
   },
-};
+  // TEACH-106 part b: the recipes of the adaptive layouts registered in `templates/registered.ts`.
+  ...(Object.fromEntries(
+    registeredDefs().flatMap(([id, d]) => (d.adaptive ? [[id, d.adaptive]] : [])),
+  ) as Partial<Record<AdaptiveTemplateId, AdaptiveSpec>>),
+} satisfies Partial<Record<AdaptiveTemplateId, AdaptiveSpec>> as Record<
+  AdaptiveTemplateId,
+  AdaptiveSpec
+>;
 
 /** The lesson age bands that are not key stage names, as the writer lays them out. */
 const BAND_STAGE: Readonly<Record<string, Stage>> = { eyfs: "ks1", post16: "ks5" };

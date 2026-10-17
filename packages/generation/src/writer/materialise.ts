@@ -20,6 +20,7 @@ import { FIGURE_WIDE_ASPECT, figureSlideAllowed } from "@tj/slides/templates/fig
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
+import { REGISTERED_WRITERS } from "./registered";
 import { asks, firstTeaching, slideRole } from "./role";
 
 /*
@@ -951,12 +952,16 @@ export function toInput(
         lead: lead ?? str(s.question),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };
-    default:
+    default: {
+      // TEACH-106 part b: a layout registered in `registered.ts`.
+      const own = REGISTERED_WRITERS[template];
+      if (own) return own.toInput({ s, ctx, mark, heading, lead });
       return {
         template: "explain",
         heading: heading || `Unknown template ${template}`,
         lead: lead ?? "",
       };
+    }
   }
 }
 
@@ -1086,6 +1091,8 @@ const ADAPTIVE = new Set(["items-row", "panel-list", "split-compare"]);
 ADAPTIVE.add("stages");
 // TEACH-75 part ad (C5).
 ADAPTIVE.add("reasons");
+// TEACH-106 part b: the adaptive layouts registered in `registered.ts`.
+for (const [id, d] of Object.entries(REGISTERED_WRITERS)) if (d.adaptive) ADAPTIVE.add(id);
 
 /**
  * Layouts whose drafts and closed slide share ids (draft mode, TEACH-110 s): the pilot layouts,
