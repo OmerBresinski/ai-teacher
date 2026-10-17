@@ -641,3 +641,81 @@ export function layoutFieldCaps(stage: WriterStage): LayoutFieldCaps {
     ),
   };
 }
+
+/** Word caps per item count: `{ 2: 12, 3: 11 }`. */
+export type CountCaps = Record<number, number>;
+const countCaps = (pairs: [number, number][]): CountCaps => Object.fromEntries(pairs);
+
+/**
+ * Every word cap the menu's Fits clauses state at a stage, as data (TEACH-110 part af): the same
+ * numbers the menu lines print, read from the same functions, so an eval scores a slide's fill
+ * against the cap the writer was shown without parsing prompt prose. A heading cap is the one the
+ * menu states for that variant, or the stage's `HEAD_WORDS` where it states none.
+ */
+export function menuWordCaps(stage: WriterStage) {
+  const a = MENU_AGE[stage];
+  const listOf = (c: ListLayout, v: ListVariant, lead: boolean) =>
+    countCaps(
+      (lead ? leadNs(c, a, v) : NS(c, a, v)).map((n): [number, number] => [
+        n,
+        itemBudget(c, a, n, lead, v),
+      ]),
+    );
+  const leadCap = (c: ListLayout, v: ListVariant = "") =>
+    leadNs(c, a, v).length ? leadWords(c, a, v) : null;
+  const headCap = (c: ListLayout, v: ListVariant, lead: boolean) =>
+    (lead ? leadNs(c, a, v) : NS(c, a, v)).length ? headWords(c, a, lead, v) : HEAD_WORDS[a];
+  const p = practiceOffer(a);
+  const h = hingeOffer(a);
+  const q = quickOffer(a);
+  return {
+    "items-row": {
+      heading: {
+        icons: headCap("items-row", "", false),
+        num: headCap("items-row", "num", false),
+        lead: headCap("items-row", "", true),
+      },
+      lead: leadCap("items-row"),
+      items: {
+        icons: listOf("items-row", "", false),
+        num: listOf("items-row", "num", false),
+        lead: listOf("items-row", "", true),
+      },
+    },
+    "panel-list": {
+      heading: {
+        plain: headCap("panel-list", "", false),
+        pics: headCap("panel-list", "pics", false),
+        lead: headCap("panel-list", "", true),
+        picsLead: headCap("panel-list", "pics", true),
+      },
+      lead: { plain: leadCap("panel-list"), pics: leadCap("panel-list", "pics") },
+      items: {
+        plain: listOf("panel-list", "", false),
+        pics: listOf("panel-list", "pics", false),
+        lead: listOf("panel-list", "", true),
+        picsLead: listOf("panel-list", "pics", true),
+      },
+    },
+    "split-compare": {
+      title: titleWords(a),
+      /** Keyed `<sides><zone>`: "2", "3", "2p", "2q" (the zones `SideZone` names). */
+      sides: Object.fromEntries(
+        SC_KEYS[a].map((k) => [k, sideBudget(a, Number(k[0]), k.slice(1) as SideZone)]),
+      ) as Record<string, number>,
+      quote: countCaps(
+        SC_KEYS[a]
+          .filter((k) => k.endsWith("q"))
+          .map((k): [number, number] => [Number(k[0]), quoteBudget(a, Number(k[0]))]),
+      ),
+    },
+    hinge: { question: h.question, options: countCaps(h.options), tile: TILE_WORDS },
+    "question-set": {
+      questions: countCaps(q.map((x): [number, number] => [x.n, x.q])),
+      answers: countCaps(q.map((x): [number, number] => [x.n, x.a])),
+    },
+    practice: { plain: countCaps(p.plain), picture: countCaps(p.pic) },
+    "exit-ticket": { questions: countCaps(exitOffer(a)) },
+  };
+}
+export type MenuWordCaps = ReturnType<typeof menuWordCaps>;

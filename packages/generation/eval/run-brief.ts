@@ -6,13 +6,16 @@ import {
   noSources,
   type PhotoPlacer,
   type PipelineDeps,
+  type Planner,
   runLessonPipeline,
   SPEC_RULE_CHECK,
   StageFailure,
 } from "../src";
 import type { EvalBrief } from "./briefs";
+import type { WriterEvent } from "./fill";
 import type { RubricDimension } from "./rubric-prompt";
 import { type EvalScores, scoreLesson } from "./scorers";
+import { tapWriter, type WriterTap } from "./writer-tap";
 
 /*
  * One eval brief through the real pipeline (ADR 0025 §23), with the worker's `persist` contract
@@ -79,6 +82,8 @@ export interface BriefRun {
   result: BriefResult;
   lesson: Lesson;
   worksheet?: Worksheet;
+  /** The writer call as the tap saw it, and the stage's own log events (`writer` set only). */
+  writer?: { tap: WriterTap; events: WriterEvent[] };
 }
 
 export interface RunBriefOptions {
@@ -96,6 +101,14 @@ export interface RunBriefOptions {
   images?: PhotoPlacer | undefined;
   /** Plan on the `frontier` class from this year group (TEACH-259, `AI_PLAN_FRONTIER_FROM_YEAR`). */
   planFrontierFromYear?: number;
+  /**
+   * Tap the lesson writer's call (TEACH-110 part af, `eval/writer-tap.ts`): `full` keeps its raw
+   * output and events for the fill score; `plan-only` also aborts the brief at the writer's
+   * `"slides"` key, so only the objectives call and the writer's plan are paid for.
+   */
+  writer?: "full" | "plan-only";
+  /** The planner a new lesson takes (`AI_LESSON_PLANNER`); absent, `runLessonPipeline`'s `legacy`. */
+  planner?: Planner;
 }
 
 let counter = 0;
@@ -116,10 +129,20 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   let lesson = lessonForBrief(brief, now());
   let worksheet: Worksheet | undefined;
 
-  const signal = options.signal ?? new AbortController().signal;
+  // Plan-only stops the brief here, once the writer has planned; the pipeline sees a cancel.
+  const planStop = new AbortController();
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, planStop.signal])
+    : planStop.signal;
+  const tapped = options.writer
+    ? tapWriter(options.ai, {
+        ...(options.writer === "plan-only" ? { onSlidesKey: () => planStop.abort() } : {}),
+      })
+    : undefined;
+  const events: WriterEvent[] = [];
   const context = { lessonId: lesson.id, jobId: `eval-job-${brief.id}` };
   const deps: PipelineDeps = {
-    ai: options.ai,
+    ai: tapped?.ai ?? options.ai,
     budget: options.budget,
     signal,
     // Warnings reach the run's output: a schema miss logs its issue paths and messages
@@ -130,7 +153,15 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
       new Writable({
         write(chunk, _encoding, callback) {
           const line = chunk.toString();
-          const record = JSON.parse(line) as { level: number; msg?: string; durationMs?: number };
+          const record = JSON.parse(line) as {
+            level: number;
+            msg?: string;
+            durationMs?: number;
+            writer?: WriterEvent;
+          };
+          // The writer stage's events (slot-fill, pilot-fit): ids, counts and caps, kept in memory.
+          if (tapped && record.writer && typeof record.writer === "object")
+            events.push(record.writer);
           if (record.msg === "facts verified" && typeof record.durationMs === "number") {
             verifyMs = record.durationMs;
           }
@@ -160,7 +191,11 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
   let ok = true;
   let error: string | undefined;
   try {
-    const final = await runLessonPipeline({ lesson }, deps);
+    const final = await runLessonPipeline(
+      { lesson },
+      deps,
+      options.planner ? { planner: options.planner } : {},
+    );
     lesson = final.lesson;
     worksheet = final.worksheet;
   } catch (e) {
@@ -225,5 +260,10 @@ export async function runBrief(brief: EvalBrief, options: RunBriefOptions): Prom
     scores: scored?.scores ?? null,
     ...(scored?.rubricRationales ? { rubricRationales: scored.rubricRationales } : {}),
   };
-  return { result, lesson, worksheet };
+  return {
+    result,
+    lesson,
+    ...(worksheet ? { worksheet } : {}),
+    ...(tapped ? { writer: { tap: tapped.tap, events } } : {}),
+  };
 }

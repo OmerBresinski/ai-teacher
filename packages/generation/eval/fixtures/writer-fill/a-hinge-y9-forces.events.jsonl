@@ -1,0 +1,40 @@
+{"ev":"slot-fill","slide":1,"template":"title","fit":"fig","route":"as-written","fields":[{"path":"heading","words":4,"capWords":9},{"path":"lead","words":12,"capWords":18}]}
+{"ev":"slot-fill","slide":3,"template":"visual-text","fit":"points-2-fig","route":"as-written","fields":[{"path":"heading","words":6,"capWords":9},{"path":"lead","words":15,"capWords":25},{"path":"points[0]","words":7,"capWords":17},{"path":"points[1]","words":9,"capWords":17}]}
+{"ev":"diagram-call","key":"diagram","attempt":0,"err":"AI_NoOutputGeneratedError: No output generated. Check the stream for errors.","slide":3}
+{"ev":"diagram-done","slide":3,"key":"diagram","via":"none","ok":false}
+{"ev":"slot-fill","slide":4,"template":"visual-text","fit":"points-3-fig","route":"as-written","fields":[{"path":"heading","words":4,"capWords":9},{"path":"lead","words":10,"capWords":17},{"path":"points[0]","words":7,"capWords":11},{"path":"points[1]","words":7,"capWords":11},{"path":"points[2]","words":5,"capWords":11}]}
+{"ev":"diagram-call","key":"diagram","attempt":0,"err":"AI_NoOutputGeneratedError: No output generated. Check the stream for errors.","slide":4}
+{"ev":"diagram-done","slide":4,"key":"diagram","via":"none","ok":false}
+{"ev":"slot-fill","slide":5,"template":"equation-hero","fit":"points-2-fig","route":"writer-fault","cut":true,"cuts":["formula"],"over":["formula: 40 characters, room 28 (12 over)"],"fields":[{"path":"heading","words":3,"capWords":9},{"path":"lead","words":8,"capWords":9},{"path":"formula","words":7,"capWords":3},{"path":"points[0]","words":6,"capWords":6},{"path":"points[1]","words":4,"capWords":6}]}
+{"ev":"diagram-call","key":"figure","attempt":0,"err":"AI_NoOutputGeneratedError: No output generated. Check the stream for errors.","slide":5}
+{"ev":"diagram-done","slide":5,"key":"figure","via":"none","ok":false}
+{"ev":"slot-fill","slide":6,"template":"practice","fit":null,"route":"as-written"}
+{"ev":"diagram-call","key":"picture","attempt":0,"err":"AI_NoOutputGeneratedError: No output generated. Check the stream for errors.","slide":6}
+{"ev":"diagram-done","slide":6,"key":"picture","via":"none","ok":false}
+{"ev":"slot-fill","slide":7,"template":"visual-text","fit":"points-2-key-fig","route":"as-written","fields":[{"path":"heading","words":5,"capWords":9},{"path":"lead","words":12,"capWords":15},{"path":"points[0].text","words":9,"capWords":10},{"path":"points[0].text","words":9,"capWords":10},{"path":"points[1].text","words":9,"capWords":10},{"path":"points[1].text","words":9,"capWords":10}]}
+{"ev":"diagram-call","key":"diagram","attempt":0,"err":"AI_NoOutputGeneratedError: No output generated. Check the stream for errors.","slide":7}
+{"ev":"diagram-done","slide":7,"key":"diagram","via":"none","ok":false}
+{"ev":"slot-fill","slide":8,"template":"hinge","fit":null,"route":"as-written"}
+{"ev":"slot-fill","slide":9,"template":"practice","fit":null,"route":"as-written"}
+{"ev":"r2-spec-drawn","key":"picture","kind":"table","slide":9}
+{"ev":"diagram-done","slide":9,"key":"picture","via":"code","ok":true}
+{"ev":"slot-fill","slide":10,"template":"exit-ticket","fit":null,"route":"as-written"}
+{"ev":"stream-opened","slides":9,"of":9}
+{"ev":"slide-role","slide":3,"template":"visual-text","role":"teach"}
+{"ev":"slide-role","slide":4,"template":"visual-text","role":"teach"}
+{"ev":"slide-role","slide":5,"template":"equation-hero","role":"worked"}
+{"ev":"slide-role","slide":6,"template":"practice","role":"practice"}
+{"ev":"slide-role","slide":7,"template":"visual-text","role":"teach"}
+{"ev":"slide-role","slide":8,"template":"hinge","role":"hinge"}
+{"ev":"slide-role","slide":9,"template":"practice","role":"practice"}
+{"ev":"slide-role","slide":10,"template":"exit-ticket","role":"check"}
+{"ev":"checks","failing":0}
+{"ev":"unpoint","slide":7,"applied":false}
+{"ev":"visual-path","slide":3,"path":"unshown"}
+{"ev":"visual-path","slide":4,"path":"unshown"}
+{"ev":"visual-path","slide":5,"path":"unshown"}
+{"ev":"visual-path","slide":6,"path":"unshown"}
+{"ev":"visual-path","slide":7,"path":"unshown"}
+{"ev":"visual-path","slide":9,"path":"diagram"}
+{"ev":"notes","attempt":0,"slides":8,"of":10,"usd":0.0008844,"ms":16435}
+{"ev":"summary","textOnlyTeach":4,"dangling":0,"coverage":0}
