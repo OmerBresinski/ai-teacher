@@ -1085,7 +1085,7 @@ export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolea
  * (the quick check, TEACH-101 part g): its model answer stays on the question for the worksheet,
  * the answer drawer and the PowerPoint key, and Present adds no extra step to show it again.
  */
-export function revealsOwnAnswers(slide: Slide): boolean {
+export function revealsOwnAnswers(slide: Pick<Slide, "question" | "elements">): boolean {
   const q = slide.question;
   if (q?.type !== "open-response" || !q.modelAnswer?.trim()) return false;
   // A blank answer is a "n. …" line in a numbered list (`listAnswers`): it has no step of its own.
