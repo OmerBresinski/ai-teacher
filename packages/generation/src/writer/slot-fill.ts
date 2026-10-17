@@ -309,7 +309,7 @@ const wordsAt = (stage: string) => {
 };
 
 /** A variant def's caps, in field order: `[path, maxLength]`, e.g. `["points[].text", 92]`. */
-function defCaps(x: unknown, path = ""): [string, number][] {
+export function defCaps(x: unknown, path = ""): [string, number][] {
   if (!x || typeof x !== "object") return [];
   const s = x as J;
   if (typeof s.maxLength === "number") return [[path, s.maxLength]];
@@ -360,6 +360,7 @@ function fitBudget(
 export function fitsLines(
   schema: J,
   stage: string,
+  opts: { namedLabels?: boolean } = {},
 ): {
   heading?: number;
   label?: number;
@@ -379,7 +380,7 @@ export function fitsLines(
       if (path.endsWith("[].label")) labels.add(words(n, true));
     }
   }
-  const label = labels.size === 1 ? [...labels][0] : undefined;
+  const label = labels.size === 1 && !opts.namedLabels ? [...labels][0] : undefined;
   // Per layout: budget -> its fit keys, so fits with one budget share it (`bare, fig 31`).
   const fits: Record<string, Map<string, string[]>> = {};
   for (const { layout, key, def } of variants) {

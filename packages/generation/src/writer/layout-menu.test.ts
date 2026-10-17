@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   ITEMS_ROW_WRITER_MENU,
@@ -212,7 +213,7 @@ describe("writer system text", () => {
           template.includes(`\n- ${layout}: `),
           `${ks} template holds a copy of ${layout}`,
         ).toBe(false);
-      const text = assembleWriterSystem(template, stage);
+      const text = withFits(assembleWriterSystem(template, stage), stage);
       for (const menu of Object.values(LAYOUT_WRITER_MENUS))
         expect(text.split("\n")).toContain(menu[stage]);
       // A deliberate change regenerates the snapshot from assembleWriterSystem, never by hand.

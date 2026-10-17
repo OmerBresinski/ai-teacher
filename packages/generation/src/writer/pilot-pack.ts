@@ -27,6 +27,7 @@ import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
 import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
 import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
 import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
+import { droppedFits, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   layoutFieldCaps,
@@ -71,6 +72,8 @@ export type PilotPack = {
   questionDefs?: boolean;
   /** `layout-icon` is built per request from the matcher's catalogue (`layoutIconDef`, v4.7 on). */
   catalogueIcons?: boolean;
+  /** Fits not offered at the floor or past a cliff leave the schema too (`droppedFits`, v4.8). */
+  fitFloor?: boolean;
 };
 
 export const PILOT_PACKS = {
@@ -124,15 +127,17 @@ export const PILOT_PACKS = {
     base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
+    // The fit layouts' Fits and the heading's words come from code too (`withFits`, loop 1).
     system: {
-      KS1: assembleWriterSystem(t81, "KS1"),
-      KS2: assembleWriterSystem(t82, "KS2"),
-      KS3: assembleWriterSystem(t83, "KS3-5"),
+      KS1: withFits(assembleWriterSystem(t81, "KS1"), "KS1"),
+      KS2: withFits(assembleWriterSystem(t82, "KS2"), "KS2"),
+      KS3: withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5"),
     },
     uncapped: true,
     capsFrom: "v4.5",
     questionDefs: true,
     catalogueIcons: true,
+    fitFloor: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -228,14 +233,20 @@ export function pilotRequest(
     if (isLayout(d) && !refs.some((r) => r.$ref === `#/$defs/${k}`))
       refs.push({ $ref: `#/$defs/${k}` });
   }
-  const gone = (k: string) => pack.layouts.retired.includes(k.split("~")[0] as string);
+  const floored = new Set(pack.fitFloor ? droppedFits(writerStageOf(ks)) : []);
+  const gone = (k: string) =>
+    floored.has(k) || pack.layouts.retired.includes(k.split("~")[0] as string);
+  if (schema.properties.title?.anyOf)
+    schema.properties.title.anyOf = (schema.properties.title.anyOf as J[]).filter(
+      (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
+    );
   for (const k of Object.keys(schema.$defs)) if (gone(k)) delete schema.$defs[k];
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
-  for (const k of [...replaced, ...pack.layouts.retired])
+  for (const k of [...replaced, ...pack.layouts.retired, ...floored])
     if (sent.includes(`"#/$defs/${k}"`) || sent.includes(`"#/$defs/${k}~`))
       throw new Error(`pilot pack ${id}: ${k} is still reachable`);
   if (pack.uncapped) {
