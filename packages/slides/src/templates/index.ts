@@ -1901,7 +1901,7 @@ function layoutOnce(
       const px = G.right - pw;
       const w = f ? Math.max(300, px - G.margin - 44) : 640;
       // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
-      // every theme, `coverType`) until its words fit the column (6 lines max).
+      // every theme, `coverType`) until its words fit the column in the gold's three lines.
       const cv = coverType(c.t);
       let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
@@ -1922,9 +1922,11 @@ function layoutOnce(
               cv.questionLineHeight,
           )
         : 0;
+      // The gold's question is two lines (`questionLines`): the writer's cap holds it there
+      // (`cover-capacity.json`); a longer saved one still lays out, its box as tall as it needs.
       const height = () => titleH() + (input.lead ? 20 + leadH : 0);
       const fits = () =>
-        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= (f ? 6 : 3) &&
+        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= cv.titleLines &&
         wordsFit(c, input.heading, "title", w, size) &&
         height() <= 444;
       while (size > cv.titleFloor + 0.01 && !fits())

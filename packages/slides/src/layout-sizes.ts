@@ -6,7 +6,7 @@
  * (`TextStyle.fixedSize`), never snapped to the stage's type steps.
  */
 import type { Theme } from "@tj/domain/documents";
-import { BODY_SMALL, KEY_STAGE_TYPE, type KeyStage, keyStageOf } from "./themes";
+import { bodySmallAt, type KeyStage, keyStageOf } from "./themes";
 
 export type LayoutAge = "early" | "primary" | "secondary";
 
@@ -21,12 +21,11 @@ export function layoutAgeOf(ks: KeyStage | undefined): LayoutAge {
 }
 
 /**
- * The smallest reading size at a key stage (ruling 162: the stage's bodySmall), the same in every
+ * The smallest reading size at a key stage (ruling 162): the type scale's own bodySmall
+ * (`bodySmallAt`, which `typeScale` and so the templates' `c.s.small` read), the same in every
  * theme. No stage reads as KS2.
  */
-export function readingFloorOf(ks: KeyStage | undefined): number {
-  return Math.round(KEY_STAGE_TYPE[ks ?? "ks2"].body * BODY_SMALL);
-}
+export const readingFloorOf = (ks: KeyStage | undefined): number => bodySmallAt(ks ?? "ks2");
 
 /** The cover's title and question sizes. Every cover composition reads these. */
 export type CoverType = {
@@ -37,9 +36,13 @@ export type CoverType = {
   /** One rung of the ladder (2 px). */
   titleStep: number;
   titleLineHeight: number;
+  /** The most lines the title may take (gold `cover5.html` `--tlines: 3`); past it, it steps down. */
+  titleLines: number;
   /** The question under the title: the gold's size, held at the stage's reading floor. */
   question: number;
   questionLineHeight: number;
+  /** The most lines the question may take (the gold's question is two lines). */
+  questionLines: number;
 };
 
 /**
@@ -62,8 +65,10 @@ export function coverTypeAt(ks: KeyStage | undefined): CoverType {
     titleFloor: px(Math.max(56, Math.round(g.title * 0.62))),
     titleStep: px(2),
     titleLineHeight: 1.04,
+    titleLines: 3,
     question: Math.max(px(g.question), readingFloorOf(ks)),
     questionLineHeight: 1.3,
+    questionLines: 2,
   };
 }
 

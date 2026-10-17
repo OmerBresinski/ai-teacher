@@ -1,0 +1,32 @@
+{
+  "KS1": {
+    "picture": {
+      "title": 34,
+      "question": 34
+    },
+    "none": {
+      "title": 88,
+      "question": 82
+    }
+  },
+  "KS2": {
+    "picture": {
+      "title": 34,
+      "question": 38
+    },
+    "none": {
+      "title": 88,
+      "question": 94
+    }
+  },
+  "KS3-5": {
+    "picture": {
+      "title": 34,
+      "question": 48
+    },
+    "none": {
+      "title": 88,
+      "question": 114
+    }
+  }
+}

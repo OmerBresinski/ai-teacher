@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
-import { coverTypeAt } from "../layout-sizes";
+import { coverStepped } from "../fit-check";
+import { coverTypeAt, readingFloorOf } from "../layout-sizes";
 import { resolveTextStyle, snapToScale } from "../text-style";
 import { atKeyStage, getTheme, THEMES, typeScale } from "../themes";
+import {
+  COVER_GROUPS,
+  type CoverGroup,
+  coverCapInput,
+  measureCoverCapacity,
+} from "./cover-capacity";
+import CAPACITY from "./cover-capacity.json" with { type: "json" };
 import { hingeCapInput } from "./hinge-capacity";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { WORKED_CASES } from "./worked-fixtures";
@@ -134,5 +142,58 @@ describe("worked: the gold's equations and moves", () => {
     const r = layoutTemplate(input, getTheme("paper"), "ks2");
     for (const e of named(r.slide.elements, "Eq left")) close(sizeOf(e), px(54));
     for (const e of named(r.slide.elements, "Move")) expect(sizeOf(e)).toBe(25);
+  });
+});
+
+describe("the cover's caps: the gold's three title lines, two question lines", () => {
+  test("renderer = table (cover-capacity.json)", () => {
+    expect(measureCoverCapacity()).toEqual(CAPACITY);
+  });
+  const lines = (t: TextElement) =>
+    Math.round(t.h / ((t.style.fontSize as number) * (t.style.lineHeight as number)));
+  for (const group of Object.keys(COVER_GROUPS) as CoverGroup[])
+    for (const picture of [true, false])
+      test(`${group} ${picture ? "with" : "without"} a picture: at the caps, 3 and 2 lines`, () => {
+        const cap = CAPACITY[group][picture ? "picture" : "none"];
+        for (const stage of COVER_GROUPS[group])
+          for (const theme of THEMES) {
+            const at = layoutTemplate(
+              coverCapInput(cap.title, cap.question, picture),
+              theme,
+              stage,
+            );
+            expect(at.over).toEqual([]);
+            const [title] = named(at.slide.elements, "Title") as TextElement[];
+            const [question] = named(at.slide.elements, "Subtitle") as TextElement[];
+            expect(lines(title as TextElement)).toBeLessThanOrEqual(3);
+            expect(lines(question as TextElement)).toBeLessThanOrEqual(2);
+          }
+      });
+  test("a title past three lines at the floor is over (the old six with a picture are not allowed)", () => {
+    const long = coverCapInput(CAPACITY.KS2.picture.title * 3, 16, true);
+    expect(layoutTemplate(long, getTheme("paper"), "ks2").over).not.toEqual([]);
+  });
+});
+
+describe("one reading floor", () => {
+  test("readingFloorOf is the type scale's bodySmall (what hinge and worked read as c.s.small)", () => {
+    for (const ks of ["ks1", "ks2", "ks3", "ks4", "ks5"] as const)
+      expect(readingFloorOf(ks)).toBe(
+        typeScale(atKeyStage(getTheme("paper"), ks))?.bodySmall ?? -1,
+      );
+  });
+});
+
+describe("a stepped fixed cover title is reported, not lost", () => {
+  test("coverStepped names a title under the gold's size", () => {
+    const theme = atKeyStage(getTheme("paper"), "ks2");
+    const at = layoutTemplate(coverCapInput(3, 6, false), theme, "ks2");
+    expect(coverStepped({ elements: at.slide.elements } as never, theme)).toEqual([]);
+    const small = at.slide.elements.map((e) =>
+      e.name === "Title" && e.type === "text"
+        ? { ...e, style: { ...e.style, fontSize: px(56) } }
+        : e,
+    );
+    expect(coverStepped({ elements: small } as never, theme)).toEqual(["Title 82→56px"]);
   });
 });

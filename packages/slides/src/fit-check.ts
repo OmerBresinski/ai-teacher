@@ -1,6 +1,7 @@
 import type { Id, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
 import { intersects, rectOf } from "./geometry";
+import { coverType } from "./layout-sizes";
 import { isDecorative, lintSlide, renderedHeights, type SlideLint } from "./lint";
 import { type MaterialiseMeta, materialiseSlide } from "./materialise";
 import { ANSWERS_NAME, isBackdrop, isFrozen, isLayerBelow, textPartsOf } from "./reflow";
@@ -39,6 +40,11 @@ export type ThemeFit = {
   steps: number;
   /** Ids of what the answers reveal covers once it is shown (`answersOverQuestions`). */
   answers: Id[];
+  /**
+   * A fixed cover title set under its gold size (`coverStepped`), as "Title 82→56px": by design
+   * (its own ladder), so it never fails the fit, but it is reported, not lost with `steps`.
+   */
+  held: string[];
 };
 
 export type FitsPlannedResult = {
@@ -88,6 +94,25 @@ export function stepsTaken(slide: Slide, theme: Theme): number {
     most = Math.max(most, n);
   }
   return most;
+}
+
+/**
+ * The cover titles a layout set under the gold's size (ruling 21 A, `coverType`), as
+ * "Title 82→56px". `stepsTaken` leaves fixed sizes out (they are the layout's own ladder,
+ * not a fit step-down), so this is where a long cover title's step down shows.
+ */
+export function coverStepped(slide: Slide, theme: Theme): string[] {
+  const top = coverType(theme).title;
+  const px = (pt: number) => Math.round(pt * 1.5);
+  return slide.elements.flatMap((el) =>
+    el.type === "text" &&
+    el.name === "Title" &&
+    el.style.fixedSize &&
+    el.style.fontSize !== undefined &&
+    el.style.fontSize < top - 0.01
+      ? [`Title ${px(top)}→${px(el.style.fontSize)}px`]
+      : [],
+  );
 }
 
 /**
@@ -166,6 +191,7 @@ export function slideFits(slide: Slide, theme: Theme, stepDown: StepDown): Theme
     lane: lint.laneOverflow,
     steps,
     answers,
+    held: coverStepped(fitted.slide, theme),
   };
 }
 

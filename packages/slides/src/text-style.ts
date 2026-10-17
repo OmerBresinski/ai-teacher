@@ -175,6 +175,16 @@ export function onScale(
  * A size a layout took from its own age table (`TextStyle.fixedSize`, UX ruling 21 A): drawn as
  * stored, never snapped to the stage's steps. Undefined when the style has no fixed size.
  */
+/**
+ * The style with its layout-owned size let go (ruling 21 A): once a teacher, tidy or the fitter
+ * sets a size or a preset, the size is theirs and the type scale reads it again. Every writer of
+ * `fontSize` or `preset` outside a layout goes through this, so `fixedSize` never outlives it.
+ */
+export function unfixed<T extends { fixedSize?: boolean }>(style: T): Omit<T, "fixedSize"> {
+  const { fixedSize: _, ...rest } = style;
+  return rest;
+}
+
 export function fixedSizeOf(
   style: { fixedSize?: boolean; fontSize?: number } | undefined,
 ): number | undefined {
