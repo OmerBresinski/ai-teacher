@@ -19,9 +19,9 @@
  */
 import type { PathElement, ShapeElement, TextPreset } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { readingFloorOf } from "../layout-sizes";
 import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
-import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import { type Ctx, type FieldReport, type Figure, kit, mix, type TemplateInput } from "./index";
 import { layoutItemsRow, PENDING_ICON, ROW_NAMES } from "./items-row";
@@ -117,7 +117,8 @@ export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
 /* ------------------------------------------------------------------ */
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
-const drawn = (c: Ctx, preset: TextPreset, size: number) => resolveFontSize(c.t, preset, size);
+/** A stages size as drawn: as given (`fixedSize`), not snapped to the stage's type scale. */
+const drawn = (_c: Ctx, _preset: TextPreset, size: number) => round1(size);
 const lines = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
   v.trim() ? countLines(v, p, c.t, w, wt, size) : 0;
 const wordsFit = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
@@ -152,13 +153,23 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
 
   const v2 = v2Profile(c.t);
   const col = v2Colors(c.t);
+  // The gold's own sizes (C10, THEME-AUDIT 18 Oct: `--t-name` / `--t-body`, KS2 46 / 33 px, KS1
+  // 54 / 38 px), drawn as given (`fixedSize`) rather than raised to the stage's body and snapped to
+  // its scale (43.5 / 43.5 px at KS2). The line is held at the stage's reading floor (ruling 162:
+  // KS1 28, KS2 25, KS3+ 21 pt), so KS2 draws 37.5 px and KS1 42 px; the name sits above it.
+  const read = readingFloorOf(stage);
+  const sizeName = v2.sizes.name;
+  const sizeBody = Math.max(v2.sizes.body, read);
   const prof = {
-    name: Math.max(v2.sizes.name, Math.round(c.s.body * 1.25)),
-    body: Math.max(v2.sizes.body, c.s.body),
-    floorName: Math.max(MIN_FONT_SIZE.heading, v2.floors.name),
-    floorBody: Math.max(MIN_FONT_SIZE.body, v2.floors.body),
-    comfortName: Math.max(MIN_FONT_SIZE.heading, v2.comfort.name),
-    comfortBody: Math.max(MIN_FONT_SIZE.body, v2.comfort.body),
+    name: sizeName,
+    body: sizeBody,
+    // The name gives way to the heading minimum, as master's snapped ladder did: the line is held
+    // above the gold's own floor, so the name's room keeps KS1's line caps.
+    floorName: Math.min(sizeName, MIN_FONT_SIZE.heading),
+    floorBody: Math.min(sizeBody, Math.max(MIN_FONT_SIZE.body, v2.floors.body, read)),
+    // Master drew every name at one snapped size, so a name never made the slide tight; kept.
+    comfortName: Math.min(sizeName, MIN_FONT_SIZE.heading),
+    comfortBody: Math.min(sizeBody, Math.max(MIN_FONT_SIZE.body, v2.comfort.body, read)),
     lh: v2.lineHeights.body,
   };
 
@@ -501,6 +512,7 @@ function textBox(
       preset,
       autoHeight: true,
       fontSize: size,
+      fixedSize: true,
       lineHeight: lh,
       fontWeight: weight,
       padding: 0,

@@ -207,8 +207,10 @@ describe("stages: a cap of 0 is over, never silent", () => {
   test("5 pictures at early: measured beside short siblings (TEACH-68 part b), long words over", () => {
     // Was 0 only because the 6-letter stand-in names overflowed; the cell holds 5-letter names
     // and 24-character lines, so this case's longer ones are over and its short ones are not.
+    // TEACH-215 part j: the gold's 54 px KS1 name (master snapped it to 58.5 px) raises this cell's
+    // name cap 6 -> 7, so "Harvest" now fits; the lines are still over.
     const r = lay(pictured("05", 5), "ks1");
-    expect(r.over).toContain("stages[1].name");
+    expect(r.over).not.toContain("stages[1].name");
     expect(r.over).toContain("stages[0].line");
     expect(r.over).not.toContain("stages[0].name");
     expect(r.tight).toBe(true);
