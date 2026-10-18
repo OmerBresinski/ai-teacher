@@ -71,7 +71,7 @@ import {
 } from "@tj/slides";
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
-import { MARK_HEX_V, notchPoints } from "@tj/slides/marks";
+import { markHexagonPoints, notchPoints } from "@tj/slides/marks";
 import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -1097,21 +1097,20 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     line: stroke && strokeWidth > 0 ? { color: stroke, width: strokeWidth } : { type: "none" },
   };
   if (element.shape === "rounded" || element.shape === "pill") options.rectRadius = inches(radius);
-  // A hexagon mark's top and bottom edges sit 4% inside its box, as on screen (`markHexagonPoints`);
-  // the preset fills the box it is given, so it gets the inner box. Its text keeps the full box.
-  if (element.shape === "hexagon") {
-    options.y = inches(element.y + element.h * MARK_HEX_V);
-    options.h = inches(element.h * (1 - 2 * MARK_HEX_V));
-  }
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const transparency = transparencyOf(element.opacity);
   if (transparency != null && options.fill) options.fill = { ...options.fill, transparency };
   // An offset block (Poster): a blur-free outer shadow, PowerPoint's own hard offset.
   if (element.shadow) options.shadow = offsetShadow(element.shadow);
-  if (element.shape === "notch") {
+  // A notch, and a hexagon mark (its sides at 25% of the width and its top and bottom 4% inside the
+  // box, `markHexagonPoints`), are written as custom geometry from the editor's own outline: the
+  // presets cut by the shorter side and cannot take the inset.
+  if (element.shape === "notch" || element.shape === "hexagon") {
     const n = Math.max(0, element.radius ?? 8);
+    const pts =
+      element.shape === "hexagon" ? markHexagonPoints() : notchPoints(element.w, element.h, n);
     options.points = [
-      ...notchPoints(element.w, element.h, n).map((p, i) => ({
+      ...pts.map((p, i) => ({
         x: inches(p.x * element.w),
         y: inches(p.y * element.h),
         ...(i === 0 ? { moveTo: true } : {}),
@@ -1494,7 +1493,8 @@ async function drawImage(
     const frameH = options.sizing?.type === "crop" ? element.h : (options.h as number) * 72;
     options.objectName = roundedPictureName(radius, frameW, frameH, element.name ?? "Picture");
   }
-  if (element.mask === "hexagon") options.objectName = `tj-hex:${element.name ?? "Picture"}`;
+  if (element.mask === "hexagon")
+    options.objectName = `tj-hex:${hexagonAdj(element.w, element.h)}:${element.name ?? "Picture"}`;
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
@@ -1513,6 +1513,17 @@ function exportWindow(element: ImageElement, natural: { w: number; h: number }):
 }
 
 const ROUNDED_PICTURE = /^tj-round:(\d+):/;
+
+/**
+ * The `hexagon` preset's `adj` for the editor's outline (side points at 25% of the WIDTH, ImageView
+ * and `hexagonPoints`). The preset cuts `adj` of the SHORTER side (ECMA-376 presetShapeDefinitions:
+ * x1 = ss * a / 100000, a pinned to 0..50000 * w / ss), so a wide box needs 25000 * w / ss. Its
+ * default `vf` (115470) puts the top and bottom edges on the box, as the editor does.
+ */
+export function hexagonAdj(w: number, h: number): number {
+  const ss = Math.min(w, h);
+  return ss > 0 ? Math.round((25_000 * w) / ss) : 25_000;
+}
 
 /**
  * The name a rounded picture is written under: its roundRect `adj` (the corner radius as a share
@@ -1540,13 +1551,13 @@ export async function roundPictureCorners(buffer: ArrayBuffer): Promise<ArrayBuf
     if (!xml.includes('name="tj-round:') && !xml.includes('name="tj-hex:')) continue;
     const next = xml.replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (pic) => {
       // A hexagon-masked picture (Geometric's cover): the preset hexagon, PowerPoint's own crop.
-      const hex = /name="(tj-hex:([^"]*))"/.exec(pic);
+      const hex = /name="(tj-hex:(\d+):([^"]*))"/.exec(pic);
       if (hex?.[1]) {
         return pic
-          .replace(`name="${hex[1]}"`, `name="${hex[2] ?? ""}"`)
+          .replace(`name="${hex[1]}"`, `name="${hex[3] ?? ""}"`)
           .replace(
             /<a:prstGeom prst="rect"><a:avLst\/><\/a:prstGeom>/,
-            '<a:prstGeom prst="hexagon"><a:avLst/></a:prstGeom>',
+            `<a:prstGeom prst="hexagon"><a:avLst><a:gd name="adj" fmla="val ${hex[2]}"/></a:avLst></a:prstGeom>`,
           );
       }
       const named = /name="(tj-round:(\d+):[^"]*)"/.exec(pic);

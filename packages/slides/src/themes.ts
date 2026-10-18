@@ -679,7 +679,7 @@ export type TypeScale = Record<TypeStep, number>;
  * same in every theme. The type scale and the layouts' gold sizes (`layout-sizes.ts`) both read it.
  */
 export const bodySmallAt = (ks: KeyStage): number =>
-  Math.max(MIN_FONT_SIZE.body, Math.round(KEY_STAGE_TYPE[ks].body * BODY_SMALL));
+  Math.round(KEY_STAGE_TYPE[ks].body * BODY_SMALL);
 
 function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
   const k = KEY_STAGE_TYPE[ks];
@@ -690,7 +690,6 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
     headingDisplay: k.display ?? Math.round(heading * DISPLAY_HEADING),
     heading,
     body: k.body,
-    // One step under body, held at the body floor (ruling 162).
     bodySmall: bodySmallAt(ks),
     caption: Math.round(own.caption * k.caption),
   };

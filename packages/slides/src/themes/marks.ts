@@ -86,6 +86,12 @@ export type ThemeMarks = {
   rightRingInset: number;
   /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
   footBar: number;
+  /** The myth's struck claim weight (Geometric's round 5 myth: 600), or null for the default 500. */
+  claimWeight: number | null;
+  /** The myth's verdict disc in px at 1440 (Geometric: 42), or 0 for the default. */
+  verdictDisc: number;
+  /** Whether the myth's seam badge sits in a halo (false: Geometric's seam sits on the panels). */
+  seamHalo: boolean;
 };
 
 /** An offset block may sit at most this far from its surface (THEMING.md section 6: card ≤ 8). */
@@ -133,6 +139,9 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     railAhead: /^#[0-9a-f]{6}$/i.test(t["rail-ahead"] ?? "") ? (t["rail-ahead"] as string) : null,
     footBar: Math.max(0, num(t["foot-bar"])),
     rightRingInset: Math.min(4, Math.max(0, num(t["right-ring-inset"]))),
+    claimWeight: num(t["claim-weight"]) >= 400 ? Math.min(800, num(t["claim-weight"])) : null,
+    verdictDisc: Math.min(60, Math.max(0, num(t["verdict-disc"]))),
+    seamHalo: t["seam-halo"] !== "none",
   };
 }
 

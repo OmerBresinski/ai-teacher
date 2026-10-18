@@ -320,8 +320,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const claimW = SEAM - PAD_L - 64 * K;
   const claimRoom = H - FOOT - claimTop;
   let claimSize = drawn("heading", Math.max(floorBody, v2.sizes.quote * 1.2));
-  // Geometric's struck claim is 600 (round 5 myth); measured at the weight it is drawn in.
-  const claimWt = surfacesOf(c.t).marks.badge === "hex" ? 600 : 500;
+  // A theme's own claim weight (Geometric: 600, round 5 myth); measured at the weight it is drawn in.
+  const claimWt = surfacesOf(c.t).marks.claimWeight ?? 500;
   const claimH = (s: number, w = claimW, l = LH.claim) =>
     heightOf(claimDoc(claimText), "heading", s, w, claimWt) * (l / lh);
   while (claimH(claimSize) > claimRoom + 0.5 && claimSize > drawn("heading", floorBody))
@@ -465,8 +465,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-b", { x: 0, y: band, w: SEAM, h: stageH }, at.verdict, MYTH_NAMES.panel, 0);
   const sy = band + TOP;
   const right = verdict === "true";
-  // Geometric's verdict disc is 42px (28pt, round 5 myth); the other golds' 30px.
-  const STAMP_DISC = surfacesOf(c.t).marks.badge === "hex" ? 42 * K : STAMP_DISC_0;
+  // A theme's own verdict disc (Geometric: 42px = 28pt, round 5 myth); the other golds' 30px.
+  const ownDisc = surfacesOf(c.t).marks.verdictDisc;
+  const STAMP_DISC = ownDisc > 0 ? ownDisc * K : STAMP_DISC_0;
   const stampFill =
     paintSurface(
       { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
@@ -532,8 +533,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     }),
     fill: col.background,
   };
-  // Geometric's seam (round 5 myth) sits straight on the panels: no halo.
-  if (seamShape !== "hexagon") push(halo, at.fact, MYTH_NAMES.halo);
+  // A theme without a seam halo (Geometric, round 5 myth) sits its seam straight on the panels.
+  if (surfacesOf(c.t).marks.seamHalo) push(halo, at.fact, MYTH_NAMES.halo);
   const seam: ShapeElement = {
     id: uid(),
     type: "shape",
