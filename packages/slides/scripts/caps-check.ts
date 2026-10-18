@@ -8,15 +8,7 @@
  * only ever shrinks).
  */
 import { spawn } from "node:child_process";
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  symlinkSync,
-} from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, statSync, symlinkSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -24,26 +16,34 @@ const PKG = join(import.meta.dir, "..");
 const TEMPLATES = "src/templates";
 
 /** Today's gaps, each with its reason. A gap that closes fails the check until it is removed here. */
-export const KNOWN: Record<string, { kind: "drift" | "stdout-only" | "no-main"; reason: string }> =
+export const KNOWN: Record<
+  string,
   {
-    "figure-capacity.json": {
-      kind: "drift",
-      reason:
-        "the generator writes 210/210/210 (its probe sentence's length): figure.ts ellipsises a long caption to one line (#563), so the one-line probe never fails. The committed 60/67/79 is what figure.ts reads. Fix in M1.",
-    },
-    "hinge-capacity.json": {
-      kind: "stdout-only",
-      reason: "hinge-capacity.ts prints its table and writes nothing; compared from stdout.",
-    },
-    "source-capacity.json": {
-      kind: "stdout-only",
-      reason: "source-capacity.ts prints its table and writes nothing; compared from stdout.",
-    },
-    "worked-capacity.json": {
-      kind: "no-main",
-      reason: "worked-capacity.ts has no entry point; compared by calling measureWorkedCapacity().",
-    },
-  };
+    kind: "drift" | "stdout-only" | "no-main";
+    reason: string;
+    /** For a drift: the exact value the generator writes today. Anything else fails. */
+    generated?: unknown;
+  }
+> = {
+  "figure-capacity.json": {
+    kind: "drift",
+    reason:
+      "the generator writes 210/210/210 (its probe sentence's length): figure.ts ellipsises a long caption to one line (#563), so the one-line probe never fails. The committed 60/67/79 is what figure.ts reads. Fix in M1.",
+    generated: { early: 210, primary: 210, secondary: 210 },
+  },
+  "hinge-capacity.json": {
+    kind: "stdout-only",
+    reason: "hinge-capacity.ts prints its table and writes nothing; compared from stdout.",
+  },
+  "source-capacity.json": {
+    kind: "stdout-only",
+    reason: "source-capacity.ts prints its table and writes nothing; compared from stdout.",
+  },
+  "worked-capacity.json": {
+    kind: "no-main",
+    reason: "worked-capacity.ts has no entry point; compared by calling measureWorkedCapacity().",
+  },
+};
 
 type Gen = {
   /** The committed JSON it should reproduce (under src/templates). */
@@ -121,12 +121,25 @@ function firstDiff(a: unknown, b: unknown, path = ""): string | undefined {
   return `${path || "(root)"}: generated ${s(a)}, committed ${s(b)}`;
 }
 
-/** Reads the last JSON value a generator printed (a table may follow progress lines). */
-function lastJson(text: string): unknown {
-  const at = text.search(/^[{[]/m);
-  if (at < 0) throw new Error("no JSON on stdout");
-  return JSON.parse(text.slice(at));
+/**
+ * The JSON table a generator printed. Progress lines may come before it, so the whole output is
+ * tried first, then every line that opens an object or array, from the last one back, up to the end.
+ */
+function parseTrailingJson(text: string): unknown {
+  const all = text.trim();
+  try {
+    return JSON.parse(all);
+  } catch {}
+  const starts = [...all.matchAll(/^[{[]/gm)].map((m) => m.index ?? 0).reverse();
+  for (const at of starts) {
+    try {
+      return JSON.parse(all.slice(at));
+    } catch {}
+  }
+  throw new Error("no JSON table on stdout");
 }
+
+const SIDE_BY_SIDE = "side-by-side-capacity.json";
 
 async function main() {
   const only = process.argv.includes("--only")
@@ -139,12 +152,26 @@ async function main() {
   cpSync(join(PKG, "tsconfig.json"), join(copy, "tsconfig.json"));
   symlinkSync(join(PKG, "node_modules"), join(copy, "node_modules"));
   const gens = generators().filter((g) => !only || g.target.startsWith(only));
-  const before = new Map(
-    gens.map((g) => [g.target, statSync(join(copy, TEMPLATES, g.target)).mtimeMs]),
-  );
+  // Some generators read other committed tables, so the copy keeps them intact. A table counts as
+  // written when its nanosecond mtime or its bytes changed (mtime alone could tie on a coarse clock).
+  const stamp = (t: string) => {
+    const f = join(copy, TEMPLATES, t);
+    return `${statSync(f, { bigint: true }).mtimeNs}:${readFileSync(f, "utf8")}`;
+  };
+  const targets = [...gens.filter((g) => g.from === "file").map((g) => g.target), SIDE_BY_SIDE];
+  const before = new Map(targets.map((t) => [t, stamp(t)]));
+  const wrote = (t: string) => stamp(t) !== before.get(t);
 
   const t0 = performance.now();
-  const results: { target: string; ok: boolean; note: string; ms: number }[] = [];
+  type Result = {
+    target: string;
+    ok: boolean;
+    ran: boolean;
+    got?: unknown;
+    note: string;
+    ms: number;
+  };
+  const results: Result[] = [];
   const queue = [...gens];
   const width = Math.max(2, Math.min(6, availableParallelism() - 1));
   await Promise.all(
@@ -158,6 +185,7 @@ async function main() {
           results.push({
             target: g.target,
             ok: false,
+            ran: false,
             ms,
             note: `exit ${r.code}: ${r.err.trim().split("\n").slice(-3).join(" | ")}`,
           });
@@ -165,19 +193,17 @@ async function main() {
         }
         let got: unknown;
         try {
-          if (g.from === "stdout") got = lastJson(r.out);
+          if (g.from === "stdout") got = parseTrailingJson(r.out);
           else {
-            const file = join(copy, TEMPLATES, g.target);
-            if (statSync(file).mtimeMs === before.get(g.target))
-              throw new Error("the generator did not write its JSON");
-            got = JSON.parse(readFileSync(file, "utf8"));
+            if (!wrote(g.target)) throw new Error("the generator did not write its JSON");
+            got = JSON.parse(readFileSync(join(copy, TEMPLATES, g.target), "utf8"));
           }
         } catch (e) {
-          results.push({ target: g.target, ok: false, ms, note: String(e) });
+          results.push({ target: g.target, ok: false, ran: false, ms, note: String(e) });
           continue;
         }
         const d = firstDiff(got, committed);
-        results.push({ target: g.target, ok: !d, ms, note: d ?? "matches" });
+        results.push({ target: g.target, ok: !d, ran: true, got, ms, note: d ?? "matches" });
       }
     }),
   );
@@ -189,20 +215,42 @@ async function main() {
     : readdirSync(join(PKG, TEMPLATES)).filter(
         (f) => f.endsWith("-capacity.json") && !covered.has(f),
       );
-  if (!only && existsSync(join(copy, TEMPLATES, "side-by-side-capacity.json"))) {
-    const got = JSON.parse(
-      readFileSync(join(copy, TEMPLATES, "side-by-side-capacity.json"), "utf8"),
-    );
-    const committed = JSON.parse(
-      readFileSync(join(PKG, TEMPLATES, "side-by-side-capacity.json"), "utf8"),
-    );
-    const d = firstDiff(got, committed);
-    results.push({
-      target: "side-by-side-capacity.json",
-      ok: !d,
-      ms: 0,
-      note: d ?? "matches (written by split-compare-capacity.ts)",
-    });
+  // split-compare-capacity.ts writes side-by-side's table too; judge it only when that run succeeded.
+  const split = results.find((r) => r.target === "split-compare-capacity.json");
+  if (split) {
+    let r: Result;
+    if (!split.ran)
+      r = {
+        target: SIDE_BY_SIDE,
+        ok: false,
+        ran: false,
+        ms: 0,
+        note: "split-compare-capacity.ts failed, so it was not regenerated",
+      };
+    else if (!wrote(SIDE_BY_SIDE))
+      r = {
+        target: SIDE_BY_SIDE,
+        ok: false,
+        ran: false,
+        ms: 0,
+        note: "split-compare-capacity.ts did not write it",
+      };
+    else {
+      const got = JSON.parse(readFileSync(join(copy, TEMPLATES, SIDE_BY_SIDE), "utf8"));
+      const d = firstDiff(
+        got,
+        JSON.parse(readFileSync(join(PKG, TEMPLATES, SIDE_BY_SIDE), "utf8")),
+      );
+      r = {
+        target: SIDE_BY_SIDE,
+        ok: !d,
+        ran: true,
+        got,
+        ms: 0,
+        note: d ?? "matches (written by split-compare-capacity.ts)",
+      };
+    }
+    results.push(r);
   }
 
   let fail = 0;
@@ -210,8 +258,12 @@ async function main() {
     const k = KNOWN[r.target];
     let status: string;
     if (k?.kind === "drift") {
-      status = r.ok ? "FAIL (known drift is gone: remove it from KNOWN)" : "known drift";
-      if (r.ok) fail++;
+      // Only the pinned drift passes: the generator must run and write exactly `generated`.
+      const pinned = r.ran && !firstDiff(r.got, k.generated);
+      if (r.ok) status = "FAIL (known drift is gone: remove it from KNOWN)";
+      else if (pinned) status = "known drift";
+      else status = "FAIL (drift changed from the pinned value)";
+      if (!pinned) fail++;
     } else if (!r.ok) {
       status = "FAIL";
       fail++;

@@ -209,39 +209,75 @@ jobs:
   text-measure:
     # Text limits M0 (ADR 0040 §6): the capacity tables still match their generators, and the
     # headless measurer stays within its stated bound of Chromium. A job of its own, beside `test`
-    # and the e2e shards, so it adds no wall time: about 3 minutes on a runner, shorter than
-    # either. Known gaps are listed, with their reasons, in the two scripts.
+    # and the e2e shards, so it adds no wall time (about 2 minutes). Known gaps are listed, with
+    # their reasons, in the two scripts. Like the e2e shards, a docs-only PR skips it.
     name: text-measure
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # The e2e shards' scope rule (scripts/e2e-scope.ts): only documentation changed -> skip.
+      - name: Scope
+        id: scope
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --name-only --no-renames HEAD^1 HEAD | bun scripts/e2e-scope.ts >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
       - uses: ./.github/actions/setup
+        if: steps.scope.outputs.e2e != 'false'
 
       - name: Capacity tables match their generators (caps:check)
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: packages/slides
         run: bun run caps:check
 
-      # The same pinned Playwright and browser cache as the e2e shards.
+      # The same pinned Playwright, browser cache and headless-shell check as the e2e shards.
       - name: Playwright version
         id: pw
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: apps/web
         run: |
           version="$(bunx --bun playwright --version 2>/dev/null | awk '{print $2}' || echo unknown)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
+        if: steps.scope.outputs.e2e != 'false'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
       - name: Install Chromium
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: apps/web
-        run: bunx --bun playwright install --only-shell chromium
+        run: |
+          set -o pipefail
+          bunx --bun playwright install --only-shell chromium
+          shell="$(find ~/.cache/ms-playwright -type f \( -name chrome-headless-shell -o -name headless_shell \) -print -quit)"
+          if [ -z "$shell" ]; then
+            echo "::error title=Chromium::no headless shell under ~/.cache/ms-playwright"
+            exit 1
+          fi
+          missing="$(ldd "$shell" | awk '/not found/ { print $1 }' | tr '\n' ' ')"
+          if [ -n "$missing" ]; then
+            echo "::error title=Chromium::$shell needs libraries the runner lacks: $missing"
+            exit 1
+          fi
+          if ! timeout 30 "$shell" --no-sandbox --dump-dom about:blank > /dev/null; then
+            echo "::error title=Chromium::$shell did not start; see the output above"
+            exit 1
+          fi
 
       # The CI sample (about 15k layouts, seconds); `--full` is the local sweep.
       - name: Measurer vs Chromium (measure:calibrate)
+        if: steps.scope.outputs.e2e != 'false'
         working-directory: packages/slides
         run: bun run measure:calibrate
 

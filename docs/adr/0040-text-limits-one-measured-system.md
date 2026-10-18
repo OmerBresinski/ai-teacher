@@ -31,9 +31,12 @@ and duplication.
    letter spacing. It counts graphemes, not UTF-16 units. The headless ruler, the editor's no-DOM fallback, the PPTX
    sizer and the capacity generator all call it. `SAFETY`, `FIT_CUSHION` and `WRAP_SLACK` merge into one named
    tie cushion.
-2. **A stated bound, tested.** One-line width is within ±0.5% of Chromium (p99). Line counts equal Chromium in at least
-   99.5% of the calibration grid and are short in no more than 0.05%. A Playwright calibration test in CI enforces
-   this over every theme face × weight × 3 sizes × 3 spacings × 3 widths, on real English, French and maths text.
+2. **A stated bound, tested.** The target, after M2: one-line width within ±0.5% of Chromium (p1 to p99), line
+   counts equal to Chromium's in at least 99.5% of layouts and short in no more than 0.05%. Until then
+   `measure:calibrate` enforces today's measured bound (`CURRENT`: 97.9% exact, at most 0.5% short, width −1.8% to
+   +2.45%) on the clean rows, and prints the target; `--target` enforces it. The calibration is a script that drives
+   Playwright's Chromium, not an e2e test. CI runs a fixed sample (every theme face × weight × 2 sizes × 3 spacings
+   × 2 widths, on real English, French, Spanish and maths text); `--full` runs 3 sizes, 4 spacings and 3 widths.
 3. **One slot registry and one generator.** Every text slot of every layout is declared once as data (role, lines,
    counts, variants). One generator walks registry × theme × stage × variant through `layoutTemplate` at the drawn size
    (`resolveFontSize`). It fills the title and the bodies together, so a body's cap holds under the tallest title the
@@ -43,13 +46,14 @@ and duplication.
    and language, fit on every theme. No probe text, and no characters-per-word constant anywhere downstream.
 5. **Words once.** The writer reads `words` from the table. The share policy (`SHOWN_SHARE`, `PLAN_SHARE`, minimums,
    need caps) lives in one module in generation and is applied once.
-6. **Drift is a CI failure.** `caps:check` regenerates the font table and the capacity table and diffs them against the
-   checked-in files.
+6. **Drift is a CI failure.** `caps:check` reruns every capacity generator on a temp copy of `src/` and diffs each
+   table it produces (written or printed) against the checked-in JSON. From M2 it also regenerates the font table.
 
 7. **Known gaps are listed, not hidden.** Both checks carry a list of today's gaps, each with its reason
    (`KNOWN_GAPS` in the calibration: weight 800, weight 500, px spacing, non-ASCII; `KNOWN` in the drift
-   check: figure drift, stdout-only and no-entry generators). A gap that gets worse fails; a gap that
-   closes also fails until it is removed from the list, so the lists only shrink.
+   check: figure drift, pinned to the value its generator writes today, stdout-only and no-entry generators). The
+   calibration judges each combination of gaps as its own bucket against its measured value plus a stated margin
+   (2 points of exact, 1 of short, 1% of width). A gap that gets worse fails; a gap that closes also fails until it is removed from the list, so the lists only shrink.
 
 ## Consequences
 
