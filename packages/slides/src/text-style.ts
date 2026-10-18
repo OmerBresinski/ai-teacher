@@ -216,11 +216,13 @@ export function resolveTextStyle(
     fontSize: fixedSizeOf(style) ?? resolveFontSize(theme, preset, style?.fontSize, role),
     lineHeight: style?.lineHeight ?? theme.lineHeights[preset],
     fontWeight: weight,
-    letterSpacing: TRACKED.includes(preset)
-      ? theme.titleTracking
-      : preset === "caption"
-        ? "0.08em"
-        : "normal",
+    letterSpacing: style?.letterSpacing
+      ? style.letterSpacing
+      : TRACKED.includes(preset)
+        ? theme.titleTracking
+        : preset === "caption"
+          ? "0.08em"
+          : "normal",
     textTransform: preset === "caption" ? "uppercase" : "none",
     color:
       style?.color ??

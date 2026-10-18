@@ -122,7 +122,8 @@ const LinkAttrsSchema = z
  * - `lang: "ar"` marks a run in another language than its text box (TEACH-75 part z): an Arabic
  *   word in an English sentence, which renders as an isolate in its own direction.
  */
-export const RUN_FONTS = ["quote"] as const;
+/** `quote`: the theme's quote face; `math`: the theme's maths-variable face (`mathFaceOf`). */
+export const RUN_FONTS = ["quote", "math"] as const;
 export type RunFont = (typeof RUN_FONTS)[number];
 /** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
 export const HIGHLIGHT_SLOTS = 4;

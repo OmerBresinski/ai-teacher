@@ -10,6 +10,7 @@ import { provideIcons } from "../icons/loader";
 import { resolveTextStyle } from "../text-style";
 import { v2Colors } from "../theme-v2";
 import { atKeyStage, getTheme, THEMES } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { MYTH_NAMES, withMythCaps, withoutMythCaps } from "./myth";
 import { measureMythCaps } from "./myth-capacity";
@@ -202,9 +203,18 @@ describe("myth and fact: caps and fit", () => {
         expect(r.over).toEqual([]);
         const c = v2Colors(atKeyStage(t, stage));
         const known = new Set(
-          [c.background, c.surface, c.ink, c.muted, c.accent, c.deep, c.onDeep, ...c.fields].map(
-            (x) => x.toUpperCase(),
-          ),
+          [
+            c.background,
+            c.surface,
+            c.ink,
+            c.muted,
+            c.accent,
+            c.deep,
+            c.onDeep,
+            ...c.fields,
+            // The theme's own emphasis token (Geometric #1842B8), when it sets one.
+            ...(surfacesOf(t).marks.emphasis ? [surfacesOf(t).marks.emphasis as string] : []),
+          ].map((x) => x.toUpperCase()),
         );
         for (const e of r.slide.elements) {
           if (e.name?.startsWith("Verdict disc") || e.name?.startsWith("Claim panel")) continue;

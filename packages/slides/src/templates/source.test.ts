@@ -39,7 +39,19 @@ describe("source gold cases", () => {
       test(`${k.name} on ${theme.id}: nothing over, every note kept, sizes on the stage's steps`, () => {
         const r = lay(k.input, k.stage, theme);
         // The 88-word cap case runs past the KS3 floor in Crayon's wide hand: flagged, never clipped.
-        const flagged = k.name === "max" && theme.id === "crayon";
+        // So does it in the round 5 themes (TEACH-215 part c, 16 Oct 2026), whose measured cap is
+        // now 55 words at secondary, so the writer never sends it.
+        const WIDE = [
+          "crayon",
+          "poster",
+          "storytime",
+          "scrapbook",
+          "calm",
+          "geometric",
+          "dark-slate",
+          "dark-ember",
+        ];
+        const flagged = k.name === "max" && WIDE.includes(theme.id);
         expect(r.over).toEqual(flagged ? ["source extract at the secondary floor"] : []);
         const els = r.slide.elements;
         expect(named(els, SOURCE_NAMES.label)).toHaveLength(KEPT[k.name] ?? 2);

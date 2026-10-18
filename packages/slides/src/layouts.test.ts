@@ -327,8 +327,9 @@ describe("layoutSlide", () => {
    * change, and say so in the PR.
    */
   const frozen = defaultRecipes as Record<string, unknown>;
-  // Theme v2 (TEACH-152 part b) came after the freeze: nothing to hold it to.
-  for (const theme of THEMES.filter((t) => !t.v2)) {
+  // Theme v2 (TEACH-152 part b) and the round 5 themes (TEACH-215 part c, 16 Oct 2026) came after
+  // the freeze: nothing to hold them to.
+  for (const theme of THEMES.filter((t) => !t.v2 && `title/${t.id}` in frozen)) {
     for (const kind of KINDS) {
       it(`${kind} on ${theme.id}: the default recipe is the one frozen before the catalogue`, () => {
         const expected = frozen[`${kind}/${theme.id}`];

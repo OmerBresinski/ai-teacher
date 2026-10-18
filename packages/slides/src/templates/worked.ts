@@ -21,6 +21,7 @@
  */
 import {
   type ImageElement,
+  type PathElement,
   type RichDoc,
   type RunStyleAttrs,
   type ShapeElement,
@@ -35,7 +36,8 @@ import { arrowCubic } from "../paths/arrow";
 import { countLines, lineWidth } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
-import { paintSurface } from "../themes/surfaces";
+import { notchPoints } from "../themes/marks";
+import { markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -147,7 +149,7 @@ function mathRuns(s: string, vars: readonly string[], hot: string, all?: string)
       const i = m.index ?? 0;
       if (i > at)
         out.push(colour ? styled(t.slice(at, i), { color: colour }) : { text: t.slice(at, i) });
-      out.push(styled(m[0], { font: "quote", ...(colour ? { color: colour } : {}) }));
+      out.push(styled(m[0], { font: "math", ...(colour ? { color: colour } : {}) }));
       at = i + m[0].length;
     }
     if (at < t.length)
@@ -412,6 +414,12 @@ function textEl(
   return el;
 }
 
+/** The theme's offset block (Poster), in a given colour and at most 5pt off a small plate. */
+const offsetOf = (c: Ctx, color: string): Pick<ShapeElement, "shadow"> => {
+  const o = surfacesOf(c.t).marks.offset;
+  return o ? { shadow: { x: Math.min(5, o.d), y: Math.min(5, o.d), color } } : {};
+};
+
 function shape(c: Ctx, el: Omit<ShapeElement, "id" | "type">, step?: number): ShapeElement {
   const s = {
     id: uid(),
@@ -537,35 +545,49 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const railX = X0 + BADGE / 2 - 1.5;
   const first = badgeY[0] ?? p.row1;
   const last = badgeY.at(-1) ?? first;
-  if (badgeY.length > 1)
-    shape(c, {
-      shape: "rect",
-      name: WORKED_NAMES.rail,
+  // A theme with dashed or dotted rules (Scrapbook, Geometric) draws its rail the same way.
+  const railDash = surfacesOf(c.t).roles.rule.dash;
+  const railPart = (name: string, y0: number, y1: number, fill: string, step?: number) => {
+    if (!railDash) {
+      shape(c, { shape: "rect", name, x: railX, y: y0, w: 3, h: y1 - y0, fill }, step);
+      return;
+    }
+    const el: PathElement = {
+      id: uid(),
+      type: "path",
+      name,
       x: railX,
-      y: first,
+      y: y0,
       w: 3,
-      h: last - first,
-      fill: col.rule,
-    });
+      h: y1 - y0,
+      points: [
+        { x: 0.5, y: 0 },
+        { x: 0.5, y: 1 },
+      ],
+      stroke: fill,
+      strokeWidth: 2.5,
+      dash: railDash,
+      dashGap: railDash === "dotted" ? 1.8 : 1.4,
+      ...(step ? { revealStep: step } : {}),
+    };
+    c.els.push(el);
+  };
+  // The rail still to come: the theme's own colour when it sets one (Geometric), else the rule.
+  const ahead = surfacesOf(c.t).marks.railAhead ?? col.rule;
+  if (badgeY.length > 1) railPart(WORKED_NAMES.rail, first, last, ahead);
   badgeY.forEach((y, i) => {
-    if (i > 0)
-      shape(
-        c,
-        {
-          shape: "rect",
-          name: WORKED_NAMES.railFill,
-          x: railX,
-          y: badgeY[i - 1] as number,
-          w: 3,
-          h: y - (badgeY[i - 1] as number),
-          fill: ink,
-        },
-        i + 1,
-      );
+    if (i > 0) railPart(WORKED_NAMES.railFill, badgeY[i - 1] as number, y, ink, i + 1);
   });
+  const ghostLook = markLook(c.t, "badge", BADGE, c.t.colors.background, col.rule);
   for (const y of badgeY)
     shape(c, {
-      shape: "ellipse",
+      shape:
+        ghostLook.shape === "rounded" || ghostLook.shape === "notch"
+          ? ghostLook.shape
+          : ghostLook.shape === "hexagon"
+            ? "hexagon"
+            : "ellipse",
+      ...(ghostLook.radius != null ? { radius: ghostLook.radius } : {}),
       name: WORKED_NAMES.ghost,
       x: X0,
       y: y - BADGE / 2,
@@ -578,23 +600,29 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const badgeSize = stop(c, "body", BADGE * 0.46);
   // The newest row's badge is the accent (gold: `.lb.now`); the next click lays the ink badge over
   // it, so only the latest row is red. The last row's badge stays red.
-  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) =>
-    shape(
+  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
+    // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
+    const look = markLook(c.t, "badge", BADGE, fill, ink2);
+    const solid = look.fill === "transparent" && name === WORKED_NAMES.badge;
+    return shape(
       c,
       {
-        shape: "ellipse",
+        shape: look.shape,
+        ...(look.radius != null ? { radius: look.radius } : {}),
+        ...(look.stroke && !solid ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
         name,
         x: X0,
         y: y - BADGE / 2,
         w: BADGE,
         h: BADGE,
-        fill,
+        // An outline family's done badge is a ring on the ground (the rail shows through no hole).
+        fill: solid ? fill : look.fill === "transparent" ? c.t.colors.background : look.fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
           preset: "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
           fontWeight: 700,
-          color: ink2,
+          color: solid ? ink2 : look.ink,
           align: "center",
           valign: "middle",
           padding: 0,
@@ -602,6 +630,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       },
       step,
     );
+  };
   const onAccent = c.t.colors.onAccent ?? c.t.colors.background;
   for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, accent, onAccent, i + 1);
   for (const [i, y] of badgeY.entries())
@@ -613,7 +642,30 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const y = yOf(i);
     const r = parts[i] as (typeof parts)[number];
     const lx = eqx - signW / 2 - g - r.lw;
-    if (l.answer) {
+    if (l.answer && surfacesOf(c.t).marks.field === "notch") {
+      // Geometric's plate (round 2 `--plate-notch: 6px`, `--plate-fill: #FFFFFF`): white, a thin
+      // accent line, all four corners cut, as path geometry so it mirrors (RTL-DESIGN.md).
+      const pad = pt(26);
+      const box = {
+        x: Math.round(lx - pad),
+        y: Math.round(y - (p.eq * 1.5) / 2),
+        w: Math.round(r.lw + r.rw + signW + 2 * g + 2 * pad),
+        h: Math.round(p.eq * 1.5),
+      };
+      c.els.push({
+        id: uid(),
+        type: "path",
+        name: WORKED_NAMES.plate,
+        ...box,
+        points: notchPoints(box.w, box.h, 4, "all"),
+        closed: true,
+        fill: surfaceStyle(c.t, "plate").fill,
+        stroke: accent,
+        strokeWidth: 1.33,
+        revealStep: R,
+        reveal: "fade",
+      } as PathElement);
+    } else if (l.answer) {
       const pad = pt(26);
       shape(
         c,
@@ -628,6 +680,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
           fill: col.wash,
           stroke: accent,
           strokeWidth: 3,
+          ...offsetOf(c, accent),
         },
         R,
       );
@@ -715,7 +768,13 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const stripW = tx + pt(60) + pt(36) - COL_L;
     const box = { x: COL_L, y: p.checkTop, w: stripW, h: p.checkH };
     const strip = paintSurface(
-      { id: uid(), role: p.model ? "card" : "field-b", box, own: [10, 10, 10, 10] },
+      {
+        id: uid(),
+        // An outline-card theme (Geometric's gold) sets the check on an outlined card on white.
+        role: p.model || surfacesOf(c.t).marks.card === "outline" ? "card" : "field-b",
+        box,
+        own: [10, 10, 10, 10],
+      },
       c.t,
     );
     if (strip)
@@ -725,7 +784,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         revealStep: R,
         reveal: "fade",
       } as ShapeElement);
-    // The gold's "Check:" is 40 px, held at the stage's reading floor.
+    // The gold's "Check:" is 40 px, held at the stage's reading floor, in the display face, 800
+    // (worked.html `.ck b`) on an outline-card theme.
+    const labFace = surfacesOf(c.t).marks.card === "outline" ? "heading" : "body";
     const labSize = Math.max(pt(40), c.s.small);
     textEl(
       c,
@@ -735,6 +796,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       labSize,
       { valign: "middle", fontWeight: 800 },
       R,
+      ...(labFace === "heading" ? (["heading"] as const) : []),
     );
     textEl(
       c,
@@ -766,7 +828,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       c.t,
     );
     if (made?.ok) {
-      const cy = (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2;
+      // The gold (v12 worked.js): the bars centre 8px under the middle of the equation rows.
+      const cy =
+        (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2 + pt(8);
       const ph = Math.min(pt(560), H - 2 * pt(48));
       const box = {
         x: W - PANEL_W + pt(16),

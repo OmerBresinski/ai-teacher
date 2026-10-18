@@ -38,7 +38,7 @@ import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
-import { paintSurface, type SurfaceRole } from "../themes/surfaces";
+import { paintSurface, type SurfaceRole, surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, type TemplateInput } from "./index";
 import { type Age, ageProfileOf, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
 import CAPACITY from "./myth-capacity.json" with { type: "json" };
@@ -108,7 +108,7 @@ const CARD_IN = 72 * K;
 const CARD_FOOT = 72 * K;
 const TAG_H = 30 * K;
 const TAG_GAP = 24 * K;
-const STAMP_DISC = 30 * K;
+const STAMP_DISC_0 = 30 * K;
 const SEAM_D = 84 * K;
 const SEAM_TOP = 86 * K;
 const ASK_GAP = 48 * K;
@@ -283,7 +283,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const inner = { x: fp.x + FP_L, y: fp.y + TOP, w: fp.w - FP_L - FP_R, h: fp.h - TOP - FOOT };
   const factW = Math.min(MAX_TEXT, inner.w);
   const lineDocV = proof ? lineDoc(proof.line.trim(), col.muted) : null;
-  const factDocV = factDoc(factText, m.factEm, col.accent);
+  // The fact's emphasis: the theme's emphasis token (Geometric's `--fa-accent`), else the accent.
+  const factDocV = factDoc(factText, m.factEm, surfacesOf(c.t).marks.emphasis ?? col.accent);
   const factWt = v2.displayWeight;
   const fitFact = (disc: number) => {
     const shown = disc ? iconIds : [];
@@ -319,8 +320,10 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const claimW = SEAM - PAD_L - 64 * K;
   const claimRoom = H - FOOT - claimTop;
   let claimSize = drawn("heading", Math.max(floorBody, v2.sizes.quote * 1.2));
+  // A theme's own claim weight (Geometric: 600, round 5 myth); measured at the weight it is drawn in.
+  const claimWt = surfacesOf(c.t).marks.claimWeight ?? 500;
   const claimH = (s: number, w = claimW, l = LH.claim) =>
-    heightOf(claimDoc(claimText), "heading", s, w, 500) * (l / lh);
+    heightOf(claimDoc(claimText), "heading", s, w, claimWt) * (l / lh);
   while (claimH(claimSize) > claimRoom + 0.5 && claimSize > drawn("heading", floorBody))
     claimSize = drawn("heading", claimSize - 1);
   const claimOver = claimH(claimSize) > claimRoom + 0.5;
@@ -462,6 +465,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-b", { x: 0, y: band, w: SEAM, h: stageH }, at.verdict, MYTH_NAMES.panel, 0);
   const sy = band + TOP;
   const right = verdict === "true";
+  // A theme's own verdict disc (Geometric: 42px = 28pt, round 5 myth); the other golds' 30px.
+  const ownDisc = surfacesOf(c.t).marks.verdictDisc;
+  const STAMP_DISC = ownDisc > 0 ? ownDisc * K : STAMP_DISC_0;
   const stampFill =
     paintSurface(
       { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
@@ -500,7 +506,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       "heading",
       claimSize,
       LH.claim,
-      500,
+      claimWt,
       { x: PAD_L, y: claimTop, w: claimW, h: claimH(claimSize) },
       right ? col.ink : col.muted,
     ),
@@ -512,10 +518,13 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-a", fp, at.fact, MYTH_NAMES.factPanel, 0);
   const cx = SEAM + GAP / 2;
   const cy = band + SEAM_TOP + SEAM_D / 2;
+  // The seam takes the theme's badge family (Geometric's hexagon, THEMING.md section 6).
+  const seamShape: ShapeElement["shape"] =
+    surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
   const halo: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({
       x: cx - SEAM_D / 2 - GAP,
       y: cy - SEAM_D / 2 - GAP,
@@ -524,22 +533,48 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     }),
     fill: col.background,
   };
-  push(halo, at.fact, MYTH_NAMES.halo);
+  // A theme without a seam halo (Geometric, round 5 myth) sits its seam straight on the panels.
+  if (surfacesOf(c.t).marks.seamHalo) push(halo, at.fact, MYTH_NAMES.halo);
   const seam: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({ x: cx - SEAM_D / 2, y: cy - SEAM_D / 2, w: SEAM_D, h: SEAM_D }),
     fill: col.deep,
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
-  const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
-    shaft: aw * 0.22,
-    head: aw * 0.7,
-    headLen: aw * 0.45,
-  });
-  push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+  if (seamShape === "hexagon") {
+    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px.
+    const w = 20 * K;
+    const h = 16 * K;
+    push(
+      {
+        id: uid(),
+        type: "path",
+        ...rnd({ x: cx - w / 2, y: cy - h / 2, w, h }),
+        points: [
+          { x: 0, y: 0.5 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 0 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 1 },
+        ],
+        closed: false,
+        stroke: col.onDeep,
+        strokeWidth: 3,
+      } as PathElement,
+      at.fact,
+      MYTH_NAMES.seamArrow,
+    );
+  } else {
+    const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
+      shaft: aw * 0.22,
+      head: aw * 0.7,
+      headLen: aw * 0.45,
+    });
+    push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+  }
   // The label in accent-deep for AA on the field tint; on a dark theme the deep is the dark end, so
   // the accent itself reads there.
   push(
@@ -677,7 +712,11 @@ function tagEl(
     { ...b, y: b.y + (TAG_H - size) / 2, h: size },
     color,
   );
-  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12) + 4);
+  // A theme's tag tracking (Geometric 0.08em) adds its em per letter to the measured width.
+  const track = surfacesOf(c.t).marks.tagTracking;
+  const extra = track ? Number.parseFloat(track) * size * word.length : 0;
+  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12 + extra) + 4);
+  if (track) el.style = { ...el.style, letterSpacing: track };
   return el;
 }
 
@@ -772,6 +811,9 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     lib && medal
       ? lib.iconMedalImageSrc(id, {
           medal,
+          ...(surfacesOf(c.t).marks.medal === "hex" ? { shape: "hex" as const } : {}),
+          // A theme whose gold outlines its proof icons in ink (Geometric) draws the outlined style.
+          ...(surfacesOf(c.t).marks.iconOutline ? { style: "pilot" as const } : {}),
           // As every layout's icons (iconSvgForTheme): the theme's slots, the age's drawing and
           // the size's line weights, so the feather keeps its outline at medal size.
           colours: lib.iconColoursFor({
@@ -791,7 +833,7 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     src,
     alt: id,
     fit: "contain",
-    radius: Math.round(b.w / 2),
+    ...(surfacesOf(c.t).marks.medal === "hex" ? {} : { radius: Math.round(b.w / 2) }),
   };
 }
 

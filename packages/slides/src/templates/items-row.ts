@@ -25,6 +25,7 @@ import { samplePath } from "../path-sample";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, G, kit, mix, type Stage, type TemplateInput } from "./index";
 import CAPACITY from "./items-row-capacity.json" with { type: "json" };
 import {
@@ -585,9 +586,12 @@ function medal(
   const ring = RING;
   // From KS3 an icon sits on a quiet tile: no halo, a rounded-square face with a hairline edge, a
   // slightly smaller drawing and the badge tucked into the corner (Greg's icon option 2, 14 Oct).
-  const tile = icons && !!concept && prof.medalShape === "tile";
+  // A theme with hexagon medals (Geometric, THEMING.md section 6) draws ring and face as hexagons.
+  const hex = surfacesOf(c.t).marks.medal === "hex";
+  const tile = !hex && icons && !!concept && prof.medalShape === "tile";
+  const face: ShapeElement["shape"] = hex ? "hexagon" : "ellipse";
   const shape = (extra: Partial<ShapeElement> & { x: number; y: number; w: number; h: number }) =>
-    c.els.push({ id: uid(), type: "shape", shape: "ellipse", ...extra } as ShapeElement);
+    c.els.push({ id: uid(), type: "shape", shape: face, ...extra } as ShapeElement);
   shape({
     x: Math.round(x - ring),
     y: Math.round(y - ring),

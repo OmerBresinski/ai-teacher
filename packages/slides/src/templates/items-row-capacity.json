@@ -5,8 +5,8 @@
       "icons": true,
       "withLead": false,
       "name": {
-        "cap": 30,
-        "hardMax": 44
+        "cap": 26,
+        "hardMax": 40
       },
       "text": {
         "cap": 56,
@@ -48,7 +48,7 @@
       "withLead": false,
       "name": {
         "cap": 54,
-        "hardMax": 60
+        "hardMax": 54
       },
       "text": {
         "cap": 100,
@@ -69,7 +69,7 @@
       "withLead": true,
       "name": {
         "cap": 30,
-        "hardMax": 44
+        "hardMax": 40
       },
       "text": {
         "cap": 56,
@@ -144,7 +144,7 @@
       },
       "heading": {
         "cap": 68,
-        "hardMax": 74
+        "hardMax": 86
       }
     },
     {
@@ -152,7 +152,7 @@
       "icons": false,
       "withLead": true,
       "name": {
-        "cap": 14,
+        "cap": 16,
         "hardMax": 26
       },
       "text": {
@@ -240,7 +240,7 @@
         "hardMax": 16
       },
       "text": {
-        "cap": 26,
+        "cap": 30,
         "hardMax": 30
       },
       "lead": {
@@ -765,8 +765,8 @@
       "icons": true,
       "withLead": false,
       "name": {
-        "cap": 76,
-        "hardMax": 98
+        "cap": 78,
+        "hardMax": 94
       },
       "text": {
         "cap": 110,
@@ -787,7 +787,7 @@
       "withLead": true,
       "name": {
         "cap": 58,
-        "hardMax": 76
+        "hardMax": 78
       },
       "text": {
         "cap": 92,
@@ -808,7 +808,7 @@
       "withLead": false,
       "name": {
         "cap": 112,
-        "hardMax": 132
+        "hardMax": 130
       },
       "text": {
         "cap": 150,
@@ -828,7 +828,7 @@
       "icons": false,
       "withLead": true,
       "name": {
-        "cap": 98,
+        "cap": 94,
         "hardMax": 112
       },
       "text": {

@@ -6,7 +6,7 @@ import { FONT_STACKS } from "./fonts";
 import { contrastRatio } from "./look";
 import { ageProfileOf, v2Colors, v2Profile } from "./theme-v2";
 import { pxToPt } from "./theme-v2-paper";
-import { CALLOUT_TONES, getTheme, isThemeId, OPTION_TONES, THEMES } from "./themes";
+import { ALL_THEMES, CALLOUT_TONES, getTheme, isThemeId, OPTION_TONES, THEMES } from "./themes";
 
 /*
  * Theme v2 (TEACH-152 part b; UX rulings 211, 212, 213). Values come from the pilot's
@@ -40,8 +40,9 @@ describe("ageProfileOf", () => {
 });
 
 describe("the first v2 theme (paper)", () => {
-  test("a live, selectable theme after the nine (no off switch, Greg 12 Oct)", () => {
-    expect(THEMES.map((t) => t.id)).toEqual([...v1.catalogue.map((t) => t.id), "paper"]);
+  test("a live, selectable theme (no off switch, Greg 12 Oct)", () => {
+    // TEACH-215 part c (16 Oct 2026): Paper leads the sixteen in the picker.
+    expect(THEMES[0]?.id).toBe("paper");
     expect(isThemeId("paper")).toBe(true);
     expect(getTheme("paper").id).toBe("paper");
     expect(getTheme("paper").v2?.supports).toEqual(["early", "primary", "secondary"]);
@@ -179,16 +180,30 @@ describe("contrast on the v2 theme, every accent family at every age (FR 5)", ()
 
 describe("v1 themes", () => {
   test("deep-equal to master: catalogue, staged copies and the tone tables", () => {
-    const old = THEMES.filter((t) => t.id !== "paper");
+    // TEACH-215 part c (16 Oct 2026) changes three things on purpose: Treehouse and Reading Room
+    // take their round 5 title faces, Reading Room its round 5 palette, and the picker shows the
+    // final sixteen (Night Lab and Chalk stay resolvable). Everything else is master's.
+    const masterIds = v1.catalogue.map((t) => t.id);
+    const changed = new Set(["treehouse", "reading-room"]);
+    const pick = <T extends { id: string }>(list: T[]) =>
+      list
+        .filter((t) => masterIds.includes(t.id) && !changed.has(t.id))
+        .sort((a, b) => a.id.localeCompare(b.id));
+    const old = ALL_THEMES.filter((t) => masterIds.includes(t.id));
+    expect(JSON.parse(JSON.stringify(pick(old)))).toEqual(pick(v1.catalogue as { id: string }[]));
     const staged = Object.fromEntries(
-      old.flatMap((t) => ["ks1", "ks2", "ks4"].map((b) => [`${t.id}@${b}`, getTheme(t.id, b)])),
+      pick(old).flatMap((t) =>
+        ["ks1", "ks2", "ks4"].map((b) => [`${t.id}@${b}`, getTheme(t.id, b)]),
+      ),
     );
-    expect(JSON.parse(JSON.stringify(old))).toEqual(v1.catalogue);
-    expect(JSON.parse(JSON.stringify(staged))).toEqual(v1.staged);
-    const { paper: _c, ...callouts } = CALLOUT_TONES;
-    const { paper: _o, ...options } = OPTION_TONES;
-    expect(JSON.parse(JSON.stringify(callouts))).toEqual(v1.callouts);
-    expect(JSON.parse(JSON.stringify(options))).toEqual(v1.options);
+    const masterStaged = Object.fromEntries(
+      Object.entries(v1.staged).filter(([k]) => !changed.has(k.split("@")[0] as string)),
+    );
+    expect(JSON.parse(JSON.stringify(staged))).toEqual(masterStaged);
+    const only = (table: Record<string, unknown>, ref: Record<string, unknown>) =>
+      Object.fromEntries(Object.keys(ref).map((k) => [k, table[k]]));
+    expect(JSON.parse(JSON.stringify(only(CALLOUT_TONES, v1.callouts)))).toEqual(v1.callouts);
+    expect(JSON.parse(JSON.stringify(only(OPTION_TONES, v1.options)))).toEqual(v1.options);
     for (const t of old) expect(t.v2).toBeUndefined();
   });
 

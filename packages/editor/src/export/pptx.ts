@@ -60,6 +60,7 @@ import {
   fittedFontSize,
   growFixedText,
   HIGHLIGHT_FALLBACK_FILLS,
+  mathFaceOf,
   type PathSegment,
   pathSegments,
   presentedSlide,
@@ -70,6 +71,7 @@ import {
 } from "@tj/slides";
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { markHexagonPoints, notchPoints } from "@tj/slides/marks";
 import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -218,6 +220,13 @@ const SHAPES: Record<ShapeKind, ShapeName> = {
   star: "star5",
   speech: "wedgeRoundRectCallout",
   pill: "roundRect",
+  // Theme marks (TEACH-215 part c): native presets. The hexagon's and octagon's default adjust
+  // values are the editor's (25% side cut, 29% corner cut); the notch is written as custom
+  // geometry from the editor's own outline (`notchPoints`), since `snip2DiagRect` cuts the other
+  // diagonal by default and pptxgenjs cannot set its adjust value.
+  hexagon: "hexagon",
+  octagon: "octagon",
+  notch: "snip2DiagRect",
 };
 
 export const pptxShapeName = (kind: ShapeKind): ShapeName => SHAPES[kind] ?? "rect";
@@ -247,6 +256,9 @@ export type RunStyle = {
   bulletCode?: string;
   /** The face a `font: "quote"` run is set in, and whether the theme sets quotes italic. */
   quoteFace?: string;
+  /** A maths variable's face (`mathFaceOf`) and whether it is set italic. */
+  mathFace?: string;
+  mathItalic?: boolean;
   quoteItalic?: boolean;
 };
 
@@ -321,6 +333,10 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
         options.fontFace = style.quoteFace;
         if (style.quoteItalic) options.italic = true;
       }
+      if (run.font === "math" && style.mathFace) {
+        options.fontFace = style.mathFace;
+        if (style.mathItalic) options.italic = true;
+      }
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
@@ -338,6 +354,8 @@ const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
   fontFace: fontFaceFor(r.fontFamily || theme.fonts.body),
   quoteFace: fontFaceFor(v2Profile(theme).fonts.quote),
   quoteItalic: v2Profile(theme).quoteStyle === "italic",
+  mathFace: fontFaceFor(mathFaceOf(theme).family),
+  mathItalic: mathFaceOf(theme).italic,
   fontSize: r.fontSize,
   color: hexColor(r.color) ?? hexColor(theme.colors.ink),
   bold: r.fontWeight >= 600,
@@ -1047,6 +1065,18 @@ function drawOption(
   }
 }
 
+/** A hard offset block as PowerPoint's outer shadow: no blur, full colour, at the block's angle. */
+export function offsetShadow(o: { x: number; y: number; color: string }): PptxGenJS.ShadowProps {
+  return {
+    type: "outer",
+    blur: 0,
+    offset: Math.round(Math.hypot(o.x, o.y) * 100) / 100,
+    angle: Math.round(((Math.atan2(o.y, o.x) * 180) / Math.PI + 360) % 360),
+    color: hexColor(o.color) ?? "000000",
+    opacity: 1,
+  };
+}
+
 function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: Theme): void {
   const stroke = hexColor(element.stroke);
   const strokeWidth = element.strokeWidth ?? (element.stroke ? 2 : 0);
@@ -1070,7 +1100,25 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const transparency = transparencyOf(element.opacity);
   if (transparency != null && options.fill) options.fill = { ...options.fill, transparency };
-  pptxSlide.addShape(pptxShapeName(element.shape), options);
+  // An offset block (Poster): a blur-free outer shadow, PowerPoint's own hard offset.
+  if (element.shadow) options.shadow = offsetShadow(element.shadow);
+  // A notch, and a hexagon mark (its sides at 25% of the width and its top and bottom 4% inside the
+  // box, `markHexagonPoints`), are written as custom geometry from the editor's own outline: the
+  // presets cut by the shorter side and cannot take the inset.
+  if (element.shape === "notch" || element.shape === "hexagon") {
+    const n = Math.max(0, element.radius ?? 8);
+    const pts =
+      element.shape === "hexagon" ? markHexagonPoints() : notchPoints(element.w, element.h, n);
+    options.points = [
+      ...pts.map((p, i) => ({
+        x: inches(p.x * element.w),
+        y: inches(p.y * element.h),
+        ...(i === 0 ? { moveTo: true } : {}),
+      })),
+      { close: true },
+    ] as ShapeOptions["points"];
+    pptxSlide.addShape("custGeom" as PptxGenJS.SHAPE_NAME, options);
+  } else pptxSlide.addShape(pptxShapeName(element.shape), options);
 
   if (element.doc && docToPlainText(element.doc).trim()) {
     const r = resolveTextStyle(
@@ -1445,6 +1493,8 @@ async function drawImage(
     const frameH = options.sizing?.type === "crop" ? element.h : (options.h as number) * 72;
     options.objectName = roundedPictureName(radius, frameW, frameH, element.name ?? "Picture");
   }
+  if (element.mask === "hexagon")
+    options.objectName = `tj-hex:${hexagonAdj(element.w, element.h)}:${element.name ?? "Picture"}`;
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
@@ -1463,6 +1513,17 @@ function exportWindow(element: ImageElement, natural: { w: number; h: number }):
 }
 
 const ROUNDED_PICTURE = /^tj-round:(\d+):/;
+
+/**
+ * The `hexagon` preset's `adj` for the editor's outline (side points at 25% of the WIDTH, ImageView
+ * and `hexagonPoints`). The preset cuts `adj` of the SHORTER side (ECMA-376 presetShapeDefinitions:
+ * x1 = ss * a / 100000, a pinned to 0..50000 * w / ss), so a wide box needs 25000 * w / ss. Its
+ * default `vf` (115470) puts the top and bottom edges on the box, as the editor does.
+ */
+export function hexagonAdj(w: number, h: number): number {
+  const ss = Math.min(w, h);
+  return ss > 0 ? Math.round((25_000 * w) / ss) : 25_000;
+}
 
 /**
  * The name a rounded picture is written under: its roundRect `adj` (the corner radius as a share
@@ -1487,8 +1548,18 @@ export async function roundPictureCorners(buffer: ArrayBuffer): Promise<ArrayBuf
     const file = zip.file(path);
     if (!file) continue;
     const xml = await file.async("string");
-    if (!xml.includes('name="tj-round:')) continue;
+    if (!xml.includes('name="tj-round:') && !xml.includes('name="tj-hex:')) continue;
     const next = xml.replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (pic) => {
+      // A hexagon-masked picture (Geometric's cover): the preset hexagon, PowerPoint's own crop.
+      const hex = /name="(tj-hex:(\d+):([^"]*))"/.exec(pic);
+      if (hex?.[1]) {
+        return pic
+          .replace(`name="${hex[1]}"`, `name="${hex[3] ?? ""}"`)
+          .replace(
+            /<a:prstGeom prst="rect"><a:avLst\/><\/a:prstGeom>/,
+            `<a:prstGeom prst="hexagon"><a:avLst><a:gd name="adj" fmla="val ${hex[2]}"/></a:avLst></a:prstGeom>`,
+          );
+      }
       const named = /name="(tj-round:(\d+):[^"]*)"/.exec(pic);
       if (!named?.[1]) return pic;
       const marker = named[1];

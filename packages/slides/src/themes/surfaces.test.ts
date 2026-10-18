@@ -268,9 +268,9 @@ describe("the token file and the side table (row 2)", () => {
     }
   });
 
-  it("parity: tokens.json agrees with themes.ts on every shared theme, bar part c's pending rework", () => {
-    // Reading Room's final palette (round 5) lands with part c, which rewrites themes.ts from this file.
-    const PENDING_PART_C = ["reading-room"];
+  it("parity: tokens.json agrees with themes.ts on every shared theme", () => {
+    // Reading Room's final palette (round 5) landed with part c (16 Oct 2026): nothing pending.
+    const PENDING_PART_C: string[] = [];
     const differ = THEMES.filter((t) => {
       const k = SURFACE_TOKENS[t.id];
       if (!k) return false;

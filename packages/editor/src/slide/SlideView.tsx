@@ -3,6 +3,7 @@ import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/
 import {
   growFixedText,
   isDiagramMark,
+  mathFaceOf,
   quoteFaceOf,
   slideArtVariant,
   slideBackground,
@@ -184,6 +185,7 @@ export function SlideView({
     if (mode === "edit" && root.current) applySlideClip(root.current, spill);
   }, [mode, spill]);
   const quote = quoteFaceOf(theme);
+  const math = mathFaceOf(theme);
   const rootStyle: CSSProperties = {
     position: "relative",
     width: SLIDE_W,
@@ -210,6 +212,9 @@ export function SlideView({
     // A run in the quote face (`font: "quote"`, TEACH-205 part c): the theme's quote serif.
     ["--td-font-quote" as string]: quote.family,
     ["--td-quote-style" as string]: quote.italic ? "italic" : "normal",
+    // A maths variable (`font: "math"`): the theme's maths face (Geometric's Source Serif italic).
+    ["--td-font-math" as string]: math.family,
+    ["--td-math-style" as string]: math.italic ? "italic" : "normal",
     ...(mode === "thumb"
       ? { contentVisibility: "auto", containIntrinsicSize: `${SLIDE_W}px ${SLIDE_H}px` }
       : null),

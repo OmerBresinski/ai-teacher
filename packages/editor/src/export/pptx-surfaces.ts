@@ -18,7 +18,27 @@ import type PptxGenJS from "pptxgenjs";
  * The PNG is cached per theme and art, so a deck carries one ground per theme and variant.
  */
 
-/** The PPTX shape each role exports as (THEME-FIT build spec §3). */
+/**
+ * The PPTX geometry a mark family exports as (THEMING.md section 6, TEACH-215 part c rebuild): the
+ * per-theme shape replaces the old "badge -> ellipse" contract. A disc is an `ellipse` only when
+ * square (a wide chip is a full-radius `roundRect`); a notch is custom geometry from the editor's
+ * own outline.
+ */
+export const MARK_PPTX: Record<string, { square: string; wide: string }> = {
+  disc: { square: "ellipse", wide: "roundRect" },
+  pill: { square: "ellipse", wide: "roundRect" },
+  outline: { square: "ellipse", wide: "roundRect" },
+  // The editor's own outline (`markHexagonPoints`): the preset cuts by the shorter side.
+  hex: { square: "custGeom", wide: "custGeom" },
+  notch: { square: "custGeom", wide: "custGeom" },
+  square: { square: "rect", wide: "rect" },
+  tile: { square: "rect", wide: "rect" },
+  rounded: { square: "roundRect", wide: "roundRect" },
+  tag: { square: "roundRect", wide: "roundRect" },
+  sticky: { square: "rect", wide: "rect" },
+};
+
+/** The PPTX shape each role exports as (THEME-FIT build spec §3); marks follow `MARK_PPTX`. */
 export const SURFACE_PPTX = {
   "own-corners": "custGeom",
   badge: "ellipse",

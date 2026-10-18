@@ -198,6 +198,8 @@ export type TextStyle = {
   preset: TextPreset;
   /** Overrides. Absent = inherit from theme for the preset. */
   fontFamily?: string;
+  /** Tracking in em (`"0.1em"`); absent = the preset's own (a title's theme tracking, a caption's 0.08em). */
+  letterSpacing?: string;
   fontSize?: number;
   lineHeight?: number;
   fontWeight?: number;
@@ -298,6 +300,8 @@ export type ImageElement = ElementBase & {
   /** Non-destructive adjustments layered over `src` (TEACH-153); `src` itself is never rewritten. */
   imageTransform?: ImageTransform;
   radius?: number;
+  /** The picture cut to a shape (Geometric's hexagon cover, TEACH-215 part c). */
+  mask?: "hexagon";
   /** Attribution for a searched image: "Title by Creator, CC BY 2.0". */
   credit?: string;
   /** The page the searched image came from, linked beside the credit. */
@@ -363,7 +367,11 @@ export type ShapeKind =
   | "diamond"
   | "star"
   | "speech"
-  | "pill";
+  | "pill"
+  /** A theme's mark shapes (TEACH-215 part c): flat-topped hexagon, octagon, two cut corners. */
+  | "hexagon"
+  | "octagon"
+  | "notch";
 
 export type ShapeElement = ElementBase & {
   type: "shape";
@@ -372,6 +380,11 @@ export type ShapeElement = ElementBase & {
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
+  /**
+   * A hard offset block under the shape (Poster's 8pt ink block, TEACH-215 part c): the same
+   * shape in `color`, moved by x/y. PPTX writes it as a blur-free outer shadow.
+   */
+  shadow?: { x: number; y: number; color: string };
   /** Optional centred label. */
   doc?: RichDoc;
   textStyle?: Partial<TextStyle>;
@@ -528,6 +541,10 @@ export const TextPresetSchema = z.enum([
 export const TextStyleSchema = z.object({
   preset: TextPresetSchema,
   fontFamily: z.string().optional(),
+  letterSpacing: z
+    .string()
+    .regex(/^-?(0|0?\.\d{1,3})em$/)
+    .optional(),
   fontSize: z.number().optional(),
   lineHeight: z.number().optional(),
   fontWeight: z.number().optional(),
@@ -552,6 +569,9 @@ export const ShapeKindSchema = z.enum([
   "star",
   "speech",
   "pill",
+  "hexagon",
+  "octagon",
+  "notch",
 ]);
 
 const TextElementSchema = z.object({
@@ -680,6 +700,7 @@ const ImageElementSchema = z.object({
     })
     .optional(),
   radius: z.number().optional(),
+  mask: z.enum(["hexagon"]).optional(),
   credit: z.string().optional(),
   // The credit line renders as an anchor in the image toolbar, and an imported lesson is
   // untrusted JSON: a `javascript:` address here would be a click away from running. Same check
@@ -702,6 +723,13 @@ const ShapeElementSchema = z.object({
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   radius: z.number().optional(),
+  shadow: z
+    .object({
+      x: z.number().min(-16).max(16),
+      y: z.number().min(-16).max(16),
+      color: z.string().max(32),
+    })
+    .optional(),
   doc: RichDocSchema.optional(),
   textStyle: TextStyleSchema.partial().optional(),
 });

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { POINT_KIND_ICONS, POINT_KIND_LABELS, POINT_KINDS, pointTone } from "../callout";
-import { THEMES } from "../themes";
+import { getTheme, THEMES } from "../themes";
 import { OLD_LESSON_INPUTS, OLD_LESSON_STAGES } from "./fixtures/old-lesson-inputs";
 import MASTER from "./fixtures/old-lesson-master.json";
 import { layoutTemplate, type Stage, type TemplateInput, type TemplatePoint } from "./index";
@@ -199,9 +199,11 @@ describe("typed callout card", () => {
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;
-    // Theme v2 (TEACH-152 part b) is new: no old lesson was laid out on it.
+    // Theme v2 (TEACH-152 part b) and the round 5 themes (TEACH-215 part c) are new: no old lesson
+    // was laid out on them. The themes are the ones the pins name, Night Lab included (16 Oct 2026).
+    const pinned = [...new Set(Object.keys(want).map((k) => k.split("/")[1] as string))];
     for (const stage of OLD_LESSON_STAGES)
-      for (const theme of THEMES.filter((t) => !t.v2))
+      for (const theme of pinned.map((id) => getTheme(id)))
         OLD_LESSON_INPUTS.forEach((input, i) => {
           const key = `${stage}/${theme.id}/${i}-${input.template}`;
           const j = JSON.stringify(layoutTemplate(input, theme, stage), (k, v) =>

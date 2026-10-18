@@ -44,11 +44,20 @@ const TOKEN_OF = (() => {
   return map;
 })();
 
+const ownColour = (colour: string, theme: Theme) =>
+  Object.values(theme.colors).some(
+    (v) => typeof v === "string" && v.toLowerCase() === colour.toLowerCase(),
+  );
+
 /** `colour` in `theme`: the same token's value when it is a theme token, else as given. */
 export function themedColour(colour: string | undefined, theme: Theme): string | undefined {
   if (!colour) return colour;
   const token = TOKEN_OF.get(colour.toLowerCase());
   if (!token) return colour;
+  // One of this theme's own colours stays itself: a hex another theme gives a different token
+  // (Storytime's incorrect red is Paper's accent) is not moved to this theme's value for that
+  // token (TEACH-215 part c). A card's surface is the exception: Exam Hall draws white cards grey.
+  if (token !== "surface" && ownColour(colour, theme)) return colour;
   const own = theme.colors[token];
   if (typeof own === "string") return own;
   // A token this theme leaves unset (panel, heading) falls back as the renderer does.
