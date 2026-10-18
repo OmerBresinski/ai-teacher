@@ -307,7 +307,9 @@ function eqSize(pitch: number, age: AgeKey, model: boolean): number {
 }
 
 /** The smallest move: the gold's 28 px, held at the stage's reading floor (ruling 162). */
-const sayFloorOf = (c: Ctx) => Math.max(SAY_MIN, c.s.small);
+// Ruling 162 amended by Greg 18 Oct (item 26 n): gold sizes on cover question and worked steps.
+// The step text runs the gold's own ladder down to its 28px, under the stage's reading floor.
+const sayFloorOf = (_c: Ctx) => SAY_MIN;
 
 /**
  * A fit ladder: `top` down to `floor` in `step`s, the floor itself last. Largest first. The gold's

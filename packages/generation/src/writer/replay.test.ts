@@ -187,11 +187,16 @@ describe.each(LESSONS)("replay %s", (b) => {
         // (`coverType`), so their boxes' heights, and the stack's top, are not the lab's; every
         // other field still is. The title stands above the question, and both on the slide.
         if (want.kind === "title" && (w.name === "Title" || w.name === "Subtitle")) {
-          const { y: _y, h: _h, ...rest } = stable(e);
-          const { y: _wy, h: _wh, ...wantRest } = stable(w);
+          const { y: _y, h: _h, w: ew, ...rest } = stable(e);
+          const { y: _wy, h: _wh, w: ww, ...wantRest } = stable(w);
           expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
             at: `s${i + 1} #${k}`,
             el: wantRest,
+          });
+          // Ruling 25 A: the column only widens (it takes what the smaller picture frees).
+          expect({ at: `s${i + 1} #${k}`, wider: Number(ew) >= Number(ww) }).toEqual({
+            at: `s${i + 1} #${k}`,
+            wider: true,
           });
           const box = (name: string) => {
             const x = got.find((g) => g.name === name);
@@ -211,6 +216,25 @@ describe.each(LESSONS)("replay %s", (b) => {
               at: `s${i + 1}`,
               above: true,
             });
+          continue;
+        }
+        // Ruling 25 A (Greg 18 Oct): the cover's picture is 10% smaller than the lab's, on the
+        // same right edge and centred on the same line; everything else about it is the lab's.
+        if (want.kind === "title" && w.type === "image" && w.name === "Photo") {
+          const { x, y, w: ew, h: eh, ...rest } = stable(e);
+          const { x: wx, y: wy, w: ww, h: wh, ...wantRest } = stable(w);
+          const n = (v: unknown) => Number(v);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          expect({
+            at: `s${i + 1} #${k}`,
+            w: Math.abs(n(ew) - n(ww) * 0.9) <= 2,
+            h: Math.abs(n(eh) - n(wh) * 0.9) <= 2,
+            right: n(x) + n(ew) === n(wx) + n(ww),
+            middle: Math.abs(n(y) + n(eh) / 2 - (n(wy) + n(wh) / 2)) <= 1,
+          }).toEqual({ at: `s${i + 1} #${k}`, w: true, h: true, right: true, middle: true });
           continue;
         }
         if (ranged && w.type === "image" && w.name === "Photo") {

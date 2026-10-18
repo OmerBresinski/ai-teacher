@@ -96,6 +96,9 @@ export type RowField = FieldReport;
 /* Geometry (960 x 540)                                                */
 /* ------------------------------------------------------------------ */
 
+/** The cover's picture beside the column, as a share of its old size (UX ruling 25 A). */
+const COVER_PICTURE = 0.9;
+
 export const G = {
   margin: 64,
   right: 896,
@@ -1893,15 +1896,23 @@ function layoutOnce(
       const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
-      let ph = 444;
-      let pw = Math.round(ph * aspect);
-      if (pw > 520) {
-        pw = 520;
-        ph = Math.max(300, Math.round(pw / aspect));
-      }
-      if (aspect && pw < 240) pw = 240;
+      // UX ruling 25 A (Greg, 18 Oct): the picture beside the column is 10% smaller than it was
+      // (444pt tall, 520pt widest) and the column takes the room it frees (Paper's 300pt -> 352pt).
+      const box = (k: number) => {
+        let h = Math.round(444 * k);
+        let bw = Math.round(h * aspect);
+        if (bw > Math.round(520 * k)) {
+          bw = Math.round(520 * k);
+          h = Math.max(Math.round(300 * k), Math.round(bw / aspect));
+        }
+        if (aspect && bw < Math.round(240 * k)) bw = Math.round(240 * k);
+        return { pw: bw, ph: h };
+      };
+      const was = box(1);
+      const { pw, ph } = box(COVER_PICTURE);
       const px = G.right - pw;
-      const w = f ? Math.max(300, px - G.margin - 44) : 640;
+      // Today's column, plus every point the smaller picture gives back (its gap kept as it was).
+      const w = f ? Math.max(300, G.right - was.pw - G.margin - 44) + (was.pw - pw) : 640;
       // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
       // every theme, `coverType`) until its words fit the column in the gold's three lines.
       const cv = coverType(c.t);

@@ -38,7 +38,10 @@ export type CoverType = {
   titleLineHeight: number;
   /** The most lines the title may take (gold `cover5.html` `--tlines: 3`); past it, it steps down. */
   titleLines: number;
-  /** The question under the title: the gold's size, held at the stage's reading floor. */
+  /**
+   * The question under the title: the gold's size, even under the stage's reading floor (ruling
+   * 162 amended by Greg 18 Oct (item 26 n): gold sizes on cover question and worked steps).
+   */
   question: number;
   questionLineHeight: number;
   /** The most lines the question may take (the gold's question is two lines). */
@@ -66,7 +69,8 @@ export function coverTypeAt(ks: KeyStage | undefined): CoverType {
     titleStep: px(2),
     titleLineHeight: 1.04,
     titleLines: 3,
-    question: Math.max(px(g.question), readingFloorOf(ks)),
+    // Ruling 162 amended by Greg 18 Oct (item 26 n): gold sizes on cover question and worked steps.
+    question: px(g.question),
     questionLineHeight: 1.3,
     questionLines: 2,
   };
