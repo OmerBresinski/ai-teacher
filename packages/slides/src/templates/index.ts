@@ -1960,9 +1960,6 @@ function layoutOnce(
       // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
       // every theme, `coverType`) until its words fit the column in the gold's three lines.
       const cv = coverType(c.t);
-      // A round 5 face whose descenders need a taller line (Scrapbook, Crayon: tokens `lh-title` 1.14)
-      // keeps it; every other theme takes the gold's line.
-      const titleLh = lhOf(c.t, "title") > LH.title ? lhOf(c.t, "title") : cv.titleLineHeight;
       let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
       // "hyperinfla/tion"). Stepping down is the design, not a fault.
@@ -1972,7 +1969,7 @@ function layoutOnce(
         Math.ceil(
           countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) *
             size *
-            titleLh,
+            cv.titleLineHeight,
         );
       // The question under the title at the cover's question size, regular weight.
       const leadH = input.lead
@@ -2009,7 +2006,7 @@ function layoutOnce(
         ...titleEl.style,
         fontSize: size,
         fixedSize: true,
-        lineHeight: titleLh,
+        lineHeight: cv.titleLineHeight,
       };
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
