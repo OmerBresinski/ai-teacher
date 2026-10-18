@@ -214,9 +214,9 @@ export const SWITCH: Record<string, string[]> = {
   "big-visual": ["visual-text"],
   explain: ["visual-text", "steps"],
   steps: ["visual-text", "explain"],
-  compare: ["visual-text", "explain"],
   "equation-hero": ["steps"],
-  "picture-sequence": ["compare"],
+  // compare is retired (ruling 218): a sequence whose captions run over becomes a split.
+  "picture-sequence": ["split-compare"],
   discussion: ["question-set"],
   "question-set": ["practice"],
   practice: ["question-set"],

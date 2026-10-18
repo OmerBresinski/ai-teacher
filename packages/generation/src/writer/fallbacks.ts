@@ -1,4 +1,6 @@
+import { SPLIT_COMPARE_WRITER_MENU } from "./layout-menu";
 import { resolveAsks, type VisualState } from "./materialise";
+import type { WriterStage } from "./schema";
 
 /*
  * The writer stage's fallbacks for a figure that cannot be shown, ported from the pinned writer:
@@ -67,8 +69,30 @@ export function asWords(raw: S): S {
   };
 }
 
-/** A table that cannot draw, as cards or labelled points (a row's first cell names it). */
-export function asTableText(raw: S, table: TableData): S {
+/**
+ * split-compare's words-only room for `sides` sides at a stage, as production's menu line states
+ * it (the writer is told the same numbers): each side's text, and its title. Undefined when the
+ * menu offers no words-only split of that many sides.
+ */
+export function splitWordsOnly(
+  stage: WriterStage,
+  sides: number,
+): { text: number; title: number } | undefined {
+  const line = SPLIT_COMPARE_WRITER_MENU[stage];
+  const text = new RegExp(`\\b${sides} sides words only: up to (\\d+) words each`).exec(line)?.[1];
+  const title = /A side's title names its thing in up to (\d+) words/.exec(line)?.[1];
+  return text && title ? { text: Number(text), title: Number(title) } : undefined;
+}
+
+const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * A table that cannot draw, as words that keep its data (a row's first cell names it). Two or
+ * three rows become a words-only split-compare when every side fits production's caps and nothing
+ * else needs a place (split-compare has no lead); anything else becomes explain's labelled points.
+ * compare is retired (ruling 218): this never writes it.
+ */
+export function asTableText(raw: S, table: TableData, stage: WriterStage): S {
   const s = resolveAsks(raw, () => false);
   const { header, rows } = table;
   const cell = (r: string[], k: number) => (header?.[k] ? `${header[k]}: ${r[k]}` : (r[k] ?? ""));
@@ -87,13 +111,22 @@ export function asTableText(raw: S, table: TableData): S {
   const lead = [str(s.lead), constant ? `${constant}.` : ""].filter(Boolean).join(" ");
   const name = (r: string[]) =>
     header?.[0] && /^\d/.test(r[0] ?? "") ? `${header[0]} ${r[0]}` : (r[0] ?? "");
-  if (rows.length >= 2 && rows.length <= 4 && keep.length)
-    return {
-      template: "compare",
-      heading: str(s.heading),
-      ...(lead ? { lead } : {}),
-      columns: rows.map((r) => ({ label: name(r), text: rest(r), picture: null })),
-    };
+  const room =
+    rows.length >= 2 && rows.length <= 3 ? splitWordsOnly(stage, rows.length) : undefined;
+  const sides = rows.map((r) => ({ title: name(r), text: rest(r), quote: null, picture: null }));
+  if (
+    room &&
+    keep.length &&
+    !lead &&
+    sides.every(
+      (d) =>
+        d.title.trim() &&
+        d.text.trim() &&
+        wordCount(d.title) <= room.title &&
+        wordCount(d.text) <= room.text,
+    )
+  )
+    return { template: "split-compare", heading: str(s.heading), accentWord: null, sides };
   return {
     template: "explain",
     heading: str(s.heading),

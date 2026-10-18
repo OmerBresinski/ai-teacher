@@ -127,9 +127,12 @@ import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { carryFigures, fitPilot, isPilot, pilotOvers, pilotSlips } from "./pilot-fit";
 import {
+  offeredLayouts,
   PILOT_PACKS,
   type PilotPack,
   type PilotPackId,
+  packRepairMenu,
+  packRepairSchema,
   pilotRepairSchema,
   pilotRequest,
   stripStringCaps,
@@ -441,10 +444,36 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
       ),
     );
-  // The repair's layouts menu: the one the lab's repair calls sent (BAKEOFF prompts/T, heading
-  // room in characters), not the arm's menu the system text was built from (TEACH-110 part f).
+  // The repair's layouts menu. On a pilot pack (production), the pack's own layout lines, so a
+  // repair offers only what the writer is offered (ruling 218: never the retired compare).
+  // Otherwise the one the lab's repair calls sent (BAKEOFF prompts/T, heading room in characters),
+  // not the arm's menu the system text was built from (TEACH-110 part f).
   const layoutsMenu = (k: string) =>
-    k === "KS1" ? P.repairLayoutsKS1 : k === "KS2" ? P.repairLayoutsKS2 : P.repairLayoutsKS3_5;
+    pilot
+      ? packRepairMenu(pilot.system, offeredLayouts(schema))
+      : k === "KS1"
+        ? P.repairLayoutsKS1
+        : k === "KS2"
+          ? P.repairLayoutsKS2
+          : P.repairLayoutsKS3_5;
+  /**
+   * The repair's schema when a call names none. On a pilot pack, `slide` is any layout the writer
+   * is offered (its activities aside, as base4f-p123's repair has none), defined as the writer's
+   * schema defines it; else the bundle's repair schema. An uncapped pack strips the envelope's
+   * caps too: a capped repair cuts its own fix.
+   */
+  const generalRepairSchema = (k: string) => {
+    const r = pilot
+      ? packRepairSchema(
+          repairSchemaFor(k),
+          schema,
+          offeredLayouts(schema).filter((l) => !isWriterActivity(l)),
+        )
+      : repairSchemaFor(k);
+    return run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).uncapped
+      ? stripStringCaps(r)
+      : r;
+  };
   const baseVisuals = (k: string) =>
     k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 
@@ -1651,12 +1680,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // Restaging (stand-alone, reroute) has its own prompt, never repair.txt.
       system: mode === "fit" ? P.repair : P.restage,
       user: u,
-      // An uncapped pack (v4.6) strips the generic repair too: a capped repair cuts its own fix.
-      schema:
-        ro.schema ??
-        (run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).uncapped
-          ? stripStringCaps(repairSchemaFor(stageKey))
-          : repairSchemaFor(stageKey)),
+      schema: ro.schema ?? generalRepairSchema(stageKey),
       name: "slide",
       // Strict JSON, as base4f-p123 ran repair and restage (TEACH-110 part f).
       strict: true,
@@ -1670,6 +1694,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, mode, ok: false });
       return false;
+    }
+    // A pack's schema has the slide name its fit, as the writer's does; arrival strips it there.
+    if (pilot && !ro.schema) {
+      const { fit: _fit, ...rest } = o2.slide;
+      o2.slide = rest;
     }
     const before = plan.slides[i] as S;
     const keyed = keepAnswerKey(
@@ -2032,7 +2061,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // (flag off) or, by default, in the speaker notes beside the writer's own slide.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
     if (dAsk.kind === "table" && t.rows.length && !flags.noTableText) {
-      swapSlide(i, asTableText(s, t));
+      swapSlide(i, asTableText(s, t, stageKey));
       path.set(i, "table-text");
       return;
     }
