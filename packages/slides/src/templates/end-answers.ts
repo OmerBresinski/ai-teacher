@@ -118,6 +118,8 @@ const BADGE_GAP = 16;
 const WORK_GAP = 21;
 /** Gaps snap to the family's 8px scale at 1440 (about 5 points here). */
 const snap = (v: number) => Math.max(4, Math.round(v / 5.33) * 5.33);
+/** A short answer's column slack over its measured one-line width (with a third of a letter). */
+export const SHORT_SLACK = 0.12;
 /** Fill target: leftover height spreads the gaps until the body is about this full. */
 const FILL = 0.75;
 
@@ -201,9 +203,11 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const textX = z.badge + BADGE_GAP;
   const textW = cellW - textX;
   const worked = g.items.some((it) => !("tf" in it) && it.work);
-  // A worked group's answer column: as wide as its widest short answer, at most 45% of the cell.
-  // A sentence with working takes what its working's one line leaves (at least that 45%), so the
-  // working keeps its own column beside it; a sentence without working keeps the whole cell.
+  // A worked group's answer column: its widest short answer on one line with room to spare (a
+  // measurer a few percent off must never wrap "10 crayons" onto the next row's line), at most
+  // 45% of the cell. A sentence with working takes what its working's one line leaves (at least
+  // that 45%), so the working keeps its own column beside it; a sentence without working keeps
+  // the whole cell.
   const sentenceWorked = g.items.some((it) => "s" in it && it.work);
   const widestWork = Math.max(
     0,
@@ -215,7 +219,10 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
       ? Math.max(Math.round(textW * 0.45), textW - WORK_GAP - widestWork)
       : Math.min(
           Math.round(textW * 0.45),
-          Math.max(...g.items.map((it) => ("a" in it ? widthAt(t, it.a, z.size, 700) : 0))) + 2,
+          Math.ceil(
+            Math.max(...g.items.map((it) => ("a" in it ? widthAt(t, it.a, z.size, 700) : 0))) *
+              (1 + SHORT_SLACK),
+          ) + Math.round(z.size * 0.3),
         );
   const chipW = chipWidth(t, z.size);
   /** Each item's height in its cell. */
