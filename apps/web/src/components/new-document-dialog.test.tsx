@@ -81,6 +81,22 @@ describe("NewDocumentDialog", () => {
     );
   });
 
+  it("preselects Playground, as before the round 5 catalogue order put Paper first", async () => {
+    const onCreate = mock();
+    renderDialog(onCreate);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("radio", { name: "Playground" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Paper" })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Create lesson" }));
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ themeId: "playground" })),
+    );
+  });
+
   it("uses an untitled lesson when title is blank", async () => {
     const onCreate = mock();
     renderDialog(onCreate);

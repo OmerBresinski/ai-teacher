@@ -22,7 +22,7 @@ import {
   TabsTrigger,
 } from "@tj/ui";
 import { useId, useMemo, useState } from "react";
-import { LIBRARY_THEMES } from "@/lib/library-themes";
+import { LIBRARY_THEMES, NEW_DIALOG_DEFAULT_THEME_ID } from "@/lib/library-themes";
 
 /**
  * State lives for the life of the mount: callers render the dialog only while it is open (or give
@@ -74,7 +74,7 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
   const [subject, setSubject] = useState("");
   const [readingLevel, setReadingLevel] = useState("");
   const [language, setLanguage] = useState("en-GB");
-  const [themeId, setThemeId] = useState(LIBRARY_THEMES[0]?.id ?? "");
+  const [themeId, setThemeId] = useState(NEW_DIALOG_DEFAULT_THEME_ID);
   const [themeTag, setThemeTag] = useState<ThemeTag>("All");
   const [start, setStart] = useState<"starter" | "blank">("starter");
   const [busy, setBusy] = useState(false);
