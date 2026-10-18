@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
+import { contrastRatio } from "@tj/slides";
 import { dimGround, dimInk, surfaceStyle } from "@tj/slides/surfaces";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
@@ -122,6 +123,49 @@ describe("PPTX hinge reveal", () => {
           const own = card.type === "shape" && card.fill ? hex(card.fill) : "";
           expect(atCard.some((s) => s.fill && s.fill !== own && grounds.has(s.fill))).toBe(false);
         }
+      }
+    }, 30_000);
+
+  /*
+   * TEACH-215 part i: the build slide's wrong cards and keys against the gold, worked by hand from
+   * the gold's own CSS (never from the code under test): each colour at `.34` over the stage.
+   * Treehouse (round 3 themes3.css): card --surface #FFFFFF, stage --p-panel #FBF5E3, keys --opt-1
+   * #0E6B78, --opt-3 #B0306A, --opt-4 #5B3FA0. Dark Ember (round 5 themes5.css): card and stage
+   * --surface #252528, keys --opt-1 #F2A08C, --opt-3 #E3C870, --opt-4 #BBA8F0.
+   */
+  const GOLD: Record<string, { card: string; keys: Record<string, string> }> = {
+    treehouse: { card: "FCF8ED", keys: { A: "AAC6BF", C: "E1B2BA", D: "C5B7CC" } },
+    "dark-ember": { card: "252528", keys: { A: "6B4F4A", C: "665C40", D: "58526C" } },
+  };
+  for (const [id, gold] of Object.entries(GOLD))
+    it(`${id}: the build slide's wrong cards and keys are the gold's .34 fade; words and letters read at 4.5:1`, async () => {
+      const { reveal, lesson } = await hingeDeck(id);
+      const slide = lesson.slides[0] as Slide;
+      const drawn = shapes(reveal);
+      for (const { id: cardId, state } of choiceMarks(slide, true, Number.POSITIVE_INFINITY)) {
+        if (state !== "dim") continue;
+        const card = slide.elements.find((e) => e.id === cardId) as SlideElement;
+        const atCard = drawn.filter((s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text);
+        const ground = atCard.at(-1)?.fill as string;
+        expect(ground).toBe(gold.card);
+        const inCard = drawn.filter(
+          (s) =>
+            s.x >= emu(card.x) &&
+            s.y >= emu(card.y) &&
+            s.x < emu(card.x + card.w) &&
+            s.y < emu(card.y + card.h),
+        );
+        // The letter is a text box over the key's own shape at the same place (no text).
+        const letter = inCard.filter((s) => /^[A-D]$/.test(s.text)).at(-1) as Sp;
+        const keyFill = inCard.filter((s) => !s.text && s.x === letter.x && s.y === letter.y).at(-1)
+          ?.fill as string;
+        expect(keyFill).toBe(gold.keys[letter.text] as string);
+        for (const c of letter.runs)
+          expect(contrastRatio(`#${c}`, `#${keyFill}`)).toBeGreaterThanOrEqual(4.5);
+        const words = inCard.filter((s) => s.text.length > 1).at(-1) as Sp;
+        expect(words.runs.length).toBeGreaterThan(0);
+        for (const c of words.runs)
+          expect(contrastRatio(`#${c}`, `#${ground}`)).toBeGreaterThanOrEqual(4.5);
       }
     }, 30_000);
 

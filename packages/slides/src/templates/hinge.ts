@@ -25,7 +25,7 @@
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
 import { contrastRatio } from "../colour-contrast";
 import { uid } from "../factories";
-import { optionTones } from "../option-tones";
+import { LETTER_TONES, optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { MIN_FONT_SIZE } from "../themes";
 import { type Corners, markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
@@ -566,18 +566,7 @@ function cardOf(
  * and the round 5 darks (`themes5.css`). Paper, Poster, Storytime, Scrapbook, Calm and Geometric keep
  * one key colour: round 4 resets their `[data-k]` keys (`themes4.css`), and Paper defines no tones.
  */
-export const HINGE_TONED_KEYS: ReadonlySet<string> = new Set([
-  "treehouse",
-  "reading-room",
-  "beacon",
-  "crayon",
-  "exam-hall",
-  "playground",
-  "splash",
-  "studio",
-  "dark-slate",
-  "dark-ember",
-]);
+export const HINGE_TONED_KEYS: ReadonlySet<string> = new Set(Object.keys(LETTER_TONES));
 
 /** A key's letter colour: of the card's two colours, the one that reads best on `fill`. */
 const letterOn = (fill: string, a: string, b: string) =>

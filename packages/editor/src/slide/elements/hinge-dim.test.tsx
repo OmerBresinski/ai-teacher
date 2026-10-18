@@ -175,4 +175,62 @@ describe("hinge reveal: wrong options in the dim tone", () => {
       expect(html).toContain('data-choice-mark="dim"');
     }
   });
+
+  /*
+   * TEACH-215 part i review: a picture in a wrong card fades into the stage (a stage plate under it,
+   * its own opacity multiplied); a library icon keeps its faded card; a non-hex shadow fades, its
+   * alpha kept; a gradient stage fades toward its first stop; a part that overhangs the card fades.
+   */
+  test("pictures, icons, odd shadows, gradient stages and overhanging parts all fade", () => {
+    const theme = THEMES.find((t) => t.id === "treehouse") as (typeof THEMES)[number];
+    const slide = {
+      id: "s1",
+      ...layoutTemplate(LOOKS[1]?.[1] as TemplateInput, theme, "ks2").slide,
+    } as Slide;
+    const [wrong] = choiceMarks(slide, true, 0).filter((m) => m.state === "dim");
+    const id = wrong?.id as string;
+    const card = slide.elements.find((e) => e.id === id) as SlideElement;
+    const box = { x: card.x + 10, y: card.y + 4, w: 30, h: 30 };
+    const extra: SlideElement[] = [
+      { ...box, id: "pic", type: "image", src: "/p.jpg", opacity: 0.5 } as SlideElement,
+      { ...box, id: "ico", type: "image", src: "/i.svg", name: "Option icon" } as SlideElement,
+      {
+        ...box,
+        id: "over",
+        type: "shape",
+        shape: "rect",
+        fill: "#112233",
+        y: card.y - 6,
+      } as SlideElement,
+    ];
+    const stage = slide.elements.find((e) => e.name === "surface:field-b") as SlideElement;
+    const odd: Slide = {
+      ...slide,
+      elements: [
+        ...slide.elements.map((e) =>
+          e.id === stage.id
+            ? ({ ...e, fill: "linear-gradient(180deg, #102030 0%, #FFFFFF 100%)" } as SlideElement)
+            : e.id === id
+              ? ({ ...e, shadow: { x: 4, y: 4, color: "rgba(0, 0, 0, 0.5)" } } as SlideElement)
+              : e,
+        ),
+        ...extra,
+      ],
+    };
+    const fade = hingeFade(odd, theme, id);
+    expect(fade?.behind).toBe("#102030");
+    const parts = hingeDimParts(odd, theme, id);
+    const [quiet] = parts;
+    expect(quiet?.type === "shape" ? quiet.shadow?.color : "").toBe(
+      `${mix("#000000", "#102030", HINGE_FADE)}80`,
+    );
+    const pic = parts.find((p) => p.id === "pic");
+    expect(pic?.opacity).toBeCloseTo(0.5 * HINGE_FADE, 6);
+    const plate = parts.find((p) => p.id === "pic-stage");
+    expect(fillOf(plate)).toBe("#102030");
+    expect(parts.indexOf(plate as SlideElement)).toBeLessThan(parts.indexOf(pic as SlideElement));
+    expect(parts.find((p) => p.id === "ico")?.opacity).toBeCloseTo(HINGE_FADE, 6);
+    expect(parts.some((p) => p.id === "ico-stage")).toBe(false);
+    expect(fillOf(parts.find((p) => p.id === "over"))).toBe(mix("#112233", "#102030", HINGE_FADE));
+  });
 });

@@ -139,6 +139,53 @@ const solid = (c: unknown): string | undefined =>
   typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c) && !isClear(c) ? c : undefined;
 
 /**
+ * Any CSS colour a part may carry (`#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`) as an opaque
+ * `#RRGGBB` and its alpha; undefined for anything else (a name, a gradient, `transparent`).
+ */
+export function parseColour(c: unknown): { hex: string; alpha: number } | undefined {
+  if (typeof c !== "string" || isClear(c)) return undefined;
+  const t = c.trim();
+  let m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(t);
+  if (m) return { hex: `#${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}`.toUpperCase(), alpha: 1 };
+  if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(t)) {
+    const { color, opacity } = splitAlpha(t);
+    return { hex: color.toUpperCase(), alpha: opacity ?? 1 };
+  }
+  m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i.exec(t);
+  if (!m) return undefined;
+  const to2 = (v: string) =>
+    Math.max(0, Math.min(255, Math.round(Number(v))))
+      .toString(16)
+      .padStart(2, "0");
+  const a = m[4] == null ? 1 : m[4].endsWith("%") ? Number(m[4].slice(0, -1)) / 100 : Number(m[4]);
+  return {
+    hex: `#${to2(m[1] as string)}${to2(m[2] as string)}${to2(m[3] as string)}`.toUpperCase(),
+    alpha: a,
+  };
+}
+
+/** A colour faded toward `behind` by the gold's `.34`, its own alpha kept (`#RRGGBBAA`). */
+function fadeColour(c: unknown, behind: string): string | undefined {
+  const p = parseColour(c);
+  if (!p) return undefined;
+  const hex = mix(p.hex, behind, HINGE_FADE);
+  return p.alpha >= 1
+    ? hex
+    : `${hex}${Math.round(p.alpha * 255)
+        .toString(16)
+        .padStart(2, "0")
+        .toUpperCase()}`;
+}
+
+/** The first colour in a fill that is not one plain colour (a CSS gradient's first stop). */
+function firstColour(c: unknown): string | undefined {
+  if (typeof c !== "string") return undefined;
+  const hit = /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i.exec(c);
+  const p = hit ? parseColour(hit[0]) : undefined;
+  return p?.hex;
+}
+
+/**
  * How much of a wrong card still shows after the reveal: the gold's `.hg.shown .opt:not(.ok)
  * { opacity: .34 }` (northstars-v13 hinge.html), worked as colours over the stage behind the card
  * (TEACH-215 part i), so the card, its line, its key and its picture step back as in the gold.
@@ -166,48 +213,71 @@ function readable(tone: string, ground: string, ink: string): string {
 export type HingeFade = { ground: string; behind: string; words: string; ink: string };
 type Fade = HingeFade;
 
-/** A wrong option's part, faded: words in the dim tone, key, bars and line toward the stage. */
-function dimmedPart(e: SlideElement, f: Fade): SlideElement {
-  const fade = (c: unknown): string | undefined => {
-    const hex = solid(c);
-    return hex ? mix(hex, f.behind, HINGE_FADE) : undefined;
-  };
+/** A wrong option's part, faded: words in the dim tone, key, bars, line and picture toward the stage. */
+function dimmedPart(e: SlideElement, f: Fade): SlideElement[] {
+  const fade = (c: unknown) => fadeColour(c, f.behind);
   switch (e.type) {
     case "text":
-      return {
-        ...e,
-        style: { ...e.style, color: f.words },
-        doc: mapRunColours(e.doc, () => f.words),
-      };
+      return [
+        { ...e, style: { ...e.style, color: f.words }, doc: mapRunColours(e.doc, () => f.words) },
+      ];
     case "shape": {
       if (e.name === HINGE_KEY) {
         // The gold's key at .34: its own colour (a letter's tone, the ink or the accent) gone pale
         // on the faded card; its letter in the dim tone, held at 4.5:1 on that pale key.
-        const fill = fade(e.fill) ?? (isClear(e.fill as string) ? undefined : f.words);
+        const fill = solid(e.fill) ? fade(e.fill) : isClear(e.fill as string) ? undefined : f.words;
         const stroke = fade(e.stroke);
-        const on = fill ?? f.ground;
-        const letter = readable(f.words, on, f.ink);
-        return {
-          ...e,
-          ...(fill ? { fill } : {}),
-          ...(stroke ? { stroke } : {}),
-          ...(e.shadow ? { shadow: { ...e.shadow, color: fade(e.shadow.color) ?? f.behind } } : {}),
-          textStyle: { ...e.textStyle, color: letter },
-          ...(e.doc ? { doc: mapRunColours(e.doc, () => letter) } : {}),
-        };
+        const letter = readable(f.words, fill ?? f.ground, f.ink);
+        return [
+          {
+            ...e,
+            ...(fill ? { fill } : {}),
+            ...(stroke ? { stroke } : {}),
+            ...(e.shadow
+              ? { shadow: { ...e.shadow, color: fade(e.shadow.color) ?? f.behind } }
+              : {}),
+            textStyle: { ...e.textStyle, color: letter },
+            ...(e.doc ? { doc: mapRunColours(e.doc, () => letter) } : {}),
+          },
+        ];
       }
-      return e.name === HINGE_BAR ? { ...e, fill: f.words } : e;
+      if (e.name === HINGE_BAR) return [{ ...e, fill: f.words }];
+      // Any other shape on the card (one that overhangs its edge too) fades with it.
+      const fill = fade(e.fill);
+      const stroke = fade(e.stroke);
+      return [{ ...e, ...(fill ? { fill } : {}), ...(stroke ? { stroke } : {}) }];
     }
     case "icon":
-      return { ...e, color: f.words };
-    case "image":
-      return { ...e, opacity: HINGE_FADE };
+      return [{ ...e, color: f.words }];
+    case "image": {
+      const opacity = (e.opacity ?? 1) * HINGE_FADE;
+      // A picture fades into the stage, as the gold's whole card does: a stage-coloured plate under
+      // it, so none of the card shows through. A library icon (transparent around its drawing)
+      // keeps the faded card around it, so it takes no plate.
+      if (e.name === HINGE_ICON) return [{ ...e, opacity }];
+      const plate: ShapeElement = {
+        id: `${e.id}-stage`,
+        type: "shape",
+        shape: "rect",
+        x: e.x,
+        y: e.y,
+        w: e.w,
+        h: e.h,
+        ...(e.rotation ? { rotation: e.rotation } : {}),
+        fill: f.behind,
+      };
+      return [plate, { ...e, opacity }];
+    }
     default:
-      return e;
+      return [e];
   }
 }
 
-/** The stage behind `card`: the hinge's sand field when it holds the card, else the theme ground. */
+/**
+ * The stage behind `card`: the hinge's sand field when it holds the card (a gradient field by its
+ * first stop), else the slide's own colour, else the theme ground (a picture background has no one
+ * colour, so the card fades toward the ground the theme lays under it).
+ */
 function behindOf(slide: Slide, theme: Theme, card: SlideElement): string {
   const stage = slide.elements.find(
     (e) =>
@@ -217,9 +287,12 @@ function behindOf(slide: Slide, theme: Theme, card: SlideElement): string {
       e.x + e.w >= card.x + card.w &&
       e.y + e.h >= card.y + card.h,
   );
+  const fill = stage && "fill" in stage ? stage.fill : undefined;
+  const bg = slide.background;
   return (
-    solid(stage && "fill" in stage ? stage.fill : undefined) ??
-    solid(slide.background?.color) ??
+    parseColour(fill)?.hex ??
+    firstColour(fill) ??
+    (bg?.image ? undefined : (parseColour(bg?.color)?.hex ?? firstColour(bg?.color))) ??
     dimGround(theme)
   );
 }
@@ -257,20 +330,32 @@ export function hingeDimParts(slide: Slide, theme: Theme, id: string): SlideElem
     console.warn(`hinge card ${id} has no opaque fill: its reveal draws it on the theme ground`);
   const f = fadeOf(slide, theme, card);
   const { ground, behind } = f;
-  const inside = (e: SlideElement) =>
-    e.x >= card.x && e.y >= card.y && e.x + e.w <= card.x + card.w && e.y + e.h <= card.y + card.h;
-  const line = card.type === "shape" ? solid(card.stroke) : undefined;
+  // A part of the card: its centre inside the card and no larger than it, so a part that overhangs
+  // the edge (a tilted sticky key, a tick) fades with its card, and the stage behind does not.
+  const part = (e: SlideElement) => {
+    const cx = e.x + e.w / 2;
+    const cy = e.y + e.h / 2;
+    return (
+      e.id !== id &&
+      cx >= card.x &&
+      cx <= card.x + card.w &&
+      cy >= card.y &&
+      cy <= card.y + card.h &&
+      e.w * e.h <= card.w * card.h
+    );
+  };
+  const line = card.type === "shape" ? fadeColour(card.stroke, behind) : undefined;
   const quiet: HingeCard =
     card.type === "shape"
       ? {
           ...card,
           fill: ground,
-          ...(line ? { stroke: mix(line, behind, HINGE_FADE) } : {}),
+          ...(line ? { stroke: line } : {}),
           ...(card.shadow
             ? {
                 shadow: {
                   ...card.shadow,
-                  color: mix(solid(card.shadow.color) ?? behind, behind, HINGE_FADE),
+                  color: fadeColour(card.shadow.color, behind) ?? behind,
                 },
               }
             : {}),
@@ -287,10 +372,7 @@ export function hingeDimParts(slide: Slide, theme: Theme, id: string): SlideElem
           radius: Math.min(theme.radius, 16),
           fill: ground,
         };
-  return [
-    quiet,
-    ...slide.elements.filter((e) => e.id !== id && inside(e)).map((e) => dimmedPart(e, f)),
-  ];
+  return [quiet, ...slide.elements.filter(part).flatMap((e) => dimmedPart(e, f))];
 }
 
 type Placed = Map<string, { x: number; y: number; w: number; h: number }>;
