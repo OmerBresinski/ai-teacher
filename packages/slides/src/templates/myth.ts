@@ -32,6 +32,7 @@ import type {
   TextPreset,
 } from "@tj/domain/documents";
 import { styledRun } from "@tj/domain/documents";
+import { contrastRatio } from "../colour-contrast";
 import { uid } from "../factories";
 import { iconsLoaded, loadIcons } from "../icons/loader";
 import { blockArrow } from "../paths/arrow";
@@ -340,7 +341,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       h = heightOf(factDocV, "heading", size, factW, factWt);
     }
     const over = h > room + 0.5;
-    // Grow to fill (gold `growMyth`): the next even gold px up, 2px at a time, to 64px.
+    // Grow to fill (gold `growMyth`, round5/render5.mjs line 68: `while (f < 64)`, no age branch):
+    // the next even gold px up, 2px at a time, to 64px. The box is drawn at its ceiled height, so
+    // the clearance is checked on that box.
     let grown = false;
     if (!over && factText) {
       const proofTop = inner.y + inner.h - Math.max(visH, lineH);
@@ -348,7 +351,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       let next = (Math.floor(size / K / 2 + 1e-6) + 1) * 2 * K;
       while (next <= GROW_TOP + 1e-6) {
         const nh = heightOf(factDocV, "heading", next, factW, factWt);
-        const clear = !proof || proofTop - (factTop + nh) >= PROOF_CLEAR - 0.5;
+        const clear = !proof || proofTop - (factTop + Math.ceil(nh)) >= PROOF_CLEAR + 0.1;
         if (nh > room + 0.5 || !clear || !claimFits(next)) break;
         size = round1(next);
         h = nh;
@@ -363,17 +366,22 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     if (!ff.over) break;
     ff = fitFact(d);
   }
-  const { disc, visH, lineW, lineH, h: factH, over: factOver, grown } = ff;
-  const factSize = ff.size;
+  const { disc, visH, lineW, lineH, over: factOver } = ff;
   const shownIcons = ff.shown;
 
-  // The claim in the panel follows the fact's size; a claim too long for that steps down in the
-  // gold's 2px, never under the smallest step the stage allows it (its body step, held at the body
-  // floor). Drawn as given (`fixedSize`), like the grown fact.
+  // The claim is always the fact's size (round 4: `.said { font-size: var(--fact-size) }`). A claim
+  // too long for its panel at that size takes both down in the gold's 2px together, never under the
+  // smallest step the stage allows the claim (its body step, held at the body floor); the fact only
+  // gets more room. Both are drawn as given (`fixedSize`) once off the stage's steps.
   const claimFloor = drawn("heading", floorBody);
-  let claimSize = factSize;
-  while (!claimFits(claimSize) && claimSize > claimFloor + 1e-6)
-    claimSize = round1(Math.max(claimFloor, claimSize - GROW_STEP));
+  let shared = ff.size;
+  while (!claimFits(shared) && shared > claimFloor + 1e-6)
+    shared = round1(Math.max(claimFloor, shared - GROW_STEP));
+  const shrunk = shared < ff.size - 1e-6;
+  const factSize = shared;
+  const claimSize = shared;
+  const factH = shrunk ? heightOf(factDocV, "heading", factSize, factW, factWt) : ff.h;
+  const grown = ff.grown || shrunk;
   const claimOver = !claimFits(claimSize);
 
   // The open claim on the vote card: at most 3 lines, no smaller than the name size.
@@ -395,9 +403,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   if (factOver && !c.over.includes("myth.fact") && !c.over.includes("myth.proof.line"))
     c.over.push(proof ? "myth.proof.line" : "myth.fact");
   c.tight =
-    fields.some((f) => f.tight) ||
-    factSize < drawn("heading", v2.sizes.name) - 0.5 ||
-    claimSize < factSize - 0.5;
+    fields.some((f) => f.tight) || factSize < drawn("heading", v2.sizes.name) - 0.5 || shrunk;
 
   const radius = Math.round(v2.radius.picture);
   const push = <T extends SlideElement>(el: T, step: number, name: string): T => {
@@ -572,7 +578,15 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   // The seam takes the theme's badge family (Geometric's hexagon, THEMING.md section 6).
   // The seam is the theme's marker (roles.css `--marker-fill`, the seam disc; its arrow `--marker-ink`).
   const markerRole = surfacesOf(c.t).roles.marker;
-  const marker = { fill: markerRole?.fill ?? col.deep, ink: markerRole?.ink ?? col.onDeep };
+  const markerFill = markerRole?.fill ?? col.deep;
+  // Its ink, else (none, or under 4.5:1 on the fill) whichever of on-deep and ink reads best.
+  const markerInk =
+    markerRole?.ink && contrastRatio(markerRole.ink, markerFill) >= 4.5
+      ? markerRole.ink
+      : [col.onDeep, col.ink].reduce((a, b) =>
+          contrastRatio(b, markerFill) > contrastRatio(a, markerFill) ? b : a,
+        );
+  const marker = { fill: markerFill, ink: markerInk };
   const seamShape: ShapeElement["shape"] =
     surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
   const halo: ShapeElement = {

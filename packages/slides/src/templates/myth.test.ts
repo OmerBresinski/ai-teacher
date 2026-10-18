@@ -5,6 +5,7 @@ import {
   slideStepCount,
   type TextElement,
 } from "@tj/domain/documents";
+import { contrastRatio } from "../colour-contrast";
 import * as ICONS from "../icons";
 import { provideIcons } from "../icons/loader";
 import { resolveTextStyle } from "../text-style";
@@ -39,6 +40,14 @@ const runAttrs = (el: SlideElement) =>
   ((el as TextElement).doc.content?.[0]?.content ?? []).map(
     (n) => (n.marks ?? []).find((m) => m.type === "textStyle")?.attrs ?? {},
   );
+/** Fact bottom to the proof row's top, in gold px (1440 wide). */
+const clearance = (els: readonly SlideElement[]) => {
+  const fact = one(els, MYTH_NAMES.fact);
+  const line = one(els, MYTH_NAMES.line);
+  const icon = named(els, MYTH_NAMES.icon)[0];
+  const proofTop = Math.min(line.y, icon?.y ?? Number.POSITIVE_INFINITY);
+  return Math.round((proofTop - (fact.y + fact.h)) * 1.5 * 100) / 100;
+};
 const caseOf = (name: string) => {
   const k = MYTH_CASES.find((c) => c.name === name);
   if (!k) throw new Error(name);
@@ -152,12 +161,55 @@ describe("myth and fact: the gold cases (myth-c)", () => {
       expect(claim.style.fixedSize).toBe(true);
       expect(claim.style.fontFamily).toBe(atKeyStage(t, "ks2").fonts.body);
       expect(claim.style.fontWeight).toBe(surfacesOf(t).marks.claimWeight ?? 600);
-      // 48px stay clear between the fact and the proof (the gold's check).
-      const line = one(els, MYTH_NAMES.line);
-      const icon = named(els, MYTH_NAMES.icon)[0];
-      const proofTop = Math.min(line.y, icon?.y ?? Number.POSITIVE_INFINITY);
-      expect((proofTop - (fact.y + fact.h)) * 1.5).toBeGreaterThanOrEqual(46);
+      expect(clearance(els)).toBeGreaterThanOrEqual(48);
     }
+  });
+
+  test("KS1: the gold's grow (no age branch) on the early case, claim at the fact's size", () => {
+    for (const t of THEMES) {
+      const els = lay(caseOf("y2-falling").input, "ks1", t).slide.elements;
+      const fact = one(els, MYTH_NAMES.fact) as TextElement;
+      const size = Math.round((fact.style.fontSize ?? 0) * 1.5);
+      // On the gold's 2px grid, grown past KS1's 45pt step and no more than its 64px.
+      expect(size % 2).toBe(0);
+      expect(size).toBeGreaterThanOrEqual(50);
+      expect(size).toBeLessThanOrEqual(64);
+      expect((one(els, MYTH_NAMES.claim) as TextElement).style.fontSize).toBe(fact.style.fontSize);
+      expect(clearance(els)).toBeGreaterThanOrEqual(48);
+    }
+  });
+
+  test("a short fact stops at the gold's 64px ceiling (render5 growMyth `while (f < 64)`)", () => {
+    const short = {
+      template: "myth",
+      heading: "Ice",
+      myth: { opening: "straight", claim: "Ice sinks.", fact: "Ice floats.", proof: null },
+    } as TemplateInput;
+    for (const t of THEMES)
+      for (const st of ["ks1", "ks2", "ks3"] as Stage[]) {
+        const els = lay(short, st, t).slide.elements;
+        const fact = one(els, MYTH_NAMES.fact) as TextElement;
+        expect(Math.round((fact.style.fontSize ?? 0) * 1.5)).toBe(64);
+        expect((one(els, MYTH_NAMES.claim) as TextElement).style.fontSize).toBe(
+          fact.style.fontSize,
+        );
+      }
+  });
+
+  test("every case, theme and stage: the claim is the fact's size and the fact stays in its panel", () => {
+    for (const k of MYTH_CASES)
+      for (const t of THEMES)
+        for (const st of ["ks1", "ks2", "ks3"] as Stage[]) {
+          const els = lay(k.input, st, t).slide.elements;
+          const fact = one(els, MYTH_NAMES.fact) as TextElement;
+          const claim = one(els, MYTH_NAMES.claim) as TextElement;
+          expect(claim.style.fontSize).toBe(fact.style.fontSize);
+          const panel = one(els, MYTH_NAMES.factPanel);
+          expect(fact.y + fact.h).toBeLessThanOrEqual(panel.y + panel.h);
+          expect(fact.x + fact.w).toBeLessThanOrEqual(panel.x + panel.w);
+          // The panel claim stays above the foot (810 - 84 px).
+          expect((claim.y + claim.h) * 1.5).toBeLessThanOrEqual(726 + 1);
+        }
   });
 
   test("the seam takes the theme's marker colours (C13)", () => {
@@ -168,6 +220,16 @@ describe("myth and fact: the gold cases (myth-c)", () => {
       const arrow = one(els, MYTH_NAMES.seamArrow) as { fill?: string; stroke?: string };
       expect(arrow.stroke).toBe(m.ink as string);
     }
+  });
+
+  test("the seam arrow reads on its disc at 4.5:1 in every theme and stage", () => {
+    for (const t of THEMES)
+      for (const st of ["ks1", "ks2", "ks3"] as Stage[]) {
+        const els = lay(caseOf("y6-falling").input, st, t).slide.elements;
+        const fill = (one(els, MYTH_NAMES.seam) as { fill?: string }).fill as string;
+        const ink = (one(els, MYTH_NAMES.seamArrow) as { stroke?: string }).stroke as string;
+        expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(4.5);
+      }
   });
 
   test("KS1: the medals give way before the fact goes over", () => {
