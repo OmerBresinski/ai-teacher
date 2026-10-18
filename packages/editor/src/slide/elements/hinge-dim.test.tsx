@@ -1,16 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import type { RichNode, Slide, SlideElement } from "@tj/domain/documents";
-import { contrastRatio } from "@tj/slides";
+import { contrastRatio, mix } from "@tj/slides";
 import { dimGround, dimInk } from "@tj/slides/surfaces";
 import { layoutTemplate, type TemplateInput } from "@tj/slides/templates";
 import { THEMES } from "@tj/slides/themes";
 import { renderToStaticMarkup } from "react-dom/server";
 import { choiceMarks } from "./choice";
-import HingeMarks, { hingeDimParts } from "./HingeMarks";
+import HingeMarks, { HINGE_FADE, hingeDimParts, hingeFade } from "./HingeMarks";
 
 /*
  * TEACH-256 part d (rulings 258, 248): the one-click reveal redraws each wrong hinge card with its
  * words, key and bars in the theme's dim tone, never an opacity wash; the right card is not dimmed.
+ * TEACH-215 part i: the card, its line and its key fade as the gold's `.34` over the stage behind;
+ * the words keep the dim tone, stepped toward the ink only where that faded card needs it for 4.5:1.
  */
 const LOOKS: [string, TemplateInput][] = [
   [
@@ -82,13 +84,19 @@ describe("hinge reveal: wrong options in the dim tone", () => {
         const right = marks.filter((m) => m.state === "right");
         expect(right).toHaveLength(1);
         expect(wrong.length).toBe(marks.length - 1);
-        const dim = dimInk(theme);
         for (const { id } of wrong) {
+          const fade = hingeFade(slide, theme, id);
+          const dim = fade?.words as string;
           const [card, ...parts] = hingeDimParts(slide, theme, id);
           // The redraw is the card itself, opaque, so nothing of the full-ink original shows.
           expect(card?.id).toBe(id);
           const fill = fillOf(card);
           expect(fill).toMatch(/^#[0-9a-f]{6}$/i);
+          // The gold's fade: the card's own fill at .34 over the stage behind it.
+          const own = fillOf(slide.elements.find((e) => e.id === id));
+          expect(fill).toBe(mix(own, fade?.behind as string, HINGE_FADE));
+          // The dim tone itself wherever it already reads on the faded card.
+          if (contrastRatio(dimInk(theme), fill) >= 4.5) expect(dim).toBe(dimInk(theme));
           const words = parts.filter((p) => p.type === "text");
           expect(words.length).toBeGreaterThan(0);
           for (const w of words) {
@@ -107,6 +115,11 @@ describe("hinge reveal: wrong options in the dim tone", () => {
           const keyFill = fillOf(key);
           const letter = key?.type === "shape" ? key.textStyle?.color : undefined;
           expect(contrastRatio(letter as string, keyFill)).toBeGreaterThanOrEqual(4.5);
+          // The key goes pale in its own colour (a letter's tone, the ink or the accent), as in the gold.
+          const own0 = slide.elements.find((e) => e.id === key?.id);
+          const keyOwn = fillOf(own0);
+          if (/^#[0-9a-f]{6}$/i.test(keyOwn))
+            expect(keyFill).toBe(mix(keyOwn, fade?.behind as string, HINGE_FADE));
         }
         // The right card is never redrawn, and its words keep their full ink.
         const [rightMark] = right;
@@ -117,7 +130,7 @@ describe("hinge reveal: wrong options in the dim tone", () => {
         expect(rightWords.length).toBeGreaterThan(0);
         for (const w of rightWords)
           for (const c of wordColours(w)) {
-            expect(c).not.toBe(dim);
+            expect(c).not.toBe(dimInk(theme));
             expect(contrastRatio(c, fillOf(rightCard))).toBeGreaterThanOrEqual(4.5);
           }
       });

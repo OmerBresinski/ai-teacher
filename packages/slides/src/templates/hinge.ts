@@ -23,7 +23,9 @@
  * Sizes are slide points (960 x 540): the gold's px at 1440 x 2/3.
  */
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
+import { contrastRatio } from "../colour-contrast";
 import { uid } from "../factories";
+import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { MIN_FONT_SIZE } from "../themes";
 import { type Corners, markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
@@ -460,7 +462,7 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
     ids.push(card.id);
     const letter = letters[k] ?? String(k + 1);
     if (p.look === "tiles") {
-      key(c, letter, box.x + pt(24), box.y + pt(24), p.key);
+      key(c, letter, k, box.x + pt(24), box.y + pt(24), p.key);
       const id = p.icons[k];
       const label = o.text;
       const inner = box.w - 2 * pt(24);
@@ -496,7 +498,7 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
       const px = p.look === "grid" ? pt(32) : pt(28);
       const gapK = p.look === "grid" ? pt(32) : pt(28);
       const right = p.look === "grid" ? pt(72) : Math.round(p.key * 0.78) + pt(48);
-      key(c, letter, box.x + px, box.y + (box.h - p.key) / 2, p.key);
+      key(c, letter, k, box.x + px, box.y + (box.h - p.key) / 2, p.key);
       const tx = box.x + px + p.key + gapK;
       const tw = box.w - (tx - box.x) - right;
       optionWords(
@@ -558,18 +560,47 @@ function cardOf(
   return kit.box(c, box, c.t.colors.surface, { radius: CARD_R, name });
 }
 
+/**
+ * Themes whose hinge gold gives each letter its own colour (TEACH-215 part i, cause C14): round 3's
+ * per-letter option tones (`themes3.css` `--opt-1..4` on `[data-k]`, the product's `OPTION_TONES`)
+ * and the round 5 darks (`themes5.css`). Paper, Poster, Storytime, Scrapbook, Calm and Geometric keep
+ * one key colour: round 4 resets their `[data-k]` keys (`themes4.css`), and Paper defines no tones.
+ */
+export const HINGE_TONED_KEYS: ReadonlySet<string> = new Set([
+  "treehouse",
+  "reading-room",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+
+/** A key's letter colour: of the card's two colours, the one that reads best on `fill`. */
+const letterOn = (fill: string, a: string, b: string) =>
+  contrastRatio(a, fill) >= contrastRatio(b, fill) ? a : b;
+
 /** The rounded-square letter key, a card a pupil holds up (never the round number badge). */
-function key(c: Ctx, letter: string, x: number, y: number, d: number) {
+function key(c: Ctx, letter: string, k: number, x: number, y: number, d: number) {
   // The gold's key is the card's ink with the letter in the card's fill (on dark themes a pale key
   // with a dark letter); the `key` role's accent would be a second red on the slide.
   const card = surfaceStyle(c.t, "card");
+  const ink = card.ink ?? c.t.colors.ink;
   // The theme's key family (THEMING.md section 6: outline, sticky, notch ...), never its badge.
   const s = surfacesOf(c.t);
-  // A theme whose gold keys wear its accent (Geometric) takes the `key` role's fill and ink.
+  const tone = HINGE_TONED_KEYS.has(c.t.id) ? optionTones(c.t)[k] : undefined;
+  // A theme whose gold keys wear its accent (Geometric) takes the `key` role's fill and ink; a
+  // theme whose gold colours each letter takes that letter's tone, its letter in the card's fill
+  // (white on the light themes, the dark card on the darks) or ink, whichever reads better.
   const look =
     s.marks.keyFill === "accent"
       ? markLook(c.t, "key", d, s.roles.key.fill, s.roles.key.ink ?? c.t.colors.onAccent)
-      : markLook(c.t, "key", d, card.ink ?? c.t.colors.ink, card.fill);
+      : tone
+        ? markLook(c.t, "key", d, tone, letterOn(tone, card.fill, ink))
+        : markLook(c.t, "key", d, ink, card.fill);
   const st = { fill: look.fill, ink: look.ink };
   c.els.push({
     id: uid(),

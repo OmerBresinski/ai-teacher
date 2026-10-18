@@ -6,6 +6,7 @@ import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
 import { choiceMarks, choiceText } from "../slide/elements/choice";
+import { hingeFade } from "../slide/elements/HingeMarks";
 import { buildSlidePlan, exportLessonPptx, hexagonAdj } from "./pptx";
 
 /*
@@ -68,16 +69,24 @@ describe("PPTX hinge reveal", () => {
     }, 30_000);
 
   /*
-   * Part d (ruling 258): each wrong card is redrawn opaque on `dimGround` with its words in the dim
-   * tone; the right card's words keep their ink. Read per card from the shapes PowerPoint draws: the
+   * Part d (ruling 258): each wrong card is redrawn opaque with its words in the dim tone; the right
+   * card's words keep their ink. Part i (TEACH-215): that card is the gold's `.34` fade over the
+   * stage (`hingeFade`), drawn as plain colours: PowerPoint gets the faded state as its build slide. Read per card from the shapes PowerPoint draws: the
    * last shape drawn at a card's place is the one a pupil sees.
    */
   for (const id of ["paper", "dark-slate", "dark-ember"])
     it(`${id}: each wrong card's words are dim on the ground, the right card's keep their ink`, async () => {
       const { ask, reveal, theme, lesson } = await hingeDeck(id);
-      const dim = hex(dimInk(theme));
-      const ground = hex(dimGround(theme));
       const slide = lesson.slides[0] as Slide;
+      const dimOf = (cardId: string) =>
+        hex(hingeFade(slide, theme, cardId)?.words ?? dimInk(theme));
+      const groundOf = (cardId: string) =>
+        hex(hingeFade(slide, theme, cardId)?.ground ?? dimGround(theme));
+      const wrongIds = choiceMarks(slide, true, Number.POSITIVE_INFINITY)
+        .filter((m) => m.state === "dim")
+        .map((m) => m.id);
+      const dims = new Set(wrongIds.map(dimOf));
+      const grounds = new Set(wrongIds.map(groundOf));
       const words = new Map(
         slide.elements.filter((e) => e.type === "text").map((e) => [e, choiceText(slide, e.id)]),
       );
@@ -92,7 +101,9 @@ describe("PPTX hinge reveal", () => {
         const asked = shapes(ask).filter((s) => s.text === text);
         const shown = drawn.filter((s) => s.text === text);
         expect(asked).toHaveLength(1);
-        expect(asked[0]?.runs.some((c) => c === dim)).toBe(false);
+        const dim = dimOf(cardId);
+        const ground = groundOf(cardId);
+        expect(asked[0]?.runs.some((c) => dims.has(c))).toBe(false);
         const top = shown.at(-1);
         const atCard = drawn.filter((s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text);
         if (state === "dim") {
@@ -106,8 +117,10 @@ describe("PPTX hinge reveal", () => {
         } else {
           expect(shown).toHaveLength(1);
           expect(top?.runs.length).toBeGreaterThan(0);
-          expect(top?.runs.some((c) => c === dim)).toBe(false);
-          expect(atCard.some((s) => s.fill === ground)).toBe(false);
+          expect(top?.runs.some((c) => dims.has(c))).toBe(false);
+          // Never redrawn faded (a dark card on its own-coloured stage fades to itself: skip that).
+          const own = card.type === "shape" && card.fill ? hex(card.fill) : "";
+          expect(atCard.some((s) => s.fill && s.fill !== own && grounds.has(s.fill))).toBe(false);
         }
       }
     }, 30_000);
