@@ -39,16 +39,44 @@ export const hingeCapInput = (
 });
 
 /** Every theme holds `words` at comfort (not tight) or at all (not over). */
+function holdsInput(age: Age, input: TemplateInput, comfort: boolean): boolean {
+  return THEMES.every((theme) => {
+    const r = layoutTemplate(input, theme, HINGE_CAP_STAGE[age]);
+    return r.over.length === 0 && (!comfort || !r.tight);
+  });
+}
 function holds(
   age: Age,
   words: number,
   comfort: boolean,
   options = HINGE_CAP_OPTIONS[age],
 ): boolean {
-  return THEMES.every((theme) => {
-    const r = layoutTemplate(hingeCapInput(age, words, options), theme, HINGE_CAP_STAGE[age]);
-    return r.over.length === 0 && (!comfort || !r.tight);
-  });
+  return holdsInput(age, hingeCapInput(age, words, options), comfort);
+}
+
+/** Every option exactly `chars` long (the pool cut mid-word if need be), each from its own offset. */
+const charInput = (options: number, chars: number): TemplateInput => ({
+  template: "hinge",
+  heading: HINGE_CAP_QUESTION,
+  options: Array.from({ length: options }, (_, i) =>
+    `${POOL.slice(i)
+      .join(" ")
+      .slice(0, chars - 1)
+      .trimEnd()}.`.replace(/^./, (c) => c.toUpperCase()),
+  ),
+  correct: 1,
+});
+
+/**
+ * The most characters every option can take, to the character (GOLD-THROUGH-PROD.md, 18 Oct
+ * 2026): the word search steps 4-7 characters at a time and reads the shortest option's length,
+ * so it sat under what renders (KS2 4 options: 49, where 52-54-character options render on one
+ * line). Starts from the word search's figure; never lower.
+ */
+function charsAt(age: Age, options: number, from: number, comfort: boolean): number {
+  let c = from;
+  while (c < 200 && holdsInput(age, charInput(options, c + 1), comfort)) c += 1;
+  return c;
 }
 
 export type HingeCapCell = { words: number; maxWords: number; chars: number; maxChars: number };
@@ -59,11 +87,12 @@ function measureAt(age: Age, options: number): HingeCapCell {
   while (words < 30 && holds(age, words + 1, true, options)) words += 1;
   let maxWords = words;
   while (maxWords < 30 && holds(age, maxWords + 1, false, options)) maxWords += 1;
+  const chars = charsAt(age, options, hingeSample(words).length, true);
   return {
     words,
     maxWords,
-    chars: hingeSample(words).length,
-    maxChars: hingeSample(maxWords).length,
+    chars,
+    maxChars: Math.max(chars, charsAt(age, options, hingeSample(maxWords).length, false)),
   };
 }
 

@@ -93,12 +93,25 @@ export function shownFor(
   key?: string,
   /** The room in characters when it is less than the measured cap (a pictured side's headroom). */
   roomChars = chars,
+  /** The room in words when a probe measured it directly (the hinge's options per count). */
+  roomWords?: number,
 ): number {
-  const share = Math.min(shownWords(chars, stage), wordsWithin(roomChars, stage));
+  const room = roomWords ?? wordsWithin(roomChars, stage);
+  const share = Math.min(shownWords(chars, stage), room);
   const need = needOf(key, stage);
   if (need === undefined) return share;
-  const room = wordsWithin(roomChars, stage);
+  // A censored need (many stored fields pinned at their cap) is a lower bound: show the room.
+  if (isCensored(key, stage)) return Math.min(room, Math.floor(2 * need));
   return Math.min(room, Math.max(share, need), Math.floor(2 * need));
+}
+
+/** The need row is a lower bound at this stage (`censored` in content-need.json). */
+export function isCensored(key: string | undefined, stage: WriterStage): boolean {
+  if (!key) return false;
+  const row = (
+    NEED as unknown as Record<string, Record<string, { censored?: boolean } | undefined>>
+  )[key];
+  return row?.[stage]?.censored === true;
 }
 
 /**

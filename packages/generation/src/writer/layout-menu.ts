@@ -99,6 +99,17 @@ export function menuWords(chars: number, age: Age): number {
  * fill was 56%, 7% at 90% or more; CRAMMING-ROOT-CAUSE.md "Not causes"), and at 75% a KS1 side
  * title would show one word.
  */
+/**
+ * A hinge option count's shown words: its room is the probe's comfortable words, never more than
+ * its measured hard maximum holds at the stage's long-word rate (GOLD-THROUGH-PROD.md, 18 Oct).
+ */
+function hingeShown(a: Age, c: HingeCap, n: number): number {
+  const cell = c.byCount?.[String(n)] ?? c;
+  const st = STAGE_OF[a];
+  const room = Math.min(cell.words, wordsWithin(cell.maxChars ?? cell.chars, st));
+  return shownFor(cell.chars, st, "hinge.option", cell.chars, room);
+}
+
 export function menuShown(chars: number, age: Age, need?: string, roomChars = chars): number {
   // Need-aware where `need` names a row of content-need.json (CAP-NEED-AUDIT.md, 18 Oct 2026).
   return shownFor(chars, STAGE_OF[age], need, roomChars);
@@ -610,7 +621,8 @@ type HingeCap = {
   chars: number;
   options: number;
   /** Each option count measured on its own (18 Oct 2026); absent, the most-options figure. */
-  byCount?: Record<string, { chars: number }>;
+  maxChars?: number;
+  byCount?: Record<string, { words: number; chars: number; maxChars?: number }>;
 };
 const HINGE_CAP = HINGE_CAPACITY as unknown as Record<Age, HingeCap>;
 const hingeOffer = (a: Age) => {
@@ -623,7 +635,7 @@ const hingeOffer = (a: Age) => {
     options: offerable(
       Array.from({ length: c.options - 1 }, (_, i): [number, number] => [
         i + 2,
-        menuShown(c.byCount?.[String(i + 2)]?.chars ?? c.chars, a, "hinge.option"),
+        hingeShown(a, c, i + 2),
       ]),
     ),
   };
@@ -897,7 +909,10 @@ export function shownCells(stage: WriterStage): ShownCell[] {
     out.push({
       cell: `hinge ${n} option`,
       shown: w,
-      room: menuWords(c.byCount?.[String(n)]?.chars ?? c.chars, a),
+      room: Math.min(
+        (c.byCount?.[String(n)] ?? c).words,
+        wordsWithin((c.byCount?.[String(n)] ?? c).maxChars ?? c.chars, STAGE_OF[a]),
+      ),
       need: "hinge.option",
     });
   for (const [n, cell] of Object.entries(QUICK[a] ?? {})) {

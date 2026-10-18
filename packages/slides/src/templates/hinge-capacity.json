@@ -2,75 +2,75 @@
   "early": {
     "words": 8,
     "maxWords": 16,
-    "chars": 41,
-    "maxChars": 85,
+    "chars": 46,
+    "maxChars": 89,
     "options": 3,
     "byCount": {
       "2": {
         "words": 16,
         "maxWords": 16,
-        "chars": 85,
-        "maxChars": 85
+        "chars": 89,
+        "maxChars": 89
       },
       "3": {
         "words": 8,
         "maxWords": 16,
-        "chars": 41,
-        "maxChars": 85
+        "chars": 46,
+        "maxChars": 89
       }
     }
   },
   "primary": {
     "words": 9,
     "maxWords": 9,
-    "chars": 49,
-    "maxChars": 49,
+    "chars": 51,
+    "maxChars": 51,
     "options": 4,
     "byCount": {
       "2": {
         "words": 18,
         "maxWords": 18,
-        "chars": 97,
-        "maxChars": 97
+        "chars": 102,
+        "maxChars": 102
       },
       "3": {
         "words": 18,
         "maxWords": 18,
-        "chars": 97,
-        "maxChars": 97
+        "chars": 102,
+        "maxChars": 102
       },
       "4": {
         "words": 9,
         "maxWords": 9,
-        "chars": 49,
-        "maxChars": 49
+        "chars": 51,
+        "maxChars": 51
       }
     }
   },
   "secondary": {
     "words": 11,
     "maxWords": 21,
-    "chars": 58,
-    "maxChars": 119,
+    "chars": 63,
+    "maxChars": 122,
     "options": 4,
     "byCount": {
       "2": {
         "words": 21,
         "maxWords": 21,
-        "chars": 119,
-        "maxChars": 119
+        "chars": 122,
+        "maxChars": 122
       },
       "3": {
         "words": 21,
         "maxWords": 21,
-        "chars": 119,
-        "maxChars": 119
+        "chars": 122,
+        "maxChars": 122
       },
       "4": {
         "words": 11,
         "maxWords": 21,
-        "chars": 58,
-        "maxChars": 119
+        "chars": 63,
+        "maxChars": 122
       }
     }
   }

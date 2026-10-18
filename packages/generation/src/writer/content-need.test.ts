@@ -78,6 +78,13 @@ describe("shown caps hold the room and the need", () => {
           );
   });
 
+  test("a censored need (a lower bound) shows the room, up to twice the need", () => {
+    for (let chars = 1; chars <= 200; chars += 1)
+      expect(shownFor(chars, "KS3-5", "split-compare.side")).toBe(
+        Math.min(wordsWithin(chars, "KS3-5"), 32),
+      );
+  });
+
   test("need unknown keeps the 75% share; a smaller room is never exceeded", () => {
     expect(shownFor(100, "KS2", "title.lead")).toBe(shownWords(100, "KS2"));
     expect(shownFor(100, "KS2")).toBe(shownWords(100, "KS2"));
@@ -91,6 +98,12 @@ describe("shown caps hold the room and the need", () => {
     const hinge = shownCells("KS2").filter((c) => c.cell.startsWith("hinge"));
     expect(hinge.find((c) => c.cell === "hinge 4 option")?.shown).toBeGreaterThanOrEqual(7);
     expect(hinge.find((c) => c.cell === "hinge 2 option")?.shown).toBeGreaterThan(7);
+    // GOLD-THROUGH-PROD.md: KS3 4-option hinge shows the probe's 11 words (the gold's 10-11-word
+    // options render on one line); KS2 quick check shows its two-line rows, not one line's 3 words.
+    expect(shownCells("KS3-5").find((c) => c.cell === "hinge 4 option")?.shown).toBe(11);
+    expect(
+      shownCells("KS2").find((c) => c.cell === "question-set 4 question")?.shown,
+    ).toBeGreaterThanOrEqual(9);
     // KS3 exit ticket offers 3 questions (no cliff); KS1 practice offers 3 pictured tasks.
     expect(shownCells("KS3-5").some((c) => c.cell === "exit 3")).toBe(true);
     expect(shownCells("KS1").some((c) => c.cell === "practice+picture 3")).toBe(true);
