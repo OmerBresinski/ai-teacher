@@ -30,8 +30,9 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   scrapbook: ["#9C2A44", "#014580", "#7A5805", "#055452"],
   calm: ["#792235", "#01305C", "#604501", "#003D3B"],
   geometric: ["#9C2A44", "#014580", "#7A5805", "#055452"],
-  "dark-slate": ["#FFAEB7", "#8FB6E3", "#F9DBA6", "#91C8C6"],
-  "dark-ember": ["#FEABB5", "#85B7EE", "#FFDA97", "#84CBC8"],
+  // The darks' hinge golds (round 5 themes5.css --opt-1..4, TEACH-215 part i).
+  "dark-slate": ["#9DBBD0", "#D3BE96", "#B9A7D2", "#E4E7EB"],
+  "dark-ember": ["#F2A08C", "#8CC7F2", "#E3C870", "#BBA8F0"],
 };
 
 /** A theme's option colours; one the table does not know takes Splash's, or Night Lab's when dark. */
