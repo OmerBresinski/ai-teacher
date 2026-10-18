@@ -19,9 +19,9 @@
  */
 import type { PathElement, ShapeElement, TextPreset } from "@tj/domain/documents";
 import { uid } from "../factories";
-import { readingFloorOf } from "../layout-sizes";
 import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
+import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import { type Ctx, type FieldReport, type Figure, kit, mix, type TemplateInput } from "./index";
 import { layoutItemsRow, PENDING_ICON, ROW_NAMES } from "./items-row";
@@ -117,8 +117,16 @@ export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
 /* ------------------------------------------------------------------ */
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
-/** A stages size as drawn: as given (`fixedSize`), not snapped to the stage's type scale. */
-const drawn = (_c: Ctx, _preset: TextPreset, size: number) => round1(size);
+/**
+ * A stages size as drawn. KS1 and KS2 draw the gold's sizes as given (`fixedSize`); from KS3 a size
+ * snaps to the stage's type scale, as on master.
+ */
+const goldStage = (c: Ctx) => {
+  const ks = keyStageOf(c.t);
+  return ks === "ks1" || ks === "ks2";
+};
+const drawn = (c: Ctx, preset: TextPreset, size: number) =>
+  goldStage(c) ? round1(size) : resolveFontSize(c.t, preset, size);
 const lines = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
   v.trim() ? countLines(v, p, c.t, w, wt, size) : 0;
 const wordsFit = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
@@ -153,23 +161,18 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
 
   const v2 = v2Profile(c.t);
   const col = v2Colors(c.t);
-  // The gold's own sizes (C10, THEME-AUDIT 18 Oct: `--t-name` / `--t-body`, KS2 46 / 33 px, KS1
-  // 54 / 38 px), drawn as given (`fixedSize`) rather than raised to the stage's body and snapped to
-  // its scale (43.5 / 43.5 px at KS2). Ruling 162 amended by Greg 18 Oct (stages): the line takes
-  // the gold's 33 px at KS2 and 38 px at KS1; from KS3 it is still held at the reading floor (21pt).
-  const read = stage === "ks1" || stage === "ks2" ? 0 : readingFloorOf(stage);
-  const sizeName = v2.sizes.name;
-  const sizeBody = Math.max(v2.sizes.body, read);
+  // The gold's own sizes at KS1 and KS2 (C10, THEME-AUDIT 18 Oct: `--t-name` / `--t-body`, KS2 46 /
+  // 33 px, KS1 54 / 38 px), drawn as given (`fixedSize`) as the starting size; ruling 162 amended by
+  // Greg 18 Oct (stages) lets the line take the gold's size under the stage's reading floor. The
+  // floors and comfort sizes are master's. From KS3 the profile is master's exactly.
+  const gold = goldStage(c);
   const prof = {
-    name: sizeName,
-    body: sizeBody,
-    // The name gives way to the heading minimum, as master's snapped ladder did: the line is held
-    // above the gold's own floor, so the name's room keeps KS1's line caps.
-    floorName: Math.min(sizeName, MIN_FONT_SIZE.heading),
-    floorBody: Math.min(sizeBody, Math.max(MIN_FONT_SIZE.body, v2.floors.body, read)),
-    // Master drew every name at one snapped size, so a name never made the slide tight; kept.
-    comfortName: Math.min(sizeName, MIN_FONT_SIZE.heading),
-    comfortBody: Math.min(sizeBody, Math.max(MIN_FONT_SIZE.body, v2.comfort.body, read)),
+    name: gold ? v2.sizes.name : Math.max(v2.sizes.name, Math.round(c.s.body * 1.25)),
+    body: gold ? v2.sizes.body : Math.max(v2.sizes.body, c.s.body),
+    floorName: Math.max(MIN_FONT_SIZE.heading, v2.floors.name),
+    floorBody: Math.max(MIN_FONT_SIZE.body, v2.floors.body),
+    comfortName: Math.max(MIN_FONT_SIZE.heading, v2.comfort.name),
+    comfortBody: Math.max(MIN_FONT_SIZE.body, v2.comfort.body),
     lh: v2.lineHeights.body,
   };
 
@@ -239,7 +242,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
   const comfy =
     g.fits &&
     g.sn >= drawn(c, "heading", prof.comfortName) - 0.5 &&
-    g.sb >= drawn(c, "body", prof.comfortBody) - 0.5;
+    g.sb >= drawn(c, "body", prof.comfortBody) - 0.5 &&
+    // KS1 and KS2: a name that fell to the heading minimum is tight (TEACH-215 part j review).
+    !(gold && g.sn <= MIN_FONT_SIZE.heading + 0.05);
   c.tight = !comfy || countOver || fields.some((f) => f.tight);
 
   // The block sits centred in the room under the title (biased up), never above the row top.
@@ -499,6 +504,7 @@ function textBox(
   o: { x: number; y: number; w: number; color: string; name: string },
 ) {
   const h = Math.ceil(lines(c, value, preset, o.w, weight, size) * size * lh);
+  const fixed = goldStage(c);
   const el = {
     id: uid(),
     type: "text" as const,
@@ -512,7 +518,7 @@ function textBox(
       preset,
       autoHeight: true,
       fontSize: size,
-      fixedSize: true,
+      ...(fixed ? { fixedSize: true } : {}),
       lineHeight: lh,
       fontWeight: weight,
       padding: 0,

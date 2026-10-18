@@ -9,7 +9,7 @@
       },
       "line": {
         "cap": 56,
-        "hardMax": 100
+        "hardMax": 92
       }
     },
     {
@@ -17,11 +17,11 @@
       "vis": "pictures",
       "name": {
         "cap": 12,
-        "hardMax": 15
+        "hardMax": 13
       },
       "line": {
         "cap": 50,
-        "hardMax": 86
+        "hardMax": 78
       }
     },
     {
@@ -29,7 +29,7 @@
       "vis": "icons",
       "name": {
         "cap": 10,
-        "hardMax": 13
+        "hardMax": 11
       },
       "line": {
         "cap": 40,
@@ -41,7 +41,7 @@
       "vis": "pictures",
       "name": {
         "cap": 7,
-        "hardMax": 9
+        "hardMax": 8
       },
       "line": {
         "cap": 28,
@@ -53,7 +53,7 @@
       "vis": "icons",
       "name": {
         "cap": 8,
-        "hardMax": 10
+        "hardMax": 9
       },
       "line": {
         "cap": 28,
@@ -65,7 +65,7 @@
       "vis": "pictures",
       "name": {
         "cap": 6,
-        "hardMax": 7
+        "hardMax": 6
       },
       "line": {
         "cap": 20,
@@ -102,7 +102,7 @@
       "n": 4,
       "vis": "icons",
       "name": {
-        "cap": 13,
+        "cap": 12,
         "hardMax": 13
       },
       "line": {
@@ -212,8 +212,8 @@
       "n": 4,
       "vis": "pictures",
       "name": {
-        "cap": 9,
-        "hardMax": 9
+        "cap": 10,
+        "hardMax": 10
       },
       "line": {
         "cap": 46,
@@ -224,8 +224,8 @@
       "n": 5,
       "vis": "icons",
       "name": {
-        "cap": 10,
-        "hardMax": 10
+        "cap": 11,
+        "hardMax": 11
       },
       "line": {
         "cap": 54,
@@ -236,8 +236,8 @@
       "n": 5,
       "vis": "pictures",
       "name": {
-        "cap": 7,
-        "hardMax": 7
+        "cap": 8,
+        "hardMax": 8
       },
       "line": {
         "cap": 36,
@@ -248,8 +248,8 @@
       "n": 6,
       "vis": "icons",
       "name": {
-        "cap": 8,
-        "hardMax": 8
+        "cap": 9,
+        "hardMax": 9
       },
       "line": {
         "cap": 36,

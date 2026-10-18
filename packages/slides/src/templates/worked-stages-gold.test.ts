@@ -135,3 +135,120 @@ describe("quick check: comfort per stage's gold, caps to the character (C8 follo
     for (const n of [4, 5, 6]) expect(measureQuickCaps("primary", n).questions.cap).toBe(46);
   });
 });
+
+describe("TEACH-215 part j review: KS3 stages stay master's; the quick check's gold claims", () => {
+  test("KS3 stages-capacity cells are master's values exactly", async () => {
+    const STAGES = (await import("./stages-capacity.json")).default as unknown as Record<
+      string,
+      {
+        n: number;
+        vis: string;
+        name: { cap: number; hardMax: number };
+        line: { cap: number; hardMax: number };
+      }[]
+    >;
+    const cell = (n: number, vis: string) =>
+      STAGES.secondary?.find((c) => c.n === n && c.vis === vis);
+    // master 5f55d1f95: [name cap, name hardMax, line cap, line hardMax]
+    const MASTER: [number, string, number, number, number, number][] = [
+      [3, "icons", 15, 15, 92, 110],
+      [3, "pictures", 15, 15, 78, 98],
+      [4, "icons", 13, 13, 62, 80],
+      [4, "pictures", 10, 10, 46, 54],
+      [5, "icons", 11, 11, 54, 84],
+      [5, "pictures", 8, 8, 36, 54],
+      [6, "icons", 9, 9, 36, 62],
+      [6, "pictures", 6, 6, 24, 48],
+    ];
+    for (const [n, vis, nc, nh, lc, lh] of MASTER)
+      expect(cell(n, vis)).toMatchObject({
+        name: { cap: nc, hardMax: nh },
+        line: { cap: lc, hardMax: lh },
+      });
+  });
+  test("KS1/KS2 stages: a name stepped to the heading minimum is tight", () => {
+    const c = STAGE_CASES.find((s) => s.name === "05-y5-bread-5-icons") as {
+      input: TemplateInput;
+    };
+    const long = structuredClone(c.input);
+    long.stages = (long.stages ?? []).map((s) => ({ ...s, name: "Breadmaking" }));
+    const r = layoutTemplate(long, atKeyStage(getTheme("paper"), "ks2"), "ks2");
+    const names = (r.slide.elements as El[]).filter((e) => e.name === STAGES_NAMES.name);
+    // The names step down to the heading minimum (26 pt) to fit, and the slide says so.
+    expect(names.every((e) => (e.style?.fontSize ?? 99) <= 26.05)).toBe(true);
+    expect(r.tight).toBe(true);
+  });
+
+  const qset = (qs: string[], as: string[], stage: Stage, id = "paper") =>
+    layoutTemplate(
+      { template: "question-set", heading: "Quick check", questions: qs, answers: as },
+      atKeyStage(getTheme(id), stage),
+      stage,
+    );
+  const caps = async (age: "early" | "primary" | "secondary", n: number) =>
+    (
+      (await import("./question-set-capacity.json")).default as Record<
+        string,
+        Record<string, { questions: { cap: number } }>
+      >
+    )[age]?.[String(n)]?.questions.cap ?? 0;
+
+  test("KS2: a row at the cap length renders on one line in every theme, comfortable", async () => {
+    const { exactSample } = await import("./question-set-capacity");
+    const cap = await caps("primary", 5);
+    const qs = [0, 3, 6, 9, 12].map((i) => exactSample(cap, i));
+    for (const t of THEMES) {
+      const r = qset(
+        qs,
+        qs.map(() => "Plasma"),
+        "ks2",
+        t.id,
+      );
+      expect(r.over).toEqual([]);
+      expect(r.tight).toBe(false);
+      const q = (r.slide.elements as El[]).filter((e) => e.name === "Question");
+      for (const e of q) expect(e.h).toBeLessThan((e.style?.fontSize ?? 0) * 1.4 * 1.5);
+    }
+  });
+  test("KS2: answers take the gold's 35 px when they fit, 33 px when they do not", () => {
+    const size = (as: string[]) =>
+      px(
+        ((
+          qset(["What is it?", "What is it?", "What is it?"], as, "ks2").slide.elements as El[]
+        ).find((e) => e.name === "Answer")?.style?.fontSize ?? 0) as number,
+      );
+    expect(size(["Plasma", "Arteries", "Oxygen"])).toBe(35);
+    expect(size(["Red blood cells carry", "Plasma", "Oxygen"])).toBeLessThanOrEqual(35);
+  });
+  test("KS1 and KS3: questions at their caps are comfortable on every theme", async () => {
+    const { exactSample } = await import("./question-set-capacity");
+    for (const [age, stage] of [
+      ["early", "ks1"],
+      ["secondary", "ks3"],
+    ] as const) {
+      const cap = await caps(age, 3);
+      const qs = [0, 3, 6].map((i) => exactSample(cap, i));
+      for (const t of THEMES) {
+        const r = qset(
+          qs,
+          qs.map(() => "Plasma"),
+          stage,
+          t.id,
+        );
+        expect([t.id, stage, r.over, r.tight]).toEqual([t.id, stage, [], false]);
+      }
+    }
+  });
+  test("number badges are the golds' sizes: KS1 30, KS2 26, KS3 24 px", () => {
+    for (const [stage, want] of [
+      ["ks1", 30],
+      ["ks2", 26],
+      ["ks3", 24],
+    ] as const) {
+      const r = qset(["What is it?", "What is it?", "What is it?"], ["A", "B", "C"], stage);
+      const b = (r.slide.elements as ShapeElement[]).filter((e) => e.name === "surface:badge");
+      expect(b.length).toBe(3);
+      for (const e of b) expect(Math.round((e.textStyle?.fontSize ?? 0) * 1.5)).toBe(want);
+    }
+  });
+});

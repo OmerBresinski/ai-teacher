@@ -207,11 +207,10 @@ describe("stages: a cap of 0 is over, never silent", () => {
   test("5 pictures at early: measured beside short siblings (TEACH-68 part b), long words over", () => {
     // Was 0 only because the 6-letter stand-in names overflowed; the cell holds 5-letter names
     // and 24-character lines, so this case's longer ones are over and its short ones are not.
-    // TEACH-215 part j: at the gold's 54 px names and 38 px lines (ruling 162 amended by Greg 18
-    // Oct, stages) this cell holds 7-letter names and 44-character lines, so nothing is over; the
-    // 7-letter "Harvest" is past the comfortable 6 and the slide is tight.
+    // TEACH-215 part j: at the gold's 38 px KS1 line (ruling 162 amended by Greg 18 Oct, stages)
+    // the 28-33 character lines fit; the 7-letter "Harvest" is still past the name cap of 6.
     const r = lay(pictured("05", 5), "ks1");
-    expect(r.over).toEqual([]);
+    expect(r.over).toEqual(["stages[1].name"]);
     expect(r.tight).toBe(true);
   });
   test("6 pictures at primary: 7-letter names are over (cap 6); 3 short pictured stages at early are not", () => {
