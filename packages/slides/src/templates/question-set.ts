@@ -79,6 +79,9 @@ export const QUICK_CHECK_MIN = 3;
 export const quickAnswerWords = (stage: Stage): number =>
   stage === "ks1" || stage === "ks2" ? 3 : 5;
 
+/** The quick check gold's number disc per stage, in points (KS1 62, KS2 54 px; KS3 has no gold, 50 px = its 24 px number / 0.48 as in the others). */
+const QUICK_GOLD_DISC: Record<string, number> = { ks1: (62 * 2) / 3, ks2: 36, ks3: (50 * 2) / 3 };
+
 /** The KS2 gold's answer size, 35 px (`--a-size` = round(33 x 1.05)), in points. */
 const KS2_GOLD_ANSWER = (35 * 2) / 3;
 
@@ -164,10 +167,15 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const fieldW = (q: number) =>
     Math.round(Math.min(FIELD_MAX, Math.max(FIELD_MIN, longest * q * 0.62 + 2 * FIELD_IN + 5)));
 
-  const at = (size: number, maxLines: number, aSize = size): Fit & { fw: number } => {
+  const at = (
+    size: number,
+    maxLines: number,
+    aSize = size,
+    disc = Math.round(size * 1.25),
+  ): Fit & { fw: number } => {
     const fw = fieldW(size);
     const fx = SLIDE_W - fw;
-    const badge = Math.round(size * 1.25);
+    const badge = disc;
     const chip = badge;
     const qx = PAD_X + badge + BADGE_GAP;
     const qw = fx - FIELD_GAP - qx;
@@ -194,9 +202,19 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   // Pass 1: one line per question at the body size (KS2: at each rung). Pass 2: two lines, body
   // then the steps under it.
   // KS2: the gold's answers at 35 px (`--a-size`: q x 1.05) when the measured fit holds, else 33.
+  // The number disc at the gold's size (KS1 62, KS2 54, KS3 50 px: the badge number / 0.48) when
+  // the measured fit holds, else the old size x 1.25 (TEACH-215 part j).
+  const goldDisc = QUICK_GOLD_DISC[stage] ?? QUICK_GOLD_DISC.ks3;
   const tryAt = (size: number, lines: number) => {
-    const f = ks2 ? at(size, lines, KS2_GOLD_ANSWER) : at(size, lines);
-    return ks2 && !f.ok ? at(size, lines) : f;
+    for (const disc of [goldDisc, undefined]) {
+      const f = ks2 ? at(size, lines, KS2_GOLD_ANSWER, disc) : at(size, lines, size, disc);
+      if (f.ok) return f;
+      if (ks2) {
+        const g = at(size, lines, size, disc);
+        if (g.ok) return g;
+      }
+    }
+    return at(size, lines);
   };
   let fit = tryAt(sizes[0] as number, 1);
   if (!fit.ok)
