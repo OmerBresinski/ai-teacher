@@ -275,6 +275,11 @@ describe("plan-only fit check", () => {
       count: 3,
       words: 10,
     });
+    expect(parseSize("2 tasks: 18/25, 16/25 words", ["tasks"])).toEqual({ count: 2, words: 18 });
+    expect(parseSize("Question 9/11; three options 4/5, 4/5, 4/5", ["options"])).toEqual({
+      count: 3,
+      words: 4,
+    });
     // "need out of fit": the need is what is checked.
     expect(parseSize("Stem 7 of 12 words; 3 options, 3 out of 5 words each", ["options"])).toEqual({
       count: 3,
