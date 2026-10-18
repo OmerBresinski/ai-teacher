@@ -49,6 +49,7 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import {
+  answerKeyText,
   diagramBuildAt,
   richDocMaxStrikeStep,
   SLIDE_H,
@@ -512,7 +513,7 @@ export function answerText(slide: Slide): string | null {
           .join("   ") || null
       );
     case "open-response":
-      return q.modelAnswer?.trim() || null;
+      return answerKeyText(q).trim() || null;
     default:
       return null;
   }

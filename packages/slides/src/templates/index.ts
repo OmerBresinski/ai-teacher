@@ -276,6 +276,8 @@ export type TemplateInput = RegisteredFields & {
   explanation?: string;
   /** Question set, practice, exit ticket: one answer per question, hidden until revealed. */
   answers?: string[];
+  /** Question set, practice, exit ticket: each answer's working, by the same index ("" for none). */
+  working?: string[];
   /**
    * Activities: the cards, each one word or phrase and one single-subject picture slot, in the
    * answer's order (pairs as given, a sequence in its right order); the template shuffles them.
@@ -2400,7 +2402,7 @@ function layoutOnce(
           ruled: true,
           ...(input.instruction ? { after: input.instruction } : {}),
         });
-      c.question = listAnswers(qs, input.answers);
+      c.question = listAnswers(qs, input.answers, input.working);
       if (!c.question) delete c.question;
       break;
     }
@@ -2511,12 +2513,15 @@ function layoutOnce(
 export function listAnswers(
   questions: string[],
   answers: string[] | undefined,
+  working?: string[],
 ): QuestionData | undefined {
   const got = (answers ?? []).slice(0, Math.max(1, questions.length)).map((a) => a.trim());
   if (!got.some(Boolean)) return undefined;
   const modelAnswer =
     got.length > 1 ? got.map((a, i) => `${i + 1}. ${a || "…"}`).join("\n") : (got[0] ?? "");
-  return { type: "open-response", modelAnswer };
+  // The working stays its own field, one per answer line, never joined into the answer.
+  const work = got.map((a, i) => (a ? (working?.[i] ?? "").trim() : ""));
+  return { type: "open-response", modelAnswer, ...(work.some(Boolean) ? { working: work } : {}) };
 }
 
 /** Whether a template is one of the activity layouts (cards, groups, pointers). */

@@ -3,7 +3,7 @@
  * Kept free of JSX so it can be imported from anywhere without cycles.
  */
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
+import { answerKeyText, answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
 import type { ResolvedText } from "@tj/slides";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
@@ -188,7 +188,7 @@ export function explanationText(
   if (question.type === "open-response" && revealsOwnAnswers(slide)) return null;
   if (question.type === "true-false" || question.type === "multiple-choice")
     return question.explanation?.trim() || null;
-  if (question.type === "open-response") return question.modelAnswer?.trim() || null;
+  if (question.type === "open-response") return answerKeyText(question).trim() || null;
   return null;
 }
 

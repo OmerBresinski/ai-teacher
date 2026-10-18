@@ -29,6 +29,7 @@ import {
   type AnswersPage,
   answerGroupsOf,
   endAnswerSlides,
+  joinedAsBefore,
   layoutAnswersGuard,
   layoutAnswersPage,
 } from "./templates/end-answers";
@@ -375,11 +376,16 @@ export function endAnswersUntouched(slides: readonly Slide[], theme: Theme, stag
   const old = slides.filter((s) => s.answersRole);
   if (!old.length) return false;
   const groups = answerGroupsOf(slides.filter((s) => !s.answersRole));
-  const expected = endAnswerSlides(groups, theme, stage);
-  const same =
-    expected.length === old.length &&
-    expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
-  return same || untouchedAnswers(old, groups, theme, stage);
+  const built = (gs: readonly AnswerGroup[]) => {
+    const expected = endAnswerSlides(gs, theme, stage);
+    const same =
+      expected.length === old.length &&
+      expected.every((s, i) => contentOf(s) === contentOf(old[i] as Slide));
+    return same || untouchedAnswers(old, gs, theme, stage);
+  };
+  // Slides built before a sentence's working had its own column drew the two joined on one line.
+  const before = joinedAsBefore(groups);
+  return built(groups) || (before !== groups && built(before));
 }
 
 /** Built slides keep the ids of the ones they replace, in order, where the role matches. */

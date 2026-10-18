@@ -245,7 +245,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     // The sentence limit is a sentence class the ledger's capacity table measures at every stage.
     for (const stage of Object.keys(cap))
       expect(cap[stage][`${sentence}-word sentences`]).toBeGreaterThan(0);
-    // Code's " — " join is read back as answer plus working.
+    // A lesson saved with the old " — " join is read back as answer plus working.
     expect(answerItem(1, "20 m/s — 100 ÷ 5 = 20")).toEqual({
       n: 1,
       a: "20 m/s",
@@ -262,7 +262,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
 
 describe("the writer's question items reach the templates", () => {
   const ctx = { visual: () => ({ status: "pending" as const }) } as never;
-  test("practice and exit answers travel with their questions; working follows a code-written separator", async () => {
+  test("practice and exit answers travel with their questions; working stays its own field", async () => {
     const { toInput } = await import("./materialise");
     const slide = {
       template: "practice",
@@ -284,9 +284,10 @@ describe("the writer's question items reach the templates", () => {
     const input = toInput(slide, ctx) as J;
     expect(input.questions).toEqual(slide.items.map((i) => i.question));
     expect(input.answers).toEqual([
-      "20 m/s — 100 ÷ 5 = 20",
+      "20 m/s",
       "It compares distance with time, so both units show.",
     ]);
+    expect(input.working).toEqual(["100 ÷ 5 = 20", ""]);
   });
   test("a hinge's option objects become its options, and its question is the heading", async () => {
     const { toInput, questionsOf } = await import("./materialise");

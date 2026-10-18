@@ -1,7 +1,18 @@
 /** Question reducers: the question block on a slide and its written explanation / model answer. */
 
-import type { Id, Lesson, QuestionData } from "@tj/domain/documents";
+import { answerKeyFields, type Id, type Lesson, type QuestionData } from "@tj/domain/documents";
 import { editSlide } from "./core";
+
+type OpenResponse = Extract<QuestionData, { type: "open-response" }>;
+/**
+ * An open response with its answer key typed as one text ("answer — working" per line, as the
+ * drawer shows it): each line's working goes back to `working` at that line's index, so deleting
+ * or reordering lines keeps every working with its own answer.
+ */
+export function withAnswerKey(q: OpenResponse, text: string): OpenResponse {
+  const { working: _, ...rest } = q;
+  return { ...rest, ...answerKeyFields(text) };
+}
 
 export const setQuestion = (lesson: Lesson, slideId: Id, q: QuestionData | undefined): Lesson =>
   editSlide(lesson, slideId, (s) => {
@@ -23,7 +34,9 @@ export const setExplanation = (lesson: Lesson, slideId: Id, text: string): Lesso
       if (value) q.explanation = value;
       else delete q.explanation;
     } else if (q.type === "open-response") {
-      if (value) q.modelAnswer = value;
+      const f = answerKeyFields(value);
+      delete q.working;
+      if (value) Object.assign(q, f);
       else delete q.modelAnswer;
     }
   });
