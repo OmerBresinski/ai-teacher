@@ -134,9 +134,9 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 37,
-          "hardMax": 51,
-          "words": 7
+          "cap": 32,
+          "hardMax": 47,
+          "words": 6
         },
         "text": {
           "cap": 37,
@@ -147,7 +147,7 @@
       "quote": {
         "title": {
           "cap": 22,
-          "hardMax": 37,
+          "hardMax": 32,
           "words": 4
         },
         "quote": {
@@ -163,9 +163,9 @@
       },
       "text": {
         "title": {
-          "cap": 37,
-          "hardMax": 51,
-          "words": 7
+          "cap": 32,
+          "hardMax": 47,
+          "words": 6
         },
         "text": {
           "cap": 88,
@@ -192,7 +192,7 @@
       "quote": {
         "title": {
           "cap": 22,
-          "hardMax": 51,
+          "hardMax": 47,
           "words": 4
         },
         "quote": {
@@ -209,7 +209,7 @@
       "text": {
         "title": {
           "cap": 22,
-          "hardMax": 51,
+          "hardMax": 47,
           "words": 4
         },
         "text": {
