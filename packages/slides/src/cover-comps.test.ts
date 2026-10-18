@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { TextElement } from "@tj/domain/documents";
+import { coverTypeAt } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
 import { applyLook } from "./look";
 import { layoutTemplate } from "./templates/index";
-import { atKeyStage, getTheme, MIN_FONT_SIZE } from "./themes";
+import { atKeyStage, getTheme } from "./themes";
 
 const run = (text: string) => ({ type: "text", text });
 const doc = (...runs: object[]) => ({
@@ -41,8 +42,9 @@ describe("geometric hexagon cover column (round 5 cover)", () => {
         const t = texts.find((e) => e.style.preset === "title")!;
         const q = texts.find((e) => e.style.preset === "small" && e.y > t.y)!;
         expect(q).toBeTruthy();
-        expect(q.style.fontSize!).toBeLessThanOrEqual(getTheme("geometric").sizes.small);
-        expect(q.style.fontSize!).toBeGreaterThanOrEqual(MIN_FONT_SIZE.small);
+        // The gold's cover question (ruling 21 A): the stage's reading floor, drawn at that size.
+        expect(q.style.fontSize).toBe(coverTypeAt(stage).question);
+        expect(q.style.fixedSize).toBe(true);
         expect(q.y).toBeGreaterThanOrEqual(t.y + t.h);
         expect(q.y + q.h).toBeLessThanOrEqual(540 - 43);
         // Beside the hexagon, never under it.

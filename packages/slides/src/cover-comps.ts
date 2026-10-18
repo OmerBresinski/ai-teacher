@@ -9,11 +9,11 @@ import type {
 } from "@tj/domain/documents";
 import { uid } from "./factories";
 import { SAFE } from "./grid";
+import { coverType } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
 import { docPlainText } from "./sentences";
 import { countLines, runWidth } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
-import { MIN_FONT_SIZE } from "./themes";
 import { hexagonPoints, innerSides, notchPoints, tornPoints } from "./themes/marks";
 import { surfacesOf, titleBand } from "./themes/surfaces";
 
@@ -227,43 +227,37 @@ export function coverColumn(
   const gap = space.gap ?? 20;
   const sub = p.subtitle;
   const words = sub ? docPlainText(sub.doc) : "";
-  const lhS = t.lineHeights.small ?? 1.3;
-  const subSize = t.sizes.small;
+  // The gold's cover type (ruling 21 A, `layout-sizes.ts`): the question at the stage's reading
+  // floor, the title down its own ladder (top to floor in fixed steps) until the column fits and the
+  // title holds the gold's line count. Both are drawn at exactly these sizes (`fixedSize`).
+  const cv = coverType(t);
+  const lhS = cv.questionLineHeight;
+  const ss = cv.question;
   const subH = (s: number) =>
     sub ? Math.ceil(countLines(words, "small", t, width, 400, s) * s * lhS) + 4 : 0;
   const title = p.title;
-  const tSize0 = title?.style.fontSize ?? t.sizes.title;
-  const tLh = title?.style.lineHeight ?? t.lineHeights.title;
+  const tLh = cv.titleLineHeight;
   // A padded title (the template's ink margin, TEACH-152 part b) wraps inside its padding.
   const tPad = typeof title?.style.padding === "number" ? title.style.padding : 0;
-  const titleH = (s: number) =>
+  const lines = (s: number) =>
     title
-      ? Math.ceil(
-          Math.max(
-            1,
-            countLines(
-              docPlainText(title.doc),
-              "title",
-              t,
-              width - 2 * tPad,
-              title.style.fontWeight,
-              s,
-            ),
-          ) *
-            s *
-            tLh,
-        ) +
-        4 +
-        2 * tPad
+      ? Math.max(
+          1,
+          countLines(
+            docPlainText(title.doc),
+            "title",
+            t,
+            width - 2 * tPad,
+            title.style.fontWeight,
+            s,
+          ),
+        )
       : 0;
-  // cover2's fixed title box: the size steps down to 62% (never below 56px = 37pt) before the
-  // question does; the question then steps to the projector floor.
-  const tFloor = Math.max(37, Math.round(tSize0 * 0.62));
-  let ts = tSize0;
-  let ss = subSize;
+  const titleH = (s: number) => (title ? Math.ceil(lines(s) * s * tLh) + 4 + 2 * tPad : 0);
+  let ts = cv.title;
   const total = () => titleH(ts) + (sub ? gap + subH(ss) : 0);
-  while (top0 + total() > foot && ts > tFloor) ts -= 1;
-  while (top0 + total() > foot && ss > Math.min(subSize, MIN_FONT_SIZE.small)) ss -= 1;
+  while ((top0 + total() > foot || lines(ts) > cv.titleLines) && ts - cv.titleStep >= cv.titleFloor)
+    ts -= cv.titleStep;
   // A column too tall for the gold's spacing even at the title floor closes up to the split stack.
   if ((space.drop || space.gap) && top0 + total() > foot) return coverColumn(p, t, width);
   const out: { title?: TextElement; subtitle?: TextElement } = {};
@@ -275,8 +269,7 @@ export function coverColumn(
       y,
       w: width,
       h,
-      // The size is only written when the ladder stepped it: an untouched title keeps its preset.
-      style: { ...title.style, ...(ts === tSize0 ? {} : { fontSize: ts }), valign: "top" },
+      style: { ...title.style, fontSize: ts, lineHeight: tLh, fixedSize: true, valign: "top" },
     };
     y += h;
   }
@@ -286,7 +279,14 @@ export function coverColumn(
       y: y + gap,
       w: width,
       h: subH(ss),
-      style: { ...sub.style, preset: "small", fontSize: ss, lineHeight: lhS, valign: "top" },
+      style: {
+        ...sub.style,
+        preset: "small",
+        fontSize: ss,
+        lineHeight: lhS,
+        fixedSize: true,
+        valign: "top",
+      },
     };
   return out;
 }
