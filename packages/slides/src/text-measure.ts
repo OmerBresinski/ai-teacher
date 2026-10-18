@@ -4,7 +4,7 @@ import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
 import { fontFloor, keyStageOf } from "./themes";
-import THEME_TOKENS from "./themes/tokens.json";
+import THEME_TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before

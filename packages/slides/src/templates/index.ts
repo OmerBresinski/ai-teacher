@@ -35,7 +35,7 @@ import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
 import { surfacesOf } from "../themes/surfaces";
-import TOKENS from "../themes/tokens.json";
+import TOKENS from "../themes/tokens.json" with { type: "json" };
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";

@@ -1,5 +1,5 @@
 import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
-import TOKENS from "./themes/tokens.json";
+import TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * The ten themes' art per role (UX ruling 107), in slide points (960x540). Each theme keeps one

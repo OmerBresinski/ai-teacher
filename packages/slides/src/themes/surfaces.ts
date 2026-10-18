@@ -13,7 +13,7 @@ import {
   type ThemeMarks,
   tornPoints,
 } from "./marks";
-import TOKENS from "./tokens.json";
+import TOKENS from "./tokens.json" with { type: "json" };
 
 /*
  * Surface roles (TEACH-215 part b; UX rulings 107, 159, 211, 212, 213, 235, 236). A layout never

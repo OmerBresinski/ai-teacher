@@ -8,7 +8,7 @@ import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
 import { arrowLine } from "../paths/arrow";
 import { type KeyStage, keyStageOf, typeScale } from "../themes";
-import THEME_TOKENS from "../themes/tokens.json";
+import THEME_TOKENS from "../themes/tokens.json" with { type: "json" };
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */

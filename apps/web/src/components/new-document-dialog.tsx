@@ -203,12 +203,14 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
               onValueChange={setThemeId}
               className="grid max-h-[min(52vh,420px)] grid-cols-3 gap-3 overflow-y-auto p-0.5"
             >
+              {/* `before:hidden`: the radio's 32px round hit area is for an 18px dot; on a tile
+                  it reaches into the next row and takes clicks meant for the tile above. */}
               {themes.map((theme) => (
                 <RadioGroupItem
                   key={theme.id}
                   value={theme.id}
                   aria-label={theme.name}
-                  className="h-auto w-full aspect-auto rounded-card border p-0 text-left data-[state=checked]:ring-2 data-[state=checked]:ring-ring"
+                  className="h-auto w-full aspect-auto rounded-card border p-0 text-left before:hidden data-[state=checked]:ring-2 data-[state=checked]:ring-ring"
                 >
                   <span
                     className="block aspect-video w-full rounded-t-card"
