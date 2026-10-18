@@ -68,9 +68,103 @@ describe("a generated cover (the title template) takes the theme's cover composi
     expect(r.slide.elements.some((e) => e.name === "Cover outline")).toBe(true);
     expect(r.over).toEqual([]);
   });
-  test("a theme without one keeps the accent ground and a plain photo", () => {
+  test("Paper: its split, the picture framed on the sand field, on its own ground", () => {
     const r = layoutTemplate(input, atKeyStage(getTheme("paper"), "ks3"), "ks3");
-    expect(r.slide.background?.color).toBeTruthy();
+    expect(r.slide.background?.color).toBeUndefined();
+    expect(r.slide.elements.some((e) => e.name === "Cover field")).toBe(true);
     expect(r.slide.elements.some((e) => e.name === "Cover outline")).toBe(false);
+  });
+});
+
+// TEACH-215 part g: every round 5 theme's cover (themes5.json `covers`, `coverFallback`).
+const THEMES5 = [
+  "paper",
+  "poster",
+  "treehouse",
+  "reading-room",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "geometric",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+];
+const VOLCANO = {
+  template: "title",
+  heading: "How do volcanoes erupt?",
+  accentWord: "volcanoes",
+  lead: "What happens under the ground before lava reaches the surface?",
+};
+const withPic = { ...VOLCANO, figure: { photo: "/x.jpg", alt: "A volcano", aspect: 1.5 } };
+const titleOf = (els: { type: string; name?: string }[]) =>
+  els.find((e) => e.type === "text" && e.name === "Title") as TextElement;
+const accentRun = (t: TextElement) =>
+  (t.doc.content?.[0]?.content ?? []).find((r) => "text" in r && r.text === "volcanoes") as
+    | { marks?: { attrs?: { color?: string } }[] }
+    | undefined;
+const box = (e: { x: number; y: number; w: number; h: number }) => e;
+const inside = (e: { x: number; y: number; w: number; h: number }) =>
+  e.x >= -0.5 && e.y >= -0.5 && e.x + e.w <= 960.5 && e.y + e.h <= 540.5;
+
+describe("round 5 covers on every theme (TEACH-215 part g)", () => {
+  for (const id of THEMES5) {
+    const t = atKeyStage(getTheme(id), id === "storytime" ? "ks1" : "ks3");
+    const st = id === "storytime" ? "ks1" : "ks3";
+    test(`${id}: the picture cover is the theme's composition on its own ground, words clear of the picture`, () => {
+      const r = layoutTemplate(withPic as never, t, st);
+      expect(r.over).toEqual([]);
+      if (id !== "poster") expect(r.slide.background?.color).toBeUndefined();
+      const photo = r.slide.elements.find((e) => e.type === "image" && e.name === "Photo") as {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+      };
+      expect(photo).toBeTruthy();
+      for (const e of r.slide.elements.filter((x) => x.type === "text")) {
+        expect(inside(box(e))).toBe(true);
+        // Text never sits on the photo (cover5 rule), except on Poster's plate over its bleed.
+        if (id !== "poster") {
+          const hit =
+            e.x < photo.x + photo.w &&
+            photo.x < e.x + e.w &&
+            e.y < photo.y + photo.h &&
+            photo.y < e.y + e.h;
+          expect(hit).toBe(false);
+        }
+      }
+    });
+    if (id === "geometric") continue;
+    test(`${id}: the picture-failed cover is the theme's fallback, not the flat accent card`, () => {
+      const r = layoutTemplate(VOLCANO as never, t, st);
+      expect(r.over).toEqual([]);
+      const bg = r.slide.background?.color;
+      expect(bg === undefined || bg !== t.colors.accent).toBe(true);
+      for (const e of r.slide.elements) expect(inside(box(e))).toBe(true);
+    });
+    test(`${id}: the accent word wears the theme's cover accent`, () => {
+      for (const input of [withPic, VOLCANO]) {
+        const r = layoutTemplate(input as never, t, st);
+        const run = accentRun(titleOf(r.slide.elements));
+        expect(run?.marks?.[0]?.attrs?.color).toBeTruthy();
+        expect(run?.marks?.[0]?.attrs?.color).not.toBe(titleOf(r.slide.elements).style.color);
+      }
+    });
+  }
+  test("a saved cover's old look colour gives way to the composition's ground", () => {
+    const theme = atKeyStage(getTheme("treehouse"), "ks3");
+    const l = layoutSlide("title", "treehouse", "split");
+    const els = l.elements.map((e) => (e.type === "image" ? { ...e, src: "/x.jpg" } : e));
+    const s = applyLook(
+      { id: "c", kind: "title", elements: els, background: { color: "#5A1530" } } as never,
+      theme,
+    );
+    expect(s.background?.color).toBeUndefined();
   });
 });

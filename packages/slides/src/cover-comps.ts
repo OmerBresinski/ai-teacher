@@ -1,11 +1,13 @@
-import type {
-  ImageElement,
-  PathElement,
-  ShapeElement,
-  Slide,
-  SlideElement,
-  TextElement,
-  Theme,
+import {
+  type ImageElement,
+  type PathElement,
+  type RichDoc,
+  type ShapeElement,
+  type Slide,
+  type SlideElement,
+  styledRun,
+  type TextElement,
+  type Theme,
 } from "@tj/domain/documents";
 import { uid } from "./factories";
 import { SAFE } from "./grid";
@@ -15,7 +17,7 @@ import { docPlainText } from "./sentences";
 import { countLines, runWidth } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
 import { hexagonPoints, innerSides, notchPoints, tornPoints } from "./themes/marks";
-import { surfacesOf, titleBand } from "./themes/surfaces";
+import { isClear, SURFACE_TOKEN_SETS, surfacesOf, titleBand } from "./themes/surfaces";
 
 /*
  * Cover compositions (THEMING.md section 6 "cover family", round 5 `cover5.html`; TEACH-215 part
@@ -34,7 +36,10 @@ import { surfacesOf, titleBand } from "./themes/surfaces";
  * - masthead (Calm): eyebrow and a hairline across the head, the title across the slide, the
  *   question under it on the left, the picture on the right, all following the title's real foot.
  * - framed (Storytime): the picture in a soft 26pt-radius frame inset from the edges.
- * - split (the dark themes) and type keep the layout as it is.
+ * - split (round 5 `prod-split` for the light prod themes and the darks, Paper's `split`, Beacon's
+ *   `beacon`; TEACH-215 part g): the theme's ground, the picture as `cover-photo` says.
+ * - type keeps the layout as it is.
+ * A picture-failed cover takes the theme's `cover-fallback` (`composeCoverFallback`).
  */
 
 const W = 960;
@@ -54,17 +59,23 @@ function partsOf(slide: Slide): Parts | null {
     (e): e is ImageElement => e.type === "image" && e.name === "Photo",
   );
   if (!photo) return null;
+  return { ...textParts(slide), photo };
+}
+
+/** The cover's text parts, with or without a picture (the picture-failed cover has none). */
+function textParts(slide: Slide): Omit<Parts, "photo"> {
+  const photo = slide.elements.find(
+    (e): e is ImageElement => e.type === "image" && e.name === "Photo",
+  );
   const texts = slide.elements.filter((e): e is TextElement => e.type === "text");
   const title = texts.find((e) => e.style.preset === "title");
   const caption = texts.find((e) => e.style.preset === "caption");
   const subtitle = texts.find((e) => e.style.preset === "subtitle" || e.name === "Subtitle");
   const rule = slide.elements.find((e) => e.name === "Accent rule");
-  const used = new Set<SlideElement>([
-    photo,
-    ...[title, caption, subtitle, rule].filter((e) => e != null),
-  ]);
+  const used = new Set<SlideElement>(
+    [photo, title, caption, subtitle, rule].filter((e) => e != null),
+  );
   return {
-    photo,
     title,
     caption,
     subtitle,
@@ -123,20 +134,39 @@ function bleed(p: Parts, t: Theme): SlideElement[] {
   const plateInk = band?.ink ?? t.colors.background;
   const plate = { x: 0, y: 247, w: 600, h: H - 247 };
   const padX = 43;
-  const sub = p.subtitle && { ...p.subtitle, x: padX, w: plate.w - 2 * padX };
-  const subY = H - 37 - (sub?.h ?? 0);
-  const title = p.title && {
-    ...p.title,
+  // cover5 `.plate`: padding 64/64/56px, the stack on its foot; the title over at most two lines
+  // (`--tlines: 2`) 28px over the question, sized by `coverColumn` at the plate's measure.
+  const tPad = typeof p.title?.style.padding === "number" ? p.title.style.padding : 0;
+  const col = coverColumn(
+    { ...p, caption: undefined, title: p.title && { ...p.title, y: 0 } },
+    t,
+    plate.w - 2 * padX + 2 * tPad,
+    { gap: 18.67, lines: 2, foot: plate.h - 30 - SAFE.y },
+  );
+  const foot = H - SAFE.y;
+  const colH = col.subtitle ? col.subtitle.y + col.subtitle.h - tPad : (col.title?.h ?? 0) - tPad;
+  const tabRoom = p.caption ? Math.max(30, p.caption.h + 14) : 0;
+  const top = Math.max(plate.y + 30 + tabRoom, foot - colH) - tPad;
+  const sub = col.subtitle && {
+    ...col.subtitle,
     x: padX,
+    y: top + col.subtitle.y,
     w: plate.w - 2 * padX,
-    y: Math.max(plate.y + 30, subY - 19 - p.title.h),
-    doc: recolour(p.title.doc, t.colors.accent, band?.accent ?? t.colors.accent),
-    style: { ...p.title.style, color: plateInk, valign: "bottom" as const },
+  };
+  const title = col.title && {
+    ...col.title,
+    x: padX - tPad,
+    y: top,
+    doc: recolour(col.title.doc, t.colors.accent, band?.accent ?? t.colors.accent),
+    // On its foot, so a title grown in the editor rises up the plate (`growFixedText`).
+    style: { ...col.title.style, color: plateInk, valign: "bottom" as const },
   };
   const cap = p.caption;
   const tabH = cap ? Math.max(30, cap.h + 14) : 0;
   const tabW = cap ? captionWidth(cap, t) + 30 : 0;
-  const tab = cap ? { x: padX, y: plate.y - tabH / 2, w: tabW, h: tabH } : null;
+  // cover5 straddles the plate's top edge with the tab; here it sits just inside it, so the tab
+  // and its words are wholly on the plate (a part-overlap is a collision in the layout lint).
+  const tab = cap ? { x: padX, y: plate.y, w: tabW, h: tabH } : null;
   return keep([
     { ...p.photo, x: 0, y: 0, w: W, h: H },
     rect("Cover plate", plate, plateFill),
@@ -147,7 +177,7 @@ function bleed(p: Parts, t: Theme): SlideElement[] {
         })
       : undefined,
     title,
-    sub ? ink({ ...sub, y: subY }, plateInk) : undefined,
+    sub ? ink(sub, plateInk) : undefined,
     ...p.rest,
   ]);
 }
@@ -218,9 +248,9 @@ export function coverColumn(
   t: Theme,
   width: number,
   /** The composition's own spacing: the title's drop under the eyebrow and the question's gap. */
-  space: { drop?: number; gap?: number } = {},
+  space: { drop?: number; gap?: number; lines?: number; foot?: number } = {},
 ): { title?: TextElement; subtitle?: TextElement } {
-  const foot = H - SAFE.y;
+  const foot = space.foot ?? H - SAFE.y;
   // The column starts where the layout put the title (under the eyebrow) and never rises over it.
   const top0 =
     (p.title?.y ?? (p.caption ? p.caption.y + p.caption.h + 12 : SAFE.y)) + (space.drop ?? 0);
@@ -256,10 +286,12 @@ export function coverColumn(
   const titleH = (s: number) => (title ? Math.ceil(lines(s) * s * tLh) + 4 + 2 * tPad : 0);
   let ts = cv.title;
   const total = () => titleH(ts) + (sub ? gap + subH(ss) : 0);
-  while ((top0 + total() > foot || lines(ts) > cv.titleLines) && ts - cv.titleStep >= cv.titleFloor)
+  const maxLines = space.lines ?? cv.titleLines;
+  while ((top0 + total() > foot || lines(ts) > maxLines) && ts - cv.titleStep >= cv.titleFloor)
     ts -= cv.titleStep;
   // A column too tall for the gold's spacing even at the title floor closes up to the split stack.
-  if ((space.drop || space.gap) && top0 + total() > foot) return coverColumn(p, t, width);
+  if ((space.drop || space.gap) && top0 + total() > foot)
+    return coverColumn(p, t, width, { lines: space.lines, foot: space.foot });
   const out: { title?: TextElement; subtitle?: TextElement } = {};
   let y = top0;
   if (title) {
@@ -388,19 +420,21 @@ function masthead(p: Parts, t: Theme): SlideElement[] {
   const w = W - 2 * x;
   const cap = p.caption && { ...p.caption, x, y: 48, w };
   const hr = rect("Masthead rule", { x, y: 85, w, h: 1.5 }, t.colors.line);
-  let title = p.title;
-  let bottom = 115;
-  if (title) {
-    const size = title.style.fontSize ?? t.sizes.title;
-    const lh = title.style.lineHeight ?? t.lineHeights.title;
-    const lines = Math.max(
-      1,
-      countLines(docPlainText(title.doc), "title", t, w, title.style.fontWeight, size),
-    );
-    const h = Math.ceil(lines * size * lh) + 4;
-    title = { ...title, x, y: 115, w, h, style: { ...title.style, valign: "top" } };
-    bottom = 115 + h;
-  }
+  // cover5 masthead: one title across at the gold's size (ruling 21 A), over at most two lines.
+  const tPad = typeof p.title?.style.padding === "number" ? p.title.style.padding : 0;
+  const sized = coverColumn(
+    {
+      ...p,
+      caption: undefined,
+      subtitle: undefined,
+      title: p.title && { ...p.title, y: 115 - tPad },
+    },
+    t,
+    w + 2 * tPad,
+    { lines: 2 },
+  ).title;
+  const title = sized && { ...sized, x: x - tPad };
+  const bottom = title ? title.y + title.h - tPad : 115;
   // The parts below the title follow its real foot at the normal title gap (THEMING.md section 8).
   const top = Math.max(273, bottom + 24);
   const sub = p.subtitle && { ...p.subtitle, x, y: top + 6, w: 373 };
@@ -434,22 +468,288 @@ function framed(p: Parts, t: Theme): SlideElement[] {
   ]);
 }
 
+/* ---------------------------------------------------------------- round 5 split family */
+
+/** A theme's own cover token (tokens.json `cover-photo`, `cover-fallback`), or undefined. */
+const coverToken = (t: Pick<Theme, "id">, key: string): string | undefined =>
+  SURFACE_TOKEN_SETS[t.id]?.[key];
+
+/** The cover title's accent word: the theme's `title-accent` (cover5 `.title em`), else its accent. */
+export function coverAccent(t: Theme): string {
+  const k = coverToken(t, "title-accent");
+  return k && !isClear(k) ? k : t.colors.accent;
+}
+
+/** The title's words with `word` in `colour` when it is an exact substring (cover5 `<em>`). */
+export function coverTitleDoc(heading: string, word: string | null | undefined, colour: string) {
+  const w = word?.trim();
+  const at = w ? heading.indexOf(w) : -1;
+  const runs =
+    w && at >= 0
+      ? [
+          styledRun(heading.slice(0, at), {}),
+          styledRun(w, { color: colour }),
+          styledRun(heading.slice(at + w.length), {}),
+        ]
+      : [styledRun(heading, {})];
+  return {
+    type: "doc",
+    content: [{ type: "paragraph", content: runs.filter((r) => "text" in r && r.text) }],
+  } as RichDoc;
+}
+
+const titleInkOf = (t: Theme): string => {
+  const k = coverToken(t, "title-ink");
+  return k && !isClear(k) ? k : t.colors.ink;
+};
+
+/** A cover's text column: the room it is centred in, its rule, gaps and inks (cover5 `.col`). */
+type Column = {
+  x: number;
+  w: number;
+  top: number;
+  bottom: number;
+  /** The most lines the title may take (the comp's `--tlines`). */
+  lines: number;
+  /** cover5 prod `.rule`: a short accent bar above the eyebrow, and the gap under it. */
+  rule?: { w: number; h: number; gap: number; fill: string };
+  /** The eyebrow's foot to the title's ink, and the title's foot to the question. */
+  capGap: number;
+  qGap: number;
+  ink: { cap: string; title: string; q: string; accent: string };
+};
+
+/**
+ * The title stack (rule, eyebrow, title, question) centred in its room, as cover5's flex `.col`.
+ * The title is sized by `coverColumn` (ruling 21 A sizes, the comp's width and line count).
+ */
+function column(p: Omit<Parts, "photo">, t: Theme, o: Column): SlideElement[] {
+  const t0 = p.title;
+  const tPad = typeof t0?.style.padding === "number" ? t0.style.padding : 0;
+  const cap = p.caption;
+  const head =
+    (o.rule ? o.rule.h + o.rule.gap : 0) + (cap ? cap.h : 0) + (o.rule || cap ? o.capGap : 0);
+  const sized = coverColumn(
+    { ...p, caption: undefined, title: t0 && { ...t0, y: 0 } } as Parts,
+    t,
+    o.w + 2 * tPad,
+    { gap: o.qGap, lines: o.lines, foot: o.bottom - o.top - head },
+  );
+  const tt = sized.title;
+  const sub = sized.subtitle;
+  const body = sub ? sub.y + sub.h - tPad : tt ? tt.h - 2 * tPad : 0;
+  const y0 = Math.round(o.top + Math.max(0, (o.bottom - o.top - head - body) / 2));
+  let y = y0;
+  const out: SlideElement[] = [];
+  if (o.rule) {
+    out.push(rect("Accent rule", { x: o.x, y, w: o.rule.w, h: o.rule.h }, o.rule.fill));
+    y += o.rule.h + o.rule.gap;
+  }
+  if (cap) {
+    out.push(ink({ ...cap, x: o.x, y, w: o.w }, o.ink.cap, { fontWeight: 700 }) as TextElement);
+    y += cap.h;
+  }
+  if (o.rule || cap) y += o.capGap;
+  const ty = y - tPad;
+  if (tt)
+    out.push({
+      ...tt,
+      x: o.x - tPad,
+      y: ty,
+      doc: recolour(tt.doc, t.colors.accent, o.ink.accent),
+      style: { ...tt.style, color: o.ink.title },
+    });
+  if (sub)
+    out.push({ ...sub, x: o.x, y: ty + sub.y, w: o.w, style: { ...sub.style, color: o.ink.q } });
+  return out;
+}
+
+/**
+ * split (round 5 `prod-split`, Paper's `split`, Beacon's `beacon`), on the theme's own ground: the
+ * picture as the theme's `cover-photo` says.
+ * - right-half: the photograph bleeds over the right half; rule, eyebrow and title centred left
+ *   on the theme's title art (cover5 `prod-split`: col 87px left, 604px wide, photo from 720px).
+ * - panel (Paper): a sand field from 880px with the picture framed in it, 64/150px in.
+ * - band (Beacon): the picture across the top 372px, a 10px ink bar, the title across below.
+ */
+function split(p0: Parts, t: Theme): SlideElement[] {
+  // The photo-band variants' band backs text set on the photo; here the text is on the ground.
+  const p = { ...p0, rest: p0.rest.filter((e) => e.name !== "Band") };
+  const s = surfacesOf(t);
+  const muted = s.titleMuted;
+  const kind = coverToken(t, "cover-photo");
+  const ruleOf = { w: 66.67, h: 4, gap: 20, fill: t.colors.accent };
+  if (kind === "panel") {
+    const side = { x: 586.67, y: 0, w: W - 586.67, h: H };
+    const corner = s.roles.frame.corner;
+    return keep([
+      rect("Cover field", side, s.roles["field-b"].fill),
+      {
+        ...p.photo,
+        x: side.x + 42.67,
+        y: 100,
+        w: side.w - 85.33,
+        h: H - 200,
+        radius: typeof corner === "number" ? corner : 0,
+      },
+      ...column(p, t, {
+        x: 64,
+        w: 474.67,
+        top: 0,
+        bottom: H,
+        lines: 3,
+        capGap: 21.33,
+        qGap: 26.67,
+        ink: { cap: t.colors.accent, title: titleInkOf(t), q: muted, accent: coverAccent(t) },
+      }),
+      ...p.rest,
+    ]);
+  }
+  if (kind === "band") {
+    return keep([
+      { ...p.photo, x: 0, y: 0, w: W, h: 248, radius: 0 },
+      rect("Cover bar", { x: 0, y: 248, w: W, h: 6.67 }, t.colors.ink),
+      ...column(p, t, {
+        x: 64,
+        w: W - 128,
+        top: 254.67,
+        bottom: H - 20,
+        lines: 2,
+        capGap: 12,
+        qGap: 14.67,
+        ink: { cap: t.colors.accent, title: t.colors.ink, q: muted, accent: t.colors.accent },
+      }),
+      ...p.rest,
+    ]);
+  }
+  return keep([
+    { ...p.photo, x: W / 2, y: 0, w: W / 2, h: H, radius: 0 },
+    ...column(p, t, {
+      x: SAFE.x,
+      w: 402.67,
+      top: 0,
+      bottom: H,
+      lines: 3,
+      rule: ruleOf,
+      capGap: 12,
+      qGap: 17.33,
+      ink: { cap: muted, title: titleInkOf(t), q: muted, accent: coverAccent(t) },
+    }),
+    ...p.rest,
+  ]);
+}
+
+/**
+ * The picture-failed cover in the theme's own fallback (themes5.json `coverFallback`, tokens.json
+ * `cover-fallback`), or null to keep the plain title card:
+ * - title (cover5 `prod-title`): the theme's ground and title art, rule, eyebrow and the title
+ *   across 1150px in two lines; `plain` the same without the rule.
+ * - masthead (Calm): the masthead without its picture block.
+ * - type (Poster): the sand ground, the title stack left, the title band's colour block right.
+ * The golds' icon trio (magma, lava, ash) needs icon names the title input does not carry yet; see
+ * the lane log. Returns the elements and the slide's background.
+ */
+export const hasCoverFallback = (t: Pick<Theme, "id">): boolean =>
+  !!coverToken(t, "cover-fallback");
+
+export function composeCoverFallback(
+  slide: Slide,
+  t: Theme,
+): { elements: SlideElement[]; background: Slide["background"] } | null {
+  const kind = coverToken(t, "cover-fallback");
+  if (!kind || slide.elements.some((e) => e.type === "image")) return null;
+  const p = textParts(slide);
+  const muted = surfacesOf(t).titleMuted;
+  if (kind === "masthead") {
+    const ghost = { id: "ghost" } as ImageElement;
+    return {
+      elements: masthead({ ...p, photo: ghost }, t).filter((e) => e !== ghost && e.id !== "ghost"),
+      background: {},
+    };
+  }
+  if (kind === "type") {
+    const band = titleBand(t);
+    return {
+      elements: keep([
+        // cover5 `.block`: 400px (267pt) of the title band's colour on the right; 232pt here, 24pt
+        // clear of the wider column.
+        rect("Cover block", { x: 728, y: 0, w: W - 728, h: H }, band?.fill ?? t.colors.ink),
+        ...column(p, t, {
+          // cover5 `.col` is 820px (547pt); here 640pt, the plain cover's column, so the cover's
+          // no-picture cap (`cover-capacity.json`) holds three lines at the floor in Poster's face.
+          x: 64,
+          w: 640,
+          top: 42.67,
+          bottom: H - 52,
+          lines: 3,
+          capGap: 24,
+          qGap: 24,
+          ink: { cap: t.colors.ink, title: t.colors.ink, q: t.colors.ink, accent: t.colors.accent },
+        }),
+        ...p.rest,
+      ]),
+      background: { color: coverToken(t, "sand") ?? t.colors.background },
+    };
+  }
+  return {
+    elements: keep([
+      ...column(p, t, {
+        x: SAFE.x,
+        w: 766.67,
+        top: 0,
+        bottom: H,
+        lines: 2,
+        // `plain`: the golds whose column has no rule (Paper, Storytime, Scrapbook, Beacon).
+        ...(kind === "plain" ? {} : { rule: { w: 66.67, h: 4, gap: 20, fill: t.colors.accent } }),
+        capGap: 12,
+        qGap: 17.33,
+        ink: { cap: t.colors.accent, title: titleInkOf(t), q: muted, accent: coverAccent(t) },
+      }),
+      ...p.rest,
+    ]),
+    background: {},
+  };
+}
+
 /** A cover with a picture in the theme's composition; the slide as it was when it has none. */
 export function composeCover(slide: Slide, t: Theme): Slide {
   const p = partsOf(slide);
   if (!p) return slide;
   const comp = surfacesOf(t).marks.cover;
-  const elements =
-    comp === "bleed"
-      ? bleed(p, t)
-      : comp === "collage"
-        ? collage(p, t)
-        : comp === "shape"
-          ? hexShape(p, t)
-          : comp === "masthead"
-            ? masthead(p, t)
-            : comp === "framed"
-              ? framed(p, t)
-              : null;
-  return elements ? { ...slide, elements } : slide;
+  // A band variant (photo-band, photo-band-long) is set in the composition from the split's text
+  // boxes; its band backs text on a photo, which no composition does.
+  const split0 = layoutSlide("title", t.id, "split");
+  const at = (preset: string) =>
+    split0.elements.find((e): e is TextElement => e.type === "text" && e.style.preset === preset);
+  const move = (e: TextElement | undefined, to: TextElement | undefined) =>
+    e && to ? { ...e, x: to.x, y: to.y, w: to.w, h: to.h } : e;
+  if (comp !== "shape" && p.rest.some((e) => e.name === "Band"))
+    Object.assign(p, {
+      caption: move(p.caption, at("caption")),
+      title: move(p.title, at("title")),
+      subtitle: move(p.subtitle, at("subtitle")),
+      rest: p.rest.filter((e) => e.name !== "Band"),
+    });
+  const COMPS: Partial<Record<typeof comp, (p: Parts, t: Theme) => SlideElement[]>> = {
+    bleed,
+    collage,
+    shape: hexShape,
+    masthead,
+    framed,
+    split,
+  };
+  // A saved cover keeps the ink of its old look (cream on Paper's wine): the compositions that do
+  // not set their own ink take the theme's title ink and muted question on the theme's ground.
+  if (comp === "collage" || comp === "framed" || comp === "masthead")
+    Object.assign(p, {
+      title: ink(p.title, titleInkOf(t)),
+      subtitle: ink(p.subtitle, surfacesOf(t).titleMuted),
+    });
+  const elements = COMPS[comp]?.(p, t) ?? null;
+  // Geometric's hexagon is pinned to its gold check (post-582) as it was: its ground is untouched.
+  if (!elements || comp === "shape") return elements ? { ...slide, elements } : slide;
+  // A composition sets its own ground (the theme's, with its title art): a saved cover's old look
+  // colour (Paper's wine from an earlier theme) would sit under the theme's ink unreadably.
+  const { color: _c, image: _i, ...ground } = slide.background ?? {};
+  return { ...slide, elements, background: ground };
 }

@@ -99,24 +99,22 @@ describe("round 1: text fit and fallbacks", () => {
       expect(t.y + t.h).toBeLessThanOrEqual(s.y);
     }
   });
-  test("paper's title template is the deep wine with its paper ink, not the bright red", () => {
+  // TEACH-215 part g: a picture-failed cover takes the theme's round 5 fallback on its own ground
+  // (Paper's cream, its title ink), no longer the deep wine or a v1 accent card.
+  test("paper's title template is on its own ground with its title ink, not the bright red", () => {
     const paper = getTheme("paper");
     const r = layoutTemplate(
       { template: "title", heading: "Coastal erosion", lead: "How fast does the coast retreat?" },
       paper,
       "ks3",
     );
-    expect(r.slide.background?.color).toBe("#5A1530");
-    expect(r.slide.background?.color).not.toBe(paper.colors.accent);
-    for (const name of ["Title", "Subtitle"]) {
-      const el = r.slide.elements.find((e) => e.name === name);
-      expect(el?.type === "text" && el.style.color).toBe("#FFF6E8");
-    }
-    // A v1 theme keeps its accent cover.
+    expect(r.slide.background?.color).toBeUndefined();
+    const title = r.slide.elements.find((e) => e.name === "Title");
+    expect(title?.type === "text" && title.style.color).toBe("#22152B");
     expect(
       layoutTemplate({ template: "title", heading: "Heating" }, studio, "ks3").slide.background
         ?.color,
-    ).toBe(studio.colors.accent);
+    ).toBeUndefined();
   });
   test("a diagram that fails leaves no panel: the slide is words only", () => {
     const r = layoutTemplate(
@@ -249,7 +247,9 @@ describe("round 2: title, hinge and compare fit", () => {
       "ks4",
     );
     expect(r.over).toEqual([]);
-    for (const e of r.slide.elements) expect(e.y).toBeGreaterThanOrEqual(40);
+    // The cover's photograph bleeds full height (TEACH-215 part g); the words keep clear of the top.
+    for (const e of r.slide.elements.filter((x) => x.type === "text"))
+      expect(e.y).toBeGreaterThanOrEqual(40);
   });
   test("a hinge with long options closes up or steps down instead of running to the foot (y11 s11)", () => {
     const o = "Collisions are more frequent, and more of them exceed the activation energy needed.";

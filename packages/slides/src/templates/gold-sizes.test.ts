@@ -151,8 +151,13 @@ describe("the cover's caps: the gold's three title lines, two question lines", (
   test("renderer = table (cover-capacity.json)", () => {
     expect(measureCoverCapacity()).toEqual(CAPACITY);
   }, 60_000);
-  const lines = (t: TextElement) =>
-    Math.round(t.h / ((t.style.fontSize as number) * (t.style.lineHeight as number)));
+  // The box less its ink margin (a padded title, TEACH-152 part b), in lines of its size.
+  const lines = (t: TextElement) => {
+    const pad = typeof t.style.padding === "number" ? t.style.padding : 0;
+    return Math.round(
+      (t.h - 2 * pad) / ((t.style.fontSize as number) * (t.style.lineHeight as number)),
+    );
+  };
   for (const group of Object.keys(COVER_GROUPS) as CoverGroup[])
     for (const picture of [true, false])
       test(`${group} ${picture ? "with" : "without"} a picture: at the caps, 3 and 2 lines`, () => {
