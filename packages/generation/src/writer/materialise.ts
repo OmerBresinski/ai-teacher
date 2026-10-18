@@ -113,22 +113,26 @@ export type Materialised = {
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 /**
  * A question slide's answers, from its items or its answers list (TEACH-101 part g; practice and
- * exit too, TEACH-110 part v). A worked answer's working follows " — ", which the end Answers
- * ledger reads back as its working line; code writes the separator, the writer never does.
+ * exit too, TEACH-110 part v). Each answer's working is its own list by the same index, never
+ * joined into the answer, so the end Answers ledger draws it in its own column. A dash the writer
+ * put in an answer still becomes ", ": older saved lessons join the two with " — ".
  */
 const quickAnswers = (s: S): string[] =>
   Array.isArray(s.items)
-    ? s.items.map((i0) => {
-        const i = (i0 ?? {}) as S;
-        const a = str(i.answer)
+    ? s.items.map((i0) =>
+        str(((i0 ?? {}) as S).answer)
           .replace(/\s+[—–]\s+/g, ", ")
-          .trim();
-        const w = str(i.working).trim();
-        return a && w ? `${a} — ${w}` : a;
-      })
+          .trim(),
+      )
     : Array.isArray(s.answers)
       ? s.answers.map((a) => str(a))
       : [];
+const quickWorking = (s: S): string[] =>
+  Array.isArray(s.items)
+    ? s.items.map((i0) =>
+        str(((i0 ?? {}) as S).answer).trim() ? str(((i0 ?? {}) as S).working).trim() : "",
+      )
+    : [];
 /** Strings, or each object's `question` (question items) or `text` (hinge options). */
 const strs = (v: unknown) =>
   Array.isArray(v)
@@ -693,6 +697,7 @@ export function toInput(
         // `questions` with `answers`); a set that carries its answers draws as the quick check.
         questions: strs(Array.isArray(s.items) ? s.items : s.questions),
         ...(quickAnswers(s).some(Boolean) ? { answers: quickAnswers(s) } : {}),
+        ...(quickWorking(s).some(Boolean) ? { working: quickWorking(s) } : {}),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
       };

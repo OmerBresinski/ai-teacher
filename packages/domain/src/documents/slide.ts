@@ -148,7 +148,15 @@ export type QuestionData =
   | { type: "image-match"; pairs: { id: Id; imageId: Id; labelId: Id }[] }
   | { type: "fill-gap"; gaps: { id: Id; answer: string; alternatives?: string[] }[] }
   | { type: "sort"; order: Id[] } // element ids in the correct order
-  | { type: "open-response"; modelAnswer?: string };
+  | {
+      type: "open-response";
+      modelAnswer?: string;
+      /**
+       * Each numbered answer's working, kept apart from the answer: `working[i]` belongs to line i
+       * of `modelAnswer` ("" for none). The end Answers ledger draws it in its own column.
+       */
+      working?: string[];
+    };
 
 /* ------------------------------------------------------------------ */
 /* Elements                                                            */
@@ -829,7 +837,11 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
     ),
   }),
   z.object({ type: z.literal("sort"), order: z.array(z.string()) }),
-  z.object({ type: z.literal("open-response"), modelAnswer: z.string().optional() }),
+  z.object({
+    type: z.literal("open-response"),
+    modelAnswer: z.string().optional(),
+    working: z.array(z.string()).optional(),
+  }),
 ]);
 
 export const SlideKindSchema = z.enum([
@@ -1108,6 +1120,22 @@ export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolea
     slide.question?.type === "open-response" &&
     (slide.kind === "open-response" || slide.kind === "exit-ticket")
   );
+}
+
+/**
+ * An open response's answer key as one text, each answer followed by its working after " — "
+ * (the stored fields keep them apart): for the answer reveal, the PowerPoint key and plain text.
+ */
+export function answerKeyText(q: { modelAnswer?: string; working?: string[] }): string {
+  const lines = (q.modelAnswer ?? "").split("\n");
+  const work = q.working ?? [];
+  return lines
+    .map((l, i) => {
+      const w = work[i]?.trim();
+      return w && l.trim() ? `${l} — ${w}` : l;
+    })
+    .join("\n")
+    .trim();
 }
 
 /**

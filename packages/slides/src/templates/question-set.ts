@@ -112,9 +112,14 @@ function paint(
 export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const stage = stageOf(c);
   const qs = (input.questions ?? []).map((q) => inlineFractions(q.trim()));
-  const as = (input.questions ?? []).map((_, i) =>
+  const only = (input.questions ?? []).map((_, i) =>
     inlineFractions((input.answers?.[i] ?? "").trim()),
   );
+  const work = (input.questions ?? []).map((_, i) =>
+    inlineFractions((input.working?.[i] ?? "").trim()),
+  );
+  // The quick check reveals each answer with its working after a dash; the question keeps them apart.
+  const as = only.map((a, i) => (a && work[i] ? `${a} — ${work[i]}` : a));
   const n = qs.length;
   const head = kit.heading(c, input.heading);
   const headBottom = head.y + head.h;
@@ -237,7 +242,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   });
   c.s = s;
   c.fields = fields;
-  const q = listAnswers(qs, as);
+  const q = listAnswers(qs, only, work);
   if (q) c.question = q;
 }
 

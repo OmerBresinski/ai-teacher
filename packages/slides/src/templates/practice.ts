@@ -427,7 +427,7 @@ export function layoutPractice(c: Ctx, input: TemplateInput) {
       y += WA.rule + pad + rowH + rowGap;
     }
   }
-  c.question = listAnswers(items, keptAnswers(input));
+  c.question = listAnswers(items, keptAnswers(input), keptAnswers(input, "working"));
   if (!c.question) delete c.question;
 }
 
@@ -513,10 +513,14 @@ export function workPaths(els: SlideElement[]): (string | undefined)[] {
  * their tasks. Returns the input alone when it fits the count.
  */
 /** The answers of the tasks that are drawn: a blank task drops its answer too, so they stay aligned. */
-export function keptAnswers(input: TemplateInput): string[] | undefined {
-  if (!input.answers) return undefined;
+export function keptAnswers(
+  input: TemplateInput,
+  field: "answers" | "working" = "answers",
+): string[] | undefined {
+  const list = input[field];
+  if (!list) return undefined;
   const qs = input.questions ?? [];
-  return input.answers.filter((_, i) => typeof qs[i] === "string" && !!qs[i]?.trim());
+  return list.filter((_, i) => typeof qs[i] === "string" && !!qs[i]?.trim());
 }
 
 export function splitPractice(input: TemplateInput): TemplateInput[] {
@@ -534,6 +538,7 @@ export function splitPractice(input: TemplateInput): TemplateInput[] {
       ...input,
       questions: qs.slice(i, i + n),
       ...(input.answers ? { answers: input.answers.slice(i, i + n) } : {}),
+      ...(input.working ? { working: input.working.slice(i, i + n) } : {}),
     };
     if (!first) {
       delete part.figure;

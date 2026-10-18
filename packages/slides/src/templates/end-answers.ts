@@ -36,10 +36,13 @@ import { type Ctx, G, kit, type Stage, templateScale } from "./index";
 /* Fields                                                              */
 /* ------------------------------------------------------------------ */
 
-/** A short answer (and an optional worked line), a sentence model answer, or a true/false chip. */
+/**
+ * A short answer or a sentence model answer (each with an optional working line in its own
+ * column), or a true/false chip.
+ */
 export type AnswerItem =
   | { n: number; a: string; work?: string }
-  | { n: number; s: string }
+  | { n: number; s: string; work?: string }
   | { n: number; tf: boolean; why?: string };
 export type AnswerGroup = { kind: "practice" | "exit"; title: string; items: AnswerItem[] };
 /** One Answers slide: its groups (a carried-over group repeats its heading, numbers continue). */
@@ -190,22 +193,33 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const cellW = Math.floor((ANS.w - (cols - 1) * COL_GAP) / cols);
   const textX = z.badge + BADGE_GAP;
   const textW = cellW - textX;
-  const worked = g.items.some((it) => "a" in it && it.work);
-  const answerW = worked
-    ? Math.min(
-        Math.round(textW * 0.45),
-        Math.max(...g.items.map((it) => ("a" in it ? widthAt(t, it.a, z.size, 700) : 0))) + 2,
-      )
-    : textW;
+  const worked = g.items.some((it) => !("tf" in it) && it.work);
+  // A worked group's answer column: as wide as its widest short answer, at most 45% of the cell.
+  // A sentence with working takes what its working's one line leaves (at least that 45%), so the
+  // working keeps its own column beside it; a sentence without working keeps the whole cell.
+  const sentenceWorked = g.items.some((it) => "s" in it && it.work);
+  const widestWork = Math.max(
+    0,
+    ...g.items.map((it) => ("tf" in it || !it.work ? 0 : widthAt(t, it.work, sub, 500) + 2)),
+  );
+  const answerW = !worked
+    ? textW
+    : sentenceWorked
+      ? Math.max(Math.round(textW * 0.45), textW - WORK_GAP - widestWork)
+      : Math.min(
+          Math.round(textW * 0.45),
+          Math.max(...g.items.map((it) => ("a" in it ? widthAt(t, it.a, z.size, 700) : 0))) + 2,
+        );
   const chipW = chipWidth(t, z.size);
   /** Each item's height in its cell. */
   const heights = g.items.map((it) => {
-    if ("s" in it) return Math.max(lineH, measureAt(c, it.s, textW, z.size, 500, 1.3));
+    if ("s" in it && !it.work) return Math.max(lineH, measureAt(c, it.s, textW, z.size, 500, 1.3));
     if ("tf" in it)
       return it.why
         ? Math.max(lineH, measureAt(c, it.why, textW - chipW - WORK_GAP, sub, 500, 1.25))
         : lineH;
-    const a = measureAt(c, it.a, answerW, z.size, 700, 1.3);
+    const sentence = "s" in it;
+    const a = measureAt(c, sentence ? it.s : it.a, answerW, z.size, sentence ? 500 : 700, 1.3);
     const w = it.work ? measureAt(c, it.work, textW - answerW - WORK_GAP, sub, 500, 1.25) : 0;
     return Math.max(lineH, a, w);
   });
@@ -237,7 +251,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
       const step = stepOf(i);
       if (step !== undefined) hiddenDisc(c, tx, by, z.badge, step);
       const from = c.els.length;
-      if ("s" in it) {
+      if ("s" in it && !it.work) {
         text(c, it.s, { x: tx, y: rowY, w: textW }, z.size, 500, 1.3, {
           color: t.colors.ink,
           name: ANSWERS_NAMES.sentence,
@@ -261,10 +275,19 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
             { color: t.colors.muted, name: ANSWERS_NAMES.why },
           );
       } else {
-        text(c, it.a, { x: tx, y: rowY, w: answerW }, z.size, 700, 1.3, {
-          color: t.colors.ink,
-          name: ANSWERS_NAMES.answer,
-        });
+        const sentence = "s" in it;
+        text(
+          c,
+          sentence ? it.s : it.a,
+          { x: tx, y: rowY, w: answerW },
+          z.size,
+          sentence ? 500 : 700,
+          1.3,
+          {
+            color: t.colors.ink,
+            name: sentence ? ANSWERS_NAMES.sentence : ANSWERS_NAMES.answer,
+          },
+        );
         if (it.work)
           text(
             c,
@@ -746,24 +769,47 @@ const answered = (it: AnswerItem) =>
   "tf" in it ? typeof it.tf === "boolean" : "a" in it ? it.a.trim() !== "" : it.s.trim() !== "";
 
 /**
- * One answer string as the ledger's item: "True" / "False" (with an optional correction after a
- * dash or colon) as a chip, a short answer of at most four words (with optional working after an
- * em dash or " = " line) bold, anything longer as a sentence model answer.
+ * One answer as the ledger's item: "True" / "False" (with an optional correction after a dash or
+ * colon) as a chip, a short answer of at most four words bold, anything longer as a sentence model
+ * answer; either keeps its working (the question's own `working` field) for its own column.
+ * Lessons saved before the working had its own field join it after " — ": a short answer splits it
+ * back off, and so does a sentence when what follows the dash is a calculation.
  */
 /** A short answer (bold, with optional working) is at most this many words; longer is a sentence. */
 export const SHORT_ANSWER_WORDS = 4;
-export function answerItem(n: number, raw: string): AnswerItem {
+export function answerItem(n: number, raw: string, working?: string): AnswerItem {
   const v = raw.trim();
   const tf = /^(true|false)\b[\s.:,;–—-]*(.*)$/i.exec(v);
   if (tf) {
     const why = (tf[2] ?? "").trim();
     return { n, tf: (tf[1] as string).toLowerCase() === "true", ...(why ? { why } : {}) };
   }
+  const work = working?.trim();
+  if (work) return words(v) <= SHORT_ANSWER_WORDS ? { n, a: v, work } : { n, s: v, work };
   const worked = /^(.{1,40}?)\s+[—–]\s+(.+)$/.exec(v);
   if (worked && words(worked[1] as string) <= SHORT_ANSWER_WORDS)
     return { n, a: (worked[1] as string).trim(), work: (worked[2] as string).trim() };
+  const joined = /^(.+?)\s+[—–]\s+(.+)$/.exec(v);
+  if (joined && isCalculation(joined[2] as string))
+    return { n, s: (joined[1] as string).trim(), work: (joined[2] as string).trim() };
   return words(v) <= SHORT_ANSWER_WORDS ? { n, a: v } : { n, s: v };
 }
+/**
+ * The groups as the ledger drew them before a sentence's working had its own column: the sentence
+ * and its working on one line after " — ". The same groups when no sentence carries working. A
+ * theme switch reads Answers slides built then as untouched, so it still rebuilds them.
+ */
+export function joinedAsBefore(groups: readonly AnswerGroup[]): readonly AnswerGroup[] {
+  if (!groups.some((g) => g.items.some((it) => "s" in it && it.work))) return groups;
+  return groups.map((g) => ({
+    ...g,
+    items: g.items.map((it) =>
+      "s" in it && it.work ? { n: it.n, s: `${it.s} — ${it.work}` } : it,
+    ),
+  }));
+}
+/** A working line: digits and an operator or "=", e.g. "16 ÷ 2 = 8; 8 ÷ 2 = 4". */
+const isCalculation = (s: string) => /\d/.test(s) && /[=÷×+−*/]/.test(s);
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
 /** The source slide's title: its heading element's words. */
@@ -793,10 +839,14 @@ export function answerGroupsOf(slides: readonly Slide[]): AnswerGroup[] {
     if (slide.kind !== "open-response" && slide.kind !== "exit-ticket") continue;
     const q = slide.question;
     if (q?.type !== "open-response" || !q.modelAnswer?.trim()) continue;
-    const lines = q.modelAnswer.split("\n").filter((l) => l.trim());
-    const items = lines.map((l, i) => {
+    // `working[i]` belongs to line i of the model answer, blank lines included (`listAnswers`).
+    const lines = q.modelAnswer
+      .split("\n")
+      .map((l, i) => ({ l, w: q.working?.[i] }))
+      .filter(({ l }) => l.trim());
+    const items = lines.map(({ l, w }, i) => {
       const m = /^\s*(\d+)[.)]\s*(.*)$/.exec(l);
-      return answerItem(m ? Number(m[1]) : i + 1, m ? (m[2] as string) : l);
+      return answerItem(m ? Number(m[1]) : i + 1, m ? (m[2] as string) : l, w);
     });
     if (items.some((it) => "a" in it && (it.a === "…" || it.a === ""))) continue;
     out.push({
