@@ -1,3 +1,4 @@
+import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import { charsOver, fitTable } from "./fixes";
 import { shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
@@ -325,6 +326,61 @@ const wordsAt = (stage: string, layout = "", fitKey = "") => {
     );
 };
 
+/**
+ * The fit layouts' defs with each cap set to the measured fit table (`variantCaps`, the same
+ * mapping fit-fits.test pins), so the caps code checks and the Fits the writer reads follow the
+ * slides' tables when they move (18 Oct 2026: master's title sizes left v4.5's title lead at 100
+ * and 240 characters where 48-56 and 104-106 fit). The hook keeps its own (a listed exception).
+ */
+export function measuredFitDefs(defs: Record<string, J>, stage: string): Record<string, J> {
+  const heading = (fitTable()[stage] as J | undefined)?.heading as number;
+  const out: Record<string, J> = {};
+  for (const [layout, vs] of Object.entries(slotLayouts(stage))) {
+    if (layout === "hook") continue;
+    for (const v of vs) {
+      const name = `${layout}~${fitKey(v)}`;
+      const def = defs[name];
+      if (!def) continue;
+      const p = (def.properties ?? {}) as J;
+      const c = variantCaps(
+        layout,
+        v,
+        { lead: "lead" in p, stem: "stem" in p, instruction: "instruction" in p },
+        heading,
+      ) as J;
+      const want = (path: string, n: number): number =>
+        ((path === "heading"
+          ? c.heading
+          : path === "lead"
+            ? c.lead
+            : path.endsWith(".label")
+              ? c.label
+              : path === "formula"
+                ? n
+                : c.item) as number | undefined) ?? n;
+      const copy = structuredClone(def);
+      setCaps(copy, "", want);
+      out[name] = copy;
+    }
+  }
+  return out;
+}
+
+/** Walks a def as `defCaps` does, setting each positive `maxLength` to `want(path, n)`. */
+function setCaps(x: unknown, path: string, want: (path: string, n: number) => number): void {
+  if (!x || typeof x !== "object") return;
+  const s = x as J;
+  if (typeof s.maxLength === "number") {
+    if (s.maxLength > 0) s.maxLength = want(path, s.maxLength);
+    return;
+  }
+  if (s.properties)
+    for (const [k, v] of Object.entries(s.properties as J))
+      setCaps(v, path ? `${path}.${k}` : k, want);
+  if (s.items) setCaps(s.items, `${path}[]`, want);
+  if (Array.isArray(s.anyOf)) for (const b of s.anyOf) setCaps(b, path, want);
+}
+
 /** A variant def's caps, in field order: `[path, maxLength]`, e.g. `["points[].text", 92]`. */
 export function defCaps(x: unknown, path = ""): [string, number][] {
   if (!x || typeof x !== "object") return [];
@@ -549,6 +605,23 @@ export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arr
           walk(p, (v as J)[k], path ? `${path}.${k}` : k);
     };
     walk((caps && capDefs[key ? variantDefName(layout, key) : layout]) || def, raw, "");
+  }
+  // The hinge's one def carries the loosest offered count's option cap; each count has its own
+  // measured room (hinge-capacity.json `byCount`), so an option past its own count's is a cut.
+  if (layout === "hinge" && Array.isArray(raw.options)) {
+    const age = ({ KS1: "early", KS2: "primary" } as Record<string, string>)[
+      writerStageOfKey(stage)
+    ];
+    const cap = (HINGE_CAPACITY as unknown as Record<string, J>)[age ?? "secondary"];
+    const cell = ((cap?.byCount as J | undefined)?.[String(raw.options.length)] ?? cap) as
+      | J
+      | undefined;
+    const max = cell?.maxChars as number | undefined;
+    raw.options.forEach((o: unknown, i: number) => {
+      const t = typeof o === "string" ? o : String((o as J)?.text ?? "");
+      if (max !== undefined && t.length > max && !cuts.includes(`options[${i}]`))
+        cuts.push(`options[${i}]`);
+    });
   }
   // A pilot slide's room is measured by its layout (pilot-fit.ts), not the old per-fit tables.
   const over = pilot ? [] : charsOver(slide, stage);

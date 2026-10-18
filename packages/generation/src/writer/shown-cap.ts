@@ -63,6 +63,23 @@ export const shownWords = (chars: number, stage: WriterStage): number =>
   wordsWithin(shownChars(chars), stage);
 
 /**
+ * Characters a word in the capacity probes' own sample text (panel-list's and the hinge's pools,
+ * 5.4 with its space), which is also the KS2 quick-check gold's (v12/questions-b: 213 characters
+ * in 40 words). A comfortable cap the probe measured in characters holds this many words of
+ * ordinary text; `CHARS_PER_WORD` (the stored lessons' long-word p80) is kept for the hard maximum,
+ * so a long-worded field at the shown count runs tight, never over (18 Oct 2026).
+ */
+export const PROBE_CHARS_PER_WORD = 5.4;
+
+/** The words a probe-measured comfortable cap holds, within the hard max at the stage's rate. */
+export function probeRoom(cap: number, hardMax: number, stage: WriterStage): number {
+  return Math.min(
+    Math.floor((cap + 1) / PROBE_CHARS_PER_WORD),
+    wordsWithin(Math.max(cap, hardMax), stage),
+  );
+}
+
+/**
  * Content need (CAP-NEED-AUDIT.md, 18 Oct 2026): the words a good version of a field takes, p80
  * per stage, checked in as data with its source (`content-need.json`). Keyed `layout.field`
  * (`practice.task`, `hinge.option`, `visual-text.lead`, ...). Undefined is need unknown.

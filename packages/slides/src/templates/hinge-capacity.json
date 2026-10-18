@@ -50,26 +50,26 @@
   "secondary": {
     "words": 11,
     "maxWords": 21,
-    "chars": 63,
+    "chars": 62,
     "maxChars": 122,
     "options": 4,
     "byCount": {
       "2": {
         "words": 21,
         "maxWords": 21,
-        "chars": 122,
+        "chars": 121,
         "maxChars": 122
       },
       "3": {
         "words": 21,
         "maxWords": 21,
-        "chars": 122,
+        "chars": 121,
         "maxChars": 122
       },
       "4": {
         "words": 11,
         "maxWords": 21,
-        "chars": 63,
+        "chars": 62,
         "maxChars": 122
       }
     }

@@ -35,6 +35,7 @@ import {
   questionOffer,
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
+import { measuredFitDefs } from "./slot-fill";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -91,6 +92,17 @@ const FLOW_SIZE_COUNTED = {
 /** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
 export const flowLayoutOf = (defKey: string): string => defKey.replace("~", " ");
 
+/**
+ * A pack's layouts without the pilot's word `budgets` (with their `charCaps`; layouts.json, v4.4-era
+ * numbers that drifted from the menu: KS2 three sides 12 against 13). The menu constants
+ * (layout-menu.ts, from the measured capacity tables) are the one source of every word budget the
+ * writer reads and code checks; nothing may read the stale copy (18 Oct 2026).
+ */
+function menuFed(l: unknown): PilotPack["layouts"] {
+  const { budgets: _b, ...rest } = l as Record<string, unknown>;
+  return rest as unknown as PilotPack["layouts"];
+}
+
 export const PILOT_PACKS = {
   "v4.4": {
     id: "v4.4",
@@ -123,10 +135,10 @@ export const PILOT_PACKS = {
   // only (ruling 227) and the contrast, parts and set boundaries stated at the flow step.
   "v4.7": {
     id: "v4.7",
-    layouts: l47 as PilotPack["layouts"],
+    layouts: menuFed(l47),
     base: { KS1: b61, KS2: b62, KS3: b63 },
-    // Frozen as shipped (the snapshot `assembleWriterSystem` made on 17 Oct): v4.8 now owns the
-    // menu constants.
+    // Frozen as shipped (master's `pilot-v4.7-menu` snapshot after #582, 18 Oct): v4.8 now owns
+    // the menu constants.
     system: { KS1: s71, KS2: s72, KS3: s73 },
     uncapped: true,
     capsFrom: "v4.5",
@@ -138,7 +150,7 @@ export const PILOT_PACKS = {
   // (ruling 261); and the list and contrast layouts' text length generated from their budgets.
   "v4.8": {
     id: "v4.8",
-    layouts: { ...(l47 as PilotPack["layouts"]), flowSize: FLOW_SIZE_COUNTED },
+    layouts: { ...menuFed(l47), flowSize: FLOW_SIZE_COUNTED },
     base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
@@ -290,7 +302,14 @@ export function pilotRequest(
       ? pilotRequest(pack.capsFrom as PilotPackId, stageKey, prod, withLibrary).schema
       : undefined;
     const caps = capped
-      ? { ...capped, $defs: { ...capped.$defs, ...capPilotDefs(schema.$defs, writerStageOf(ks)) } }
+      ? {
+          ...capped,
+          $defs: {
+            ...capped.$defs,
+            ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+          },
+        }
       : undefined;
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }

@@ -21,6 +21,7 @@ import {
   needMedianOf,
   needOf,
   offerable,
+  probeRoom,
   shownFor,
   wordsWithin,
 } from "./shown-cap";
@@ -115,7 +116,7 @@ export function menuShown(chars: number, age: Age, need?: string, roomChars = ch
   return shownFor(chars, STAGE_OF[age], need, roomChars);
 }
 
-type CapCell = { cap: number };
+type CapCell = { cap: number; hardMax?: number };
 type RowCell = { items: number; icons: boolean; withLead: boolean } & Record<string, unknown>;
 type PanelCell = Record<string, CapCell> & {
   withLead: Record<string, CapCell>;
@@ -563,7 +564,15 @@ const quickOffer = (a: Age) =>
   Object.entries(QUICK[a] ?? {})
     .map(([n, c]) => ({
       n: Number(n),
-      q: menuShown(c.questions.cap, a, "question-set.question"),
+      // Room in ordinary words (`probeRoom`): the stage's long-word rate on the one-line cap
+      // showed 6 words where the gold's 7-9-word questions sit on one line (18 Oct 2026).
+      q: shownFor(
+        c.questions.cap,
+        STAGE_OF[a],
+        "question-set.question",
+        c.questions.cap,
+        probeRoom(c.questions.cap, c.questions.hardMax ?? c.questions.cap, STAGE_OF[a]),
+      ),
       // Never past the answers rule's short phrase (`ANSWER_WORDS.short`), at every stage, so the
       // two agree (KS2 by ruling 162 amended, item 31 A; KS3 brought in line 18 Oct 2026).
       a: Math.min(menuShown(c.answers.cap, a, "question-set.answer"), ANSWER_WORDS.short),
@@ -952,7 +961,11 @@ export function shownCells(stage: WriterStage): ShownCell[] {
     out.push({
       cell: `question-set ${n} question`,
       shown: x.q,
-      room: menuWords(cell.questions.cap, a),
+      room: probeRoom(
+        cell.questions.cap,
+        cell.questions.hardMax ?? cell.questions.cap,
+        STAGE_OF[a],
+      ),
       need: "question-set.question",
     });
     out.push({

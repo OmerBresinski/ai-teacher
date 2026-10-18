@@ -4,7 +4,7 @@ import c2 from "./bundles/pilot-v4.5/base-KS2.schema.json" with { type: "json" }
 import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 import { MIN_SHOWN_WORDS, offerable, PLAN_SHARE, shownFor } from "./shown-cap";
-import { defCaps, fitNeedKey, fitsLines } from "./slot-fill";
+import { defCaps, fitNeedKey, fitsLines, measuredFitDefs } from "./slot-fill";
 
 /*
  * The fit layouts' Fits, generated (loop 1 prompt part, 17 Oct 2026; build/LOG-loop1-prompt.md).
@@ -59,7 +59,9 @@ function countOf(key: string): { family: string; count?: number } {
 
 /** One layout's fits (`layout~key` defs) in the order the caps schema gives them. */
 function fitDefs(stage: WriterStage, layout: string): [string, J][] {
-  const defs = CAPS[stage].$defs as Record<string, J>;
+  const own = CAPS[stage].$defs as Record<string, J>;
+  // The caps code checks: the measured fit table over v4.5's (pilot-pack's caps request).
+  const defs = { ...own, ...measuredFitDefs(own, stage) };
   const out = Object.entries(defs).filter(([k]) => k.startsWith(`${layout}~`));
   if (!out.length) throw new Error(`fit fits: no ${layout} fits at ${stage}`);
   return out;

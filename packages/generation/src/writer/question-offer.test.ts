@@ -20,6 +20,7 @@ import {
 } from "./layout-menu";
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
+import { PROBE_CHARS_PER_WORD } from "./shown-cap";
 
 /*
  * The question layouts' writer offer (TEACH-110 part v): every number a menu line promises is read
@@ -69,7 +70,13 @@ describe("question layout menu lines", () => {
       expect(qs.length).toBeGreaterThan(0);
       for (const [n, w] of qs) {
         expect(table[String(n)], `${stage} ${n} questions`).toBeDefined();
-        expect(fitsIn(w, table[String(n)].questions.cap, stage)).toBe(true);
+        // Ordinary words (the probe's and the gold's 5.4 a word) fit the comfortable one-line cap;
+        // long words (the stage's p80 rate) never pass the hard max: tight at worst, never over.
+        const cell = table[String(n)].questions;
+        expect(w * PROBE_CHARS_PER_WORD, `${stage} ${n}: comfortable`).toBeLessThanOrEqual(
+          cell.cap + 1,
+        );
+        expect(fitsIn(w, cell.hardMax, stage), `${stage} ${n}: never over`).toBe(true);
       }
       for (const c of fits.split("; ")) {
         const m =

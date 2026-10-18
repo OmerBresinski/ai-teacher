@@ -5,6 +5,7 @@ import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" }
 import NEED from "./content-need.json" with { type: "json" };
 import { FIT_LAYOUTS, fitOffer } from "./fit-fits";
 import { HINGE_WRITER_MENU, PRACTICE_WRITER_MENU, shownCells, WORD_TASK_MAX } from "./layout-menu";
+import { PILOT_PACKS } from "./pilot-pack";
 import type { WriterStage } from "./schema";
 import { isCensored, needOf, shownFor, shownWords, wordsWithin } from "./shown-cap";
 import { defCaps, fitNeedKey } from "./slot-fill";
@@ -100,11 +101,11 @@ describe("shown caps hold the room and the need", () => {
     expect(hinge.find((c) => c.cell === "hinge 4 option")?.shown).toBeGreaterThanOrEqual(7);
     expect(hinge.find((c) => c.cell === "hinge 2 option")?.shown).toBeGreaterThan(7);
     // GOLD-THROUGH-PROD.md: KS3 4-option hinge shows the probe's 11 words (the gold's 10-11-word
-    // options render on one line); KS2 quick check shows its two-line rows, not one line's 3 words.
+    // options render on one line).
     expect(shownCells("KS3-5").find((c) => c.cell === "hinge 4 option")?.shown).toBe(11);
-    expect(
-      shownCells("KS2").find((c) => c.cell === "question-set 4 question")?.shown,
-    ).toBeGreaterThanOrEqual(9);
+    // Master (#582) keeps the KS2 quick check to one line (cap 42): its room, under the need.
+    const q4 = shownCells("KS2").find((c) => c.cell === "question-set 4 question");
+    expect(q4?.shown).toBe(q4?.room);
     // KS3 exit ticket offers 3 questions (no cliff); KS1 practice offers 3 pictured tasks.
     expect(shownCells("KS3-5").some((c) => c.cell === "exit 3")).toBe(true);
     expect(shownCells("KS1").some((c) => c.cell === "practice+picture 3")).toBe(true);
@@ -143,5 +144,12 @@ describe("decisions 30 and 32 (18 Oct 2026) in the menu lines", () => {
       expect(offer.some((c) => c.cell === "hinge 4 option")).toBe(true);
       expect(offer.find((c) => c.cell === "hinge 3 option")?.shown).toBeGreaterThanOrEqual(15);
     }
+  });
+});
+
+describe("one source for word budgets (18 Oct 2026)", () => {
+  test("no pack carries the pilot's stale layouts.json budgets; the menu feeds both", () => {
+    for (const id of ["v4.7", "v4.8"] as const)
+      expect(Object.keys(PILOT_PACKS[id].layouts)).not.toContain("budgets");
   });
 });

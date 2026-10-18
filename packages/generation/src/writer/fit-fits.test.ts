@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { droppedFits, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
 import { fitTable } from "./fixes";
 import { assembleWriterSystem, LAYOUT_WRITER_MENUS, WRITER_RULES } from "./layout-menu";
-import { flowLayoutOf, PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { flowLayoutOf, PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
 import { MIN_SHOWN_WORDS, PLAN_SHARE } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
@@ -132,7 +132,8 @@ describe("fit layouts keep the floor and no cliff", () => {
 describe("the checked caps are the measured fit table", () => {
   for (const stage of STAGES)
     test(`${KS[stage]}`, () => {
-      const caps = pilotRequest("v4.5", KS[stage], {}, (sc) => sc).schema.$defs as J;
+      // The caps code checks (the production pack's caps request), not v4.5's own schema.
+      const caps = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc).caps?.$defs as J;
       const heading = (fitTable()[stage] as J).heading as number;
       const diffs: string[] = [];
       for (const layout of FIT_LAYOUTS) {
