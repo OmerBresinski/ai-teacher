@@ -28,6 +28,7 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
 import { uid } from "../factories";
+import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
@@ -94,6 +95,9 @@ export type RowField = FieldReport;
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
 /* ------------------------------------------------------------------ */
+
+/** The cover's picture beside the column, as a share of its old size (UX ruling 25 A). */
+const COVER_PICTURE = 0.9;
 
 export const G = {
   margin: 64,
@@ -1892,37 +1896,58 @@ function layoutOnce(
       const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
-      let ph = 444;
-      let pw = Math.round(ph * aspect);
-      if (pw > 520) {
-        pw = 520;
-        ph = Math.max(300, Math.round(pw / aspect));
-      }
-      if (aspect && pw < 240) pw = 240;
+      // UX ruling 25 A (Greg, 18 Oct): the picture beside the column is 10% smaller than it was
+      // (444pt tall, 520pt widest) and the column takes the room it frees (Paper's 300pt -> 352pt).
+      const box = (k: number) => {
+        let h = Math.round(444 * k);
+        let bw = Math.round(h * aspect);
+        if (bw > Math.round(520 * k)) {
+          bw = Math.round(520 * k);
+          h = Math.max(Math.round(300 * k), Math.round(bw / aspect));
+        }
+        if (aspect && bw < Math.round(240 * k)) bw = Math.round(240 * k);
+        return { pw: bw, ph: h };
+      };
+      const was = box(1);
+      const { pw, ph } = box(COVER_PICTURE);
       const px = G.right - pw;
-      const w = f ? Math.max(300, px - G.margin - 44) : 640;
-      // The title steps down from the stage's title size until its words fit the column (6 lines max).
-      let size = c.s.title;
+      // Today's column, plus every point the smaller picture gives back (its gap kept as it was).
+      const w = f ? Math.max(300, G.right - was.pw - G.margin - 44) + (was.pw - pw) : 640;
+      // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
+      // every theme, `coverType`) until its words fit the column in the gold's three lines.
+      const cv = coverType(c.t);
+      let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
       // "hyperinfla/tion"). Stepping down is the design, not a fault.
       // Round 2 (y10 title 521/444): the title and subtitle together must fit the 444pt column,
       // so a long title keeps stepping down (words whole) to the floor; only past it is it flagged.
-      const height = () => {
-        const t = Math.ceil(
-          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) * size * LH.title,
+      const titleH = () =>
+        Math.ceil(
+          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) *
+            size *
+            cv.titleLineHeight,
         );
-        return t + (input.lead ? 20 + measure(c, input.lead, "lead", w, 400) : 0);
-      };
+      // The question under the title at the cover's question size, regular weight.
+      const leadH = input.lead
+        ? Math.ceil(
+            countLines(plain(input.lead), "body", c.t, w, 400, cv.question) *
+              cv.question *
+              cv.questionLineHeight,
+          )
+        : 0;
+      // The gold's question is two lines (`questionLines`): the writer's cap holds it there
+      // (`cover-capacity.json`); a longer saved one still lays out, its box as tall as it needs.
+      const height = () => titleH() + (input.lead ? 20 + leadH : 0);
       const fits = () =>
-        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= (f ? 6 : 3) &&
+        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= cv.titleLines &&
         wordsFit(c, input.heading, "title", w, size) &&
         height() <= 444;
-      const floor = Math.round(c.s.heading * 0.8);
-      while (size > floor && !fits()) size -= 2;
+      while (size > cv.titleFloor + 0.01 && !fits())
+        size = Math.max(cv.titleFloor, size - cv.titleStep);
       c.s = { ...c.s, title: size };
-      if (!fits()) c.over.push(`title does not fit at ${size}pt`);
-      const tH = measure(c, input.heading, "title", w);
-      const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
+      if (!fits()) c.over.push(`title does not fit at ${Math.round(size * 10) / 10}pt`);
+      const tH = titleH();
+      const lH = leadH;
       const total = tH + (lH ? 20 + lH : 0);
       const y = Math.round(270 - total / 2);
       const titleEl = text(
@@ -1932,6 +1957,13 @@ function layoutOnce(
         { x: G.margin, y, w },
         { color: on, name: "Title" },
       );
+      titleEl.h = tH;
+      titleEl.style = {
+        ...titleEl.style,
+        fontSize: size,
+        fixedSize: true,
+        lineHeight: cv.titleLineHeight,
+      };
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
       if (input.lead) titleEl.style = { ...titleEl.style, valign: "bottom", autoHeight: false };
@@ -1950,14 +1982,22 @@ function layoutOnce(
         });
         titleEl.style = { ...titleEl.style, padding: m };
       }
-      if (input.lead)
-        text(
+      if (input.lead) {
+        const q = text(
           c,
           input.lead,
           "lead",
           { x: G.margin, y: y + tH + 20, w },
           { color: on, weight: 400, name: "Subtitle" },
         );
+        q.h = lH;
+        q.style = {
+          ...q.style,
+          fontSize: cv.question,
+          fixedSize: true,
+          lineHeight: cv.questionLineHeight,
+        };
+      }
       if (total > 444) c.over.push(`title ${total}/444pt`);
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
       break;

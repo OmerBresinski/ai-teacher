@@ -10,13 +10,13 @@
             "body": 28,
             "lead": 28
           },
-          "headingMax": 86,
+          "headingMax": 58,
           "headingOneLine": 36,
           "variants": [
             {
               "label": "with picture",
               "counts": {},
-              "maxCharsPerItem": 130
+              "maxCharsPerItem": 240
             },
             {
               "label": "no picture",
@@ -31,13 +31,13 @@
             "body": 28,
             "lead": 28
           },
-          "headingMax": 92,
+          "headingMax": 58,
           "headingOneLine": 36,
           "variants": [
             {
               "label": "with picture",
               "counts": {},
-              "maxCharsPerItem": 154
+              "maxCharsPerItem": 240
             },
             {
               "label": "no picture",
@@ -52,7 +52,7 @@
             "body": 36,
             "lead": 30
           },
-          "headingMax": 112,
+          "headingMax": 58,
           "headingOneLine": 40,
           "variants": [
             {
