@@ -111,7 +111,9 @@ describe("question layout menu lines", () => {
         Array.from({ length: cap.options - 1 }, (_, i) => i + 2),
       );
       expect(monotonic(opts)).toBe(true);
-      for (const [, w] of opts) expect(w).toBeLessThanOrEqual(cap.words);
+      // Each option count against its own measured cell (18 Oct 2026), else the most-options one.
+      for (const [n, w] of opts)
+        expect(w).toBeLessThanOrEqual((cap.byCount?.[String(n)] ?? cap).words);
     });
     test(`${stage}: a full row of picture tiles named in ${TILE_WORDS} words fits on every theme`, () => {
       const cap = (HINGE_CAP as J)[age];

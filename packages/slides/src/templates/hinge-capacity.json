@@ -4,20 +4,74 @@
     "maxWords": 16,
     "chars": 41,
     "maxChars": 85,
-    "options": 3
+    "options": 3,
+    "byCount": {
+      "2": {
+        "words": 16,
+        "maxWords": 16,
+        "chars": 85,
+        "maxChars": 85
+      },
+      "3": {
+        "words": 8,
+        "maxWords": 16,
+        "chars": 41,
+        "maxChars": 85
+      }
+    }
   },
   "primary": {
     "words": 9,
     "maxWords": 9,
     "chars": 49,
     "maxChars": 49,
-    "options": 4
+    "options": 4,
+    "byCount": {
+      "2": {
+        "words": 18,
+        "maxWords": 18,
+        "chars": 97,
+        "maxChars": 97
+      },
+      "3": {
+        "words": 18,
+        "maxWords": 18,
+        "chars": 97,
+        "maxChars": 97
+      },
+      "4": {
+        "words": 9,
+        "maxWords": 9,
+        "chars": 49,
+        "maxChars": 49
+      }
+    }
   },
   "secondary": {
     "words": 11,
     "maxWords": 21,
     "chars": 58,
     "maxChars": 119,
-    "options": 4
+    "options": 4,
+    "byCount": {
+      "2": {
+        "words": 21,
+        "maxWords": 21,
+        "chars": 119,
+        "maxChars": 119
+      },
+      "3": {
+        "words": 21,
+        "maxWords": 21,
+        "chars": 119,
+        "maxChars": 119
+      },
+      "4": {
+        "words": 11,
+        "maxWords": 21,
+        "chars": 58,
+        "maxChars": 119
+      }
+    }
   }
 }

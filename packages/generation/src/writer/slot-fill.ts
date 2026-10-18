@@ -1,5 +1,5 @@
 import { charsOver, fitTable } from "./fixes";
-import { shownWords, wordsWithin, writerStageOfKey } from "./shown-cap";
+import { shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
 
 /*
@@ -301,11 +301,28 @@ export const SHAPES = [
 const sfIntro = (heading: number, label?: number) =>
   `Layouts. A heading is up to ${heading} words${label ? `, a label ${label}` : ""}. Fits gives each fit's most words: its lead or stem, then "each" item, a phrase or one short sentence, never cut off. More words take a fit with fewer items; never cram.`;
 
-/** A body cap as the writer is shown it; `label` for headings and labels (their measured words). */
-const wordsAt = (stage: string) => {
+/**
+ * A fit layout field's key in the content-need table (`content-need.json`): its lead, or its
+ * points (a key card's text when the fit is a key fit). Headings, labels and formulas have none.
+ */
+export function fitNeedKey(layout: string, path: string, fitKey = ""): string | undefined {
+  if (path === "lead") return `${layout}.lead`;
+  if (/^points\[\d*\](\.text)?$/.test(path))
+    return `${layout}.${/key/.test(fitKey) ? "keycard" : "point"}`;
+  return undefined;
+}
+
+/**
+ * A body cap as the writer is shown it (`shownFor`, need-aware); `label` for headings and labels
+ * (their measured words). `layout` and `fitKey` name the field's need row.
+ */
+const wordsAt = (stage: string, layout = "", fitKey = "") => {
   const ws = writerStageOfKey(stage);
-  return (chars: number, label = false) =>
-    Math.max(1, label ? wordsWithin(chars, ws) : shownWords(chars, ws));
+  return (chars: number, label = false, path = "") =>
+    Math.max(
+      1,
+      label ? wordsWithin(chars, ws) : shownFor(chars, ws, fitNeedKey(layout, path, fitKey)),
+    );
 };
 
 /** A variant def's caps, in field order: `[path, maxLength]`, e.g. `["points[].text", 92]`. */
@@ -331,7 +348,7 @@ function fitBudget(
   key: string,
   def: J,
   namedLabels: boolean,
-  words: (chars: number, label?: boolean) => number,
+  words: (chars: number, label?: boolean, path?: string) => number,
 ): string {
   const parts: string[] = [];
   const props = (def.properties ?? {}) as Record<string, J>;
@@ -344,10 +361,10 @@ function fitBudget(
     if (leaf === "label") {
       if (namedLabels) parts.push(`each label ${words(n, true)}`);
     } else if (leaf === "text" && parts.at(-1)?.startsWith("each label"))
-      parts.push(`${parts.pop()} + text ${words(n)}`);
-    else if (leaf !== undefined) parts.push(`each ${words(n)}`);
-    else if (path === "lead" || path === "stem") parts.push(`${words(n)}`);
-    else parts.push(`${path} ${words(n)}`);
+      parts.push(`${parts.pop()} + text ${words(n, false, path)}`);
+    else if (leaf !== undefined) parts.push(`each ${words(n, false, path)}`);
+    else if (path === "lead" || path === "stem") parts.push(`${words(n, false, path)}`);
+    else parts.push(`${path} ${words(n, false, path)}`);
   }
   return parts.length ? `${key} ${parts.join(", ")}` : key;
 }
@@ -386,7 +403,7 @@ export function fitsLines(
   for (const { layout, key, def } of variants) {
     const m = fits[layout] ?? new Map<string, string[]>();
     fits[layout] = m;
-    const budget = fitBudget("", def, label === undefined, words).trim();
+    const budget = fitBudget("", def, label === undefined, wordsAt(stage, layout, key)).trim();
     m.set(budget, [...(m.get(budget) ?? []), key]);
   }
   const pairs = (m: Map<string, string[]>) =>
@@ -514,7 +531,11 @@ export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arr
           path,
           words: wordsIn(v),
           capWords: wordsWithin(s.maxLength, writerStageOfKey(stage)),
-          shownWords: shownWords(s.maxLength, writerStageOfKey(stage)),
+          shownWords: shownFor(
+            s.maxLength,
+            writerStageOfKey(stage),
+            fitNeedKey(layout, path, key ?? ""),
+          ),
         });
         const t = v.trim();
         const sentence =

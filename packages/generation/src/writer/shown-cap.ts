@@ -1,3 +1,4 @@
+import NEED from "./content-need.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 
 /*
@@ -62,15 +63,62 @@ export const shownWords = (chars: number, stage: WriterStage): number =>
   wordsWithin(shownChars(chars), stage);
 
 /**
+ * Content need (CAP-NEED-AUDIT.md, 18 Oct 2026): the words a good version of a field takes, p80
+ * per stage, checked in as data with its source (`content-need.json`). Keyed `layout.field`
+ * (`practice.task`, `hinge.option`, `visual-text.lead`, ...). Undefined is need unknown.
+ */
+/** The field's median need at a stage (`content-need.json`), or undefined when unknown. */
+export function needMedianOf(key: string, stage: WriterStage): number | undefined {
+  const row = (NEED as unknown as Record<string, Record<string, { median: number } | undefined>>)[
+    key
+  ];
+  return row?.[stage]?.median;
+}
+
+export function needOf(key: string | undefined, stage: WriterStage): number | undefined {
+  if (!key) return undefined;
+  const row = (NEED as unknown as Record<string, Record<string, { p80: number } | undefined>>)[key];
+  return row?.[stage]?.p80;
+}
+
+/**
+ * The words the writer is shown for a field with a known need: what the slide holds at comfort
+ * (`wordsWithin`, the room), never less than the need where the room allows it, never more than
+ * twice the need (a cap far above the need is read as a target and padded), and otherwise the 75%
+ * share. Need unknown keeps the 75% share (`shownWords`). The measured cap stays the hard limit.
+ */
+export function shownFor(
+  chars: number,
+  stage: WriterStage,
+  key?: string,
+  /** The room in characters when it is less than the measured cap (a pictured side's headroom). */
+  roomChars = chars,
+): number {
+  const share = Math.min(shownWords(chars, stage), wordsWithin(roomChars, stage));
+  const need = needOf(key, stage);
+  if (need === undefined) return share;
+  const room = wordsWithin(roomChars, stage);
+  return Math.min(room, Math.max(share, need), Math.floor(2 * need));
+}
+
+/**
  * The longest prefix of `[count, words]` pairs (ascending counts) a menu may offer: every shown cap
  * at least `floor`, and no cliff, so one more item never leaves less than half the previous cap.
  * Counts past the first that fails are dropped too, so the offer stays contiguous.
  */
-export function offerable(pairs: [number, number][], floor = MIN_SHOWN_WORDS): [number, number][] {
+export function offerable(
+  pairs: [number, number][],
+  floor = MIN_SHOWN_WORDS,
+  /**
+   * Waive the no-cliff rule for a count whose words still hold the field's median need (practice
+   * and the exit ticket: CAP-NEED-AUDIT.md rows 1d, 3b). The floor always holds.
+   */
+  waive: (w: number) => boolean = () => false,
+): [number, number][] {
   const out: [number, number][] = [];
   for (const [n, w] of pairs) {
     const prev = out.at(-1)?.[1];
-    if (w < floor || (prev !== undefined && w * 2 < prev)) break;
+    if (w < floor || (!waive(w) && prev !== undefined && w * 2 < prev)) break;
     out.push([n, w]);
   }
   return out;

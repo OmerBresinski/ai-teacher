@@ -18,9 +18,10 @@ import type { WriterStage } from "./schema";
 import {
   CHARS_PER_WORD,
   MIN_SHOWN_WORDS,
+  needMedianOf,
+  needOf,
   offerable,
-  SHOWN_SHARE,
-  shownWords,
+  shownFor,
   wordsWithin,
 } from "./shown-cap";
 
@@ -98,8 +99,9 @@ export function menuWords(chars: number, age: Age): number {
  * fill was 56%, 7% at 90% or more; CRAMMING-ROOT-CAUSE.md "Not causes"), and at 75% a KS1 side
  * title would show one word.
  */
-export function menuShown(chars: number, age: Age): number {
-  return shownWords(chars, STAGE_OF[age]);
+export function menuShown(chars: number, age: Age, need?: string, roomChars = chars): number {
+  // Need-aware where `need` names a row of content-need.json (CAP-NEED-AUDIT.md, 18 Oct 2026).
+  return shownFor(chars, STAGE_OF[age], need, roomChars);
 }
 
 type CapCell = { cap: number };
@@ -175,10 +177,12 @@ const must = (d: Fields | undefined, what: string): Fields => {
 function itemBudget(c: ListLayout, a: Age, n: number, lead = false, v: ListVariant = ""): number {
   const caps = must(listCaps(c, a, n, lead, v), `${c} ${a} ${n}`);
   const edit = Math.min(
-    Math.floor((SLIDE_WORDS - (lead ? menuShown(caps.lead ?? 0, a) : 0)) / n),
+    Math.floor((SLIDE_WORDS - (lead ? menuShown(caps.lead ?? 0, a, `${c}.lead`) : 0)) / n),
     ITEM_SENT[a],
   );
-  return Math.min(edit, menuShown(caps.text ?? 0, a));
+  // The editorial budget never holds a cell under its content need (CAP-NEED-AUDIT.md, 18 Oct).
+  const need = needOf(`${c}.item`, STAGE_OF[a]) ?? 0;
+  return Math.min(Math.max(edit, need), menuShown(caps.text ?? 0, a, `${c}.item`));
 }
 const okCount = (c: ListLayout, a: Age, n: number, v: ListVariant = "") =>
   allPositive(listCaps(c, a, n, false, v)) && itemBudget(c, a, n, false, v) >= MIN_ITEM[a];
@@ -232,7 +236,7 @@ const leadOk = (c: ListLayout, a: Age, n: number, v: ListVariant = "") => {
   const caps = listCaps(c, a, n, true, v);
   return (
     allPositive(caps) &&
-    menuShown(caps.lead ?? 0, a) >= MIN_LEAD &&
+    menuShown(caps.lead ?? 0, a, `${c}.lead`) >= MIN_LEAD &&
     itemBudget(c, a, n, true, v) >= MIN_ITEM[a]
   );
 };
@@ -240,7 +244,9 @@ const leadNs = (c: ListLayout, a: Age, v: ListVariant = "") =>
   offeredCounts(c, a, NS(c, a, v), true, v, (n) => leadOk(c, a, n, v));
 const leadWords = (c: ListLayout, a: Age, v: ListVariant = "") =>
   Math.min(
-    ...leadNs(c, a, v).map((n) => menuShown(must(listCaps(c, a, n, true, v), c).lead ?? 0, a)),
+    ...leadNs(c, a, v).map((n) =>
+      menuShown(must(listCaps(c, a, n, true, v), c).lead ?? 0, a, `${c}.lead`),
+    ),
   );
 const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "") =>
   Math.min(
@@ -262,13 +268,17 @@ export const PIC_SIDE_HEADROOM = 0.8;
 function sideBudget(a: Age, n: number, z: SideZone): number {
   const caps = must(sideCaps(a, n, z), `split-compare ${a} ${n}${z}`);
   // The shown share (75%) is stricter than the pictures' 80% headroom, so it keeps that headroom
-  // without stacking the two (0.6 of the cap would drop KS1's pictured sides below the floor).
-  const chars = (caps.text ?? 0) * (z === "p" ? Math.min(1, PIC_SIDE_HEADROOM / SHOWN_SHARE) : 1);
-  return Math.min(
+  // without stacking the two (0.6 of the cap would drop KS1's pictured sides below the floor). A
+  // need above the share may rise only to the headroom, never to the full cap (18 Oct 2026).
+  const chars = caps.text ?? 0;
+  const room = z === "p" ? chars * PIC_SIDE_HEADROOM : chars;
+  const edit = Math.min(
     Math.floor(SLIDE_WORDS / n) - (z === "q" ? quoteBudget(a, n) : 0),
     SIDE_SENT[a],
-    menuShown(chars, a),
   );
+  // The editorial budget never holds a side under its content need (CAP-NEED-AUDIT.md, 18 Oct).
+  const need = needOf("split-compare.side", STAGE_OF[a]) ?? 0;
+  return Math.min(Math.max(edit, need), menuShown(chars, a, "split-compare.side", room));
 }
 /**
  * Cells the menu never offers, whatever they measure. KS2 three pictured sides: the KS2 gold side
@@ -542,55 +552,78 @@ const quickOffer = (a: Age) =>
   Object.entries(QUICK[a] ?? {})
     .map(([n, c]) => ({
       n: Number(n),
-      q: menuShown(c.questions.cap, a),
-      // KS2 (ruling 162 amended, item 31 A, raised its answer caps): never past the answers rule's
-      // short phrase (`ANSWER_WORDS.short`), so the two agree. Other stages as before.
-      a:
-        a === "primary"
-          ? Math.min(menuShown(c.answers.cap, a), ANSWER_WORDS.short)
-          : menuShown(c.answers.cap, a),
+      q: menuShown(c.questions.cap, a, "question-set.question"),
+      // Never past the answers rule's short phrase (`ANSWER_WORDS.short`), at every stage, so the
+      // two agree (KS2 by ruling 162 amended, item 31 A; KS3 brought in line 18 Oct 2026).
+      a: Math.min(menuShown(c.answers.cap, a, "question-set.answer"), ANSWER_WORDS.short),
     }))
     .filter((x) => x.q >= MIN_QUICK_Q && x.a >= 1)
     .sort((x, y) => x.n - y.n);
-const workBudget = (a: Age, cells: WorkCell[], max = 99): [number, number][] =>
-  offerable(
-    cells
-      .filter((c) => c.n <= max)
-      .sort((x, y) => x.n - y.n)
-      .map((c): [number, number] => [c.n, Math.min(TASK_SENT[a], menuShown(c.cap, a))]),
-    MIN_TASK[a],
+/** A count's words hold its field's median need at this age (waives the no-cliff rule). */
+const holdsMedian = (a: Age, need: string) => (w: number) =>
+  w >= (needMedianOf(need, STAGE_OF[a]) ?? Number.POSITIVE_INFINITY);
+
+/**
+ * Practice and the exit ticket are exempt from the no-cliff rule where the count still holds the
+ * median need (CAP-NEED-AUDIT.md rows 1d, 3b):
+ * the cliff dropped KS1's 3 pictured tasks (the gold's default) and KS3's 3 exit questions, the
+ * count "together check the objectives" asks for. The floor still holds.
+ */
+const workBudget = (a: Age, cells: WorkCell[], need: string, max = 99): [number, number][] => {
+  const sorted = cells.filter((c) => c.n <= max).sort((x, y) => x.n - y.n);
+  // Which counts reach the floor is today's rule (the 75% share): a need never adds a count whose
+  // room is under it. The need only raises the words shown for a count already offered.
+  const floorOk = sorted.findIndex(
+    (c) => Math.min(TASK_SENT[a], menuShown(c.cap, a)) < MIN_TASK[a],
   );
+  return offerable(
+    sorted
+      .slice(0, floorOk < 0 ? sorted.length : floorOk)
+      .map((c): [number, number] => [c.n, Math.min(TASK_SENT[a], menuShown(c.cap, a, need))]),
+    MIN_TASK[a],
+    holdsMedian(a, need),
+  );
+};
 const practiceOffer = (a: Age) => ({
-  plain: workBudget(a, WORK[a].practice),
+  plain: workBudget(a, WORK[a].practice, "practice.task"),
   // A picture and a figure are measured apart: offer the smaller per count.
   pic: offerable(
-    workBudget(a, WORK[a]["practice+picture"], PIC_MAX[a]).map(([n, w]): [number, number] => {
-      const f = WORK[a]["practice+figure"].find((c) => c.n === n);
-      return [n, f ? Math.min(w, menuShown(f.cap, a)) : w];
-    }),
+    workBudget(a, WORK[a]["practice+picture"], "practice.task", PIC_MAX[a]).map(
+      ([n, w]): [number, number] => {
+        const f = WORK[a]["practice+figure"].find((c) => c.n === n);
+        return [n, f ? Math.min(w, menuShown(f.cap, a, "practice.task")) : w];
+      },
+    ),
     MIN_TASK[a],
+    holdsMedian(a, "practice.task"),
   ),
 });
-const exitOffer = (a: Age) => workBudget(a, WORK[a].exit);
+const exitOffer = (a: Age) => workBudget(a, WORK[a].exit, "exit-ticket.question");
 /**
  * The hinge's option offer is #539's renderer-measured `hinge-capacity.json`: one word budget per
  * age, measured with the most options the age takes (3 at KS1, 4 otherwise), so it holds for fewer.
  * The question's budget is the writer's hinge card table (`hinge-cards.gen.json`, regenerated by
  * #539 from the same layout).
  */
-type HingeCap = { words: number; chars: number; options: number };
+type HingeCap = {
+  words: number;
+  chars: number;
+  options: number;
+  /** Each option count measured on its own (18 Oct 2026); absent, the most-options figure. */
+  byCount?: Record<string, { chars: number }>;
+};
 const HINGE_CAP = HINGE_CAPACITY as unknown as Record<Age, HingeCap>;
 const hingeOffer = (a: Age) => {
   const g = HINGE[STAGE_OF[a]];
   const c = HINGE_CAP[a];
   if (!g || !c) throw new Error(`layout menu: no hinge table for ${a}`);
   return {
-    question: menuShown(g.stem, a),
-    // Measured once per age at the most options, so one shown cap holds for every count.
+    question: menuShown(g.stem, a, "hinge.question"),
+    // Each count's own measured room (fewer cards hold longer options), need-aware.
     options: offerable(
       Array.from({ length: c.options - 1 }, (_, i): [number, number] => [
         i + 2,
-        menuShown(c.chars, a),
+        menuShown(c.byCount?.[String(i + 2)]?.chars ?? c.chars, a, "hinge.option"),
       ]),
     ),
   };
@@ -826,6 +859,84 @@ export function menuWordCaps(stage: WriterStage) {
 }
 export type MenuWordCaps = ReturnType<typeof menuWordCaps>;
 
+/** One shown menu cell: its words, the most the slide holds (room) and its need row. */
+export type ShownCell = { cell: string; shown: number; room: number; need: string };
+
+/**
+ * Every need-aware body cell the menu offers at a stage, with the room it was shown against
+ * (CAP-NEED-AUDIT.md, 18 Oct 2026). For the test that no shown cap exceeds its room and none sits
+ * under its need where the room allows it.
+ */
+export function shownCells(stage: WriterStage): ShownCell[] {
+  const a = MENU_AGE[stage];
+  const out: ShownCell[] = [];
+  for (const c of ["items-row", "panel-list"] as const)
+    for (const v of (c === "items-row" ? ["", "num"] : ["", "pics"]) as ListVariant[])
+      for (const lead of [false, true])
+        for (const n of lead ? leadNs(c, a, v) : NS(c, a, v)) {
+          const caps = must(listCaps(c, a, n, lead, v), `${c} ${a} ${n}`);
+          out.push({
+            cell: `${c} ${n}${v}${lead ? "+lead" : ""} item`,
+            shown: itemBudget(c, a, n, lead, v),
+            room: menuWords(caps.text ?? 0, a),
+            need: `${c}.item`,
+          });
+        }
+  for (const k of SC_KEYS[a]) {
+    const z = k.slice(1) as SideZone;
+    const chars = must(sideCaps(a, Number(k[0]), z), k).text ?? 0;
+    out.push({
+      cell: `split-compare ${k} side`,
+      shown: sideBudget(a, Number(k[0]), z),
+      room: menuWords(z === "p" ? chars * PIC_SIDE_HEADROOM : chars, a),
+      need: "split-compare.side",
+    });
+  }
+  const c = HINGE_CAP[a];
+  for (const [n, w] of hingeOffer(a).options)
+    out.push({
+      cell: `hinge ${n} option`,
+      shown: w,
+      room: menuWords(c.byCount?.[String(n)]?.chars ?? c.chars, a),
+      need: "hinge.option",
+    });
+  for (const [n, cell] of Object.entries(QUICK[a] ?? {})) {
+    const x = quickOffer(a).find((q) => q.n === Number(n));
+    if (!x) continue;
+    out.push({
+      cell: `question-set ${n} question`,
+      shown: x.q,
+      room: menuWords(cell.questions.cap, a),
+      need: "question-set.question",
+    });
+    out.push({
+      cell: `question-set ${n} answer`,
+      shown: x.a,
+      room: menuWords(cell.answers.cap, a),
+      need: "question-set.answer",
+    });
+  }
+  const p = practiceOffer(a);
+  for (const [kind, offer, cells] of [
+    ["practice", p.plain, WORK[a].practice],
+    ["practice+picture", p.pic, WORK[a]["practice+picture"]],
+    ["exit", exitOffer(a), WORK[a].exit],
+  ] as const)
+    for (const [n, w] of offer) {
+      const caps = [cells, kind === "practice+picture" ? WORK[a]["practice+figure"] : []]
+        .flat()
+        .filter((x) => x.n === n)
+        .map((x) => x.cap);
+      out.push({
+        cell: `${kind} ${n}`,
+        shown: w,
+        room: menuWords(Math.min(...caps), a),
+        need: kind === "exit" ? "exit-ticket.question" : "practice.task",
+      });
+    }
+  return out;
+}
+
 /** The question layouts' field caps (characters), keyed `field` (top) or `list[].field` (members). */
 export type QuestionFieldCaps = Record<
   "hinge" | "question-set" | "practice" | "exit-ticket",
@@ -851,7 +962,14 @@ export function questionFieldCaps(stage: WriterStage): QuestionFieldCaps {
   const hinge = HINGE_CAP[a];
   const stem = HINGE[stage]?.stem;
   return {
-    hinge: { heading: stem ?? 0, "options[].text": hinge?.chars ?? 0 },
+    hinge: {
+      heading: stem ?? 0,
+      // The loosest offered count's own measured room (fewer options hold more, 18 Oct 2026).
+      "options[].text": Math.max(
+        hinge?.chars ?? 0,
+        ...hingeOffer(a).options.map(([n]) => hinge?.byCount?.[String(n)]?.chars ?? 0),
+      ),
+    },
     "question-set": {
       "items[].question": Math.max(0, ...quick.map(([, c]) => c.questions.cap)),
       "items[].answer": Math.max(0, ...quick.map(([, c]) => c.answers.cap)),

@@ -27,38 +27,60 @@ export const HINGE_CAP_STAGE: Record<Age, Stage> = {
 };
 export const HINGE_CAP_OPTIONS: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
 
-export const hingeCapInput = (age: Age, words: number): TemplateInput => ({
+export const hingeCapInput = (
+  age: Age,
+  words: number,
+  options = HINGE_CAP_OPTIONS[age],
+): TemplateInput => ({
   template: "hinge",
   heading: HINGE_CAP_QUESTION,
-  options: Array.from({ length: HINGE_CAP_OPTIONS[age] }, (_, i) => hingeSample(words, i)),
+  options: Array.from({ length: options }, (_, i) => hingeSample(words, i)),
   correct: 1,
 });
 
 /** Every theme holds `words` at comfort (not tight) or at all (not over). */
-function holds(age: Age, words: number, comfort: boolean): boolean {
+function holds(
+  age: Age,
+  words: number,
+  comfort: boolean,
+  options = HINGE_CAP_OPTIONS[age],
+): boolean {
   return THEMES.every((theme) => {
-    const r = layoutTemplate(hingeCapInput(age, words), theme, HINGE_CAP_STAGE[age]);
+    const r = layoutTemplate(hingeCapInput(age, words, options), theme, HINGE_CAP_STAGE[age]);
     return r.over.length === 0 && (!comfort || !r.tight);
   });
 }
 
+export type HingeCapCell = { words: number; maxWords: number; chars: number; maxChars: number };
+
+/** One option count's caps at an age: comfortable, then at all. */
+function measureAt(age: Age, options: number): HingeCapCell {
+  let words = 0;
+  while (words < 30 && holds(age, words + 1, true, options)) words += 1;
+  let maxWords = words;
+  while (maxWords < 30 && holds(age, maxWords + 1, false, options)) maxWords += 1;
+  return {
+    words,
+    maxWords,
+    chars: hingeSample(words).length,
+    maxChars: hingeSample(maxWords).length,
+  };
+}
+
+/**
+ * Per age: the caps at the most options (top level, as before) and `byCount`, each count from 2 up
+ * measured on its own (CAP-NEED-AUDIT.md row 2, 18 Oct 2026): fewer cards hold longer options.
+ */
 export function measureHingeCapacity() {
   const out: Record<
     string,
-    { words: number; maxWords: number; chars: number; maxChars: number; options: number }
+    HingeCapCell & { options: number; byCount: Record<string, HingeCapCell> }
   > = {};
   for (const age of ["early", "primary", "secondary"] as Age[]) {
-    let words = 0;
-    while (words < 30 && holds(age, words + 1, true)) words += 1;
-    let maxWords = words;
-    while (maxWords < 30 && holds(age, maxWords + 1, false)) maxWords += 1;
-    out[age] = {
-      words,
-      maxWords,
-      chars: hingeSample(words).length,
-      maxChars: hingeSample(maxWords).length,
-      options: HINGE_CAP_OPTIONS[age],
-    };
+    const most = HINGE_CAP_OPTIONS[age];
+    const byCount: Record<string, HingeCapCell> = {};
+    for (let n = 2; n <= most; n += 1) byCount[String(n)] = measureAt(age, n);
+    out[age] = { ...(byCount[String(most)] as HingeCapCell), options: most, byCount };
   }
   return out;
 }
