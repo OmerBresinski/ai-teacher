@@ -637,6 +637,10 @@ const hingeOffer = (a: Age) => {
         i + 2,
         hingeShown(a, c, i + 2),
       ]),
+      MIN_SHOWN_WORDS,
+      // Decision 32: the option count follows the options' length, so the most options stay
+      // offered for short options beside the longer cells for fewer (no cliff).
+      () => true,
     ),
   };
 };
@@ -646,6 +650,12 @@ const ends = (p: [number, number][], what: string) => {
   if (lo === undefined || hi === undefined) throw new Error(`layout menu: ${what} offers nothing`);
   return [lo, hi] as const;
 };
+/**
+ * The most practice tasks a slide holds unless every task is a one-line calculation (decision 30,
+ * 18 Oct 2026): word tasks take at most this many per slide; 5 to 6 are calculation-only cells.
+ */
+export const WORD_TASK_MAX = 4;
+
 /** Runs of counts with one budget, each clause whole: "3 to 4 tasks: up to 10 words each". */
 const countClauses = (pairs: [number, number][], one: string, many: string) =>
   runs(pairs)
@@ -659,7 +669,15 @@ const countClauses = (pairs: [number, number][], one: string, many: string) =>
 export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const o = hingeOffer(a);
   const [lo, hi] = ends(o.options, `hinge at ${a}`);
-  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.`;
+  // Decision 32 (18 Oct 2026): options too long for the most options, such as a belief written as a
+  // full sentence, take one option fewer; short options keep the most.
+  const most = o.options.find(([n]) => n === hi)?.[1] ?? 0;
+  const fewer = o.options.find(([n]) => n === hi - 1)?.[1] ?? 0;
+  const sentences =
+    hi >= 4 && fewer > most
+      ? ` Options that need more words than ${hi} options allow, as a belief written as a full sentence does, take ${hi - 1} options.`
+      : "";
+  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.${sentences}`;
 });
 
 // writer-prompt: owned by TEACH-110 v
@@ -686,7 +704,20 @@ export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a)
 export const PRACTICE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const p = practiceOffer(a);
   const [lo, hi] = ends(p.plain, `practice at ${a}`);
-  return `- practice: ${span(lo, hi)} tasks pupils work on alone in their books, each taking time to work out, calculate or write (flow shape check), each with the answer a pupil should reach, and a picture or diagram when the tasks work from one. More tasks take a second practice slide. Not for quick recall answered at once (question-set), one multiple-choice question (hinge), or the closing check (exit-ticket). Fits: ${countClauses(p.plain, "task", "tasks")}; with a picture or diagram: ${countClauses(p.pic, "task", "tasks")}. Each limit holds only for its own task count and whether the slide has a picture or diagram.`;
+  // Decision 30 (18 Oct 2026): past WORD_TASK_MAX tasks a slide holds only one-line calculations.
+  const words = p.plain.filter(([n]) => n <= WORD_TASK_MAX);
+  const calc = p.plain.filter(([n]) => n > WORD_TASK_MAX);
+  const calcFits = runs(calc)
+    .map(
+      ([x, y, w]) =>
+        `; ${span(x, y)} tasks, only when every task is a one-line calculation: up to ${w} words each`,
+    )
+    .join("");
+  return `- practice: ${span(lo, hi)} tasks pupils work on alone in their books, each taking time to work out, calculate or write (flow shape check), each with the answer a pupil should reach, and a picture or diagram when the tasks work from one. More tasks take a second practice slide. Not for quick recall answered at once (question-set), one multiple-choice question (hinge), or the closing check (exit-ticket). Fits: ${countClauses(words, "task", "tasks")}${calcFits}; with a picture or diagram: ${countClauses(
+    p.pic.filter(([n]) => n <= WORD_TASK_MAX),
+    "task",
+    "tasks",
+  )}. Each limit holds only for its own task count and whether the slide has a picture or diagram.`;
 });
 
 // writer-prompt: owned by TEACH-110 v

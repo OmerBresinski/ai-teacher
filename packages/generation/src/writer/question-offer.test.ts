@@ -37,7 +37,10 @@ const fitsOf = (line: string) =>
  */
 function clauses(fits: string, unit: RegExp, other: RegExp[] = []): [number, number][] {
   const out: [number, number][] = [];
-  for (const c of fits.split("; ")) {
+  // Decision 30: counts past WORD_TASK_MAX carry the calculation-only qualifier.
+  for (const c of fits
+    .replaceAll(", only when every task is a one-line calculation", "")
+    .split("; ")) {
     const m = new RegExp(`^(\\d+)(?: to (\\d+))? ${unit.source}: up to (\\d+) words`).exec(c);
     if (!m) {
       if (!other.some((r) => r.test(c))) throw new Error(`unparsed Fits clause: "${c}"`);

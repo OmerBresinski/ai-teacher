@@ -4,15 +4,16 @@ import c2 from "./bundles/pilot-v4.5/base-KS2.schema.json" with { type: "json" }
 import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" };
 import NEED from "./content-need.json" with { type: "json" };
 import { FIT_LAYOUTS, fitOffer } from "./fit-fits";
-import { shownCells } from "./layout-menu";
+import { HINGE_WRITER_MENU, PRACTICE_WRITER_MENU, shownCells, WORD_TASK_MAX } from "./layout-menu";
 import type { WriterStage } from "./schema";
-import { needOf, shownFor, shownWords, wordsWithin } from "./shown-cap";
+import { isCensored, needOf, shownFor, shownWords, wordsWithin } from "./shown-cap";
 import { defCaps, fitNeedKey } from "./slot-fill";
 
 /*
  * Need-aware shown caps (CAP-NEED-AUDIT.md, 18 Oct 2026): every shown body cap is at most what the
  * slide holds (its room), at least the content's need p80 where the room allows it, and at most
- * twice that need. Fields with no need row keep the 75% share.
+ * twice that need (unless the need is censored, a lower bound). Fields with no need row keep the
+ * 75% share.
  */
 type J = Record<string, any>;
 const STAGES: WriterStage[] = ["KS1", "KS2", "KS3-5"];
@@ -24,7 +25,9 @@ function check(what: string, stage: WriterStage, shown: number, room: number, ke
   const need = needOf(key, stage);
   if (need === undefined) return;
   expect(shown, `${stage} ${what}: under its need`).toBeGreaterThanOrEqual(Math.min(need, room));
-  expect(shown, `${stage} ${what}: over twice its need`).toBeLessThanOrEqual(2 * need);
+  // A censored need is a lower bound, so twice it is no ceiling (decision 32).
+  if (!isCensored(key, stage))
+    expect(shown, `${stage} ${what}: over twice its need`).toBeLessThanOrEqual(2 * need);
 }
 
 describe("the content-need table", () => {
@@ -78,11 +81,9 @@ describe("shown caps hold the room and the need", () => {
           );
   });
 
-  test("a censored need (a lower bound) shows the room, up to twice the need", () => {
+  test("a censored need (a lower bound) shows the room (decision 32)", () => {
     for (let chars = 1; chars <= 200; chars += 1)
-      expect(shownFor(chars, "KS3-5", "split-compare.side")).toBe(
-        Math.min(wordsWithin(chars, "KS3-5"), 32),
-      );
+      expect(shownFor(chars, "KS3-5", "split-compare.side")).toBe(wordsWithin(chars, "KS3-5"));
   });
 
   test("need unknown keeps the 75% share; a smaller room is never exceeded", () => {
@@ -107,5 +108,40 @@ describe("shown caps hold the room and the need", () => {
     // KS3 exit ticket offers 3 questions (no cliff); KS1 practice offers 3 pictured tasks.
     expect(shownCells("KS3-5").some((c) => c.cell === "exit 3")).toBe(true);
     expect(shownCells("KS1").some((c) => c.cell === "practice+picture 3")).toBe(true);
+  });
+});
+
+describe("decisions 30 and 32 (18 Oct 2026) in the menu lines", () => {
+  for (const stage of STAGES) {
+    test(`${stage}: word tasks stop at WORD_TASK_MAX; more are calculation-only`, () => {
+      const line = PRACTICE_WRITER_MENU[stage];
+      const fits = line.slice(line.indexOf("Fits:"));
+      const counts = [...fits.matchAll(/(\d+)(?: to (\d+))? tasks(,[^:]*)?:/g)];
+      expect(counts.length).toBeGreaterThan(0);
+      for (const m of counts) {
+        const top = Number(m[2] ?? m[1]);
+        if (top > WORD_TASK_MAX)
+          expect(m[3]).toContain("only when every task is a one-line calculation");
+        else expect(m[3]).toBeUndefined();
+      }
+    });
+    test(`${stage}: the most hinge options stay for short options; long ones take one fewer`, () => {
+      const offer = shownCells(stage).filter((c) => c.cell.startsWith("hinge"));
+      const most = Math.max(...offer.map((c) => Number(c.cell.split(" ")[1])));
+      const line = HINGE_WRITER_MENU[stage];
+      const at = (n: number) => offer.find((c) => c.cell === `hinge ${n} option`)?.shown ?? 0;
+      if (most >= 4 && at(most - 1) > at(most))
+        expect(line).toContain(
+          `as a belief written as a full sentence does, take ${most - 1} options.`,
+        );
+      else expect(line).not.toContain("full sentence");
+    });
+  }
+  test("KS2 and KS3 offer 4 short options and 3 sentence options of 15 words or more", () => {
+    for (const stage of ["KS2", "KS3-5"] as const) {
+      const offer = shownCells(stage);
+      expect(offer.some((c) => c.cell === "hinge 4 option")).toBe(true);
+      expect(offer.find((c) => c.cell === "hinge 3 option")?.shown).toBeGreaterThanOrEqual(15);
+    }
   });
 });

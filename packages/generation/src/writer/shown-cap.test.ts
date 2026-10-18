@@ -80,7 +80,9 @@ function runsOf(fits: string): { mode: string; pairs: [number, number][] }[] {
   const re =
     /(\d+)(?: to (\d+))? (items?|tasks?|questions?|options|sides? [a-z ]+?)(?:, every icon null)?: (?:heading up to \d+ words, )?up to (\d+) words/;
   let kind = "";
-  for (const piece of fits.split(/; |\. With /)) {
+  // Decision 30: counts past WORD_TASK_MAX carry the calculation-only qualifier.
+  const plain = fits.replaceAll(", only when every task is a one-line calculation", "");
+  for (const piece of plain.split(/; |\. With /)) {
     const m = re.exec(piece);
     if (!m) continue;
     // A prefix before the count ("with a lead of up to 7 words: ", "a picture ...: the same,
@@ -110,7 +112,10 @@ describe("guard: every generated layout at every stage", () => {
           for (const [i, [n, w]] of pairs.entries()) {
             if (w < floor) faults.push(`${mode} ${n}: ${w} words < ${floor}`);
             const prev = pairs[i - 1];
-            if (prev && prev[0] < n && w * 2 < prev[1])
+            // Decision 32: the hinge's most options are for short options only, so they may sit
+            // under half of the sentence options one count down; its line must say so.
+            const sentenceRule = layout === "hinge" && line.includes("full sentence");
+            if (prev && prev[0] < n && w * 2 < prev[1] && !sentenceRule)
               faults.push(`${mode} ${n}: ${w} words < half of ${prev[1]}`);
           }
         for (const m of fits.matchAll(/with a lead of up to (\d+) words/g))

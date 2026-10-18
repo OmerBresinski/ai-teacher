@@ -100,8 +100,9 @@ export function shownFor(
   const share = Math.min(shownWords(chars, stage), room);
   const need = needOf(key, stage);
   if (need === undefined) return share;
-  // A censored need (many stored fields pinned at their cap) is a lower bound: show the room.
-  if (isCensored(key, stage)) return Math.min(room, Math.floor(2 * need));
+  // A censored need (many stored fields pinned at their cap) is a lower bound, so twice it is no
+  // ceiling either: show the room (decision 32, 18 Oct: 3 sentence options of about 15-16 words).
+  if (isCensored(key, stage)) return room;
   return Math.min(room, Math.max(share, need), Math.floor(2 * need));
 }
 
