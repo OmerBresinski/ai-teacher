@@ -132,6 +132,13 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.some((e) => e.name === "Option")).toBe(true);
         return;
       }
+      // TEACH-215 part g (19 Oct 2026): the cover is set in the theme's round 5 composition on the
+      // theme's own ground, so the lab's saved cover is not its geometry or ground; its title is
+      // still drawn.
+      if (s.kind === "title" && want.kind === "title") {
+        expect(got.some((e) => e.type === "text" && e.name === "Title")).toBe(true);
+        return;
+      }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         return;
