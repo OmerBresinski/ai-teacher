@@ -134,14 +134,14 @@
     "3": {
       "picture": {
         "title": {
-          "cap": 22,
-          "hardMax": 37,
-          "words": 4
+          "cap": 37,
+          "hardMax": 51,
+          "words": 7
         },
         "text": {
-          "cap": 59,
-          "hardMax": 74,
-          "words": 12
+          "cap": 37,
+          "hardMax": 59,
+          "words": 7
         }
       },
       "quote": {
@@ -163,14 +163,14 @@
       },
       "text": {
         "title": {
-          "cap": 22,
-          "hardMax": 37,
-          "words": 4
+          "cap": 37,
+          "hardMax": 51,
+          "words": 7
         },
         "text": {
-          "cap": 101,
-          "hardMax": 125,
-          "words": 19
+          "cap": 88,
+          "hardMax": 101,
+          "words": 17
         }
       }
     }

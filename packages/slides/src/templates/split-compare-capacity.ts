@@ -50,6 +50,21 @@ export type SplitMeasured = Record<Field, { cap: number; hardMax: number; words:
 /** What a field holds while the fields measured before it are measured. */
 const BASE = { title: 16, quote: 20, text: 1 } as const;
 const ORDER: Field[] = ["text", "quote", "title"];
+/**
+ * Title room reserved while the words are measured, in characters (default: `BASE.title`). Ruling
+ * 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px on quick check,
+ * picture-with-points and split-compare. The smaller KS2 side text takes more of a narrow
+ * three-side field, and measured after it the title fell (pictures 37 -> 22 chars, words only
+ * hardMax 51 -> 37). Three-side picture and words-only cells therefore measure the words beside a
+ * two-line title (28 chars), which keeps every title and every text at or above its room before
+ * the change. The three-side quote cell keeps the stand-in: a 28-char title there would take the
+ * quote's room.
+ */
+const TITLE_RESERVE: Partial<
+  Record<SplitGroup, Partial<Record<2 | 3, Partial<Record<SplitZone, number>>>>>
+> = {
+  KS2: { 3: { picture: 28, text: 28 } },
+};
 /** The shortest stand-ins (a word or two): a re-measure when `BASE`'s overflow left a field 0. */
 const SHORT = { title: 8, quote: 8 } as const;
 const sidesOf = (n: number, zone: SplitZone, len: Partial<Record<Field, number>>): SplitSide[] =>
@@ -111,10 +126,13 @@ export function measureSplitCell(
   n: 2 | 3,
   zone: SplitZone,
   look: SplitLook = "split-compare",
+  order: readonly Field[] = ORDER,
+  reserve = look === "split-compare" ? (TITLE_RESERVE[group]?.[n]?.[zone] ?? 0) : 0,
 ) {
-  const len: Partial<Record<Field, number>> = {};
+  // The title's reserved room: the words are measured beside a title this long, not the stand-in.
+  const len: Partial<Record<Field, number>> = reserve ? { title: reserve } : {};
   const out: Partial<SplitMeasured> = {};
-  const fields = ORDER.filter((f) => f !== "quote" || zone === "quote");
+  const fields = order.filter((f) => f !== "quote" || zone === "quote");
   for (const f of fields) {
     const at = (comfy: boolean) => (chars: number) =>
       allFit(group, sidesOf(n, zone, { ...len, [f]: chars }), comfy, look);
