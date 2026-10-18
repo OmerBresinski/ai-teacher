@@ -28,7 +28,8 @@ export const MARK_PPTX: Record<string, { square: string; wide: string }> = {
   disc: { square: "ellipse", wide: "roundRect" },
   pill: { square: "ellipse", wide: "roundRect" },
   outline: { square: "ellipse", wide: "roundRect" },
-  hex: { square: "hexagon", wide: "hexagon" },
+  // The editor's own outline (`markHexagonPoints`): the preset cuts by the shorter side.
+  hex: { square: "custGeom", wide: "custGeom" },
   notch: { square: "custGeom", wide: "custGeom" },
   square: { square: "rect", wide: "rect" },
   tile: { square: "rect", wide: "rect" },
