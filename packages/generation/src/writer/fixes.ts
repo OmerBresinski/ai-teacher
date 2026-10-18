@@ -214,9 +214,9 @@ export const SWITCH: Record<string, string[]> = {
   "big-visual": ["visual-text"],
   explain: ["visual-text", "steps"],
   steps: ["visual-text", "explain"],
+  compare: ["visual-text", "explain"],
   "equation-hero": ["steps"],
-  // compare is retired (ruling 218): a sequence whose captions run over becomes a split.
-  "picture-sequence": ["split-compare"],
+  "picture-sequence": ["compare"],
   discussion: ["question-set"],
   "question-set": ["practice"],
   practice: ["question-set"],
@@ -224,9 +224,26 @@ export const SWITCH: Record<string, string[]> = {
   hinge: [],
 };
 
+const { compare: _compare, ...kept } = SWITCH;
+/**
+ * The switches on a pilot pack (production): compare is retired there (ruling 218), so nothing
+ * switches to or from it, and a picture sequence whose captions run over may become a split.
+ * Without a pack, `SWITCH` as before.
+ */
+export const PACK_SWITCH: Record<string, string[]> = {
+  ...kept,
+  "picture-sequence": ["split-compare"],
+};
+
+/** The layouts a fit repair may give the slide: its own and those it may switch to. */
+export const switchesFor = (template: string, pack: boolean): string[] => [
+  template,
+  ...((pack ? PACK_SWITCH : SWITCH)[template] ?? []),
+];
+
 /** The layouts menu cut to the header, the slide's own layout and those it may switch to. */
-export function layoutsFor(menu: string, template: string): string {
-  const keep = new Set([template, ...(SWITCH[template] ?? [])]);
+export function layoutsFor(menu: string, template: string, pack = false): string {
+  const keep = new Set(switchesFor(template, pack));
   return menu
     .split("\n")
     .filter((l, k) => k === 0 || keep.has(/^- ([a-z-]+):/.exec(l)?.[1] ?? ""))

@@ -1,4 +1,4 @@
-import { SPLIT_COMPARE_WRITER_MENU } from "./layout-menu";
+import { layoutOffer, MENU_AGE, menuWordCaps, sideCaps } from "./layout-menu";
 import { resolveAsks, type VisualState } from "./materialise";
 import type { WriterStage } from "./schema";
 
@@ -70,29 +70,44 @@ export function asWords(raw: S): S {
 }
 
 /**
- * split-compare's words-only room for `sides` sides at a stage, as production's menu line states
- * it (the writer is told the same numbers): each side's text, and its title. Undefined when the
- * menu offers no words-only split of that many sides.
+ * split-compare's words-only room for `sides` sides at a stage, from the same numbers production's
+ * menu prints (`menuWordCaps`) and the measured table behind them (`sideCaps`, characters).
+ * Undefined when the menu offers no words-only split of that many sides.
  */
 export function splitWordsOnly(
   stage: WriterStage,
   sides: number,
-): { text: number; title: number } | undefined {
-  const line = SPLIT_COMPARE_WRITER_MENU[stage];
-  const text = new RegExp(`\\b${sides} sides words only: up to (\\d+) words each`).exec(line)?.[1];
-  const title = /A side's title names its thing in up to (\d+) words/.exec(line)?.[1];
-  return text && title ? { text: Number(text), title: Number(title) } : undefined;
+): { text: number; title: number; textChars: number; titleChars: number } | undefined {
+  const words = menuWordCaps(stage)["split-compare"];
+  const text = words.sides[String(sides)];
+  const chars = sideCaps(MENU_AGE[stage], sides, "");
+  if (!text || !chars?.text || !chars.title) return undefined;
+  return { text, title: words.title, textChars: chars.text, titleChars: chars.title };
 }
 
 const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
 
+/** The pilot pack a table's fallback is laid for (production): its stage and its drawn-size check. */
+export type TablePack = {
+  stage: WriterStage;
+  /** The slide holds at its drawn size: no field past its room (heading included), no member too many. */
+  holds: (s: S) => boolean;
+};
+
 /**
- * A table that cannot draw, as words that keep its data (a row's first cell names it). Two or
- * three rows become a words-only split-compare when every side fits production's caps and nothing
- * else needs a place (split-compare has no lead); anything else becomes explain's labelled points.
- * compare is retired (ruling 218): this never writes it.
+ * A table that cannot draw, as words that keep its data (a row's first cell names it).
+ *
+ * Without a pack (lab runs on a bundle): cards (compare) for 2-4 rows, else labelled points, as
+ * before ruling 218.
+ *
+ * On a pilot pack (production; compare retired, ruling 218), the first that holds every cell:
+ * - a words-only split-compare, 2-3 rows, when every side is within the menu's words and the
+ *   table's characters, the slide has no lead (split-compare has none) and it holds as drawn;
+ * - a panel-list, at a row count the menu offers, when it holds as drawn;
+ * - explain as its schema takes it: one row a key card, 2-3 rows as plain points, more rows
+ *   grouped into 3 points. Nothing is dropped; a slide still over shows the editor's chip.
  */
-export function asTableText(raw: S, table: TableData, stage: WriterStage): S {
+export function asTableText(raw: S, table: TableData, pack?: TablePack): S {
   const s = resolveAsks(raw, () => false);
   const { header, rows } = table;
   const cell = (r: string[], k: number) => (header?.[k] ? `${header[k]}: ${r[k]}` : (r[k] ?? ""));
@@ -111,28 +126,82 @@ export function asTableText(raw: S, table: TableData, stage: WriterStage): S {
   const lead = [str(s.lead), constant ? `${constant}.` : ""].filter(Boolean).join(" ");
   const name = (r: string[]) =>
     header?.[0] && /^\d/.test(r[0] ?? "") ? `${header[0]} ${r[0]}` : (r[0] ?? "");
-  const room =
-    rows.length >= 2 && rows.length <= 3 ? splitWordsOnly(stage, rows.length) : undefined;
+  const heading = str(s.heading);
+  if (!pack) {
+    if (rows.length >= 2 && rows.length <= 4 && keep.length)
+      return {
+        template: "compare",
+        heading,
+        ...(lead ? { lead } : {}),
+        columns: rows.map((r) => ({ label: name(r), text: rest(r), picture: null })),
+      };
+    return {
+      template: "explain",
+      heading,
+      lead,
+      points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
+    };
+  }
+  const n = rows.length;
+  const filled = rows.every((r) => name(r).trim() && rest(r).trim());
+  const room = n >= 2 && n <= 3 ? splitWordsOnly(pack.stage, n) : undefined;
   const sides = rows.map((r) => ({ title: name(r), text: rest(r), quote: null, picture: null }));
   if (
     room &&
     keep.length &&
+    filled &&
     !lead &&
     sides.every(
       (d) =>
-        d.title.trim() &&
-        d.text.trim() &&
         wordCount(d.title) <= room.title &&
-        wordCount(d.text) <= room.text,
+        wordCount(d.text) <= room.text &&
+        d.title.length <= room.titleChars &&
+        d.text.length <= room.textChars,
     )
-  )
-    return { template: "split-compare", heading: str(s.heading), accentWord: null, sides };
-  return {
-    template: "explain",
-    heading: str(s.heading),
-    lead,
-    points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
-  };
+  ) {
+    const split: S = { template: "split-compare", heading, accentWord: null, sides };
+    if (pack.holds(split)) return split;
+  }
+  const offer = layoutOffer(pack.stage)["panel-list"];
+  if (keep.length && filled && (lead ? offer.lead : offer.plain).includes(n)) {
+    const panel: S = {
+      template: "panel-list",
+      heading,
+      lead: lead || null,
+      panel: null,
+      items: rows.map((r) => ({ name: name(r), text: rest(r), icon: null, picture: null })),
+    };
+    if (pack.holds(panel)) return panel;
+  }
+  const line = (r: string[]) =>
+    keep.length && rest(r).trim() ? `${name(r)}: ${rest(r)}` : name(r);
+  if (n === 1 && keep.length)
+    return {
+      template: "explain",
+      heading,
+      lead,
+      points: [{ label: name(rows[0] as string[]), text: rest(rows[0] as string[]) }],
+    };
+  // One row with nothing beside its name: the name is the lead's last sentence.
+  if (n === 1)
+    return {
+      template: "explain",
+      heading,
+      lead: [lead, name(rows[0] as string[])].filter(Boolean).join(" "),
+      points: [],
+    };
+  if (n <= 3) return { template: "explain", heading, lead, points: rows.map(line) };
+  // More rows than explain holds: three points, rows shared out in order, every cell kept.
+  const per = Math.ceil(n / 3);
+  const points = [0, 1, 2]
+    .map((g) =>
+      rows
+        .slice(g * per, (g + 1) * per)
+        .map(line)
+        .join("; "),
+    )
+    .filter(Boolean);
+  return { template: "explain", heading, lead, points };
 }
 
 /** A picture field as the writer writes one: `shows` is what is searched for, never missing. */
