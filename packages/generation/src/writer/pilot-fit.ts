@@ -1,4 +1,5 @@
 import type { FieldReport } from "@tj/slides/templates";
+import { nWords, wordCount, wordsOver } from "./fixes";
 import { type MaterialiseCtx, pilotFit, STABLE_ID_TEMPLATES } from "./materialise";
 import { whenNonFatal } from "./services";
 
@@ -14,6 +15,8 @@ type S = Record<string, unknown>;
 export type PilotOver = {
   path: string;
   chars: number;
+  /** The field's words as the writer wrote them (a pack's repair is told its overflow in words). */
+  words: number;
   /** The room to cut to: the measured cap, or the hard maximum where the cap is 0 or absent. */
   room: number;
   /** Past the hard maximum: the frame would hide words. */
@@ -41,9 +44,11 @@ export function pilotOvers(s: S, ctx: MaterialiseCtx): { overs: PilotOver[]; too
     const past = f.over || (!!f.cap && f.cap > 0 && f.chars > f.cap);
     if (!past || room <= 0) return [];
     const clipped = f.over || (f.hardMax != null && f.chars > f.hardMax);
-    return [
-      { path: writerPath(fit.template, String(s.template), f.path), chars: f.chars, room, clipped },
-    ];
+    const path = writerPath(fit.template, String(s.template), f.path);
+    const text = path.split(".").reduce<unknown>((at, k) => (at as S | undefined)?.[k], s);
+    // A field not found at its path is counted at the menu's own rate, about 6 characters a word.
+    const words = typeof text === "string" ? wordCount(text) : Math.round(f.chars / 6);
+    return [{ path, chars: f.chars, words, room, clipped }];
   });
   // A count past the layout's maximum ("items", "rows 6/5", "sides 4/3").
   const tooMany = fit.over.some((o) => {
@@ -56,9 +61,16 @@ export function pilotOvers(s: S, ctx: MaterialiseCtx): { overs: PilotOver[]; too
   return { overs, tooMany };
 }
 
-/** The fault line a repair call reads for one field, in characters. */
-export const overFault = (o: PilotOver) =>
-  `overflow: ${o.path} is ${o.chars} characters, room ${o.room}${o.clipped ? " (words hidden)" : ""}`;
+/**
+ * The fault line a repair call reads for one field, in characters; on a pack run (`words`) in
+ * words, the unit of the pack's menu.
+ */
+export const overFault = (o: PilotOver, words = false) => {
+  const hidden = o.clipped ? " (words hidden)" : "";
+  if (!words) return `overflow: ${o.path} is ${o.chars} characters, room ${o.room}${hidden}`;
+  const w = wordsOver(o.words, o.chars, o.room);
+  return `overflow: ${o.path} is ${nWords(w.words)}, room about ${w.room}${hidden}`;
+};
 
 /**
  * `text` cut back to its last whole sentence within `room` characters, or nothing when no whole
@@ -73,9 +85,16 @@ export function sentenceCut(text: string, room: number): string | undefined {
   return end > 0 ? t.slice(0, end + 1) : undefined;
 }
 
-/** The second repair's fault line: the field's exact budget in characters. */
-export const budgetFault = (o: PilotOver) =>
-  `overflow: ${o.path} is ${o.chars} characters: rewrite it whole, as a complete sentence, in at most ${o.room} characters`;
+/**
+ * The second repair's fault line: the field's exact budget in characters; on a pack run (`words`)
+ * the same budget in words.
+ */
+export const budgetFault = (o: PilotOver, words = false) => {
+  if (!words)
+    return `overflow: ${o.path} is ${o.chars} characters: rewrite it whole, as a complete sentence, in at most ${o.room} characters`;
+  const w = wordsOver(o.words, o.chars, o.room);
+  return `overflow: ${o.path} is ${nWords(w.words)}: rewrite it whole, as a complete sentence, in at most ${nWords(w.room)}`;
+};
 
 const setPath = (s: S, path: string, value: string): S => {
   const out = structuredClone(s) as S;
@@ -247,6 +266,8 @@ export async function fitPilot(
   s: S,
   ctx: MaterialiseCtx,
   repair?: (slide: S, faults: string[]) => Promise<S | undefined>,
+  /** A pack run: the repair's fault lines count words, as the pack's menu does. */
+  words = false,
 ): Promise<PilotFitResult> {
   const first = pilotOvers(s, ctx);
   const slips0 = pilotSlips(s);
@@ -259,7 +280,7 @@ export async function fitPilot(
   let left = first;
   if (repair) {
     const faults = [
-      ...first.overs.map((o) => (o.clipped ? budgetFault(o) : overFault(o))),
+      ...first.overs.map((o) => (o.clipped ? budgetFault(o, words) : overFault(o, words))),
       ...(first.tooMany ? [`overflow: ${membersKey(s)} more than the layout holds`] : []),
       ...slips0,
     ];
