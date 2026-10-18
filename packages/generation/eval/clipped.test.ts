@@ -18,7 +18,10 @@ describe("clipped wording", () => {
 
   test("two short sentences in a row are choppy; maths lines are not fragments", () => {
     expect(clipSignals("Half is six. Take one.").choppy).toBe(true);
-    expect(clipSignals("Share into two equal groups. One group is half.").choppy).toBe(false);
+    expect(clipSignals("Five and seven are unequal. Six and six are equal.").choppy).toBe(true);
+    expect(clipSignals("Share 12 counters into two equal groups. One group is half.").choppy).toBe(
+      false,
+    );
     expect(clipSignals("16 ÷ 2 = 8; 8 ÷ 2 = 4")).toMatchObject({ joins: true, fragment: false });
   });
 

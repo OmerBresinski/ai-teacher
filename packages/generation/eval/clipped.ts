@@ -13,7 +13,7 @@ import type { FieldFill } from "./fill";
  *   miss verbs they do not name, so a flagged clause is a candidate, listed in `examples`.
  *   A whole answer of SHORT_ANSWER words or fewer ("8 counters") is a natural short answer, never
  *   a fragment.
- * - `choppy`: two or more consecutive sentences, each under CLIPPED_SHORT_SENTENCE words.
+ * - `choppy`: two or more consecutive sentences, each of CLIPPED_SHORT_SENTENCE words or fewer.
  * - `atCap`: the field's words equal its shown cap exactly (joined from `deckFields` by slide and
  *   path; fields with no cap are left out of that share).
  *
@@ -25,7 +25,7 @@ type J = Record<string, unknown>;
 
 /** A field this long or shorter is "short" for the joins signal. */
 export const CLIPPED_SHORT_FIELD = 20;
-/** A sentence under this many words is short for the choppy signal. */
+/** A sentence of this many words or fewer is short for the choppy signal (coordinator, 18 Oct). */
 export const CLIPPED_SHORT_SENTENCE = 5;
 /** An answer this short is a short answer, not a clipped sentence. */
 export const SHORT_ANSWER = 3;
@@ -106,7 +106,7 @@ export function clipSignals(text: string): Pick<ClipField, "joins" | "fragment" 
   let run = 0;
   let choppy = false;
   for (const n of sentences) {
-    run = n < CLIPPED_SHORT_SENTENCE ? run + 1 : 0;
+    run = n <= CLIPPED_SHORT_SENTENCE ? run + 1 : 0;
     if (run >= 2) choppy = true;
   }
   return { joins, fragment, choppy };
