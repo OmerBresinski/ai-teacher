@@ -1653,7 +1653,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const own = String((plan.slides[i] as S)?.template ?? "");
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
-    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey));
+    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
     // A restaging call is told its room in characters.
     if (mode !== "fit") {
       const room = roomLine(plan.slides[i], stageKey);
@@ -1782,7 +1782,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!left.length) return first;
     return repairOne({
       slide: c.slide,
-      faults: [...left, "still over after one reword: cut the characters given above"],
+      faults: [
+        ...left,
+        `still over after one reword: cut the ${pilot ? "words" : "characters"} given above`,
+      ],
     });
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
@@ -1809,7 +1812,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           return ok ? (plan.slides[i] as S) : undefined;
         }
       : undefined;
-    const r = await fitPilot(s0, pctx, repair);
+    const r = await fitPilot(s0, pctx, repair, !!pilot);
     log({
       ev: "pilot-fit",
       slide: i + 1,

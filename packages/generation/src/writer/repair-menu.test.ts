@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import CAPACITY from "@tj/slides/templates/cover-capacity.json" with { type: "json" };
 import * as P from "./bundles/base4f-p123/prompts.gen";
-import { layoutsFor, PACK_SWITCH } from "./fixes";
+import { charsOver, layoutsFor, PACK_SWITCH, repairTerms } from "./fixes";
+import { budgetFault, overFault } from "./pilot-fit";
 import { offeredLayouts, packRepairMenu, packRepairSchema, pilotRequest } from "./pilot-pack";
 import type { ChatReq } from "./services";
 import { runWriter } from "./stage";
@@ -26,6 +28,8 @@ const long = (n: number) =>
  * The y8 replay written on the pilot pack: its slide 6 (a compare, written before v4.7) is an
  * explain far over its room instead. Its visual-text slide goes to the fit repair.
  */
+/** Every repair.txt call of the last `repairCalls` run, a pilot slide's own-layout repair too. */
+let allRepairs: ChatReq[] = [];
 async function repairCalls(): Promise<ChatReq[]> {
   const w = JSON.parse(read("main.json").text);
   w.slides[5] = {
@@ -57,6 +61,7 @@ async function repairCalls(): Promise<ChatReq[]> {
       },
     },
   });
+  allRepairs = calls.filter((c) => c.name === "slide" && c.system.startsWith("You fix one slide"));
   // The fit repair (repair.txt), not a pilot slide's own-layout repair (one branch).
   return calls.filter(
     (c) =>
@@ -132,6 +137,68 @@ describe("the fit repair offers only what the pilot pack offers (ruling 218)", (
       expect(menu.sort()).toEqual([own, ...(PACK_SWITCH[own] ?? [])].sort());
       expect([...layouts].sort()).toEqual(menu);
     }
+  });
+});
+
+/** A repair request's fault lines: the user turn after its "Faults:" line. */
+const faultsOf = (c: ChatReq) => c.user.split("\nFaults:\n")[1] ?? "";
+
+describe("a pack's repair counts in words, as its menu does", () => {
+  test("every repair on v4.7 states its overflow in words and never in characters", async () => {
+    await repairCalls();
+    expect(allRepairs.length).toBeGreaterThan(0);
+    const overflows = allRepairs.flatMap((c) =>
+      faultsOf(c)
+        .split("\n")
+        .filter((l) => /^(overflow|clipped|all the slide|[a-z]+(\[\d+\])?:)/.test(l)),
+    );
+    expect(overflows.some((l) => /\d+ words?\b/.test(l))).toBe(true);
+    for (const c of allRepairs) {
+      expect(faultsOf(c)).not.toMatch(/character/);
+      // The menu is in words (Fits) too, so no line the repair reads speaks in characters.
+      expect(c.user).not.toMatch(/\d+ characters/);
+    }
+  });
+});
+
+describe("fault lines: characters without a pack, words on one", () => {
+  const o = { path: "items.0.text", chars: 120, words: 20, room: 90, clipped: false };
+  test("without a pack every fault line keeps its exact wording in characters", () => {
+    expect(overFault(o)).toBe("overflow: items.0.text is 120 characters, room 90");
+    expect(budgetFault(o)).toBe(
+      "overflow: items.0.text is 120 characters: rewrite it whole, as a complete sentence, in at most 90 characters",
+    );
+    expect(repairTerms("overflow: practice 354/328pt")).toBe(
+      "overflow: practice needs about 8% fewer characters to fit",
+    );
+    const cap = CAPACITY.KS2.picture.question;
+    const lead = "abcd ".repeat(Math.ceil(cap / 5) + 4).trim();
+    const slide = { template: "title", heading: "Ponds", lead, picture: { shows: "a pond" } };
+    expect(charsOver(slide, "KS2")).toEqual([
+      `lead: ${lead.length} characters, room ${cap} (${lead.length - cap} over)`,
+    ]);
+    expect(repairTerms("overflow: lead 400/300pt", slide, "KS2")).toBe(
+      `overflow: lead: ${lead.length} characters, room ${cap} (${lead.length - cap} over)`,
+    );
+  });
+  test("on a pack the same overflow is counted in words, scaled by the text's own length", () => {
+    expect(overFault(o, true)).toBe("overflow: items.0.text is 20 words, room about 15");
+    expect(budgetFault(o, true)).toBe(
+      "overflow: items.0.text is 20 words: rewrite it whole, as a complete sentence, in at most 15 words",
+    );
+    expect(repairTerms("overflow: practice 354/328pt", undefined, undefined, true)).toBe(
+      "overflow: practice needs about 8% fewer words to fit",
+    );
+    const cap = CAPACITY.KS2.picture.question;
+    const n = Math.ceil(cap / 5) + 4;
+    const lead = "abcd ".repeat(n).trim();
+    const slide = { template: "title", heading: "Ponds", lead, picture: { shows: "a pond" } };
+    const [line] = charsOver(slide, "KS2", true);
+    expect(line).toMatch(new RegExp(`^lead: ${n} words, room about (\\d+) \\((\\d+) over\\)$`));
+    const room = Number(/room about (\d+)/.exec(line ?? "")?.[1]);
+    // Cutting the words over leaves the text within its room in characters.
+    expect("abcd ".repeat(room).trim().length).toBeLessThanOrEqual(cap);
+    expect(line).not.toMatch(/character/);
   });
 });
 
