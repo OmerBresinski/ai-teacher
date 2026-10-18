@@ -1796,7 +1796,7 @@ export function layoutTemplate(
 
 /** The theme's title band under a content slide's heading, measured on the laid slide. */
 function banded(r: TemplateResult, theme: Theme): TemplateResult {
-  withTitleBand(r.slide.elements, theme);
+  withTitleBand(r.slide.elements, theme, r.slide.kind);
   return r;
 }
 

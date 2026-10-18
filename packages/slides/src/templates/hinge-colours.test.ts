@@ -54,13 +54,15 @@ describe("hinge letter keys", () => {
           const card = surfaceStyle(theme, "card");
           const accent = surfacesOf(theme).marks.keyFill === "accent";
           const fill = accent ? surfaceStyle(theme, "key").fill : card.ink;
-          const shape = markLook(theme, "key", 30, fill ?? "#000", "#fff").shape;
+          // The key's family (TEACH-215 part k): an outline ring on the card, a sticky note.
+          const look = markLook(theme, "key", 30, fill ?? "#000", card.fill);
+          const under = look.fill === "transparent" ? card.fill : look.fill;
           for (const k of keys) {
-            expect(k.shape).toBe(shape);
-            expect(k.fill).toBe(fill);
-            expect(
-              contrastRatio(k.textStyle?.color as string, k.fill as string),
-            ).toBeGreaterThanOrEqual(accent ? 4.5 : 3);
+            expect(k.shape).toBe(look.shape);
+            expect(k.fill).toBe(look.fill);
+            expect(contrastRatio(k.textStyle?.color as string, under)).toBeGreaterThanOrEqual(
+              accent ? 4.5 : 3,
+            );
           }
         }
   });

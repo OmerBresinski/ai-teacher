@@ -58,6 +58,7 @@ import {
 } from "@tj/domain/documents";
 import {
   fittedFontSize,
+  footStrip,
   growFixedText,
   HIGHLIGHT_FALLBACK_FILLS,
   mathFaceOf,
@@ -1742,6 +1743,16 @@ export async function exportLessonPptx(
           keyInk: surfaceStyle(theme, "key", "right").ink ?? theme.colors.onAccent,
         }))
           await drawElement(pptxSlide, mark, theme, ctx, NO_FRAME);
+      // The theme's foot strip over everything, as the editor draws it (`footStrip`).
+      const strip = footStrip(theme, slide);
+      if (strip)
+        await drawElement(
+          pptxSlide,
+          { id: `${slide.id}-foot`, type: "shape", shape: "rect", name: "Foot strip", ...strip },
+          theme,
+          ctx,
+          NO_FRAME,
+        );
 
       const notes = slide.notes?.trim();
       const stepNote = steps > 1 ? `Reveal ${step + 1} of ${steps}.` : "";

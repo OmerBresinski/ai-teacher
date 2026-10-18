@@ -222,7 +222,8 @@ describe("hinge: answer, notes, letters, maths", () => {
         expect(e.x).toBeGreaterThanOrEqual(0);
         expect(e.y + e.h).toBeLessThanOrEqual(540);
       }
-      expect(els(r)[0]?.name).toBe(HINGE_NAMES.stage);
+      // Under any title band (Poster, TEACH-215 part k), the stage is the first thing laid.
+      expect(els(r).find((e) => e.name !== "surface:title")?.name).toBe(HINGE_NAMES.stage);
     }
   });
 });

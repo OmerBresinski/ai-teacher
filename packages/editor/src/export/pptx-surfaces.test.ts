@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
+import { footStrip, getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
 import {
   paintSurface,
   SURFACE_TOKEN_SETS,
@@ -104,7 +104,9 @@ describe("a fixture deck per role exports the listed shapes (row 4)", () => {
       );
       for (const [i, [name, spec, want]] of cases.entries()) {
         const x = await xml(i + 1);
-        expect({ name, geom: geometries(x) }).toEqual({ name, geom: [want] });
+        // The theme's foot strip (TEACH-215 part k) is the last shape on a slide that has one.
+        const foot = footStrip(theme, slide("f", [])) ? ["rect"] : [];
+        expect({ name, geom: geometries(x) }).toEqual({ name, geom: [want, ...foot] });
         const fill = surfaceStyle(theme, spec.role, spec.state).fill.slice(1, 7).toUpperCase();
         expect({ name, filled: x.includes(`<a:srgbClr val="${fill}"`) }).toEqual({
           name,
@@ -162,7 +164,8 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
       expect(s[0]).toContain(hex(surfaceStyle(theme, "medal").fill));
       expect(s[0]).toContain(hex(surfaceStyle(theme, "badge").fill));
       expect(s[1]).toContain(hex(surfaceStyle(theme, "field-b").fill));
-      expect(geometries(s[2] ?? "")).toEqual(["custGeom", "custGeom"]);
+      const foot = footStrip(theme, slide("f", [])) ? ["rect"] : [];
+      expect(geometries(s[2] ?? "")).toEqual(["custGeom", "custGeom", ...foot]);
       expect(s[2]).toContain(hex(surfaceStyle(theme, "field-a").fill));
 
       const art = pilot(theme).map((sl) => groundArtSvg(theme, sl));
@@ -325,5 +328,16 @@ describe("ground art size and editability", () => {
     zip.file("ppt/media/b.png", "two");
     const buf = await zip.generateAsync({ type: "arraybuffer" });
     expect(await shareMedia(buf)).toBe(buf);
+  });
+});
+
+describe("the foot accent strip (TEACH-215 part k)", () => {
+  it("reaches the file over the slide's shapes, in the accent, 14px at 1440; never on the cover", async () => {
+    const theme = getTheme("treehouse");
+    const { xml } = await exportDeck(theme, [slide("a", []), slide("b", [], { kind: "title" })]);
+    const content = await xml(1);
+    expect(geometries(content)).toEqual(["rect"]);
+    expect(content).toContain(theme.colors.accent.slice(1).toUpperCase());
+    expect(geometries(await xml(2))).toEqual([]);
   });
 });

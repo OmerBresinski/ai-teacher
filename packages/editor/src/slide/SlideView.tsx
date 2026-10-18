@@ -1,6 +1,7 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  footStrip,
   growFixedText,
   isDiagramMark,
   mathFaceOf,
@@ -280,6 +281,8 @@ export function SlideView({
           ),
         )}
 
+        <FootStrip theme={theme} slide={slide} zIndex={drawn.length + 1} />
+
         {revealAnswer && slide.question?.type === "matching" ? (
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
         ) : null}
@@ -353,6 +356,31 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
               backgroundRepeat: "no-repeat",
             }
           : { background: themeImage }),
+      }}
+    />
+  );
+}
+
+/**
+ * The theme's accent strip along the foot (`footStrip`): over the slide's elements, as the gold's
+ * `.footbar` (z-index 6), under the reveal chrome.
+ */
+function FootStrip({ theme, slide, zIndex }: { theme: Theme; slide: Slide; zIndex: number }) {
+  const strip = footStrip(theme, slide);
+  if (!strip) return null;
+  return (
+    <div
+      aria-hidden
+      data-foot-strip=""
+      style={{
+        position: "absolute",
+        left: strip.x,
+        top: strip.y,
+        width: strip.w,
+        height: strip.h,
+        background: strip.fill,
+        zIndex,
+        pointerEvents: "none",
       }}
     />
   );

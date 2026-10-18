@@ -32,7 +32,8 @@ describe("safe area", () => {
   });
 
   /** Full-bleed by design (TEACH-75 part w): split-compare's ground and colour fields, as backdrops are in `reflow.ts`. */
-  const FULL_BLEED = new Set<string>([SPLIT_NAMES.ground, SPLIT_NAMES.field]);
+  // The title band (Poster's `title-treat: band`, TEACH-215 part k) runs from the slide's top edge.
+  const FULL_BLEED = new Set<string>([SPLIT_NAMES.ground, SPLIT_NAMES.field, "surface:title"]);
   test("split-compare: only its named full-bleed ground and fields leave the safe area, on every theme", () => {
     for (const t of THEMES)
       for (const stage of ["ks1", "ks2", "ks3"] as Stage[])

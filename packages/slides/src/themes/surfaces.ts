@@ -152,9 +152,10 @@ export function markStyle(
         corner: 0,
         ...(marks.offset
           ? {
-              shadow: { x: 6, y: 6, color: marks.offset.color },
+              // round 2 themes2.css `--medal-shade: 6px 6px 0` and `--medal-lw: 3px`, at 1440 / 1.5.
+              shadow: { x: 4, y: 4, color: marks.offset.color },
               line: marks.offset.color,
-              lineWidth: 3,
+              lineWidth: 2,
             }
           : {}),
       };
@@ -340,6 +341,13 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
       corner: "full",
     }),
+    // The quick check's answer column as a solid block (round 4 themes4.css `.qc`: Poster's deep
+    // teal with cream answers, Beacon's blue with white), where the theme sets one.
+    ...(t["qc-field-fill"] && t["qc-field-ink"]
+      ? {
+          "field-b:inverse": s(t["qc-field-fill"], { ink: t["qc-field-ink"], corner: field }),
+        }
+      : {}),
   };
   withMarks(roles, states, marks, need("bg"));
   return {
@@ -783,11 +791,14 @@ export function markLook(
   theme: Pick<Theme, "id" | "dark">,
   family: "badge" | "key" | "medal" | "chip",
   d: number,
-  fill: string,
+  asked: string,
   ink: string,
 ): MarkLook {
   const m = surfacesOf(theme).marks;
   const kind = m[family];
+  // An outline family's role is drawn as a ring on no fill: a caller that asks for the role's own
+  // fill (the hinge key in its theme's colour, Calm's teal) means the ring's colour.
+  const fill = isClear(asked) ? (surfacesOf(theme).roles[family].line ?? ink) : asked;
   switch (kind) {
     case "disc":
       return { shape: "ellipse", fill, ink };
