@@ -79,11 +79,12 @@ const DMAX = 140; // one object's cell at most: big enough to read from the back
 const PILE = { y: 128, h: 112 };
 const TOP = 120, BOT = 556; // the stage between the title and the sentence row
 // a division's whole steps down a line under its sentence (WHOLE_DY): the row rises so that line ends by the
-// last content line (GRID.bottom 640), never past the foot; the stage above gives up the same height
-const WHOLE_DY = 54, EQ_RISE = 616 + WHOLE_DY - GRID.bottom;
+// last content line (GRID.bottom 640), never past the foot. The stage above gives up only STAGE_GIVE of it
+// (the row's own gap above takes the rest), so common shapes keep theirs: 2 groups of 6 stays 2 rows of 3
+const WHOLE_DY = 54, EQ_RISE = 616 + WHOLE_DY - GRID.bottom, STAGE_GIVE = 16;
 function lay(P) {
   const M = nums(P); const { G, S, R, N } = M;
-  const top = M.sharing ? PILE.y + PILE.h + 20 : TOP, bot = M.div ? BOT - EQ_RISE : BOT, H = bot - top;
+  const top = M.sharing ? PILE.y + PILE.h + 20 : TOP, bot = M.div ? BOT - STAGE_GIVE : BOT, H = bot - top;
   const out = { d: 0, groups: [], pile: [], left: null, top, bot, turn: null };
   if (M.array) {
     // one array, laid out once. Row totals sit at the row ends; a turn spins the same array a quarter turn
