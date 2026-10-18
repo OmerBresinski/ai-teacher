@@ -24,7 +24,7 @@
   "primary": {
     "3": {
       "questions": {
-        "cap": 88,
+        "cap": 42,
         "hardMax": 88
       },
       "answers": {
@@ -34,7 +34,7 @@
     },
     "4": {
       "questions": {
-        "cap": 88,
+        "cap": 42,
         "hardMax": 88
       },
       "answers": {
@@ -44,7 +44,7 @@
     },
     "5": {
       "questions": {
-        "cap": 48,
+        "cap": 42,
         "hardMax": 48
       },
       "answers": {
@@ -54,7 +54,7 @@
     },
     "6": {
       "questions": {
-        "cap": 48,
+        "cap": 42,
         "hardMax": 48
       },
       "answers": {

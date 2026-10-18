@@ -112,7 +112,7 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
         template: "question-set",
         items: [1, 2, 3].map(() => ({ question: w(5), answer: w(2) })),
       }),
-    ).toContain("items[2].answer:2/5");
+    ).toContain("items[2].answer:2/4");
     expect(kinds({ template: "exit-ticket", items: [{ question: w(30) }] })).toEqual([
       "items[0].question:30/25",
     ]);

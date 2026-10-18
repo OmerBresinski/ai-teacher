@@ -224,7 +224,14 @@ function sideBudget(a: Age, n: number, z: SideZone): number {
     menuWords(chars, a),
   );
 }
+/**
+ * Cells the menu never offers, whatever they measure. KS2 three pictured sides: the KS2 gold side
+ * text (ruling 162 amended by Greg 18 Oct, item 31 A) measures them at 4 words a side, which reads
+ * choppy; they stay off the menu as before that change ("2 sides only").
+ */
+const NOT_OFFERED: Partial<Record<Age, readonly string[]>> = { primary: ["3p"] };
 const zoneOk = (a: Age, n: number, z: SideZone) =>
+  !NOT_OFFERED[a]?.includes(`${n}${z}`) &&
   allPositive(sideCaps(a, n, z)) &&
   sideBudget(a, n, z) >= MIN_SIDE &&
   (z !== "q" || quoteBudget(a, n) >= MIN_QUOTE);
@@ -454,7 +461,12 @@ const quickOffer = (a: Age) =>
     .map(([n, c]) => ({
       n: Number(n),
       q: menuWords(c.questions.cap, a),
-      a: menuWords(c.answers.cap, a),
+      // KS2 (ruling 162 amended, item 31 A, raised its answer caps): never past the answers rule's
+      // short phrase (`ANSWER_WORDS.short`), so the two agree. Other stages as before.
+      a:
+        a === "primary"
+          ? Math.min(menuWords(c.answers.cap, a), ANSWER_WORDS.short)
+          : menuWords(c.answers.cap, a),
     }))
     .filter((x) => x.q >= MIN_QUICK_Q && x.a >= 1)
     .sort((x, y) => x.n - y.n);

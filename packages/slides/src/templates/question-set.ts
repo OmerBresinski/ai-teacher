@@ -13,9 +13,9 @@
  * - **KS2** (ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px
  *   on quick check, picture-with-points and split-compare): the gold's own fit. A third rung at the
  *   gold's 33 px sits under bodySmall, drawn as given (`fixedSize`); pass 1 tries one line at body,
- *   bodySmall and 33 px, pass 2 two lines at the same rungs. A fit on up to two lines is
- *   comfortable, as in the gold (its rows may take two lines); only past the 33 px floor is the
- *   slide over.
+ *   bodySmall and 33 px, pass 2 two lines at the same rungs. As at every stage, a fit that needs
+ *   two lines is `tight` (the gold's comfortable pass is one line, its KS2 cap "<= 10 words, one
+ *   line"); past the 33 px floor the slide is over.
  * - **Field width** follows the longest answer, 288-320 pt (432-480 px); an answer may wrap to two
  *   balanced lines.
  *
@@ -170,15 +170,14 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     const rowH = qs.map((_, i) => Math.max(badge, chip, qH[i] as number, aH[i] as number));
     const total = rowH.reduce((s, h) => s + h + 2 * rowPad, 0);
     const ok = !tooTall && !wide && !twoLineAnswer && total <= stageH * ROWS_SHARE;
-    // KS2 counts a fit on up to two lines as comfortable (the gold's rows may take two lines).
-    return { size, rowH, qH, aH, badge, chip, ok, comfy: ks2 ? ok : maxLines === 1, fw };
+    return { size, rowH, qH, aH, badge, chip, ok, comfy: maxLines === 1, fw };
   };
 
   // Pass 1: one line per question at the body size (KS2: at each rung). Pass 2: two lines, body
   // then the steps under it.
   let fit = at(body, 1);
   if (ks2)
-    for (const s of sizes) {
+    for (const s of sizes.slice(1)) {
       if (fit.ok) break;
       fit = at(s, 1);
     }

@@ -6,8 +6,9 @@
 import { describe, expect, test } from "bun:test";
 import type { SlideElement, TextElement } from "@tj/domain/documents";
 import { KS2_GOLD_READING } from "../layout-sizes";
-import { getTheme } from "../themes";
+import { getTheme, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
+import { mixInput } from "./picture-text-capacity";
 import CAPS from "./picture-text-capacity.json" with { type: "json" };
 
 const texts = (els: SlideElement[], name: string) =>
@@ -33,7 +34,8 @@ describe("picture with points at KS2 (gold lead 37 px, points 33 px, line height
   test("3 points of 14 words and a picture end above the foot in Paper and Geometric", () => {
     for (const id of ["paper", "geometric"]) {
       const r = layoutTemplate(mummy, getTheme(id), "ks2");
-      expect(r.over).toEqual([]);
+      // The column fits; only the measured word cap (50, uneven splits included) names the 53 words.
+      expect(r.over).toEqual([`picture-text words 53/${CAPS.KS2.words}`]);
       const pts = texts(r.slide.elements, "Point");
       expect(pts).toHaveLength(3);
       const last = pts.at(-1) as TextElement;
@@ -57,8 +59,14 @@ describe("picture with points at KS2 (gold lead 37 px, points 33 px, line height
     expect(texts(r.slide.elements, "Lead")[0]?.style?.fontSize).toBe(KS2_GOLD_READING.pictureLead);
   });
 
-  test("the KS2 word cap is measured, and holds 3 points of 14 words", () => {
-    expect(CAPS.KS2.words).toBeGreaterThanOrEqual(53);
+  test("the KS2 word cap is measured over uneven splits too, and is above master's 42", () => {
+    expect(CAPS.KS2.words).toBeGreaterThan(42);
+    expect(CAPS.KS2.comfortable).toBeLessThanOrEqual(CAPS.KS2.words);
+    // Lead 16 + points 20/10/10 at the cap lays out on every theme with the column inside the foot.
+    for (const t of THEMES) {
+      const r = layoutTemplate(mixInput(CAPS.KS2.words, 16, [2, 1, 1]), t, "ks2");
+      expect([t.id, r.over.filter((o) => o.startsWith("picture-text column"))]).toEqual([t.id, []]);
+    }
   });
 
   test("KS3 keeps the stage's steps and the roles' line heights", () => {
@@ -96,6 +104,14 @@ describe("quick check at KS2 (gold v12/questions-b: 33 px rows)", () => {
         expect(q.h).toBeLessThanOrEqual(Math.ceil(22 * 1.4));
       }
     }
+  });
+
+  test("rows that need two lines at 33 px are tight, as at every stage", () => {
+    const long = quick(3);
+    long.questions = (long.questions ?? []).map((q) => `${q} Say why in a few more words.`);
+    const r = layoutTemplate(long, getTheme("paper"), "ks2");
+    expect(r.over).toEqual([]);
+    expect(r.tight).toBe(true);
   });
 
   test("KS3 never draws the KS2 gold row", () => {
