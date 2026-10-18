@@ -262,6 +262,26 @@ describe("plan-only fit check", () => {
     expect(r.slides[3]?.verdict).toBe("unchecked");
   });
 
+  test("a stem's or lead's words are not an item's; a run of per-item words gives its largest", () => {
+    expect(parseSize("Stem 9 words; four options of 5, 5, 4, 5 words", ["options"])).toEqual({
+      count: 4,
+      words: 5,
+    });
+    expect(parseSize("Lead 7 words; 3 items, 6 words each", ["items"])).toEqual({
+      count: 3,
+      words: 6,
+    });
+    expect(parseSize("Three questions, 8, 9 and 10 words", ["questions"])).toEqual({
+      count: 3,
+      words: 10,
+    });
+    // "need out of fit": the need is what is checked.
+    expect(parseSize("Stem 7 of 12 words; 3 options, 3 out of 5 words each", ["options"])).toEqual({
+      count: 3,
+      words: 3,
+    });
+  });
+
   test("parses number words and digits", () => {
     expect(parseSize("Four pictured items, four words each", ["items"])).toEqual({
       count: 4,

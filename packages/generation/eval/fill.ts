@@ -354,11 +354,24 @@ const toNum = (s: string | undefined) =>
 
 /** The first "<n> [adjectives] <unit>" in a size, and "<w> words" (per item) if stated. */
 export function parseSize(size: string, units: string[]): { count?: number; words?: number } {
-  const s = size.toLowerCase();
+  // A stem's, lead's or heading's words are not an item's (v4.8 sizes name them, often first).
+  const s = size
+    .toLowerCase()
+    // "8 of 10 words" / "8 out of 10 words": the need is the first number (v4.8 loop 1b sizes).
+    .replace(
+      new RegExp(`\\b${NUM}\\s+(?:out\\s+)?of\\s+(?:its\\s+)?${NUM}(?=\\s+words?\\b)`, "g"),
+      "$1",
+    )
+    .replace(new RegExp(`\\b(?:stem|lead|heading)s?\\b[^;,.]*?\\b${NUM}\\s+words?\\b`, "g"), "");
   const unit = new RegExp(`\\b${NUM}\\s+(?:[a-z-]+\\s+){0,2}?(?:${units.join("|")})\\b`);
-  const w = new RegExp(`\\b${NUM}\\s+words?\\b`);
   const count = toNum(unit.exec(s)?.[1]);
-  const per = toNum(w.exec(s)?.[1]);
+  // Per-item words: the largest number in the run that ends "... words" ("8, 9 and 10 words").
+  const run = new RegExp(`((?:\\b${NUM}\\b(?:\\s*(?:,|and|to|or|-)\\s*)?)+)\\s*words?\\b`);
+  const nums = [...(run.exec(s)?.[1] ?? "").matchAll(new RegExp(`\\b${NUM}\\b`, "g"))].map((m) =>
+    toNum(m[1]),
+  );
+  const found = nums.filter((n): n is number => n !== undefined);
+  const per = found.length ? Math.max(...found) : undefined;
   return {
     ...(count !== undefined ? { count } : {}),
     ...(per !== undefined ? { words: per } : {}),

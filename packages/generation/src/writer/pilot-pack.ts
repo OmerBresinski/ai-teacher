@@ -85,7 +85,7 @@ export type PilotPack = {
 const FLOW_SIZE_COUNTED = {
   type: "string",
   description:
-    "the words the idea needs, counted from the idea: how many items, the words each item needs, then the lead's or stem's words",
+    "the words the idea needs, counted from the idea: how many items, the words each item needs out of its fit's words, then the lead's or stem's words out of its fit's",
 };
 
 /** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
