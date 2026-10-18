@@ -20,7 +20,7 @@ A worked example or question may invent its scenario and numbers, saying so ("a 
 The slide draws list numbers, bullets and option letters, so each item is its text alone.
 
 Layouts. A heading is up to 10 words. Fits gives each fit's words for its lead or stem, then for "each" item; more words take a fit with fewer items. A line holding two ideas becomes two items, or drops the weaker.
-- title: slide 1, its own field before slides: the lesson title, a subtitle line, and a colour picture of what the title names, not a scene from the subtitle. Fits: fig 6; bare 12.
+- title: slide 1, its own field before slides: the lesson title, a subtitle line, and a colour picture of what the title names, not a scene from the subtitle. Fits: fig 8; bare 16.
 - objectives: slide 2, its own field before slides: code fills it from the approved objectives, so it has nothing to write.
 - hook: a photo across the whole slide, its heading and one or two short sentences over it, for a striking fact or question that opens the lesson or a part of it. Fits: fig 22.
 - visual-text: teaching with a picture or a diagram beside a lead and points. Fits: points-0-fig 25; points-2-fig 21, each 15; points-3-fig 19, each 13; points-1-key-fig 24, each label 2 + text 16; points-2-key-fig 17, each label 2 + text 8.

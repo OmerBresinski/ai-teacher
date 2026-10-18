@@ -71,6 +71,9 @@ export const shownWords = (chars: number, stage: WriterStage): number =>
  */
 export const PROBE_CHARS_PER_WORD = 5.4;
 
+/** Fields shown their `probeRoom` instead of a share: the cover question (the title's lead). */
+export const PROBE_ROOM_KEYS: ReadonlySet<string> = new Set(["title.lead"]);
+
 /** The words a probe-measured comfortable cap holds, within the hard max at the stage's rate. */
 export function probeRoom(cap: number, hardMax: number, stage: WriterStage): number {
   return Math.min(
@@ -113,6 +116,9 @@ export function shownFor(
   /** The room in words when a probe measured it directly (the hinge's options per count). */
   roomWords?: number,
 ): number {
+  // The cover question (the title's lead): its one cap is both comfort and hard max, so its room
+  // is `probeRoom` with no 75% share (approved 18 Oct 2026, as for the quick check's questions).
+  if (key !== undefined && PROBE_ROOM_KEYS.has(key)) return probeRoom(chars, chars, stage);
   const room = roomWords ?? wordsWithin(roomChars, stage);
   const share = Math.min(shownWords(chars, stage), room);
   const need = needOf(key, stage);

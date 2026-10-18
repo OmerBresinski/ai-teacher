@@ -5,9 +5,17 @@ import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" }
 import NEED from "./content-need.json" with { type: "json" };
 import { FIT_LAYOUTS, fitOffer } from "./fit-fits";
 import { HINGE_WRITER_MENU, PRACTICE_WRITER_MENU, shownCells, WORD_TASK_MAX } from "./layout-menu";
-import { PILOT_PACKS } from "./pilot-pack";
+import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
-import { isCensored, needOf, shownFor, shownWords, wordsWithin } from "./shown-cap";
+import {
+  isCensored,
+  needOf,
+  PROBE_CHARS_PER_WORD,
+  probeRoom,
+  shownFor,
+  shownWords,
+  wordsWithin,
+} from "./shown-cap";
 import { defCaps, fitNeedKey } from "./slot-fill";
 
 /*
@@ -88,7 +96,7 @@ describe("shown caps hold the room and the need", () => {
   });
 
   test("need unknown keeps the 75% share; a smaller room is never exceeded", () => {
-    expect(shownFor(100, "KS2", "title.lead")).toBe(shownWords(100, "KS2"));
+    expect(shownFor(100, "KS2", "equation-hero.lead")).toBe(shownWords(100, "KS2"));
     expect(shownFor(100, "KS2")).toBe(shownWords(100, "KS2"));
     expect(shownFor(100, "KS2", "split-compare.side", 50)).toBeLessThanOrEqual(
       wordsWithin(50, "KS2"),
@@ -152,4 +160,25 @@ describe("one source for word budgets (18 Oct 2026)", () => {
     for (const id of ["v4.7", "v4.8"] as const)
       expect(Object.keys(PILOT_PACKS[id].layouts)).not.toContain("budgets");
   });
+});
+
+describe("the cover question's room (approved 18 Oct 2026)", () => {
+  for (const stage of STAGES)
+    test(`${stage}: ordinary words fit its cap; long words stay within it`, () => {
+      const offer = fitOffer(stage).title ?? [];
+      expect(offer.length).toBeGreaterThan(0);
+      for (const fit of offer) {
+        // The caps code checks (the production pack's caps request: the measured fit table).
+        const ks = stage === "KS3-5" ? "KS3" : stage;
+        const defs = (pilotRequest(PILOT_PACK_ID, ks, {}, (sc) => sc).caps?.$defs ?? {}) as J;
+        const def = defs[`title~${fit}`];
+        const lead = defCaps(def).find(([p]) => p === "lead")?.[1];
+        if (!lead) continue;
+        const shown = shownFor(lead, stage, fitNeedKey("title", "lead", fit));
+        expect(shown, `title ${fit}`).toBe(probeRoom(lead, lead, stage));
+        expect(shown * PROBE_CHARS_PER_WORD).toBeLessThanOrEqual(lead + 1);
+        expect(shown).toBeLessThanOrEqual(wordsWithin(lead, stage));
+        expect(shown).toBeGreaterThan(shownWords(lead, stage));
+      }
+    });
 });
