@@ -121,7 +121,19 @@ const PROOF_GAP = 32 * K;
 const ICON_GAP = 16 * K;
 const PIC = { w: 300 * K, h: 200 * K };
 const MAX_TEXT = 600 * K;
-const LH = { claimOpen: 1.18, claim: 1.28, fact: 1.12 };
+/** The fact's measure (round 4 `themes4.css`: `.myth .fact { max-width: 660px }`). */
+const FACT_MAX = 660 * K;
+/**
+ * The gold's grow-the-fact fit (round 5 `render5.mjs` `growMyth`): the fact grows in 2px steps up
+ * to 64px while the fact panel still holds it, the proof's line stays 48px under the fact and the
+ * claim (which follows the fact's size) still fits its panel.
+ */
+const GROW_TOP = 64 * K;
+const CLAIM_DROP = 76 * K;
+const GROW_STEP = 2 * K;
+const PROOF_CLEAR = 48 * K;
+/** The panel claim's line height follows round 4 (`.myth .said` at the fact's size, 1.16). */
+const LH = { claimOpen: 1.18, claim: 1.16, fact: 1.12 };
 
 /* ------------------------------------------------------------------ */
 /* Caps (myth-capacity.json, measured by myth-capacity.ts)              */
@@ -201,11 +213,12 @@ function lineDoc(line: string, muted: string): RichDoc {
   return docOf(runs.length ? runs : [styledRun(line, { color: muted })]);
 }
 
-/** The claim in the quote face; the panel's myth claim carries the strike from `strike`. */
+/**
+ * The claim, upright in the body face (round 4 'myth strike': the italic quote face read as odd);
+ * the panel's myth claim carries the strike from `strike`.
+ */
 const claimDoc = (claim: string, strike?: number): RichDoc =>
-  docOf([
-    styledRun(claim, { font: "quote", ...(strike === undefined ? {} : { strikeStep: strike }) }),
-  ]);
+  docOf([styledRun(claim, strike === undefined ? {} : { strikeStep: strike })]);
 
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
@@ -239,7 +252,15 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const body = smallBody >= MIN_FONT_SIZE.body ? smallBody : drawn("body", MIN_FONT_SIZE.body);
   const bodyPreset: TextPreset = smallBody >= MIN_FONT_SIZE.body ? "small" : "body";
   const lh = v2.lineHeights.body;
-  const heightOf = (doc: RichDoc, preset: TextPreset, size: number, w: number, weight: number) =>
+  const heightOf = (
+    doc: RichDoc,
+    preset: TextPreset,
+    size: number,
+    w: number,
+    weight: number,
+    lineHeight?: number,
+    fontFamily?: string,
+  ) =>
     measure({
       doc,
       preset,
@@ -250,8 +271,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       style: {
         preset,
         fontWeight: weight,
-        lineHeight: preset === "heading" ? LH.fact : lh,
+        lineHeight: lineHeight ?? (preset === "heading" ? LH.fact : lh),
         padding: 0,
+        ...(fontFamily ? { fontFamily } : {}),
       },
     } as never);
   const claimText = m.claim.trim();
@@ -281,11 +303,24 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   // The fact panel's room and the fact's fit (steps down to the name floor).
   const fp = { x: SEAM + GAP, y: band, w: W - SEAM - GAP, h: stageH };
   const inner = { x: fp.x + FP_L, y: fp.y + TOP, w: fp.w - FP_L - FP_R, h: fp.h - TOP - FOOT };
-  const factW = Math.min(MAX_TEXT, inner.w);
+  const factW = Math.min(FACT_MAX, inner.w);
   const lineDocV = proof ? lineDoc(proof.line.trim(), col.muted) : null;
   // The fact's emphasis: the theme's emphasis token (Geometric's `--fa-accent`), else the accent.
   const factDocV = factDoc(factText, m.factEm, surfacesOf(c.t).marks.emphasis ?? col.accent);
   const factWt = v2.displayWeight;
+
+  // The claim (round 4 'myth strike', every theme): the body face, upright, 600 (or the theme's own
+  // weight), in the panel at the fact's size.
+  // Round 4 sets the panel claim lower once the verdict is shown (`.cw` top: band + top + 76px).
+  const claimTop = band + TOP + CLAIM_DROP;
+  const claimW = SEAM - PAD_L - 64 * K;
+  const claimRoom = H - FOOT - claimTop;
+  const claimWt = surfacesOf(c.t).marks.claimWeight ?? 600;
+  const bodyFace = c.t.fonts.body;
+  const claimH = (s: number, w = claimW, l = LH.claim) =>
+    heightOf(claimDoc(claimText), "heading", s, w, claimWt, l, bodyFace);
+  const claimFits = (s: number) => claimH(s) <= claimRoom + 0.5;
+
   const fitFact = (disc: number) => {
     const shown = disc ? iconIds : [];
     const visW = pic
@@ -304,29 +339,42 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       size = drawn("heading", size - 1);
       h = heightOf(factDocV, "heading", size, factW, factWt);
     }
-    return { disc, shown, visH, lineW, lineH, size, h, over: h > room + 0.5 };
+    const over = h > room + 0.5;
+    // Grow to fill (gold `growMyth`): the next even gold px up, 2px at a time, to 64px.
+    let grown = false;
+    if (!over && factText) {
+      const proofTop = inner.y + inner.h - Math.max(visH, lineH);
+      const factTop = inner.y + TAG_H + TAG_GAP;
+      let next = (Math.floor(size / K / 2 + 1e-6) + 1) * 2 * K;
+      while (next <= GROW_TOP + 1e-6) {
+        const nh = heightOf(factDocV, "heading", next, factW, factWt);
+        const clear = !proof || proofTop - (factTop + nh) >= PROOF_CLEAR - 0.5;
+        if (nh > room + 0.5 || !clear || !claimFits(next)) break;
+        size = round1(next);
+        h = nh;
+        grown = true;
+        next += GROW_STEP;
+      }
+    }
+    return { disc, shown, visH, lineW, lineH, size, h, over, grown };
   };
   let ff = fitFact(rungs[0] as number);
   for (const d of rungs.slice(1)) {
     if (!ff.over) break;
     ff = fitFact(d);
   }
-  const { disc, visH, lineW, lineH, h: factH, over: factOver } = ff;
+  const { disc, visH, lineW, lineH, h: factH, over: factOver, grown } = ff;
   const factSize = ff.size;
   const shownIcons = ff.shown;
 
-  // The claim in the panel (steps down to the body floor).
-  const claimTop = band + TOP + TAG_H + TAG_GAP;
-  const claimW = SEAM - PAD_L - 64 * K;
-  const claimRoom = H - FOOT - claimTop;
-  let claimSize = drawn("heading", Math.max(floorBody, v2.sizes.quote * 1.2));
-  // A theme's own claim weight (Geometric: 600, round 5 myth); measured at the weight it is drawn in.
-  const claimWt = surfacesOf(c.t).marks.claimWeight ?? 500;
-  const claimH = (s: number, w = claimW, l = LH.claim) =>
-    heightOf(claimDoc(claimText), "heading", s, w, claimWt) * (l / lh);
-  while (claimH(claimSize) > claimRoom + 0.5 && claimSize > drawn("heading", floorBody))
-    claimSize = drawn("heading", claimSize - 1);
-  const claimOver = claimH(claimSize) > claimRoom + 0.5;
+  // The claim in the panel follows the fact's size; a claim too long for that steps down in the
+  // gold's 2px, never under the smallest step the stage allows it (its body step, held at the body
+  // floor). Drawn as given (`fixedSize`), like the grown fact.
+  const claimFloor = drawn("heading", floorBody);
+  let claimSize = factSize;
+  while (!claimFits(claimSize) && claimSize > claimFloor + 1e-6)
+    claimSize = round1(Math.max(claimFloor, claimSize - GROW_STEP));
+  const claimOver = !claimFits(claimSize);
 
   // The open claim on the vote card: at most 3 lines, no smaller than the name size.
   const card = { x: PAD_L, y: band, w: W - 2 * PAD_L, h: stageH - CARD_FOOT };
@@ -349,7 +397,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   c.tight =
     fields.some((f) => f.tight) ||
     factSize < drawn("heading", v2.sizes.name) - 0.5 ||
-    claimSize < drawn("heading", v2.sizes.quote * 1.2) - 0.5;
+    claimSize < factSize - 0.5;
 
   const radius = Math.round(v2.radius.picture);
   const push = <T extends SlideElement>(el: T, step: number, name: string): T => {
@@ -385,9 +433,10 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
         "heading",
         openSize,
         LH.claimOpen,
-        500,
+        claimWt,
         { x: card.x + CARD_IN, y: oy, w: openW, h: oh },
         col.ink,
+        bodyFace,
       ),
       0,
       MYTH_NAMES.claimOpen,
@@ -509,6 +558,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       claimWt,
       { x: PAD_L, y: claimTop, w: claimW, h: claimH(claimSize) },
       right ? col.ink : col.muted,
+      bodyFace,
+      true,
     ),
     at.verdict,
     MYTH_NAMES.claim,
@@ -519,6 +570,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const cx = SEAM + GAP / 2;
   const cy = band + SEAM_TOP + SEAM_D / 2;
   // The seam takes the theme's badge family (Geometric's hexagon, THEMING.md section 6).
+  // The seam is the theme's marker (roles.css `--marker-fill`, the seam disc; its arrow `--marker-ink`).
+  const markerRole = surfacesOf(c.t).roles.marker;
+  const marker = { fill: markerRole?.fill ?? col.deep, ink: markerRole?.ink ?? col.onDeep };
   const seamShape: ShapeElement["shape"] =
     surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
   const halo: ShapeElement = {
@@ -540,7 +594,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     type: "shape",
     shape: seamShape,
     ...rnd({ x: cx - SEAM_D / 2, y: cy - SEAM_D / 2, w: SEAM_D, h: SEAM_D }),
-    fill: col.deep,
+    fill: marker.fill,
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
@@ -561,7 +615,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
           { x: 0.55, y: 1 },
         ],
         closed: false,
-        stroke: col.onDeep,
+        stroke: marker.ink,
         strokeWidth: 3,
       } as PathElement,
       at.fact,
@@ -573,7 +627,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       head: aw * 0.7,
       headLen: aw * 0.45,
     });
-    push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+    push(closedPath(pts, marker.ink), at.fact, MYTH_NAMES.seamArrow);
   }
   // The label in accent-deep for AA on the field tint; on a dark theme the deep is the dark end, so
   // the accent itself reads there.
@@ -597,6 +651,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       factWt,
       { x: inner.x, y: inner.y + TAG_H + TAG_GAP, w: factW, h: factH },
       col.ink,
+      undefined,
+      grown,
     ),
     at.fact,
     MYTH_NAMES.fact,
@@ -677,6 +733,8 @@ function textEl(
   weight: number,
   b: Box,
   color: string,
+  fontFamily?: string,
+  fixedSize?: boolean,
 ): TextElement {
   return {
     id: uid(),
@@ -687,6 +745,8 @@ function textEl(
       preset,
       autoHeight: true,
       fontSize: size,
+      ...(fixedSize ? { fixedSize: true } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
       lineHeight,
       fontWeight: weight,
       padding: 0,
