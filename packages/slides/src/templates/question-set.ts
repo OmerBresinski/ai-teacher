@@ -13,9 +13,11 @@
  * - **KS2** (ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px
  *   on quick check, picture-with-points and split-compare): the gold's own fit. A third rung at the
  *   gold's 33 px sits under bodySmall, drawn as given (`fixedSize`); pass 1 tries one line at body,
- *   bodySmall and 33 px, pass 2 two lines at the same rungs. As at every stage, a fit that needs
- *   two lines is `tight` (the gold's comfortable pass is one line, its KS2 cap "<= 10 words, one
- *   line"); past the 33 px floor the slide is over.
+ *   bodySmall and 33 px, pass 2 two lines at the same rungs. A KS2 fit that needs two lines is
+ *   `tight` (the gold's comfortable pass is one line, its KS2 cap "<= 10 words, one line"); past
+ *   the 33 px floor the slide is over.
+ * - **Comfort per stage's gold** (TEACH-215 part j): KS1 and KS3 golds lay questions on two lines
+ *   (KS1 51 chars; KS3 up to 16 words), so a two-line fit there is comfortable, not tight.
  * - **Field width** follows the longest answer, 288-320 pt (432-480 px); an answer may wrap to two
  *   balanced lines.
  *
@@ -98,6 +100,8 @@ type Fit = {
   badge: number;
   chip: number;
   ok: boolean;
+  /** The questions need two lines (KS3 then holds 5, not 6). */
+  long: boolean;
   comfy: boolean;
 };
 
@@ -170,7 +174,11 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     const rowH = qs.map((_, i) => Math.max(badge, chip, qH[i] as number, aH[i] as number));
     const total = rowH.reduce((s, h) => s + h + 2 * rowPad, 0);
     const ok = !tooTall && !wide && !twoLineAnswer && total <= stageH * ROWS_SHARE;
-    return { size, rowH, qH, aH, badge, chip, ok, comfy: maxLines === 1, fw };
+    // Comfort follows each stage's gold (TEACH-215 part j): KS2's gold is one line ("<= 10 words,
+    // one line"); the KS1 and KS3 golds set questions on two lines (KS1 51 chars, KS3 up to 16 words,
+    // 65-76 chars), so two lines are comfortable there.
+    const comfy = maxLines === 1 || !ks2;
+    return { size, rowH, qH, aH, badge, chip, ok, long: maxLines > 1, comfy, fw };
   };
 
   // Pass 1: one line per question at the body size (KS2: at each rung). Pass 2: two lines, body
@@ -187,7 +195,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
       if (fit.ok) break;
     }
   const fixedSize = ks2 && fit.size === gold;
-  const max = quickCheckMax(stage, !fit.comfy);
+  const max = quickCheckMax(stage, fit.long);
   if (!fit.ok) c.over.push(`question-set ${n} questions do not fit at ${fit.size}pt`);
   if (n > max) c.over.push(`question-set ${n}/${max} questions`);
   c.tight = !fit.comfy;

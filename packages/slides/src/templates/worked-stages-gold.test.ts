@@ -92,3 +92,46 @@ describe("stages: the gold's sizes, the line held at the reading floor (C10)", (
     for (const e of lines) expect(px(e.style?.fontSize ?? 0)).toBe(42);
   });
 });
+
+describe("quick check: comfort per stage's gold, caps to the character (C8 follow-up)", () => {
+  const quick = (qs: string[], stage: Stage, id = "paper") =>
+    layoutTemplate(
+      {
+        template: "question-set",
+        heading: "Quick check",
+        questions: qs,
+        answers: qs.map(() => "Plasma"),
+      },
+      atKeyStage(getTheme(id), stage),
+      stage,
+    );
+  const KS3 = "Which process releases energy from glucose inside the mitochondria of a cell?";
+  test("KS3: a 16-word question on two lines is comfortable, as the gold sets it", () => {
+    const r = quick([KS3, "What is it?", "What is it?"], "ks3");
+    expect(r.over).toEqual([]);
+    expect(r.tight).toBe(false);
+  });
+  test("KS1: the gold's 51-character question is comfortable", () => {
+    const r = quick(
+      [
+        "Sam has 23 stickers. He gets 20 more. How many now?",
+        "What is 46 + 30?",
+        "What is 85 − 40?",
+      ],
+      "ks1",
+      "storytime",
+    );
+    expect(r.over).toEqual([]);
+    expect(r.tight).toBe(false);
+  });
+  test("KS2: two lines stay tight (the gold's one-line pass)", () => {
+    const r = quick([KS3, "What is it?", "What is it?"], "ks2");
+    expect(r.tight).toBe(true);
+  });
+  test("KS2 caps are the real room, cut to the character: 47 at 3, 46 at 4-6", async () => {
+    const { measureQuickCaps, exactSample } = await import("./question-set-capacity");
+    expect(exactSample(46, 3)).toHaveLength(46);
+    expect(measureQuickCaps("primary", 3).questions.cap).toBe(47);
+    for (const n of [4, 5, 6]) expect(measureQuickCaps("primary", n).questions.cap).toBe(46);
+  });
+});
