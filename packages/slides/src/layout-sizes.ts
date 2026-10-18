@@ -78,3 +78,23 @@ export function coverTypeAt(ks: KeyStage | undefined): CoverType {
 
 /** The cover's sizes for a theme read at a key stage (`atKeyStage`); no stage reads as KS2. */
 export const coverType = (t: Theme): CoverType => coverTypeAt(keyStageOf(t));
+
+/**
+ * KS2 reading text at the golds' sizes, under the stage's bodySmall step (37.5 px): ruling 162
+ * amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px on quick check,
+ * picture-with-points and split-compare. Gold px (1440 wide) in slide points, drawn as given
+ * (`fixedSize`). Every other stage, and every other layout at KS2, keeps the stage's steps.
+ */
+export const KS2_GOLD_READING = {
+  /** Quick check question rows (gold `northstars-v12/questions-b`, Y6 at 33 px, one line). */
+  quickRow: px(33),
+  /** Picture with points: the lead (`--t-body` x 1.12 = 37 px) and the points (`--t-body`, 33 px). */
+  pictureLead: px(37),
+  pictureLeadFloor: px(33),
+  picturePoint: px(33),
+  /** The gold's `--lh-body` for the lead and the points (production's roles: 1.35 and 1.4). */
+  pictureLineHeight: 1.3,
+  /** Split-compare side text (`--t-body` x 1.03 = 34 px at k = 1), never under 33 px. */
+  splitText: px(34),
+  splitTextFloor: px(33),
+} as const;

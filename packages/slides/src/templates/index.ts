@@ -488,8 +488,15 @@ const presetOf = (r: Role) => (r === "title" ? "title" : r === "heading" ? "head
 const weightOf = (r: Role, t: Theme) =>
   r === "title" || r === "heading" ? t.weights.heading : r === "lead" ? 700 : t.weights.body;
 
-/** Height of `text` set in `role` at width `w`. */
-function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): number {
+/** Height of `text` set in `role` at width `w` (`lh`: a layout's own line height, else the role's). */
+function measure(
+  c: Ctx,
+  text: string,
+  role: Role,
+  w: number,
+  weight?: number,
+  lh?: number,
+): number {
   const size = c.s[role];
   const lines = countLines(
     plain(text),
@@ -499,7 +506,7 @@ function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): 
     weight ?? weightOf(role, c.t),
     size,
   );
-  return Math.ceil(lines * size * LH[role]);
+  return Math.ceil(lines * size * (lh ?? LH[role]));
 }
 
 function text(
@@ -513,9 +520,13 @@ function text(
     align?: "left" | "center";
     boldLabel?: boolean;
     name?: string;
+    /** A layout's own line height (the gold's), drawn and measured; else the role's. */
+    lineHeight?: number;
+    /** The size is the layout's gold size, drawn as given (`TextStyle.fixedSize`, ruling 21 A). */
+    fixedSize?: boolean;
   } = {},
 ): TextElement {
-  const h = measure(c, value, role, rect.w, extra.weight);
+  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight);
   const el: TextElement = {
     id: uid(),
     type: "text",
@@ -529,8 +540,9 @@ function text(
       preset: presetOf(role),
       autoHeight: true,
       fontSize: c.s[role],
-      lineHeight: LH[role],
+      lineHeight: extra.lineHeight ?? LH[role],
       fontWeight: extra.weight ?? weightOf(role, c.t),
+      ...(extra.fixedSize ? { fixedSize: true } : {}),
       padding: 0,
       ...(extra.color ? { color: extra.color } : {}),
       ...(extra.align ? { align: extra.align } : {}),

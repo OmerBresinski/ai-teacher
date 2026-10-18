@@ -10,6 +10,12 @@
  * - **Fit, in two passes:** every question on one line at the stage's body size; else up to two
  *   lines, at body then the one step under it. The rows take at most 90% of the stage, with even
  *   gaps. Past the floor the slide is over (red outline, split by the writer).
+ * - **KS2** (ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px
+ *   on quick check, picture-with-points and split-compare): the gold's own fit. A third rung at the
+ *   gold's 33 px sits under bodySmall, drawn as given (`fixedSize`); pass 1 tries one line at body,
+ *   bodySmall and 33 px, pass 2 two lines at the same rungs. A fit on up to two lines is
+ *   comfortable, as in the gold (its rows may take two lines); only past the 33 px floor is the
+ *   slide over.
  * - **Field width** follows the longest answer, 288-320 pt (432-480 px); an answer may wrap to two
  *   balanced lines.
  *
@@ -22,8 +28,9 @@
  */
 import type { ShapeElement, SlideElement } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { KS2_GOLD_READING } from "../layout-sizes";
 import { resolveFontSize } from "../text-style";
-import { MIN_FONT_SIZE, typeScale } from "../themes";
+import { keyStageOf, MIN_FONT_SIZE, typeScale } from "../themes";
 import { paintSurface, type SurfaceRole, surfaceName, surfaceStyle } from "../themes/surfaces";
 import {
   type Ctx,
@@ -132,9 +139,12 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const sc = typeScale(c.t);
   const body = resolveFontSize(c.t, "body");
   const small = sc ? sc.bodySmall : Math.max(MIN_FONT_SIZE.body, Math.round(body * 0.85));
-  const sizes = [...new Set([body, resolveFontSize(c.t, "body", small)])].filter(
-    (s) => s >= MIN_FONT_SIZE.body,
-  );
+  // KS2: the gold's 33 px row under bodySmall (ruling 162 amended by Greg 18 Oct, item 31 A).
+  const ks2 = keyStageOf(c.t) === "ks2";
+  const gold = KS2_GOLD_READING.quickRow;
+  const sizes = [
+    ...new Set([body, resolveFontSize(c.t, "body", small), ...(ks2 ? [gold] : [])]),
+  ].filter((s) => s >= MIN_FONT_SIZE.body || (ks2 && s === gold));
 
   const longest = Math.max(0, ...as.map((a) => a.length));
   const fieldW = (q: number) =>
@@ -160,16 +170,24 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     const rowH = qs.map((_, i) => Math.max(badge, chip, qH[i] as number, aH[i] as number));
     const total = rowH.reduce((s, h) => s + h + 2 * rowPad, 0);
     const ok = !tooTall && !wide && !twoLineAnswer && total <= stageH * ROWS_SHARE;
-    return { size, rowH, qH, aH, badge, chip, ok, comfy: maxLines === 1, fw };
+    // KS2 counts a fit on up to two lines as comfortable (the gold's rows may take two lines).
+    return { size, rowH, qH, aH, badge, chip, ok, comfy: ks2 ? ok : maxLines === 1, fw };
   };
 
-  // Pass 1: one line per question at the body size. Pass 2: two lines, body then the step under.
+  // Pass 1: one line per question at the body size (KS2: at each rung). Pass 2: two lines, body
+  // then the steps under it.
   let fit = at(body, 1);
+  if (ks2)
+    for (const s of sizes) {
+      if (fit.ok) break;
+      fit = at(s, 1);
+    }
   if (!fit.ok)
     for (const s of sizes) {
       fit = at(s, 2);
       if (fit.ok) break;
     }
+  const fixedSize = ks2 && fit.size === gold;
   const max = quickCheckMax(stage, !fit.comfy);
   if (!fit.ok) c.over.push(`question-set ${n} questions do not fit at ${fit.size}pt`);
   if (n > max) c.over.push(`question-set ${n}/${max} questions`);
@@ -202,7 +220,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
       q,
       "body",
       { x: qx, y: mid - qh / 2, w: qw },
-      { color: c.t.colors.ink, name: QUICK_NAMES.question },
+      { color: c.t.colors.ink, name: QUICK_NAMES.question, fixedSize },
     );
     // The "?" chip, then (step i+1) a field-coloured cover over it and the answer.
     const cy = Math.round(mid - fit.chip / 2);
@@ -229,7 +247,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
         as[i] as string,
         "lead",
         { x: ax, y: mid - ah / 2, w: aw },
-        { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer },
+        { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer, fixedSize },
       );
       for (const e of c.els.slice(from)) {
         e.revealStep = step;

@@ -24,41 +24,41 @@
   "primary": {
     "3": {
       "questions": {
-        "cap": 35,
-        "hardMax": 82
+        "cap": 88,
+        "hardMax": 88
       },
       "answers": {
-        "cap": 27,
+        "cap": 35,
         "hardMax": 35
       }
     },
     "4": {
       "questions": {
-        "cap": 35,
-        "hardMax": 82
+        "cap": 88,
+        "hardMax": 88
       },
       "answers": {
-        "cap": 11,
+        "cap": 35,
         "hardMax": 35
       }
     },
     "5": {
       "questions": {
-        "cap": 35,
-        "hardMax": 42
+        "cap": 48,
+        "hardMax": 48
       },
       "answers": {
-        "cap": 11,
-        "hardMax": 17
+        "cap": 21,
+        "hardMax": 21
       }
     },
     "6": {
       "questions": {
-        "cap": 35,
-        "hardMax": 42
+        "cap": 48,
+        "hardMax": 48
       },
       "answers": {
-        "cap": 11,
+        "cap": 17,
         "hardMax": 17
       }
     }

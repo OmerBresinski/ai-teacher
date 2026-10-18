@@ -2,7 +2,7 @@
  * Picture and text (TEACH-75 part ae): the most words lead + points may have, measured by the
  * renderer in the gold's sweep filler (the KS3 composite-volcano text, 3 points, 2 at KS1) on the
  * landscape field, on every theme of the group. `words` is the hard cap (fits on the last rung of
- * the ladder), `comfortable` fits on the first. Regenerate:
+ * the ladder), `comfortable` fits on the first (KS2: on the gold's comfortable rungs, k >= .96). Regenerate:
  * `bun packages/slides/src/templates/picture-text-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
@@ -50,7 +50,11 @@ export function sweepFits(stages: readonly Stage[], n: number, first: boolean): 
     for (const stage of stages) {
       const r = layoutTemplate(sweepInput(n, np), theme, stage);
       if (r.over.some((o) => o.startsWith("picture-text column "))) return false;
-      if (first) {
+      if (first && stage === "ks2") {
+        // KS2: the gold's comfortable share, k >= .96, which the layout reports as not `tight` (ruling
+        // 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px).
+        if (r.tight) return false;
+      } else if (first) {
         const lead = r.slide.elements.find((e) => e.name === "Lead") as
           | { style?: { fontSize?: number } }
           | undefined;
