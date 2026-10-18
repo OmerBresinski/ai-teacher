@@ -987,3 +987,42 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     await waitFor(() => expect(localStorage.getItem("tj:preview-lesson")).toBeNull());
   });
 });
+
+describe("LessonEditorPage, the answer drawer's working (end Answers column)", () => {
+  beforeEach(() => {
+    lessonId = "demo-water-cycle";
+    cleanup();
+    fakeApi.reset();
+  });
+
+  it("edits show as 'answer — working' and save each working in step with its answer", async () => {
+    const body = fakeApi.loadDocument("demo-water-cycle") as Lesson;
+    const first = body.slides[0] as Lesson["slides"][number];
+    const SENTENCE = "Halving both halves makes four equal groups, so one is a quarter.";
+    first.question = {
+      type: "open-response",
+      modelAnswer: `1. 10 crayons\n2. 6 beads\n3. ${SENTENCE}`,
+      working: ["20 ÷ 2 = 10", "24 ÷ 4 = 6", ""],
+    };
+    lessonId = fakeApi.insertLesson(body).id;
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Answer" }));
+    const box = (await screen.findByRole("textbox", {
+      name: "Model answer",
+    })) as HTMLTextAreaElement;
+    // The teacher sees the joined text, as before the working had its own field.
+    expect(box.value).toBe(`1. 10 crayons — 20 ÷ 2 = 10\n2. 6 beads — 24 ÷ 4 = 6\n3. ${SENTENCE}`);
+    // Edit line 2, delete line 1, move line 3 to the top.
+    fireEvent.change(box, { target: { value: `3. ${SENTENCE}\n2. 6 red beads — 24 ÷ 4 = 6` } });
+    fireEvent.blur(box);
+    await waitFor(() => expect(screen.getByText("Saved")).toBeVisible(), { timeout: 3_000 });
+    const put = fakeApi.requests.filter((r) => r.method === "PUT");
+    expect(put.length).toBeGreaterThan(0);
+    const saved = fakeApi.loadDocument(lessonId) as Lesson;
+    expect(saved.slides[0]?.question).toEqual({
+      type: "open-response",
+      modelAnswer: `3. ${SENTENCE}\n2. 6 red beads`,
+      working: ["", "24 ÷ 4 = 6"],
+    });
+  });
+});
