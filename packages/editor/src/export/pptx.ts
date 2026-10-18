@@ -513,7 +513,7 @@ export function answerText(slide: Slide): string | null {
           .join("   ") || null
       );
     case "open-response":
-      return answerKeyText(q) || null;
+      return answerKeyText(q).trim() || null;
     default:
       return null;
   }

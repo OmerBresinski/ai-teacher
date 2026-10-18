@@ -18,7 +18,14 @@
  * These slides are built by the deck, never written by the writer, so the id is not a writer
  * `TemplateId` (common acceptance 8: the live pack never names it).
  */
-import { type Slide, type SlideElement, TEACHER_ONLY_MARK, type Theme } from "@tj/domain/documents";
+import {
+  SHORT_ANSWER_WORDS,
+  type Slide,
+  type SlideElement,
+  splitWorkingLine,
+  TEACHER_ONLY_MARK,
+  type Theme,
+} from "@tj/domain/documents";
 import { uid } from "../factories";
 import { contrastRatio } from "../look";
 import { lineWidth } from "../text-measure";
@@ -776,7 +783,7 @@ const answered = (it: AnswerItem) =>
  * back off, and so does a sentence when what follows the dash is a calculation.
  */
 /** A short answer (bold, with optional working) is at most this many words; longer is a sentence. */
-export const SHORT_ANSWER_WORDS = 4;
+export { SHORT_ANSWER_WORDS };
 export function answerItem(n: number, raw: string, working?: string): AnswerItem {
   const v = raw.trim();
   const tf = /^(true|false)\b[\s.:,;–—-]*(.*)$/i.exec(v);
@@ -784,16 +791,16 @@ export function answerItem(n: number, raw: string, working?: string): AnswerItem
     const why = (tf[2] ?? "").trim();
     return { n, tf: (tf[1] as string).toLowerCase() === "true", ...(why ? { why } : {}) };
   }
-  const work = working?.trim();
-  if (work) return words(v) <= SHORT_ANSWER_WORDS ? { n, a: v, work } : { n, s: v, work };
-  const worked = /^(.{1,40}?)\s+[—–]\s+(.+)$/.exec(v);
-  if (worked && words(worked[1] as string) <= SHORT_ANSWER_WORDS)
-    return { n, a: (worked[1] as string).trim(), work: (worked[2] as string).trim() };
-  const joined = /^(.+?)\s+[—–]\s+(.+)$/.exec(v);
-  if (joined && isCalculation(joined[2] as string))
-    return { n, s: (joined[1] as string).trim(), work: (joined[2] as string).trim() };
-  return words(v) <= SHORT_ANSWER_WORDS ? { n, a: v } : { n, s: v };
+  // The question's own working, or (a lesson saved with the two joined) the answer drawer's reading.
+  const split = working?.trim() ? { answer: v, working } : splitWorkingLine(v);
+  const a = split.answer.trim();
+  const work = split.working?.trim();
+  const short = words(a) <= SHORT_ANSWER_WORDS;
+  if (work) return short ? { n, a, work } : { n, s: a, work };
+  return short ? { n, a } : { n, s: a };
 }
+const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
 /**
  * The groups as the ledger drew them before a sentence's working had its own column: the sentence
  * and its working on one line after " — ". The same groups when no sentence carries working. A
@@ -808,9 +815,6 @@ export function joinedAsBefore(groups: readonly AnswerGroup[]): readonly AnswerG
     ),
   }));
 }
-/** A working line: digits and an operator or "=", e.g. "16 ÷ 2 = 8; 8 ÷ 2 = 4". */
-const isCalculation = (s: string) => /\d/.test(s) && /[=÷×+−*/]/.test(s);
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
 /** The source slide's title: its heading element's words. */
 function slideTitle(slide: Slide): string {

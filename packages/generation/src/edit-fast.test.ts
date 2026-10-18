@@ -26,6 +26,7 @@ import {
   textToDoc,
 } from "./edit-fast";
 import { editFastPrompt } from "./prompts/edit-fast";
+import { specFieldsOf } from "./stages/shared";
 
 const logger = pino({ level: "silent" });
 
@@ -426,5 +427,29 @@ describe("echoes", () => {
     expect(echoes("It is evaporation.", "Evaporation")).toBe(true);
     expect(echoes("Evaporating water", "Evaporation")).toBe(false);
     expect(echoes("so water turns into vapour", "liquid water turns into vapour")).toBe(true);
+  });
+});
+
+describe("an answer's working is checked with its answer (kept apart since the Answers column)", () => {
+  const exit = (lead: string): Slide =>
+    ({
+      id: "s-exit",
+      kind: "exit-ticket",
+      elements: [{ id: "lead", type: "text", x: 64, y: 120, w: 832, h: 40, doc: text(lead) }],
+      question: {
+        type: "open-response",
+        modelAnswer: "1. 120 crayons",
+        working: ["half of 240 is 120"],
+      },
+    }) as unknown as Slide;
+  test("an edit that states the working leaks the answer", () => {
+    const before = exit("Share 240 crayons between two children.");
+    const after = exit("Share 240 crayons between two children. Half of 240 is 120.");
+    expect(leakFaults(before, after, "lead").length).toBeGreaterThan(0);
+  });
+  test("the fact check reads the working with the model answer", () => {
+    expect(specFieldsOf(exit("x")).find((f) => f.field === "modelAnswer")?.text).toBe(
+      "1. 120 crayons — half of 240 is 120",
+    );
   });
 });

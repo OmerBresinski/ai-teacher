@@ -188,7 +188,7 @@ export function explanationText(
   if (question.type === "open-response" && revealsOwnAnswers(slide)) return null;
   if (question.type === "true-false" || question.type === "multiple-choice")
     return question.explanation?.trim() || null;
-  if (question.type === "open-response") return answerKeyText(question) || null;
+  if (question.type === "open-response") return answerKeyText(question).trim() || null;
   return null;
 }
 

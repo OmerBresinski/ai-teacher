@@ -1124,18 +1124,52 @@ export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolea
 
 /**
  * An open response's answer key as one text, each answer followed by its working after " — "
- * (the stored fields keep them apart): for the answer reveal, the PowerPoint key and plain text.
+ * (the stored fields keep them apart): what the answer drawer edits, the answer reveal, the
+ * PowerPoint key and plain text. Untrimmed, so the drawer keeps what the teacher is typing.
  */
 export function answerKeyText(q: { modelAnswer?: string; working?: string[] }): string {
   const lines = (q.modelAnswer ?? "").split("\n");
   const work = q.working ?? [];
   return lines
     .map((l, i) => {
-      const w = work[i]?.trim();
-      return w && l.trim() ? `${l} — ${w}` : l;
+      const w = work[i];
+      return w?.trim() && l.trim() ? `${l} — ${w}` : l;
     })
-    .join("\n")
-    .trim();
+    .join("\n");
+}
+
+/** A short answer (bold in the end Answers ledger, with optional working) is at most this many words. */
+export const SHORT_ANSWER_WORDS = 4;
+/** A working line: digits and an operator or "=", e.g. "16 ÷ 2 = 8; 8 ÷ 2 = 4". */
+const isCalculation = (s: string) => /\d/.test(s) && /[=÷×+−*/]/.test(s);
+const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/**
+ * One answer line read as answer and working (the inverse of `answerKeyText`'s join): what follows
+ * " — " is the working when the answer before it is short (at most `SHORT_ANSWER_WORDS` words,
+ * 40 characters, after any "1." number) or when it is a calculation. Anything else is all answer.
+ */
+export function splitWorkingLine(line: string): { answer: string; working?: string } {
+  const m = /^(\s*\d+[.)]\s*)?(.+?)\s+[—–]\s+(.+)$/.exec(line);
+  if (!m) return { answer: line };
+  const head = m[2] as string;
+  const tail = m[3] as string;
+  const short = head.trim().length <= 40 && wordCount(head) <= SHORT_ANSWER_WORDS;
+  if (!short && !isCalculation(tail)) return { answer: line };
+  return { answer: `${m[1] ?? ""}${head}`, working: tail };
+}
+
+/**
+ * The answer drawer's joined text back into the question's fields, line by line, so each working
+ * stays with its own answer when lines are deleted or reordered (`answerKeyText` joins them).
+ */
+export function answerKeyFields(text: string): { modelAnswer: string; working?: string[] } {
+  const lines = text.split("\n").map(splitWorkingLine);
+  const working = lines.map((l) => l.working ?? "");
+  return {
+    modelAnswer: lines.map((l) => l.answer).join("\n"),
+    ...(working.some((w) => w.trim()) ? { working } : {}),
+  };
 }
 
 /**

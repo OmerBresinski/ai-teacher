@@ -1,4 +1,4 @@
-import type { QuestionData, Slide } from "@tj/domain/documents";
+import { answerKeyText, type QuestionData, type Slide } from "@tj/domain/documents";
 import {
   Checkbox,
   IconButton,
@@ -293,11 +293,11 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
             {question.type === "open-response" ? (
               <Textarea
                 rows={4}
-                value={question.modelAnswer ?? ""}
+                value={answerKeyText(question)}
                 aria-label="Model answer"
                 placeholder="What a strong answer contains."
                 onBlur={typing.end}
-                onChange={(e) => type({ ...question, modelAnswer: e.target.value })}
+                onChange={(e) => type(reducers.withAnswerKey(question, e.target.value))}
               />
             ) : question.type === "true-false" || question.type === "multiple-choice" ? (
               <Textarea
