@@ -224,3 +224,13 @@ describe("writer system text", () => {
     expect(() => assembleWriterSystem(`${t}\n${PANEL_LIST_WRITER_MENU.KS2}`, "KS2")).toThrow();
   });
 });
+
+describe("split-compare at KS2: three pictured sides stay off the menu", () => {
+  // Ruling 162 amended by Greg 18 Oct (item 31 A) measures KS2 three pictured sides at 4 words a
+  // side; that reads choppy, so the menu keeps pictures to 2 sides at KS2, as before the change.
+  test("KS2 offers pictures on 2 sides only, never a 3-side pictured cell", () => {
+    const line = SPLIT_COMPARE_WRITER_MENU.KS2;
+    expect(line).toContain("every side carries a picture (2 sides only)");
+    expect(line).not.toContain("3 sides with pictures");
+  });
+});

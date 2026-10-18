@@ -22,6 +22,10 @@
  *   slide is `tight` and type goes on to the floors. Words still too long there squeeze the
  *   pictures and are over. A field past its measured hard maximum (`split-compare-capacity.json`), or the field furthest past its cap
  *   when the slide still overflows, is named in `over`.
+ * - **KS2 side text** (ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the
+ *   golds' 33-34px on quick check, picture-with-points and split-compare): the gold's `--t-body` x
+ *   1.03 = 34 px at k = 1, by k down to 33 px, drawn as given (`fixedSize`), never snapped to the
+ *   stage's steps. The side titles, quotes and the side-by-side look keep the stage's steps.
  *
  * **Side by side** (TEACH-75 part w, Greg 14 Oct: "the compare without VS variant for variety"):
  * the same fit, sizes and zones for 2 or 3 examples of one idea, drawn so it never reads as a
@@ -41,8 +45,9 @@ import type {
 import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { SAFE, SPACE } from "../grid";
+import { KS2_GOLD_READING } from "../layout-sizes";
 import { resolveFontSize } from "../text-style";
-import { MIN_FONT_SIZE, typeScale } from "../themes";
+import { keyStageOf, MIN_FONT_SIZE, typeScale } from "../themes";
 import {
   type Ctx,
   diagramFailed,
@@ -349,15 +354,27 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   // Each size is the step the renderer draws: the key stage snaps a stored size onto its scale (up
   // to the role's smallest step), so a size between steps wrapped differently in the browser.
   const on = (role: "heading" | "body", size: number) => resolveFontSize(c.t, role, size);
+  // KS2 split look: side text at the gold's 34 px by k, never under 33 px (ruling 162 amended by
+  // Greg 18 Oct, item 31 A), drawn as given rather than snapped.
+  const goldText = keyStageOf(c.t) === "ks2" && !set;
+  const G2 = KS2_GOLD_READING;
+  const textAt = (k: number) =>
+    goldText
+      ? Math.max(
+          G2.splitTextFloor,
+          Math.min(G2.splitText, Math.round(G2.splitText * k * 100) / 100),
+        )
+      : on("body", Math.max(base.floor.body, Math.round(base.body * k)));
   const at = (k: number): SplitSizes => ({
     ...base,
     name: on("heading", Math.max(base.floor.name, Math.round(base.name * k))),
-    body: on("body", Math.max(base.floor.body, Math.round(base.body * k))),
+    body: textAt(k),
     quote: on("body", Math.max(base.floor.body, Math.round(base.quote * k))),
   });
   const kMin = Math.max(base.floor.name / base.name, base.floor.body / base.body);
   const typeComfy = (z: SplitSizes) =>
-    z.name >= on("heading", base.comfort.name) && z.body >= on("body", base.comfort.body);
+    z.name >= on("heading", base.comfort.name) &&
+    z.body >= (goldText ? G2.splitTextFloor : on("body", base.comfort.body));
 
   const quoteCtx: Ctx = { ...c, t: { ...c.t, fonts: { ...c.t.fonts, body: voice.family } } };
   const nameH = (s: SplitSide, z: SplitSizes) =>
@@ -535,6 +552,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
       pics,
       ...(p.pic ? { step: { ratios: p.pic.ratios, h: p.picH } } : {}),
       boxes: p.pic ? p.pic.boxes : [],
+      fixedText: goldText,
       n,
       quoteH,
       textH,
@@ -614,6 +632,8 @@ function report(
 }
 
 type Draw = {
+  /** The side text is the KS2 gold's size, drawn as given (`fixedSize`). */
+  fixedText?: boolean;
   zone: SplitZone;
   z: SplitSizes;
   p: { name: number; zone: number; picH: number; body: number };
@@ -689,6 +709,7 @@ function drawSides(c: Ctx, sides: SplitSide[], d: Draw) {
         sized(c, s.text, "body", d.z.body, textRect, {
           color: c.t.colors.ink,
           name: SPLIT_NAMES.text,
+          ...(d.fixedText ? { fixedSize: true } : {}),
         }),
       );
     if (!hide) return;
@@ -830,7 +851,7 @@ function sized(
   role: "heading" | "body",
   size: number,
   rect: { x: number; y: number; w: number },
-  extra: { color?: string; name?: string; weight?: number },
+  extra: { color?: string; name?: string; weight?: number; fixedSize?: boolean },
 ): TextElement {
   const s = c.s;
   c.s = { ...s, [role]: size };

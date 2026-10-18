@@ -121,14 +121,14 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
         template: "split-compare",
         sides: [
           { title: w(3), text: w(7), picture: {} },
-          { title: w(2), text: w(8), picture: {} },
+          { title: w(2), text: w(9), picture: {} },
         ],
       }),
     ).toEqual([
       "sides[0].title:3/3",
-      "sides[0].text:7/7",
+      "sides[0].text:7/8",
       "sides[1].title:2/3",
-      "sides[1].text:8/7",
+      "sides[1].text:9/8",
     ]);
     expect(
       kinds({
