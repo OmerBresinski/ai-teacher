@@ -77,19 +77,19 @@ describe("stages: the gold's sizes, the line held at the reading floor (C10)", (
     const of = (n: string) => els.filter((e) => e.name === n);
     return { r, names: of(STAGES_NAMES.name), lines: of(STAGES_NAMES.line) };
   };
-  test("KS2 bread (5 icons): names 46 px, lines 37.5 px, drawn as given", () => {
+  test("KS2 bread (5 icons): names 46 px, lines 33 px, drawn as given", () => {
     for (const id of ["paper", "poster", "scrapbook", "calm", "geometric", "crayon"]) {
       const { r, names, lines } = sizes("05-y5-bread-5-icons", id);
       expect(r.over).toEqual([]);
       for (const e of names) expect(px(e.style?.fontSize ?? 0)).toBeCloseTo(46, 0);
-      for (const e of lines) expect(px(e.style?.fontSize ?? 0)).toBe(37.5);
+      for (const e of lines) expect(px(e.style?.fontSize ?? 0)).toBe(33);
       for (const e of [...names, ...lines]) expect(e.style?.fixedSize).toBe(true);
     }
   });
-  test("KS1 river (3 short): names 54 px, lines 42 px (gold 38, held at KS1's 28 pt)", () => {
+  test("KS1 river (3 short): names 54 px, lines 38 px (ruling 162 amended, stages)", () => {
     const { names, lines } = sizes("01-y2-river-3-short", "storytime");
     for (const e of names) expect(px(e.style?.fontSize ?? 0)).toBe(54);
-    for (const e of lines) expect(px(e.style?.fontSize ?? 0)).toBe(42);
+    for (const e of lines) expect(px(e.style?.fontSize ?? 0)).toBeCloseTo(38, 0);
   });
 });
 

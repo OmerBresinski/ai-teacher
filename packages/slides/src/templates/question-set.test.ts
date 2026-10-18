@@ -201,7 +201,11 @@ describe("quick check (TEACH-101 part g)", () => {
         for (const e of lay(c, theme).slide.elements) {
           const st = e.type === "text" ? e.style : e.type === "shape" ? e.textStyle : undefined;
           if (!st?.fontSize) continue;
-          expect(st.fontSize).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
+          // The number badge is a label at the gold's badge size (TEACH-215 part j): caption floor.
+          const label = e.name === "surface:badge";
+          expect(st.fontSize).toBeGreaterThanOrEqual(
+            label ? MIN_FONT_SIZE.caption : MIN_FONT_SIZE.body,
+          );
           if (e.type === "text" && e.name !== "Heading")
             expect([e.name, resolveTextStyle(st, t).fontSize]).toEqual([e.name, st.fontSize]);
         }

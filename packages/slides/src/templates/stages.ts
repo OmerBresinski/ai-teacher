@@ -155,9 +155,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
   const col = v2Colors(c.t);
   // The gold's own sizes (C10, THEME-AUDIT 18 Oct: `--t-name` / `--t-body`, KS2 46 / 33 px, KS1
   // 54 / 38 px), drawn as given (`fixedSize`) rather than raised to the stage's body and snapped to
-  // its scale (43.5 / 43.5 px at KS2). The line is held at the stage's reading floor (ruling 162:
-  // KS1 28, KS2 25, KS3+ 21 pt), so KS2 draws 37.5 px and KS1 42 px; the name sits above it.
-  const read = readingFloorOf(stage);
+  // its scale (43.5 / 43.5 px at KS2). Ruling 162 amended by Greg 18 Oct (stages): the line takes
+  // the gold's 33 px at KS2 and 38 px at KS1; from KS3 it is still held at the reading floor (21pt).
+  const read = stage === "ks1" || stage === "ks2" ? 0 : readingFloorOf(stage);
   const sizeName = v2.sizes.name;
   const sizeBody = Math.max(v2.sizes.body, read);
   const prof = {
