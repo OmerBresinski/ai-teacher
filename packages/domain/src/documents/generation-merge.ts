@@ -209,3 +209,13 @@ export function resumeBase(stored: Lesson): Lesson {
   if (!states) return stored;
   return { ...stored, slides: stored.slides.filter((s) => states[s.id] !== "done") };
 }
+
+/**
+ * The ids of the job's slides that the stored row does not hold as the job wrote them: after
+ * `mergeJobLesson`, a slide the teacher edited keeps the teacher's words and a slide the teacher
+ * deleted stays deleted. The job reads this to know a write did not land on that slide.
+ */
+export function slidesNotTaken(job: Pick<Lesson, "slides">, written: Pick<Lesson, "slides">) {
+  const stored = new Map(written.slides.map((s) => [s.id, s]));
+  return job.slides.filter((s) => !sameJson(stored.get(s.id), s)).map((s) => s.id);
+}

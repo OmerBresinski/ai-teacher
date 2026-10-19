@@ -73,10 +73,13 @@ import { runVerify } from "./verify";
  * error on the slide it became, which Repair rewrites.
  *
  * Verify overlaps the first batch (TEACH-233): Plan hands over the running call as
- * `state.pendingVerify`; the first slides are written from the unverified facts, every persist
- * waits for the patch, and a slide built from a corrected fact is written again — so the
- * `generated` checkpoint is still built from verified facts, and `promptVersions.planned` gains
- * `verify-facts` to say so. A run that stopped at `planned` (ADR 0029 item 2) arrives with the
+ * `state.pendingVerify`; the first slides are written from the unverified facts and saved as they
+ * land, without waiting for the patch (latency lane L1: the wait cost slide 3 a median 3.1 s). A
+ * slide built from a fact the patch corrects is written again and saved in its place under its own
+ * id (or, if the patch was in before its first save, written again before it is ever saved) — so
+ * the `generated` checkpoint is still built from verified facts, and `promptVersions.planned`
+ * gains `verify-facts` to say so. The re-save is a three-way merge like every job write
+ * (ADR 0037): a slide the teacher edited first keeps the teacher's words and is flagged to check. A run that stopped at `planned` (ADR 0029 item 2) arrives with the
  * stamp already on the lesson and no promise, so Verify is never run twice.
  */
 
@@ -142,11 +145,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   let failed = false;
 
   // Verify (TEACH-233): Plan started the call and handed the promise over; slides begin from the
-  // unverified facts and every persist waits for the patch. A resumed lesson has no promise — its
-  // stamp says whether Verify already ran (Generate wrote it after applying the patch) and, when
-  // it did not, Verify runs first, before any slide call. Once the patch lands: the facts and the
-  // stem plan are replaced, the findings recorded, the stamp completed — and any slide already
-  // written from a corrected fact is regenerated below (`slideWork`) before it is persisted.
+  // unverified facts and are saved without waiting for the patch. A resumed lesson has no
+  // promise — its stamp says whether Verify already ran (Generate wrote it after applying the
+  // patch) and, when it did not, Verify runs first, before any slide call. Once the patch lands:
+  // the facts and the stem plan are replaced, the findings recorded, the stamp completed — and any
+  // slide written from a corrected fact is regenerated below (`slideWork`) and saved again.
   // Skeleton-only facts (Plan's facts call was refused at the cap) have nothing to verify, as in
   // Plan: Verify is not started for them.
   const resumedVerify =
@@ -175,6 +178,18 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         lesson = withVerifyStamp({ ...lesson, facts });
       })
     : Promise.resolve();
+  let verifyDone = false;
+  void verified.then(() => {
+    verifyDone = true;
+  });
+  /** Whether a slide's answer was built from facts the patch has since corrected. */
+  const stale = (entry: OutlineEntry, written: { slide: Slide; builtFrom: LessonFacts }) =>
+    written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected);
+  const logRewrite = (i: number) =>
+    deps.logger.info(
+      { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
+      "slide regenerated from corrected facts",
+    );
   if (pendingVerify) {
     await deps.onProgress(PROGRESS_VERIFYING, "Checking the facts", "generate");
   }
@@ -297,6 +312,55 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     return { slide, spec: captioned, misses: call.editorialMisses, builtFrom };
   };
 
+  // Every write goes through one queue: the ordered appends below and a correction written after
+  // Verify (which replaces a slide already saved) never run `deps.persist` at the same time.
+  let queue: Promise<unknown> = Promise.resolve();
+  const serial = <T>(write: () => Promise<T>): Promise<T> => {
+    const next = queue.then(write);
+    queue = next.catch(() => undefined);
+    return next;
+  };
+  // The progress the strip last showed: a correction's write repeats it with the new `updatedAt`,
+  // so the follower refetches without the strip moving.
+  let lastProgress: { percent: number; message: string } = {
+    percent: PROGRESS_SLIDES_FROM,
+    message: "Writing",
+  };
+
+  /**
+   * The slide as saved from one answer: the save gate, the answer's editorial misses and the
+   * photograph (or its warning). Returns the findings it added, so a correction can take back the
+   * first answer's.
+   */
+  const finish = (
+    i: number,
+    written: Awaited<ReturnType<typeof writeSlide>>,
+    picked: PickedPhoto | undefined,
+    keepId?: string,
+  ): { slide: Slide; added: Finding[] } => {
+    let slide: Slide = keepId ? { ...written.slide, id: keepId } : written.slide;
+    saveGate(written.spec, i, deps, written.finish);
+    const added: Finding[] = written.misses.map((miss) =>
+      specRuleFinding(miss, { slideId: slide.id }),
+    );
+    // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
+    // the placeholder and records the same warning the illustrate step would.
+    if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
+    else if (picked && !deps.signal.aborted) {
+      const slot = slide.elements.find((e) => e.type === "image");
+      // A provider rate limit is told apart from "nothing fitted", as the illustrate step does.
+      if (slot) {
+        added.push(
+          picked.outcome === "busy"
+            ? busyFinding(slide.id, slot.id)
+            : emptyFinding(slide.id, slot.id),
+        );
+      }
+    }
+    findings.push(...added);
+    return { slide, added };
+  };
+
   const slideWork = async (i: number) => {
     // A stop or a cancel before this call: nothing starts; the gate still opens so later slides
     // (which also start nothing) do not wait forever.
@@ -307,43 +371,22 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     }
     const entry = entries[i] as (typeof entries)[number];
     let slide: Slide | undefined;
+    let added: Finding[] = [];
     let picked: PickedPhoto | undefined;
+    let photo: SlidePhoto | "none" | undefined;
+    let written: Awaited<ReturnType<typeof writeSlide>> | undefined;
     try {
       picked = await picks.get(i);
       if (picked && picked.outcome !== "busy") judged = true;
-      const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
-      let written = await writeSlide(i, entry, photo);
-      // The patch landed while this slide was being written: a slide built from a fact Verify
-      // corrected is written again from the corrected facts (TEACH-233). A cap stop on that second
-      // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
-      // the lesson stops here as it does for any slide the cap refuses.
-      await verified;
-      if (written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected)) {
-        deps.logger.info(
-          { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
-          "slide regenerated from corrected facts",
-        );
+      photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
+      written = await writeSlide(i, entry, photo);
+      // The patch is already in and corrected a fact this slide was built from: it is written
+      // again before it is ever saved (TEACH-233), so the teacher never sees the first answer.
+      if (verifyDone && stale(entry, written)) {
+        logRewrite(i);
         written = await writeSlide(i, entry, photo);
       }
-      slide = written.slide;
-      saveGate(written.spec, i, deps, written.finish);
-      for (const miss of written.misses) {
-        findings.push(specRuleFinding(miss, { slideId: slide.id }));
-      }
-      // The photograph goes in with the text, in the same persist; a slide with no photograph keeps
-      // the placeholder and records the same warning the illustrate step would.
-      if (picked?.outcome === "placed") slide = slideWithPhoto(slide, picked.photo);
-      else if (picked && !deps.signal.aborted) {
-        const slot = slide.elements.find((e) => e.type === "image");
-        // A provider rate limit is told apart from "nothing fitted", as the illustrate step does.
-        if (slot) {
-          findings.push(
-            picked.outcome === "busy"
-              ? busyFinding(slide.id, slot.id)
-              : emptyFinding(slide.id, slot.id),
-          );
-        }
-      }
+      ({ slide, added } = finish(i, written, picked));
     } catch (error) {
       if (!(error instanceof BudgetExceeded)) {
         failed = true;
@@ -353,22 +396,68 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       // The first slide that could not be generated names the stop.
       if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
     }
-    await verified;
+    // Saved as soon as it is written and its turn comes (latency lane L1): the save no longer waits
+    // for Verify. A slide that Verify then corrects is written again below and replaces this one.
     await turnOf(i);
     // A slide landing after an earlier one stopped would leave a gap in the outline order; after a
     // cancel or another worker's failure nothing more is written (the stage throws once every
     // worker has settled, so no persist races the job's failure write).
+    let saved = false;
     if (slide && lesson.slides.length === i && !deps.signal.aborted && !failed) {
-      lesson = withUsage({ ...lesson, slides: [...lesson.slides, slide] }, deps);
-      const { updatedAt } = await deps.persist(lesson);
-      await deps.onProgress(
-        Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),
-        `Slide ${i + 1} of ${total}`,
-        "generate",
-        updatedAt,
-      );
+      const landed = slide;
+      await serial(async () => {
+        lesson = withUsage({ ...lesson, slides: [...lesson.slides, landed] }, deps);
+        const { updatedAt } = await deps.persist(lesson);
+        lastProgress = {
+          percent: Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),
+          message: `Slide ${i + 1} of ${total}`,
+        };
+        await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
+      });
+      saved = true;
     }
     release(i);
+    if (!saved || !written || !slide) return;
+
+    // The patch landed after this slide was written and corrected a fact it was built from: the
+    // slide is written again from the corrected facts and saved in its place, under its own id.
+    // The write is a three-way merge (ADR 0037), so it never replaces a slide the teacher has
+    // edited since; when the row kept the teacher's copy, the slide is flagged to check instead.
+    await verified;
+    if (!stale(entry, written) || deps.signal.aborted || failed) return;
+    const id = slide.id;
+    let next: { slide: Slide; added: Finding[] };
+    try {
+      logRewrite(i);
+      next = finish(i, await writeSlide(i, entry, photo), picked, id);
+    } catch (error) {
+      if (!(error instanceof BudgetExceeded)) {
+        failed = true;
+        throw error;
+      }
+      // The cap refused the correction: the saved slide stays (taking it away would undo what the
+      // teacher has already seen) and says what to check; the lesson stops as for any refusal.
+      if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
+      findings.push(uncorrectedFinding(id));
+      return;
+    }
+    for (const f of added) findings.splice(findings.indexOf(f), 1);
+    await serial(async () => {
+      if (deps.signal.aborted || failed) return;
+      lesson = withUsage(
+        { ...lesson, slides: lesson.slides.map((s) => (s.id === id ? next.slide : s)) },
+        deps,
+      );
+      const { updatedAt, teacherKept } = await deps.persist(lesson);
+      if (teacherKept?.includes(id)) {
+        deps.logger.info(
+          { stage: "generate", call: "slide", index: i, reason: "teacher-edited" },
+          "fact correction not written over the teacher's slide",
+        );
+        findings.push(uncorrectedFinding(id));
+      }
+      await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
+    });
   };
 
   throwIfAborted(deps.signal);
@@ -453,6 +542,20 @@ export function touchesCorrected(
   }
   if (entry.factRefs.some((id) => corrected.has(id))) return true;
   return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
+}
+
+/**
+ * A slide Verify corrected a fact on, but whose correction did not land: the teacher edited the
+ * slide first (the merge keeps the teacher's words), or the cap refused the second call. Unlike an
+ * applied correction it names the slide, so the editor lists it as a thing to check.
+ */
+export function uncorrectedFinding(slideId: string): Finding {
+  return {
+    check: "fact-verify",
+    severity: "warning",
+    target: { slideId },
+    message: "A fact on this slide was corrected after it was written. Check the slide.",
+  };
 }
 
 /** What the slide prompt is told about its photograph (TEACH-220). */

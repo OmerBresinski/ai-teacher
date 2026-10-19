@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { generatedLesson, imageElement, textElement } from "./fixtures.test-helpers";
-import { keepWritingSlides, mergeJobLesson, sameJson, writingSlideIds } from "./generation-merge";
+import {
+  keepWritingSlides,
+  mergeJobLesson,
+  sameJson,
+  slidesNotTaken,
+  writingSlideIds,
+} from "./generation-merge";
 import type { Lesson } from "./lesson";
 import type { Slide } from "./slide";
 
@@ -163,5 +169,23 @@ describe("keepWritingSlides", () => {
     expect(slide(kept, "w2")).toEqual(slide(stored, "w2"));
     expect(el(slide(kept, "w1"), "w1-t")).toEqual(el(slide(incoming, "w1"), "w1-t"));
     expect(kept.generation).toEqual(stored.generation);
+  });
+});
+
+describe("slidesNotTaken (latency L1: a Verify correction after the slide was saved)", () => {
+  test("names the job's slide the merge kept as the teacher typed it, and no other", () => {
+    const base = filling();
+    const mine = typed(base, "Water evaporates in the sun.");
+    const theirs = typed(base, "Water evaporates (corrected).");
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(slidesNotTaken(theirs, merged)).toEqual(["w1"]);
+    expect(slidesNotTaken(theirs, mergeJobLesson(base, base, theirs))).toEqual([]);
+  });
+
+  test("a slide the teacher deleted is not taken either", () => {
+    const base = filling();
+    const mine: Lesson = { ...base, slides: base.slides.filter((s) => s.id !== "w1") };
+    const merged = mergeJobLesson(base, mine, base);
+    expect(slidesNotTaken(base, merged)).toEqual(["w1"]);
   });
 });

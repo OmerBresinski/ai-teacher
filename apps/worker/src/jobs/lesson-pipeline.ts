@@ -8,7 +8,7 @@ import {
   type WorkspaceDb,
 } from "@tj/db";
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
-import { type Lesson, parseLesson, resumeBase } from "@tj/domain/documents";
+import { type Lesson, parseLesson, resumeBase, slidesNotTaken } from "@tj/domain/documents";
 import {
   InputRejected,
   isBudgetRefusal,
@@ -310,6 +310,12 @@ function makePersist(
     const result = await putDocumentAsJob(ws, lessonId, lesson, jobId, { base });
     if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
     base = result.jobBody;
-    return { updatedAt: result.row.updatedAt.toISOString() };
+    // A slide the merge kept as the teacher has it (edited or deleted since the job's last write):
+    // Generate flags a fact correction that could not land there instead of writing over it.
+    const teacherKept = slidesNotTaken(result.jobBody as Lesson, result.row.body as Lesson);
+    return {
+      updatedAt: result.row.updatedAt.toISOString(),
+      ...(teacherKept.length > 0 ? { teacherKept } : {}),
+    };
   };
 }

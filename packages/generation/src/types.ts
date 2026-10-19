@@ -148,8 +148,14 @@ export interface PipelineDeps {
   /**
    * Write the documents as they stand (ADR 0025 §6, §7) and return the lesson's new `updatedAt`,
    * which the next `onProgress` carries so the read-only editor knows to refetch.
+   * `teacherKept` (ADR 0037): ids of the slides in `lesson` the stored row did not take as written,
+   * because the teacher edited or deleted them since the job's previous write (the three-way
+   * merge kept the teacher's copy). Absent means every slide landed as written.
    */
-  persist: (lesson: Lesson, worksheet?: Worksheet) => Promise<{ updatedAt: string }>;
+  persist: (
+    lesson: Lesson,
+    worksheet?: Worksheet,
+  ) => Promise<{ updatedAt: string; teacherKept?: string[] }>;
   /**
    * One progress event. `stage` is the pipeline stage emitting it (ADR 0029 item 14): the worker
    * writes it as `progress.stage` so the client no longer has to read the stage off the percent.

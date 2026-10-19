@@ -1415,8 +1415,12 @@ describe("generate", () => {
     }
     const slideCalls = (ai: ReturnType<typeof createFakeAi>) =>
       ai.calls.filter((c) => c.context?.promptVersion === PROMPT_VERSIONS["generate-slide"]);
+    /** Waits (on timers, up to 2 s) until `done()` holds; the test fails on the next expect if not. */
+    const until = async (done: () => boolean) => {
+      for (let k = 0; k < 400 && !done(); k++) await new Promise((r) => setTimeout(r, 5));
+    };
 
-    test("row 1: no corrections — the planned persist precedes the verify answer; no persist waits on it once it is in; same calls as before", async () => {
+    test("row 1: no corrections — slides are saved while the verify answer is still out (latency L1); same calls as before", async () => {
       const { state, release, planAi } = await plannedWithHeldVerify([]);
       // Plan returned with the checkpoint written while the verify call is still out.
       expect(state.lesson.generation?.stage).toBe("planned");
@@ -1425,10 +1429,15 @@ describe("generate", () => {
       const ai = createFakeAi({ script: generateScript(), usage });
       const deps = recordingDeps(ai);
       const run = generate(state, deps);
+      // Every slide is saved, in outline order, before Verify answers; only the checkpoint waits.
+      const written = FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES;
+      await until(() => deps.persisted.length >= written);
       await new Promise((r) => setTimeout(r, 5));
-      // Slide calls went out, nothing was persisted: every persist waits for the patch.
-      expect(slideCalls(ai).length).toBeGreaterThan(0);
-      expect(deps.persisted).toHaveLength(0);
+      expect(deps.persisted).toHaveLength(written);
+      deps.persisted.forEach((p, k) => {
+        expect(p.lesson.slides).toHaveLength(PLANNED_SLIDES + k + 1);
+      });
+      expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
       release();
       const result = await run;
       expect(slideCalls(ai)).toHaveLength(FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES);
@@ -1468,8 +1477,13 @@ describe("generate", () => {
       });
       const deps = recordingDeps(ai);
       const run = generate(state, deps);
+      // Saved before Verify answered, from the unverified facts.
+      const written = facts.outline.length - PLANNED_SLIDES;
+      await until(() => deps.persisted.length >= written);
       await new Promise((r) => setTimeout(r, 5));
-      expect(deps.persisted).toHaveLength(0);
+      expect(deps.persisted).toHaveLength(written);
+      const first = deps.persisted[touched - PLANNED_SLIDES]?.lesson.slides[touched];
+      expect(slideText(first as never)).not.toContain("Clan");
       release();
       const result = await run;
       const position = (i: number) => `Slide ${i + 1} of ${facts.outline.length}`;
@@ -1479,11 +1493,21 @@ describe("generate", () => {
       expect(slideCalls(ai).filter((c) => c.promptText.includes(position(untouched)))).toHaveLength(
         1,
       );
-      // The persisted slide is the second answer, written from the patched facts.
+      // The correction is saved in place, under the first answer's slide id, in one more write
+      // that changes only that slide; the strip's progress does not move for it.
       expect(slideText(result.lesson.slides[touched] as never)).toContain("Clan");
-      expect(deps.persisted[touched - PLANNED_SLIDES]?.lesson.slides[touched]).toEqual(
-        result.lesson.slides[touched],
-      );
+      expect(result.lesson.slides[touched]?.id).toBe(first?.id);
+      const correction = deps.persisted[written];
+      expect(correction?.lesson.slides[touched]).toEqual(result.lesson.slides[touched]);
+      expect(
+        correction?.lesson.slides.filter(
+          (s, i) => s !== deps.persisted[written - 1]?.lesson.slides[i],
+        ),
+      ).toHaveLength(1);
+      expect(deps.persisted).toHaveLength(written + 2);
+      const last = deps.progress.filter((p) => p.stage === "generate").at(-2);
+      expect(last?.message).toBe(`Slide ${written + PLANNED_SLIDES} of ${facts.outline.length}`);
+      expect(last?.documentUpdatedAt).toBe(correction?.updatedAt);
       expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
       expect(result.lesson.generation?.findings).toEqual([
         {
@@ -1494,8 +1518,51 @@ describe("generate", () => {
         },
       ]);
       expect(result.lesson.generation?.promptVersions.planned).toBe(VERIFIED_STAMP);
-      // Every persist carried the patched facts.
-      for (const p of deps.persisted) expect(p.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+      // The correction and the checkpoint carry the patched facts.
+      for (const p of deps.persisted.slice(written)) {
+        expect(p.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+      }
+    });
+
+    test("a correction the teacher's edit kept off the slide is flagged on that slide, not written over it", async () => {
+      const facts = fullFacts();
+      const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
+      const { state, release } = await plannedWithHeldVerify([
+        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
+      ]);
+      const ai = createFakeAi({
+        fallback: (call) => {
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
+          const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
+          if (!spec) throw new Error(`no fixture for ${kind}`);
+          return json(spec);
+        },
+        usage,
+      });
+      const deps = recordingDeps(ai);
+      const recorded = deps.persist;
+      // The worker's merge (ADR 0037) reports the teacher's copy kept for the touched slide.
+      deps.persist = async (lesson, worksheet) => {
+        const out = await recorded(lesson, worksheet);
+        const id = lesson.slides[touched]?.id;
+        return deps.persisted.length > facts.outline.length - PLANNED_SLIDES && id
+          ? { ...out, teacherKept: [id] }
+          : out;
+      };
+      const run = generate(state, deps);
+      await until(() => deps.persisted.length >= facts.outline.length - PLANNED_SLIDES);
+      release();
+      const result = await run;
+      const id = result.lesson.slides[touched]?.id as string;
+      expect(result.lesson.generation?.findings).toEqual([
+        expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
+        {
+          check: "fact-verify",
+          severity: "warning",
+          target: { slideId: id },
+          message: "A fact on this slide was corrected after it was written. Check the slide.",
+        },
+      ]);
     });
 
     test("row 3: Verify fails twice — the failed-call finding, no regeneration, the lesson completes", async () => {
@@ -1550,7 +1617,7 @@ describe("generate", () => {
       ).toBe(false);
     });
 
-    test("a cap hit on the regeneration call drops the slide built from unverified facts and stops there", async () => {
+    test("a cap hit on the regeneration call keeps the saved slide, flags it to check and stops there", async () => {
       const { state, release } = await plannedWithHeldVerify([
         { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
       ]);
@@ -1566,10 +1633,14 @@ describe("generate", () => {
       release();
       const result = await run;
       expect(result.lesson.generation?.stage).toBe("generated");
-      // Slides before the touched one landed; the touched one and everything after did not.
-      expect(result.lesson.slides).toHaveLength(touched);
+      // The first four slides were saved before Verify answered; the touched one stays as saved
+      // (the teacher has seen it), flagged to check, and nothing after the cap was written.
+      expect(result.lesson.slides).toHaveLength(PLANNED_SLIDES + 4);
+      expect(touched).toBeLessThan(PLANNED_SLIDES + 4);
+      const id = result.lesson.slides[touched]?.id;
       expect(result.lesson.generation?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
+        expect.objectContaining({ check: "fact-verify", target: { slideId: id } }),
         expect.objectContaining({ check: "budget" }),
       ]);
       expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
