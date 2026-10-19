@@ -33,7 +33,7 @@ import { withBuilds } from "../diagrams/builds";
 import { buildCount, diagramElement, svgDataUrl, svgOfDataUrl } from "../diagrams/index";
 import { uid } from "../factories";
 import { arrowCubic } from "../paths/arrow";
-import { countLines, lineWidth } from "../text-measure";
+import { countLines, exactWidth, lineWidth, mathFaceOf } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
 import { notchPoints } from "../themes/marks";
@@ -369,6 +369,29 @@ function plan(
   };
 }
 
+/**
+ * An equation side's width at `size` as it is drawn (the gold's `meas()`): its words in the body
+ * face at their own 500 advances, each variable in the maths face (`mathFaceOf`, italic). The
+ * rounder 600-table `widthAt` put the "=" column and the moves 15-18 px right of the gold, which
+ * left the move column too narrow for the gold's 36 px moves (C11, THEME-AUDIT 18 Oct).
+ */
+function sideWidth(c: Ctx, text: string, size: number, vars: readonly string[]): number {
+  if (!text) return 0;
+  const body = resolveTextStyle({ preset: "body" }, c.t).fontFamily;
+  const math = mathFaceOf(c.t);
+  const parts = vars.length
+    ? text.split(new RegExp(`(?<![A-Za-z])(${vars.map(esc).join("|")})(?![A-Za-z])`))
+    : [text];
+  return parts.reduce(
+    (w, part, i) =>
+      w +
+      (i % 2 === 1
+        ? exactWidth(part, math.family, 500, size, math.italic)
+        : exactWidth(part, body, 500, size)),
+    0,
+  );
+}
+
 /** `text`'s width at `size` in the body face (one line, no padding). */
 function widthAt(c: Ctx, text: string, size: number, weight = 500): number {
   if (!text) return 0;
@@ -487,12 +510,18 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   // of the widest right side.
   const geom = (eq: number, model: boolean) => {
     const g = eq * 0.26;
-    const signW = widthAt(c, "=", eq);
+    const signW = sideWidth(c, "=", eq, []);
     const parts = lines.map((l) => {
       const at = l.eq.indexOf(" = ");
       const lhs = at < 0 ? l.eq : l.eq.slice(0, at);
       const rhs = at < 0 ? "" : l.eq.slice(at + 3);
-      return { lhs, rhs, sign: at >= 0, lw: widthAt(c, lhs, eq), rw: widthAt(c, rhs, eq) };
+      return {
+        lhs,
+        rhs,
+        sign: at >= 0,
+        lw: sideWidth(c, lhs, eq, vars),
+        rw: sideWidth(c, rhs, eq, vars),
+      };
     });
     const maxL = Math.max(...parts.map((r) => r.lw));
     const maxR = Math.max(...parts.map((r) => r.rw));
@@ -598,8 +627,8 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       strokeWidth: 2,
     });
   const badgeSize = stop(c, "body", BADGE * 0.46);
-  // The newest row's badge is the accent (gold: `.lb.now`); the next click lays the ink badge over
-  // it, so only the latest row is red. The last row's badge stays red.
+  // The newest row's badge is the theme's now badge (gold: `.lb.now`); the next click lays the done
+  // badge over it, so only the latest row is lit. The last row's badge stays lit.
   const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
     // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
     const look = markLook(c.t, "badge", BADGE, fill, ink2);
@@ -631,10 +660,17 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       step,
     );
   };
-  const onAccent = c.t.colors.onAccent ?? c.t.colors.background;
-  for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, accent, onAccent, i + 1);
+  // The theme's badge tokens (C12, THEME-AUDIT 18 Oct): `badge-now` / `now-ink` for the newest
+  // row, `badge-fill` / `badge-ink` once a later row is the newest (Treehouse's green, Splash's
+  // blue then pink), not the accent and ink every theme drew before.
+  const sf = surfacesOf(c.t);
+  const nowFill = sf.states["badge:now"]?.fill ?? sf.badgeNow;
+  const nowInk = sf.states["badge:now"]?.ink ?? sf.nowInk;
+  const doneFill = sf.roles.badge.fill;
+  const doneInk = sf.roles.badge.ink ?? c.t.colors.background;
+  for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, nowFill, nowInk, i + 1);
   for (const [i, y] of badgeY.entries())
-    if (i < badgeY.length - 1) badge(i, y, WORKED_NAMES.done, ink, c.t.colors.background, i + 2);
+    if (i < badgeY.length - 1) badge(i, y, WORKED_NAMES.done, doneFill, doneInk, i + 2);
 
   // The rows: the answer plate, then left side, "=", right side on the "=" column.
   lines.forEach((l, i) => {

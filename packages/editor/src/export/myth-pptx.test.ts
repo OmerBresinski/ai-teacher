@@ -91,6 +91,30 @@ describe("myth and fact in PowerPoint (TEACH-75 part ag)", () => {
     expect((s1 as string).match(/<p:pic\b/g)?.length ?? 0).toBe(0);
   });
 
+  it("the grown fact and the claim go out at the same size, the gold's 52px (part h)", async () => {
+    const lesson = lessonOf(MYTH);
+    const [, , s2] = await exported(lesson);
+    // The last run with the text (the panel claim is laid over the vote card's open claim).
+    const sizeOf = (xml: string, text: string) =>
+      Number(
+        [
+          ...xml.matchAll(
+            new RegExp(`<a:rPr[^>]*\\ssz="(\\d+)"[^>]*>(?:(?!</a:r>).)*?<a:t>${text}`, "g"),
+          ),
+        ].at(-1)?.[1] ?? 0,
+      ) / 100;
+    const fact = sizeOf(s2 as string, "Without air resistance");
+    const claim = sizeOf(s2 as string, "Heavier objects fall faster.");
+    const slide = lesson.slides[0] as {
+      elements: { name?: string; style?: { fontSize?: number } }[];
+    };
+    const laid = slide.elements.find((e) => e.name === "Fact")?.style?.fontSize ?? 0;
+    // 52px at 1440 wide is 34.7pt on the 960pt slide.
+    expect(Math.round(laid * 1.5)).toBe(52);
+    expect(fact).toBeCloseTo(laid, 0);
+    expect(claim).toBe(fact);
+  });
+
   it("straight: two build slides, the verdict first", async () => {
     const lesson = lessonOf({ ...MYTH, opening: "straight" });
     expect(buildSlidePlan(lesson)).toHaveLength(2);

@@ -34,8 +34,6 @@ const LEGITIMATE: Record<string, string> = {
   "panel-list secondary.6.withLead": "six rows leave no line for a lead",
   "panel-list secondary.6.pictures.lead": "six pictured rows leave no line for a lead",
   "panel-list secondary.6.pictures.withLead": "six pictured rows leave no line for a lead",
-  // Stages: six picture tiles at primary hold no 10-character line even beside 3-letter names.
-  "stages primary.6.pictures": "six picture tiles at primary hold no stage",
   // Reasons: four reasons and a four-link chain are never taken at KS1 (REASONS_MAX, ruling).
   "reasons early.reasons-4": "four reasons are not taken at KS1",
   "reasons early.chain-4": "a four-link chain is not taken at KS1",
@@ -161,7 +159,9 @@ describe("a 0 or missing cap reports over, never no limit", () => {
     );
     expect(r.over).toEqual(expect.arrayContaining(["heading", "rows[0].name", "rows[5].text"]));
   });
-  test("stages: six picture tiles at primary (hard maximum 0) are over", () => {
+  // TEACH-215 part j: at the gold's 33 px line (ruling 162 amended by Greg 18 Oct, stages) six
+  // picture tiles at primary hold 6-letter names and 24-character lines; the cell is no longer 0.
+  test("stages: six picture tiles at primary hold short stages", () => {
     const stages = ["Seed", "Root", "Shoot", "Leaf", "Bud", "Fruit"].map((name) => ({
       name,
       line: "It grows.",
@@ -172,7 +172,7 @@ describe("a 0 or missing cap reports over, never no limit", () => {
       T0,
       "ks2",
     );
-    expect(r.over).toEqual(expect.arrayContaining(["stages[0].name", "stages[5].line"]));
+    expect(r.over).toEqual([]);
   });
   test("reasons: four reasons at KS1 (cell of 0) are over", () => {
     const reasons = ["Wind", "Rain", "Heat", "Cold"].map((head) => ({ head, line: "It helps." }));

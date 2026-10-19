@@ -44,6 +44,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0037 | Per-slide ownership while a lesson is generating: done slides are the teacher's, job writes merge | Accepted |
 | 0038 | The teacher picks a slide length tier; the writer picks the count inside it | Accepted |
 | 0039 | Slide drafts stream as an ephemeral job-event side channel; the persisted slide always wins | Accepted |
+| 0040 | One measured system for text limits: one ruler, one slot registry, words from the generator; drift and Chromium calibration in CI | Proposed |
 
 Template: `0000-template.md`.
 
@@ -93,3 +94,4 @@ Template: `0000-template.md`.
 - 2026-10-02 — ADR 0022 (TEACH-251 amendment): generation saves lessons with the current `FIT_VERSION`, so the first open tidies nothing; Tidy defaults to `split: false` on a generated slide (`isGeneratedSlide`), so the first-open migration, a re-theme and the Tidy button never add pages to it; a teacher's edit makes the slide theirs again (TEACH-14). See the fifth amendment in `0022-editor-package-boundary-and-state.md`.
 - 2026-10-02 — ADR 0008 (TEACH-300): both sign-in limiters key on one address, resolved by better-auth's `getIPFromHeader` from `AUTH_IP_HEADER` (`x-real-ip` on Railway, which its edge overwrites; IPv6 by /64); an unresolved address shares one bounded bucket; a booleans-only `x-tj-ip-probe` report; magic-link sends bounded per address per hour and per UTC day, skipped silently with the normal answer. See the amendment in `0008-better-auth.md`.
 - 2026-10-12 — ADR 0039 (TEACH-202 part f): live writing streams `slide-draft` job events, the slide being written laid out as it stands, throttled to 200 ms in the worker and pruned when the job ends; drafts never touch the document, show only on `writing` slides, and the persisted slide always wins. See `0039-slide-draft-side-channel.md`.
+- 2026-10-18 — ADR 0040 (proposed): text limits become one measured system. M0 adds the `text-measure` CI job: `caps:check` (every capacity generator re-run against its committed JSON) and `measure:calibrate` (the headless measurer against Chromium), each with its known gaps listed. See `0040-text-limits-one-measured-system.md`.

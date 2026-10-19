@@ -296,15 +296,43 @@ export function capPilotDefs(defs: J, stage: WriterStage): J {
   return out;
 }
 
+/** A writer schema's slide branches: every `slides` branch, then the lesson's `close` ones. */
+const slideRefs = (writer: J): J[] => {
+  const all = [
+    ...((writer.properties?.slides?.items?.anyOf ?? []) as J[]),
+    ...((writer.properties?.close?.anyOf ?? []) as J[]),
+  ];
+  return all.filter((r, k) => all.findIndex((x) => x.$ref === r.$ref) === k);
+};
+const templatesOf = (writer: J, ref: J): string[] =>
+  writer.$defs?.[String(ref.$ref).replace("#/$defs/", "")]?.properties?.template?.enum ?? [];
+
+/** The layouts a writer schema offers: the `template` of every slide branch, close included. */
+export function offeredLayouts(writer: J): string[] {
+  return [...new Set(slideRefs(writer).flatMap((r) => templatesOf(writer, r)))];
+}
+
 /**
- * The fit repair's schema for one pilot slide: the repair's own envelope (`fix`, `slide`,
- * `to_notes`) with `slide` fixed to the layout, and only the defs that layout reaches (its pictures,
- * diagrams, icon names). Every other layout's def stays out, so the call is small.
+ * The repair's layouts menu on a pack (ruling 218): the "Layouts." line of the writer's own system
+ * text, then each line of a layout the writer is offered, word for word as the writer read them.
+ * `layoutsFor` then cuts it to the slide's layout and those it may switch to.
  */
-export function pilotRepairSchema(repair: J, writer: J, template: string): J {
+export function packRepairMenu(system: string, offered: readonly string[]): string {
+  const lines = system.split("\n");
+  const head = lines.findIndex((l) => l.startsWith("Layouts. "));
+  if (head < 0) throw new Error("pilot pack: no Layouts line in the system text");
+  const want = new Set(offered);
+  return [
+    lines[head],
+    ...lines.slice(head + 1).filter((l) => want.has(/^- ([a-z-]+): /.exec(l)?.[1] ?? "")),
+  ].join("\n");
+}
+
+/** The repair envelope with `slide` one of `refs`, and only the defs those reach. */
+function repairWith(repair: J, writer: J, refs: J[]): J {
   const out = structuredClone(repair) as J;
   const pool: J = { ...(out.$defs ?? {}), ...(writer.$defs ?? {}) };
-  out.properties.slide = { anyOf: [{ $ref: `#/$defs/${template}` }] };
+  out.properties.slide = { anyOf: refs };
   const keep: J = {};
   const walk = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(walk);
@@ -321,8 +349,29 @@ export function pilotRepairSchema(repair: J, writer: J, template: string): J {
   };
   walk(out.properties);
   out.$defs = keep;
+  return out;
+}
+
+/**
+ * The repair's schema on a pack (ruling 218): the repair's own envelope (`fix`, `slide`,
+ * `to_notes`) with `slide` any of `layouts` exactly as the writer's schema defines them, every fit
+ * with its item counts, so a repaired slide only becomes a layout production offers. A layout the
+ * writer is not offered is never added.
+ */
+export function packRepairSchema(repair: J, writer: J, layouts: readonly string[]): J {
+  const want = new Set(layouts);
+  const refs = slideRefs(writer).filter((r) => templatesOf(writer, r).some((t) => want.has(t)));
+  return repairWith(repair, writer, refs);
+}
+
+/**
+ * The fit repair's schema for one pilot slide: the repair's own envelope (`fix`, `slide`,
+ * `to_notes`) with `slide` fixed to the layout, and only the defs that layout reaches (its pictures,
+ * diagrams, icon names). Every other layout's def stays out, so the call is small.
+ */
+export function pilotRepairSchema(repair: J, writer: J, template: string): J {
   // A capped repair would cut its own fix, as the writer's decoder did.
-  return stripStringCaps(out);
+  return stripStringCaps(repairWith(repair, writer, [{ $ref: `#/$defs/${template}` }]));
 }
 
 const str = { type: "string" };

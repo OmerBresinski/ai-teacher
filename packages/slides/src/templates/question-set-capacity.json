@@ -2,21 +2,21 @@
   "early": {
     "3": {
       "questions": {
-        "cap": 30,
-        "hardMax": 70
+        "cap": 72,
+        "hardMax": 72
       },
       "answers": {
-        "cap": 11,
-        "hardMax": 27
+        "cap": 28,
+        "hardMax": 28
       }
     },
     "4": {
       "questions": {
-        "cap": 30,
-        "hardMax": 35
+        "cap": 38,
+        "hardMax": 38
       },
       "answers": {
-        "cap": 11,
+        "cap": 17,
         "hardMax": 17
       }
     }
@@ -24,28 +24,28 @@
   "primary": {
     "3": {
       "questions": {
-        "cap": 42,
-        "hardMax": 88
+        "cap": 47,
+        "hardMax": 89
       },
       "answers": {
-        "cap": 35,
-        "hardMax": 35
+        "cap": 38,
+        "hardMax": 38
       }
     },
     "4": {
       "questions": {
-        "cap": 42,
-        "hardMax": 88
+        "cap": 46,
+        "hardMax": 89
       },
       "answers": {
-        "cap": 35,
-        "hardMax": 35
+        "cap": 37,
+        "hardMax": 37
       }
     },
     "5": {
       "questions": {
-        "cap": 42,
-        "hardMax": 48
+        "cap": 46,
+        "hardMax": 49
       },
       "answers": {
         "cap": 21,
@@ -54,50 +54,50 @@
     },
     "6": {
       "questions": {
-        "cap": 42,
-        "hardMax": 48
+        "cap": 46,
+        "hardMax": 47
       },
       "answers": {
-        "cap": 17,
-        "hardMax": 17
+        "cap": 20,
+        "hardMax": 20
       }
     }
   },
   "secondary": {
     "3": {
       "questions": {
-        "cap": 42,
-        "hardMax": 96
+        "cap": 97,
+        "hardMax": 97
       },
       "answers": {
-        "cap": 35,
-        "hardMax": 35
+        "cap": 39,
+        "hardMax": 39
       }
     },
     "4": {
       "questions": {
-        "cap": 42,
-        "hardMax": 96
+        "cap": 97,
+        "hardMax": 97
       },
       "answers": {
-        "cap": 35,
-        "hardMax": 35
+        "cap": 39,
+        "hardMax": 39
       }
     },
     "5": {
       "questions": {
-        "cap": 42,
-        "hardMax": 52
+        "cap": 51,
+        "hardMax": 51
       },
       "answers": {
-        "cap": 17,
-        "hardMax": 21
+        "cap": 22,
+        "hardMax": 22
       }
     },
     "6": {
       "questions": {
-        "cap": 42,
-        "hardMax": 42
+        "cap": 41,
+        "hardMax": 41
       },
       "answers": {
         "cap": 17,

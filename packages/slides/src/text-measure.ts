@@ -94,6 +94,21 @@ export function runWidth(
   return emWidth(text, advancesFor(stack, weight), trackingEm) * size;
 }
 
+/**
+ * One line of `text` in a face at its own advances, a 500 weight reading the 500 table when the
+ * face has one (`runWidth` keeps the 600 table at 500 so laid-out lessons stay byte-identical).
+ * The worked example's equation sides measure with it, as the gold's `meas()` reads the DOM.
+ */
+export function exactWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  italic = false,
+): number {
+  return emWidth(text, advancesFor(stack, weight, italic, true), 0) * size;
+}
+
 /** The resolved type a line count depends on. */
 export type LineType = Pick<
   ResolvedText,
@@ -242,13 +257,15 @@ export function quoteFaceOf(theme: Theme): { family: string; italic: boolean } {
 
 /**
  * The face a `font: "math"` run (a maths variable) is set in: a theme's own tokens `math-face` and
- * `math-style` (Geometric: Source Serif 4 italic, the worked gold's `.v`), else its quote face, so
- * a theme without one draws its variables as before.
+ * `math-style`, else Source Serif 4 italic, the worked gold's `.v` in every round 5 theme (C11,
+ * THEME-AUDIT 18 Oct: the variable is set in italic as in print, never the theme's upright face).
  */
 export function mathFaceOf(theme: Theme): { family: string; italic: boolean } {
   const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[theme.id];
   const own = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
-  return own ? { family: own, italic: tk?.["math-style"] === "italic" } : quoteFaceOf(theme);
+  return own
+    ? { family: own, italic: tk?.["math-style"] === "italic" }
+    : { family: FONT_STACKS.sourceSerif, italic: true };
 }
 
 /** The family a `font: "quote"` run is measured and drawn in. */
