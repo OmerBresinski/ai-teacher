@@ -16,10 +16,14 @@ import {
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
+  imageFailReason,
   pngSize,
+  type RetryHint,
+  requestsSent,
   sizeForAspect,
   splitGrid,
   splitPanels,
+  withRetryLine,
 } from "@tj/images";
 import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
@@ -190,6 +194,25 @@ export function setImagePrompt(shows: string[], look?: LessonLook, same = true):
 /** How many strips a set may generate before the solo fallback (base4: one). */
 export const STRIP_ATTEMPTS = 1;
 
+/**
+ * Solo generations a panel gets after the set's own try (was one). Each carries the latest reason
+ * it failed (`withRetryLine`), so the second never repeats the first.
+ */
+export const SOLO_ATTEMPTS = 2;
+
+/**
+ * A generator failure a panel's next solo would only repeat: the provider stayed down through its
+ * own retries, the request is malformed, or it ran out of time. A safety refusal is not here: its
+ * next try carries the refusal's line, never the same prompt.
+ */
+const NO_SOLO_AFTER = new Set([
+  "rate-limited",
+  "server-error",
+  "network",
+  "bad-request",
+  "timeout",
+]);
+
 /** One panel of a set, as the writer asks for it. */
 export interface SetAsk {
   key: string;
@@ -330,6 +353,13 @@ export async function makePictureSet(
   const same = asks.every((a) => a.sameSubject !== false);
   const mode = setMode(asks.length, deps.grid);
   let capped = false;
+  /** Generations each panel has had (a strip or grid counts once for every panel in it). */
+  const tries = asks.map(() => 0);
+  /** Why each panel last failed: its next solo carries it (`withRetryLine`). */
+  const reasons = new Map<number, RetryHint>();
+  const failed = (k: number, hint: RetryHint) => reasons.set(k, hint);
+  /** Panels whose one safety retry (a solo with the safety line) has run: never a second. */
+  const safetyRetried = new Set<number>();
   /**
    * Stops the set's own work when it fails: a fatal error (budget or abort) in any judge cancels
    * the panels already being made alone, and the set waits for them before it rejects.
@@ -340,18 +370,29 @@ export async function makePictureSet(
     if (halt.signal.aborted)
       throw Object.assign(new Error("The picture set was stopped."), { name: "AbortError" });
   };
-  const generate = async (p: string, size: ImageSize) => {
+  const generate = async (p: string, size: ImageSize, panels: number[]) => {
     halted();
     if (capped || (deps.allow && !(await deps.allow(size)))) {
       if (!capped) deps.log({ ev: "set-capped", set: setKey, size });
       capped = true;
       return undefined;
     }
-    const made = await deps.generator.generate({
-      prompt: p,
-      size,
-      signal,
-    });
+    // Only a generation that reached the provider counts as an attempt.
+    const count = () => {
+      for (const k of panels) tries[k] = (tries[k] ?? 0) + 1;
+    };
+    const made = await deps.generator
+      .generate({
+        prompt: p,
+        size,
+        signal,
+      })
+      // Counted, then rethrown as it was (never swallowed here).
+      .then(undefined, (e: unknown) => {
+        if (requestsSent(e) > 0) count();
+        throw e;
+      });
+    count();
     deps.spent?.(made.costUsd);
     halted();
     return made;
@@ -389,23 +430,56 @@ export async function makePictureSet(
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
   deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, aspect: slotAspect });
 
-  // Partial-set fallback (one regenerate per slot): each panel not placed is generated alone, same
-  // request in the lesson's look, judged alone; placed panels are kept.
-  const solo = (a: SetAsk, k: number): Promise<SetPicture | undefined> =>
+  // Partial-set fallback: each panel not placed is generated alone, in the lesson's look, judged
+  // alone; placed panels are kept. Up to `SOLO_ATTEMPTS` solos, each carrying why the last failed.
+  const soloOnce = (a: SetAsk, k: number, n: number): Promise<SetPicture | undefined | "again"> =>
     nonFatal(
       async () => {
-        const made = await generate(soloImagePrompt(a.shows, look), soloSize);
+        const hint = reasons.get(k);
+        if (hint?.reason === "refused-safety") safetyRetried.add(k);
+        const made = await generate(withRetryLine(soloImagePrompt(a.shows, look), hint), soloSize, [
+          k,
+        ]);
         if (!made) return undefined;
         const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
-        deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
-        if (!verdict.ok) return undefined;
+        deps.log({
+          ev: "set-solo",
+          set: setKey,
+          key: a.key,
+          try: n + 1,
+          ...(hint ? { retry: hint.reason } : {}),
+          ok: verdict.ok,
+          usd: made.costUsd,
+        });
+        if (!verdict.ok) {
+          failed(k, { reason: "judge", ...(verdict.why ? { why: verdict.why } : {}) });
+          return "again";
+        }
         return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
       },
       (e) => {
-        deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
-        return undefined;
+        const reason = imageFailReason(e);
+        // The safety retry runs once at most: refused after it, the panel stops.
+        const again = !(reason === "refused-safety" && safetyRetried.has(k));
+        failed(k, { reason });
+        deps.log({
+          ev: "set-solo-error",
+          set: setKey,
+          key: a.key,
+          try: n + 1,
+          reason,
+          err: String(e).slice(0, 200),
+        });
+        return NO_SOLO_AFTER.has(reason) || !again ? undefined : "again";
       },
     );
+  const solo = async (a: SetAsk, k: number): Promise<SetPicture | undefined> => {
+    for (let n = 0; n < SOLO_ATTEMPTS; n++) {
+      const got = await soloOnce(a, k, n);
+      if (got !== "again") return got;
+    }
+    return undefined;
+  };
   /** Panels a judge has failed, already being made alone (C4): at most once per slot. */
   const early = new Map<number, Promise<SetPicture | undefined>>();
   const regenerate = (k: number) => {
@@ -433,13 +507,22 @@ export async function makePictureSet(
     if (early) {
       judging.forEach((j, k) => {
         void j.then(
-          (v) => (v.ok ? undefined : regenerate(k)),
+          (v) => {
+            if (v.ok) return;
+            // A panel that errored keeps its error's reason (a safety refusal's line).
+            if (!reasons.has(k)) failed(k, { reason: "judge", ...(v.why ? { why: v.why } : {}) });
+            regenerate(k);
+          },
           () => undefined,
         );
       });
       void verdictP.then(
         (v) => {
-          if (v && !v.same) for (const k of v.odd) regenerate(k);
+          if (v && !v.same)
+            for (const k of v.odd) {
+              if (!reasons.has(k)) failed(k, { reason: "odd", ...(v.why ? { why: v.why } : {}) });
+              regenerate(k);
+            }
         },
         () => undefined,
       );
@@ -447,6 +530,11 @@ export async function makePictureSet(
     const [judged, verdict] = await Promise.all([Promise.all(judging), verdictP]);
     const odd = new Set(verdict?.odd ?? []);
     const pass = judged.map((j, k) => j.ok && (!verdict || verdict.same || !odd.has(k)));
+    judged.forEach((j, k) => {
+      if (pass[k] || reasons.has(k)) return;
+      if (!j.ok) failed(k, { reason: "judge", ...(j.why ? { why: j.why } : {}) });
+      else failed(k, { reason: "odd", ...(verdict?.why ? { why: verdict.why } : {}) });
+    });
     deps.log({
       ev: "set-attempt",
       set: setKey,
@@ -469,7 +557,11 @@ export async function makePictureSet(
     if (mode === "strip") {
       // Base4: one strip only (a second doubled the cost and failed the same way).
       for (let attempt = 0; attempt < STRIP_ATTEMPTS; attempt++) {
-        const made = await generate(setImagePrompt(shows, look, same), setSize(asks.length));
+        const made = await generate(
+          setImagePrompt(shows, look, same),
+          setSize(asks.length),
+          asks.map((_, k) => k),
+        );
         if (!made) return "none";
         const panels = splitPanels(made.bytes, asks.length);
         const dup = duplicatePanels(panels);
@@ -482,7 +574,11 @@ export async function makePictureSet(
     } else if (mode === "grid") {
       // One 2x2 grid; a set of 3 has a spare cell (its first picture again). Every cell is judged
       // against its picture; a picture takes its own cell when that passes, else its spare.
-      const made = await generate(gridImagePrompt(shows, look, same), GRID_SIZE);
+      const made = await generate(
+        gridImagePrompt(shows, look, same),
+        GRID_SIZE,
+        asks.map((_, k) => k),
+      );
       if (!made) return "none";
       const cells = splitGrid(made.bytes, 4, { cols: 2, rows: 2 });
       const n = asks.length;
@@ -510,14 +606,16 @@ export async function makePictureSet(
       // paid panels). A panel that errors is made again alone, like one the judge fails; a fatal
       // error (budget, abort) still stops the set.
       const made = await Promise.all(
-        asks.map((a) =>
+        asks.map((a, k) =>
           nonFatal(
-            () => generate(soloImagePrompt(a.shows, look), soloSize),
+            () => generate(soloImagePrompt(a.shows, look), soloSize, [k]),
             (e) => {
+              failed(k, { reason: imageFailReason(e) });
               deps.log({
                 ev: "set-panel-error",
                 set: setKey,
                 key: a.key,
+                reason: imageFailReason(e),
                 err: String(e).slice(0, 200),
               });
               return undefined;
@@ -545,15 +643,42 @@ export async function makePictureSet(
     throw error;
   };
   const tried = await nonFatal(attempt, (e) => {
-    deps.log({ ev: "set-error", set: setKey, mode, err: String(e).slice(0, 200) });
+    const reason = imageFailReason(e);
+    asks.forEach((_, k) => {
+      if (!reasons.has(k)) failed(k, { reason });
+    });
+    deps.log({ ev: "set-error", set: setKey, mode, reason, err: String(e).slice(0, 200) });
     return undefined;
   }).then(undefined, stop);
-  if (tried === "none") return asks.map(() => undefined);
+  /**
+   * One line per picture (ids, counts and reason codes only, ADR 0015), so a paid eval can count
+   * how often a frame ends empty and why: `reason` is the last failure, also on a placed picture
+   * that needed a retry.
+   */
+  const outcomes = (out: (SetPicture | undefined)[]) =>
+    asks.forEach((a, k) => {
+      const why = reasons.get(k)?.reason ?? (capped ? "capped" : undefined);
+      deps.log({
+        ev: "picture-outcome",
+        kind: "set",
+        set: setKey,
+        key: a.key,
+        outcome: out[k] ? "placed" : "empty",
+        attempts: tries[k] ?? 0,
+        ...(why ? { reason: why } : {}),
+      });
+    });
+  if (tried === "none") {
+    const none = asks.map(() => undefined);
+    outcomes(none);
+    return none;
+  }
   const out = await Promise.all(asks.map((a, k) => first[k] ?? early.get(k) ?? solo(a, k))).then(
     undefined,
     stop,
   );
   deps.log({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
+  outcomes(out);
   return out;
 }
 
