@@ -55,8 +55,8 @@ export function wordsWithin(chars: number, stage: WriterStage): number {
   return w;
 }
 
-/** An operator token: only signs, brackets and the like (`+`, `−`, `=`, `÷`, `(`). */
-const OPERATOR = /^[+\-\u2212\u00d7\u00f7=<>\u2264\u2265*/^()\u00b1%:]+$/u;
+/** An operator token: only signs, brackets and the like (`+`, `−`, `=`, `÷`, `→`, `(`). */
+const OPERATOR = /^[+\-\u2212\u00d7\u00f7=<>\u2264\u2265*/^()\u00b1%:\u2192\u21d2]+$/u;
 /** A single-letter term with an optional coefficient or power (`x`, `3x`, `5n`, `x²`), not "a" or "I". */
 const LETTER_TERM = /^\d*[a-zA-Z][\d\u00b2\u00b3]*$/u;
 

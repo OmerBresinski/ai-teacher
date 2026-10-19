@@ -175,6 +175,7 @@ describe("capWords: maths counted as the caps were measured (land check, 19 Oct)
     ).toBe(12);
     expect(capWords("Follow the solution: 3x + 4 = 19")).toBe(5);
     expect(capWords("x² ÷ (y) = 4")).toBe(1);
+    expect(capWords("Add 2: x ÷ 4 − 2 + 2 = 3 + 2 → x ÷ 4 = 5")).toBe(9);
   });
   test("prose counts as before, the article a and the pronoun I included", () => {
     const prose = "Write a sentence I can read, then check it.";

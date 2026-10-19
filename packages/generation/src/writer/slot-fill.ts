@@ -1,6 +1,6 @@
 import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import { charsOver, fitTable } from "./fixes";
-import { shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
+import { capWords, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
 
 /*
@@ -568,7 +568,6 @@ export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arr
   const breaches: string[] = [];
   const cuts: string[] = [];
   const fields: Arrival["fields"] = [];
-  const wordsIn = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
   if (!key && !pilot) breaches.push("fit: missing");
   else if (!def) breaches.push(`fit: no variant ${layout}~${key}`);
   else {
@@ -585,7 +584,8 @@ export function slotFillArrival(raw: J, stage: string, schema: J, caps?: J): Arr
       if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
         fields.push({
           path,
-          words: wordsIn(v),
+          // Logged as the caps were measured: maths operators and letter terms are not words.
+          words: capWords(v),
           capWords: wordsWithin(s.maxLength, writerStageOfKey(stage)),
           shownWords: shownFor(
             s.maxLength,

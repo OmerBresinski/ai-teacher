@@ -182,7 +182,14 @@ export function deckFields(
       for (const f of slotFill.get(no)?.fields ?? []) {
         if (seen.has(f.path)) continue;
         seen.add(f.path);
-        fields.push({ path: f.path, words: f.words, cap: f.shownWords ?? f.capWords });
+        // Recounted from the text with the one counter, so a deck logged by an older counter
+        // scores the same as a new one.
+        const text = atPath(s, f.path);
+        fields.push({
+          path: f.path,
+          words: typeof text === "string" ? capWords(text) : f.words,
+          cap: f.shownWords ?? f.capWords,
+        });
       }
     }
     for (const f of fields)
@@ -198,6 +205,16 @@ export function deckFields(
         });
   }
   return out;
+}
+
+/** The value at a slot-fill path (`items[2].question`, `points[0].text`) on a writer slide. */
+function atPath(s: J, path: string): unknown {
+  let v: unknown = s;
+  for (const k of path.replace(/\[(\d+)\]/g, ".$1").split(".")) {
+    if (v === null || typeof v !== "object") return undefined;
+    v = (v as Record<string, unknown>)[k];
+  }
+  return v;
 }
 
 export interface FillBuckets {

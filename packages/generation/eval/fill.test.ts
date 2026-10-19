@@ -67,7 +67,9 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
     const { fields, events } = pooled(false);
     const r = fillReport(fields, events);
     expect(r.body.fields).toBe(44);
-    expect(r.body.nearCapPct).toBe(18.2);
+    // fill.py split on spaces (18.2%); the port counts maths as the caps were measured (capWords),
+    // so one maths field no longer reads as at its cap.
+    expect(r.body.nearCapPct).toBe(15.9);
     expect(r.body.overPct).toBe(2.3);
     expect(r.body.medianFillPct).toBe(75);
     expect(Object.fromEntries(Object.entries(r.byLayout).map(([t, s]) => [t, s.fields]))).toEqual({
