@@ -139,13 +139,23 @@ const goldStage = (c: Ctx) => {
 };
 const drawn = (c: Ctx, preset: TextPreset, size: number) =>
   goldStage(c) ? round1(size) : resolveFontSize(c.t, preset, size);
+/**
+ * Half a point kept clear at the column's edge where the stage is drawn at a fixed size (KS1 and
+ * KS2, `fixedSize`), which the editor's fitting engine never re-fits (TEACH-215 part m). The
+ * advances are rounded to a thousandth of an em and kerning can widen a pair, so a name or line
+ * the tables put within half a point of the edge (187.85 of 188, 146.95 of 147) drew one line
+ * longer than counted and printed over the text under it. KS3 snaps to the type scale and is
+ * re-fitted in the editor, so it measures to the edge as before.
+ */
+const FIXED_EDGE = 0.5;
+const room = (c: Ctx, w: number) => (goldStage(c) ? w - FIXED_EDGE : w);
 const lines = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
-  v.trim() ? countLines(v, p, c.t, w, wt, size) : 0;
+  v.trim() ? countLines(v, p, c.t, room(c, w), wt, size) : 0;
 const wordsFit = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
   v
     .split(/\s+/)
     .filter(Boolean)
-    .every((word) => countLines(word, p, c.t, w, wt, size) === 1);
+    .every((word) => countLines(word, p, c.t, room(c, w), wt, size) === 1);
 
 /** Whether a stage's picture is there (an open slot counts: it is coming). */
 type Photo = Extract<Figure, { photo: string }>;
