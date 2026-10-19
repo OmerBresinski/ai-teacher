@@ -4,7 +4,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { SaveIndicator } from "../kit/SaveIndicator";
-import { LessonEditor, type LessonEditorProps } from "./LessonEditor";
+import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
 
@@ -204,5 +204,22 @@ describe("the filling editor", () => {
       fireEvent.click(row(container, 1) as HTMLElement);
     });
     expect(container.querySelector("[data-writing-status]")).toBe(region);
+  });
+
+  test("a generator fold alone reaches the save path but never shows Unsaved changes", () => {
+    const lesson = { ...seededLesson(), fitVersion: 5 };
+    const ids = lesson.slides.map((s) => s.id);
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const { container, rerender, tree } = setup(lesson, { editorRef: ref });
+    act(() => rerender(tree(new Set([ids[1] as Id]))));
+    // The job's copy has no fit stamp: the merge keeps the editor's, so the fold is saved.
+    const base = { ...lesson, fitVersion: 0 };
+    const theirs = { ...base, title: "From the job" };
+    act(() => {
+      ref.current?.receiveGenerated(base, theirs);
+    });
+    const el = container.querySelector("[data-save-state]");
+    expect(el?.getAttribute("data-save-state")).not.toBe("saved");
+    expect(el?.hasAttribute("data-save-quiet")).toBe(true);
   });
 });
