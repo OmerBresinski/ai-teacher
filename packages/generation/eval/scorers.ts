@@ -161,6 +161,22 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
   };
 }
 
+/**
+ * The judge's output tokens. At 1500 the judge (gpt-6-luna, medium effort) ran out on 9 of 12
+ * lessons and returned no rubric (build/TECH-DEBT-QUEUE.md, 19 Oct 2026); with 8000 it scores,
+ * using about 1800.
+ */
+export const JUDGE_MAX_OUT = 8000;
+
+/**
+ * Whether the lesson came with a worksheet. The eval harness makes none (the worksheet is its own
+ * job, ADR 0030), and rubric v2 (docs/eval/judge-rubric-v2.md) says to ignore worksheets, so
+ * without one `worksheetValueAdd` is unscored rather than a 1 that drags every mean down.
+ */
+export function hasWorksheet(output: Pick<ScorerOutput, "worksheet">): boolean {
+  return (output.worksheet?.blocks.length ?? 0) > 0;
+}
+
 /** Mean of the non-null scores, to one decimal; `null` when none. */
 export function rubricMean(dimensions: Record<RubricDimension, number | null>): number | null {
   const scored = Object.values(dimensions).filter((s): s is number => s !== null);
@@ -169,7 +185,7 @@ export function rubricMean(dimensions: Record<RubricDimension, number | null>): 
 }
 
 type RubricAnalysis =
-  | { ok: true; output: RubricOutput }
+  | { ok: true; output: RubricOutput; worksheet: boolean }
   | { ok: false; reason: "no-judge" | "budget" | "failed" };
 
 /**
@@ -202,10 +218,10 @@ export function rubricJudgeScorer(judge: JudgeDeps) {
           prompt: rubricJudgePrompt,
           input: rubricJudgeInput(run.output),
           schema: RubricOutputSchema,
-          maxOutputTokens: 1500,
+          maxOutputTokens: JUDGE_MAX_OUT,
           images: judgeImages(run.output.lesson),
         });
-        return { ok: true, output: result.output };
+        return { ok: true, output: result.output, worksheet: hasWorksheet(run.output) };
       } catch (error) {
         if (error instanceof BudgetExceeded) return { ok: false, reason: "budget" };
         if (error instanceof StageFailure) return { ok: false, reason: "failed" };
@@ -215,20 +231,25 @@ export function rubricJudgeScorer(judge: JudgeDeps) {
     .generateScore(({ results }) => {
       const analysis = results.analyzeStepResult;
       if (!analysis.ok) return 0;
-      return rubricMean(scoresOf(analysis.output)) ?? 0;
+      return rubricMean(scoresOf(analysis.output, analysis.worksheet)) ?? 0;
     })
     .generateReason(({ results }) => {
       const analysis = results.analyzeStepResult;
       if (!analysis.ok) return `rubric not scored (${analysis.reason}).`;
-      const scores = scoresOf(analysis.output);
+      const scores = scoresOf(analysis.output, analysis.worksheet);
       const scored = Object.values(scores).filter((s) => s !== null).length;
       return `${scored} dimensions scored, mean ${rubricMean(scores) ?? "-"}.`;
     });
 }
 
-function scoresOf(output: RubricOutput): Record<RubricDimension, number | null> {
+/** The judge's scores, with `worksheetValueAdd` unscored when the lesson has no worksheet. */
+export function scoresOf(
+  output: RubricOutput,
+  worksheet: boolean,
+): Record<RubricDimension, number | null> {
   const scores = {} as Record<RubricDimension, number | null>;
   for (const d of RUBRIC_DIMENSIONS) scores[d] = output.dimensions[d].score;
+  if (!worksheet) scores.worksheetValueAdd = null;
   return scores;
 }
 
@@ -264,7 +285,7 @@ export async function scoreLesson(
   if (!analysis?.ok) {
     return { scores: { schema: schemaScore, modelFindings: modelScore, rubric: null } };
   }
-  const dimensions = scoresOf(analysis.output);
+  const dimensions = scoresOf(analysis.output, analysis.worksheet);
   return {
     scores: {
       schema: schemaScore,
