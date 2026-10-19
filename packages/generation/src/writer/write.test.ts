@@ -21,6 +21,7 @@ import { writerIncomplete } from "./fixes";
 import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 import { isFatal, WRITER_MAX_TOKENS, writerMaxTokens } from "./services";
 import { WriterIncompleteError } from "./stage";
+import { waveCLibraryLine } from "./wave-c";
 
 /*
  * The writer stage's stops (TEACH-110 part b review): a cancel or a budget stop is never
@@ -240,7 +241,11 @@ describe("the diagram library is on for the writer (TEACH-247 part m)", () => {
     expect(lesson).toHaveLength(1);
     const system = lesson[0]?.systemText ?? "";
     expect(system).toContain("Diagram kinds:");
-    expect(system).toContain(WRITER_WORDS.menuLine);
+    // Production's pack offers wave C (TEACH-110 part v): a model may go to figure-slide or step-model.
+    expect(system).toContain(waveCLibraryLine(WRITER_WORDS.menuLine));
+    // With models, step-model's line joins the menu (never sent without one).
+    expect(system).toContain("\n- steps step-model: ");
+    expect(system).not.toContain(WRITER_WORDS.menuLine);
     expect(system).toContain(WRITER_WORDS.header);
   });
 });

@@ -27,7 +27,7 @@ import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
 import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
 import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
 import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
-import { droppedFits, withFits } from "./fit-fits";
+import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   layoutFieldCaps,
@@ -36,6 +36,7 @@ import {
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
+import { WAVE_C_FLOW_SHAPES, WAVE_C_ROUTED_FITS, waveCDefs, waveCWordCaps } from "./wave-c";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -69,6 +70,17 @@ export type PilotPack = {
   uncapped?: boolean;
   /** The pack whose request carries the caps code checks against (slot-fill's cap table). */
   capsFrom?: string;
+  /**
+   * Wave C is offered (TEACH-110 part v, v4.8): its defs (`waveCDefs`), its word caps in the caps
+   * request (`waveCWordCaps`), and the library line that lets figure-slide and step-model take a
+   * model (`withWaveCLibrary`, stage.ts). Its menu lines are the template's `{{menu:wave-c}}`.
+   */
+  waveC?: boolean;
+  /**
+   * Fits routed to a wave C layout, by exact def key, never sent: the work goes where the menu
+   * says (two pictures to split-compare; a calculation with no figure to worked, gold-equal).
+   */
+  routedFits?: readonly string[];
   /** The question layouts' defs come from the capacity tables (`questionDefs`, v4.7 on). */
   questionDefs?: boolean;
   /** `layout-icon` is built per request from the matcher's catalogue (`layoutIconDef`, v4.7 on). */
@@ -150,15 +162,16 @@ export const PILOT_PACKS = {
   // (ruling 261); and the list and contrast layouts' text length generated from their budgets.
   "v4.8": {
     id: "v4.8",
-    layouts: { ...menuFed(l47), flowSize: FLOW_SIZE_COUNTED },
+    // A why shape, so reasons is reachable by its own shape (wave C).
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
     base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
     // The fit layouts' Fits and the heading's words come from code too (`withFits`, loop 1).
     system: {
-      KS1: withFits(assembleWriterSystem(t81, "KS1"), "KS1"),
-      KS2: withFits(assembleWriterSystem(t82, "KS2"), "KS2"),
-      KS3: withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5"),
+      KS1: withFits(assembleWriterSystem(t81, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t82, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
     },
     uncapped: true,
     capsFrom: "v4.5",
@@ -166,6 +179,8 @@ export const PILOT_PACKS = {
     catalogueIcons: true,
     fitFloor: true,
     flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -251,6 +266,7 @@ export function pilotRequest(
     ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
     ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
     ...(pack.catalogueIcons ? { "layout-icon": layoutIconDef() } : {}),
+    ...(pack.waveC ? waveCDefs(writerStageOf(ks), !!schema.$defs["dg-model-full"]) : {}),
   };
   const refs = (schema.properties.slides.items.anyOf as J[]).filter(
     (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),
@@ -261,7 +277,10 @@ export function pilotRequest(
     if (isLayout(d) && !refs.some((r) => r.$ref === `#/$defs/${k}`))
       refs.push({ $ref: `#/$defs/${k}` });
   }
-  const floored = new Set(pack.fitFloor ? droppedFits(writerStageOf(ks)) : []);
+  const floored = new Set([
+    ...(pack.fitFloor ? droppedFits(writerStageOf(ks)) : []),
+    ...(pack.routedFits ?? []),
+  ]);
   const gone = (k: string) =>
     floored.has(k) || pack.layouts.retired.includes(k.split("~")[0] as string);
   if (schema.properties.title?.anyOf)
@@ -308,6 +327,9 @@ export function pilotRequest(
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
             ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+            ...(pack.waveC
+              ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
+              : {}),
           },
         }
       : undefined;

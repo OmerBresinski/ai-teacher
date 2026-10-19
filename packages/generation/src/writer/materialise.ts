@@ -493,6 +493,22 @@ export function toInput(
       const points = pts(s.points);
       if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
         return { template: "big-diagram", heading, lead, points, figure: f };
+      // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
+      const cards = Array.isArray(s.cards) ? (s.cards as S[]) : [];
+      const ptIcon = typeof s.icon === "string" && s.icon.trim() ? s.icon : null;
+      const pictureText =
+        template === "picture-text" && (cards.length || ptIcon)
+          ? {
+              ...(ptIcon ? { icon: ptIcon } : {}),
+              ...(cards.length
+                ? {
+                    cards: cards.map((c) =>
+                      Object.fromEntries(Object.entries(c).filter(([, v]) => v !== null)),
+                    ),
+                  }
+                : {}),
+            }
+          : null;
       // A picture or diagram that could not be made: the words stand alone, never an empty panel.
       return {
         template: f ? template : "explain",
@@ -500,7 +516,8 @@ export function toInput(
         lead,
         points: pts(s.points),
         figure: f,
-      };
+        ...(f && pictureText ? { pictureText } : {}),
+      } as TemplateInput;
     }
     case "big-picture":
     case "big-diagram": {
@@ -584,6 +601,19 @@ export function toInput(
     case "steps": {
       // Steps with an ask line read as a lead and points beside the figure.
       const f = fig("figure");
+      // Wave C (TEACH-110 part v): one step beside a library model (`steps~step-model`).
+      const st = (s.step && typeof s.step === "object" ? s.step : null) as S | null;
+      if (st && f)
+        return {
+          template,
+          heading,
+          step: {
+            ...(typeof st.n === "number" ? { n: st.n } : {}),
+            do: str(st.do),
+            ...(typeof st.see === "string" && st.see.trim() ? { see: st.see } : {}),
+          },
+          figure: f,
+        } as TemplateInput;
       const points = strs(s.points ?? s.steps);
       if (!lead) return { template, heading, points, figure: f };
       if (!f) return { template: "explain", heading, lead, points };
