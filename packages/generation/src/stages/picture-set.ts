@@ -387,7 +387,8 @@ export async function makePictureSet(
         size,
         signal,
       })
-      .catch((e: unknown) => {
+      // Counted, then rethrown as it was (never swallowed here).
+      .then(undefined, (e: unknown) => {
         if (requestsSent(e) > 0) count();
         throw e;
       });
