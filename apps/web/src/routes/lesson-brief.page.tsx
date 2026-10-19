@@ -114,6 +114,9 @@ function LessonIntake({
   ]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // The objectives are confirmed and the lesson job is starting: the page goes to the lesson, so
+  // the generate job's lock must not bring the planning stage back for a moment (UX audit J10).
+  const [leaving, setLeaving] = useState(false);
   const request = useRef<{ id: string; input: ReturnType<typeof CreateLessonSchema.parse> } | null>(
     null,
   );
@@ -295,6 +298,7 @@ function LessonIntake({
     setError("");
     setSignInPrompt("");
     const worksheet = includeWorksheet ? worksheets[0] : undefined;
+    setLeaving(true);
     try {
       const result = await confirmLesson(client, lesson.id, {
         expectedRevision: lesson.plan?.revision ?? 0,
@@ -320,12 +324,13 @@ function LessonIntake({
       await seedConfirmedGeneration(client, lesson, result);
       await navigate({ to: "/l/$lessonId", params: { lessonId: lesson.id } });
     } catch (cause) {
+      setLeaving(false);
       await fail(cause);
     } finally {
       setBusy(false);
     }
   }
-  const planning = !!lessonId && (!!jobId || !initialized.current);
+  const planning = !leaving && !!lessonId && (!!jobId || !initialized.current);
   const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
   const loadingError = document.isError || meta.isError;
   const title = planning
@@ -421,7 +426,7 @@ function LessonIntake({
         </div>
       ) : (
         <>
-          <fieldset disabled={busy || sourcesBusy} className="min-w-0 border-0 p-0 m-0">
+          <fieldset disabled={busy || sourcesBusy} className="relative min-w-0 border-0 p-0 m-0">
             {step === "brief" ? (
               <BriefStep
                 brief={brief}
@@ -483,12 +488,17 @@ function LessonIntake({
                 onSkip={() => void generate(false)}
               />
             )}
-          </fieldset>
-          {busy ? (
-            <p role="status">
-              <Spinner /> Saving your choices…
+            {/* UX audit J11: one line, spinner beside its words, drawn under the step's last row
+                without taking room in the page, so nothing below it moves while the choices save.
+                The live region is always mounted so the words are announced when they appear. */}
+            <p role="status" className="creation-saving">
+              {busy ? (
+                <>
+                  <Spinner /> Saving your choices…
+                </>
+              ) : null}
             </p>
-          ) : null}
+          </fieldset>
           {/* Turnstile's interactive challenge, when Cloudflare asks for one (signed out only). */}
           {signedOut ? <div ref={turnstile.containerRef} /> : null}
           {step === "brief" && !lessonId && !guest ? (

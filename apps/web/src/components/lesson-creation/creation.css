@@ -54,6 +54,20 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
+/* "Saving your choices…" (UX audit J11): out of the flow, under the step's last row. */
+.creation-saving {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  pointer-events: none;
+}
 .creation-objectives {
   display: flex;
   flex-direction: column;
