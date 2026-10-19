@@ -6,13 +6,17 @@ import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import { RUBRIC_DIMENSIONS, type RubricDimension, rubricJudgePrompt } from "./rubric-prompt";
 import {
   hasPlacedPhoto,
+  hasWorksheet,
+  JUDGE_MAX_OUT,
   type JudgeDeps,
   judgeImages,
   modelFindingsScorer,
   rubricJudgeInput,
+  rubricJudgeScorer,
   rubricMean,
   schemaScorer,
   scoreLesson,
+  scoresOf,
 } from "./scorers";
 
 /* Function-only Mastra scorers over the generated fixture (no spend), and the rubric judge on the fake. */
@@ -250,4 +254,76 @@ describe("rubric judge", () => {
     expect(rubricMean(all)).toBeNull();
     expect(rubricMean({ ...all, depth: 2, pitch: 5 })).toBe(3.5);
   });
+});
+
+/*
+ * The harness makes no worksheet (ADR 0030) and rubric v2 ignores worksheets, yet the judge scored
+ * worksheetValueAdd 1 on every E1 run 1 lesson, taking the mean from 3.86 to 3.52 (19 Oct 2026).
+ */
+describe("worksheetValueAdd without a worksheet", () => {
+  test("no worksheet: unscored, and the mean is over the other scored dimensions", async () => {
+    const ai = createFakeAi({ script: [rubricJson(4, { worksheetValueAdd: 1 })] });
+    const scored = await scoreLesson("fixture", { lesson: generatedLesson() }, judgeOn(ai));
+    expect(scored.scores.rubric?.dimensions.worksheetValueAdd).toBeNull();
+    expect(scored.scores.rubric?.mean).toBe(4); // 7 dimensions at 4; imageFit and worksheet null
+    // The judge's sentence is still kept for reading.
+    expect(scored.rubricRationales?.worksheetValueAdd).toBe(SENTINEL);
+  });
+
+  test("with a worksheet: scored and counted as before", async () => {
+    const ai = createFakeAi({ script: [rubricJson(4, { worksheetValueAdd: 1 })] });
+    const scored = await scoreLesson(
+      "fixture",
+      { lesson: generatedLesson(), worksheet: generatedWorksheet() },
+      judgeOn(ai),
+    );
+    expect(scored.scores.rubric?.dimensions.worksheetValueAdd).toBe(1);
+    expect(scored.scores.rubric?.mean).toBe(3.6); // (4 × 7 + 1) / 8 = 3.625 → 3.6
+  });
+
+  test("hasWorksheet: a worksheet with blocks only", () => {
+    expect(hasWorksheet({})).toBe(false);
+    expect(hasWorksheet({ worksheet: generatedWorksheet() })).toBe(true);
+    expect(hasWorksheet({ worksheet: { ...generatedWorksheet(), blocks: [] } })).toBe(false);
+  });
+
+  test("scoresOf nulls only worksheetValueAdd", () => {
+    const output = JSON.parse(rubricJson(3, { worksheetValueAdd: 2, imageFit: 5 }));
+    const off = scoresOf(output, false);
+    const on = scoresOf(output, true);
+    expect(off.worksheetValueAdd).toBeNull();
+    expect(on.worksheetValueAdd).toBe(2);
+    expect({ ...off, worksheetValueAdd: on.worksheetValueAdd }).toEqual(on);
+  });
+});
+
+describe("rubric judge scorer: nothing scored is unscored, never 0", () => {
+  test("an answer with no scored dimension (the schema refuses it) is notScorable, and the lesson's rubric null", async () => {
+    const none = Object.fromEntries(RUBRIC_DIMENSIONS.map((d) => [d, null]));
+    const run = { input: "fixture", output: { lesson: generatedLesson() } };
+    const scorer = await rubricJudgeScorer(
+      judgeOn(createFakeAi({ script: [rubricJson(4, none)] })),
+    ).run(run);
+    expect(scorer.score).toBeUndefined();
+    expect(scorer.notScorable).toBeDefined();
+    const scored = await scoreLesson(
+      "fixture",
+      { lesson: generatedLesson() },
+      judgeOn(createFakeAi({ script: [rubricJson(4, none)] })),
+    );
+    expect(scored.scores.rubric).toBeNull();
+  });
+
+  test("a scored lesson still returns its mean as the scorer's score", async () => {
+    const run = { input: "fixture", output: { lesson: generatedLesson() } };
+    const scorer = await rubricJudgeScorer(judgeOn(createFakeAi({ script: [rubricJson(4)] }))).run(
+      run,
+    );
+    expect(scorer.score).toBe(4);
+  });
+});
+
+describe("judge output cap", () => {
+  // 1500 truncated 9 of 12 judge answers; 8000 scored every one at about 1800 tokens.
+  test("is 8000 tokens", () => expect(JUDGE_MAX_OUT).toBe(8000));
 });
