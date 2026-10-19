@@ -562,7 +562,18 @@ const PILOT_LAYOUTS = new Set([
   "question-set",
   "practice",
   "exit-ticket",
+  // TEACH-110 part v: wave C, one def each, measured by its own layout.
+  "worked",
+  "stages",
+  "reasons",
+  "source",
+  "myth",
+  "figure",
 ]);
+/** A one-def layout whose def is named apart from its template (wave C's figure slide). */
+const DEF_OF_TEMPLATE: Record<string, string> = { figure: "figure-slide" };
+/** Wave C fits of an older layout, measured by their own build (picture-text cards, step model). */
+const OWN_MEASURE_FITS = new Set(["visual-text~key-card-fig", "steps~step-model"]);
 
 export function slotFillArrival(
   raw: J,
@@ -578,8 +589,9 @@ export function slotFillArrival(
   const defs = (schema.$defs ?? {}) as Record<string, J>;
   // A pilot layout (TEACH-110 part s) is one def with no per-fit variants: it carries no `fit`,
   // is checked against its own def here and measured at its drawn size later (pilot-fit.ts).
-  const pilot = !key && PILOT_LAYOUTS.has(layout) && !!defs[layout];
-  const def = key ? defs[variantDefName(layout, key)] : pilot ? defs[layout] : undefined;
+  const own = DEF_OF_TEMPLATE[layout] ?? layout;
+  const pilot = !key && PILOT_LAYOUTS.has(layout) && !!defs[own];
+  const def = key ? defs[variantDefName(layout, key)] : pilot ? defs[own] : undefined;
   const breaches: string[] = [];
   const cuts: string[] = [];
   const fields: Arrival["fields"] = [];
@@ -597,7 +609,14 @@ export function slotFillArrival(
         for (const b of s.anyOf as J[]) walk(b, v, path);
         return;
       }
-      if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
+      // A word cap (wave C, `maxWords`): the field's words as the caps were measured, no characters.
+      if (pack && s.type === "string" && typeof v === "string" && typeof s.maxWords === "number") {
+        const words = capWords(v);
+        fields.push({ path, words, capWords: s.maxWords, shownWords: s.maxWords });
+        const t = v.trim();
+        const sentence = SENTENCE_FIELD.test(path) || INNER_SENTENCE.test(t);
+        if (words > s.maxWords || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
+      } else if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
         fields.push(
           pack
             ? {
@@ -624,7 +643,7 @@ export function slotFillArrival(
         for (const [k, p] of Object.entries((s.properties ?? {}) as Record<string, J>))
           walk(p, (v as J)[k], path ? `${path}.${k}` : k);
     };
-    walk((caps && capDefs[key ? variantDefName(layout, key) : layout]) || def, raw, "");
+    walk((caps && capDefs[key ? variantDefName(layout, key) : own]) || def, raw, "");
   }
   // The hinge's one def carries the loosest offered count's option cap; each count has its own
   // measured room (hinge-capacity.json `byCount`), so an option past its own count's is a cut.
@@ -645,7 +664,7 @@ export function slotFillArrival(
     });
   }
   // A pilot slide's room is measured by its layout (pilot-fit.ts), not the old per-fit tables.
-  const over = pilot ? [] : charsOver(slide, stage);
+  const over = pilot || OWN_MEASURE_FITS.has(`${layout}~${key}`) ? [] : charsOver(slide, stage);
   const route = breaches.length || cuts.length || over.length ? "writer-fault" : "as-written";
   return { slide, ...(key ? { fit: key } : {}), breaches, cuts, fields, over, route };
 }
