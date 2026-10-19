@@ -2,8 +2,9 @@ import { describe, expect, it } from "bun:test";
 import type { Lesson, Slide } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { type AnswerGroup, endAnswerSlides } from "@tj/slides/templates/end-answers";
-import { getTheme } from "@tj/slides/themes";
+import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
+import { resolveTextStyle } from "../slide/elements/kit";
 import { exportLessonPptx } from "./pptx";
 
 /*
@@ -77,4 +78,27 @@ describe("PPTX: end-of-deck answers", () => {
     const on = await exported(true);
     expect(on.page).not.toMatch(/<p:sld[^>]* show="0"/);
   }, 30_000);
+
+  // TEACH-215 part l: the group kicker exports as the web draws it, a caption (size, caps, the
+  // preset's tracking), in a light and a dark theme.
+  for (const id of ["paper", "dark-slate"])
+    it(`exports the kicker as the web's caption (${id})`, async () => {
+      const theme = atKeyStage(getTheme(id, null), "ks1");
+      const slides: Slide[] = endAnswerSlides(GROUPS, theme, "ks1");
+      const kicker = slides.flatMap((s) => s.elements).find((e) => e.name === "Kicker");
+      const web = resolveTextStyle(kicker?.type === "text" ? kicker.style : undefined, theme);
+      expect(web.preset).toBe("caption");
+      const lesson = { ...creditedLesson(), themeId: id, slides } as never as Lesson;
+      const zip = await JSZip.loadAsync(
+        await (await exportLessonPptx(lesson, theme, { includeAnswers: true })).arrayBuffer(),
+      );
+      const xml = (await zip.file("ppt/slides/slide2.xml")?.async("string")) ?? "";
+      const run = /<a:rPr([^>]*)>(?:(?!<\/a:r>).)*?<a:t>EXIT TICKET<\/a:t>/s.exec(xml)?.[1] ?? "";
+      // One px is one pt on the 960-pt-wide PowerPoint slide.
+      expect(run).toContain(`sz="${Math.round(web.fontSize * 100)}"`);
+      expect(run).toContain(
+        `spc="${Math.round(Number.parseFloat(web.letterSpacing) * web.fontSize * 100)}"`,
+      );
+      expect(run).toContain('b="1"');
+    }, 30_000);
 });

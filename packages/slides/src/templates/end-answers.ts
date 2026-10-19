@@ -106,12 +106,17 @@ const labelSize = (t: Theme, stage: Stage) => px(t, stage === "ks1" ? 17 : 15);
  * and tracked by the caption preset. Set as body it snapped up to the body step (28 at KS1), and
  * "EXIT TICKET" wrapped in the rail over the source title (ANSBUG a2).
  */
-const kickerSize = (t: Theme) => resolveFontSize(t, "caption");
-const KICK_LH = 1.2;
+/**
+ * The kicker as measured and as drawn, from one place: its preset (which gives the caps and the
+ * tracking to both the measurer and the renderer), weight and line height.
+ */
+export const KICKER = { preset: "caption", weight: 700, lineHeight: 1.2 } as const;
+const kickerSize = (t: Theme) => resolveFontSize(t, KICKER.preset);
 /** The kicker's drawn height in the rail: every line it wraps to, never one assumed. */
 export function kickerHeight(t: Theme, word: string): number {
   const size = kickerSize(t);
-  return Math.ceil(Math.max(1, countLines(word, "caption", t, RAIL.w, 700, size)) * size * KICK_LH);
+  const lines = countLines(word, KICKER.preset, t, RAIL.w, KICKER.weight, size);
+  return Math.ceil(Math.max(1, lines) * size * KICKER.lineHeight);
 }
 
 /**
@@ -344,12 +349,17 @@ function kicker(c: Ctx, word: string, y: number, h: number) {
     { x: RAIL.x, y, w: RAIL.w },
     {
       color: c.t.colors.accent,
-      weight: 700,
+      weight: KICKER.weight,
       name: ANSWERS_NAMES.kicker,
     },
   );
   el.h = h;
-  el.style = { ...el.style, preset: "caption", fontSize: kickerSize(c.t), lineHeight: KICK_LH };
+  el.style = {
+    ...el.style,
+    preset: KICKER.preset,
+    fontSize: kickerSize(c.t),
+    lineHeight: KICKER.lineHeight,
+  };
   return el;
 }
 
