@@ -4,11 +4,14 @@ import {
   directedImagePrompt,
   expectedImageCostUsd,
   familyOf,
+  IMAGE_ATTEMPT_TIMEOUT_MS,
   IMAGE_MODEL,
+  IMAGE_RETRY_BUDGET_MS,
   ImageGenerationError,
   imageCostUsd,
   imageFailReason,
   RETRY_NOTE_CHARS,
+  requestsSent,
   retryLine,
   retryNote,
   sizeForAspect,
@@ -175,15 +178,80 @@ describe("createOpenAiImageGenerator (fake fetch)", () => {
     expect(calls()).toBe(3);
     expect(waits).toEqual([1500, 3000]);
   });
-  test("a network error is retried", async () => {
+  test("a connection refused before sending is retried, and is not counted as an attempt", async () => {
     const { gen, calls } = scripted([
       () => {
-        throw new TypeError("fetch failed");
+        throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } });
       },
       ok,
     ]);
-    expect((await gen.generate({ prompt: "p", size: "1024x1024" })).attempts).toBe(2);
+    expect((await gen.generate({ prompt: "p", size: "1024x1024" })).attempts).toBe(1);
     expect(calls()).toBe(2);
+  });
+  test("a network error after the request may have been sent is never repeated", async () => {
+    const { gen, calls } = scripted([
+      () => {
+        throw Object.assign(new TypeError("socket closed"), { code: "ECONNRESET" });
+      },
+      ok,
+    ]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("network-unsure");
+    expect(err.attempts).toBe(1);
+    expect(requestsSent(err)).toBe(1);
+    expect(calls()).toBe(1);
+  });
+  test("a quota or billing 429 is not retried", async () => {
+    const { gen, calls, waits } = scripted([
+      () =>
+        new Response(
+          JSON.stringify({
+            error: { code: "insufficient_quota", message: "You exceeded your current quota" },
+          }),
+          { status: 429 },
+        ),
+      ok,
+    ]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("quota");
+    expect(calls()).toBe(1);
+    expect(waits).toEqual([]);
+  });
+  test("each request has its own time limit even when the caller passes a signal", async () => {
+    const hang = (async (_u: string, init: RequestInit) =>
+      new Promise((_, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+      })) as unknown as typeof globalThis.fetch;
+    const gen = createOpenAiImageGenerator({ apiKey: "k", fetch: hang, attemptTimeoutMs: 20 });
+    const caller = new AbortController();
+    const err = await gen
+      .generate({ prompt: "p", size: "1024x1024", signal: caller.signal })
+      .catch((e) => e);
+    expect(err.reason).toBe("timeout");
+    expect(caller.signal.aborted).toBe(false);
+    expect(IMAGE_ATTEMPT_TIMEOUT_MS).toBe(60_000);
+  });
+  test("no retry starts that could not finish inside the picture's time budget", async () => {
+    let t = 0;
+    let n = 0;
+    const fetch = (async () => {
+      n++;
+      return new Response("", { status: 503, headers: { "retry-after": "15" } });
+    }) as unknown as typeof globalThis.fetch;
+    const gen = createOpenAiImageGenerator({
+      apiKey: "k",
+      fetch,
+      budgetMs: 30_000,
+      now: () => t,
+      sleep: async (ms) => {
+        t += ms;
+      },
+    });
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    // 0 s + a 15 s wait + a 20 s minimum request > 30 s: the first failure is the answer.
+    expect(err.reason).toBe("server-error");
+    expect(n).toBe(1);
+    expect(IMAGE_RETRY_BUDGET_MS).toBe(90_000);
   });
   test("a safety refusal is never retried and has its own reason code", async () => {
     const { gen, waits, calls } = scripted([
@@ -257,5 +325,13 @@ describe("retryLine", () => {
     const long = retryNote(`${"word ".repeat(80)}end`);
     expect(long.length).toBeLessThanOrEqual(RETRY_NOTE_CHARS);
     expect(long.endsWith("word")).toBe(true);
+  });
+});
+
+describe("retryLine with an empty note", () => {
+  test("a judge's note that cleans to nothing falls back to the plain line", () => {
+    expect(retryLine({ reason: "judge", why: "  .  " })).toBe(retryLine({ reason: "judge" }));
+    expect(retryLine({ reason: "odd", why: " " })).toBe(retryLine({ reason: "odd" }));
+    expect(retryLine({ reason: "judge", why: "  .  " })).not.toContain("note,");
   });
 });

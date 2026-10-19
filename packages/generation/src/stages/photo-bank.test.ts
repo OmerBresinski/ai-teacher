@@ -244,6 +244,32 @@ describe("findPicture ladder", () => {
     expect(out).toMatchObject({ via: "none", attempts: 2, reason: "refused-safety" });
   });
 
+  test("the safety retry runs once at most, even after a judge refusal in between", async () => {
+    const { bank } = fakeBank();
+    const hints: (RetryHint | undefined)[] = [];
+    bank.generate = async (_r, _f, _s, retry) => {
+      hints.push(retry);
+      if (hints.length === 2)
+        return { ...photo("/files/bank/gen.png"), dataUrl: "data:image/png;base64,AA==" };
+      throw new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => false,
+    );
+    // Refused, safety retry (judged out), judge retry refused again: stop there.
+    expect(hints.map((h) => h?.reason)).toEqual([undefined, "refused-safety", "judge"]);
+    expect(out).toMatchObject({ via: "none", attempts: 3, reason: "refused-safety" });
+  });
+
   test("a provider still down after the generator's own retries is a miss, not tried again", async () => {
     const { bank } = fakeBank();
     let n = 0;

@@ -202,13 +202,15 @@ export interface ImageGenerator {
 export type ImageFailReason =
   | "refused-safety"
   | "rate-limited"
+  | "quota"
   | "server-error"
   | "network"
+  | "network-unsure"
   | "timeout"
   | "bad-request"
   | "no-image";
 
-/** A generation that failed, with its reason code and how many requests were made. */
+/** A generation that failed, with its reason code and how many requests reached the provider. */
 export class ImageGenerationError extends Error {
   readonly reason: ImageFailReason;
   readonly status?: number;
@@ -227,12 +229,41 @@ export function imageFailReason(error: unknown): ImageFailReason | "error" {
   return error instanceof ImageGenerationError ? error.reason : "error";
 }
 
+/**
+ * How many requests of a failed generation reached the provider: an `ImageGenerationError` says;
+ * any other error (a fake, a storage failure after the picture was made) counts as one.
+ */
+export function requestsSent(error: unknown): number {
+  return error instanceof ImageGenerationError ? error.attempts : 1;
+}
+
 /** A 400 is a safety refusal when the provider's code or message says so. */
 function isSafetyRefusal(status: number, body: string): boolean {
   if (status !== 400) return false;
   return /moderation_blocked|content_policy_violation|safety system|safety_violation|rejected by the safety/i.test(
     body,
   );
+}
+
+/** A 429 that is an account limit (quota, billing), not a busy provider: waiting will not help. */
+function isQuota(body: string): boolean {
+  return /insufficient_quota|billing_hard_limit|billing limit|exceeded your current quota|quota/i.test(
+    body,
+  );
+}
+
+/**
+ * Connection errors raised before any byte of the request was sent (Node/undici and Bun codes):
+ * the only network errors that are safe to repeat. The images API documents no idempotency key,
+ * so an error after the request may have been sent (a reset, a closed socket) is never repeated:
+ * the provider may have made, and billed, that picture.
+ */
+const BEFORE_SEND =
+  /^(?:ECONNREFUSED|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|UND_ERR_CONNECT_TIMEOUT|ConnectionRefused|FailedToOpenSocket)$/;
+function sentBeforeFailing(e: unknown): boolean {
+  const code = (x: unknown) => (x as { code?: unknown } | null)?.code;
+  const c = code(e) ?? code((e as { cause?: unknown } | null)?.cause);
+  return !(typeof c === "string" && BEFORE_SEND.test(c));
 }
 
 /** Is this failure worth the same request again (a busy or broken provider, not the request)? */
@@ -248,6 +279,18 @@ export const IMAGE_RETRIES = 2;
 export const IMAGE_BACKOFF_MS = 1_500;
 /** A server's Retry-After is honoured up to this long. */
 const MAX_RETRY_AFTER_MS = 20_000;
+/**
+ * One request's own time limit, even when the caller passes a signal (a low-quality picture takes
+ * about 14-25 s, PICTURE-FAILURES.md).
+ */
+export const IMAGE_ATTEMPT_TIMEOUT_MS = 60_000;
+/**
+ * One picture's whole time across its requests and the waits between them (Retry-After included):
+ * no retry starts that could not finish inside it, and the last request's limit is what is left.
+ */
+export const IMAGE_RETRY_BUDGET_MS = 90_000;
+/** A retry needs at least this long left in the budget to be worth starting. */
+const MIN_ATTEMPT_MS = 20_000;
 
 const sleepFor = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -275,9 +318,11 @@ type FetchFn = typeof globalThis.fetch;
 
 /**
  * OpenAI direct (`/v1/images/generations`), base64 PNG out. Never logs the prompt (ADR 0015).
- * A 429, a 5xx or a network error is retried `retries` times with backoff (Retry-After honoured);
- * a safety refusal, any other 4xx, a timeout or an abort is not. Every failure is an
- * `ImageGenerationError` with its reason code.
+ * A 429, a 5xx or a connection refused before sending is retried `retries` times with backoff
+ * (Retry-After honoured), inside one time budget per picture (`IMAGE_RETRY_BUDGET_MS`), each
+ * request under its own limit (`IMAGE_ATTEMPT_TIMEOUT_MS`). A quota 429, a safety refusal, any
+ * other 4xx, a timeout, a network error after sending, or an abort is not retried. Every failure is
+ * an `ImageGenerationError` with its reason code and the requests that reached the provider.
  */
 export function createOpenAiImageGenerator(opts: {
   apiKey: string;
@@ -291,6 +336,12 @@ export function createOpenAiImageGenerator(opts: {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   /** The random part of the backoff, 0..1 (tests pass a constant). */
   random?: () => number;
+  /** One request's limit (default `IMAGE_ATTEMPT_TIMEOUT_MS`). */
+  attemptTimeoutMs?: number;
+  /** One picture's total time across tries and waits (default `IMAGE_RETRY_BUDGET_MS`). */
+  budgetMs?: number;
+  /** The clock (tests pass a fake). */
+  now?: () => number;
 }): ImageGenerator {
   const model = opts.model ?? IMAGE_MODEL;
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -298,42 +349,56 @@ export function createOpenAiImageGenerator(opts: {
   const backoffMs = opts.backoffMs ?? IMAGE_BACKOFF_MS;
   const sleep = opts.sleep ?? sleepFor;
   const random = opts.random ?? Math.random;
-  /** One request: the response, or a classified failure. */
+  const attemptMs = opts.attemptTimeoutMs ?? IMAGE_ATTEMPT_TIMEOUT_MS;
+  const budgetMs = opts.budgetMs ?? IMAGE_RETRY_BUDGET_MS;
+  const now = opts.now ?? Date.now;
+  /** One request: the response, or a classified failure; `sent` when it reached the provider. */
   const once = async (
     prompt: string,
     size: ImageSize,
-    attempt: number,
+    sentSoFar: number,
+    limitMs: number,
     signal?: AbortSignal,
-  ): Promise<{ res: Response } | { fail: ImageGenerationError; retryAfterMs?: number }> => {
+  ): Promise<
+    { res: Response } | { fail: ImageGenerationError; sent: boolean; retryAfterMs?: number }
+  > => {
     let res: Response;
+    // Its own limit always applies, beside the caller's signal (which may never fire).
+    const own = AbortSignal.timeout(Math.max(1, Math.round(limitMs)));
     try {
       res = await fetchFn("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, prompt, size, quality: IMAGE_QUALITY, n: 1 }),
-        signal: signal ?? AbortSignal.timeout(120_000),
+        signal: signal ? AbortSignal.any([signal, own]) : own,
       });
     } catch (e) {
-      // The caller's abort stops everything; our own timeout is not retried (120 s is enough).
+      // The caller's abort stops everything; our own timeout is not retried.
       if (signal?.aborted) throw e;
       const name = (e as { name?: string } | null)?.name;
-      if (name === "TimeoutError" || name === "AbortError")
+      if (own.aborted || name === "TimeoutError" || name === "AbortError")
         return {
-          fail: new ImageGenerationError("image generation timed out", "timeout", attempt),
+          fail: new ImageGenerationError("image generation timed out", "timeout", sentSoFar + 1),
+          sent: true,
         };
+      const sent = sentBeforeFailing(e);
       return {
         fail: new ImageGenerationError(
           `image generation failed (network): ${String(e).slice(0, 120)}`,
-          "network",
-          attempt,
+          sent ? "network-unsure" : "network",
+          sentSoFar + (sent ? 1 : 0),
         ),
+        sent,
       };
     }
+    const attempt = sentSoFar + 1;
     if (res.ok) return { res };
     const text = await res.text().catch(() => "");
     const reason: ImageFailReason =
       res.status === 429
-        ? "rate-limited"
+        ? isQuota(text)
+          ? "quota"
+          : "rate-limited"
         : res.status >= 500
           ? "server-error"
           : isSafetyRefusal(res.status, text)
@@ -347,6 +412,7 @@ export function createOpenAiImageGenerator(opts: {
         attempt,
         res.status,
       ),
+      sent: true,
       ...(Number.isFinite(after) && after > 0
         ? { retryAfterMs: Math.min(after * 1000, MAX_RETRY_AFTER_MS) }
         : {}),
@@ -355,19 +421,26 @@ export function createOpenAiImageGenerator(opts: {
   return {
     model,
     async generate({ prompt, size, signal }) {
-      const t0 = Date.now();
+      const t0 = now();
       let res: Response | undefined;
+      /** Requests that reached the provider (a connection refused before sending is not one). */
       let attempts = 0;
-      for (;;) {
-        attempts++;
-        const r = await once(prompt, size, attempts, signal);
+      for (let tries = 1; ; tries++) {
+        const left = budgetMs - (now() - t0);
+        const r = await once(prompt, size, attempts, Math.min(attemptMs, left), signal);
         if ("res" in r) {
+          attempts++;
           res = r.res;
           break;
         }
-        if (!TRANSIENT.has(r.fail.reason) || attempts > retries) throw r.fail;
-        const wait = r.retryAfterMs ?? backoffMs * 2 ** (attempts - 1) * (1 + 0.25 * random());
-        await sleep(Math.round(wait), signal);
+        if (r.sent) attempts++;
+        if (!TRANSIENT.has(r.fail.reason) || tries > retries) throw r.fail;
+        const wait = Math.round(
+          r.retryAfterMs ?? backoffMs * 2 ** (tries - 1) * (1 + 0.25 * random()),
+        );
+        // No retry that could not finish inside the picture's budget.
+        if (now() - t0 + wait + MIN_ATTEMPT_MS > budgetMs) throw r.fail;
+        await sleep(wait, signal);
       }
       const body = (await res.json()) as {
         data?: { b64_json?: string }[];

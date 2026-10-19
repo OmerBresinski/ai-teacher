@@ -19,6 +19,7 @@ import {
   imageFailReason,
   pngSize,
   type RetryHint,
+  requestsSent,
   sizeForAspect,
   splitGrid,
   splitPanels,
@@ -357,6 +358,8 @@ export async function makePictureSet(
   /** Why each panel last failed: its next solo carries it (`withRetryLine`). */
   const reasons = new Map<number, RetryHint>();
   const failed = (k: number, hint: RetryHint) => reasons.set(k, hint);
+  /** Panels whose one safety retry (a solo with the safety line) has run: never a second. */
+  const safetyRetried = new Set<number>();
   /**
    * Stops the set's own work when it fails: a fatal error (budget or abort) in any judge cancels
    * the panels already being made alone, and the set waits for them before it rejects.
@@ -374,12 +377,21 @@ export async function makePictureSet(
       capped = true;
       return undefined;
     }
-    for (const k of panels) tries[k] = (tries[k] ?? 0) + 1;
-    const made = await deps.generator.generate({
-      prompt: p,
-      size,
-      signal,
-    });
+    // Only a generation that reached the provider counts as an attempt.
+    const count = () => {
+      for (const k of panels) tries[k] = (tries[k] ?? 0) + 1;
+    };
+    const made = await deps.generator
+      .generate({
+        prompt: p,
+        size,
+        signal,
+      })
+      .catch((e: unknown) => {
+        if (requestsSent(e) > 0) count();
+        throw e;
+      });
+    count();
     deps.spent?.(made.costUsd);
     halted();
     return made;
@@ -423,6 +435,7 @@ export async function makePictureSet(
     nonFatal(
       async () => {
         const hint = reasons.get(k);
+        if (hint?.reason === "refused-safety") safetyRetried.add(k);
         const made = await generate(withRetryLine(soloImagePrompt(a.shows, look), hint), soloSize, [
           k,
         ]);
@@ -445,8 +458,8 @@ export async function makePictureSet(
       },
       (e) => {
         const reason = imageFailReason(e);
-        // Refused again with the safety line already on: the next solo would be the same prompt.
-        const again = !(reason === "refused-safety" && reasons.get(k)?.reason === reason);
+        // The safety retry runs once at most: refused after it, the panel stops.
+        const again = !(reason === "refused-safety" && safetyRetried.has(k));
         failed(k, { reason });
         deps.log({
           ev: "set-solo-error",

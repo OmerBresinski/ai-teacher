@@ -627,6 +627,52 @@ describe("solo panels settle one by one (TEACH-251 part h, LAYOUT-SEL Egypt s6)"
     expect(out.map(Boolean)).toEqual([true, false, true, true]);
   });
 
+  test("a safety-refused strip: each panel gets one solo with the safety line, then stops", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])], set: { same: true, odd: [] } });
+    const refused = () =>
+      new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    const prompts: string[] = [];
+    const deps: PictureSetDeps = {
+      ...f.deps,
+      generator: {
+        model: "m",
+        generate: async (req) => {
+          prompts.push(req.prompt);
+          throw refused();
+        },
+      },
+    };
+    const out = await makePictureSet(asks(2), deps);
+    expect(out).toEqual([undefined, undefined]);
+    // The strip, then one solo per panel (never a second safety retry).
+    expect(prompts).toHaveLength(3);
+    expect(prompts.slice(1).every((p) => p.includes("school textbook"))).toBe(true);
+    expect(
+      f.logs
+        .filter((l) => l.ev === "picture-outcome")
+        .map((l) => [l.outcome, l.attempts, l.reason]),
+    ).toEqual([
+      ["empty", 2, "refused-safety"],
+      ["empty", 2, "refused-safety"],
+    ]);
+  });
+
+  test("a connection that never left counts no attempt", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const unsent = () =>
+      new ImageGenerationError("image generation failed (network)", "network", 0);
+    const t = throwing(f, (n) => (n === 1 ? unsent() : undefined));
+    await makePictureSet(asks(4), t.deps);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "picture-outcome", key: "p1", outcome: "placed", attempts: 1 }),
+    );
+  });
+
   test("a provider still down after its own retries gets no second solo", async () => {
     const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
     const down = () =>

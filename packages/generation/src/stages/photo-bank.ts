@@ -6,7 +6,7 @@
  * database, storage, embedder and generator.
  */
 import { createHash } from "node:crypto";
-import { type CountArray, imageFailReason, type RetryHint } from "@tj/images";
+import { type CountArray, imageFailReason, type RetryHint, requestsSent } from "@tj/images";
 import { whenNonFatal } from "../writer/services";
 import type { PlacedPhoto } from "./illustrate";
 
@@ -244,23 +244,29 @@ export async function findPicture(
     // Ruling 163 (narrowed later): nothing is generated for a past event or person.
     if (req.period && req.depicts && !req.draw) return undefined;
     let hint: RetryHint | undefined;
+    /** The safety retry runs once at most, with its own line; a second refusal ends the picture. */
+    let safetyRetried = false;
     for (let attempt = 0; attempt < MADE_ATTEMPTS; attempt++) {
-      if (!req.draw) attempts++;
       let made: MadePicture | undefined;
       try {
         made = await bank.generate(req, faithful, sig, hint);
       } catch (e) {
         rethrowAbort(e);
+        // Only a generation that reached the provider counts as an attempt.
+        if (requestsSent(e) > 0) attempts++;
         const reason = imageFailReason(e);
         lastFail = reason;
         // A safety refusal is tried again with its own line, never the same prompt; any other
         // generator failure has had the generator's own retries already.
         if (reason !== "refused-safety" && reason !== "no-image") return undefined;
-        // Refused again with the safety line already on: the next try would be the same prompt.
-        if (reason === "refused-safety" && hint?.reason === reason) return undefined;
+        if (reason === "refused-safety") {
+          if (safetyRetried) return undefined;
+          safetyRetried = true;
+        }
         hint = { reason };
         continue;
       }
+      if (made && !req.draw) attempts++;
       if (made && !styleAllowed(req, made)) {
         // A photo-style picture for a historical request: the wrong kind, so no retry either.
         await bank.reject?.(made).catch(rethrowAbort);
