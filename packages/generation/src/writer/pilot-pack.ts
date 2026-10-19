@@ -36,7 +36,7 @@ import {
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
-import { capWaveCDefs, waveCDefs } from "./wave-c-scratch";
+import { capWaveCDefs, waveCDefs, withWaveCMenu } from "./wave-c-scratch";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -157,9 +157,9 @@ export const PILOT_PACKS = {
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
     // The fit layouts' Fits and the heading's words come from code too (`withFits`, loop 1).
     system: {
-      KS1: withFits(assembleWriterSystem(t81, "KS1"), "KS1"),
-      KS2: withFits(assembleWriterSystem(t82, "KS2"), "KS2"),
-      KS3: withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5"),
+      KS1: withWaveCMenu(withFits(assembleWriterSystem(t81, "KS1"), "KS1"), "KS1"),
+      KS2: withWaveCMenu(withFits(assembleWriterSystem(t82, "KS2"), "KS2"), "KS2"),
+      KS3: withWaveCMenu(withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5"), "KS3-5"),
     },
     uncapped: true,
     capsFrom: "v4.5",

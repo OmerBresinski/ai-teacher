@@ -8,6 +8,7 @@ import { flowLayoutOf, PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-
 import type { WriterStage } from "./schema";
 import { MIN_SHOWN_WORDS, PLAN_SHARE, wordsWithin } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
+import { waveCMenu } from "./wave-c-scratch";
 
 /*
  * Loop 1 prompt part (17 Oct 2026): no length is typed into a v4.8 template. Every Fits, the
@@ -68,6 +69,8 @@ describe("v4.8 templates type no fit number", () => {
         ...Object.values(fitSlots(stage)),
         ...Object.values(LAYOUT_WRITER_MENUS).map((m) => m[stage]),
         ...Object.values(WRITER_RULES),
+        // SCRATCH: the wave C lines, generated from the capacity tables (wave-c-scratch.ts).
+        ...Object.values(waveCMenu(stage)),
       ];
       const count = (s: string) => s.split("Fits:").length - 1;
       expect(count(text)).toBe(generated.reduce((n, g) => n + count(g), 0));

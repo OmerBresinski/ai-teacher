@@ -6,6 +6,7 @@
  */
 import FIGURE_CAPACITY from "@tj/slides/templates/figure-capacity.json" with { type: "json" };
 import MYTH_CAPACITY from "@tj/slides/templates/myth-capacity.json" with { type: "json" };
+import { KEY_CAPS, PT_CAPS } from "@tj/slides/templates/picture-text";
 import PICTURE_TEXT_CAPACITY from "@tj/slides/templates/picture-text-capacity.json" with {
   type: "json",
 };
@@ -267,4 +268,92 @@ export function capWaveCDefs(defs: J, s: WriterStage): J {
   const sm = take("steps~step-model");
   if (sm) set(sm.properties.step.properties.do, W.stepModel.doTwoLines);
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* The wave C menu lines (prompt-engineer, 19 Oct 2026)                */
+/* ------------------------------------------------------------------ */
+
+const span = (lo: number, hi: number) => (lo === hi ? `${lo}` : `${lo} to ${hi}`);
+const upTo = (w: number) => (w === 1 ? "one word" : `up to ${w} words`);
+/** Adjacent counts with equal text joined: [[3, "a"], [4, "a"], [5, "b"]] -> "3 to 4 x: a; 5 x: b". */
+const runs = (cells: [number, string][], noun: string) => {
+  const out: string[] = [];
+  for (let i = 0; i < cells.length; ) {
+    let j = i;
+    while (j + 1 < cells.length && cells[j + 1]?.[1] === cells[i]?.[1]) j += 1;
+    out.push(`${span(cells[i]?.[0] ?? 0, cells[j]?.[0] ?? 0)} ${noun}: ${cells[i]?.[1]}`);
+    i = j + 1;
+  }
+  return out.join("; ");
+};
+const bounds = (node: J) => [node.minItems as number, node.maxItems as number] as const;
+
+/**
+ * Each wave C layout's menu line at a stage, keyed by the name the flow's `layout` enum gives it
+ * (`flowLayoutOf`). Every number is read from `waveCWords` (the capacity tables), the defs' own
+ * item bounds, or picture-text's `KEY_CAPS`/`PT_CAPS`; none is typed. Each line says when the layout
+ * is the right one, and where it overlaps a layout already offered, which one takes the case.
+ */
+export function waveCMenu(s: WriterStage): Record<string, string> {
+  const W = waveCWords(s);
+  const D = waveCDefs(s);
+  const wk = W.worked;
+
+  const stageCounts = [...new Set(stageCells(s).map((c) => c.n))].sort((a, b) => a - b);
+  const stageCell = (n: number) => {
+    const icons = W.stages[`${n}-icons`];
+    const pics = W.stages[`${n}-pictures`];
+    const name = upTo(Math.min(...[icons, pics].filter(Boolean).map((c: J) => c.name)));
+    if (icons && pics)
+      return icons.line === pics.line
+        ? `names ${name}, lines ${upTo(icons.line)}`
+        : `names ${name}, lines ${upTo(icons.line)} with icons or ${pics.line} with pictures`;
+    if (icons) return `icons, not pictures; names ${name}, lines ${upTo(icons.line)}`;
+    return `pictures, not icons; names ${name}, lines ${upTo(pics.line)}`;
+  };
+
+  const R = W.reasons as Record<string, J>;
+  const rCells = (kind: string) =>
+    Object.entries(R)
+      .filter(([k]) => k.startsWith(`${kind}-`))
+      .map(([k, c]): [number, string] => [
+        countOf(k),
+        `heads ${upTo(c.head)}, lines ${upTo(c.line)}`,
+      ])
+      .sort((a, b) => a[0] - b[0]);
+  const reasonNs = rCells("reasons").map(([n]) => n);
+  const chainNs = rCells("chain").map(([n]) => n);
+  const anyR = Object.values(R)[0] as J;
+
+  const [nLo, nHi] = bounds(D.source.properties.notes);
+  const my = W.myth;
+  const [icLo, icHi] = bounds(
+    D.myth.properties.myth.properties.proof.anyOf[0].properties.icons.anyOf[0],
+  );
+  const kc = D["visual-text~key-card-fig"].properties;
+  const [cLo, cHi] = bounds(kc.cards);
+  const points = Math.min(kc.points.maxItems, PT_CAPS[s].points);
+  const K = KEY_CAPS;
+
+  return {
+    worked: `- worked: one problem solved one move at a time (flow shape worked example), one row per click: each row the move in words, then the equation it gives, with answer true on the row that reaches the answer. check is null or one line putting the answer back into the problem, the value put back in between asterisks. panel is null, or a bar model drawn beside the rows: algebra-bar (a, b, c) for an equation, percent-bar (amount, percent) for a percentage of an amount. A worked calculation comes here rather than equation-hero. Fits: the heading, the problem itself, ${upTo(wk.titleWords)}; up to ${wk.rows} rows, or ${wk.rowsWithPanel} with a panel; each move ${upTo(wk.moveWords)}.`,
+    stages: `- stages: ${span(stageCounts[0] ?? 0, stageCounts.at(-1) ?? 0)} named stages of one process that runs one way (flow shape sequence), in a strip joined by arrows, each a name, one line on what happens at that stage, and its closest listed icon; every stage has a picture or none does. Stages of a process come here rather than steps or picture-sequence; a method pupils carry out goes to steps, and parts that work together go to items-row. Fits: ${runs(
+      stageCounts.map((n): [number, string] => [n, stageCell(n)]),
+      "stages",
+    )}.`,
+    reasons: `- reasons: the heading asks why or how something happened or is so (flow shape one big idea), answered by ${span(reasonNs[0] ?? 0, reasonNs.at(-1) ?? 0)} reasons, one per click, each a head, one line and its closest listed icon, or every icon null; kind chain is a chain of consequences instead, each link leading to the next, ${span(chainNs[0] ?? 0, chainNs.at(-1) ?? 0)} links. lead is null or one line under the question. A why or how question answered by its reasons comes here rather than panel-list or explain. Fits: the question ${upTo(anyR.question)}; the lead ${upTo(anyR.lead)}; ${runs(rCells("reasons"), "reasons")}; a chain of ${runs(rCells("chain"), "links")}.`,
+    source: `- source: a real extract pupils read closely, as prose, verse or a picture, copied word for word from the context and never written by you as if it were a source, with from naming where it comes from and ${span(nLo, nHi)} notes, each pinned by its anchor to words copied exactly from the extract, with a label and one short line. picture is null unless the form is picture. Fits: the extract ${upTo(W.source.extractWords)}.`,
+    "figure-slide": `- figure-slide: one library model or one photo filling the slide, for an idea pupils learn by looking at one figure whole, with a one-line caption and the topic's closest listed icon, shown if the figure fails. At most one figure-slide per lesson. A chart or diagram drawn from your data goes to big-visual. Fits: the caption ${upTo(W.figure.caption)}.`,
+    myth: `- myth: one belief pupils plausibly hold, or a surprising truth, settled on its own slide: the claim in plain words, its verdict (myth or true), the fact that settles it, with factEm null or one exact span of the fact to show in colour, and proof null or one short line with ${span(icLo, icHi)} listed icons or one picture. opening vote asks the class first; straight starts at the verdict and is only for a myth. The slide asks no question: a belief among options to choose from goes to hinge. Fits: the heading ${upTo(my.title)}; the claim ${upTo(my.claim)}; the fact ${upTo(my.fact)}, or ${my.factPicture} with a proof picture; the proof ${upTo(my.proof)}.`,
+    "visual-text key-card-fig": `- visual-text key-card-fig: a picture beside a lead, up to ${points} points and ${span(cLo, cHi)} key cards, for one named idea pupils need to see, plus the closest listed icon, shown if the picture fails. Each card is a word or rule (label, term and meaning), examples (label and pairs) or a fact (label, number and unit); fields a card does not use are null. A card with a meaning, examples or a number comes here rather than visual-text's points-1-key-fig. Fits: lead and points together ${upTo(W.pictureText.leadAndPoints)}; each label ${upTo(K.label)}; a term ${upTo(K.term)}; a meaning ${upTo(K.meaning)}; up to ${K.pairs} example pairs, ${upTo(K.side)} a side; a number up to ${K.num} characters, its unit ${upTo(K.unit)}.`,
+    "steps step-model": `- steps step-model: one step of a method beside a library model that shows it, one step per slide: n is the step's number, or null for a single step; do says what to do in one sentence; see is null or one short line on what pupils see happen. A method shown on a library model comes here; a method in words alone goes to steps. Fits: do ${upTo(W.stepModel.doOneLine)} on one line, ${W.stepModel.doTwoLines} on two.`,
+  };
+}
+
+/** The writer's system text with the wave C lines after the last teaching layout (before Key cards). */
+export function withWaveCMenu(system: string, s: WriterStage): string {
+  const at = system.indexOf("\nKey cards. ");
+  if (at < 0) throw new Error("wave C menu: no Key cards line in the writer's system text");
+  return `${system.slice(0, at)}\n${Object.values(waveCMenu(s)).join("\n")}${system.slice(at)}`;
 }
