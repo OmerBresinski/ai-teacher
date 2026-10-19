@@ -112,7 +112,8 @@ describe("hinge reveal: wrong options in the dim tone", () => {
           }
           // The key's letter on the dim key reads as the words do on the card.
           const key = parts.find((p) => p.name === "Hinge key");
-          const keyFill = fillOf(key);
+          // An outline key (Poster, Calm: TEACH-215 part k) has no fill: its letter sits on the card.
+          const keyFill = fillOf(key) === "transparent" ? fill : fillOf(key);
           const letter = key?.type === "shape" ? key.textStyle?.color : undefined;
           expect(contrastRatio(letter as string, keyFill)).toBeGreaterThanOrEqual(4.5);
           // The key goes pale in its own colour (a letter's tone, the ink or the accent), as in the gold.

@@ -629,6 +629,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const badgeSize = stop(c, "body", BADGE * 0.46);
   // The newest row's badge is the theme's now badge (gold: `.lb.now`); the next click lays the done
   // badge over it, so only the latest row is lit. The last row's badge stays lit.
+  const badgeFont = surfacesOf(c.t).marks.badgeFont;
   const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
     // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
     const look = markLook(c.t, "badge", BADGE, fill, ink2);
@@ -639,6 +640,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         shape: look.shape,
         ...(look.radius != null ? { radius: look.radius } : {}),
         ...(look.stroke && !solid ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
+        ...(look.rotation ? { rotation: look.rotation } : {}),
         name,
         x: X0,
         y: y - BADGE / 2,
@@ -648,9 +650,12 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         fill: solid ? fill : look.fill === "transparent" ? c.t.colors.background : look.fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
-          preset: "body",
+          // A theme whose gold sets its badges in the display face (Scrapbook, Poster).
+          preset: badgeFont ? "heading" : "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
-          fontWeight: 700,
+          fontWeight: badgeFont?.weight ?? 700,
+          // The body size, held: the heading preset would read it on the heading's ladder.
+          ...(badgeFont ? { fixedSize: true } : {}),
           color: solid ? ink2 : look.ink,
           align: "center",
           valign: "middle",
@@ -703,19 +708,22 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       } as PathElement);
     } else if (l.answer) {
       const pad = pt(26);
+      // Poster's plate (round 2 `--plate-radius: 0`, `--plate-fill`, `--plate-line`, 3px, offset
+      // in `--plate-off-color: var(--accent)`): a square white plate in the plate's own ink line.
+      const plate = surfacesOf(c.t).marks.card === "offset" ? surfaceStyle(c.t, "plate") : null;
       shape(
         c,
         {
-          shape: "rounded",
+          shape: plate ? "rect" : "rounded",
           name: WORKED_NAMES.plate,
           x: lx - pad,
           y: y - (p.eq * 1.5) / 2,
           w: r.lw + r.rw + signW + 2 * g + 2 * pad,
           h: p.eq * 1.5,
-          radius: 6,
-          fill: col.wash,
-          stroke: accent,
-          strokeWidth: 3,
+          ...(plate ? {} : { radius: 6 }),
+          fill: plate ? plate.fill : col.wash,
+          stroke: plate ? (plate.line ?? ink) : accent,
+          strokeWidth: plate ? 2 : 3,
           ...offsetOf(c, accent),
         },
         R,
