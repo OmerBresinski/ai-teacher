@@ -21,6 +21,7 @@ import {
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
 import { PROBE_CHARS_PER_WORD } from "./shown-cap";
+import { waveCDefs, waveCMenu } from "./wave-c";
 
 /*
  * The question layouts' writer offer (TEACH-110 part v): every number a menu line promises is read
@@ -224,12 +225,17 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
       const line = LAYOUT_WRITER_MENUS["panel-list"][ks === "KS3" ? "KS3-5" : ks];
       const size = (id: "v4.6" | typeof PILOT_PACK_ID) => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
-        const lines = r.system.split("\n");
+        // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
+        const st = ks === "KS3" ? "KS3-5" : ks;
+        const waveLines = new Set(Object.values(waveCMenu(st)));
+        const lines = r.system.split("\n").filter((l) => !waveLines.has(l));
         const kept = lines.filter((l) =>
           id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
         expect(lines.length - kept.length, `${id} ${ks}: one panel-list line`).toBe(1);
-        return kept.join("\n").length + JSON.stringify(r.schema).length;
+        const schema = structuredClone(r.schema);
+        for (const k of Object.keys(waveCDefs(st, true))) delete schema.$defs[k];
+        return kept.join("\n").length + JSON.stringify(schema).length;
       };
       expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
     }
