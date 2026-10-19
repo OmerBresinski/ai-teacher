@@ -124,7 +124,13 @@ function recolour<T>(node: T, from: string, to: string): T {
 /** The caption's laid width (its words in caps at the caption size), for a tab or stamp. */
 function captionWidth(e: TextElement, t: Theme): number {
   const size = e.style.fontSize ?? t.sizes.caption;
-  return Math.ceil(docPlainText(e.doc).length * size * 0.72) + 4;
+  const text = docPlainText(e.doc).replace(/\u00B7/g, ".");
+  // The face's own advances at the tab's 800 weight, uppercase and tracked as the caption draws,
+  // and never under the old per-letter estimate: the tab must hold its words on one line.
+  const track = Number.parseFloat(surfacesOf(t).marks.kickerTracking ?? "0.08");
+  const face = resolveTextStyle({ ...e.style, fontWeight: 800 }, t).fontFamily;
+  const real = runWidth(text.toUpperCase(), face, 800, size, track);
+  return Math.ceil(Math.max(text.length * size * 0.72, real + 6)) + 4;
 }
 
 const keep = (els: (SlideElement | undefined)[]): SlideElement[] =>
