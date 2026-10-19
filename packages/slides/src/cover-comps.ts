@@ -620,8 +620,9 @@ function column(p: Omit<Parts, "photo">, t: Theme, o: Column): SlideElement[] {
       x: o.x - tPad,
       y: ty,
       doc: recolour(tt.doc, t.colors.accent, o.ink.accent),
-      // A fixed box (as over a question), so a title a teacher lengthens steps down inside it.
-      style: { ...tt.style, color: o.ink.title, autoHeight: false },
+      // With no question under it, a fixed box (as the template's over a question), so a title a
+      // teacher lengthens steps down inside it.
+      style: { ...tt.style, color: o.ink.title, ...(sub ? {} : { autoHeight: false }) },
     });
   if (sub) out.push({ ...sub, x: o.x, y: ty + sub.y, style: { ...sub.style, color: o.ink.q } });
   return out;
