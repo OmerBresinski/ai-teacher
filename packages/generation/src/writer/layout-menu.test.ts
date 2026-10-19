@@ -20,6 +20,7 @@ import {
 } from "./layout-menu";
 import { PILOT_PACKS } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
+import { WAVE_C_ROUTED_FITS } from "./wave-c";
 
 /*
  * The menu lines read back against the renderer's measured tables (TEACH-110 part s). Every number
@@ -216,7 +217,7 @@ describe("writer system text", () => {
           template.includes(`\n- ${layout}: `),
           `${ks} template holds a copy of ${layout}`,
         ).toBe(false);
-      const text = withFits(assembleWriterSystem(template, stage), stage);
+      const text = withFits(assembleWriterSystem(template, stage), stage, WAVE_C_ROUTED_FITS);
       for (const menu of Object.values(LAYOUT_WRITER_MENUS))
         expect(text.split("\n")).toContain(menu[stage]);
       // A deliberate change regenerates the snapshot from assembleWriterSystem, never by hand.
@@ -305,6 +306,7 @@ describe("v4.8 merges the rubric judge's rules into existing lines", () => {
     "Every slide, question and task uses only the words, structures and methods this lesson teaches or that pupils of this age already know: any other word is explained in plain words where it first appears, or replaced.",
     "Demand comes from what pupils do. The context's challenge",
     "watch-out (a misconception pupils plausibly hold, put right, unless the misconception slide covers it)",
+    "and the misconception slide, when the myth layout allows one.",
   ];
   const CUT = [
     "Every question and task needs only the words",
@@ -314,8 +316,13 @@ describe("v4.8 merges the rubric judge's rules into existing lines", () => {
     "how to run an activity goes in the notes",
     "A line holding two ideas becomes two items",
     "more words take a fit with fewer items",
+    // #594 overlaps: the myth line carries the misconception slide's conditions, and the pitch
+    // rule covers the myth's fact.
+    "plan none rather than make one up",
+    "the fact that settles it, using only ideas",
   ];
-  const BEFORE = { KS1: 3794, KS2: 3917, "KS3-5": 4078 } as const;
+  // Master after #594 (wave C), 19 Oct 2026.
+  const BEFORE = { KS1: 4856, KS2: 5014, "KS3-5": 5175 } as const;
   test("the hinge's tempting clause is pinned and sits inside the plausible-belief clause", () => {
     expect(HINGE_TEMPTING).toBe(
       "one that tempts a pupil who holds it, never one the question's own words rule out",

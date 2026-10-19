@@ -25,6 +25,7 @@ import {
   shownFor,
   wordsWithin,
 } from "./shown-cap";
+import { waveCMenuBlock } from "./wave-c";
 
 /*
  * The writer's menu lines for the three pilot layouts (items-row, panel-list, split-compare), one
@@ -796,6 +797,11 @@ export function assembleWriterSystem(template: string, stage: WriterStage): stri
       throw new Error(`writer system: ${slot} must appear exactly once`);
     out = out.replace(slot, () => menu[stage]);
   }
+  // Wave C (TEACH-110 part v): its lines as one block, in a template that offers it (v4.8).
+  const block = "{{menu:wave-c}}";
+  const blocks = out.split(block).length - 1;
+  if (blocks > 1) throw new Error(`writer system: ${block} must appear at most once`);
+  if (blocks) out = out.replace(block, () => waveCMenuBlock(stage));
   for (const [name, rule] of Object.entries(WRITER_RULES)) {
     const slot = `{{rule:${name}}}`;
     if (out.split(slot).length !== 2)
