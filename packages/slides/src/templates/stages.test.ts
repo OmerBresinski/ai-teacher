@@ -364,7 +364,10 @@ describe("stages: a name never prints over its line (TEACH-215 part m)", () => {
   });
 
   // Every name and line box, in lines, summed over the 16 themes and every cell (19 Oct 2026).
-  const PIN_TOTAL: Record<string, number> = { ks1: 4928, ks2: 8092, ks3: 8268 };
+  // TEACH-215 part k: Poster's display face is round 5's Public Sans, which wraps fewer stage
+  // names than Bricolage did (Poster 331 to 319, 528 to 518, 537 to 533; every other theme
+  // unchanged). Re-pinned from the per-theme totals this test computes.
+  const PIN_TOTAL: Record<string, number> = { ks1: 4916, ks2: 8082, ks3: 8264 };
   const AGE: Record<string, Age> = { ks1: "early", ks2: "primary", ks3: "secondary" };
   const WORDS = [
     "Metamorphosis",

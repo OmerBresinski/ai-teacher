@@ -1,4 +1,5 @@
 import {
+  SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideArt,
@@ -10,7 +11,8 @@ import {
 import { artOf, groundArt, isGroundArt } from "./art";
 import { figureGroupOf } from "./figures";
 import { AGENDA_DIVIDER } from "./layouts";
-import { DIAGRAM_NAME } from "./look";
+import { ACCENT_BAR_NAME, DIAGRAM_NAME } from "./look";
+import { surfacesOf } from "./themes/surfaces";
 
 /*
  * Theme art per slide role (UX ruling 107). The title slide wears the theme's fullest art, the
@@ -112,7 +114,7 @@ export function slideArtLayers(theme: Theme, slide: Slide): ThemeArtLayer[] {
   const hit = new Set(artCollisions(art, slide));
   // The theme's ground texture (Geometric's dot grid) goes last, under the art: it is the ground,
   // drawn under every element, so it never counts as a collision.
-  const ground = groundArt(theme);
+  const ground = groundArt(theme, want.role);
   return [...art.filter((l) => !hit.has(l)), ...(ground ? [ground] : [])];
 }
 
@@ -152,4 +154,21 @@ export function artChoices(theme: Theme, slide: Slide): SlideArt[] {
     return art.length > 0 && art !== autoArt && artCollisions(art, slide).length === 0;
   });
   return ["auto", ...roles, "plain"];
+}
+
+/**
+ * The theme's accent strip along the slide's foot (round 3 themes3.css `.footbar`: 14px at 1440,
+ * the accent, over everything, on every slide but the cover), or null: a theme without one, the
+ * cover, or a stored slide that already carries the look's own accent bar element. It is chrome,
+ * not an element, so a re-theme adds or removes it with no edit to the slide. The editor renderer
+ * and the PPTX export both draw it from here.
+ */
+export function footStrip(
+  theme: Theme,
+  slide: Pick<Slide, "kind" | "elements">,
+): { x: number; y: number; w: number; h: number; fill: string } | null {
+  const h = surfacesOf(theme).marks.footBar;
+  if (h <= 0 || slide.kind === "title") return null;
+  if (slide.elements.some((e) => e.name === ACCENT_BAR_NAME)) return null;
+  return { x: 0, y: SLIDE_H - h, w: SLIDE_W, h, fill: theme.colors.accent };
 }

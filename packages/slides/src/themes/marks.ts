@@ -47,6 +47,13 @@ export const COVER_COMPS = [
 export type CoverComp = (typeof COVER_COMPS)[number];
 export const GROUND_ARTS = ["none", "lined", "dots"] as const;
 export type GroundArt = (typeof GROUND_ARTS)[number];
+/**
+ * The seam connector family (round 2 roles2.css `--connector`, round 5 roles-map5.js): a filled
+ * block arrow (the default), Poster's block with an ink offset, Scrapbook's hand-drawn sketch line,
+ * Storytime's round-cornered block. Each is drawn inside the box the layout measured for the arrow.
+ */
+export const CONNECTORS = ["block", "block-offset", "line", "sketch", "round"] as const;
+export type Connector = (typeof CONNECTORS)[number];
 
 /** A theme's mark keywords, read from its tokens with the plain defaults. */
 export type ThemeMarks = {
@@ -61,12 +68,20 @@ export type ThemeMarks = {
   title: TitleTreat;
   cover: CoverComp;
   ground: GroundArt;
+  connector: Connector;
   /** The notch leg (Geometric's cut corners), in points; inside every role's `EDGE_BUDGET`. */
   notch: number;
   /** An offset block's distance and colour (Poster's 8pt ink block), or null. */
   offset: { d: number; color: string } | null;
   /** The sticky key's paper and tilt (Scrapbook), or null. */
   sticky: { fill: string; tilt: number } | null;
+  /** Degrees a badge turns (Scrapbook's round 2 `--badge-tilt: -4deg`); 0 upright. */
+  badgeTilt: number;
+  /**
+   * A badge's numeral in the display face (round 2 `--badge-font`: Scrapbook's Playpen Sans,
+   * Poster's `var(--font-display)`) at `--badge-weight`, or null for the body face.
+   */
+  badgeFont: { weight: number } | null;
   /** The hinge key's face: the card's ink (default) or the theme's accent (Geometric's gold). */
   keyFill: "ink" | "accent";
   /** Tracking on the myth's MYTH / FACT tags (Geometric 0.08em), or null for the preset's own. */
@@ -84,7 +99,10 @@ export type ThemeMarks = {
    * `inset 0 0 0 4px`, 2.67pt), or 0 for the default 3pt ring outside it.
    */
   rightRingInset: number;
-  /** The accent bar at the slide's foot (the dark themes, 14px at 1440 = 9pt), or 0. */
+  /**
+   * The accent strip along the slide's foot, in points (round 3 themes3.css `.footbar`: 14px at
+   * 1440 = 9.33pt, on every slide but the cover, for the product themes and the darks), or 0.
+   */
   footBar: number;
   /** The myth's struck claim weight (Geometric's round 5 myth: 600), or null for the default 500. */
   claimWeight: number | null;
@@ -102,6 +120,8 @@ export const NOTCH_MAX = 11;
 export const TORN_DEPTH = 5;
 /** A sticky key tilts at most this much (THEMING.md section 6: tilt ≤ 3°). */
 export const TILT_MAX = 3;
+/** A badge tilts at most this much (Scrapbook's gold `--badge-tilt: -4deg`, its number still level enough to read). */
+export const BADGE_TILT_MAX = 4;
 
 const pick = <T extends string>(all: readonly T[], v: string | undefined, d: T): T =>
   v != null && (all as readonly string[]).includes(v) ? (v as T) : d;
@@ -128,9 +148,15 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     title: pick(TITLE_TREATS, t["title-treat"], "none"),
     cover: pick(COVER_COMPS, t["cover"], "type"),
     ground: pick(GROUND_ARTS, t["ground-art"], "none"),
+    connector: pick(CONNECTORS, t["connector"], "block"),
     notch: Math.min(NOTCH_MAX, num(t["notch"])),
     offset: offset > 0 ? { d: offset, color: t["offset-color"] ?? t["ink"] ?? "#000000" } : null,
     sticky: sticky ? { fill: sticky, tilt: clampAbs(num(t["sticky-tilt"]), TILT_MAX) } : null,
+    badgeTilt: clampAbs(num(t["badge-tilt"]), BADGE_TILT_MAX),
+    badgeFont:
+      t["badge-font"] === "display"
+        ? { weight: Math.min(800, Math.max(400, num(t["badge-weight"]) || 700)) }
+        : null,
     keyFill: t["key-fill"] === "accent" ? "accent" : "ink",
     tagTracking: em(t["tag-tracking"]),
     kickerTracking: em(t["kicker-tracking"]),
@@ -311,4 +337,107 @@ export function outlineArea(pts: readonly Pt[]): number {
     a += p.x * q.y - q.x * p.y;
   }
   return a / 2;
+}
+
+/** A connector drawn in its box: closed outlines (filled) and open strokes, in box points. */
+export type ConnectorShape = {
+  /** Filled outlines, each closed; `offset` shifts an ink copy under it (Poster's block). */
+  fills: { pts: Pt[]; round?: number; offset?: number }[];
+  /** Open strokes (the sketch's cubic shaft and its chevron head), as point lists. */
+  strokes: Pt[][];
+  /** The stroke width of `strokes` and of a round fill's rounding, in points. */
+  width: number;
+  /** The ground-coloured halo stroked under everything, in points. */
+  halo: number;
+};
+
+/** A cubic from p0 to p3 as `n` points (the sketch shaft). */
+function cubicPoints(p0: Pt, p1: Pt, p2: Pt, p3: Pt, n = 24): Pt[] {
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = i / n;
+    const u = 1 - t;
+    return {
+      x: r4(u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x),
+      y: r4(u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y),
+    };
+  });
+}
+
+/**
+ * The round 5 arrow head (roles-map5.js `arrowHead`): an open chevron whose tip is the shaft's end,
+ * arms at +-32 degrees about the end tangent, each 3.2 x the stroke long.
+ */
+export function chevronHead(tip: Pt, dir: Pt, sw: number): Pt[] {
+  const len = Math.hypot(dir.x, dir.y) || 1;
+  const ux = dir.x / len;
+  const uy = dir.y / len;
+  const a = (32 * Math.PI) / 180;
+  const arm = (s: number): Pt => {
+    const c = Math.cos(s * a);
+    const n = Math.sin(s * a);
+    return {
+      x: r4(tip.x - (ux * c - uy * n) * sw * 3.2),
+      y: r4(tip.y - (ux * n + uy * c) * sw * 3.2),
+    };
+  };
+  return [arm(1), { x: r4(tip.x), y: r4(tip.y) }, arm(-1)];
+}
+
+/**
+ * A connector family's outline in a `w` x `h` box, in points (gold: roles-map2.js `arrowSvg`, its
+ * sketch replaced by roles-map5.js's cubic + chevron with no ghost stroke). The stroke is the
+ * gold's `max(5, round(h * .12))` px read in points at the 1440 scale (/1.5), so a 960-wide slide
+ * draws what the 1440 gold drew.
+ */
+export function connectorShape(kind: Connector, w: number, h: number): ConnectorShape {
+  const k = 1.5; // the gold's px per slide point
+  const lw = Math.max(5, Math.round(h * k * 0.12)) / k;
+  const P = (pts: [number, number][]): Pt[] =>
+    pts.map(([x, y]) => ({ x: r4(x * w), y: r4(y * h) }));
+  const block = P([
+    [0.04, 0.3],
+    [0.52, 0.3],
+    [0.52, 0.04],
+    [0.96, 0.5],
+    [0.52, 0.96],
+    [0.52, 0.7],
+    [0.04, 0.7],
+  ]);
+  switch (kind) {
+    case "block-offset":
+      return { fills: [{ pts: block, offset: 5 / k }], strokes: [], width: 3 / k, halo: 7 / k };
+    case "round":
+      return {
+        fills: [
+          {
+            pts: P([
+              [0.1, 0.34],
+              [0.5, 0.34],
+              [0.5, 0.12],
+              [0.9, 0.5],
+              [0.5, 0.88],
+              [0.5, 0.66],
+              [0.1, 0.66],
+            ]),
+            round: lw,
+          },
+        ],
+        strokes: [],
+        width: lw,
+        halo: lw + 12 / k,
+      };
+    case "sketch":
+    case "line": {
+      const sw = kind === "line" ? Math.max(4, Math.round(lw * k * 0.7)) / k : lw;
+      const p0 = kind === "line" ? { x: w * 0.06, y: h * 0.5 } : { x: w * 0.05, y: h * 0.6 };
+      const c1 = kind === "line" ? { x: w * 0.35, y: h * 0.5 } : { x: w * 0.3, y: h * 0.34 };
+      const c2 = kind === "line" ? { x: w * 0.6, y: h * 0.5 } : { x: w * 0.56, y: h * 0.66 };
+      const p1 = { x: w * 0.9, y: h * 0.5 };
+      const shaft = cubicPoints(p0, c1, c2, p1);
+      const head = chevronHead(p1, { x: p1.x - c2.x, y: p1.y - c2.y }, sw);
+      return { fills: [], strokes: [shaft, head], width: sw, halo: sw + 10 / k };
+    }
+    default:
+      return { fills: [{ pts: block }], strokes: [], width: 0, halo: 7 / k };
+  }
 }

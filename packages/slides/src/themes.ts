@@ -390,7 +390,9 @@ const BASE: Theme[] = [
       correct: "#1C7E37",
       incorrect: "#D3213A",
     },
-    fonts: { title: FONT_STACKS.bricolage, body: FONT_STACKS.lexend },
+    // Round 5 (themes5.css): Public Sans 800 at -0.015em replaced round 4's wide Archivo and
+    // round 2's Bricolage, which read as "AI" (Greg, 215k review item 43).
+    fonts: { title: FONT_STACKS.publicSans, body: FONT_STACKS.lexend },
     ...type([
       [50, 1.08],
       [42, 1.14],
@@ -400,7 +402,7 @@ const BASE: Theme[] = [
       [13, 1.2],
     ]),
     weights: { title: 800, heading: 800, body: 400 },
-    titleTracking: "-0.01em",
+    titleTracking: "-0.015em",
     radius: 0,
   },
   {

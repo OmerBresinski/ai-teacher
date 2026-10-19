@@ -39,7 +39,7 @@ import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
-import { paintSurface, type SurfaceRole, surfacesOf } from "../themes/surfaces";
+import { paintSurface, type SurfaceRole, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, type TemplateInput } from "./index";
 import { type Age, ageProfileOf, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
 import CAPACITY from "./myth-capacity.json" with { type: "json" };
@@ -82,6 +82,7 @@ export const MYTH_NAMES = {
   factLabel: "Fact label",
   fact: "Fact",
   icon: "Proof icon",
+  iconTile: "Proof icon tile",
   picture: "Proof picture",
   line: "Proof line",
 } as const;
@@ -505,12 +506,17 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       );
       x += cw + 24 * K;
     }
-    // The verdict's ground over the card's right half (the claim panel covers its left).
+    // The verdict's ground over the card's right half (the claim panel covers its left). A torn
+    // claim panel (Scrapbook's `field-edge: torn`) bites into its own box, so the ground then runs
+    // under it too and the claim card never shows through the tear.
+    const torn = surfacesOf(c.t).marks.field === "torn";
     const ground: ShapeElement = {
       id: uid(),
       type: "shape",
       shape: "rect",
-      ...rnd({ x: SEAM, y: band, w: W - SEAM, h: stageH }),
+      ...rnd(
+        torn ? { x: 0, y: band, w: W, h: stageH } : { x: SEAM, y: band, w: W - SEAM, h: stageH },
+      ),
       fill: col.background,
     };
     push(ground, at.verdict, MYTH_NAMES.cover);
@@ -587,8 +593,13 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
           contrastRatio(b, markerFill) > contrastRatio(a, markerFill) ? b : a,
         );
   const marker = { fill: markerFill, ink: markerInk };
+  // Poster's block-offset family squares its seam (round 2 roles-map: the chip in the connector's box).
   const seamShape: ShapeElement["shape"] =
-    surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
+    surfacesOf(c.t).marks.badge === "hex"
+      ? "hexagon"
+      : surfacesOf(c.t).marks.connector === "block-offset"
+        ? "rect"
+        : "ellipse";
   const halo: ShapeElement = {
     id: uid(),
     type: "shape",
@@ -612,8 +623,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
-  if (seamShape === "hexagon") {
-    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px.
+  if (seamShape === "hexagon" || seamShape === "rect") {
+    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px
+    // (Geometric's hexagon; Poster's square seam draws the same 24x20px arrow, review item 43).
     const w = 20 * K;
     const h = 16 * K;
     push(
@@ -695,12 +707,29 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
         });
       x += PIC.w + PROOF_GAP;
     } else if (shownIcons.length) {
+      const tile = surfacesOf(c.t).marks.medal === "tile";
       for (const id of shownIcons) {
-        push(
-          medalImage(c, id, rnd({ x, y: ry + (rowH - disc) / 2, w: disc, h: disc }), col),
-          at.fact,
-          MYTH_NAMES.icon,
-        );
+        const box = rnd({ x, y: ry + (rowH - disc) / 2, w: disc, h: disc });
+        if (tile) {
+          // Poster's tile medal (round 2 `--medal-shape: tile`, roles2.css `border-radius: 22%`, a
+          // 3px ink line and `--medal-shade: 6px 6px 0`): the icon sits on a white outlined tile.
+          const m = surfaceStyle(c.t, "medal");
+          push(
+            {
+              id: uid(),
+              type: "shape",
+              shape: "rounded",
+              ...box,
+              radius: Math.round(disc * 0.22),
+              fill: m.fill,
+              ...(m.line ? { stroke: m.line, strokeWidth: m.lineWidth ?? 2 } : {}),
+              ...(m.shadow ? { shadow: m.shadow } : {}),
+            } as ShapeElement,
+            at.fact,
+            MYTH_NAMES.iconTile,
+          );
+        }
+        push(medalImage(c, id, box, col, tile), at.fact, MYTH_NAMES.icon);
         x += disc + ICON_GAP;
       }
       x += PROOF_GAP - ICON_GAP;
@@ -873,14 +902,22 @@ function closedPath(pts: readonly (readonly [number, number])[], colour: string)
 }
 
 /** A library icon in the shared medal (a deep face on dark themes, ruling 247). */
-function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>): ImageElement {
+function medalImage(
+  c: Ctx,
+  id: string,
+  b: Box,
+  col: ReturnType<typeof v2Colors>,
+  onTile = false,
+): ImageElement {
   const lib = iconsLoaded();
   if (!lib) void loadIcons();
-  const medal = lib?.medalColoursFor({
+  const own = lib?.medalColoursFor({
     dark: c.t.dark,
     colors: { background: col.background, surface: col.surface, accent: col.accent },
     fields: col.fields,
   });
+  // On a tile the tile is the medal: the disc takes the tile's face and no ring of its own.
+  const medal = own && onTile ? { ...own, fill: surfaceStyle(c.t, "medal").fill, line: null } : own;
   const src =
     lib && medal
       ? lib.iconMedalImageSrc(id, {

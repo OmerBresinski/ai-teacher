@@ -34,7 +34,15 @@ import { KS2_GOLD_READING } from "../layout-sizes";
 import { resolveFontSize } from "../text-style";
 import { v2Profile } from "../theme-v2";
 import { keyStageOf, MIN_FONT_SIZE, typeScale } from "../themes";
-import { paintSurface, type SurfaceRole, surfaceName, surfaceStyle } from "../themes/surfaces";
+import {
+  markLook,
+  paintSurface,
+  type SurfaceRole,
+  type SurfaceState,
+  surfaceName,
+  surfaceStyle,
+  surfacesOf,
+} from "../themes/surfaces";
 import {
   type Ctx,
   type FieldReport,
@@ -119,8 +127,12 @@ function paint(
   role: SurfaceRole,
   box: { x: number; y: number; w: number; h: number },
   own?: readonly [number, number, number, number],
+  state?: SurfaceState,
 ): ShapeElement | null {
-  const el = paintSurface({ role, box, id: uid(), ...(own ? { own } : {}) }, c.t);
+  const el = paintSurface(
+    { role, box, id: uid(), ...(own ? { own } : {}), ...(state ? { state } : {}) },
+    c.t,
+  );
   if (!el) return null;
   // Drawn under its content, never locked away from the editor's selection of the slide's parts.
   const { locked: _, ...free } = el as ShapeElement & { locked?: boolean };
@@ -234,7 +246,12 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const qx = PAD_X + fit.badge + BADGE_GAP;
   const qw = fx - FIELD_GAP - qx;
   const field = { x: fx, y: fieldTop, w: fit.fw, h: SLIDE_H - fieldTop };
-  paint(c, "field-b", field, [0, 0, 0, 0]);
+  // A theme whose gold sets the answers on a solid column (round 4 themes4.css `.qc`: Beacon's blue,
+  // Poster's deep teal) paints the field in its `inverse` state, the answers in that state's ink.
+  const solid = surfacesOf(c.t).states["field-b:inverse"];
+  const fieldState: SurfaceState | undefined = solid ? "inverse" : undefined;
+  const answerInk = solid?.ink ?? c.t.colors.accent;
+  paint(c, "field-b", field, [0, 0, 0, 0], fieldState);
 
   const sum = fit.rowH.reduce((s, h) => s + h, 0);
   const gap = Math.max(0, (stageH - sum) / (n + 1));
@@ -279,6 +296,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
           h: fit.chip + 4,
         },
         [0, 0, 0, 0],
+        fieldState,
       );
       if (cover) cover.name = QUICK_NAMES.cover;
       const ah = fit.aH[i] as number;
@@ -287,7 +305,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
         as[i] as string,
         "lead",
         { x: ax, y: mid - ah / 2, w: aw },
-        { color: c.t.colors.accent, weight: 700, name: QUICK_NAMES.answer, fixedSize },
+        { color: answerInk, weight: 700, name: QUICK_NAMES.answer, fixedSize },
       );
       for (const e of c.els.slice(from)) {
         e.revealStep = step;
@@ -322,6 +340,34 @@ function roleDisc(
   const el = c.els[c.els.length - 1] as ShapeElement;
   el.name = name;
   if (st.ink && el.textStyle) el.textStyle = { ...el.textStyle, color: st.ink };
+  // A theme whose gold sets its badge numerals in the display face (round 2 `--badge-font`).
+  const font = role === "badge" ? surfacesOf(c.t).marks.badgeFont : null;
+  if (font && el.textStyle)
+    el.textStyle = {
+      ...el.textStyle,
+      preset: "heading",
+      // The size the body preset gave it, held: the heading preset reads sizes on its own ladder.
+      fontSize: el.textStyle.fixedSize
+        ? el.textStyle.fontSize
+        : resolveFontSize(c.t, el.textStyle.preset ?? "body", el.textStyle.fontSize),
+      fixedSize: true,
+      fontWeight: font.weight,
+    };
+  // The theme's badge or chip family (THEMING.md section 6): Scrapbook's outline ring, Calm's
+  // rounded square, Poster's square chip. A disc, pill or hexagon is what `kit.disc` already draws.
+  const marks = surfacesOf(c.t).marks;
+  const fam = role === "badge" ? marks.badge : role === "chip" ? marks.chip : null;
+  if (!fam || fam === "disc" || fam === "pill" || fam === "hex") return;
+  const look = markLook(c.t, role as "badge" | "chip", d, st.fill, st.ink ?? c.t.colors.ink);
+  Object.assign(el, {
+    shape: look.shape,
+    fill: look.fill,
+    ...(look.radius != null ? { radius: look.radius } : {}),
+    ...(look.stroke ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
+    ...(look.rotation ? { rotation: look.rotation } : {}),
+    ...(look.shadow ? { shadow: look.shadow } : {}),
+  });
+  if (el.textStyle) el.textStyle = { ...el.textStyle, color: look.ink };
 }
 
 type Cap = { cap: number; hardMax: number };

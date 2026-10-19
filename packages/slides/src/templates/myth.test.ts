@@ -318,6 +318,8 @@ describe("myth and fact: caps and fit", () => {
         for (const e of r.slide.elements) {
           if (e.name?.startsWith("Verdict disc") || e.name?.startsWith("Claim panel")) continue;
           if (e.name === MYTH_NAMES.card || e.name === MYTH_NAMES.factPanel) continue;
+          // The title band (Poster, TEACH-215 part k) paints the theme's own title-band tokens.
+          if (e.name === "surface:title") continue;
           const paint = [
             (e as { fill?: string }).fill,
             (e as { stroke?: string }).stroke,

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SlideElement, TextElement } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
-import { surfaceStyle } from "../themes/surfaces";
+import { surfaceStyle, surfacesOf } from "../themes/surfaces";
 import { EXIT_LABEL, TICKET } from "./exit-ticket";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
@@ -184,8 +184,10 @@ describe("theme roles", () => {
         const r = lay(k.input, k.stage, t);
         for (const b of named(r.slide.elements, WA_NAMES.badge)) {
           const st = surfaceStyle(t, "badge");
-          expect(b.type === "shape" && b.fill).toBe(st.fill);
-          expect(contrastRatio(st.ink ?? "#000", st.fill)).toBeGreaterThanOrEqual(4.5);
+          // An outline badge (Scrapbook, TEACH-215 part k) is a clear ring: it paints the ground.
+          const fill = st.fill === "transparent" ? surfacesOf(t).ground : st.fill;
+          expect(b.type === "shape" && b.fill).toBe(fill);
+          expect(contrastRatio(st.ink ?? "#000", fill)).toBeGreaterThanOrEqual(4.5);
         }
         expect(r.slide.elements.some((e) => e.name?.startsWith("surface:card"))).toBe(true);
       }
