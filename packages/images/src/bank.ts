@@ -189,8 +189,79 @@ export interface ImageGenerator {
     usage: { inputTokens: number; outputTokens: number };
     costUsd: number;
     ms: number;
+    /** How many requests it took (1 when the first answered); absent from fakes. */
+    attempts?: number;
   }>;
 }
+
+/**
+ * Why a generation failed, as a log code. `refused-safety` is the provider's moderation or safety
+ * refusal: never retried with the same prompt, and counted on its own. `rate-limited`,
+ * `server-error` and `network` are retried by the generator; the rest are not.
+ */
+export type ImageFailReason =
+  | "refused-safety"
+  | "rate-limited"
+  | "server-error"
+  | "network"
+  | "timeout"
+  | "bad-request"
+  | "no-image";
+
+/** A generation that failed, with its reason code and how many requests were made. */
+export class ImageGenerationError extends Error {
+  readonly reason: ImageFailReason;
+  readonly status?: number;
+  readonly attempts: number;
+  constructor(message: string, reason: ImageFailReason, attempts: number, status?: number) {
+    super(message);
+    this.name = "ImageGenerationError";
+    this.reason = reason;
+    this.attempts = attempts;
+    if (status !== undefined) this.status = status;
+  }
+}
+
+/** The reason code of any generation error (an error from elsewhere is `error`). */
+export function imageFailReason(error: unknown): ImageFailReason | "error" {
+  return error instanceof ImageGenerationError ? error.reason : "error";
+}
+
+/** A 400 is a safety refusal when the provider's code or message says so. */
+function isSafetyRefusal(status: number, body: string): boolean {
+  if (status !== 400) return false;
+  return /moderation_blocked|content_policy_violation|safety system|safety_violation|rejected by the safety/i.test(
+    body,
+  );
+}
+
+/** Is this failure worth the same request again (a busy or broken provider, not the request)? */
+const TRANSIENT: ReadonlySet<ImageFailReason> = new Set([
+  "rate-limited",
+  "server-error",
+  "network",
+]);
+
+/** The default retries after the first request: 429, 5xx and network errors only. */
+export const IMAGE_RETRIES = 2;
+/** The first backoff; each later one doubles, with up to a quarter more at random. */
+export const IMAGE_BACKOFF_MS = 1_500;
+/** A server's Retry-After is honoured up to this long. */
+const MAX_RETRY_AFTER_MS = 20_000;
+
+const sleepFor = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const t = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 
 export interface Embedder {
   readonly model: string;
@@ -202,31 +273,109 @@ export interface Embedder {
 
 type FetchFn = typeof globalThis.fetch;
 
-/** OpenAI direct (`/v1/images/generations`), base64 PNG out. Never logs the prompt (ADR 0015). */
+/**
+ * OpenAI direct (`/v1/images/generations`), base64 PNG out. Never logs the prompt (ADR 0015).
+ * A 429, a 5xx or a network error is retried `retries` times with backoff (Retry-After honoured);
+ * a safety refusal, any other 4xx, a timeout or an abort is not. Every failure is an
+ * `ImageGenerationError` with its reason code.
+ */
 export function createOpenAiImageGenerator(opts: {
   apiKey: string;
   model?: string;
   fetch?: FetchFn;
+  /** Retries after the first request (default `IMAGE_RETRIES`). */
+  retries?: number;
+  /** The first backoff in ms (default `IMAGE_BACKOFF_MS`). */
+  backoffMs?: number;
+  /** Waits between tries (tests pass a fake); default a real, abortable timer. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  /** The random part of the backoff, 0..1 (tests pass a constant). */
+  random?: () => number;
 }): ImageGenerator {
   const model = opts.model ?? IMAGE_MODEL;
   const fetchFn = opts.fetch ?? globalThis.fetch;
-  return {
-    model,
-    async generate({ prompt, size, signal }) {
-      const t0 = Date.now();
-      const res = await fetchFn("https://api.openai.com/v1/images/generations", {
+  const retries = Math.max(0, opts.retries ?? IMAGE_RETRIES);
+  const backoffMs = opts.backoffMs ?? IMAGE_BACKOFF_MS;
+  const sleep = opts.sleep ?? sleepFor;
+  const random = opts.random ?? Math.random;
+  /** One request: the response, or a classified failure. */
+  const once = async (
+    prompt: string,
+    size: ImageSize,
+    attempt: number,
+    signal?: AbortSignal,
+  ): Promise<{ res: Response } | { fail: ImageGenerationError; retryAfterMs?: number }> => {
+    let res: Response;
+    try {
+      res = await fetchFn("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, prompt, size, quality: IMAGE_QUALITY, n: 1 }),
         signal: signal ?? AbortSignal.timeout(120_000),
       });
-      if (!res.ok) throw new Error(`image generation failed (${res.status})`);
+    } catch (e) {
+      // The caller's abort stops everything; our own timeout is not retried (120 s is enough).
+      if (signal?.aborted) throw e;
+      const name = (e as { name?: string } | null)?.name;
+      if (name === "TimeoutError" || name === "AbortError")
+        return {
+          fail: new ImageGenerationError("image generation timed out", "timeout", attempt),
+        };
+      return {
+        fail: new ImageGenerationError(
+          `image generation failed (network): ${String(e).slice(0, 120)}`,
+          "network",
+          attempt,
+        ),
+      };
+    }
+    if (res.ok) return { res };
+    const text = await res.text().catch(() => "");
+    const reason: ImageFailReason =
+      res.status === 429
+        ? "rate-limited"
+        : res.status >= 500
+          ? "server-error"
+          : isSafetyRefusal(res.status, text)
+            ? "refused-safety"
+            : "bad-request";
+    const after = Number(res.headers.get("retry-after"));
+    return {
+      fail: new ImageGenerationError(
+        `image generation failed (${res.status}): ${reason}`,
+        reason,
+        attempt,
+        res.status,
+      ),
+      ...(Number.isFinite(after) && after > 0
+        ? { retryAfterMs: Math.min(after * 1000, MAX_RETRY_AFTER_MS) }
+        : {}),
+    };
+  };
+  return {
+    model,
+    async generate({ prompt, size, signal }) {
+      const t0 = Date.now();
+      let res: Response | undefined;
+      let attempts = 0;
+      for (;;) {
+        attempts++;
+        const r = await once(prompt, size, attempts, signal);
+        if ("res" in r) {
+          res = r.res;
+          break;
+        }
+        if (!TRANSIENT.has(r.fail.reason) || attempts > retries) throw r.fail;
+        const wait = r.retryAfterMs ?? backoffMs * 2 ** (attempts - 1) * (1 + 0.25 * random());
+        await sleep(Math.round(wait), signal);
+      }
       const body = (await res.json()) as {
         data?: { b64_json?: string }[];
         usage?: { input_tokens?: number; output_tokens?: number };
       };
       const b64 = body.data?.[0]?.b64_json;
-      if (!b64) throw new Error("image generation returned no image");
+      if (!b64)
+        throw new ImageGenerationError("image generation returned no image", "no-image", attempts);
       const usage = {
         inputTokens: body.usage?.input_tokens ?? 0,
         outputTokens: body.usage?.output_tokens ?? 0,
@@ -237,9 +386,39 @@ export function createOpenAiImageGenerator(opts: {
         usage,
         costUsd: imageCostUsd(usage),
         ms: Date.now() - t0,
+        attempts,
       };
     },
   };
+}
+
+/**
+ * What a picture's retry asks differently, so it never repeats the request that failed: the
+ * judge's reason (a missing thing, a wrong count), the set judge's (it did not match the others)
+ * or a safety refusal's. Code owns this line; a wording change goes through the prompt-engineer.
+ */
+export interface RetryHint {
+  /** The failure's code: a generator reason (`refused-safety`), `judge` or `odd`. */
+  reason: string;
+  /** The judge's own words, when it gave any (never the prompt). */
+  why?: string;
+}
+
+/** The line a retry adds to its image prompt. */
+export function retryLine(hint: RetryHint): string {
+  const why = hint.why?.replace(/\s+/g, " ").trim().replace(/\.$/, "").slice(0, 240);
+  if (hint.reason === "refused-safety")
+    return "Keep it calm and suitable for a primary school classroom: nothing graphic, frightening, injured or unsafe.";
+  if (hint.reason === "odd")
+    return `Match the rest of the set exactly: the same kind, colours and markings${why ? ` (last time: ${why})` : ""}.`;
+  return why
+    ? `The last picture was turned down because: ${why}. Fix that.`
+    : "The last picture was turned down: show the request plainly and whole.";
+}
+
+/** The prompt for a retry: the same request with the retry's line after it. */
+export function withRetryLine(prompt: string, hint?: RetryHint): string {
+  return hint ? `${prompt}\n${retryLine(hint)}` : prompt;
 }
 
 /**

@@ -6,7 +6,7 @@
  * database, storage, embedder and generator.
  */
 import { createHash } from "node:crypto";
-import type { CountArray } from "@tj/images";
+import { type CountArray, imageFailReason, type RetryHint } from "@tj/images";
 import { whenNonFatal } from "../writer/services";
 import type { PlacedPhoto } from "./illustrate";
 
@@ -130,11 +130,15 @@ export interface PictureBank {
   lookup(req: BankRequest, signal: AbortSignal): Promise<MadePicture | undefined>;
   /** Store a placed picture once: fetched, or generated and judged (licence-filtered by the implementation). */
   remember(req: BankRequest, photo: PlacedPhoto): Promise<void>;
-  /** Generate (or draw), store and return a picture; undefined when refused. */
+  /**
+   * Generate (or draw), store and return a picture; undefined when refused. A retry passes why the
+   * last try failed (`retry`), which the prompt carries (`withRetryLine`), so it never repeats.
+   */
   generate(
     req: BankRequest,
     faithful: boolean,
     signal: AbortSignal,
+    retry?: RetryHint,
   ): Promise<MadePicture | undefined>;
   /** Take a picture the judge refused (fresh or from the library) out of the library for good. */
   reject?(photo: PlacedPhoto): Promise<void>;
@@ -178,12 +182,23 @@ export interface BankOutcome {
   via: BankVia;
   route: PictureRoute;
   ms: number;
+  /** Generations asked for this request (0 when none ran). */
+  attempts: number;
+  /** Why the last generation failed (`judge`, or a generator code such as `refused-safety`). */
+  reason?: string;
 }
+
+/**
+ * Generations one picture may take: the first and two retries (was two). Each retry carries why
+ * the last one failed: the judge's reason, or a safety refusal's line.
+ */
+export const MADE_ATTEMPTS = 3;
 
 /**
  * The ladder for one request: library, then stock (real things, and generic ones stock can show),
  * then generation. A generated picture is shown to the same photo judge (mustShow, stated
- * relations, count, period); a refusal regenerates once, then nothing. A library or generator
+ * relations, count, period); a refusal regenerates up to twice, each carrying the judge's reason
+ * (`MADE_ATTEMPTS`), then nothing. A safety refusal is retried only with its own line. A library or generator
  * failure never throws: it is a miss. A generated picture the judge passed is stored in the
  * library (`remember`) once it is the one placed, as a fetched one is (TEACH-84 part b).
  */
@@ -192,7 +207,12 @@ export async function findPicture(
   bank: PictureBank,
   fetchStock: (signal?: AbortSignal) => Promise<PlacedPhoto | undefined>,
   signal: AbortSignal,
-  judgeMade?: (picture: MadePicture, reuse?: boolean) => Promise<boolean>,
+  /** The judge; `onWhy` hears its reason when it refuses (the next try carries it). */
+  judgeMade?: (
+    picture: MadePicture,
+    reuse?: boolean,
+    onWhy?: (why: string) => void,
+  ) => Promise<boolean>,
   now: () => number = Date.now,
   verdicts?: VerdictCache,
   /**
@@ -203,11 +223,15 @@ export async function findPicture(
   raceMs?: number,
 ): Promise<BankOutcome> {
   const t0 = now();
+  let attempts = 0;
+  let lastFail: string | undefined;
   const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => ({
     photo,
     via: photo ? via : "none",
     route: req.route,
     ms: now() - t0,
+    attempts,
+    ...(lastFail ? { reason: lastFail } : {}),
   });
   // Generated pictures this request's judge passed: only these are stored once placed.
   const judged = new WeakSet<PlacedPhoto>();
@@ -219,18 +243,37 @@ export async function findPicture(
   const make = async (faithful: boolean, sig: AbortSignal = signal) => {
     // Ruling 163 (narrowed later): nothing is generated for a past event or person.
     if (req.period && req.depicts && !req.draw) return undefined;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const made = await bank.generate(req, faithful, sig).catch(rethrowAbort);
+    let hint: RetryHint | undefined;
+    for (let attempt = 0; attempt < MADE_ATTEMPTS; attempt++) {
+      if (!req.draw) attempts++;
+      let made: MadePicture | undefined;
+      try {
+        made = await bank.generate(req, faithful, sig, hint);
+      } catch (e) {
+        rethrowAbort(e);
+        const reason = imageFailReason(e);
+        lastFail = reason;
+        // A safety refusal is tried again with its own line, never the same prompt; any other
+        // generator failure has had the generator's own retries already.
+        if (reason !== "refused-safety" && reason !== "no-image") return undefined;
+        // Refused again with the safety line already on: the next try would be the same prompt.
+        if (reason === "refused-safety" && hint?.reason === reason) return undefined;
+        hint = { reason };
+        continue;
+      }
       if (made && !styleAllowed(req, made)) {
         // A photo-style picture for a historical request: the wrong kind, so no retry either.
         await bank.reject?.(made).catch(rethrowAbort);
         return undefined;
       }
       if (!made || req.draw || !judgeMade || !made.dataUrl) return made;
-      if (await judgeMade(made).catch(rethrowAbort)) {
+      let why: string | undefined;
+      if (await judgeMade(made, undefined, (w) => (why = w)).catch(rethrowAbort)) {
         judged.add(made);
         return made;
       }
+      lastFail = "judge";
+      hint = { reason: "judge", ...(why ? { why } : {}) };
       await bank.reject?.(made).catch(rethrowAbort);
     }
     return undefined;

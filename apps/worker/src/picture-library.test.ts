@@ -419,7 +419,12 @@ describe("the director with the library (findPicture)", () => {
     );
     expect(out.via).toBe("none");
     expect(table.rows).toHaveLength(0);
-    expect(removed).toEqual(["/files/ws-1/images/gen-1.png", "/files/ws-1/images/gen-2.png"]);
+    // MADE_ATTEMPTS: the first and two retries, each refused and removed.
+    expect(removed).toEqual([
+      "/files/ws-1/images/gen-1.png",
+      "/files/ws-1/images/gen-2.png",
+      "/files/ws-1/images/gen-3.png",
+    ]);
   });
 
   test("a fetched Commons picture is stored with its credit; an unadmitted licence is not", async () => {
