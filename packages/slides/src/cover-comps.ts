@@ -287,13 +287,31 @@ export function coverColumn(
   const lhS = cv.questionLineHeight;
   let ss = cv.question;
   const subW = space.subWidth ?? width;
-  const subH = (s: number) =>
-    sub ? Math.ceil(countLines(words, "small", t, subW, 400, s) * s * lhS) + 4 : 0;
+  // Each size is measured once: the ladders below ask for the same sizes over and over.
+  const subMemo = new Map<number, number>();
+  const subH = (s: number): number => {
+    if (!sub) return 0;
+    let h = subMemo.get(s);
+    if (h === undefined) {
+      h = Math.ceil(countLines(words, "small", t, subW, 400, s) * s * lhS) + 4;
+      subMemo.set(s, h);
+    }
+    return h;
+  };
   const title = p.title;
   const tLh = cv.titleLineHeight;
   // A padded title (the template's ink margin, TEACH-152 part b) wraps inside its padding.
   const tPad = typeof title?.style.padding === "number" ? title.style.padding : 0;
-  const lines = (s: number) =>
+  const lineMemo = new Map<number, number>();
+  const lines = (s: number): number => {
+    let n = lineMemo.get(s);
+    if (n === undefined) {
+      n = lines0(s);
+      lineMemo.set(s, n);
+    }
+    return n;
+  };
+  const lines0 = (s: number) =>
     title
       ? Math.max(
           1,
