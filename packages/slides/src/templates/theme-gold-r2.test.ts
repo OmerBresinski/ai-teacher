@@ -1,16 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import type { PathElement, ShapeElement, Slide } from "@tj/domain/documents";
+import type { ImageElement, PathElement, ShapeElement, Slide } from "@tj/domain/documents";
 import { loadIcons } from "../icons/loader";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import { paintSurface } from "../themes/surfaces";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { MYTH_NAMES } from "./myth";
 import { MYTH_CASES } from "./myth-fixtures";
+import { STAGES_NAMES } from "./stages";
+import { STAGE_CASES } from "./stages-fixtures";
 import { WORKED_NAMES } from "./worked";
 import { WORKED_CASES } from "./worked-fixtures";
 
 /*
- * TEACH-215 part r2 (THEME-AUDIT-r2 ranked gaps 2, 3 and 9): fixed values read from the round 5
+ * TEACH-215 part r2 (THEME-AUDIT-r2 ranked gaps 1, 2, 3 and 9): fixed values read from the round 5
  * golds' own CSS (theme-v2.css, roles.css, round 2-5 themes CSS, computed per theme). Slides are
  * 960pt for the golds' 1440px, so a gold px is pt x 1.5.
  */
@@ -117,6 +119,23 @@ describe("myth verdict disc: themes4.css all themes, .stamp i 42px in the verdic
         (e) => e.name === MYTH_NAMES.stampDisc,
       ) as ShapeElement;
       expect(disc.fill).toBe("rgb(215, 38, 61)");
+    }
+  });
+});
+
+describe("library icons outlined in ink (the golds draw the pilot library in every theme)", () => {
+  const svgOf = (e: ImageElement) => decodeURIComponent(e.src.replace(/^data:[^,]*,/, ""));
+  const stage = STAGE_CASES.find((s) => s.name === "05-y5-bread-5-icons") as Case;
+  test("every theme's stages icons are the outlined (pilot) drawing, not the soft one", () => {
+    for (const t of THEMES) {
+      const icons = els(stage.input, t.id, stage.stage).filter(
+        (e) => e.name === STAGES_NAMES.icon,
+      ) as ImageElement[];
+      expect(icons.length).toBeGreaterThan(0);
+      // The pilot style draws flat fills under a dark outline; the soft style's radial gradients
+      // are what the audit saw as washed out.
+      for (const i of icons)
+        expect([t.id, svgOf(i).includes("radialGradient")]).toEqual([t.id, false]);
     }
   });
 });
