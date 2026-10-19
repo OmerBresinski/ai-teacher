@@ -75,6 +75,26 @@ const headingOf = (els: El[]) => {
 };
 
 const DIR = join(import.meta.dir, "fixtures/replay");
+/** The themes whose cover TEACH-215 part g recomposed (every round 5 theme but Geometric). */
+const COMPOSED = new Set([
+  "paper",
+  "poster",
+  "treehouse",
+  "reading-room",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+const themeOf = (b: string): string =>
+  (JSON.parse(readFileSync(join(DIR, b, "brief.json"), "utf8")) as { theme?: string }).theme ?? "";
 const LESSONS = readdirSync(DIR).sort();
 const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const stable = (e: El) => {
@@ -132,11 +152,14 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.some((e) => e.name === "Option")).toBe(true);
         return;
       }
-      // TEACH-215 part g (19 Oct 2026): the cover is set in the theme's round 5 composition on the
-      // theme's own ground, so the lab's saved cover is not its geometry or ground; its title is
-      // still drawn.
-      if (s.kind === "title" && want.kind === "title") {
-        expect(got.some((e) => e.type === "text" && e.name === "Title")).toBe(true);
+      // TEACH-215 part g (19 Oct 2026): the cover (slide 0) on a theme whose round 5 composition
+      // changed it (every theme but Geometric) is set on the theme's own ground, so the lab's
+      // saved cover is not its geometry or ground; its title, picture and question still are.
+      if (i === 0 && s.kind === "title" && want.kind === "title" && COMPOSED.has(themeOf(b))) {
+        const has = (els: El[], name: string) => els.some((e) => e.name === name);
+        expect({ i, title: has(got, "Title") }).toEqual({ i, title: true });
+        expect({ i, photo: has(got, "Photo") }).toEqual({ i, photo: has(want.elements, "Photo") });
+        expect({ i, q: has(got, "Subtitle") }).toEqual({ i, q: has(want.elements, "Subtitle") });
         return;
       }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {

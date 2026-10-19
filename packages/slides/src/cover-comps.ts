@@ -13,9 +13,11 @@ import { uid } from "./factories";
 import { SAFE } from "./grid";
 import { coverType } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
+import { coverColours } from "./look";
 import { docPlainText } from "./sentences";
 import { countLines, runWidth } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
+import { fontFloor, THEMES } from "./themes";
 import { hexagonPoints, innerSides, notchPoints, tornPoints } from "./themes/marks";
 import { isClear, SURFACE_TOKEN_SETS, surfacesOf, titleBand } from "./themes/surfaces";
 
@@ -141,17 +143,29 @@ function bleed(p: Parts, t: Theme): SlideElement[] {
     { ...p, caption: undefined, title: p.title && { ...p.title, y: 0 } },
     t,
     plate.w - 2 * padX + 2 * tPad,
-    { gap: 18.67, lines: 2, foot: plate.h - 30 - SAFE.y },
+    {
+      gap: 18.67,
+      lines: 2,
+      foot: H - SAFE.y - (plate.y + 30),
+      shrink: true,
+      subWidth: plate.w - 2 * padX,
+    },
   );
   const foot = H - SAFE.y;
   const colH = col.subtitle ? col.subtitle.y + col.subtitle.h - tPad : (col.title?.h ?? 0) - tPad;
   const tabRoom = p.caption ? Math.max(30, p.caption.h + 14) : 0;
-  const top = Math.max(plate.y + 30 + tabRoom, foot - colH) - tPad;
+  let top = Math.max(plate.y + 30 + tabRoom, foot - colH) - tPad;
+  // A column taller than the plate's room (a long question) takes the plate up with it.
+  if (top + colH + tPad > foot) {
+    const lift = top + colH + tPad - foot;
+    plate.y = Math.max(SAFE.y, plate.y - lift);
+    plate.h = H - plate.y;
+    top = Math.max(plate.y + 30 + tabRoom, foot - colH) - tPad;
+  }
   const sub = col.subtitle && {
     ...col.subtitle,
     x: padX,
     y: top + col.subtitle.y,
-    w: plate.w - 2 * padX,
   };
   const title = col.title && {
     ...col.title,
@@ -248,7 +262,16 @@ export function coverColumn(
   t: Theme,
   width: number,
   /** The composition's own spacing: the title's drop under the eyebrow and the question's gap. */
-  space: { drop?: number; gap?: number; lines?: number; foot?: number } = {},
+  space: {
+    drop?: number;
+    gap?: number;
+    lines?: number;
+    foot?: number;
+    /** A question past the cap steps down (1pt, to the type floor) until the column fits. */
+    shrink?: boolean;
+    /** The question's own measure when it is not the title's padded box (default `width`). */
+    subWidth?: number;
+  } = {},
 ): { title?: TextElement; subtitle?: TextElement } {
   const foot = space.foot ?? H - SAFE.y;
   // The column starts where the layout put the title (under the eyebrow) and never rises over it.
@@ -262,9 +285,10 @@ export function coverColumn(
   // title holds the gold's line count. Both are drawn at exactly these sizes (`fixedSize`).
   const cv = coverType(t);
   const lhS = cv.questionLineHeight;
-  const ss = cv.question;
+  let ss = cv.question;
+  const subW = space.subWidth ?? width;
   const subH = (s: number) =>
-    sub ? Math.ceil(countLines(words, "small", t, width, 400, s) * s * lhS) + 4 : 0;
+    sub ? Math.ceil(countLines(words, "small", t, subW, 400, s) * s * lhS) + 4 : 0;
   const title = p.title;
   const tLh = cv.titleLineHeight;
   // A padded title (the template's ink margin, TEACH-152 part b) wraps inside its padding.
@@ -289,9 +313,17 @@ export function coverColumn(
   const maxLines = space.lines ?? cv.titleLines;
   while ((top0 + total() > foot || lines(ts) > maxLines) && ts - cv.titleStep >= cv.titleFloor)
     ts -= cv.titleStep;
+  // A question a teacher made longer than the cap steps down rather than run off the slide (the
+  // base cover grows its box; here it grows too, but never past the foot while a smaller step fits).
+  if (space.shrink) while (top0 + total() > foot && ss - 1 >= fontFloor("body")) ss -= 1;
   // A column too tall for the gold's spacing even at the title floor closes up to the split stack.
   if ((space.drop || space.gap) && top0 + total() > foot)
-    return coverColumn(p, t, width, { lines: space.lines, foot: space.foot });
+    return coverColumn(p, t, width, {
+      lines: space.lines,
+      foot: space.foot,
+      shrink: space.shrink,
+      subWidth: space.subWidth,
+    });
   const out: { title?: TextElement; subtitle?: TextElement } = {};
   let y = top0;
   if (title) {
@@ -309,7 +341,7 @@ export function coverColumn(
     out.subtitle = {
       ...sub,
       y: y + gap,
-      w: width,
+      w: subW,
       h: subH(ss),
       style: {
         ...sub.style,
@@ -436,8 +468,33 @@ function masthead(p: Parts, t: Theme): SlideElement[] {
   const title = sized && { ...sized, x: x - tPad };
   const bottom = title ? title.y + title.h - tPad : 115;
   // The parts below the title follow its real foot at the normal title gap (THEMING.md section 8).
-  const top = Math.max(273, bottom + 24);
-  const sub = p.subtitle && { ...p.subtitle, x, y: top + 6, w: 373 };
+  const top = Math.min(Math.max(273, bottom + 24), H - SAFE.y - 140);
+  // The question at the cover's size on the lines it really takes; one a teacher made longer than
+  // the cap steps down (1pt, to the type floor) rather than run past the foot.
+  const cv = coverType(t);
+  // With no picture block (the picture-failed cover) the question takes the room it leaves, so the
+  // cover's no-picture cap (`cover-capacity.json`) still holds two lines.
+  const qW = p.photo.id === "ghost" ? w : 373;
+  const words = p.subtitle ? docPlainText(p.subtitle.doc) : "";
+  const qh = (s: number) =>
+    Math.ceil(countLines(words, "small", t, qW, 400, s) * s * cv.questionLineHeight) + 4;
+  let qs = cv.question;
+  while (top + 6 + qh(qs) > H - SAFE.y && qs - 1 >= fontFloor("body")) qs -= 1;
+  const sub = p.subtitle && {
+    ...p.subtitle,
+    x,
+    y: top + 6,
+    w: qW,
+    h: qh(qs),
+    style: {
+      ...p.subtitle.style,
+      preset: "small" as const,
+      fontSize: qs,
+      lineHeight: cv.questionLineHeight,
+      fixedSize: true,
+      valign: "top" as const,
+    },
+  };
   const radius = surfacesOf(t).roles.frame.corner;
   const pic = {
     ...p.photo,
@@ -533,12 +590,18 @@ function column(p: Omit<Parts, "photo">, t: Theme, o: Column): SlideElement[] {
     { ...p, caption: undefined, title: t0 && { ...t0, y: 0 } } as Parts,
     t,
     o.w + 2 * tPad,
-    { gap: o.qGap, lines: o.lines, foot: o.bottom - o.top - head },
+    { gap: o.qGap, lines: o.lines, foot: o.bottom - o.top - head, shrink: true, subWidth: o.w },
   );
   const tt = sized.title;
   const sub = sized.subtitle;
   const body = sub ? sub.y + sub.h - tPad : tt ? tt.h - 2 * tPad : 0;
-  const y0 = Math.round(o.top + Math.max(0, (o.bottom - o.top - head - body) / 2));
+  // Centred in its room; a column taller than the room starts at the safe area's top, never above.
+  const y0 = Math.round(
+    Math.max(
+      Math.min(o.top + (o.bottom - o.top - head - body) / 2, H - SAFE.y - head - body),
+      Math.max(o.top, SAFE.y),
+    ),
+  );
   let y = y0;
   const out: SlideElement[] = [];
   if (o.rule) {
@@ -559,8 +622,7 @@ function column(p: Omit<Parts, "photo">, t: Theme, o: Column): SlideElement[] {
       doc: recolour(tt.doc, t.colors.accent, o.ink.accent),
       style: { ...tt.style, color: o.ink.title },
     });
-  if (sub)
-    out.push({ ...sub, x: o.x, y: ty + sub.y, w: o.w, style: { ...sub.style, color: o.ink.q } });
+  if (sub) out.push({ ...sub, x: o.x, y: ty + sub.y, style: { ...sub.style, color: o.ink.q } });
   return out;
 }
 
@@ -711,6 +773,57 @@ export function composeCoverFallback(
   };
 }
 
+/**
+ * What a composed cover still cannot hold, measured on the composed boxes (the title template's
+ * own report was measured in its plain column, which the composition replaces): a title past the
+ * gold's three lines at its size, or words past the slide's safe foot.
+ */
+export function coverOver(els: SlideElement[], t: Theme): string[] {
+  const out: string[] = [];
+  const cv = coverType(t);
+  for (const e of els) {
+    if (e.type !== "text") continue;
+    if (e.name === "Title") {
+      const pad = typeof e.style.padding === "number" ? e.style.padding : 0;
+      const size = e.style.fontSize ?? cv.title;
+      const n = countLines(
+        docPlainText(e.doc),
+        "title",
+        t,
+        e.w - 2 * pad,
+        e.style.fontWeight,
+        size,
+      );
+      if (n > cv.titleLines) out.push(`title does not fit at ${Math.round(size * 10) / 10}pt`);
+    }
+    // A question stepped under the cover's size to stay on the slide is past the cap (the base
+    // cover reports its overlong column the same way); it still draws whole.
+    if (e.name === "Subtitle" && (e.style.fontSize ?? cv.question) < cv.question - 0.01)
+      out.push(`question stepped down to ${Math.round((e.style.fontSize ?? 0) * 10) / 10}pt`);
+    if (e.y + e.h > H - SAFE.y + 1)
+      out.push(`${e.name ?? "text"} past the foot (${Math.round(e.y + e.h)}pt)`);
+  }
+  return out;
+}
+
+/** The title's words fit its own box at its stored size (the layout's box, untouched). */
+function holdsTitle(e: TextElement, t: Theme): boolean {
+  const pad = typeof e.style.padding === "number" ? e.style.padding : 0;
+  const size = e.style.fontSize ?? coverType(t).title;
+  const lh =
+    typeof e.style.lineHeight === "number" ? e.style.lineHeight : coverType(t).titleLineHeight;
+  const n = countLines(docPlainText(e.doc), "title", t, e.w - 2 * pad, e.style.fontWeight, size);
+  return n * size * lh + 2 * pad <= e.h + 1;
+}
+
+/** A cover ground a look painted (any theme's accent or plain-cover colour), not a teacher's. */
+function lookGround(color: string): boolean {
+  const c = color.toUpperCase();
+  return THEMES.some(
+    (th) => th.colors.accent.toUpperCase() === c || coverColours(th).fill.toUpperCase() === c,
+  );
+}
+
 /** A cover with a picture in the theme's composition; the slide as it was when it has none. */
 export function composeCover(slide: Slide, t: Theme): Slide {
   const p = partsOf(slide);
@@ -738,6 +851,17 @@ export function composeCover(slide: Slide, t: Theme): Slide {
     framed,
     split,
   };
+  // A hand-made or saved cover's title is at its stored size in the layout's box: the collage and
+  // the frame size it down their ladder in that box (three lines), the question under it, as the
+  // other compositions do, so a long title never runs out of its box.
+  if ((comp === "collage" || comp === "framed") && p.title && !holdsTitle(p.title, t)) {
+    const x = p.subtitle?.x;
+    const col = coverColumn(p, t, p.title.w, { lines: 3, shrink: true, gap: 20 });
+    Object.assign(p, {
+      title: col.title && { ...col.title, x: p.title.x },
+      subtitle: col.subtitle && { ...col.subtitle, x: x ?? p.title.x },
+    });
+  }
   // A saved cover keeps the ink of its old look (cream on Paper's wine): the compositions that do
   // not set their own ink take the theme's title ink and muted question on the theme's ground.
   if (comp === "collage" || comp === "framed" || comp === "masthead")
@@ -749,7 +873,9 @@ export function composeCover(slide: Slide, t: Theme): Slide {
   // Geometric's hexagon is pinned to its gold check (post-582) as it was: its ground is untouched.
   if (!elements || comp === "shape") return elements ? { ...slide, elements } : slide;
   // A composition sets its own ground (the theme's, with its title art): a saved cover's old look
-  // colour (Paper's wine from an earlier theme) would sit under the theme's ink unreadably.
-  const { color: _c, image: _i, ...ground } = slide.background ?? {};
-  return { ...slide, elements, background: ground };
+  // colour (Paper's wine from an earlier theme) would sit under the theme's ink unreadably. Only a
+  // colour a look painted goes; a teacher's own colour or picture background stays theirs.
+  const { color, ...rest } = slide.background ?? {};
+  const keepColour = color && !lookGround(color);
+  return { ...slide, elements, background: keepColour ? { ...rest, color } : rest };
 }

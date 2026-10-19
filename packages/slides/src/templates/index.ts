@@ -30,6 +30,7 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 import {
   composeCover,
   composeCoverFallback,
+  coverOver,
   coverTitleDoc,
   hasCoverFallback,
 } from "../cover-comps";
@@ -2088,6 +2089,12 @@ function layoutOnce(
           c.t,
         );
         c.els.splice(0, c.els.length, ...composed.elements);
+      }
+      // A composed cover (not Geometric's, pinned as it was) reports on its own boxes: the plain
+      // column's measure above no longer describes what is drawn (TEACH-215 part g).
+      if ((fallback || (photo && comp !== "type")) && comp !== "shape") {
+        const kept = c.over.filter((o) => !o.startsWith("title "));
+        c.over.splice(0, c.over.length, ...kept, ...coverOver(c.els, c.t));
       }
       break;
     }

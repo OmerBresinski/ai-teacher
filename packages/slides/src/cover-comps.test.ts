@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { TextElement } from "@tj/domain/documents";
 import { coverTypeAt } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
-import { applyLook } from "./look";
+import { applyLook, contrastRatio } from "./look";
 import { layoutTemplate } from "./templates/index";
 import { atKeyStage, getTheme } from "./themes";
 
@@ -166,5 +166,128 @@ describe("round 5 covers on every theme (TEACH-215 part g)", () => {
       theme,
     );
     expect(s.background?.color).toBeUndefined();
+  });
+});
+
+// Review fixes (TEACH-215 part g): edge cases on every theme, real contrast, a teacher's ground.
+const LONG_Q =
+  "What do you think happens deep under the ground before hot lava finally reaches the surface?";
+const SAFE_FOOT = 540 - 43;
+const textsOf = (els: readonly { type: string }[]) =>
+  els.filter((e) => e.type === "text") as TextElement[];
+
+/** The fill under the middle of `e`: the last shape drawn before it that covers that point. */
+function groundUnder(
+  els: readonly { type: string; x: number; y: number; w: number; h: number; fill?: string }[],
+  i: number,
+  ground: string,
+): string {
+  const e = els[i] as { x: number; y: number; w: number; h: number };
+  const cx = e.x + Math.min(e.w, 60) / 2;
+  const cy = e.y + Math.min(e.h, 40) / 2;
+  for (let j = i - 1; j >= 0; j--) {
+    const b = els[j] as { type: string; x: number; y: number; w: number; h: number; fill?: string };
+    if (b.type !== "shape" || !b.fill || b.fill === "transparent") continue;
+    if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) return b.fill;
+  }
+  return ground;
+}
+
+describe("covers hold every case on every theme (TEACH-215 part g review)", () => {
+  const cases = {
+    "long title": {
+      ...VOLCANO,
+      heading: "Why did the industrial revolution change everyday lives?",
+    },
+    "no question": { template: "title", heading: VOLCANO.heading, accentWord: "volcanoes" },
+    "16-word question": { ...VOLCANO, lead: LONG_Q },
+  };
+  for (const id of THEMES5)
+    for (const stage of ["ks1", "ks3"] as const)
+      test(`${id} ${stage}: long title, no question, a 16-word question, with and without a picture`, () => {
+        const t = atKeyStage(getTheme(id), stage);
+        for (const [name, base] of Object.entries(cases))
+          for (const pic of [true, false]) {
+            const input = pic ? { ...base, figure: withPic.figure } : base;
+            const r = layoutTemplate(input as never, t, stage);
+            const els = r.slide.elements;
+            for (const e of textsOf(els)) {
+              expect({ name, pic, el: e.name, inside: inside(e) }).toEqual({
+                name,
+                pic,
+                el: e.name,
+                inside: true,
+              });
+              expect({ name, pic, el: e.name, foot: e.y + e.h <= SAFE_FOOT + 1 }).toEqual({
+                name,
+                pic,
+                el: e.name,
+                foot: true,
+              });
+            }
+            if (name !== "long title")
+              expect({ name, pic, over: r.over }).toEqual({ name, pic, over: [] });
+            const hasQ = textsOf(els).some((e) => e.name === "Subtitle");
+            expect(hasQ).toBe(name !== "no question");
+          }
+      });
+});
+
+describe("cover words read on what is under them (WCAG AA, layout-contrast.test's rule)", () => {
+  for (const id of THEMES5) {
+    if (id === "geometric") continue;
+    test(`${id}: title, accent word, question and eyebrow`, () => {
+      const t = atKeyStage(getTheme(id), "ks3");
+      const slides = [
+        layoutTemplate(withPic as never, t, "ks3").slide,
+        layoutTemplate(VOLCANO as never, t, "ks3").slide,
+      ];
+      // The saved path with an eyebrow (applyLook over the split layout).
+      const l = layoutSlide("title", id, "split");
+      const els0 = l.elements.map((e) => {
+        if (e.type === "image") return { ...e, src: "/x.jpg" };
+        if (e.type !== "text") return e;
+        if (e.style.preset === "caption") return { ...e, doc: doc(run("GEOGRAPHY · YEAR 8")) };
+        if (e.style.preset === "title") return { ...e, doc: doc(run("How do volcanoes erupt?")) };
+        return { ...e, doc: doc(run("What happens under the ground?")) };
+      });
+      slides.push(
+        applyLook({ id: "c", kind: "title", elements: els0, background: {} } as never, t),
+      );
+      const bad: string[] = [];
+      for (const s of slides) {
+        const ground = s.background?.color ?? t.colors.background;
+        s.elements.forEach((e, i) => {
+          if (e.type !== "text") return;
+          const back = groundUnder(s.elements as never, i, ground);
+          const size = e.style.fontSize ?? 20;
+          const large = size >= 24 || (size >= 18.66 && (e.style.fontWeight ?? 400) >= 700);
+          const need = large ? 3 : 4.5;
+          const inks = [e.style.color ?? t.colors.ink];
+          for (const r of e.doc.content?.[0]?.content ?? [])
+            for (const m of (r as { marks?: { attrs?: { color?: string } }[] }).marks ?? [])
+              if (m.attrs?.color) inks.push(m.attrs.color);
+          for (const ink of inks)
+            if (contrastRatio(ink, back) < need)
+              bad.push(
+                `${e.name ?? e.style.preset}: ${ink} on ${back} ${contrastRatio(ink, back).toFixed(2)}`,
+              );
+        });
+      }
+      expect(bad).toEqual([]);
+    });
+  }
+});
+
+describe("a teacher's own cover ground survives the look", () => {
+  test("a custom colour and a picture background stay; an old look colour goes", () => {
+    const theme = atKeyStage(getTheme("treehouse"), "ks3");
+    const l = layoutSlide("title", "treehouse", "split");
+    const els = l.elements.map((e) => (e.type === "image" ? { ...e, src: "/x.jpg" } : e));
+    const look = (background: object) =>
+      applyLook({ id: "c", kind: "title", elements: els, background } as never, theme).background;
+    expect(look({ color: "#123456" })?.color).toBe("#123456");
+    expect(look({ image: "/bg.jpg" })?.image).toBe("/bg.jpg");
+    expect(look({ color: getTheme("splash").colors.accent })?.color).toBeUndefined();
   });
 });
