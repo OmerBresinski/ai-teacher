@@ -8,7 +8,7 @@ import { flowLayoutOf, PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-
 import type { WriterStage } from "./schema";
 import { MIN_SHOWN_WORDS, PLAN_SHARE, wordsWithin } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
-import { waveCMenu } from "./wave-c-scratch";
+import { WAVE_C_ROUTED_FITS, waveCMenu } from "./wave-c";
 
 /*
  * Loop 1 prompt part (17 Oct 2026): no length is typed into a v4.8 template. Every Fits, the
@@ -66,10 +66,10 @@ describe("v4.8 templates type no fit number", () => {
     test(`${ks}: every Fits in the assembled text is a generated one`, () => {
       const text = PILOT_PACKS["v4.8"].system[ks];
       const generated = [
-        ...Object.values(fitSlots(stage)),
+        ...Object.values(fitSlots(stage, WAVE_C_ROUTED_FITS)),
         ...Object.values(LAYOUT_WRITER_MENUS).map((m) => m[stage]),
         ...Object.values(WRITER_RULES),
-        // SCRATCH: the wave C lines, generated from the capacity tables (wave-c-scratch.ts).
+        // Wave C's lines, generated from the capacity tables (wave-c.ts, TEACH-110 part v).
         ...Object.values(waveCMenu(stage)),
       ];
       const count = (s: string) => s.split("Fits:").length - 1;
@@ -122,7 +122,11 @@ describe("fit layouts keep the floor and no cliff", () => {
       const sent = JSON.stringify(schema);
       for (const k of droppedFits(stage)) expect(sent.includes(`"#/$defs/${k}"`), k).toBe(false);
       for (const [layout, keys] of Object.entries(fitOffer(stage)))
-        for (const key of keys) expect(sent.includes(`"#/$defs/${layout}~${key}"`)).toBe(true);
+        for (const key of keys)
+          expect(sent.includes(`"#/$defs/${layout}~${key}"`)).toBe(
+            // A fit routed to a wave C layout (TEACH-110 part v) is never sent.
+            !(WAVE_C_ROUTED_FITS as readonly string[]).includes(`${layout}~${key}`),
+          );
     });
   }
 });

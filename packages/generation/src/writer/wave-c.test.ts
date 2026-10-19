@@ -1,0 +1,266 @@
+// Wave C offered to the production writer (TEACH-110 part v): each shape materialises and lays
+// out, slot-fill accepts it against the v4.8 request, and the menu carries only generated numbers.
+import { expect, test } from "bun:test";
+import { getTheme } from "@tj/slides/themes";
+import { materialise } from "./materialise";
+
+const theme = getTheme("splash", "ks2");
+const photo = (k: string) => ({
+  status: "photo",
+  photo: { src: `/files/${k}.jpg`, alt: k, aspect: 4 / 3 },
+});
+const pic = { shows: "a frog", must_see: ["frog"], subject: "generic" };
+const model = {
+  kind: "cycle",
+  title: "Water cycle",
+  steps: ["evaporation", "condensation", "rain"],
+};
+const slides: Record<string, any> = {
+  worked: {
+    template: "worked",
+    heading: "Solve 2x + 3 = 11",
+    lines: [
+      { move: "Take 3", eq: "2x = 8", answer: false },
+      { move: "Halve", eq: "x = 4", answer: true },
+    ],
+    check: "2(*4*) + 3 = 11",
+    panel: null,
+  },
+  stages: {
+    template: "stages",
+    heading: "How a frog grows",
+    accentWord: null,
+    items: [
+      { name: "Egg", line: "Laid in water", icon: null, picture: null },
+      { name: "Tadpole", line: "Swims with a tail", icon: null, picture: null },
+      { name: "Frog", line: "Lives on land", icon: null, picture: null },
+    ],
+  },
+  reasons: {
+    template: "reasons",
+    heading: "Why did Rome fall?",
+    lead: null,
+    kind: "reasons",
+    items: [
+      { head: "Money", line: "Taxes were too high", icon: null },
+      { head: "Army", line: "Soldiers were paid late", icon: null },
+    ],
+  },
+  source: {
+    template: "source",
+    heading: "A letter home",
+    form: "prose",
+    from: "A soldier, 1916",
+    extract: "We marched all night in the rain and the mud.",
+    notes: [
+      { anchor: "rain", label: "Weather", text: "Hard going" },
+      { anchor: "mud", label: "Ground", text: "Trenches" },
+    ],
+    picture: null,
+  },
+  figure: {
+    template: "figure",
+    heading: "The water cycle",
+    caption: "Water moves round and round",
+    icon: "water",
+    figure: pic,
+  },
+  myth: {
+    template: "myth",
+    heading: "Goldfish memory",
+    myth: {
+      opening: "vote",
+      verdict: "myth",
+      claim: "Goldfish forget in 3 seconds",
+      fact: "They remember for months",
+      factEm: null,
+      proof: { line: "They learn feeding times", icons: null, picture: null },
+    },
+  },
+  keycard: {
+    template: "visual-text",
+    fit: "key-card-fig",
+    heading: "Habitats",
+    lead: "A habitat is a home.",
+    points: [],
+    icon: "home",
+    cards: [
+      {
+        kind: "word",
+        label: "Key word",
+        term: "habitat",
+        meaning: "where a living thing lives",
+        examples: null,
+        num: null,
+        unit: null,
+      },
+    ],
+    figure: pic,
+  },
+  stepmodel: {
+    template: "steps",
+    fit: "step-model",
+    heading: "Step 1",
+    step: { n: 1, do: "Heat the water", see: "Steam rises" },
+    figure: model,
+  },
+};
+for (const [k, s] of Object.entries(slides))
+  test(`${k} materialises and lays out`, () => {
+    const m = materialise(s, {
+      brief: { subject: "science", topic: "x", stage: "ks2" } as any,
+      theme,
+      stage: "ks2",
+      index: 3,
+      plan: { slides: [s] } as any,
+      visual: photo,
+    } as any);
+    const flat = (es: any[]): any[] => es.flatMap((e) => [e, ...flat(e.children ?? [])]);
+    const els = flat(m.slide.elements as any[]);
+    expect(els.length).toBeGreaterThan(2);
+  });
+
+import { libSchema } from "../library/catalogue";
+import { writerBundle } from "./bundle";
+import { visualsOf } from "./materialise";
+import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { writerSchema } from "./schema";
+import { slotFillArrival } from "./slot-fill";
+import { WAVE_C_ROUTED_FITS, WHY_SHAPE, waveCMenu, waveCWords } from "./wave-c";
+
+const STAGE_OF = { KS1: "KS1", KS2: "KS2", KS3: "KS3-5" } as const;
+const request = (ks: keyof typeof STAGE_OF) =>
+  pilotRequest(
+    "v4.8",
+    ks,
+    writerSchema(STAGE_OF[ks], { min: 9, max: 12 }, writerBundle("base4f-p123"), { objectives: 3 }),
+    (sc) => libSchema(sc, ["test-model"]),
+  );
+const libModel = {
+  kind: "model",
+  model: "test-model",
+  intent: "the water heated",
+  alt: "a kettle",
+};
+// Icons from the catalogue's enum or null (the smoke fixtures' "water" and "home" are free text).
+const offered = {
+  ...slides,
+  figure: { ...slides.figure, icon: null },
+  keycard: { ...slides.keycard, icon: null },
+  stepmodel: { ...slides.stepmodel, figure: libModel },
+};
+delete (offered as Record<string, unknown>).source;
+
+for (const ks of ["KS1", "KS2", "KS3"] as const) {
+  const s = STAGE_OF[ks];
+  test(`${ks}: wave C menu lines are in the v4.8 system, in words; source is not offered`, () => {
+    const lines = waveCMenu(s);
+    const sys = PILOT_PACKS["v4.8"].system[ks];
+    for (const [name, line] of Object.entries(lines)) {
+      expect(line.startsWith(`- ${name}: `)).toBe(true);
+      expect(sys.split("\n")).toContain(line);
+      // Characters only for the fact card's number (picture-text KEY_CAPS.num).
+      expect(line.replace(/a number up to \d+ characters/, "")).not.toMatch(/character/);
+    }
+    expect(lines.myth).toContain(`the claim up to ${waveCWords(s).myth.claim} words`);
+    expect(Object.keys(lines)).not.toContain("source");
+    expect(sys).not.toContain("\n- source: ");
+  });
+  test(`${ks}: the flow has the why shape and no standing misconception slot`, () => {
+    const sys = PILOT_PACKS["v4.8"].system[ks];
+    expect(sys).toContain(`one big idea, ${WHY_SHAPE}, sequence,`);
+    expect(sys).toContain(`(flow shape ${WHY_SHAPE})`);
+    expect(sys).not.toContain("the misconception pupils most often hold here");
+    expect(PILOT_PACKS["v4.8"].layouts.flowShapes).toContain(WHY_SHAPE);
+  });
+  test(`${ks}: every offered wave C slide arrives as written (no fit: missing, no cut)`, () => {
+    const r = request(ks);
+    for (const [k, slide] of Object.entries(offered)) {
+      const a = slotFillArrival(structuredClone(slide), ks, r.schema, r.caps, true);
+      expect({ k, breaches: a.breaches, cuts: a.cuts, over: a.over, route: a.route }).toEqual({
+        k,
+        breaches: [],
+        cuts: [],
+        over: [],
+        route: "as-written",
+      });
+      expect(a.fields.length).toBeGreaterThan(0);
+    }
+  });
+  test(`${ks}: routed fits and source are never sent; word caps, no characters, reach code`, () => {
+    const r = request(ks);
+    const sent = JSON.stringify(r.schema);
+    for (const k of WAVE_C_ROUTED_FITS) expect(sent).not.toContain(`"#/$defs/${k}"`);
+    expect(sent).not.toContain('"#/$defs/source"');
+    expect(sent).toContain('"#/$defs/steps~step-model"');
+    const name = r.caps?.$defs.stages.properties.items.items.properties.name;
+    expect(name.maxWords).toBe(
+      Math.max(...Object.values(waveCWords(s).stages).map((c) => (c as { name: number }).name)),
+    );
+    expect(name.maxLength).toBeUndefined();
+    // Six pictured stages are not offered at KS2 or KS3 (KS1 measures no sixth stage at all).
+    expect(Object.keys(waveCWords(s).stages)).not.toContain("6-pictures");
+  });
+}
+
+test("a wave C field over its word cap is a cut; an empty stage line is allowed", () => {
+  const r = request("KS2");
+  const claim = Array.from({ length: 40 }, () => "word").join(" ");
+  const myth = structuredClone(slides.myth);
+  myth.myth.claim = claim;
+  expect(slotFillArrival(myth, "KS2", r.schema, r.caps, true).cuts).toContain("myth.claim");
+  const st = structuredClone(slides.stages);
+  st.items[1].line = "";
+  expect(slotFillArrival(st, "KS2", r.schema, r.caps, true).route).toBe("as-written");
+});
+
+test("a library model on figure-slide and step-model is asked of the diagram library", () => {
+  const vctx = {
+    brief: { subject: "science", topic: "x", stage: "ks2" },
+    theme,
+    stage: "ks2",
+    plan: { slides: [] },
+  } as unknown as Parameters<typeof visualsOf>[2];
+  for (const slide of [
+    { ...slides.figure, figure: libModel },
+    { ...slides.stepmodel, figure: libModel },
+  ]) {
+    const asks = visualsOf(slide, 3, vctx);
+    expect(asks.map((a) => [a.key, a.type, (a as { kind?: string }).kind])).toEqual([
+      ["figure", "diagram", "model"],
+    ]);
+  }
+});
+
+test("picture-text takes the key cards and icon; a step model keeps its step beside the model", async () => {
+  const { toInput } = await import("./materialise");
+  const ctx = {
+    brief: { subject: "science", topic: "x", stage: "ks2" },
+    theme,
+    stage: "ks2",
+    index: 3,
+    plan: { slides: [] },
+    visual: (k: string) =>
+      k === "figure" ? { status: "diagram", spec: { kind: "model" } } : photo(k),
+  } as unknown as Parameters<typeof toInput>[1];
+  const kc = toInput(slides.keycard, { ...ctx, visual: photo } as typeof ctx) as unknown as {
+    template: string;
+    pictureText?: { icon?: string; cards?: Record<string, unknown>[] };
+  };
+  expect(kc.template).toBe("picture-text");
+  expect(kc.pictureText?.icon).toBe("home");
+  expect(kc.pictureText?.cards?.[0]).toEqual({
+    kind: "word",
+    label: "Key word",
+    term: "habitat",
+    meaning: "where a living thing lives",
+  });
+  const sm = toInput({ ...slides.stepmodel, figure: libModel }, ctx) as unknown as {
+    template: string;
+    step?: unknown;
+    figure?: unknown;
+  };
+  expect(sm.template).toBe("steps");
+  expect(sm.step).toEqual({ n: 1, do: "Heat the water", see: "Steam rises" });
+  expect(sm.figure).toBeDefined();
+});

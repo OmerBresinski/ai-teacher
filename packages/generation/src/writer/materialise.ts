@@ -493,7 +493,7 @@ export function toInput(
       const points = pts(s.points);
       if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
         return { template: "big-diagram", heading, lead, points, figure: f };
-      // SCRATCH (loop1b-fullmenu-scratch): the key card look and the failed-picture icon.
+      // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
       const cards = Array.isArray(s.cards) ? (s.cards as S[]) : [];
       const ptIcon = typeof s.icon === "string" && s.icon.trim() ? s.icon : null;
       const pictureText =
@@ -601,7 +601,7 @@ export function toInput(
     case "steps": {
       // Steps with an ask line read as a lead and points beside the figure.
       const f = fig("figure");
-      // SCRATCH (loop1b-fullmenu-scratch): one step beside a library model.
+      // Wave C (TEACH-110 part v): one step beside a library model (`steps~step-model`).
       const st = (s.step && typeof s.step === "object" ? s.step : null) as S | null;
       if (st && f)
         return {
