@@ -12,8 +12,19 @@ import QUICK_CAPACITY from "@tj/slides/templates/question-set-capacity.json" wit
 import SPLIT_COMPARE_CAPACITY from "@tj/slides/templates/split-compare-capacity.json" with {
   type: "json",
 };
+import { headingWords } from "./fit-fits";
 import HINGE_CARDS from "./hinge-cards.gen.json" with { type: "json" };
 import type { WriterStage } from "./schema";
+import {
+  CHARS_PER_WORD,
+  MIN_SHOWN_WORDS,
+  needMedianOf,
+  needOf,
+  offerable,
+  probeRoom,
+  shownFor,
+  wordsWithin,
+} from "./shown-cap";
 
 /*
  * The writer's menu lines for the three pilot layouts (items-row, panel-list, split-compare), one
@@ -26,8 +37,10 @@ import type { WriterStage } from "./schema";
  * moves the menu with it. layout-menu.test.ts checks every number back against the tables and pins
  * the assembled system text per key stage.
  *
- * A budget in words is min(editorial budget, the comfortable cap in characters / the stage's chars
- * per word). The writer's system text is assembled from these lines (`assembleWriterSystem`); never
+ * A budget in words is min(editorial budget, the words shown for the comfortable cap): about 75%
+ * of the measured characters at the stage's chars per word (`shown-cap.ts`, the one place that
+ * converts). No body field is offered under `MIN_SHOWN_WORDS`, and one more item never halves the
+ * shown cap (`offerable`); the measured caps stay the schema's and the fit check's hard limit. The writer's system text is assembled from these lines (`assembleWriterSystem`); never
  * paste a menu line into a bundle.
  */
 type Age = "early" | "primary" | "secondary";
@@ -45,31 +58,65 @@ const SLIDE_WORDS = 40;
 const ITEM_SENT: Record<Age, number> = { early: 8, primary: 12, secondary: 12 };
 const SIDE_SENT: Record<Age, number> = { early: 14, primary: 20, secondary: 22 };
 const QUOTE = 6;
-const MIN_ITEM: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
-const MIN_SIDE = 4;
+/** Body floors: an item, side or lead shown under `MIN_SHOWN_WORDS` is not offered (loop 1). */
+const MIN_ITEM: Record<Age, number> = {
+  early: MIN_SHOWN_WORDS,
+  primary: MIN_SHOWN_WORDS,
+  secondary: MIN_SHOWN_WORDS,
+};
+const MIN_SIDE = MIN_SHOWN_WORDS;
+/** A quote is a few words in a person's voice, a label more than body text. */
 const MIN_QUOTE = 3;
-const MIN_LEAD = 3;
-const HEAD_WORDS: Record<Age, number> = { early: 4, primary: 8, secondary: 9 };
+const MIN_LEAD = MIN_SHOWN_WORDS;
+/**
+ * A heading's words by age: the measured slide-heading cap (`headingWords`, fit-fits.ts), the
+ * same number the fit layouts show; was typed 4 / 8 / 9 (decision desk, 17 Oct 2026: headings rise
+ * to the measured caps). A cell that measures a shorter heading still says so in its line.
+ */
+const HEAD_WORDS: Record<Age, number> = {
+  early: headingWords("KS1"),
+  primary: headingWords("KS2"),
+  secondary: headingWords("KS3-5"),
+};
 const TITLE_CHARS = 24;
 /** The counts each list layout may offer before the tables decide (panel-list 2-5: Greg, 14 Oct). */
 const EDIT_COUNTS = { "items-row": [2, 4], "panel-list": [2, 5] } as const;
 /** Row-picture counts the ruling offers (build/ROW-PICTURES.md); each must fit. */
 const ROWPIC_MAX: Record<Age, number> = { early: 4, primary: 4, secondary: 5 };
-/** Characters per word, the 80th percentile per stage (pilot build/CPW-BY-STAGE.md). */
+/** Characters per word by age: `shown-cap.ts` `CHARS_PER_WORD`, the one constant. */
 export const MENU_CHARS_PER_WORD: Record<Age, number> = {
-  early: 5.8,
-  primary: 6.6,
-  secondary: 7.0,
+  early: CHARS_PER_WORD.KS1,
+  primary: CHARS_PER_WORD.KS2,
+  secondary: CHARS_PER_WORD["KS3-5"],
 };
 
-/** The most whole words whose characters stay within `chars` at this age. */
+/** The most whole words whose characters stay within `chars` at this age (the hard cap). */
 export function menuWords(chars: number, age: Age): number {
-  let w = 0;
-  while ((w + 1) * MENU_CHARS_PER_WORD[age] <= chars + 1e-9) w += 1;
-  return w;
+  return wordsWithin(chars, STAGE_OF[age]);
+}
+/**
+ * The words the menu shows for a body field's measured cap of `chars` at this age (`shownWords`).
+ * Headings and side titles are labels, not body: they show their measured words (heading median
+ * fill was 56%, 7% at 90% or more; CRAMMING-ROOT-CAUSE.md "Not causes"), and at 75% a KS1 side
+ * title would show one word.
+ */
+/**
+ * A hinge option count's shown words: its room is the probe's comfortable words, never more than
+ * its measured hard maximum holds at the stage's long-word rate (GOLD-THROUGH-PROD.md, 18 Oct).
+ */
+function hingeShown(a: Age, c: HingeCap, n: number): number {
+  const cell = c.byCount?.[String(n)] ?? c;
+  const st = STAGE_OF[a];
+  const room = Math.min(cell.words, wordsWithin(cell.maxChars ?? cell.chars, st));
+  return shownFor(cell.chars, st, "hinge.option", cell.chars, room);
 }
 
-type CapCell = { cap: number };
+export function menuShown(chars: number, age: Age, need?: string, roomChars = chars): number {
+  // Need-aware where `need` names a row of content-need.json (CAP-NEED-AUDIT.md, 18 Oct 2026).
+  return shownFor(chars, STAGE_OF[age], need, roomChars);
+}
+
+type CapCell = { cap: number; hardMax?: number };
 type RowCell = { items: number; icons: boolean; withLead: boolean } & Record<string, unknown>;
 type PanelCell = Record<string, CapCell> & {
   withLead: Record<string, CapCell>;
@@ -142,13 +189,28 @@ const must = (d: Fields | undefined, what: string): Fields => {
 function itemBudget(c: ListLayout, a: Age, n: number, lead = false, v: ListVariant = ""): number {
   const caps = must(listCaps(c, a, n, lead, v), `${c} ${a} ${n}`);
   const edit = Math.min(
-    Math.floor((SLIDE_WORDS - (lead ? menuWords(caps.lead ?? 0, a) : 0)) / n),
+    Math.floor((SLIDE_WORDS - (lead ? menuShown(caps.lead ?? 0, a, `${c}.lead`) : 0)) / n),
     ITEM_SENT[a],
   );
-  return Math.min(edit, menuWords(caps.text ?? 0, a));
+  // The editorial budget never holds a cell under its content need (CAP-NEED-AUDIT.md, 18 Oct).
+  const need = needOf(`${c}.item`, STAGE_OF[a]) ?? 0;
+  return Math.min(Math.max(edit, need), menuShown(caps.text ?? 0, a, `${c}.item`));
 }
 const okCount = (c: ListLayout, a: Age, n: number, v: ListVariant = "") =>
   allPositive(listCaps(c, a, n, false, v)) && itemBudget(c, a, n, false, v) >= MIN_ITEM[a];
+/** The counts in `ns` (ascending) whose shown item budget is offerable: floor and no cliff. */
+const offeredCounts = (
+  c: ListLayout,
+  a: Age,
+  ns: number[],
+  lead = false,
+  v: ListVariant = "",
+  ok: (n: number) => boolean = (n) => okCount(c, a, n, v),
+) =>
+  offerable(
+    ns.map((n): [number, number] => [n, ok(n) ? itemBudget(c, a, n, lead, v) : 0]),
+    MIN_ITEM[a],
+  ).map(([n]) => n);
 const range = (lo: number, hi: number) =>
   Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i);
 
@@ -157,7 +219,7 @@ const VNS = new Map<string, number[]>();
 const key = (c: ListLayout, a: Age, v: ListVariant) => `${c}|${a}|${v}`;
 for (const a of AGES) {
   for (const c of ["items-row", "panel-list"] as const) {
-    const ok = range(EDIT_COUNTS[c][0], EDIT_COUNTS[c][1]).filter((n) => okCount(c, a, n));
+    const ok = offeredCounts(c, a, range(EDIT_COUNTS[c][0], EDIT_COUNTS[c][1]));
     const first = ok[0];
     if (first === undefined || ok.join() !== range(first, ok.at(-1) ?? first).join())
       throw new Error(`layout menu: ${c} at ${a} offers no contiguous counts (${ok})`);
@@ -166,15 +228,13 @@ for (const a of AGES) {
   const plainMax = (VNS.get(key("items-row", a, "")) ?? []).at(-1) ?? 0;
   VNS.set(
     key("items-row", a, "num"),
-    range(0, EDIT_COUNTS["items-row"][1]).filter(
-      (n) => n > plainMax && okCount("items-row", a, n, "num"),
-    ),
+    offeredCounts("items-row", a, range(plainMax + 1, EDIT_COUNTS["items-row"][1]), false, "num"),
   );
-  const pics = range(2, ROWPIC_MAX[a]).filter((n) => okCount("panel-list", a, n, "pics"));
-  if (pics.join() !== range(2, ROWPIC_MAX[a]).join())
-    throw new Error(
-      `layout menu: panel-list at ${a} cannot hold row pictures at every ruled count (${pics})`,
-    );
+  const pics = offeredCounts("panel-list", a, range(2, ROWPIC_MAX[a]), false, "pics");
+  // The ruling's counts (2 up to ROWPIC_MAX) are offered while their shown caps hold the floor;
+  // a count that would go under it is dropped (loop 1, 17 Oct), never squeezed.
+  if (pics[0] !== 2)
+    throw new Error(`layout menu: panel-list at ${a} cannot hold row pictures at 2 (${pics})`);
   VNS.set(key("panel-list", a, "pics"), pics);
   if (VNS.get(key("panel-list", a, ""))?.[0] !== 2)
     throw new Error(`layout menu: panel-list at ${a} must start at 2`);
@@ -188,15 +248,17 @@ const leadOk = (c: ListLayout, a: Age, n: number, v: ListVariant = "") => {
   const caps = listCaps(c, a, n, true, v);
   return (
     allPositive(caps) &&
-    menuWords(caps.lead ?? 0, a) >= MIN_LEAD &&
+    menuShown(caps.lead ?? 0, a, `${c}.lead`) >= MIN_LEAD &&
     itemBudget(c, a, n, true, v) >= MIN_ITEM[a]
   );
 };
 const leadNs = (c: ListLayout, a: Age, v: ListVariant = "") =>
-  NS(c, a, v).filter((n) => leadOk(c, a, n, v));
+  offeredCounts(c, a, NS(c, a, v), true, v, (n) => leadOk(c, a, n, v));
 const leadWords = (c: ListLayout, a: Age, v: ListVariant = "") =>
   Math.min(
-    ...leadNs(c, a, v).map((n) => menuWords(must(listCaps(c, a, n, true, v), c).lead ?? 0, a)),
+    ...leadNs(c, a, v).map((n) =>
+      menuShown(must(listCaps(c, a, n, true, v), c).lead ?? 0, a, `${c}.lead`),
+    ),
   );
 const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "") =>
   Math.min(
@@ -207,7 +269,7 @@ const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "") =>
   );
 
 const quoteBudget = (a: Age, n: number) =>
-  Math.min(QUOTE, menuWords(must(sideCaps(a, n, "q"), `quote ${a} ${n}`).quote ?? 0, a));
+  Math.min(QUOTE, menuShown(must(sideCaps(a, n, "q"), `quote ${a} ${n}`).quote ?? 0, a));
 /**
  * Pictured sides are offered this share of their measured comfortable characters (PROCESS 7.2's 80%
  * headroom). Past the cap the words win and the pictures shrink to slivers: y4-romans s3 (16 Oct)
@@ -217,12 +279,18 @@ const quoteBudget = (a: Age, n: number) =>
 export const PIC_SIDE_HEADROOM = 0.8;
 function sideBudget(a: Age, n: number, z: SideZone): number {
   const caps = must(sideCaps(a, n, z), `split-compare ${a} ${n}${z}`);
-  const chars = (caps.text ?? 0) * (z === "p" ? PIC_SIDE_HEADROOM : 1);
-  return Math.min(
+  // The shown share (75%) is stricter than the pictures' 80% headroom, so it keeps that headroom
+  // without stacking the two (0.6 of the cap would drop KS1's pictured sides below the floor). A
+  // need above the share may rise only to the headroom, never to the full cap (18 Oct 2026).
+  const chars = caps.text ?? 0;
+  const room = z === "p" ? chars * PIC_SIDE_HEADROOM : chars;
+  const edit = Math.min(
     Math.floor(SLIDE_WORDS / n) - (z === "q" ? quoteBudget(a, n) : 0),
     SIDE_SENT[a],
-    menuWords(chars, a),
   );
+  // The editorial budget never holds a side under its content need (CAP-NEED-AUDIT.md, 18 Oct).
+  const need = needOf("split-compare.side", STAGE_OF[a]) ?? 0;
+  return Math.min(Math.max(edit, need), menuShown(chars, a, "split-compare.side", room));
 }
 /**
  * Cells the menu never offers, whatever they measure. KS2 three pictured sides: the KS2 gold side
@@ -239,11 +307,16 @@ const ZONES: readonly SideZone[] = ["", "p", "q"];
 const SC_KEYS = Object.fromEntries(
   AGES.map((a) => [
     a,
-    ZONES.flatMap((z) => [2, 3].filter((n) => zoneOk(a, n, z)).map((n) => `${n}${z}`)),
+    ZONES.flatMap((z) =>
+      offerable(
+        [2, 3].map((n): [number, number] => [n, zoneOk(a, n, z) ? sideBudget(a, n, z) : 0]),
+        MIN_SIDE,
+      ).map(([n]) => `${n}${z}`),
+    ),
   ]),
 ) as Record<Age, string[]>;
 for (const a of AGES)
-  for (const k of ["2", "3", "2p"])
+  for (const k of ["2", "2p"])
     if (!SC_KEYS[a].includes(k))
       throw new Error(`layout menu: split-compare at ${a} cannot offer ${k}`);
 
@@ -363,6 +436,29 @@ function media(a: Age): string {
     pic += `; for people's viewpoints, every side carries a quote in their voice${no3(a, "q") === "2 or 3" ? "" : " (2 sides only)"}`;
   return `${pic}. Sides carry neither only when nothing can show them.`;
 }
+/**
+ * A layout's text length in words the description can say, generated from the same budgets as its
+ * Fits, so the description never promises more than the tightest cell holds (a "sentence or two"
+ * over a 7-word side read as a target and crammed; build/CRAMMING-ROOT-CAUSE.md, TEACH-110 part ae).
+ */
+const lengthWord = (w: number) =>
+  w <= 6 ? "a phrase" : w <= 14 ? "a short sentence" : "a sentence or two";
+const lengthSpan = (budgets: number[]) => {
+  const lo = lengthWord(Math.min(...budgets));
+  const hi = lengthWord(Math.max(...budgets));
+  return lo === hi ? lo : `${lo} to ${hi}`;
+};
+/** Every item budget a list layout's Fits offer at an age: plain, row variant, and with a lead. */
+const itemLength = (c: ListLayout, a: Age) =>
+  lengthSpan(
+    (["", c === "items-row" ? "num" : "pics"] as const).flatMap((v) => [
+      ...NS(c, a, v).map((n) => itemBudget(c, a, n, false, v)),
+      ...leadNs(c, a, v).map((n) => itemBudget(c, a, n, true, v)),
+    ]),
+  );
+/** Every side budget split-compare's Fits offer at an age. */
+const sideLength = (a: Age) =>
+  lengthSpan(SC_KEYS[a].map((k) => sideBudget(a, Number(k[0]), k.slice(1) as SideZone)));
 const NUMW: Record<number, string> = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
 const countWords = (c: ListLayout, a: Age) => {
   const ns = allNs(c, a);
@@ -402,13 +498,13 @@ export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
 // writer-prompt: owned by TEACH-110 s
 export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact about it, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons (see Icons). Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact, in ${itemLength("panel-list", a)}, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons. Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
 );
 
 // writer-prompt: owned by TEACH-110 s
 export const SPLIT_COMPARE_WRITER_MENU: Record<WriterStage, string> = byStage(
   (a) =>
-    `- split-compare: a vs: ${sideSpan(a)} things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and a sentence or two, when the contrast is the point: opposites, viewpoints, before and after a change in the world, or two kinds that differ on the same features, each side answering the same question in the same order. Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
+    `- split-compare: a vs: ${sideSpan(a)} things set against each other (flow shape a contrast) in edge-to-edge colour fields, each a title and ${sideLength(a)}, when the contrast is the point: opposites, viewpoints, before and after a change in the world, or two kinds that differ on the same features, each side answering the same question in the same order. Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea. Four or more things compared on several features go to a table. ${media(a)} What the sides share goes in the heading, or in a few words each side opens with; the rest of each side says how it differs, never padded. A side's title names its thing in up to ${titleWords(a)} words; a longer idea goes in the side's text, never split across title and text. Fits: ${fitsSides(a)}. Each limit holds only for its own side count and zone, so settle how many sides and whether they carry pictures or quotes before writing.`,
 );
 
 /*
@@ -421,9 +517,17 @@ export const SPLIT_COMPARE_WRITER_MENU: Record<WriterStage, string> = byStage(
 /** A practice task or exit question is at most this many words, whatever the slide holds. */
 const TASK_SENT: Record<Age, number> = { early: 15, primary: 25, secondary: 30 };
 /** Below this a task, question or option count is not offered. */
-const MIN_TASK: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
-const MIN_QUICK_Q = 4;
-const MIN_OPTION = 2;
+const MIN_TASK: Record<Age, number> = {
+  early: MIN_SHOWN_WORDS,
+  primary: MIN_SHOWN_WORDS,
+  secondary: MIN_SHOWN_WORDS,
+};
+/**
+ * A quick-check question is one line by design (recall), not body text, so it is exempt from
+ * `MIN_SHOWN_WORDS`: at 75% of one measured line it shows 3 to 4 words, and a 5-word floor would
+ * drop question-set at every stage (a product ruling, not an engineering one; loop 1, 17 Oct).
+ */
+const MIN_QUICK_Q = 3;
 /** Practice with a picture at KS1 holds at most 3 tasks (the gold's default, practice-exit NOTES). */
 const PIC_MAX: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
 /**
@@ -460,45 +564,93 @@ const quickOffer = (a: Age) =>
   Object.entries(QUICK[a] ?? {})
     .map(([n, c]) => ({
       n: Number(n),
-      q: menuWords(c.questions.cap, a),
-      // KS2 (ruling 162 amended, item 31 A, raised its answer caps): never past the answers rule's
-      // short phrase (`ANSWER_WORDS.short`), so the two agree. Other stages as before.
-      a:
-        a === "primary"
-          ? Math.min(menuWords(c.answers.cap, a), ANSWER_WORDS.short)
-          : menuWords(c.answers.cap, a),
+      // Room in ordinary words (`probeRoom`): the stage's long-word rate on the one-line cap
+      // showed 6 words where the gold's 7-9-word questions sit on one line (18 Oct 2026).
+      q: shownFor(
+        c.questions.cap,
+        STAGE_OF[a],
+        "question-set.question",
+        c.questions.cap,
+        probeRoom(c.questions.cap, c.questions.hardMax ?? c.questions.cap, STAGE_OF[a]),
+      ),
+      // Never past the answers rule's short phrase (`ANSWER_WORDS.short`), at every stage, so the
+      // two agree (KS2 by ruling 162 amended, item 31 A; KS3 brought in line 18 Oct 2026).
+      a: Math.min(menuShown(c.answers.cap, a, "question-set.answer"), ANSWER_WORDS.short),
     }))
     .filter((x) => x.q >= MIN_QUICK_Q && x.a >= 1)
     .sort((x, y) => x.n - y.n);
-const workBudget = (a: Age, cells: WorkCell[], max = 99): [number, number][] =>
-  cells
-    .filter((c) => c.n <= max)
-    .map((c): [number, number] => [c.n, Math.min(TASK_SENT[a], menuWords(c.cap, a))])
-    .filter(([, w]) => w >= MIN_TASK[a]);
+/** A count's words hold its field's median need at this age (waives the no-cliff rule). */
+const holdsMedian = (a: Age, need: string) => (w: number) =>
+  w >= (needMedianOf(need, STAGE_OF[a]) ?? Number.POSITIVE_INFINITY);
+
+/**
+ * Practice and the exit ticket are exempt from the no-cliff rule where the count still holds the
+ * median need (CAP-NEED-AUDIT.md rows 1d, 3b):
+ * the cliff dropped KS1's 3 pictured tasks (the gold's default) and KS3's 3 exit questions, the
+ * count "together check the objectives" asks for. The floor still holds.
+ */
+const workBudget = (a: Age, cells: WorkCell[], need: string, max = 99): [number, number][] => {
+  const sorted = cells.filter((c) => c.n <= max).sort((x, y) => x.n - y.n);
+  // Which counts reach the floor is today's rule (the 75% share): a need never adds a count whose
+  // room is under it. The need only raises the words shown for a count already offered.
+  const floorOk = sorted.findIndex(
+    (c) => Math.min(TASK_SENT[a], menuShown(c.cap, a)) < MIN_TASK[a],
+  );
+  return offerable(
+    sorted
+      .slice(0, floorOk < 0 ? sorted.length : floorOk)
+      .map((c): [number, number] => [c.n, Math.min(TASK_SENT[a], menuShown(c.cap, a, need))]),
+    MIN_TASK[a],
+    holdsMedian(a, need),
+  );
+};
 const practiceOffer = (a: Age) => ({
-  plain: workBudget(a, WORK[a].practice),
+  plain: workBudget(a, WORK[a].practice, "practice.task"),
   // A picture and a figure are measured apart: offer the smaller per count.
-  pic: workBudget(a, WORK[a]["practice+picture"], PIC_MAX[a]).map(([n, w]): [number, number] => {
-    const f = WORK[a]["practice+figure"].find((c) => c.n === n);
-    return [n, f ? Math.min(w, menuWords(f.cap, a)) : w];
-  }),
+  pic: offerable(
+    workBudget(a, WORK[a]["practice+picture"], "practice.task", PIC_MAX[a]).map(
+      ([n, w]): [number, number] => {
+        const f = WORK[a]["practice+figure"].find((c) => c.n === n);
+        return [n, f ? Math.min(w, menuShown(f.cap, a, "practice.task")) : w];
+      },
+    ),
+    MIN_TASK[a],
+    holdsMedian(a, "practice.task"),
+  ),
 });
-const exitOffer = (a: Age) => workBudget(a, WORK[a].exit);
+const exitOffer = (a: Age) => workBudget(a, WORK[a].exit, "exit-ticket.question");
 /**
  * The hinge's option offer is #539's renderer-measured `hinge-capacity.json`: one word budget per
  * age, measured with the most options the age takes (3 at KS1, 4 otherwise), so it holds for fewer.
  * The question's budget is the writer's hinge card table (`hinge-cards.gen.json`, regenerated by
  * #539 from the same layout).
  */
-type HingeCap = { words: number; options: number };
+type HingeCap = {
+  words: number;
+  chars: number;
+  options: number;
+  /** Each option count measured on its own (18 Oct 2026); absent, the most-options figure. */
+  maxChars?: number;
+  byCount?: Record<string, { words: number; chars: number; maxChars?: number }>;
+};
 const HINGE_CAP = HINGE_CAPACITY as unknown as Record<Age, HingeCap>;
 const hingeOffer = (a: Age) => {
   const g = HINGE[STAGE_OF[a]];
   const c = HINGE_CAP[a];
   if (!g || !c) throw new Error(`layout menu: no hinge table for ${a}`);
   return {
-    question: menuWords(g.stem, a),
-    options: Array.from({ length: c.options - 1 }, (_, i): [number, number] => [i + 2, c.words]),
+    question: menuShown(g.stem, a, "hinge.question"),
+    // Each count's own measured room (fewer cards hold longer options), need-aware.
+    options: offerable(
+      Array.from({ length: c.options - 1 }, (_, i): [number, number] => [
+        i + 2,
+        hingeShown(a, c, i + 2),
+      ]),
+      MIN_SHOWN_WORDS,
+      // Decision 32: the option count follows the options' length, so the most options stay
+      // offered for short options beside the longer cells for fewer (no cliff).
+      () => true,
+    ),
   };
 };
 const ends = (p: [number, number][], what: string) => {
@@ -507,6 +659,12 @@ const ends = (p: [number, number][], what: string) => {
   if (lo === undefined || hi === undefined) throw new Error(`layout menu: ${what} offers nothing`);
   return [lo, hi] as const;
 };
+/**
+ * The most practice tasks a slide holds unless every task is a one-line calculation (decision 30,
+ * 18 Oct 2026): word tasks take at most this many per slide; 5 to 6 are calculation-only cells.
+ */
+export const WORD_TASK_MAX = 4;
+
 /** Runs of counts with one budget, each clause whole: "3 to 4 tasks: up to 10 words each". */
 const countClauses = (pairs: [number, number][], one: string, many: string) =>
   runs(pairs)
@@ -517,13 +675,31 @@ const countClauses = (pairs: [number, number][], one: string, many: string) =>
     .join("; ");
 
 // writer-prompt: owned by TEACH-110 v
+// A wrong option's working is the belief's own result, computed correctly (TEACH-110 part ae,
+// 19 Oct 2026, build/FULLMENU-RUN4.md: a KS3 hinge gave "Add 4, giving 5x = 28" for 5x + 4 = 24,
+// correctness 2/5). Stated as a constraint: no worked example (no style or writing examples).
+export const HINGE_WRONG_WORKING =
+  "A wrong option that states working or a result gives what its belief truly produces: the mistaken step and every step after it carried out correctly, so the belief is the option's only error.";
+
+// writer-prompt: owned by TEACH-110 v
 export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const o = hingeOffer(a);
   const [lo, hi] = ends(o.options, `hinge at ${a}`);
-  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.`;
+  // Decision 32 (18 Oct 2026): options too long for the most options, such as a belief written as a
+  // full sentence, take one option fewer; short options keep the most.
+  const most = o.options.find(([n]) => n === hi)?.[1] ?? 0;
+  const fewer = o.options.find(([n]) => n === hi - 1)?.[1] ?? 0;
+  const sentences =
+    hi >= 4 && fewer > most
+      ? ` Options that need more words than ${hi} options allow, as a belief written as a full sentence does, take ${hi - 1} options.`
+      : "";
+  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). ${HINGE_WRONG_WORKING} The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.${sentences}`;
 });
 
 // writer-prompt: owned by TEACH-110 v
+// The question length is the Fits' words alone: the line count differs by stage (KS2 one line;
+// KS1 and KS3 up to two, `question-set.ts` comfort, TEACH-215 part j) and a fixed "fits one line"
+// contradicted the KS1 and KS3 Fits (TEACH-110 part ae, 19 Oct 2026).
 export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const q = quickOffer(a);
   const [lo, hi] = ends(
@@ -540,14 +716,27 @@ export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a)
     parts.push(`${span(x.n, q[j]?.n ?? x.n)} questions: up to ${x.q} words each, ${ans(x.a)}`);
     i = j + 1;
   }
-  return `- question-set: a quick check: ${span(lo, hi)} short questions pupils answer at once from memory, aloud or on whiteboards (flow shape recall or check), each with its answer, which the slide reveals one click at a time. Each question fits one line; each answer is a number, a word or a short phrase. Not for one question whose wrong options are beliefs to spot (hinge), tasks that take pupils time to work out or write (practice), or the closing check (exit-ticket); questions about a picture or diagram go to practice. Fits: ${parts.join("; ")}. Each limit holds only for its own question count.`;
+  return `- question-set: a quick check: ${span(lo, hi)} short questions pupils answer at once from memory, aloud or on whiteboards (flow shape recall or check), each with its answer, which the slide reveals one click at a time. Each answer is a number, a word or a short phrase. Not for one question whose wrong options are beliefs to spot (hinge), tasks that take pupils time to work out or write (practice), or the closing check (exit-ticket); questions about a picture or diagram go to practice. Fits: ${parts.join("; ")}. Each limit holds only for its own question count.`;
 });
 
 // writer-prompt: owned by TEACH-110 v
 export const PRACTICE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const p = practiceOffer(a);
   const [lo, hi] = ends(p.plain, `practice at ${a}`);
-  return `- practice: ${span(lo, hi)} tasks pupils work on alone in their books, each taking time to work out, calculate or write (flow shape check), each with the answer a pupil should reach, and a picture or diagram when the tasks work from one. More tasks take a second practice slide. Not for quick recall answered at once (question-set), one multiple-choice question (hinge), or the closing check (exit-ticket). Fits: ${countClauses(p.plain, "task", "tasks")}; with a picture or diagram: ${countClauses(p.pic, "task", "tasks")}. Each limit holds only for its own task count and whether the slide has a picture or diagram.`;
+  // Decision 30 (18 Oct 2026): past WORD_TASK_MAX tasks a slide holds only one-line calculations.
+  const words = p.plain.filter(([n]) => n <= WORD_TASK_MAX);
+  const calc = p.plain.filter(([n]) => n > WORD_TASK_MAX);
+  const calcFits = runs(calc)
+    .map(
+      ([x, y, w]) =>
+        `; ${span(x, y)} tasks, only when every task is a one-line calculation: up to ${w} words each`,
+    )
+    .join("");
+  return `- practice: ${span(lo, hi)} tasks pupils work on alone in their books, each taking time to work out, calculate or write (flow shape check), each with the answer a pupil should reach, and a picture or diagram when the tasks work from one. More tasks take a second practice slide. Not for quick recall answered at once (question-set), one multiple-choice question (hinge), or the closing check (exit-ticket). Fits: ${countClauses(words, "task", "tasks")}${calcFits}; with a picture or diagram: ${countClauses(
+    p.pic.filter(([n]) => n <= WORD_TASK_MAX),
+    "task",
+    "tasks",
+  )}. Each limit holds only for its own task count and whether the slide has a picture or diagram.`;
 });
 
 // writer-prompt: owned by TEACH-110 v
@@ -731,3 +920,146 @@ export function menuWordCaps(stage: WriterStage) {
   };
 }
 export type MenuWordCaps = ReturnType<typeof menuWordCaps>;
+
+/** One shown menu cell: its words, the most the slide holds (room) and its need row. */
+export type ShownCell = { cell: string; shown: number; room: number; need: string };
+
+/**
+ * Every need-aware body cell the menu offers at a stage, with the room it was shown against
+ * (CAP-NEED-AUDIT.md, 18 Oct 2026). For the test that no shown cap exceeds its room and none sits
+ * under its need where the room allows it.
+ */
+export function shownCells(stage: WriterStage): ShownCell[] {
+  const a = MENU_AGE[stage];
+  const out: ShownCell[] = [];
+  for (const c of ["items-row", "panel-list"] as const)
+    for (const v of (c === "items-row" ? ["", "num"] : ["", "pics"]) as ListVariant[])
+      for (const lead of [false, true])
+        for (const n of lead ? leadNs(c, a, v) : NS(c, a, v)) {
+          const caps = must(listCaps(c, a, n, lead, v), `${c} ${a} ${n}`);
+          out.push({
+            cell: `${c} ${n}${v}${lead ? "+lead" : ""} item`,
+            shown: itemBudget(c, a, n, lead, v),
+            room: menuWords(caps.text ?? 0, a),
+            need: `${c}.item`,
+          });
+        }
+  for (const k of SC_KEYS[a]) {
+    const z = k.slice(1) as SideZone;
+    const chars = must(sideCaps(a, Number(k[0]), z), k).text ?? 0;
+    out.push({
+      cell: `split-compare ${k} side`,
+      shown: sideBudget(a, Number(k[0]), z),
+      room: menuWords(z === "p" ? chars * PIC_SIDE_HEADROOM : chars, a),
+      need: "split-compare.side",
+    });
+  }
+  const c = HINGE_CAP[a];
+  for (const [n, w] of hingeOffer(a).options)
+    out.push({
+      cell: `hinge ${n} option`,
+      shown: w,
+      room: Math.min(
+        (c.byCount?.[String(n)] ?? c).words,
+        wordsWithin((c.byCount?.[String(n)] ?? c).maxChars ?? c.chars, STAGE_OF[a]),
+      ),
+      need: "hinge.option",
+    });
+  for (const [n, cell] of Object.entries(QUICK[a] ?? {})) {
+    const x = quickOffer(a).find((q) => q.n === Number(n));
+    if (!x) continue;
+    out.push({
+      cell: `question-set ${n} question`,
+      shown: x.q,
+      room: probeRoom(
+        cell.questions.cap,
+        cell.questions.hardMax ?? cell.questions.cap,
+        STAGE_OF[a],
+      ),
+      need: "question-set.question",
+    });
+    out.push({
+      cell: `question-set ${n} answer`,
+      shown: x.a,
+      room: menuWords(cell.answers.cap, a),
+      need: "question-set.answer",
+    });
+  }
+  const p = practiceOffer(a);
+  for (const [kind, offer, cells] of [
+    ["practice", p.plain, WORK[a].practice],
+    ["practice+picture", p.pic, WORK[a]["practice+picture"]],
+    ["exit", exitOffer(a), WORK[a].exit],
+  ] as const)
+    for (const [n, w] of offer) {
+      const caps = [cells, kind === "practice+picture" ? WORK[a]["practice+figure"] : []]
+        .flat()
+        .filter((x) => x.n === n)
+        .map((x) => x.cap);
+      out.push({
+        cell: `${kind} ${n}`,
+        shown: w,
+        room: menuWords(Math.min(...caps), a),
+        need: kind === "exit" ? "exit-ticket.question" : "practice.task",
+      });
+    }
+  return out;
+}
+
+/** The question layouts' field caps (characters), keyed `field` (top) or `list[].field` (members). */
+export type QuestionFieldCaps = Record<
+  "hinge" | "question-set" | "practice" | "exit-ticket",
+  Fields
+>;
+
+/**
+ * The loosest measured cap (characters) each question layout's fields reach over the counts its
+ * menu offers at a stage: the same tables as their Fits. Code logs every field against these
+ * (`slotFillArrival`, the fill scorer's `capWords`); the writer never sees them as `maxLength`.
+ * Practice and exit answers go to the end Answers slides and are measured there, so not here.
+ */
+export function questionFieldCaps(stage: WriterStage): QuestionFieldCaps {
+  const a = MENU_AGE[stage];
+  const o = questionOffer(stage);
+  const within = ([lo, hi]: readonly [number, number], n: number) => n >= lo && n <= hi;
+  const loosest = (cells: WorkCell[], counts: number[]) =>
+    Math.max(0, ...cells.filter((c) => counts.includes(c.n)).map((c) => c.cap));
+  const quick = Object.entries(QUICK[a] ?? {}).filter(([n]) =>
+    within(o["question-set"], Number(n)),
+  );
+  const p = practiceOffer(a);
+  const hinge = HINGE_CAP[a];
+  const stem = HINGE[stage]?.stem;
+  return {
+    hinge: {
+      heading: stem ?? 0,
+      // The loosest offered count's own measured room (fewer options hold more, 18 Oct 2026).
+      "options[].text": Math.max(
+        hinge?.chars ?? 0,
+        ...hingeOffer(a).options.map(([n]) => hinge?.byCount?.[String(n)]?.chars ?? 0),
+      ),
+    },
+    "question-set": {
+      "items[].question": Math.max(0, ...quick.map(([, c]) => c.questions.cap)),
+      "items[].answer": Math.max(0, ...quick.map(([, c]) => c.answers.cap)),
+    },
+    practice: {
+      "items[].question": Math.max(
+        loosest(
+          WORK[a].practice,
+          p.plain.map(([n]) => n),
+        ),
+        loosest(
+          WORK[a]["practice+picture"],
+          p.pic.map(([n]) => n),
+        ),
+      ),
+    },
+    "exit-ticket": {
+      "items[].question": loosest(
+        WORK[a].exit,
+        exitOffer(a).map(([n]) => n),
+      ),
+    },
+  };
+}

@@ -9,6 +9,7 @@ import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
+import { fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -502,8 +503,13 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
   };
 }
 
-/** The room a slide has, in the writer's units, for a stand-alone or reroute call. */
-export function roomLine(slide: unknown, stage: string): string {
+/**
+ * The room a slide has, in the writer's units, for a stand-alone or reroute call: characters, or on
+ * a pack run (`words`, as `charsOver` and `repairTerms` take it) words as the menu shows them (one
+ * source: the heading at `wordsWithin`, a body field at `shownFor`, the comfortable room), so the
+ * room line and the menu agree. A field whose room is under one word is left out, never "1 word".
+ */
+export function roomLine(slide: unknown, stage: string, words = false): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
   const F = fitTable()[stage];
@@ -521,7 +527,18 @@ export function roomLine(slide: unknown, stage: string): string {
     .find((x) => Math.max(0, ...Object.values(x.counts)) >= n);
   const lim = v?.limit;
   if (!lim) return "";
-  return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  if (!words)
+    return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  const ws = writerStageOfKey(stage);
+  const template = String(s.template);
+  const parts = [
+    ["the heading", wordsWithin(F.heading, ws)],
+    ["each item", shownFor(lim.item, ws, fitNeedKey(template, "points[]"))],
+    ["all the slide's text", shownFor(lim.total, ws)],
+    ...(lim.instruction ? [["an instruction", shownFor(lim.instruction, ws)] as const] : []),
+  ] as const;
+  const kept = parts.filter(([, n]) => n >= 1).map(([f, n]) => `${f} up to ${nWords(n)}`);
+  return kept.length ? `room: ${kept.join("; ")}` : "";
 }
 
 /** Points over the room, summed over a slide's overflow faults ("overflow: x 354/328pt"). */

@@ -21,11 +21,21 @@ import s61 from "./bundles/pilot-v4.6/system-KS1.txt" with { type: "text" };
 import s62 from "./bundles/pilot-v4.6/system-KS2.txt" with { type: "text" };
 import s63 from "./bundles/pilot-v4.6/system-KS3.txt" with { type: "text" };
 import l47 from "./bundles/pilot-v4.7/layouts.json" with { type: "json" };
-import t71 from "./bundles/pilot-v4.7-menu/system-KS1.template.txt" with { type: "text" };
-import t72 from "./bundles/pilot-v4.7-menu/system-KS2.template.txt" with { type: "text" };
-import t73 from "./bundles/pilot-v4.7-menu/system-KS3.template.txt" with { type: "text" };
-import { assembleWriterSystem, layoutFieldCaps, questionOffer } from "./layout-menu";
+import s71 from "./bundles/pilot-v4.7/system-KS1.txt" with { type: "text" };
+import s72 from "./bundles/pilot-v4.7/system-KS2.txt" with { type: "text" };
+import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
+import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
+import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
+import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
+import { droppedFits, withFits } from "./fit-fits";
+import {
+  assembleWriterSystem,
+  layoutFieldCaps,
+  questionFieldCaps,
+  questionOffer,
+} from "./layout-menu";
 import type { WriterStage } from "./schema";
+import { measuredFitDefs } from "./slot-fill";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -63,7 +73,35 @@ export type PilotPack = {
   questionDefs?: boolean;
   /** `layout-icon` is built per request from the matcher's catalogue (`layoutIconDef`, v4.7 on). */
   catalogueIcons?: boolean;
+  /** Fits not offered at the floor or past a cliff leave the schema too (`droppedFits`, v4.8). */
+  fitFloor?: boolean;
+  /**
+   * Each flow entry names its slide's layout and fit (`layout`, before `size`), so the fit is
+   * chosen and the idea counted against it while a split is still possible (loop 1b, v4.8).
+   */
+  flowLayout?: boolean;
 };
+
+/** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
+const FLOW_SIZE_COUNTED = {
+  type: "string",
+  description:
+    "the words the idea needs, counted from the idea: how many items, the words each item needs out of its fit's words, then the lead's or stem's words out of its fit's",
+};
+
+/** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
+export const flowLayoutOf = (defKey: string): string => defKey.replace("~", " ");
+
+/**
+ * A pack's layouts without the pilot's word `budgets` (with their `charCaps`; layouts.json, v4.4-era
+ * numbers that drifted from the menu: KS2 three sides 12 against 13). The menu constants
+ * (layout-menu.ts, from the measured capacity tables) are the one source of every word budget the
+ * writer reads and code checks; nothing may read the stale copy (18 Oct 2026).
+ */
+function menuFed(l: unknown): PilotPack["layouts"] {
+  const { budgets: _b, ...rest } = l as Record<string, unknown>;
+  return rest as unknown as PilotPack["layouts"];
+}
 
 export const PILOT_PACKS = {
   "v4.4": {
@@ -97,24 +135,42 @@ export const PILOT_PACKS = {
   // only (ruling 227) and the contrast, parts and set boundaries stated at the flow step.
   "v4.7": {
     id: "v4.7",
-    layouts: l47 as PilotPack["layouts"],
+    layouts: menuFed(l47),
     base: { KS1: b61, KS2: b62, KS3: b63 },
-    // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
-    // the measured capacity tables; the rest of the text is the pack's, byte for byte.
-    system: {
-      KS1: assembleWriterSystem(t71, "KS1"),
-      KS2: assembleWriterSystem(t72, "KS2"),
-      KS3: assembleWriterSystem(t73, "KS3-5"),
-    },
+    // Frozen as shipped (master's `pilot-v4.7-menu` snapshot after #582, 18 Oct): v4.8 now owns
+    // the menu constants.
+    system: { KS1: s71, KS2: s72, KS3: s73 },
     uncapped: true,
     capsFrom: "v4.5",
     questionDefs: true,
     catalogueIcons: true,
   },
+  // v4.8 (TEACH-110 part ae, build/CRAMMING-ROOT-CAUSE.md): v4.7 with a Fits number stated as a
+  // ceiling, not a target (step 4); the plan near the low end of a range so a split has room
+  // (ruling 261); and the list and contrast layouts' text length generated from their budgets.
+  "v4.8": {
+    id: "v4.8",
+    layouts: { ...menuFed(l47), flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
+    // the measured capacity tables; the rest of the text is the pack's, byte for byte.
+    // The fit layouts' Fits and the heading's words come from code too (`withFits`, loop 1).
+    system: {
+      KS1: withFits(assembleWriterSystem(t81, "KS1"), "KS1"),
+      KS2: withFits(assembleWriterSystem(t82, "KS2"), "KS2"),
+      KS3: withFits(assembleWriterSystem(t83, "KS3-5"), "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.7";
+export const PILOT_PACK_ID: PilotPackId = "v4.8";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
@@ -205,14 +261,38 @@ export function pilotRequest(
     if (isLayout(d) && !refs.some((r) => r.$ref === `#/$defs/${k}`))
       refs.push({ $ref: `#/$defs/${k}` });
   }
-  const gone = (k: string) => pack.layouts.retired.includes(k.split("~")[0] as string);
+  const floored = new Set(pack.fitFloor ? droppedFits(writerStageOf(ks)) : []);
+  const gone = (k: string) =>
+    floored.has(k) || pack.layouts.retired.includes(k.split("~")[0] as string);
+  if (schema.properties.title?.anyOf)
+    schema.properties.title.anyOf = (schema.properties.title.anyOf as J[]).filter(
+      (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
+    );
   for (const k of Object.keys(schema.$defs)) if (gone(k)) delete schema.$defs[k];
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
+  if (pack.flowLayout) {
+    // The layouts a slide may take, as the flow names them; slides 1 and 2 are the title and
+    // the objectives. Placed before `size`, so the idea is counted against the fit it names.
+    const offered = (schema.properties.slides.items.anyOf as J[]).map((r) =>
+      flowLayoutOf(String(r.$ref).split("/").pop() ?? ""),
+    );
+    const layout = {
+      type: "string",
+      description: "the layout and fit this slide is written in (the Layout step)",
+      enum: ["title", "objectives", ...offered],
+    };
+    const { size, ...rest } = fp.items.properties;
+    const before = Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "teaches"));
+    fp.items.properties = { ...before, layout, ...(size ? { size } : {}), teaches: rest.teaches };
+    const req = (fp.items.required as string[]).filter((k) => k !== "layout");
+    const at = req.indexOf(size ? "size" : "teaches");
+    fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
+  }
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
-  for (const k of [...replaced, ...pack.layouts.retired])
+  for (const k of [...replaced, ...pack.layouts.retired, ...floored])
     if (sent.includes(`"#/$defs/${k}"`) || sent.includes(`"#/$defs/${k}~`))
       throw new Error(`pilot pack ${id}: ${k} is still reachable`);
   if (pack.uncapped) {
@@ -222,7 +302,14 @@ export function pilotRequest(
       ? pilotRequest(pack.capsFrom as PilotPackId, stageKey, prod, withLibrary).schema
       : undefined;
     const caps = capped
-      ? { ...capped, $defs: { ...capped.$defs, ...capPilotDefs(schema.$defs, writerStageOf(ks)) } }
+      ? {
+          ...capped,
+          $defs: {
+            ...capped.$defs,
+            ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+          },
+        }
       : undefined;
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }
@@ -291,6 +378,23 @@ export function capPilotDefs(defs: J, stage: WriterStage): J {
     if (m?.properties)
       for (const k of f.member)
         if (m.properties[k]) m.properties[k] = capString(m.properties[k], c[k]);
+    out[layout] = d;
+  }
+  // The question layouts (loop 1, 17 Oct): capped too, so every hinge, practice and exit field is
+  // logged against its measured cap like the list layouts' (v4.8 logged none of them).
+  const q = questionFieldCaps(stage);
+  for (const [layout, f] of Object.entries(q)) {
+    const def = defs?.[layout];
+    if (!def) continue;
+    const d = structuredClone(def) as J;
+    for (const [path, cap] of Object.entries(f)) {
+      const [list, leaf] = path.split("[].");
+      if (!leaf) d.properties[path] = capString(d.properties[path], cap);
+      else {
+        const m = d.properties[list as string]?.items;
+        if (m?.properties?.[leaf]) m.properties[leaf] = capString(m.properties[leaf], cap);
+      }
+    }
     out[layout] = d;
   }
   return out;

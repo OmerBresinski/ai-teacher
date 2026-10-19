@@ -192,6 +192,8 @@ describe("typed callout card", () => {
         }
   });
 
+  // 18 Oct 2026 (GOLD-THROUGH-PROD.md): hinge hashes re-pinned; only the field reports' cap and
+  // hardMax moved (measured per option count, to the character); the layout is unchanged.
   // TEACH-230 part b: practice and the exit ticket are the "work alone" slides by design (ruling
   // 231), so their hashes were re-pinned to the new layout; stored decks keep their elements.
   // Ruling 21 A (TEACH-215 part e): the cover and the hinge take the golds' sizes, so their hashes
