@@ -14,6 +14,7 @@ export function MobileSlideList({
   footer,
   hidden = false,
   followArrivals = false,
+  followId,
 }: {
   slides: readonly Slide[];
   theme: Theme;
@@ -23,6 +24,12 @@ export function MobileSlideList({
   footer?: ReactNode;
   hidden?: boolean;
   followArrivals?: boolean;
+  /**
+   * The slide being written while the editor follows the writing (UX audit J7): its card scrolls
+   * into view as it changes, as the desktop strip and canvas follow it. Absent once the teacher
+   * has taken over (any click or key press ends the follow).
+   */
+  followId?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   const following = useRef(true);
@@ -40,6 +47,20 @@ export function MobileSlideList({
       initial.current = undefined;
     } else if (followArrivals && following.current) el.scrollTop = el.scrollHeight;
   }, [count, hidden, followArrivals]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || hidden || !followId) return;
+    const card = Array.from(el.querySelectorAll<HTMLElement>("[data-mobile-slide]")).find(
+      (node) => node.dataset.mobileSlide === followId,
+    );
+    if (!card) return;
+    const still =
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const top = card.offsetTop - el.offsetTop;
+    if (typeof el.scrollTo === "function")
+      el.scrollTo({ top, behavior: still ? "auto" : "smooth" });
+    else el.scrollTop = top;
+  }, [followId, hidden]);
   return (
     <section
       ref={ref}

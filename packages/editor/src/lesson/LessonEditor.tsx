@@ -666,6 +666,11 @@ export function LessonEditor({
                               {mobile ? (
                                 <MobileLessonEditor
                                   initialSlideId={initialSlideId}
+                                  followId={
+                                    follow.following && writingSlideIds
+                                      ? newestDone(lesson.slides, writingSlideIds)
+                                      : undefined
+                                  }
                                   canvas={{
                                     slide,
                                     theme,
@@ -859,6 +864,18 @@ function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
  * UX audit J4: what the writer is doing now, so a slide waiting its turn (or the objectives, held
  * until the end) never reads as stuck on itself.
  */
+/**
+ * The phone's list shows no drafts, so it follows the newest finished slide rather than the one
+ * being typed (a blank card): the last slide the job no longer owns (UX audit J7).
+ */
+function newestDone(slides: readonly { id: Id }[], writing: ReadonlySet<Id>): Id | undefined {
+  for (let i = slides.length - 1; i >= 0; i--) {
+    const id = slides[i]?.id;
+    if (id !== undefined && !writing.has(id)) return id;
+  }
+  return undefined;
+}
+
 function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: Id | undefined) {
   const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
   return writingNowId === slideId
