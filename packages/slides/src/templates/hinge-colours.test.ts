@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
+import { optionTones } from "../option-tones";
 import { THEMES } from "../themes";
 import {
   dimGround,
@@ -10,7 +11,7 @@ import {
   surfaceStyle,
   surfacesOf,
 } from "../themes/surfaces";
-import { HINGE_NAMES } from "./hinge";
+import { HINGE_NAMES, HINGE_TONED_KEYS } from "./hinge";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /*
@@ -54,14 +55,17 @@ describe("hinge letter keys", () => {
           const card = surfaceStyle(theme, "card");
           const accent = surfacesOf(theme).marks.keyFill === "accent";
           const fill = accent ? surfaceStyle(theme, "key").fill : card.ink;
+          // TEACH-215 part i: a theme whose gold colours each letter (round 3's option tones, the
+          // round 5 darks) takes that letter's tone, its letter at 4.5:1.
+          const toned = HINGE_TONED_KEYS.has(theme.id);
           const shape = markLook(theme, "key", 30, fill ?? "#000", "#fff").shape;
-          for (const k of keys) {
+          keys.forEach((k, i) => {
             expect(k.shape).toBe(shape);
-            expect(k.fill).toBe(fill);
+            expect(k.fill).toBe(toned ? optionTones(theme)[i] : fill);
             expect(
               contrastRatio(k.textStyle?.color as string, k.fill as string),
-            ).toBeGreaterThanOrEqual(accent ? 4.5 : 3);
-          }
+            ).toBeGreaterThanOrEqual(accent || toned ? 4.5 : 3);
+          });
         }
   });
 
