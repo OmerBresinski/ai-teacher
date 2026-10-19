@@ -93,6 +93,19 @@ const COMPOSED = new Set([
   "dark-slate",
   "dark-ember",
 ]);
+/** Photo-right and Beacon covers: no question on the picture cover (Greg's call 36, part g). */
+const NO_QUESTION = new Set([
+  "treehouse",
+  "reading-room",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
 const themeOf = (b: string): string =>
   (JSON.parse(readFileSync(join(DIR, b, "brief.json"), "utf8")) as { theme?: string }).theme ?? "";
 const LESSONS = readdirSync(DIR).sort();
@@ -159,7 +172,12 @@ describe.each(LESSONS)("replay %s", (b) => {
         const has = (els: El[], name: string) => els.some((e) => e.name === name);
         expect({ i, title: has(got, "Title") }).toEqual({ i, title: true });
         expect({ i, photo: has(got, "Photo") }).toEqual({ i, photo: has(want.elements, "Photo") });
-        expect({ i, q: has(got, "Subtitle") }).toEqual({ i, q: has(want.elements, "Subtitle") });
+        // Greg's call 36: a photo-right or Beacon picture cover draws no question.
+        const drops = NO_QUESTION.has(themeOf(b)) && has(got, "Photo");
+        expect({ i, q: has(got, "Subtitle") }).toEqual({
+          i,
+          q: has(want.elements, "Subtitle") && !drops,
+        });
         return;
       }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {

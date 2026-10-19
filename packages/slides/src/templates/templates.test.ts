@@ -65,7 +65,8 @@ describe("round 1: text fit and fallbacks", () => {
         lead: "What happens when money loses its value?",
         figure: { photo: "/x.jpg", aspect: 0.9 },
       },
-      studio,
+      // Paper: Studio's photo-right picture cover draws no question (Greg's call 36, TEACH-215 g).
+      getTheme("paper"),
       "ks3",
     );
     const t = r.slide.elements.find((e) => e.name === "Title");

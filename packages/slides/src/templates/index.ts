@@ -30,6 +30,7 @@ export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 import {
   composeCover,
   composeCoverFallback,
+  coverDropsQuestion,
   coverOver,
   coverTitleDoc,
   hasCoverFallback,
@@ -1938,6 +1939,9 @@ function layoutOnce(
   const pts = raw.map(pointText);
   switch (tpl) {
     case "title": {
+      // Greg's call 36: no question on a photo-right or Beacon picture cover (`coverDropsQuestion`).
+      if (input.lead && input.figure && "photo" in input.figure && coverDropsQuestion(c.t))
+        input = { ...input, lead: undefined };
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
       // The ground is the look's cover colour: the accent, or a v2 theme's deep (Paper's wine).

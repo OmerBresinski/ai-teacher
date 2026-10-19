@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { TextElement } from "@tj/domain/documents";
+import { coverDropsQuestion } from "./cover-comps";
 import { coverTypeAt } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
 import { applyLook, contrastRatio } from "./look";
@@ -228,7 +229,12 @@ describe("covers hold every case on every theme (TEACH-215 part g review)", () =
             if (name !== "long title")
               expect({ name, pic, over: r.over }).toEqual({ name, pic, over: [] });
             const hasQ = textsOf(els).some((e) => e.name === "Subtitle");
-            expect(hasQ).toBe(name !== "no question");
+            // Greg's call 36: a photo-right or Beacon picture cover draws no question.
+            expect({ name, pic, hasQ }).toEqual({
+              name,
+              pic,
+              hasQ: name !== "no question" && !(pic && coverDropsQuestion(t)),
+            });
           }
       });
 });

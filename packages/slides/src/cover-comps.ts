@@ -620,7 +620,8 @@ function column(p: Omit<Parts, "photo">, t: Theme, o: Column): SlideElement[] {
       x: o.x - tPad,
       y: ty,
       doc: recolour(tt.doc, t.colors.accent, o.ink.accent),
-      style: { ...tt.style, color: o.ink.title },
+      // A fixed box (as over a question), so a title a teacher lengthens steps down inside it.
+      style: { ...tt.style, color: o.ink.title, autoHeight: false },
     });
   if (sub) out.push({ ...sub, x: o.x, y: ty + sub.y, style: { ...sub.style, color: o.ink.q } });
   return out;
@@ -822,6 +823,17 @@ function lookGround(color: string): boolean {
   return THEMES.some(
     (th) => th.colors.accent.toUpperCase() === c || coverColours(th).fill.toUpperCase() === c,
   );
+}
+
+/**
+ * Greg's call 36 (19 Oct 2026): the photo-right and Beacon picture covers draw no question, as
+ * their golds have none. The cover question is the writer's `title.lead`, which is a subtitle line
+ * that nothing else in the lesson reads, so it is not vital there. Other covers keep it.
+ */
+export function coverDropsQuestion(t: Theme): boolean {
+  if (surfacesOf(t).marks.cover !== "split") return false;
+  const kind = coverToken(t, "cover-photo");
+  return kind === "right-half" || kind === "band";
 }
 
 /** A cover with a picture in the theme's composition; the slide as it was when it has none. */

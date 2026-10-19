@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
+import { coverDropsQuestion } from "../cover-comps";
 import { coverStepped } from "../fit-check";
 import { coverTypeAt, readingFloorOf } from "../layout-sizes";
 import { resolveTextStyle, snapToScale } from "../text-style";
@@ -171,9 +172,12 @@ describe("the cover's caps: the gold's three title lines, two question lines", (
             );
             expect(at.over).toEqual([]);
             const [title] = named(at.slide.elements, "Title") as TextElement[];
-            const [question] = named(at.slide.elements, "Subtitle") as TextElement[];
+            const question = at.slide.elements.find((e) => e.name === "Subtitle") as TextElement;
             expect(lines(title as TextElement)).toBeLessThanOrEqual(3);
-            expect(lines(question as TextElement)).toBeLessThanOrEqual(2);
+            // Greg's call 36 (TEACH-215 part g): photo-right and Beacon picture covers draw none.
+            if (picture && coverDropsQuestion(atKeyStage(theme, stage)))
+              expect(question).toBeUndefined();
+            else expect(lines(question as TextElement)).toBeLessThanOrEqual(2);
           }
       });
   test("a title past three lines at the floor is over (the old six with a picture are not allowed)", () => {
