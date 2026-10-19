@@ -7,6 +7,7 @@ import {
 } from "@tj/domain/documents";
 import { resolveTextStyle } from "./text-style";
 import { THEMES } from "./themes";
+import { isClear, SURFACE_TOKEN_SETS, titleBand } from "./themes/surfaces";
 
 /*
  * Theme colours at render time. Generation writes the look's colours into the elements (a card's
@@ -67,7 +68,58 @@ export function themedColour(colour: string | undefined, theme: Theme): string |
 const themedDoc = (doc: RichDoc, theme: Theme): RichDoc =>
   mapRunColours(doc, (c) => themedColour(c, theme));
 
-function themedElement(e: SlideElement, theme: Theme, docs: boolean): SlideElement {
+/*
+ * The title band (Poster's `title-treat: band`, TEACH-215 part k) is the title role, not a colour:
+ * its fill, the heading's ink on it and the accent word on it are each banded theme's own tokens.
+ * Drawn in another theme they become that theme's band, or no band and its own heading ink and
+ * accent, so a heading laid out on Poster never stays cream on a cream ground.
+ */
+const BANDS = Object.values(SURFACE_TOKEN_SETS).filter(
+  (k) => k["title-band"] && !isClear(k["title-band"]),
+);
+const lower = (v: string | undefined) => (v ?? "").toLowerCase();
+const BAND_FILLS = new Set(BANDS.map((k) => lower(k["title-band"])));
+const BAND_INKS = new Set(BANDS.map((k) => lower(k["title-ink"])));
+const BAND_ACCENTS = new Set(BANDS.map((k) => lower(k["title-accent"])));
+const CLEAR = "transparent";
+
+type Box = { x: number; y: number; w: number; h: number };
+/** The band a slide was laid out with (any banded theme's title band), or null. */
+const bandOf = (els: readonly SlideElement[]): Box | null =>
+  (els.find(
+    (e) => e.name === "surface:title" && e.type === "shape" && BAND_FILLS.has(lower(e.fill)),
+  ) as Box | undefined) ?? null;
+const inside = (e: Box, b: Box) => e.y + e.h <= b.y + b.h + 1 && e.x + e.w <= b.x + b.w + 1;
+
+function bandedElement(e: SlideElement, theme: Theme, band: Box | null): SlideElement | null {
+  if (!band) return null;
+  if (e.name === "surface:title" && e.type === "shape" && BAND_FILLS.has(lower(e.fill)))
+    return { ...e, fill: titleBand(theme)?.fill ?? CLEAR };
+  if (e.type !== "text" || !inside(e, band)) return null;
+  const style = e.style as { color?: string } | undefined;
+  if (!style?.color || !BAND_INKS.has(lower(style.color))) return null;
+  const own = titleBand(theme);
+  const ink =
+    own?.ink ??
+    (e.name === "Heading" ? (theme.colors.heading ?? theme.colors.ink) : theme.colors.ink);
+  const accent = own?.accent ?? theme.colors.accent;
+  return {
+    ...e,
+    style: { ...e.style, color: ink },
+    doc: mapRunColours(e.doc, (c) =>
+      BAND_INKS.has(lower(c)) ? ink : BAND_ACCENTS.has(lower(c)) ? accent : themedColour(c, theme),
+    ),
+  } as SlideElement;
+}
+
+function themedElement(
+  e: SlideElement,
+  theme: Theme,
+  docs: boolean,
+  band: Box | null = null,
+): SlideElement {
+  const banded = bandedElement(e, theme, band);
+  if (banded) return banded;
   const out = { ...e } as Record<string, unknown> & SlideElement;
   for (const key of ["fill", "stroke", "color"] as const) {
     const v = (e as Record<string, unknown>)[key];
@@ -92,21 +144,28 @@ export function withThemeColours(
   theme: Theme,
   { docs = true }: { docs?: boolean } = {},
 ): Slide {
-  const elements = slide.elements.map((e) => themedElement(e, theme, docs));
+  const band = bandOf(slide.elements);
+  const elements = slide.elements.map((e) => themedElement(e, theme, docs, band));
+  // A laid band the deck's theme does not draw is cleared above, then left out: no invisible
+  // rect stays on the slide (it is drawn only, never saved, so a switch back finds it again).
+  const ghost = (e: SlideElement) =>
+    e.name === "surface:title" && e.type === "shape" && e.fill === CLEAR;
   return {
     ...slide,
-    elements: elements.map((e, i) => {
-      const read = readable(slide.elements, elements, i, theme);
-      // A stored layout group (TEACH-75 part ap): its children are drawn as laid out, so words a
-      // layout put straight on the slide (a pilot slide saved before layouts painted their own
-      // ground) sit on whatever ground the deck's theme now draws.
-      const kids = (e as { children?: SlideElement[] }).children;
-      if (e.type !== "group" || !kids?.length) return read;
-      return {
-        ...read,
-        children: kids.map((_k, k) => readable(kids, kids, k, theme, true)),
-      } as SlideElement;
-    }),
+    elements: elements
+      .map((e, i) => {
+        const read = readable(slide.elements, elements, i, theme);
+        // A stored layout group (TEACH-75 part ap): its children are drawn as laid out, so words a
+        // layout put straight on the slide (a pilot slide saved before layouts painted their own
+        // ground) sit on whatever ground the deck's theme now draws.
+        const kids = (e as { children?: SlideElement[] }).children;
+        if (e.type !== "group" || !kids?.length) return read;
+        return {
+          ...read,
+          children: kids.map((_k, k) => readable(kids, kids, k, theme, true)),
+        } as SlideElement;
+      })
+      .filter((e) => !ghost(e)),
   };
 }
 

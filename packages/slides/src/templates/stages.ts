@@ -23,6 +23,8 @@ import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
+import { type Connector, connectorShape } from "../themes/marks";
+import { surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, mix, type TemplateInput } from "./index";
 import { layoutItemsRow, PENDING_ICON, ROW_NAMES } from "./items-row";
 import {
@@ -112,6 +114,18 @@ let MEASURING = false;
 export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
   (TABLE[age] ?? []).find((c) => c.n === n && c.vis === vis);
 
+/**
+ * Cells the writer is never offered, whatever they measure (TEACH-215 part m): six pictured stages
+ * at KS2 and KS3 hold a 6-character name and a 24-character line, which reads cramped. A saved
+ * slide still lays out from its measured cell; a stages menu line must skip these.
+ */
+export const STAGES_NOT_OFFERED: Partial<Record<Age, readonly `${number}${"i" | "p"}`[]>> = {
+  primary: ["6p"],
+  secondary: ["6p"],
+};
+export const stageOffered = (age: Age, n: number, vis: StageVis) =>
+  !STAGES_NOT_OFFERED[age]?.includes(`${n}${vis === "pictures" ? "p" : "i"}`);
+
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
 /* ------------------------------------------------------------------ */
@@ -127,13 +141,23 @@ const goldStage = (c: Ctx) => {
 };
 const drawn = (c: Ctx, preset: TextPreset, size: number) =>
   goldStage(c) ? round1(size) : resolveFontSize(c.t, preset, size);
+/**
+ * Half a point kept clear at the column's edge where the stage is drawn at a fixed size (KS1 and
+ * KS2, `fixedSize`), which the editor's fitting engine never re-fits (TEACH-215 part m). The
+ * advances are rounded to a thousandth of an em and kerning can widen a pair, so a name or line
+ * the tables put within half a point of the edge (187.85 of 188, 146.95 of 147) drew one line
+ * longer than counted and printed over the text under it. KS3 snaps to the type scale and is
+ * re-fitted in the editor, so it measures to the edge as before.
+ */
+const FIXED_EDGE = 0.5;
+const room = (c: Ctx, w: number) => (goldStage(c) ? w - FIXED_EDGE : w);
 const lines = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
-  v.trim() ? countLines(v, p, c.t, w, wt, size) : 0;
+  v.trim() ? countLines(v, p, c.t, room(c, w), wt, size) : 0;
 const wordsFit = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
   v
     .split(/\s+/)
     .filter(Boolean)
-    .every((word) => countLines(word, p, c.t, w, wt, size) === 1);
+    .every((word) => countLines(word, p, c.t, room(c, w), wt, size) === 1);
 
 /** Whether a stage's picture is there (an open slot counts: it is coming). */
 type Photo = Extract<Figure, { photo: string }>;
@@ -197,7 +221,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
   const colW = (SLIDE_W - 2 * pad - (n - 1) * gap) / n;
   const gutter = (n >= 5 ? 20 : 24) * K;
   // Tiles stand apart already (the arrow gutter): only a joined strip keeps a gutter in each frame.
-  const textW = tiles ? colW : colW - gutter;
+  // Measured at the width it is drawn at: `textBox` draws the box on whole points, and at 5 frames
+  // a name measured on one line in 157.3 wrapped in the 157 it was drawn in (TEACH-215 part m).
+  const textW = Math.round(tiles ? colW : colW - gutter);
   const nameWt = c.t.weights.heading;
   const bodyWt = c.t.weights.body;
   const rowTop = Math.max(ROW_TOP, top + UNDER_TITLE);
@@ -318,8 +344,11 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
       head: 0.92 * h,
       headLen: 0.44 * w,
     }).map(([x, y]) => ({ x: round1(x), y: round1(y) }));
-    arrowPath(c, pts, col.background, STAGES_NAMES.halo, HALO);
-    arrowPath(c, pts, col.accent, STAGES_NAMES.arrow);
+    const kind = surfacesOf(c.t).marks.connector;
+    if (kind === "block") {
+      arrowPath(c, pts, col.background, STAGES_NAMES.halo, HALO);
+      arrowPath(c, pts, col.accent, STAGES_NAMES.arrow);
+    } else familyArrow(c, kind, { x: sx - w / 2, y: sy - h / 2, w, h }, col.background, col.accent);
   }
 
   // Names (sharing the tallest name's height) and lines.
@@ -463,6 +492,60 @@ function frameShape(
 }
 
 /** A closed block arrow (or its halo: the same outline stroked in paper under it). */
+/**
+ * A seam connector in the theme's family (round 2 roles-map2.js `arrowSvg`, round 5's sketch):
+ * Poster's block over an ink offset, Scrapbook's hand-drawn line with an open chevron, Storytime's
+ * round-cornered block. Drawn in the box the block arrow takes, a ground halo under it.
+ */
+function familyArrow(
+  c: Ctx,
+  kind: Connector,
+  box: { x: number; y: number; w: number; h: number },
+  ground: string,
+  ink: string,
+) {
+  const shape = connectorShape(kind, box.w, box.h);
+  const shadow = surfacesOf(c.t).marks.offset?.color ?? c.t.colors.ink;
+  const push = (
+    pts: { x: number; y: number }[],
+    closed: boolean,
+    paint: { fill?: string; stroke: string; width: number },
+    name: string,
+    dx = 0,
+  ) =>
+    c.els.push({
+      id: uid(),
+      type: "path",
+      x: round1(box.x + dx),
+      y: round1(box.y + dx),
+      w: round1(box.w),
+      h: round1(box.h),
+      points: pts.map((p) => ({ x: +(p.x / box.w).toFixed(4), y: +(p.y / box.h).toFixed(4) })),
+      closed,
+      ...(paint.fill ? { fill: paint.fill } : {}),
+      stroke: paint.stroke,
+      strokeWidth: round1(paint.width),
+      name,
+    } as PathElement);
+  for (const f of shape.fills)
+    push(f.pts, true, { fill: ground, stroke: ground, width: shape.halo }, STAGES_NAMES.halo);
+  for (const st of shape.strokes)
+    push(st, false, { stroke: ground, width: shape.halo }, STAGES_NAMES.halo);
+  for (const f of shape.fills) {
+    if (f.offset)
+      push(f.pts, true, { fill: shadow, stroke: shadow, width: 0 }, STAGES_NAMES.arrow, f.offset);
+    const edge = f.offset ? shadow : ink;
+    push(
+      f.pts,
+      true,
+      { fill: ink, stroke: edge, width: f.round ?? shape.width },
+      STAGES_NAMES.arrow,
+    );
+  }
+  for (const st of shape.strokes)
+    push(st, false, { stroke: ink, width: shape.width }, STAGES_NAMES.arrow);
+}
+
 function arrowPath(
   c: Ctx,
   pts: { x: number; y: number }[],

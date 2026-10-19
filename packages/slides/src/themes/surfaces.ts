@@ -5,6 +5,7 @@ import { ALL_THEMES } from "../themes";
 /** Unlabelled surfaces: a cut corner is drawn as a closed path in box fractions (RTL mirrors it). */
 const FIELD_LIKE: ReadonlySet<string> = new Set(["field-a", "field-b", "card", "plate", "frame"]);
 
+import { pxToPt } from "../theme-v2-paper";
 import {
   innerSides,
   type MarkShape,
@@ -152,9 +153,10 @@ export function markStyle(
         corner: 0,
         ...(marks.offset
           ? {
-              shadow: { x: 6, y: 6, color: marks.offset.color },
+              // round 2 themes2.css `--medal-shade: 6px 6px 0` and `--medal-lw: 3px`, at 1440 / 1.5.
+              shadow: { x: 4, y: 4, color: marks.offset.color },
               line: marks.offset.color,
-              lineWidth: 3,
+              lineWidth: 2,
             }
           : {}),
       };
@@ -215,7 +217,18 @@ function withMarks(
       states[k] = solid(states[k], marks.badge);
   if (marks.chip !== "pill")
     for (const k of ["chip:now", "chip:quiet"] as const) states[k] = solid(states[k], marks.chip);
-  if (marks.key !== "rounded") states["key:right"] = solid(states["key:right"], marks.key);
+  if (marks.key !== "rounded") {
+    const right = states["key:right"];
+    const shaped = solid(right, marks.key);
+    // A sticky key's right state keeps the correct green with a white letter (scrapbook gold's
+    // revealed key), not the sticky paper and its dark ink: only shape and tilt are the family's.
+    const white = (f: string | undefined) =>
+      f && contrastRatio("#FFFFFF", f) >= contrastRatio(right?.ink ?? "#000000", f);
+    states["key:right"] =
+      marks.key === "sticky" && right && shaped
+        ? { ...shaped, fill: right.fill, ink: white(right.fill) ? "#FFFFFF" : right.ink }
+        : shaped;
+  }
   if (marks.medal !== "disc") states["medal:tint"] = solid(states["medal:tint"], marks.medal);
   const offset = marks.offset
     ? { x: marks.offset.d, y: marks.offset.d, color: marks.offset.color }
@@ -252,8 +265,13 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     if (v == null) throw new Error(`surface token "${k}" is missing`);
     return v;
   };
-  const corner = need("corner") === "own" ? undefined : px(need("corner"));
+  // The `corner` and `radius-pic` tokens are the golds' CSS px at 1440 wide; slides are 960pt, so
+  // a radius is px / 1.5 (215k review item 47: Treehouse 15px is 10pt, Splash 39px is 26pt).
+  const corner = need("corner") === "own" ? undefined : pxToPt(px(need("corner")));
   const field = corner ?? "own";
+  // A gold whose cards round less than its fields (round 2 Scrapbook `--card-radius: 2px`, round 4
+  // Storytime 26px against `--radius-pic` 32px) sets `card-radius`, also in 1440px.
+  const cardCorner = t["card-radius"] ? pxToPt(px(t["card-radius"])) : field;
   const lineOf = (c: string) => (isClear(c) ? undefined : c);
   const s = (
     fill: string,
@@ -286,7 +304,7 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       ink: need("card-ink"),
       line: cardLine,
       lineWidth: cardLine ? px(need("card-lw")) : undefined,
-      corner: field,
+      corner: cardCorner,
     }),
     plate: s(need("plate-fill"), {
       ink: need("ink"),
@@ -302,7 +320,7 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       corner: "full",
     }),
     chip: s(need("chip-fill"), { ink: need("chip-ink"), corner: "full" }),
-    frame: s(need("surface"), { corner: corner ?? px(need("radius-pic")) }),
+    frame: s(need("surface"), { corner: corner ?? pxToPt(px(need("radius-pic"))) }),
     rule: s(need("rule")),
     key: s(need("accent"), { ink: need("key-ink"), corner: "full" }),
     connector: s(need("rule")),
@@ -326,13 +344,13 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       ink: need("card-ink"),
       line: flatLine,
       lineWidth: flatLine ? px(need("card-flat-lw")) : undefined,
-      corner: field,
+      corner: cardCorner,
     }),
     "card:right": s(need("card-fill"), {
       ink: need("card-ink"),
       line: need("sem-correct"),
       lineWidth: Math.max(2, px(need("card-lw"))),
-      corner: field,
+      corner: cardCorner,
     }),
     "key:right": s(need("sem-correct"), { ink: need("key-ink"), corner: "full" }),
     "medal:tint": s(need("medal-tint"), {
@@ -340,6 +358,13 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       lineWidth: lineOf(need("medal-line")) ? 2 : undefined,
       corner: "full",
     }),
+    // The quick check's answer column as a solid block (round 4 themes4.css `.qc`: Poster's deep
+    // teal with cream answers, Beacon's blue with white), where the theme sets one.
+    ...(t["qc-field-fill"] && t["qc-field-ink"]
+      ? {
+          "field-b:inverse": s(t["qc-field-fill"], { ink: t["qc-field-ink"], corner: field }),
+        }
+      : {}),
   };
   withMarks(roles, states, marks, need("bg"));
   return {
@@ -783,11 +808,27 @@ export function markLook(
   theme: Pick<Theme, "id" | "dark">,
   family: "badge" | "key" | "medal" | "chip",
   d: number,
-  fill: string,
+  asked: string,
+  ink: string,
+): MarkLook {
+  const look = familyLook(theme, family, d, asked, ink);
+  // Scrapbook's badges turn a few degrees (round 2 `--badge-tilt`), as a sticker does.
+  const tilt = family === "badge" ? surfacesOf(theme).marks.badgeTilt : 0;
+  return tilt && !look.rotation ? { ...look, rotation: tilt } : look;
+}
+
+function familyLook(
+  theme: Pick<Theme, "id" | "dark">,
+  family: "badge" | "key" | "medal" | "chip",
+  d: number,
+  asked: string,
   ink: string,
 ): MarkLook {
   const m = surfacesOf(theme).marks;
   const kind = m[family];
+  // An outline family's role is drawn as a ring on no fill: a caller that asks for the role's own
+  // fill (the hinge key in its theme's colour, Calm's teal) means the ring's colour.
+  const fill = isClear(asked) ? (surfacesOf(theme).roles[family].line ?? ink) : asked;
   switch (kind) {
     case "disc":
       return { shape: "ellipse", fill, ink };

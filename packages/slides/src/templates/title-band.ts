@@ -1,6 +1,6 @@
-import type { SlideElement, TextElement, Theme } from "@tj/domain/documents";
+import type { Slide, SlideElement, TextElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
-import { surfaceName, surfacesOf, titleBand } from "../themes/surfaces";
+import { SURFACE_TOKEN_SETS, surfaceName, surfacesOf, titleBand } from "../themes/surfaces";
 
 /*
  * The title band on content slides (THEMING.md look table: Poster's full-bleed teal band, cream
@@ -70,11 +70,17 @@ export function measuredBand(
  * The band painted under a content slide's heading, the heading in the band's ink and accent.
  * Written into the same array (layouts keep side tables keyed by it, e.g. panel-list's geometry).
  */
-export function withTitleBand(els: SlideElement[], theme: Theme): SlideElement[] {
+export function withTitleBand(
+  els: SlideElement[],
+  theme: Theme,
+  kind?: Slide["kind"],
+): SlideElement[] {
+  // The cover's title is the cover's own (`cover-comps.ts`): neither banded nor recoloured here.
+  if (kind === "title") return els;
   const box = measuredBand(els, theme);
   const band = titleBand(theme);
-  if (!box || !band) return els;
   const accent = theme.colors.accent;
+  if (!box || !band) return withTitleAccent(els, theme, accent);
   const inBand = (e: SlideElement) => e.y + e.h <= box.h + 1 && e.x + e.w <= box.w + 1;
   for (const [i, e] of els.entries()) {
     if (e.type !== "text" || !inBand(e)) continue;
@@ -84,7 +90,10 @@ export function withTitleBand(els: SlideElement[], theme: Theme): SlideElement[]
       doc: recolour(e.doc, accent, band.accent),
     };
   }
-  els.unshift({
+  // Over the layout's own ground (split-compare, panel-list and items-row lay a "Background" first),
+  // under everything else.
+  const grounds = els.findIndex((e) => e.name !== "Background");
+  els.splice(grounds < 0 ? els.length : grounds, 0, {
     id: uid(),
     type: "shape",
     shape: "rect",
@@ -93,5 +102,20 @@ export function withTitleBand(els: SlideElement[], theme: Theme): SlideElement[]
     ...box,
     fill: band.fill,
   });
+  return els;
+}
+
+/**
+ * A heading's accent word in the theme's `title-accent` where it differs from the accent (round 3
+ * themes3.css `--title-accent: var(--p-em)`: Treehouse's brown, Playground's teal, Splash's
+ * magenta), as the band does for its own accent. Written into the same array.
+ */
+function withTitleAccent(els: SlideElement[], theme: Theme, accent: string): SlideElement[] {
+  const to = SURFACE_TOKEN_SETS[theme.id]?.["title-accent"];
+  // A theme with a band colour keeps its band accent for the band (Poster's yellow is unreadable on cream).
+  if (titleBand(theme) || !to || sameHex(to, accent) || !/^#[0-9a-f]{6}$/i.test(to)) return els;
+  for (const [i, e] of els.entries())
+    if (e.type === "text" && e.name === "Heading")
+      els[i] = { ...e, doc: recolour(e.doc, accent, to) };
   return els;
 }

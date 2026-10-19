@@ -298,7 +298,11 @@ const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
  */
 
 const tok = TOKENS as Record<string, Record<string, string>>;
-/** Scrapbook: lined paper with a red margin rule (the look table's 30pt pitch, margin at 58px). */
+/**
+ * Scrapbook's cover keeps its own art (the margin at 58px and the rules in its lower band; the
+ * covers lane owns it). Content slides wear the lined ground instead (`groundArt` below: round 4
+ * moved the margin to 30px and round 2 ruled the whole page), so they draw no role art.
+ */
 const scrapRules = (y: number, h: number) =>
   svg(
     0,
@@ -312,10 +316,7 @@ const scrapRules = (y: number, h: number) =>
     ).join(""),
   );
 const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
-const SCRAPBOOK: Art = {
-  title: [scrapMargin, scrapRules(404, 127)],
-  content: [scrapMargin],
-};
+const SCRAPBOOK: Art = { title: [scrapMargin, scrapRules(404, 127)] };
 
 /** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
 const dots = (x: number, y: number, w: number, h: number) =>
@@ -342,9 +343,40 @@ const GEOMETRIC: Art = {};
 const GROUND = new WeakSet<ThemeArtLayer>();
 const GROUND_DOTS = dots(0, 0, 960, 540);
 GROUND.add(GROUND_DOTS);
-export function groundArt(theme: Theme): ThemeArtLayer | null {
+/**
+ * Scrapbook's lined paper (round 2 themes2.css `--ground-pattern`: a 2px rule every 45px, its foot
+ * on the pitch; round 4 themes4.css `--ground-art`: the red margin line 2px wide at 30px), at 1440
+ * px / 1.5 in slide points.
+ */
+const lined = (line: string, margin: string) =>
+  svg(
+    0,
+    0,
+    960,
+    540,
+    `${Array.from(
+      { length: 18 },
+      (_, i) =>
+        `<rect x='0' y='${r2(28.667 + i * 30)}' width='960' height='1.333' fill='${line}'/>`,
+    ).join("")}<rect x='20' y='0' width='1.333' height='540' fill='${margin}'/>`,
+  );
+const r2 = (v: number) => Math.round(v * 1000) / 1000;
+const GROUND_LINED = new Map<string, ThemeArtLayer>();
+export function groundArt(theme: Theme, role?: ThemeArtRole): ThemeArtLayer | null {
   const t = (TOKENS as Record<string, Record<string, string>>)[theme.id];
-  return t?.["ground-art"] === "dots" ? GROUND_DOTS : null;
+  if (t?.["ground-art"] === "dots") return GROUND_DOTS;
+  // The lined ground is for content slides: the cover keeps its own art, unchanged.
+  if (t?.["ground-art"] !== "lined" || role === "title") return null;
+  const line = t["ground-line"] ?? t["rule"] ?? "#E3EAF2";
+  const margin = t["ground-margin"] ?? t["hl-a"] ?? "#F1B9B4";
+  const key = `${line}${margin}`;
+  let layer = GROUND_LINED.get(key);
+  if (!layer) {
+    layer = lined(line, margin);
+    GROUND.add(layer);
+    GROUND_LINED.set(key, layer);
+  }
+  return layer;
 }
 /** Whether a layer is a ground texture (never an art collision). */
 export const isGroundArt = (l: ThemeArtLayer): boolean => GROUND.has(l);

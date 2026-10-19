@@ -185,8 +185,10 @@ describe("figure slide: every theme", () => {
           expect(cap?.style.color).toBe(t.colors.muted);
           const v = v2Colors(t);
           const roles = [v.sand, v.surface, v.background];
+          // The title band (Poster, TEACH-215 part k) is the title role's own fill.
           for (const e of r.slide.elements)
-            if (e.type === "shape") expect(roles).toContain(String((e as ShapeElement).fill));
+            if (e.type === "shape" && e.name !== "surface:title")
+              expect(roles).toContain(String((e as ShapeElement).fill));
         }
       }
   });

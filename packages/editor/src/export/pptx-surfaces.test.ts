@@ -10,6 +10,26 @@ import {
 } from "@tj/slides/surfaces";
 import JSZip from "jszip";
 import { exportLessonPptx } from "./pptx";
+
+/**
+ * The themes whose gold draws the 14px foot accent bar (round 3 themes3.css `--foot-bar: on` and
+ * round 5 themes5.css for the darks; `.footbar` 14px, `var(--accent)`, every slide but the cover).
+ */
+const FOOT_GOLD = new Set([
+  "treehouse",
+  "reading-room",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+  "beacon",
+  // Night Lab (retired from the picker, still exported for old lessons) is in round 3's list too.
+  "night-lab",
+]);
+
 import {
   clearGroundCache,
   GROUND_PX,
@@ -104,7 +124,9 @@ describe("a fixture deck per role exports the listed shapes (row 4)", () => {
       );
       for (const [i, [name, spec, want]] of cases.entries()) {
         const x = await xml(i + 1);
-        expect({ name, geom: geometries(x) }).toEqual({ name, geom: [want] });
+        // The theme's foot strip (TEACH-215 part k) is the last shape on a slide that has one.
+        const foot = FOOT_GOLD.has(theme.id) ? ["rect"] : [];
+        expect({ name, geom: geometries(x) }).toEqual({ name, geom: [want, ...foot] });
         const fill = surfaceStyle(theme, spec.role, spec.state).fill.slice(1, 7).toUpperCase();
         expect({ name, filled: x.includes(`<a:srgbClr val="${fill}"`) }).toEqual({
           name,
@@ -162,7 +184,8 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
       expect(s[0]).toContain(hex(surfaceStyle(theme, "medal").fill));
       expect(s[0]).toContain(hex(surfaceStyle(theme, "badge").fill));
       expect(s[1]).toContain(hex(surfaceStyle(theme, "field-b").fill));
-      expect(geometries(s[2] ?? "")).toEqual(["custGeom", "custGeom"]);
+      const foot = FOOT_GOLD.has(theme.id) ? ["rect"] : [];
+      expect(geometries(s[2] ?? "")).toEqual(["custGeom", "custGeom", ...foot]);
       expect(s[2]).toContain(hex(surfaceStyle(theme, "field-a").fill));
 
       const art = pilot(theme).map((sl) => groundArtSvg(theme, sl));
@@ -325,5 +348,39 @@ describe("ground art size and editability", () => {
     zip.file("ppt/media/b.png", "two");
     const buf = await zip.generateAsync({ type: "arraybuffer" });
     expect(await shareMedia(buf)).toBe(buf);
+  });
+});
+
+describe("the foot accent strip (TEACH-215 part k)", () => {
+  it("reaches the file over the slide's shapes, in the accent, 14px at 1440; never on the cover", async () => {
+    const theme = getTheme("treehouse");
+    const { xml } = await exportDeck(theme, [slide("a", []), slide("b", [], { kind: "title" })]);
+    const content = await xml(1);
+    expect(geometries(content)).toEqual(["rect"]);
+    expect(content).toContain(theme.colors.accent.slice(1).toUpperCase());
+    expect(geometries(await xml(2))).toEqual([]);
+  });
+});
+
+describe("the foot strip in PPTX (TEACH-215 part k, gold values)", () => {
+  // Treehouse's gold: `.footbar` 14px at 1440 (9.3333pt) in `--accent` #245F28, never on the cover.
+  it("a content slide ends with a full-width 9.3333pt #245F28 rect at the foot; the cover has none", async () => {
+    const theme = getTheme("treehouse");
+    const { xml } = await exportDeck(theme, [slide("c", []), slide("t", [], { kind: "title" })]);
+    const content = await xml(1);
+    const cover = await xml(2);
+    expect(geometries(content)).toEqual(["rect"]);
+    expect(content).toContain('<a:srgbClr val="245F28"');
+    // 960 x 540 pt slide at 12700 EMU per pt: y 530.6667pt, h 9.3333pt, w 960pt.
+    // The last transform on the slide is the strip's (the first is the shape tree's own).
+    const off = [
+      ...content.matchAll(/<a:off x="(\d+)" y="(\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/g),
+    ].at(-1);
+    const [x, y, w, h] = (off?.slice(1) ?? []).map(Number) as number[];
+    expect(x).toBe(0);
+    expect(Math.abs((y as number) / 12700 - 530.6667)).toBeLessThan(0.05);
+    expect(Math.abs((w as number) / 12700 - 960)).toBeLessThan(0.05);
+    expect(Math.abs((h as number) / 12700 - 9.3333)).toBeLessThan(0.05);
+    expect(geometries(cover)).toEqual([]);
   });
 });
