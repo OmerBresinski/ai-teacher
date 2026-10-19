@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { Writable } from "node:stream";
 import { createFakeAi } from "@tj/ai/testing";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
+import pino from "pino";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
 import {
@@ -160,12 +162,22 @@ describe("ruling 163 under strict (placement)", () => {
     const { bank, made } = spyBank();
     const outcomes: PictureOutcome[] = [];
     const ai = createFakeAi({ script: [] });
+    const lines: Record<string, unknown>[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _enc, cb) {
+          lines.push(JSON.parse(String(chunk)));
+          cb();
+        },
+      }),
+    );
     const got = await placeWriterPicture({
       ask: ask(),
       lesson: sampleBriefLesson(),
       country: "UK",
       images,
-      deps: recordingDeps(ai),
+      deps: recordingDeps(ai, { logger }),
       bank,
       direct: async () => direction({ named: "person", period: "Tudor England, 1509-1547" }),
       onOutcome: (o) => outcomes.push(o),
@@ -174,6 +186,17 @@ describe("ruling 163 under strict (placement)", () => {
     expect(made).toHaveLength(0);
     expect(calls.some((c) => c.startsWith("commons:"))).toBe(true);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+    expect(outcomes[0]?.attempts).toBe(0);
+    // One outcome line per picture, codes only (a paid eval counts empty photos and why).
+    expect(lines.filter((l) => l.ev === "picture-outcome")).toEqual([
+      expect.objectContaining({
+        kind: "single",
+        outcome: "empty",
+        via: "none",
+        attempts: 0,
+        reason: "real-miss-no-fallback",
+      }),
+    ]);
   });
 
   test("a historical event is real only: no stock fallback, zero generation calls", async () => {

@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { HIGHLIGHT_SLOTS, type RichDoc, styledRun } from "@tj/domain/documents";
 import fixtures from "./fixtures/line-of-offset.json";
+import { FONT_STACKS } from "./fonts";
 import { lineBreaks, lineOfOffset, runRects, runStyleOf } from "./text-lines";
-import { charAdvance, countLines, measureHeadless, quoteFaceOf } from "./text-measure";
+import { charAdvance, countLines, measureHeadless, quoteFaceOf, runWidth } from "./text-measure";
 import { v2Profile } from "./theme-v2";
 import { getTheme, THEMES } from "./themes";
 
@@ -244,5 +245,34 @@ describe("runRects with emoji, ZWJ sequences, combining marks and RTL (review of
     const at = lineOfOffset(text, i, "body", paper, 120);
     expect(at).toBeGreaterThan(0);
     expect(lineOfOffset(text, i + 1, "body", paper, 120)).toBe(at);
+  });
+});
+
+/*
+ * TEACH-215 part m: an 800 face measured in the 700 table came out about 2% short, so a stages name
+ * at Paper KS2 ("Young hen", 28.2px) counted one line in 147 and wrapped onto two in the browser.
+ * Widths are Chromium's canvas at 1000px (19 Oct 2026, the @fontsource-variable files the editor
+ * loads). The tables ignore kerning, so they may run wide, never short.
+ */
+describe("800 faces measure in their own advances (TEACH-215 part m)", () => {
+  const CHROMIUM: [keyof typeof FONT_STACKS, string, number][] = [
+    ["lexend", "Young hen", 5495],
+    ["lexend", "Metamorphosis", 7972],
+    ["lexend", "Caterpillar", 5639],
+    ["bricolage", "Young hen", 5184],
+    ["bricolage", "Metamorphosis", 7859],
+    ["bricolage", "Caterpillar", 5258],
+  ];
+  for (const [font, text, px] of CHROMIUM)
+    test(`${font} 800 "${text}" is never measured short of the browser`, () => {
+      const w = runWidth(text, FONT_STACKS[font], 800, 1000);
+      // Within 0.2%: kerning puts Chromium a hair either way (Bricolage "Metamorphosis" 7851 vs
+      // 7859, 0.1% under); master's 700 table ran 0.8-1.9% short.
+      expect(w).toBeGreaterThanOrEqual(px * 0.998);
+      expect(w).toBeLessThan(px * 1.02);
+    });
+
+  test("Paper's KS2 stages name 'Young hen' at 28.2px counts two lines in 147", () => {
+    expect(countLines("Young hen", "heading", paper, 147, 800, 28.2)).toBe(2);
   });
 });

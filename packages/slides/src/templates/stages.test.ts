@@ -7,11 +7,12 @@ import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, mix, type Stage, type TemplateInput } from "./index";
 import { ROW_NAMES } from "./items-row";
+import type { Age } from "./items-row-deps";
 import { v2Colors } from "./items-row-deps";
-import { STAGES_NAMES, stagesPaths } from "./stages";
+import { STAGES_NAMES, stageOffered, stagesPaths } from "./stages";
 import { measureCell } from "./stages-capacity";
 import CAPACITY from "./stages-capacity.json" with { type: "json" };
-import { STAGE_CASES } from "./stages-fixtures";
+import { STAGE_CASES, STAGE_PHOTO } from "./stages-fixtures";
 
 /*
  * TEACH-75 part ac (C4): stages, 3-6 named frames joined by block arrows (gold
@@ -310,5 +311,110 @@ describe("stages: relayout (add and remove within min..max)", () => {
     const { paths } = relayout(ref, theme, "ks2", "g");
     expect(Object.values(paths)).toContain("stages.4.line");
     expect(paths["g:stages.0.name"]).toBe("stages.0.name");
+  });
+});
+
+/*
+ * TEACH-215 part m: Paper KS2's chicken case counted "Young hen" on one line and the browser drew
+ * two, so "hen" printed over the stage's line. Every name and line, in every theme, KS1-KS3, 3-6
+ * frames, with and without pictures, at the longest names the table allows, sits clear of the box
+ * under it at the lines it counts in its own drawn width and weight.
+ */
+type TextEl = Extract<SlideElement, { type: "text" }>;
+describe("stages: a name never prints over its line (TEACH-215 part m)", () => {
+  const photo = (alt: string) => ({ photo: STAGE_PHOTO, alt, aspect: 4 / 3 });
+  const CHICKEN = [
+    ["Egg", "The hen sits on it to keep it warm."],
+    ["Chick", "The chick pecks its way out of the shell."],
+    ["Young hen", "It grows adult feathers and gets bigger."],
+    ["Hen", "A grown hen lays eggs of her own."],
+  ];
+  const chicken: TemplateInput = {
+    template: "stages",
+    heading: "A chick grows into a hen",
+    stages: CHICKEN.map(([name, line]) => ({
+      name: name ?? "",
+      line: line ?? "",
+      picture: photo(name ?? ""),
+    })),
+  };
+  /** Each name's and line's box height in lines, after checking the name sits clear of its line. */
+  const clear = (els: SlideElement[]) => {
+    const names = byName(els, STAGES_NAMES.name) as TextEl[];
+    const lines = byName(els, STAGES_NAMES.line) as TextEl[];
+    const inLines = (e: TextEl) => {
+      const st = e.style as { fontSize: number; lineHeight: number };
+      return Math.round(e.h / (st.fontSize * st.lineHeight));
+    };
+    names.forEach((n, i) => {
+      const under = lines[i];
+      if (under) expect(n.y + n.h).toBeLessThanOrEqual(under.y + 0.5);
+    });
+    return { names: names.map(inLines), lines: lines.map(inLines) };
+  };
+  // Box heights in lines, read off the layout (19 Oct 2026, after the 800 table and the fixed-size edge).
+  const PIN_CHICKEN = { names: [1, 1, 1, 1], lines: [3, 4, 3, 3] };
+  test("Paper KS2 chicken: 'Young hen' is one line, at a size Chromium draws on one line", () => {
+    const els = lay(chicken, "ks2").slide.elements;
+    const n = byName(els, STAGES_NAMES.name)[2] as TextEl;
+    const st = n.style as { fontSize: number };
+    // Chromium's Lexend 800 "Young hen": 5.495em, less Paper's -0.03em tracking on 9 letters.
+    expect((5.495 - 9 * 0.03) * st.fontSize).toBeLessThanOrEqual(n.w);
+    expect(clear(els)).toEqual(PIN_CHICKEN);
+  });
+
+  // Every name and line box, in lines, summed over the 16 themes and every cell (19 Oct 2026).
+  const PIN_TOTAL: Record<string, number> = { ks1: 4928, ks2: 8092, ks3: 8268 };
+  const AGE: Record<string, Age> = { ks1: "early", ks2: "primary", ks3: "secondary" };
+  const WORDS = [
+    "Metamorphosis",
+    "Transportation",
+    "Germination",
+    "Pollination",
+    "Hibernation",
+    "Caterpillar",
+  ];
+  for (const ks of ["ks1", "ks2", "ks3"] as const)
+    test(`${ks}: every theme, 3-6 frames, icons and pictures, longest names`, () => {
+      let total = 0;
+      for (const cell of (
+        CAPACITY as Record<
+          string,
+          { n: number; vis: string; name: { hardMax: number }; line: { hardMax: number } }[]
+        >
+      )[AGE[ks] as string] ?? [])
+        for (const two of [false, true]) {
+          const input: TemplateInput = {
+            template: "stages",
+            heading: "How a fossil forms",
+            stages: Array.from({ length: cell.n }, (_, i) => {
+              const name = (WORDS[i % 6] as string).slice(0, cell.name.hardMax);
+              return {
+                name: two
+                  ? `${name} ${(WORDS[(i + 3) % 6] as string).toLowerCase().slice(0, 4)}`
+                  : name,
+                line: "Young animals grow and change as they get older and many of them".slice(
+                  0,
+                  cell.line.hardMax,
+                ),
+                icon: "wheat",
+                ...(cell.vis === "pictures" ? { picture: photo(name) } : {}),
+              };
+            }),
+          };
+          for (const t of THEMES) {
+            const got = clear(lay(input, ks, t).slide.elements);
+            total += [...got.names, ...got.lines].reduce((a, b) => a + b, 0);
+          }
+        }
+      expect(total).toBe(PIN_TOTAL[ks] as number);
+    });
+
+  test("six pictured stages are not offered at KS2 or KS3; every other measured cell is", () => {
+    expect(stageOffered("primary", 6, "pictures")).toBe(false);
+    expect(stageOffered("secondary", 6, "pictures")).toBe(false);
+    expect(stageOffered("primary", 6, "icons")).toBe(true);
+    expect(stageOffered("secondary", 5, "pictures")).toBe(true);
+    expect(stageOffered("early", 5, "pictures")).toBe(true);
   });
 });
