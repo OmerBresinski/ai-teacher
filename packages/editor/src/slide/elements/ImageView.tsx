@@ -152,6 +152,11 @@ function Picture({
         height: "100%",
         overflow: "hidden",
         borderRadius: radius || undefined,
+        // Geometric's hexagon cover (TEACH-215 part c): the same outline PPTX's preset draws.
+        clipPath:
+          element.mask === "hexagon"
+            ? "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)"
+            : undefined,
         // A photo waits on the slide's surface; a drawing (a library icon, an svg data URI) keeps
         // its own transparency, so it never sits in a white box on a coloured ground (TEACH-310 b).
         background: isDrawing(src) ? undefined : theme.colors.surface,

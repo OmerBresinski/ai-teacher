@@ -3,8 +3,8 @@ import c1 from "./bundles/pilot-v4.5/base-KS1.schema.json" with { type: "json" }
 import c2 from "./bundles/pilot-v4.5/base-KS2.schema.json" with { type: "json" };
 import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" };
 import type { WriterStage } from "./schema";
-import { MIN_SHOWN_WORDS, offerable, shownWords } from "./shown-cap";
-import { defCaps, fitsLines } from "./slot-fill";
+import { MIN_SHOWN_WORDS, offerable, PLAN_SHARE, shownFor } from "./shown-cap";
+import { defCaps, fitNeedKey, fitsLines, measuredFitDefs } from "./slot-fill";
 
 /*
  * The fit layouts' Fits, generated (loop 1 prompt part, 17 Oct 2026; build/LOG-loop1-prompt.md).
@@ -59,17 +59,19 @@ function countOf(key: string): { family: string; count?: number } {
 
 /** One layout's fits (`layout~key` defs) in the order the caps schema gives them. */
 function fitDefs(stage: WriterStage, layout: string): [string, J][] {
-  const defs = CAPS[stage].$defs as Record<string, J>;
+  const own = CAPS[stage].$defs as Record<string, J>;
+  // The caps code checks: the measured fit table over v4.5's (pilot-pack's caps request).
+  const defs = { ...own, ...measuredFitDefs(own, stage) };
   const out = Object.entries(defs).filter(([k]) => k.startsWith(`${layout}~`));
   if (!out.length) throw new Error(`fit fits: no ${layout} fits at ${stage}`);
   return out;
 }
 
 /** The fewest words a fit's floored fields are shown (Infinity when it has none). */
-function bodyWords(stage: WriterStage, layout: string, def: J): number {
+function bodyWords(stage: WriterStage, layout: string, def: J, fitKey = ""): number {
   const caps = defCaps(def)
     .filter(([p, n]) => n > 0 && floored(layout, p))
-    .map(([, n]) => shownWords(n, stage));
+    .map(([p, n]) => shownFor(n, stage, fitNeedKey(layout, p, fitKey)));
   return caps.length ? Math.min(...caps) : Number.POSITIVE_INFINITY;
 }
 
@@ -79,7 +81,7 @@ export function fitOffer(stage: WriterStage): Record<string, string[]> {
   for (const layout of FIT_LAYOUTS) {
     const fits = fitDefs(stage, layout).map(([k, def]) => {
       const key = k.slice(layout.length + 1);
-      return { key, ...countOf(key), words: bodyWords(stage, layout, def) };
+      return { key, ...countOf(key), words: bodyWords(stage, layout, def, key) };
     });
     const keep = new Set<string>();
     for (const family of new Set(fits.map((f) => f.family))) {
@@ -119,7 +121,10 @@ export function headingWords(stage: WriterStage): number {
   return Number(fitSlots(stage).heading);
 }
 
-/** Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's `Fits: ….` */
+/**
+ * Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's
+ * `Fits: ….`, and `plan-share` (the flow step's headroom, `PLAN_SHARE`).
+ */
 export function fitSlots(stage: WriterStage): Record<string, string> {
   const offer = fitOffer(stage);
   const $defs: J = {};
@@ -139,7 +144,9 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
     out[layout] = line;
   }
   for (const id of FIT_ACTIVITIES)
-    out[id] = `Fits: ${activityFitsLine(id as WriterActivity, stage)}.`;
+    out[id] = `Fits: ${activityFitsLine(id as WriterActivity, stage, true)}.`;
+  // The flow step's headroom (loop 1b): a share of the shown Fits, never a typed number.
+  out["plan-share"] = `${Math.round(PLAN_SHARE * 100)}%`;
   return out;
 }
 

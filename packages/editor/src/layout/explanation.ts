@@ -16,7 +16,7 @@
  * teacher has put under them.
  */
 
-import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
+import { SLIDE_H, type Slide, type SlideElement, type Theme } from "@tj/domain/documents";
 import {
   EXPLANATION_HEADING,
   EXPLANATION_PLACEHOLDER,
@@ -28,6 +28,7 @@ import {
   panelHeight,
   panelType,
   RESERVED_LINES,
+  resolveFontSize,
   resolveTextStyle,
   SAFE,
   SAFE_BOTTOM,
@@ -226,5 +227,69 @@ export function explanationLayout({
     // A panel with no room for its heading is not a panel; the editor shows the
     // overflow warning instead of a sliver of a card.
     collapsed: h < chrome,
+  };
+}
+
+/** Gap between the lowest card and the answer line, and the smallest lane worth having. */
+export const ANSWER_LINE_GAP = 19;
+const ANSWER_LINE_MIN_LANE = 48;
+export const ANSWER_LINE_RULE_W = 3;
+
+export type AnswerLineBox = {
+  x: number;
+  y: number;
+  w: number;
+  /** The lane it may fill (its max height). */
+  available: number;
+  /** The text's own height, at most `available`: the box the words take. */
+  h: number;
+  size: number;
+  lineHeight: number;
+  overflowing: boolean;
+};
+
+/**
+ * Where the plain reveal copy (`Explanation` in `SlideView`: an open response's model answer, a
+ * reason with no "Why?" panel) is drawn: under the options, or under the lowest element when there
+ * are none, anchored by its top. Deterministic in every mode (no measurement), so capture and SSR
+ * agree with the editor; ~0.5em average advance is close enough to pick a stop. When the lane is
+ * too short it steps the type down one stop and, failing that, says so (`overflowing`).
+ */
+export function answerLineLayout({
+  slide,
+  theme,
+  text,
+}: {
+  slide: Pick<Slide, "elements">;
+  theme: Theme;
+  text: string;
+}): AnswerLineBox {
+  const options = slide.elements.filter((e) => e.type === "option");
+  const anchors = options.length > 0 ? options : slide.elements;
+  const below = anchors.reduce<number>((m, e) => Math.max(m, e.y + e.h), SAFE.y);
+  const top = Math.min(below + ANSWER_LINE_GAP, SLIDE_H - SAFE.y - ANSWER_LINE_MIN_LANE);
+  const available = SLIDE_H - SAFE.y - top;
+
+  const lineHeight = theme.lineHeights.small;
+  const textW = SAFE.w - ANSWER_LINE_RULE_W - ANSWER_LINE_GAP;
+  const heightAt = (size: number) =>
+    Math.ceil(
+      Math.max(1, Math.ceil(text.length / Math.max(1, Math.floor(textW / (size * 0.5))))) *
+        size *
+        lineHeight,
+    );
+
+  const base = resolveFontSize(theme, "small");
+  const stepped = Math.max(fontFloor("small"), Math.round(base * 0.86));
+  const size = heightAt(base) <= available ? base : stepped;
+  return {
+    x: SAFE.x,
+    y: top,
+    w: SAFE.w,
+    available,
+    h: Math.min(available, heightAt(size)),
+    size,
+    lineHeight,
+    overflowing: heightAt(size) > available,
   };
 }

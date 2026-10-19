@@ -24,6 +24,14 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   "night-lab": ["#F2B551", "#D083A6", "#9D8CC6", "#ECEDEF"],
   beacon: ["#0A46C8", "#7A5200", "#0E6B78", "#B0306A"],
   paper: ["#A94A18", "#4A5D8C", "#0E6B78", "#B0306A"],
+  // Round 5 themes (TEACH-215 part c): tokens.json cat-1..4-ink.
+  poster: ["#A8112D", "#014580", "#7A5805", "#065650"],
+  storytime: ["#A41940", "#014580", "#7A5805", "#005553"],
+  scrapbook: ["#9C2A44", "#014580", "#7A5805", "#055452"],
+  calm: ["#792235", "#01305C", "#604501", "#003D3B"],
+  geometric: ["#9C2A44", "#014580", "#7A5805", "#055452"],
+  "dark-slate": ["#FFAEB7", "#8FB6E3", "#F9DBA6", "#91C8C6"],
+  "dark-ember": ["#FEABB5", "#85B7EE", "#FFDA97", "#84CBC8"],
 };
 
 /** A theme's option colours; one the table does not know takes Splash's, or Night Lab's when dark. */

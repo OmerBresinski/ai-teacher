@@ -6,7 +6,7 @@ import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
 import { choiceMarks, choiceText } from "../slide/elements/choice";
-import { buildSlidePlan, exportLessonPptx } from "./pptx";
+import { buildSlidePlan, exportLessonPptx, hexagonAdj } from "./pptx";
 
 /*
  * TEACH-256 part b: the hinge reveals in one click, so PowerPoint gets one more build slide: the
@@ -161,3 +161,16 @@ function shapes(xml: string): Sp[] {
     };
   });
 }
+
+describe("the hexagon preset matches the editor's outline (TEACH-215 part c)", () => {
+  // ECMA-376 `hexagon`: x1 = ss * adj / 100000. The editor cuts 25% of the width.
+  for (const [w, h] of [
+    [413, 373],
+    [32, 32],
+    [48, 44],
+    [44, 48],
+  ] as const)
+    it(`${w}x${h}: the side points sit at 25% of the width`, () => {
+      expect((Math.min(w, h) * hexagonAdj(w, h)) / 100_000).toBeCloseTo(w * 0.25, 1);
+    });
+});

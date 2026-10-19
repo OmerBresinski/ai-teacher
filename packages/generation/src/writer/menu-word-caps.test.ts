@@ -128,9 +128,10 @@ describe("menuWordCaps says what the menu prints", () => {
     });
 
     test(`${stage} practice and exit-ticket`, () => {
-      const [plain = "", pic = ""] = fits(LAYOUT_WRITER_MENUS.practice[stage]).split(
-        "with a picture or diagram:",
-      );
+      // Decision 30: counts past WORD_TASK_MAX carry the calculation-only qualifier.
+      const [plain = "", pic = ""] = fits(LAYOUT_WRITER_MENUS.practice[stage])
+        .replaceAll(", only when every task is a one-line calculation", "")
+        .split("with a picture or diagram:");
       expect(caps.practice.plain).toEqual(clauses(plain, "task"));
       expect(caps.practice.picture).toEqual(clauses(pic, "task"));
       expect(caps["exit-ticket"].questions).toEqual(

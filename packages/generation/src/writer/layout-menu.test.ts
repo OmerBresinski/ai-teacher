@@ -229,6 +229,16 @@ describe("writer system text", () => {
   });
 });
 
+describe("split-compare at KS2: three pictured sides stay off the menu", () => {
+  // Ruling 162 amended by Greg 18 Oct (item 31 A) measures KS2 three pictured sides at 4 words a
+  // side; that reads choppy, so the menu keeps pictures to 2 sides at KS2, as before the change.
+  test("KS2 offers pictures on 2 sides only, never a 3-side pictured cell", () => {
+    const line = SPLIT_COMPARE_WRITER_MENU.KS2;
+    expect(line).toContain("every side carries a picture (2 sides only)");
+    expect(line).not.toContain("3 sides with pictures");
+  });
+});
+
 /*
  * TEACH-110 part ae (build/CRAMMING-ROOT-CAUSE.md): a description that promised "a sentence or two"
  * over a 7-word cell read as a length to reach. The length it names starts at the tightest cell.

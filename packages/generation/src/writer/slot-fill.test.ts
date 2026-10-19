@@ -3,9 +3,10 @@ import { writerBundle } from "./bundle";
 import { charsOver, fitTable } from "./fixes";
 import { replayRun, replayServices } from "./replay-fixture";
 import { type WriterStage, writerSchema } from "./schema";
-import { shownWords, writerStageOfKey } from "./shown-cap";
+import { shownFor, writerStageOfKey } from "./shown-cap";
 import {
   fitKey,
+  fitNeedKey,
   fitsLines,
   SHAPES,
   slotFillArrival,
@@ -247,7 +248,7 @@ describe("the prompt", () => {
         if (typeof lead?.maxLength === "number")
           expect(line).toMatch(
             new RegExp(
-              `\\b${key}\\b[^;]* ${Math.max(1, shownWords(lead.maxLength, writerStageOfKey(st)))}\\b`,
+              `\\b${key}\\b[^;]* ${Math.max(1, shownFor(lead.maxLength, writerStageOfKey(st), fitNeedKey(layout, props.lead ? "lead" : "stem", key)))}\\b`,
             ),
           );
       }

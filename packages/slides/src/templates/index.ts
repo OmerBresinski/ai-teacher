@@ -27,11 +27,15 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
+import { composeCover } from "../cover-comps";
 import { uid } from "../factories";
+import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
+import TOKENS from "../themes/tokens.json" with { type: "json" };
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
 import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
 import { type GridCard, layoutCardsGrid } from "./cards-grid";
@@ -63,6 +67,7 @@ import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-co
 // TEACH-75 part ac (C4): stages.
 import { layoutStages, type StageItem } from "./stages";
 import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
+import { withTitleBand } from "./title-band";
 // TEACH-17 part b (C1): the worked example.
 import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 
@@ -94,6 +99,9 @@ export type RowField = FieldReport;
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
 /* ------------------------------------------------------------------ */
+
+/** The cover's picture beside the column, as a share of its old size (UX ruling 25 A). */
+const COVER_PICTURE = 0.9;
 
 export const G = {
   margin: 64,
@@ -132,6 +140,18 @@ export function templateScale(theme: Theme, stage: Stage): Scale {
 /** Room past a fixed title's line boxes for its ink (descenders, accents), as a share of its size. */
 const TITLE_INK_MARGIN = 0.2;
 const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
+/**
+ * A role's line height on a theme. A round 5 face that needs a taller title line (Scrapbook's
+ * Playpen Sans, tokens `lh-title` 1.14: its "y" and "g" hang below a 1.06 line box) takes it for
+ * the cover title, the one fixed box that clips; a heading grows with its lines and never clips.
+ * Every other theme keeps the kit's leading byte for byte.
+ */
+function lhOf(t: Theme, role: Role): number {
+  const base = LH[role];
+  if (role !== "title" || !ROUND5_THEME_IDS.has(t.id)) return base;
+  const own = Number((TOKENS as Record<string, Record<string, string>>)[t.id]?.["lh-title"]);
+  return Number.isFinite(own) && own > base ? own : base;
+}
 
 /* ------------------------------------------------------------------ */
 /* Inputs                                                              */
@@ -276,6 +296,8 @@ export type TemplateInput = RegisteredFields & {
   explanation?: string;
   /** Question set, practice, exit ticket: one answer per question, hidden until revealed. */
   answers?: string[];
+  /** Question set, practice, exit ticket: each answer's working, by the same index ("" for none). */
+  working?: string[];
   /**
    * Activities: the cards, each one word or phrase and one single-subject picture slot, in the
    * answer's order (pairs as given, a sequence in its right order); the template shuffles them.
@@ -429,7 +451,7 @@ export type Ctx = {
   /** `LayoutOptions.objectiveCards` (UX ruling 203). */
   objectiveCards?: boolean;
   /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
-  panelNoVisual?: "narrow" | "icon";
+  panelNoVisual?: "plain" | "icon";
   /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
   panelIconBack?: "ring" | "none" | "soft";
   /** `LayoutOptions.setTint` (TEACH-75 part w). */
@@ -482,8 +504,15 @@ const presetOf = (r: Role) => (r === "title" ? "title" : r === "heading" ? "head
 const weightOf = (r: Role, t: Theme) =>
   r === "title" || r === "heading" ? t.weights.heading : r === "lead" ? 700 : t.weights.body;
 
-/** Height of `text` set in `role` at width `w`. */
-function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): number {
+/** Height of `text` set in `role` at width `w` (`lh`: a layout's own line height, else the role's). */
+function measure(
+  c: Ctx,
+  text: string,
+  role: Role,
+  w: number,
+  weight?: number,
+  lh?: number,
+): number {
   const size = c.s[role];
   const lines = countLines(
     plain(text),
@@ -493,7 +522,7 @@ function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): 
     weight ?? weightOf(role, c.t),
     size,
   );
-  return Math.ceil(lines * size * LH[role]);
+  return Math.ceil(lines * size * (lh ?? lhOf(c.t, role)));
 }
 
 function text(
@@ -507,9 +536,13 @@ function text(
     align?: "left" | "center";
     boldLabel?: boolean;
     name?: string;
+    /** A layout's own line height (the gold's), drawn and measured; else the role's. */
+    lineHeight?: number;
+    /** The size is the layout's gold size, drawn as given (`TextStyle.fixedSize`, ruling 21 A). */
+    fixedSize?: boolean;
   } = {},
 ): TextElement {
-  const h = measure(c, value, role, rect.w, extra.weight);
+  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight);
   const el: TextElement = {
     id: uid(),
     type: "text",
@@ -523,8 +556,9 @@ function text(
       preset: presetOf(role),
       autoHeight: true,
       fontSize: c.s[role],
-      lineHeight: LH[role],
+      lineHeight: extra.lineHeight ?? lhOf(c.t, role),
       fontWeight: extra.weight ?? weightOf(role, c.t),
+      ...(extra.fixedSize ? { fixedSize: true } : {}),
       padding: 0,
       ...(extra.color ? { color: extra.color } : {}),
       ...(extra.align ? { align: extra.align } : {}),
@@ -613,7 +647,8 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: str
   c.els.push({
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    // A theme with hexagon badges (Geometric, THEMING.md section 6) draws every number marker so.
+    shape: surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse",
     x,
     y: Math.round(y),
     w: d,
@@ -671,7 +706,7 @@ function heading(c: Ctx, value: string) {
     { name: "Heading" },
   );
   if (el.y + el.h > G.band.y - 6)
-    c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
+    c.over.push(`heading ${Math.round(el.h / (c.s.heading * lhOf(c.t, "heading")))} lines`);
   c.s = { ...c.s, heading: full };
   return el;
 }
@@ -1737,8 +1772,8 @@ export type LayoutOptions = {
   processLine?: boolean;
   /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
   objectiveCards?: boolean;
-  /** Panel list with no visual: a narrower panel (the default) or the group's icon large in it. */
-  panelNoVisual?: "narrow" | "icon";
+  /** Panel list with no visual: the title alone in the panel (the default) or the group's icon large in it. */
+  panelNoVisual?: "plain" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
   panelIconBack?: "ring" | "none" | "soft";
   /** Side by side: the cards in the theme's soft neutral, its sand (the default), or the accent's soft tint. */
@@ -1755,6 +1790,21 @@ export function layoutTemplate(
   theme: Theme,
   stage: Stage,
   opts: LayoutOptions = {},
+): TemplateResult {
+  return banded(layoutFitted(input, theme, stage, opts), theme);
+}
+
+/** The theme's title band under a content slide's heading, measured on the laid slide. */
+function banded(r: TemplateResult, theme: Theme): TemplateResult {
+  withTitleBand(r.slide.elements, theme);
+  return r;
+}
+
+function layoutFitted(
+  input: TemplateInput,
+  theme: Theme,
+  stage: Stage,
+  opts: LayoutOptions,
 ): TemplateResult {
   const { result, bodyFromHeading } = layoutOnce(input, theme, stage, opts);
   if (bodyFromHeading) return result;
@@ -1890,37 +1940,58 @@ function layoutOnce(
       const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
-      let ph = 444;
-      let pw = Math.round(ph * aspect);
-      if (pw > 520) {
-        pw = 520;
-        ph = Math.max(300, Math.round(pw / aspect));
-      }
-      if (aspect && pw < 240) pw = 240;
+      // UX ruling 25 A (Greg, 18 Oct): the picture beside the column is 10% smaller than it was
+      // (444pt tall, 520pt widest) and the column takes the room it frees (Paper's 300pt -> 352pt).
+      const box = (k: number) => {
+        let h = Math.round(444 * k);
+        let bw = Math.round(h * aspect);
+        if (bw > Math.round(520 * k)) {
+          bw = Math.round(520 * k);
+          h = Math.max(Math.round(300 * k), Math.round(bw / aspect));
+        }
+        if (aspect && bw < Math.round(240 * k)) bw = Math.round(240 * k);
+        return { pw: bw, ph: h };
+      };
+      const was = box(1);
+      const { pw, ph } = box(COVER_PICTURE);
       const px = G.right - pw;
-      const w = f ? Math.max(300, px - G.margin - 44) : 640;
-      // The title steps down from the stage's title size until its words fit the column (6 lines max).
-      let size = c.s.title;
+      // Today's column, plus every point the smaller picture gives back (its gap kept as it was).
+      const w = f ? Math.max(300, G.right - was.pw - G.margin - 44) + (was.pw - pw) : 640;
+      // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
+      // every theme, `coverType`) until its words fit the column in the gold's three lines.
+      const cv = coverType(c.t);
+      let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
       // "hyperinfla/tion"). Stepping down is the design, not a fault.
       // Round 2 (y10 title 521/444): the title and subtitle together must fit the 444pt column,
       // so a long title keeps stepping down (words whole) to the floor; only past it is it flagged.
-      const height = () => {
-        const t = Math.ceil(
-          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) * size * LH.title,
+      const titleH = () =>
+        Math.ceil(
+          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) *
+            size *
+            cv.titleLineHeight,
         );
-        return t + (input.lead ? 20 + measure(c, input.lead, "lead", w, 400) : 0);
-      };
+      // The question under the title at the cover's question size, regular weight.
+      const leadH = input.lead
+        ? Math.ceil(
+            countLines(plain(input.lead), "body", c.t, w, 400, cv.question) *
+              cv.question *
+              cv.questionLineHeight,
+          )
+        : 0;
+      // The gold's question is two lines (`questionLines`): the writer's cap holds it there
+      // (`cover-capacity.json`); a longer saved one still lays out, its box as tall as it needs.
+      const height = () => titleH() + (input.lead ? 20 + leadH : 0);
       const fits = () =>
-        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= (f ? 6 : 3) &&
+        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= cv.titleLines &&
         wordsFit(c, input.heading, "title", w, size) &&
         height() <= 444;
-      const floor = Math.round(c.s.heading * 0.8);
-      while (size > floor && !fits()) size -= 2;
+      while (size > cv.titleFloor + 0.01 && !fits())
+        size = Math.max(cv.titleFloor, size - cv.titleStep);
       c.s = { ...c.s, title: size };
-      if (!fits()) c.over.push(`title does not fit at ${size}pt`);
-      const tH = measure(c, input.heading, "title", w);
-      const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
+      if (!fits()) c.over.push(`title does not fit at ${Math.round(size * 10) / 10}pt`);
+      const tH = titleH();
+      const lH = leadH;
       const total = tH + (lH ? 20 + lH : 0);
       const y = Math.round(270 - total / 2);
       const titleEl = text(
@@ -1930,6 +2001,13 @@ function layoutOnce(
         { x: G.margin, y, w },
         { color: on, name: "Title" },
       );
+      titleEl.h = tH;
+      titleEl.style = {
+        ...titleEl.style,
+        fontSize: size,
+        fixedSize: true,
+        lineHeight: cv.titleLineHeight,
+      };
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
       if (input.lead) titleEl.style = { ...titleEl.style, valign: "bottom", autoHeight: false };
@@ -1938,7 +2016,7 @@ function layoutOnce(
       // on every side, padded by the same, so the words wrap and sit exactly where they did and
       // only the clip edge moves clear of the descenders (TEACH-152 part b). v2 themes only: an
       // old lesson on a v1 theme stays byte-identical (typed-callout guard).
-      if (input.lead && c.t.v2) {
+      if (input.lead && (c.t.v2 || ROUND5_THEME_IDS.has(c.t.id))) {
         const m = Math.ceil(size * TITLE_INK_MARGIN);
         Object.assign(titleEl, {
           x: titleEl.x - m,
@@ -1948,16 +2026,40 @@ function layoutOnce(
         });
         titleEl.style = { ...titleEl.style, padding: m };
       }
-      if (input.lead)
-        text(
+      if (input.lead) {
+        const q = text(
           c,
           input.lead,
           "lead",
           { x: G.margin, y: y + tH + 20, w },
           { color: on, weight: 400, name: "Subtitle" },
         );
+        q.h = lH;
+        q.style = {
+          ...q.style,
+          fontSize: cv.question,
+          fixedSize: true,
+          lineHeight: cv.questionLineHeight,
+        };
+      }
       if (total > 444) c.over.push(`title ${total}/444pt`);
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
+      // A theme with its own cover composition (Geometric's hexagon, `marks.cover`) sets a
+      // generated cover in it, as the look does a hand-made one: on its own ground (dot grid), the
+      // title and question in the theme's ink, the photo in the composition's frame.
+      if (f && "photo" in f && surfacesOf(c.t).marks.cover !== "type") {
+        background = {};
+        const plain = c.els.map((e) =>
+          e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
+            ? { ...e, style: { ...e.style, color: undefined, valign: "top" as const } }
+            : e,
+        );
+        const composed = composeCover(
+          { id: "cover", kind: "title", elements: plain, background: {} } as Slide,
+          c.t,
+        );
+        c.els.splice(0, c.els.length, ...composed.elements);
+      }
       break;
     }
     case "objectives": {
@@ -2400,7 +2502,7 @@ function layoutOnce(
           ruled: true,
           ...(input.instruction ? { after: input.instruction } : {}),
         });
-      c.question = listAnswers(qs, input.answers);
+      c.question = listAnswers(qs, input.answers, input.working);
       if (!c.question) delete c.question;
       break;
     }
@@ -2511,12 +2613,15 @@ function layoutOnce(
 export function listAnswers(
   questions: string[],
   answers: string[] | undefined,
+  working?: string[],
 ): QuestionData | undefined {
   const got = (answers ?? []).slice(0, Math.max(1, questions.length)).map((a) => a.trim());
   if (!got.some(Boolean)) return undefined;
   const modelAnswer =
     got.length > 1 ? got.map((a, i) => `${i + 1}. ${a || "…"}`).join("\n") : (got[0] ?? "");
-  return { type: "open-response", modelAnswer };
+  // The working stays its own field, one per answer line, never joined into the answer.
+  const work = got.map((a, i) => (a ? (working?.[i] ?? "").trim() : ""));
+  return { type: "open-response", modelAnswer, ...(work.some(Boolean) ? { working: work } : {}) };
 }
 
 /** Whether a template is one of the activity layouts (cards, groups, pointers). */

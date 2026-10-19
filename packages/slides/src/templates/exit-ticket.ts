@@ -159,6 +159,6 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
     const el = drawTask(c, s, q, { x: ix + b + WA.badgeGap, y: cy, w: tw });
     cy += Math.max(b, el.h) + pad;
   });
-  c.question = listAnswers(items, keptAnswers(input));
+  c.question = listAnswers(items, keptAnswers(input), keptAnswers(input, "working"));
   if (!c.question) delete c.question;
 }

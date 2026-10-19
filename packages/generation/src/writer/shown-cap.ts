@@ -1,3 +1,4 @@
+import NEED from "./content-need.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 
 /*
@@ -34,6 +35,13 @@ export const SHOWN_SHARE = 0.75;
  */
 export const MIN_SHOWN_WORDS = 5;
 
+/**
+ * Planning headroom (loop 1b, Greg 17 Oct 2026): at the flow step, an idea whose counted words
+ * need more than this share of its fit's shown words takes a roomier fit or two slides, decided
+ * while the slide count can still change. Rendered into the prompt by `{{fits:plan-share}}`.
+ */
+export const PLAN_SHARE = 0.8;
+
 /** A writer stage from a stage key (`KS1`, `KS2`, `KS3`, `KS4`, `KS3-5`, `KS5`). */
 export function writerStageOfKey(stageKey: string): WriterStage {
   if (stageKey === "KS1" || stageKey === "KS2") return stageKey;
@@ -55,15 +63,99 @@ export const shownWords = (chars: number, stage: WriterStage): number =>
   wordsWithin(shownChars(chars), stage);
 
 /**
+ * Characters a word in the capacity probes' own sample text (panel-list's and the hinge's pools,
+ * 5.4 with its space), which is also the KS2 quick-check gold's (v12/questions-b: 213 characters
+ * in 40 words). A comfortable cap the probe measured in characters holds this many words of
+ * ordinary text; `CHARS_PER_WORD` (the stored lessons' long-word p80) is kept for the hard maximum,
+ * so a long-worded field at the shown count runs tight, never over (18 Oct 2026).
+ */
+export const PROBE_CHARS_PER_WORD = 5.4;
+
+/** Fields shown their `probeRoom` instead of a share: the cover question (the title's lead). */
+export const PROBE_ROOM_KEYS: ReadonlySet<string> = new Set(["title.lead"]);
+
+/** The words a probe-measured comfortable cap holds, within the hard max at the stage's rate. */
+export function probeRoom(cap: number, hardMax: number, stage: WriterStage): number {
+  return Math.min(
+    Math.floor((cap + 1) / PROBE_CHARS_PER_WORD),
+    wordsWithin(Math.max(cap, hardMax), stage),
+  );
+}
+
+/**
+ * Content need (CAP-NEED-AUDIT.md, 18 Oct 2026): the words a good version of a field takes, p80
+ * per stage, checked in as data with its source (`content-need.json`). Keyed `layout.field`
+ * (`practice.task`, `hinge.option`, `visual-text.lead`, ...). Undefined is need unknown.
+ */
+/** The field's median need at a stage (`content-need.json`), or undefined when unknown. */
+export function needMedianOf(key: string, stage: WriterStage): number | undefined {
+  const row = (NEED as unknown as Record<string, Record<string, { median: number } | undefined>>)[
+    key
+  ];
+  return row?.[stage]?.median;
+}
+
+export function needOf(key: string | undefined, stage: WriterStage): number | undefined {
+  if (!key) return undefined;
+  const row = (NEED as unknown as Record<string, Record<string, { p80: number } | undefined>>)[key];
+  return row?.[stage]?.p80;
+}
+
+/**
+ * The words the writer is shown for a field with a known need: what the slide holds at comfort
+ * (`wordsWithin`, the room), never less than the need where the room allows it, never more than
+ * twice the need (a cap far above the need is read as a target and padded), and otherwise the 75%
+ * share. Need unknown keeps the 75% share (`shownWords`). The measured cap stays the hard limit.
+ */
+export function shownFor(
+  chars: number,
+  stage: WriterStage,
+  key?: string,
+  /** The room in characters when it is less than the measured cap (a pictured side's headroom). */
+  roomChars = chars,
+  /** The room in words when a probe measured it directly (the hinge's options per count). */
+  roomWords?: number,
+): number {
+  // The cover question (the title's lead): its one cap is both comfort and hard max, so its room
+  // is `probeRoom` with no 75% share (approved 18 Oct 2026, as for the quick check's questions).
+  if (key !== undefined && PROBE_ROOM_KEYS.has(key)) return probeRoom(chars, chars, stage);
+  const room = roomWords ?? wordsWithin(roomChars, stage);
+  const share = Math.min(shownWords(chars, stage), room);
+  const need = needOf(key, stage);
+  if (need === undefined) return share;
+  // A censored need (many stored fields pinned at their cap) is a lower bound, so twice it is no
+  // ceiling either: show the room (decision 32, 18 Oct: 3 sentence options of about 15-16 words).
+  if (isCensored(key, stage)) return room;
+  return Math.min(room, Math.max(share, need), Math.floor(2 * need));
+}
+
+/** The need row is a lower bound at this stage (`censored` in content-need.json). */
+export function isCensored(key: string | undefined, stage: WriterStage): boolean {
+  if (!key) return false;
+  const row = (
+    NEED as unknown as Record<string, Record<string, { censored?: boolean } | undefined>>
+  )[key];
+  return row?.[stage]?.censored === true;
+}
+
+/**
  * The longest prefix of `[count, words]` pairs (ascending counts) a menu may offer: every shown cap
  * at least `floor`, and no cliff, so one more item never leaves less than half the previous cap.
  * Counts past the first that fails are dropped too, so the offer stays contiguous.
  */
-export function offerable(pairs: [number, number][], floor = MIN_SHOWN_WORDS): [number, number][] {
+export function offerable(
+  pairs: [number, number][],
+  floor = MIN_SHOWN_WORDS,
+  /**
+   * Waive the no-cliff rule for a count whose words still hold the field's median need (practice
+   * and the exit ticket: CAP-NEED-AUDIT.md rows 1d, 3b). The floor always holds.
+   */
+  waive: (w: number) => boolean = () => false,
+): [number, number][] {
   const out: [number, number][] = [];
   for (const [n, w] of pairs) {
     const prev = out.at(-1)?.[1];
-    if (w < floor || (prev !== undefined && w * 2 < prev)) break;
+    if (w < floor || (!waive(w) && prev !== undefined && w * 2 < prev)) break;
     out.push([n, w]);
   }
   return out;

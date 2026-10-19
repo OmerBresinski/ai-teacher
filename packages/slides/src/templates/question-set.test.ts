@@ -74,10 +74,18 @@ const y3x5: Case = {
 };
 export const QUICK_CASES = { y3, y3x4, y6, y4f, y9 };
 /*
- * Deviation from the gold, measured: six Y6 questions fit the gold at 22 pt on one line, but the
- * KS2 scale stops at 25 pt (bodySmall), where they take two lines and pass 90% of the stage. So
- * six KS2 questions fit only when they are short; y6x6 is flagged, never squeezed.
+ * Six Y6 questions fit the gold at 22 pt (33 px) on one line. Ruling 162 amended by Greg 18 Oct
+ * (item 31 A): KS2 reading text at the golds' 33-34px on quick check, picture-with-points and
+ * split-compare. So y6x6 now fits at the gold's 22 pt; six long KS2 questions (y6x6long) still pass
+ * 90% of the stage at 22 pt on two lines and are flagged, never squeezed under it.
  */
+const y6x6long: Case = {
+  ...y6,
+  items: Array.from({ length: 6 }, (_, i) => [
+    `Explain in your own words why blood that leaves the lungs carries more oxygen than before (${i + 1}).`,
+    "Oxygen",
+  ]),
+};
 
 export const quickInput = (c: Case): TemplateInput => ({
   template: "question-set",
@@ -167,7 +175,13 @@ describe("quick check (TEACH-101 part g)", () => {
 
   test("past its maximum a quick check is over (red outline), never squeezed under the floor", () => {
     expect(quickCheckMax("ks1")).toBe(4);
-    expect(lay(y6x6).over.length).toBeGreaterThan(0);
+    // y6x6 fits at the KS2 gold's 22 pt on one line (ruling 162 amended, item 31 A); long six are over.
+    expect(lay(y6x6).over).toEqual([]);
+    const sizes = lay(y6x6).slide.elements.flatMap((e) =>
+      e.type === "text" && e.name === "Question" ? [e.style?.fontSize] : [],
+    );
+    expect(new Set(sizes)).toEqual(new Set([22]));
+    expect(lay(y6x6long).over.length).toBeGreaterThan(0);
     const short: Case = {
       stage: "ks2",
       heading: "Quick check: times tables",
@@ -187,7 +201,11 @@ describe("quick check (TEACH-101 part g)", () => {
         for (const e of lay(c, theme).slide.elements) {
           const st = e.type === "text" ? e.style : e.type === "shape" ? e.textStyle : undefined;
           if (!st?.fontSize) continue;
-          expect(st.fontSize).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
+          // The number badge is a label at the gold's badge size (TEACH-215 part j): caption floor.
+          const label = e.name === "surface:badge";
+          expect(st.fontSize).toBeGreaterThanOrEqual(
+            label ? MIN_FONT_SIZE.caption : MIN_FONT_SIZE.body,
+          );
           if (e.type === "text" && e.name !== "Heading")
             expect([e.name, resolveTextStyle(st, t).fontSize]).toEqual([e.name, st.fontSize]);
         }

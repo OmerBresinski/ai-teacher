@@ -362,20 +362,12 @@ describe("the deck builder", () => {
     ]);
   });
 
-  test("the guard and Answers slides follow the worksheet answer sheet (ruling 240)", () => {
+  test("the guard and Answers slides are made even with a worksheet answer key (ruling 260)", () => {
     const groups = answerGroupsOf(deck());
     expect(endAnswerSlides(groups, paper, "ks2").map((s) => s.answersRole)).toEqual([
       "guard",
       "answers",
     ]);
-    // r3 gold by default: a worksheet with its own key still gets the Answers slides.
-    expect(
-      endAnswerSlides(groups, paper, "ks2", { worksheetAnswerKey: true }).length,
-    ).toBeGreaterThan(0);
-    // Ruling 240 behind the one-line switch.
-    expect(
-      endAnswerSlides(groups, paper, "ks2", { worksheetAnswerKey: true, skipWithKey: true }),
-    ).toEqual([]);
     expect(endAnswerSlides([], paper, "ks2")).toEqual([]);
   });
 

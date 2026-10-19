@@ -3,7 +3,7 @@
  * Kept free of JSX so it can be imported from anywhere without cycles.
  */
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { answersOffSlide } from "@tj/domain/documents";
+import { answerKeyText, answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
 import type { ResolvedText } from "@tj/slides";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
@@ -176,13 +176,19 @@ export function optionChipLabel(element: { label?: string }, text: string): stri
 /**
  * Reveal copy shown beneath the options, if the question carries any. A practice or exit slide's
  * model answer is never drawn on the slide (`answersOffSlide`): it lives on the Answers slides.
+ * Nor is the model answer of a slide that reveals its own answers (`revealsOwnAnswers`, the quick
+ * check): its answers are already on the slide, so a second copy under them would land on its
+ * last question.
  */
-export function explanationText(slide: Pick<Slide, "kind" | "question">): string | null {
+export function explanationText(
+  slide: Pick<Slide, "kind" | "question" | "elements">,
+): string | null {
   const question = slide.question;
   if (!question || answersOffSlide(slide)) return null;
+  if (question.type === "open-response" && revealsOwnAnswers(slide)) return null;
   if (question.type === "true-false" || question.type === "multiple-choice")
     return question.explanation?.trim() || null;
-  if (question.type === "open-response") return question.modelAnswer?.trim() || null;
+  if (question.type === "open-response") return answerKeyText(question).trim() || null;
   return null;
 }
 

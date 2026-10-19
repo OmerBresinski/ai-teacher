@@ -9,7 +9,15 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { dimGround, dimInk, isClear, splitAlpha, surfaceStyle } from "@tj/slides/surfaces";
+import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
+import {
+  dimGround,
+  dimInk,
+  isClear,
+  splitAlpha,
+  surfaceStyle,
+  surfacesOf,
+} from "@tj/slides/surfaces";
 import { choiceText, HINGE_KEY } from "./choice";
 import { ElementBody } from "./ElementBody";
 
@@ -21,6 +29,8 @@ const DIM_PICTURE = 0.4;
 
 export type HingeMark = {
   ring: string;
+  /** The ring's width inside the card (Geometric), or 0 for the 3pt ring outside it. */
+  ringInset: number;
   keyFill: string;
   keyInk: string;
   radius: number;
@@ -30,11 +40,37 @@ export type HingeMark = {
     w: number;
     h: number;
     radius: number;
+    /** A key drawn as a polygon (Geometric's notch, a hexagon): the overlay is clipped to it. */
+    clip?: string;
+    /** The key element's own shape kind, so the PowerPoint reveal draws the same outline. */
+    shape: KeyShape;
     letter: string;
     fontSize: number;
   } | null;
   tick: { d: number; right: number; top: number };
 };
+
+const KEY_SHAPES = ["rounded", "notch", "hexagon", "octagon", "ellipse", "rect"] as const;
+type KeyShape = (typeof KEY_SHAPES)[number];
+function keyShape(e: SlideElement): KeyShape {
+  const k = e.type === "shape" ? e.shape : "rounded";
+  return (KEY_SHAPES as readonly string[]).includes(k) ? (k as KeyShape) : "rounded";
+}
+
+/** A CSS clip for a key drawn as a polygon, in the same box fractions as `ShapeView`. */
+function keyClip(shape: string, w: number, h: number, radius?: number): string | undefined {
+  const pts =
+    shape === "notch"
+      ? notchPoints(w, h, radius ?? Math.round(w * 0.22))
+      : shape === "hexagon"
+        ? markHexagonPoints()
+        : shape === "octagon"
+          ? octagonPoints(w, h)
+          : null;
+  return pts
+    ? `polygon(${pts.map((p) => `${(p.x * 100).toFixed(2)}% ${(p.y * 100).toFixed(2)}%`).join(", ")})`
+    : undefined;
+}
 
 /**
  * How the reveal marks a hinge card (TEACH-256 part b, v13 gold): ring, tick and the right card's
@@ -66,8 +102,11 @@ export function hingeMarkOf(
   const d = Math.round(keyEl.w * 0.78);
   const radius = keyEl.type === "shape" && keyEl.radius ? keyEl.radius : Math.round(keyEl.w * 0.24);
   const fontSize = keyEl.type === "shape" ? Number(keyEl.textStyle?.fontSize ?? 20) : 20;
+  const clip =
+    keyEl.type === "shape" ? keyClip(keyEl.shape, keyEl.w, keyEl.h, keyEl.radius) : undefined;
   return {
     ...roles,
+    ringInset: surfacesOf(theme).marks.rightRingInset,
     radius:
       "radius" in card && typeof card.radius === "number"
         ? card.radius
@@ -78,6 +117,8 @@ export function hingeMarkOf(
       w: keyEl.w,
       h: keyEl.h,
       radius,
+      ...(clip ? { clip } : {}),
+      shape: keyShape(keyEl),
       letter: choiceText(slide, keyEl.id),
       fontSize,
     },
@@ -254,7 +295,8 @@ export default function HingeMarks({
               zIndex: 800,
               pointerEvents: "none",
               borderRadius: m.radius,
-              boxShadow: `0 0 0 3px ${m.ring}`,
+              boxShadow:
+                m.ringInset > 0 ? `inset 0 0 0 ${m.ringInset}px ${m.ring}` : `0 0 0 3px ${m.ring}`,
             }}
           >
             {k ? (
@@ -266,10 +308,13 @@ export default function HingeMarks({
                   top: k.y - r.y,
                   width: k.w,
                   height: k.h,
-                  borderRadius: k.radius,
+                  borderRadius: k.clip ? 0 : k.radius,
+                  clipPath: k.clip,
                   background: m.keyFill,
                   color: m.keyInk,
                   fontSize: k.fontSize,
+                  // The key's letter is in the heading face, as on the slide.
+                  fontFamily: theme.fonts.title,
                 }}
               >
                 {k.letter}

@@ -134,23 +134,24 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
         template: "split-compare",
         sides: [
           { title: w(3), text: w(7), picture: {} },
-          { title: w(2), text: w(8), picture: {} },
+          { title: w(2), text: w(9), picture: {} },
         ],
       }),
     ).toEqual([
       "sides[0].title:3/3",
-      "sides[0].text:7/7",
+      "sides[0].text:7/8",
       "sides[1].title:2/3",
-      "sides[1].text:8/7",
+      "sides[1].text:9/8",
     ]);
     expect(
       kinds({
         template: "panel-list",
         heading: w(3),
         lead: w(6),
-        items: [1, 2, 3, 4].map(() => ({ text: w(5), picture: {} })),
+        items: [1, 2, 3, 4].map(() => ({ text: w(4), picture: {} })),
       }),
-    ).toEqual(["heading:3/3", "lead:6/6", ...[0, 1, 2, 3].map((i) => `items[${i}].text:5/5`)]);
+      // Four picture rows beside a lead: 4 words each in the 313 column (TEACH-205 part d).
+    ).toEqual(["heading:3/3", "lead:6/6", ...[0, 1, 2, 3].map((i) => `items[${i}].text:4/4`)]);
     expect(
       kinds({
         template: "items-row",
@@ -239,6 +240,51 @@ describe("plan-only fit check", () => {
       "fits",
     ]);
     expect(r.slides[5]?.layout).toBe("exit-ticket");
+  });
+
+  test("a flow that names its layout is checked against that layout, not its shape", () => {
+    const flow = [
+      { slide: 1, shape: "hook", layout: "title", size: "Title" },
+      { slide: 2, shape: "one big idea", layout: "objectives", size: "Objectives" },
+      // The shape would say panel-list; the declared layout is split-compare.
+      {
+        slide: 3,
+        shape: "a set of kinds or examples",
+        layout: "split-compare",
+        size: "Two sides, up to twenty-five words each",
+      },
+      { slide: 4, shape: "one big idea", layout: "visual-text points-2-fig", size: "Two points" },
+      { slide: 5, shape: "check", layout: "hinge", size: "Three options, five words each" },
+    ];
+    const r = planFit(flow, "KS2");
+    expect(r.slides.map((s) => s.layout)).toEqual([null, null, "split-compare", null, "hinge"]);
+    expect(r.slides[2]?.verdict).toBe("over");
+    expect(r.slides[3]?.verdict).toBe("unchecked");
+  });
+
+  test("a stem's or lead's words are not an item's; a run of per-item words gives its largest", () => {
+    expect(parseSize("Stem 9 words; four options of 5, 5, 4, 5 words", ["options"])).toEqual({
+      count: 4,
+      words: 5,
+    });
+    expect(parseSize("Lead 7 words; 3 items, 6 words each", ["items"])).toEqual({
+      count: 3,
+      words: 6,
+    });
+    expect(parseSize("Three questions, 8, 9 and 10 words", ["questions"])).toEqual({
+      count: 3,
+      words: 10,
+    });
+    expect(parseSize("2 tasks: 18/25, 16/25 words", ["tasks"])).toEqual({ count: 2, words: 18 });
+    expect(parseSize("Question 9/11; three options 4/5, 4/5, 4/5", ["options"])).toEqual({
+      count: 3,
+      words: 4,
+    });
+    // "need out of fit": the need is what is checked.
+    expect(parseSize("Stem 7 of 12 words; 3 options, 3 out of 5 words each", ["options"])).toEqual({
+      count: 3,
+      words: 3,
+    });
   });
 
   test("parses number words and digits", () => {

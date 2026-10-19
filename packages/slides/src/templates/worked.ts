@@ -21,6 +21,7 @@
  */
 import {
   type ImageElement,
+  type PathElement,
   type RichDoc,
   type RunStyleAttrs,
   type ShapeElement,
@@ -32,11 +33,11 @@ import { withBuilds } from "../diagrams/builds";
 import { buildCount, diagramElement, svgDataUrl, svgOfDataUrl } from "../diagrams/index";
 import { uid } from "../factories";
 import { arrowCubic } from "../paths/arrow";
-import { countLines, lineWidth } from "../text-measure";
+import { countLines, exactWidth, lineWidth, mathFaceOf } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
-import { MIN_FONT_SIZE } from "../themes";
-import { paintSurface } from "../themes/surfaces";
+import { notchPoints } from "../themes/marks";
+import { markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -90,8 +91,15 @@ const EQ_LH = 1.2;
 const SAY_LH = 1.12;
 /** The narrowest move column (two lines of a six-word move). */
 const MOVE_MIN_W = pt(200);
-/** The gold's move size per age. */
+/**
+ * The gold's sizes per age (ruling 21 A; `northstars-v12/worked/worked.css`: `--eq` 70 px and
+ * `--say` 36 px, primary 54 px and 34 px). The gold has no early sizes: KS1 reads primary's.
+ */
 const SAY_BASE: Record<AgeKey, number> = { early: pt(34), primary: pt(34), secondary: pt(36) };
+const EQ_BASE: Record<AgeKey, number> = { early: pt(54), primary: pt(54), secondary: pt(70) };
+/** The gold's smallest move (28 px) and check sum (30 px), before the stage's reading floor. */
+const SAY_MIN = pt(28);
+const CHECK_MIN = pt(30);
 
 const NEG = "−";
 const NBSP = " ";
@@ -141,7 +149,7 @@ function mathRuns(s: string, vars: readonly string[], hot: string, all?: string)
       const i = m.index ?? 0;
       if (i > at)
         out.push(colour ? styled(t.slice(at, i), { color: colour }) : { text: t.slice(at, i) });
-      out.push(styled(m[0], { font: "quote", ...(colour ? { color: colour } : {}) }));
+      out.push(styled(m[0], { font: "math", ...(colour ? { color: colour } : {}) }));
       at = i + m[0].length;
     }
     if (at < t.length)
@@ -290,16 +298,31 @@ const EQ_SQUEEZE: Record<AgeKey, number> = { early: 0.7, primary: 0.7, secondary
 export const eqFloorOf = (stage: Stage): number => EQ_FLOOR[ageOf(stage)];
 
 /**
- * The equations' size: the largest step on the theme's heading ladder that fits 0.7 of the row
- * pitch (the theme's own heading size at most); under the floor, the smallest step over it when
- * the pitch still has room for it.
+ * The equations' size (the gold's `worked.js`): the age's size, at most 0.62 of the row pitch, and
+ * 0.92 of that beside the panel. Under the floor, the floor itself when the pitch still has room
+ * for it.
  */
-function eqSize(c: Ctx, pitch: number, age: AgeKey): number {
-  const l = ladder(c, "heading");
-  const eq = stop(c, "heading", pitch * 0.7);
+function eqSize(pitch: number, age: AgeKey, model: boolean): number {
+  const eq = Math.min(EQ_BASE[age], pitch * 0.62) * (model ? 0.92 : 1);
   if (eq >= EQ_FLOOR[age]) return eq;
-  const up = [...l].reverse().find((s) => s >= EQ_FLOOR[age]);
-  return up !== undefined && up <= pitch * EQ_SQUEEZE[age] ? up : eq;
+  return EQ_FLOOR[age] <= pitch * EQ_SQUEEZE[age] ? EQ_FLOOR[age] : eq;
+}
+
+/** The smallest move: the gold's 28 px, held at the stage's reading floor (ruling 162). */
+// Ruling 162 amended by Greg 18 Oct (item 26 n): gold sizes on cover question and worked steps.
+// The step text runs the gold's own ladder down to its 28px, under the stage's reading floor.
+const sayFloorOf = (_c: Ctx) => SAY_MIN;
+
+/**
+ * A fit ladder: `top` down to `floor` in `step`s, the floor itself last. Largest first. The gold's
+ * sizes step by whole px, so they sit between the stage's type steps and are drawn as given
+ * (`fixedSize`).
+ */
+function rungs(top: number, floor: number, step: number): number[] {
+  const out: number[] = [];
+  for (let s = top; s > floor + 1e-6; s -= step) out.push(s);
+  out.push(Math.min(top, floor));
+  return out;
 }
 
 type Plan = {
@@ -330,8 +353,8 @@ function plan(
   const checkTop = H - FOOT - checkH;
   const lastY = check ? checkTop - pt(70) : H - FOOT - pt(60);
   const pitch = nEq > 1 ? Math.min(PITCH_MAX, (lastY - row1) / (nEq - 1)) : PITCH_MAX;
-  const eq = eqSize(c, pitch, age);
-  const say = stop(c, "body", Math.max(MIN_FONT_SIZE.body, Math.min(SAY_BASE[age], pitch * 0.42)));
+  const eq = eqSize(pitch, age, model);
+  const say = Math.max(sayFloorOf(c), Math.min(SAY_BASE[age], pitch * 0.42));
   const right = model ? W - PANEL_W - pt(44) : W - X0;
   return {
     rows: nEq + (check ? 1 : 0),
@@ -344,6 +367,29 @@ function plan(
     model,
     right,
   };
+}
+
+/**
+ * An equation side's width at `size` as it is drawn (the gold's `meas()`): its words in the body
+ * face at their own 500 advances, each variable in the maths face (`mathFaceOf`, italic). The
+ * rounder 600-table `widthAt` put the "=" column and the moves 15-18 px right of the gold, which
+ * left the move column too narrow for the gold's 36 px moves (C11, THEME-AUDIT 18 Oct).
+ */
+function sideWidth(c: Ctx, text: string, size: number, vars: readonly string[]): number {
+  if (!text) return 0;
+  const body = resolveTextStyle({ preset: "body" }, c.t).fontFamily;
+  const math = mathFaceOf(c.t);
+  const parts = vars.length
+    ? text.split(new RegExp(`(?<![A-Za-z])(${vars.map(esc).join("|")})(?![A-Za-z])`))
+    : [text];
+  return parts.reduce(
+    (w, part, i) =>
+      w +
+      (i % 2 === 1
+        ? exactWidth(part, math.family, 500, size, math.italic)
+        : exactWidth(part, body, 500, size)),
+    0,
+  );
 }
 
 /** `text`'s width at `size` in the body face (one line, no padding). */
@@ -374,8 +420,9 @@ function textEl(
     doc: docOf(runs),
     style: {
       preset,
-      // Stored at the size every renderer draws at the bound stage; maths keeps the body face.
-      fontSize: resolveFontSize(c.t, preset, size),
+      // The gold's size (ruling 21 A), drawn as given at every stage; maths keeps the body face.
+      fontSize: size,
+      fixedSize: true,
       ...(preset === "heading" ? { fontFamily: c.t.fonts.body } : {}),
       lineHeight: EQ_LH,
       fontWeight: 500,
@@ -389,6 +436,12 @@ function textEl(
   c.els.push(el);
   return el;
 }
+
+/** The theme's offset block (Poster), in a given colour and at most 5pt off a small plate. */
+const offsetOf = (c: Ctx, color: string): Pick<ShapeElement, "shadow"> => {
+  const o = surfacesOf(c.t).marks.offset;
+  return o ? { shadow: { x: Math.min(5, o.d), y: Math.min(5, o.d), color } } : {};
+};
 
 function shape(c: Ctx, el: Omit<ShapeElement, "id" | "type">, step?: number): ShapeElement {
   const s = {
@@ -457,12 +510,18 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   // of the widest right side.
   const geom = (eq: number, model: boolean) => {
     const g = eq * 0.26;
-    const signW = widthAt(c, "=", eq);
+    const signW = sideWidth(c, "=", eq, []);
     const parts = lines.map((l) => {
       const at = l.eq.indexOf(" = ");
       const lhs = at < 0 ? l.eq : l.eq.slice(0, at);
       const rhs = at < 0 ? "" : l.eq.slice(at + 3);
-      return { lhs, rhs, sign: at >= 0, lw: widthAt(c, lhs, eq), rw: widthAt(c, rhs, eq) };
+      return {
+        lhs,
+        rhs,
+        sign: at >= 0,
+        lw: sideWidth(c, lhs, eq, vars),
+        rw: sideWidth(c, rhs, eq, vars),
+      };
     });
     const maxL = Math.max(...parts.map((r) => r.lw));
     const maxR = Math.max(...parts.map((r) => r.rw));
@@ -473,7 +532,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   };
   // Moves need a column: the equations step down the ladder (not under the floor) to make one;
   // a panel that still leaves none goes, and the text-only base stands on its own.
-  const sayMin = Math.min(...ladder(c, "body").filter((s) => s >= MIN_FONT_SIZE.body));
+  const sayMin = sayFloorOf(c);
   const roomy = (eq: number, model: boolean) => {
     if (!hasMoves) return true;
     const w = geom(eq, model).sayW;
@@ -483,7 +542,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     );
   };
   const down = (model: boolean) =>
-    ladder(c, "heading").find((s) => s <= p.eq && s >= floor && roomy(s, model));
+    rungs(p.eq, floor, pt(1)).find((s) => s >= floor && roomy(s, model));
   if (!roomy(p.eq, p.model)) {
     const eq = down(p.model);
     if (eq !== undefined) p = { ...p, eq };
@@ -506,7 +565,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   // A move takes one line if it fits, else two; type steps down only when two will not fit the pitch.
   const moveLines = (m: string, size: number) => countLines(m, "body", c.t, sayW, 600, size);
   const roomFor = (size: number) => Math.min(2, Math.floor((p.pitch + 4) / (size * SAY_LH)));
-  for (const s of ladder(c, "body").filter((s) => s < p.say && s >= MIN_FONT_SIZE.body))
+  for (const s of rungs(p.say, sayMin, pt(1)).slice(1))
     if (lines.some((l) => l.move && moveLines(l.move, p.say) > roomFor(p.say))) p.say = s;
 
   // The rail of badges: ghosts from the start, each row's badge and rail segment on its step.
@@ -515,35 +574,49 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const railX = X0 + BADGE / 2 - 1.5;
   const first = badgeY[0] ?? p.row1;
   const last = badgeY.at(-1) ?? first;
-  if (badgeY.length > 1)
-    shape(c, {
-      shape: "rect",
-      name: WORKED_NAMES.rail,
+  // A theme with dashed or dotted rules (Scrapbook, Geometric) draws its rail the same way.
+  const railDash = surfacesOf(c.t).roles.rule.dash;
+  const railPart = (name: string, y0: number, y1: number, fill: string, step?: number) => {
+    if (!railDash) {
+      shape(c, { shape: "rect", name, x: railX, y: y0, w: 3, h: y1 - y0, fill }, step);
+      return;
+    }
+    const el: PathElement = {
+      id: uid(),
+      type: "path",
+      name,
       x: railX,
-      y: first,
+      y: y0,
       w: 3,
-      h: last - first,
-      fill: col.rule,
-    });
+      h: y1 - y0,
+      points: [
+        { x: 0.5, y: 0 },
+        { x: 0.5, y: 1 },
+      ],
+      stroke: fill,
+      strokeWidth: 2.5,
+      dash: railDash,
+      dashGap: railDash === "dotted" ? 1.8 : 1.4,
+      ...(step ? { revealStep: step } : {}),
+    };
+    c.els.push(el);
+  };
+  // The rail still to come: the theme's own colour when it sets one (Geometric), else the rule.
+  const ahead = surfacesOf(c.t).marks.railAhead ?? col.rule;
+  if (badgeY.length > 1) railPart(WORKED_NAMES.rail, first, last, ahead);
   badgeY.forEach((y, i) => {
-    if (i > 0)
-      shape(
-        c,
-        {
-          shape: "rect",
-          name: WORKED_NAMES.railFill,
-          x: railX,
-          y: badgeY[i - 1] as number,
-          w: 3,
-          h: y - (badgeY[i - 1] as number),
-          fill: ink,
-        },
-        i + 1,
-      );
+    if (i > 0) railPart(WORKED_NAMES.railFill, badgeY[i - 1] as number, y, ink, i + 1);
   });
+  const ghostLook = markLook(c.t, "badge", BADGE, c.t.colors.background, col.rule);
   for (const y of badgeY)
     shape(c, {
-      shape: "ellipse",
+      shape:
+        ghostLook.shape === "rounded" || ghostLook.shape === "notch"
+          ? ghostLook.shape
+          : ghostLook.shape === "hexagon"
+            ? "hexagon"
+            : "ellipse",
+      ...(ghostLook.radius != null ? { radius: ghostLook.radius } : {}),
       name: WORKED_NAMES.ghost,
       x: X0,
       y: y - BADGE / 2,
@@ -554,25 +627,31 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       strokeWidth: 2,
     });
   const badgeSize = stop(c, "body", BADGE * 0.46);
-  // The newest row's badge is the accent (gold: `.lb.now`); the next click lays the ink badge over
-  // it, so only the latest row is red. The last row's badge stays red.
-  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) =>
-    shape(
+  // The newest row's badge is the theme's now badge (gold: `.lb.now`); the next click lays the done
+  // badge over it, so only the latest row is lit. The last row's badge stays lit.
+  const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
+    // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
+    const look = markLook(c.t, "badge", BADGE, fill, ink2);
+    const solid = look.fill === "transparent" && name === WORKED_NAMES.badge;
+    return shape(
       c,
       {
-        shape: "ellipse",
+        shape: look.shape,
+        ...(look.radius != null ? { radius: look.radius } : {}),
+        ...(look.stroke && !solid ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
         name,
         x: X0,
         y: y - BADGE / 2,
         w: BADGE,
         h: BADGE,
-        fill,
+        // An outline family's done badge is a ring on the ground (the rail shows through no hole).
+        fill: solid ? fill : look.fill === "transparent" ? c.t.colors.background : look.fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
           preset: "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
           fontWeight: 700,
-          color: ink2,
+          color: solid ? ink2 : look.ink,
           align: "center",
           valign: "middle",
           padding: 0,
@@ -580,10 +659,18 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       },
       step,
     );
-  const onAccent = c.t.colors.onAccent ?? c.t.colors.background;
-  for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, accent, onAccent, i + 1);
+  };
+  // The theme's badge tokens (C12, THEME-AUDIT 18 Oct): `badge-now` / `now-ink` for the newest
+  // row, `badge-fill` / `badge-ink` once a later row is the newest (Treehouse's green, Splash's
+  // blue then pink), not the accent and ink every theme drew before.
+  const sf = surfacesOf(c.t);
+  const nowFill = sf.states["badge:now"]?.fill ?? sf.badgeNow;
+  const nowInk = sf.states["badge:now"]?.ink ?? sf.nowInk;
+  const doneFill = sf.roles.badge.fill;
+  const doneInk = sf.roles.badge.ink ?? c.t.colors.background;
+  for (const [i, y] of badgeY.entries()) badge(i, y, WORKED_NAMES.badge, nowFill, nowInk, i + 1);
   for (const [i, y] of badgeY.entries())
-    if (i < badgeY.length - 1) badge(i, y, WORKED_NAMES.done, ink, c.t.colors.background, i + 2);
+    if (i < badgeY.length - 1) badge(i, y, WORKED_NAMES.done, doneFill, doneInk, i + 2);
 
   // The rows: the answer plate, then left side, "=", right side on the "=" column.
   lines.forEach((l, i) => {
@@ -591,7 +678,30 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const y = yOf(i);
     const r = parts[i] as (typeof parts)[number];
     const lx = eqx - signW / 2 - g - r.lw;
-    if (l.answer) {
+    if (l.answer && surfacesOf(c.t).marks.field === "notch") {
+      // Geometric's plate (round 2 `--plate-notch: 6px`, `--plate-fill: #FFFFFF`): white, a thin
+      // accent line, all four corners cut, as path geometry so it mirrors (RTL-DESIGN.md).
+      const pad = pt(26);
+      const box = {
+        x: Math.round(lx - pad),
+        y: Math.round(y - (p.eq * 1.5) / 2),
+        w: Math.round(r.lw + r.rw + signW + 2 * g + 2 * pad),
+        h: Math.round(p.eq * 1.5),
+      };
+      c.els.push({
+        id: uid(),
+        type: "path",
+        name: WORKED_NAMES.plate,
+        ...box,
+        points: notchPoints(box.w, box.h, 4, "all"),
+        closed: true,
+        fill: surfaceStyle(c.t, "plate").fill,
+        stroke: accent,
+        strokeWidth: 1.33,
+        revealStep: R,
+        reveal: "fade",
+      } as PathElement);
+    } else if (l.answer) {
       const pad = pt(26);
       shape(
         c,
@@ -606,6 +716,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
           fill: col.wash,
           stroke: accent,
           strokeWidth: 3,
+          ...offsetOf(c, accent),
         },
         R,
       );
@@ -678,8 +789,10 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const R = badgeY.length;
     const checkText = mathText(input.check.trim());
     const label = "Check:";
-    const steps = ladder(c, "heading");
-    let ce = stop(c, "heading", Math.min(pt(54), p.eq - 2));
+    // The gold's check sum: 0.8 of the equations (54 px at most), 1 px smaller until it fits.
+    const ceMin = Math.max(CHECK_MIN, c.s.small);
+    const steps = rungs(Math.max(ceMin, Math.min(pt(54), p.eq * 0.8)), ceMin, pt(1));
+    let ce = steps[0] as number;
     const labW = pt(170);
     const room = p.right - COL_L - pt(36) - labW - pt(32) - pt(60) - pt(28) - pt(36);
     for (const s of steps.filter((s) => s < ce))
@@ -691,7 +804,13 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
     const stripW = tx + pt(60) + pt(36) - COL_L;
     const box = { x: COL_L, y: p.checkTop, w: stripW, h: p.checkH };
     const strip = paintSurface(
-      { id: uid(), role: p.model ? "card" : "field-b", box, own: [10, 10, 10, 10] },
+      {
+        id: uid(),
+        // An outline-card theme (Geometric's gold) sets the check on an outlined card on white.
+        role: p.model || surfacesOf(c.t).marks.card === "outline" ? "card" : "field-b",
+        box,
+        own: [10, 10, 10, 10],
+      },
       c.t,
     );
     if (strip)
@@ -701,7 +820,10 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         revealStep: R,
         reveal: "fade",
       } as ShapeElement);
-    const labSize = stop(c, "body", pt(40));
+    // The gold's "Check:" is 40 px, held at the stage's reading floor, in the display face, 800
+    // (worked.html `.ck b`) on an outline-card theme.
+    const labFace = surfacesOf(c.t).marks.card === "outline" ? "heading" : "body";
+    const labSize = Math.max(pt(40), c.s.small);
     textEl(
       c,
       WORKED_NAMES.checkLabel,
@@ -710,6 +832,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       labSize,
       { valign: "middle", fontWeight: 800 },
       R,
+      ...(labFace === "heading" ? (["heading"] as const) : []),
     );
     textEl(
       c,
@@ -741,7 +864,9 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       c.t,
     );
     if (made?.ok) {
-      const cy = (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2;
+      // The gold (v12 worked.js): the bars centre 8px under the middle of the equation rows.
+      const cy =
+        (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2 + pt(8);
       const ph = Math.min(pt(560), H - 2 * pt(48));
       const box = {
         x: W - PANEL_W + pt(16),

@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { droppedFits, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
+import { cellFor, variants } from "./activities";
+import { droppedFits, FIT_ACTIVITIES, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
 import { fitTable } from "./fixes";
 import { assembleWriterSystem, LAYOUT_WRITER_MENUS, WRITER_RULES } from "./layout-menu";
-import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { flowLayoutOf, PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
-import { MIN_SHOWN_WORDS } from "./shown-cap";
+import { MIN_SHOWN_WORDS, PLAN_SHARE, wordsWithin } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
 
 /*
@@ -132,7 +133,8 @@ describe("fit layouts keep the floor and no cliff", () => {
 describe("the checked caps are the measured fit table", () => {
   for (const stage of STAGES)
     test(`${KS[stage]}`, () => {
-      const caps = pilotRequest("v4.5", KS[stage], {}, (sc) => sc).schema.$defs as J;
+      // The caps code checks (the production pack's caps request), not v4.5's own schema.
+      const caps = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc).caps?.$defs as J;
       const heading = (fitTable()[stage] as J).heading as number;
       const diffs: string[] = [];
       for (const layout of FIT_LAYOUTS) {
@@ -164,4 +166,64 @@ describe("the checked caps are the measured fit table", () => {
       }
       expect(diffs).toEqual([]);
     });
+});
+
+/*
+ * Loop 1b (17 Oct 2026): the flow names each slide's layout and fit before its size, so an idea is
+ * counted against its fit while a split is still possible; the headroom share is generated.
+ */
+describe("the flow chooses the layout before the slide count is final", () => {
+  for (const stage of STAGES)
+    test(`${KS[stage]}: flow layout is an enum of the offered slides, before size`, () => {
+      const { schema } = pilotRequest("v4.8", KS[stage], {}, (sc) => sc);
+      const entry = schema.properties.flow.items as J;
+      const keys = Object.keys(entry.properties);
+      expect(keys.indexOf("layout")).toBe(keys.indexOf("look_at") + 1);
+      expect(keys.indexOf("size")).toBe(keys.indexOf("layout") + 1);
+      expect(keys.at(-1)).toBe("teaches");
+      expect(entry.required).toEqual(keys);
+      const offered = (schema.properties.slides.items.anyOf as J[]).map((r) =>
+        flowLayoutOf(String(r.$ref).split("/").pop() ?? ""),
+      );
+      expect(entry.properties.layout.enum).toEqual(["title", "objectives", ...offered]);
+      // A dropped fit is not offered to the flow either.
+      for (const k of droppedFits(stage))
+        expect(entry.properties.layout.enum).not.toContain(flowLayoutOf(k));
+      // The headroom is the code's share, rendered once, never typed.
+      const text = PILOT_PACKS["v4.8"].system[KS[stage]];
+      const share = `more than about ${Math.round(PLAN_SHARE * 100)}% of its fit's words`;
+      expect(text.split(share).length).toBe(2);
+    });
+
+  test("v4.7 stays as shipped: no flow layout", () => {
+    const { schema } = pilotRequest("v4.7", "KS2", {}, (sc) => sc);
+    expect(Object.keys(schema.properties.flow.items.properties)).not.toContain("layout");
+  });
+});
+
+describe("the activities' label room is in words", () => {
+  // Every other v4.8 Fits number is in words, the unit the writer plans in; a character count
+  // here was the odd one out (TEACH-110 part ae, 19 Oct 2026). Each run's words are the hard cap
+  // in words at the stage's long-word rate (`wordsWithin`) of every card count it names.
+  const RUN =
+    /(\d+)(?: to (\d+))? cards(?: in [\d, or]+ groups)?, labels (?:one word|up to (\d+) words) each/g;
+  for (const stage of STAGES)
+    for (const id of FIT_ACTIVITIES)
+      test(`${KS[stage]} ${id}: words, never characters, within each count's cell`, () => {
+        const line = fitSlots(stage)[id] ?? "";
+        expect(line).not.toMatch(/character/);
+        const runs = [...line.matchAll(RUN)];
+        expect(runs.length).toBeGreaterThan(0);
+        // Every clause is a run the parser read: nothing else is said in the line.
+        expect(runs.length).toBe(line.split("; ").length);
+        for (const m of runs) {
+          const w = m[3] ? Number(m[3]) : 1;
+          for (let n = Number(m[1]); n <= Number(m[2] ?? m[1]); n += 1) {
+            const cell = cellFor(id, stage, n);
+            if (!variants(id, stage).some((v) => v.cards === n)) continue;
+            if (id === "group-sort") expect(w).toBeLessThanOrEqual(wordsWithin(cell, stage));
+            else expect(w).toBe(wordsWithin(cell, stage));
+          }
+        }
+      });
 });

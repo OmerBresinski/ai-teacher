@@ -4,6 +4,7 @@ import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
 import { fontFloor, keyStageOf } from "./themes";
+import THEME_TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before
@@ -77,6 +78,35 @@ export function emWidth(
   let w = 0;
   for (const ch of word) w += charAdvance(ch.codePointAt(0) ?? 0, advances) + tracking;
   return w;
+}
+
+/**
+ * One line of `text` in a face, in points: the font's own advances plus `trackingEm` per letter
+ * (the cover kicker plate is sized from it, not from an average letter width).
+ */
+export function runWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  trackingEm = 0,
+): number {
+  return emWidth(text, advancesFor(stack, weight), trackingEm) * size;
+}
+
+/**
+ * One line of `text` in a face at its own advances, a 500 weight reading the 500 table when the
+ * face has one (`runWidth` keeps the 600 table at 500 so laid-out lessons stay byte-identical).
+ * The worked example's equation sides measure with it, as the gold's `meas()` reads the DOM.
+ */
+export function exactWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  italic = false,
+): number {
+  return emWidth(text, advancesFor(stack, weight, italic, true), 0) * size;
 }
 
 /** The resolved type a line count depends on. */
@@ -225,6 +255,19 @@ export function quoteFaceOf(theme: Theme): { family: string; italic: boolean } {
   return { family: theme.fonts.body, italic: false };
 }
 
+/**
+ * The face a `font: "math"` run (a maths variable) is set in: a theme's own tokens `math-face` and
+ * `math-style`, else Source Serif 4 italic, the worked gold's `.v` in every round 5 theme (C11,
+ * THEME-AUDIT 18 Oct: the variable is set in italic as in print, never the theme's upright face).
+ */
+export function mathFaceOf(theme: Theme): { family: string; italic: boolean } {
+  const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[theme.id];
+  const own = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
+  return own
+    ? { family: own, italic: tk?.["math-style"] === "italic" }
+    : { family: FONT_STACKS.sourceSerif, italic: true };
+}
+
 /** The family a `font: "quote"` run is measured and drawn in. */
 export const quoteFamilyOf = (theme: Theme): string => quoteFaceOf(theme).family;
 
@@ -248,7 +291,10 @@ export const ORDERED_INDENT_EM = 1.45;
 export function runsOf(node: RichNode, bold = false): Run[] {
   const b = bold || !!node.marks?.some((m) => m.type === "bold");
   if (node.type === "text") {
-    const quote = node.marks?.some((m) => m.type === "textStyle" && m.attrs?.font === "quote");
+    // A maths variable is measured in the quote advances (a single serif glyph: the nearest table).
+    const quote = node.marks?.some(
+      (m) => m.type === "textStyle" && (m.attrs?.font === "quote" || m.attrs?.font === "math"),
+    );
     return [{ text: node.text ?? "", bold: b, quote, node }];
   }
   if (node.type === "hardBreak") return [{ text: "\n" }];

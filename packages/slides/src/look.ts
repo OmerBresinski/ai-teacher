@@ -9,6 +9,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
 import { contrastRatio, mix } from "./colour-contrast";
+import { composeCover } from "./cover-comps";
 import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
@@ -16,6 +17,7 @@ import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { readingLeading, readingSize } from "./text-style";
+import { titleBand } from "./themes/surfaces";
 
 export { contrastRatio, mix };
 
@@ -215,8 +217,9 @@ function readableSoft(ink: string, accent: string): string {
 }
 
 function cover(slide: Slide, t: Theme): Slide {
-  // A title set beside a photograph keeps its own composition; the cover is the typographic one.
-  if (slide.elements.some((e) => e.type === "image")) return slide;
+  // A title set beside a photograph takes the theme's cover composition (bleed, collage, hexagon,
+  // masthead, frame; `cover-comps.ts`), or keeps the layout's own (split) when the theme has none.
+  if (slide.elements.some((e) => e.type === "image")) return composeCover(slide, t);
   // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
   // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
   if (artOf(t)?.title?.length) {
@@ -236,7 +239,8 @@ function cover(slide: Slide, t: Theme): Slide {
   const soft = readableSoft(ink, fill);
   const elements = slide.elements.map((el): SlideElement => {
     if (el.type === "shape") {
-      if (el.name === "Accent rule") return { ...el, fill: ink };
+      // A banded cover's rule wears the band's accent (Poster's yellow on teal); others the ink.
+      if (el.name === "Accent rule") return { ...el, fill: titleBand(t)?.accent || ink };
       // The `agenda` title's hairline between the title and the objectives.
       return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
     }
@@ -259,6 +263,9 @@ function cover(slide: Slide, t: Theme): Slide {
 export function coverColours(t: Theme): { fill: string; ink: string } {
   const deep = t.v2?.accents[t.v2.defaultAccent]?.deep;
   if (t.v2 && deep) return { fill: deep, ink: t.v2.colors.onDeep };
+  // A theme with a title band (Poster's teal, round 5) wears it as its cover, in the band's ink.
+  const band = titleBand(t);
+  if (band) return { fill: band.fill, ink: band.ink };
   return { fill: t.colors.accent, ink: t.colors.onAccent };
 }
 

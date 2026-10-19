@@ -1,6 +1,7 @@
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
+import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
@@ -8,6 +9,7 @@ import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
+import { wordsWithin, writerStageOfKey } from "./shown-cap";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -223,9 +225,26 @@ export const SWITCH: Record<string, string[]> = {
   hinge: [],
 };
 
+const { compare: _compare, ...kept } = SWITCH;
+/**
+ * The switches on a pilot pack (production): compare is retired there (ruling 218), so nothing
+ * switches to or from it, and a picture sequence whose captions run over may become a split.
+ * Without a pack, `SWITCH` as before.
+ */
+export const PACK_SWITCH: Record<string, string[]> = {
+  ...kept,
+  "picture-sequence": ["split-compare"],
+};
+
+/** The layouts a fit repair may give the slide: its own and those it may switch to. */
+export const switchesFor = (template: string, pack: boolean): string[] => [
+  template,
+  ...((pack ? PACK_SWITCH : SWITCH)[template] ?? []),
+];
+
 /** The layouts menu cut to the header, the slide's own layout and those it may switch to. */
-export function layoutsFor(menu: string, template: string): string {
-  const keep = new Set([template, ...(SWITCH[template] ?? [])]);
+export function layoutsFor(menu: string, template: string, pack = false): string {
+  const keep = new Set(switchesFor(template, pack));
   return menu
     .split("\n")
     .filter((l, k) => k === 0 || keep.has(/^- ([a-z-]+):/.exec(l)?.[1] ?? ""))
@@ -258,12 +277,15 @@ type FitVariant = {
   figure: boolean;
   keyCards?: boolean;
   chars: number;
+  /** The layout's own heading cap (the cover's title), over the group's `heading`. */
+  heading?: number;
   instruction?: number;
   charsNoInstruction?: number;
   stem?: number;
   keyLabel?: number;
   columnLabel?: number;
 };
+type FitLayout = { fields: string[]; variants: FitVariant[] };
 type FitGroup = {
   heading: number;
   formula: number;
@@ -290,6 +312,7 @@ function extraLayouts(group: string): FitGroup["layouts"] {
     "items-row": rowFit(group),
     "banner-text": bannerFit(group),
     hook: hookFit(group),
+    ...(coverFit(group) ? { title: coverFit(group) as FitLayout } : {}),
   };
 }
 /**
@@ -326,11 +349,28 @@ type HingeCards = { stem: number; options: Record<string, number> };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+/** A text's words, as a reader counts them. */
+export const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+/** "1 word", "N words". */
+export const nWords = (n: number) => `${n} word${n === 1 ? "" : "s"}`;
+
 /**
- * Each text field over its measured limit, as `field: N characters, room M (K over)`. The slide's
- * way of filling its layout is matched by its item count and figure.
+ * A measured overflow restated in words (a pack's menu gives its Fits in words): the room in
+ * characters scaled by the text's own characters per word, so cutting `over` words brings it near
+ * its room. Always at least one word over.
  */
-export function charsOver(slide: unknown, stage: string): string[] {
+export function wordsOver(words: number, chars: number, room: number) {
+  const w = Math.max(1, words);
+  const fit = Math.max(0, Math.min(w - 1, Math.floor((w * room) / Math.max(1, chars))));
+  return { words: w, room: fit, over: w - fit };
+}
+
+/**
+ * Each text field over its measured limit, as `field: N characters, room M (K over)`, or on a
+ * pack run (`words`) as `field: N words, room about M (K over)`. The slide's way of filling its
+ * layout is matched by its item count and figure.
+ */
+export function charsOver(slide: unknown, stage: string, words = false): string[] {
   const s = (slide ?? {}) as S;
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
@@ -358,13 +398,22 @@ export function charsOver(slide: unknown, stage: string): string[] {
   };
   const out: string[] = [];
   let all = 0;
+  let allWords = 0;
+  const line = (field: string, n: number, w: number, cap: number) => {
+    if (!words) return `${field}: ${n} characters, room ${cap} (${n - cap} over)`;
+    const o = wordsOver(w, n, cap);
+    return `${field}: ${nWords(o.words)}, room about ${o.room} (${o.over} over)`;
+  };
   const over = (field: string, text: unknown, cap: number | undefined, counts = true) => {
     const t = typeof text === "string" ? text : "";
-    if (counts) all += t.length;
-    if (cap && t.length > cap)
-      out.push(`${field}: ${t.length} characters, room ${cap} (${t.length - cap} over)`);
+    if (counts) {
+      all += t.length;
+      allWords += wordCount(t);
+    }
+    if (cap && t.length > cap) out.push(line(field, t.length, wordCount(t), cap));
   };
-  over("heading", s.heading, F.heading, false);
+  // A layout's own title cap (the cover's three lines, `cover-fits.ts`) wins over the group's.
+  over("heading", s.heading, v.heading ?? F.heading, false);
   if (typeof s.lead === "string") over("lead", s.lead, lim.item);
   if (typeof s.instruction === "string")
     over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
@@ -381,17 +430,15 @@ export function charsOver(slide: unknown, stage: string): string[] {
       over(`${listKey}[${k + 1}].name`, o.name, v.keyLabel ?? v.columnLabel, false);
   });
   // The figure's ask, or its ask_without when the figure is not shown, is on the slide too.
-  all += Math.max(
-    0,
-    ...["figure", "picture", "diagram"].flatMap((k) => {
+  const asked = ["figure", "picture", "diagram"]
+    .flatMap((k) => {
       const f = s[k] as S | null | undefined;
-      return f && typeof f === "object" ? [str(f.ask).length, str(f.ask_without).length] : [];
-    }),
-  );
-  if (all > lim.total)
-    out.push(
-      `all the slide's text: ${all} characters, room ${lim.total} (${all - lim.total} over)`,
-    );
+      return f && typeof f === "object" ? [str(f.ask), str(f.ask_without)] : [];
+    })
+    .reduce((a, b) => (b.length > a.length ? b : a), "");
+  all += asked.length;
+  allWords += wordCount(asked);
+  if (all > lim.total) out.push(line("all the slide's text", all, allWords, lim.total));
   return out;
 }
 
@@ -456,8 +503,13 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
   };
 }
 
-/** The room a slide has, in the writer's units, for a stand-alone or reroute call. */
-export function roomLine(slide: unknown, stage: string): string {
+/**
+ * The room a slide has, in the writer's units, for a stand-alone or reroute call: characters, or on
+ * a pack run (`words`, as `charsOver` and `repairTerms` take it) words at the stage's long-word
+ * rate (`wordsWithin`, the hard limit in words; the heading as the menu shows it), so the room line
+ * and the fault lines share one unit.
+ */
+export function roomLine(slide: unknown, stage: string, words = false): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
   const F = fitTable()[stage];
@@ -475,7 +527,10 @@ export function roomLine(slide: unknown, stage: string): string {
     .find((x) => Math.max(0, ...Object.values(x.counts)) >= n);
   const lim = v?.limit;
   if (!lim) return "";
-  return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  const ws = writerStageOfKey(stage);
+  const u = (chars: number) =>
+    words ? nWords(Math.max(1, wordsWithin(chars, ws))) : `${chars} characters`;
+  return `room: the heading up to ${u(F.heading)}; each item up to ${u(lim.item)}; all the slide's text up to ${u(lim.total)}${lim.instruction ? `; an instruction up to ${u(lim.instruction)}` : ""}`;
 }
 
 /** Points over the room, summed over a slide's overflow faults ("overflow: x 354/328pt"). */
@@ -583,18 +638,18 @@ export function fixedFallback(
 
 /**
  * A fit fault in the repair's own units: which field and how many characters over its measured
- * room, never "about N lines". A fault no field explains keeps its slot name with the overflow
+ * room (on a pack run, `words`: how many words, as the pack's menu counts), never "about N lines". A fault no field explains keeps its slot name with the overflow
  * said as a share of the room.
  */
-export function repairTerms(fault: string, slide?: unknown, stage?: string): string {
+export function repairTerms(fault: string, slide?: unknown, stage?: string, words = false): string {
   const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
   if (!m) return fault;
-  const fields = slide && stage ? charsOver(slide, stage) : [];
+  const fields = slide && stage ? charsOver(slide, stage, words) : [];
   if (fields.length) return `${m[1]}: ${fields.join("; ")}`;
   const used = Number(m[3]);
   const room = Number(m[4]);
   const cut = Math.max(1, Math.ceil(((used - room) / used) * 100));
-  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} needs about ${cut}% fewer characters to fit${m[5] ?? ""}`;
+  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} needs about ${cut}% fewer ${words ? "words" : "characters"} to fit${m[5] ?? ""}`;
 }
 
 /** A repair answer is {fix, slide, to_notes}: the slide replaces the old one, to_notes joins its notes. */

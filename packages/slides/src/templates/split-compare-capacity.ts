@@ -50,15 +50,55 @@ export type SplitMeasured = Record<Field, { cap: number; hardMax: number; words:
 /** What a field holds while the fields measured before it are measured. */
 const BASE = { title: 16, quote: 20, text: 1 } as const;
 const ORDER: Field[] = ["text", "quote", "title"];
+/**
+ * Title room reserved while the words are measured, in characters (default: `BASE.title`). Ruling
+ * 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px on quick check,
+ * picture-with-points and split-compare. The smaller KS2 side text takes more of a narrow
+ * three-side field, and measured after it the title fell (pictures 37 -> 22 chars, words only
+ * hardMax 51 -> 37). Three-side picture and words-only cells therefore measure the words beside a
+ * two-line title (28 chars), which keeps every title and every text at or above its room before
+ * the change. The three-side quote cell keeps the stand-in: a 28-char title there would take the
+ * quote's room.
+ */
+const TITLE_RESERVE: Partial<
+  Record<SplitGroup, Partial<Record<2 | 3, Partial<Record<SplitZone, number>>>>>
+> = {
+  KS2: { 3: { picture: 28, text: 28 } },
+};
 /** The shortest stand-ins (a word or two): a re-measure when `BASE`'s overflow left a field 0. */
 const SHORT = { title: 8, quote: 8 } as const;
-const sidesOf = (n: number, zone: SplitZone, len: Partial<Record<Field, number>>): SplitSide[] =>
+/** `exact`: the field's text cut to exactly that many characters (mid-word if need be). */
+const sidesOf = (
+  n: number,
+  zone: SplitZone,
+  len: Partial<Record<Field, number>>,
+  exact?: Field,
+): SplitSide[] =>
   Array.from({ length: n }, (_, i) => ({
-    title: sample(len.title ?? BASE.title, i),
-    text: sample(len.text ?? BASE.text, i + 7),
-    ...(zone === "quote" ? { quote: sample(len.quote ?? BASE.quote, i + 13) } : {}),
+    title: pick("title", len.title ?? BASE.title, i, exact),
+    text: pick("text", len.text ?? BASE.text, i + 7, exact),
+    ...(zone === "quote" ? { quote: pick("quote", len.quote ?? BASE.quote, i + 13, exact) } : {}),
     ...(zone === "picture" ? { picture: UPRIGHT } : {}),
   }));
+
+const pick = (f: Field, chars: number, at: number, exact?: Field): string =>
+  f === exact
+    ? sample(chars + 40, at)
+        .slice(0, chars)
+        .trimEnd()
+    : sample(chars, at);
+
+/**
+ * From a measured length, the most characters that still pass, to the character
+ * (GOLD-THROUGH-PROD.md, 18 Oct 2026): `sample` steps a word at a time and `longest` reads the
+ * shortest side's length, so a hard max sat a few characters under what renders (KS2 two pictured
+ * sides: 80, where 84 fits on every theme).
+ */
+function toChar(test: (chars: number) => boolean, from: number, max: number): number {
+  let c = from;
+  while (c < max && test(c + 1)) c += 1;
+  return c;
+}
 
 /** Whether these sides fit (`comfy`: comfortably) on every theme and stage of the group. */
 function allFit(group: SplitGroup, sides: SplitSide[], comfy: boolean, look: SplitLook): boolean {
@@ -111,10 +151,13 @@ export function measureSplitCell(
   n: 2 | 3,
   zone: SplitZone,
   look: SplitLook = "split-compare",
+  order: readonly Field[] = ORDER,
+  reserve = look === "split-compare" ? (TITLE_RESERVE[group]?.[n]?.[zone] ?? 0) : 0,
 ) {
-  const len: Partial<Record<Field, number>> = {};
+  // The title's reserved room: the words are measured beside a title this long, not the stand-in.
+  const len: Partial<Record<Field, number>> = reserve ? { title: reserve } : {};
   const out: Partial<SplitMeasured> = {};
-  const fields = ORDER.filter((f) => f !== "quote" || zone === "quote");
+  const fields = order.filter((f) => f !== "quote" || zone === "quote");
   for (const f of fields) {
     const at = (comfy: boolean) => (chars: number) =>
       allFit(group, sidesOf(n, zone, { ...len, [f]: chars }), comfy, look);
@@ -123,10 +166,14 @@ export function measureSplitCell(
     // words no room, though words fit beside shorter quotes.
     const short = (comfy: boolean) => (chars: number) =>
       allFit(group, sidesOf(n, zone, { ...SHORT, ...len, [f]: chars }), comfy, look);
-    const cap = longest(at(true), LIMITS[f]) || longest(short(true), LIMITS[f]);
+    const exact = (comfy: boolean) => (chars: number) =>
+      allFit(group, sidesOf(n, zone, { ...len, [f]: chars }, f), comfy, look);
+    const cap0 = longest(at(true), LIMITS[f]) || longest(short(true), LIMITS[f]);
+    const cap = cap0 && at(true)(cap0) ? toChar(exact(true), cap0, LIMITS[f]) : cap0;
+    const hard0 = longest(at(false), LIMITS[f]) || longest(short(false), LIMITS[f]);
     const hardMax = Math.max(
       cap,
-      longest(at(false), LIMITS[f]) || longest(short(false), LIMITS[f]),
+      hard0 && at(false)(hard0) ? toChar(exact(false), hard0, LIMITS[f]) : hard0,
     );
     out[f] = { cap, hardMax, words: cap ? sample(cap).split(" ").length : 0 };
     len[f] = cap;

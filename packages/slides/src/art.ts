@@ -1,4 +1,5 @@
 import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * The ten themes' art per role (UX ruling 107), in slide points (960x540). Each theme keeps one
@@ -288,6 +289,66 @@ const NIGHT_LAB: Art = {
 };
 const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
 
+/* -------------------------------------------- round 5 themes (TEACH-215 part c), Greg's look table */
+/*
+ * Only what THEMING.md's approved look table describes, in each theme's own tokens. Poster's 14px
+ * accent bar in the bleed ring is the look's accent bar (ACCENT_BAR_H, 9pt = 13.5px at 1440), so it
+ * needs no layer. Calm (by rule), Storytime (nothing described), Slate and Ember (flat, like night)
+ * have none. A ground pattern sits in the zones the layouts leave free, as Crayon's ruled lines do.
+ */
+
+const tok = TOKENS as Record<string, Record<string, string>>;
+/** Scrapbook: lined paper with a red margin rule (the look table's 30pt pitch, margin at 58px). */
+const scrapRules = (y: number, h: number) =>
+  svg(
+    0,
+    y,
+    960,
+    h,
+    Array.from(
+      { length: Math.floor(h / 30) },
+      (_, i) =>
+        `<rect x='0' y='${14 + i * 30}' width='960' height='1.3' fill='${tok.scrapbook?.["set-b"]}'/>`,
+    ).join(""),
+  );
+const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
+const SCRAPBOOK: Art = {
+  title: [scrapMargin, scrapRules(404, 127)],
+  content: [scrapMargin],
+};
+
+/** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
+const dots = (x: number, y: number, w: number, h: number) =>
+  svg(
+    x,
+    y,
+    w,
+    h,
+    Array.from({ length: Math.floor(w / 21.3) * Math.floor(h / 21.3) }, (_, i) => {
+      const cols = Math.floor(w / 21.3);
+      const cx = 10.65 + (i % cols) * 21.3;
+      const cy = 10.65 + Math.floor(i / cols) * 21.3;
+      return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
+    }).join(""),
+  );
+// Round 5 draws the dot grid over the whole ground: that is `groundArt` below, not role art.
+const GEOMETRIC: Art = {};
+
+/**
+ * A theme's ground texture (tokens `ground-art`): Geometric's dot grid over the whole slide, as the
+ * gold's `--ground-pattern`. It is the ground, not art: it sits under every element, so the
+ * art-collision rule (ruling 107) does not apply to it, and the "plain" art choice still removes it.
+ */
+const GROUND = new WeakSet<ThemeArtLayer>();
+const GROUND_DOTS = dots(0, 0, 960, 540);
+GROUND.add(GROUND_DOTS);
+export function groundArt(theme: Theme): ThemeArtLayer | null {
+  const t = (TOKENS as Record<string, Record<string, string>>)[theme.id];
+  return t?.["ground-art"] === "dots" ? GROUND_DOTS : null;
+}
+/** Whether a layer is a ground texture (never an art collision). */
+export const isGroundArt = (l: ThemeArtLayer): boolean => GROUND.has(l);
+
 export const THEME_ART: Record<string, Art> = {
   chalk: CHALK,
   playground: PLAYGROUND,
@@ -299,6 +360,8 @@ export const THEME_ART: Record<string, Art> = {
   "exam-hall": EXAM_HALL,
   "night-lab": NIGHT_LAB,
   beacon: BEACON,
+  scrapbook: SCRAPBOOK,
+  geometric: GEOMETRIC,
 };
 
 /**

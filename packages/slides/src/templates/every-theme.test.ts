@@ -67,7 +67,7 @@ const sizes = (els: readonly unknown[]): { name: string; size: number }[] =>
 describe("every writer template on every theme", () => {
   test("the samples cover all 17 templates and there are 9 themes", () => {
     expect(templateSamples().map((s) => s.template)).toEqual(ALL);
-    expect(THEMES).toHaveLength(10);
+    expect(THEMES).toHaveLength(16); // the round 5 sixteen (TEACH-215 part c, 16 Oct 2026)
   });
 
   for (const theme of THEMES)
@@ -79,8 +79,11 @@ describe("every writer template on every theme", () => {
           for (const o of r.over) faults.push(`${input.template} over: ${o}`);
           for (const d of r.diagram ?? []) faults.push(`${input.template} diagram: ${d}`);
           if (!r.slide.elements.length) faults.push(`${input.template}: empty slide`);
+          // A number badge is a label at the gold's badge size (TEACH-215 part j), not reading
+          // text: it holds the caption floor.
           for (const { name, size } of sizes(r.slide.elements))
-            if (size < MIN_FONT_SIZE.body) faults.push(`${input.template} ${name} ${size}`);
+            if (size < (name === "surface:badge" ? MIN_FONT_SIZE.caption : MIN_FONT_SIZE.body))
+              faults.push(`${input.template} ${name} ${size}`);
         }
         expect(faults).toEqual([]);
       });

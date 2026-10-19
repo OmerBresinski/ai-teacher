@@ -1,6 +1,8 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { DIAGRAM_NAME } from "@tj/slides";
+import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
+import { surfacesOf } from "@tj/slides/surfaces";
 import { lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
 import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
@@ -36,10 +38,20 @@ export function shapeNode(kind: ShapeKind, w: number, h: number, radius: number)
       return <polygon points={starPoints(w, h)} />;
     case "speech":
       return <path d={speechPath(w, h, radius)} />;
+    case "hexagon":
+      return <polygon points={fracPoints(markHexagonPoints(), w, h)} />;
+    case "octagon":
+      return <polygon points={fracPoints(octagonPoints(w, h), w, h)} />;
+    case "notch":
+      return <polygon points={fracPoints(notchPoints(w, h, radius), w, h)} />;
     default:
       return <rect x={0} y={0} width={w} height={h} />;
   }
 }
+
+/** Box-fraction points (`@tj/slides/marks`) as an SVG `points` list in the box's units. */
+const fracPoints = (pts: readonly { x: number; y: number }[], w: number, h: number): string =>
+  pts.map((p) => `${p.x * w},${p.y * h}`).join(" ");
 
 function starPoints(w: number, h: number): string {
   const cx = w / 2;
@@ -96,6 +108,11 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
   const strokeWidth = element.strokeWidth ?? (stroke ? 2 : 0);
   const fill = element.fill ?? theme.colors.surface;
   const radius = shapeRadius(element, theme);
+  // A theme's field grain (Scrapbook's kraft, THEMING.md look table) over a painted field: the
+  // slot's dot colour, under the label and never hit-tested. Decoration only; PPTX drops it.
+  const grain = element.name?.startsWith("surface:field-b")
+    ? surfacesOf(theme).roles["field-b"].pattern
+    : undefined;
 
   const label = element.doc && !isDocEmpty(element.doc) ? element.doc : null;
   const r = resolveTextStyle(
@@ -115,6 +132,16 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         aria-hidden
         focusable="false"
       >
+        {element.shadow ? (
+          // An offset block (Poster): the same outline in the block's colour, moved, no line.
+          <g
+            fill={element.shadow.color}
+            stroke="none"
+            transform={`translate(${element.shadow.x} ${element.shadow.y})`}
+          >
+            {shapeNode(element.shape, w, h, radius)}
+          </g>
+        ) : null}
         <g
           fill={fill}
           stroke={stroke ?? "none"}
@@ -125,6 +152,19 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
           {shapeNode(element.shape, w, h, radius)}
         </g>
       </svg>
+      {grain ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            // themes.css's grain: a 1pt dot every 9pt, in the slot's colour.
+            background: `radial-gradient(${grain} 1px, transparent 1.4px) 0 0 / 9px 9px`,
+            borderRadius: element.shape === "rect" ? 0 : radius,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       {editor ? (
         <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
           {editor}

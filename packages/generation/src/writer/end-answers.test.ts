@@ -6,7 +6,8 @@ import { withEndAnswers } from "./materialise";
 
 /*
  * TEACH-191 part b (ruling 240): the shipped deck ends on the guard and its Answers slides, laid out
- * from the practice and exit slides' own answers; a worksheet answer sheet keeps them off the deck.
+ * from the practice and exit slides' own answers, with or without a worksheet answer key
+ * (ruling 260).
  */
 const theme = atKeyStage(getTheme("splash", null), "ks2");
 const deck = (): Slide[] =>
@@ -36,20 +37,14 @@ const deck = (): Slide[] =>
 
 describe("withEndAnswers", () => {
   test("appends the guard and the Answers slides after the lesson, in that order", () => {
-    const out = withEndAnswers(deck(), { theme, stage: "ks2", worksheetAnswerKey: false });
+    const out = withEndAnswers(deck(), { theme, stage: "ks2" });
     expect(out.slice(0, 3).map((s) => s.id)).toEqual(["s0", "s1", "s2"]);
     expect(out.slice(3).map((s) => s.answersRole)).toEqual(["guard", "answers"]);
   });
 
   test("a rebuild replaces the old end; a worksheet answer sheet keeps them (r3 gold)", () => {
-    const once = withEndAnswers(deck(), { theme, stage: "ks2", worksheetAnswerKey: false });
-    const twice = withEndAnswers(once, { theme, stage: "ks2", worksheetAnswerKey: false });
+    const once = withEndAnswers(deck(), { theme, stage: "ks2" });
+    const twice = withEndAnswers(once, { theme, stage: "ks2" });
     expect(twice.map((s) => s.answersRole)).toEqual(once.map((s) => s.answersRole));
-    // r3 gold (the default): a worksheet answer sheet still keeps the Answers slides.
-    expect(
-      withEndAnswers(once, { theme, stage: "ks2", worksheetAnswerKey: true }).map(
-        (s) => s.answersRole,
-      ),
-    ).toEqual(once.map((s) => s.answersRole));
   });
 });

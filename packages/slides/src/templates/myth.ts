@@ -32,13 +32,14 @@ import type {
   TextPreset,
 } from "@tj/domain/documents";
 import { styledRun } from "@tj/domain/documents";
+import { contrastRatio } from "../colour-contrast";
 import { uid } from "../factories";
 import { iconsLoaded, loadIcons } from "../icons/loader";
 import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
-import { paintSurface, type SurfaceRole } from "../themes/surfaces";
+import { paintSurface, type SurfaceRole, surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, type TemplateInput } from "./index";
 import { type Age, ageProfileOf, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
 import CAPACITY from "./myth-capacity.json" with { type: "json" };
@@ -108,7 +109,7 @@ const CARD_IN = 72 * K;
 const CARD_FOOT = 72 * K;
 const TAG_H = 30 * K;
 const TAG_GAP = 24 * K;
-const STAMP_DISC = 30 * K;
+const STAMP_DISC_0 = 30 * K;
 const SEAM_D = 84 * K;
 const SEAM_TOP = 86 * K;
 const ASK_GAP = 48 * K;
@@ -121,7 +122,19 @@ const PROOF_GAP = 32 * K;
 const ICON_GAP = 16 * K;
 const PIC = { w: 300 * K, h: 200 * K };
 const MAX_TEXT = 600 * K;
-const LH = { claimOpen: 1.18, claim: 1.28, fact: 1.12 };
+/** The fact's measure (round 4 `themes4.css`: `.myth .fact { max-width: 660px }`). */
+const FACT_MAX = 660 * K;
+/**
+ * The gold's grow-the-fact fit (round 5 `render5.mjs` `growMyth`): the fact grows in 2px steps up
+ * to 64px while the fact panel still holds it, the proof's line stays 48px under the fact and the
+ * claim (which follows the fact's size) still fits its panel.
+ */
+const GROW_TOP = 64 * K;
+const CLAIM_DROP = 76 * K;
+const GROW_STEP = 2 * K;
+const PROOF_CLEAR = 48 * K;
+/** The panel claim's line height follows round 4 (`.myth .said` at the fact's size, 1.16). */
+const LH = { claimOpen: 1.18, claim: 1.16, fact: 1.12 };
 
 /* ------------------------------------------------------------------ */
 /* Caps (myth-capacity.json, measured by myth-capacity.ts)              */
@@ -201,11 +214,12 @@ function lineDoc(line: string, muted: string): RichDoc {
   return docOf(runs.length ? runs : [styledRun(line, { color: muted })]);
 }
 
-/** The claim in the quote face; the panel's myth claim carries the strike from `strike`. */
+/**
+ * The claim, upright in the body face (round 4 'myth strike': the italic quote face read as odd);
+ * the panel's myth claim carries the strike from `strike`.
+ */
 const claimDoc = (claim: string, strike?: number): RichDoc =>
-  docOf([
-    styledRun(claim, { font: "quote", ...(strike === undefined ? {} : { strikeStep: strike }) }),
-  ]);
+  docOf([styledRun(claim, strike === undefined ? {} : { strikeStep: strike })]);
 
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
@@ -239,7 +253,15 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const body = smallBody >= MIN_FONT_SIZE.body ? smallBody : drawn("body", MIN_FONT_SIZE.body);
   const bodyPreset: TextPreset = smallBody >= MIN_FONT_SIZE.body ? "small" : "body";
   const lh = v2.lineHeights.body;
-  const heightOf = (doc: RichDoc, preset: TextPreset, size: number, w: number, weight: number) =>
+  const heightOf = (
+    doc: RichDoc,
+    preset: TextPreset,
+    size: number,
+    w: number,
+    weight: number,
+    lineHeight?: number,
+    fontFamily?: string,
+  ) =>
     measure({
       doc,
       preset,
@@ -250,8 +272,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       style: {
         preset,
         fontWeight: weight,
-        lineHeight: preset === "heading" ? LH.fact : lh,
+        lineHeight: lineHeight ?? (preset === "heading" ? LH.fact : lh),
         padding: 0,
+        ...(fontFamily ? { fontFamily } : {}),
       },
     } as never);
   const claimText = m.claim.trim();
@@ -281,10 +304,24 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   // The fact panel's room and the fact's fit (steps down to the name floor).
   const fp = { x: SEAM + GAP, y: band, w: W - SEAM - GAP, h: stageH };
   const inner = { x: fp.x + FP_L, y: fp.y + TOP, w: fp.w - FP_L - FP_R, h: fp.h - TOP - FOOT };
-  const factW = Math.min(MAX_TEXT, inner.w);
+  const factW = Math.min(FACT_MAX, inner.w);
   const lineDocV = proof ? lineDoc(proof.line.trim(), col.muted) : null;
-  const factDocV = factDoc(factText, m.factEm, col.accent);
+  // The fact's emphasis: the theme's emphasis token (Geometric's `--fa-accent`), else the accent.
+  const factDocV = factDoc(factText, m.factEm, surfacesOf(c.t).marks.emphasis ?? col.accent);
   const factWt = v2.displayWeight;
+
+  // The claim (round 4 'myth strike', every theme): the body face, upright, 600 (or the theme's own
+  // weight), in the panel at the fact's size.
+  // Round 4 sets the panel claim lower once the verdict is shown (`.cw` top: band + top + 76px).
+  const claimTop = band + TOP + CLAIM_DROP;
+  const claimW = SEAM - PAD_L - 64 * K;
+  const claimRoom = H - FOOT - claimTop;
+  const claimWt = surfacesOf(c.t).marks.claimWeight ?? 600;
+  const bodyFace = c.t.fonts.body;
+  const claimH = (s: number, w = claimW, l = LH.claim) =>
+    heightOf(claimDoc(claimText), "heading", s, w, claimWt, l, bodyFace);
+  const claimFits = (s: number) => claimH(s) <= claimRoom + 0.5;
+
   const fitFact = (disc: number) => {
     const shown = disc ? iconIds : [];
     const visW = pic
@@ -303,27 +340,49 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       size = drawn("heading", size - 1);
       h = heightOf(factDocV, "heading", size, factW, factWt);
     }
-    return { disc, shown, visH, lineW, lineH, size, h, over: h > room + 0.5 };
+    const over = h > room + 0.5;
+    // Grow to fill (gold `growMyth`, round5/render5.mjs line 68: `while (f < 64)`, no age branch):
+    // the next even gold px up, 2px at a time, to 64px. The box is drawn at its ceiled height, so
+    // the clearance is checked on that box.
+    let grown = false;
+    if (!over && factText) {
+      const proofTop = inner.y + inner.h - Math.max(visH, lineH);
+      const factTop = inner.y + TAG_H + TAG_GAP;
+      let next = (Math.floor(size / K / 2 + 1e-6) + 1) * 2 * K;
+      while (next <= GROW_TOP + 1e-6) {
+        const nh = heightOf(factDocV, "heading", next, factW, factWt);
+        const clear = !proof || proofTop - (factTop + Math.ceil(nh)) >= PROOF_CLEAR + 0.1;
+        if (nh > room + 0.5 || !clear || !claimFits(next)) break;
+        size = round1(next);
+        h = nh;
+        grown = true;
+        next += GROW_STEP;
+      }
+    }
+    return { disc, shown, visH, lineW, lineH, size, h, over, grown };
   };
   let ff = fitFact(rungs[0] as number);
   for (const d of rungs.slice(1)) {
     if (!ff.over) break;
     ff = fitFact(d);
   }
-  const { disc, visH, lineW, lineH, h: factH, over: factOver } = ff;
-  const factSize = ff.size;
+  const { disc, visH, lineW, lineH, over: factOver } = ff;
   const shownIcons = ff.shown;
 
-  // The claim in the panel (steps down to the body floor).
-  const claimTop = band + TOP + TAG_H + TAG_GAP;
-  const claimW = SEAM - PAD_L - 64 * K;
-  const claimRoom = H - FOOT - claimTop;
-  let claimSize = drawn("heading", Math.max(floorBody, v2.sizes.quote * 1.2));
-  const claimH = (s: number, w = claimW, l = LH.claim) =>
-    heightOf(claimDoc(claimText), "heading", s, w, 500) * (l / lh);
-  while (claimH(claimSize) > claimRoom + 0.5 && claimSize > drawn("heading", floorBody))
-    claimSize = drawn("heading", claimSize - 1);
-  const claimOver = claimH(claimSize) > claimRoom + 0.5;
+  // The claim is always the fact's size (round 4: `.said { font-size: var(--fact-size) }`). A claim
+  // too long for its panel at that size takes both down in the gold's 2px together, never under the
+  // smallest step the stage allows the claim (its body step, held at the body floor); the fact only
+  // gets more room. Both are drawn as given (`fixedSize`) once off the stage's steps.
+  const claimFloor = drawn("heading", floorBody);
+  let shared = ff.size;
+  while (!claimFits(shared) && shared > claimFloor + 1e-6)
+    shared = round1(Math.max(claimFloor, shared - GROW_STEP));
+  const shrunk = shared < ff.size - 1e-6;
+  const factSize = shared;
+  const claimSize = shared;
+  const factH = shrunk ? heightOf(factDocV, "heading", factSize, factW, factWt) : ff.h;
+  const grown = ff.grown || shrunk;
+  const claimOver = !claimFits(claimSize);
 
   // The open claim on the vote card: at most 3 lines, no smaller than the name size.
   const card = { x: PAD_L, y: band, w: W - 2 * PAD_L, h: stageH - CARD_FOOT };
@@ -344,9 +403,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   if (factOver && !c.over.includes("myth.fact") && !c.over.includes("myth.proof.line"))
     c.over.push(proof ? "myth.proof.line" : "myth.fact");
   c.tight =
-    fields.some((f) => f.tight) ||
-    factSize < drawn("heading", v2.sizes.name) - 0.5 ||
-    claimSize < drawn("heading", v2.sizes.quote * 1.2) - 0.5;
+    fields.some((f) => f.tight) || factSize < drawn("heading", v2.sizes.name) - 0.5 || shrunk;
 
   const radius = Math.round(v2.radius.picture);
   const push = <T extends SlideElement>(el: T, step: number, name: string): T => {
@@ -382,9 +439,10 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
         "heading",
         openSize,
         LH.claimOpen,
-        500,
+        claimWt,
         { x: card.x + CARD_IN, y: oy, w: openW, h: oh },
         col.ink,
+        bodyFace,
       ),
       0,
       MYTH_NAMES.claimOpen,
@@ -462,6 +520,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-b", { x: 0, y: band, w: SEAM, h: stageH }, at.verdict, MYTH_NAMES.panel, 0);
   const sy = band + TOP;
   const right = verdict === "true";
+  // A theme's own verdict disc (Geometric: 42px = 28pt, round 5 myth); the other golds' 30px.
+  const ownDisc = surfacesOf(c.t).marks.verdictDisc;
+  const STAMP_DISC = ownDisc > 0 ? ownDisc * K : STAMP_DISC_0;
   const stampFill =
     paintSurface(
       { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
@@ -500,9 +561,11 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       "heading",
       claimSize,
       LH.claim,
-      500,
+      claimWt,
       { x: PAD_L, y: claimTop, w: claimW, h: claimH(claimSize) },
       right ? col.ink : col.muted,
+      bodyFace,
+      true,
     ),
     at.verdict,
     MYTH_NAMES.claim,
@@ -512,10 +575,24 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-a", fp, at.fact, MYTH_NAMES.factPanel, 0);
   const cx = SEAM + GAP / 2;
   const cy = band + SEAM_TOP + SEAM_D / 2;
+  // The seam takes the theme's badge family (Geometric's hexagon, THEMING.md section 6).
+  // The seam is the theme's marker (roles.css `--marker-fill`, the seam disc; its arrow `--marker-ink`).
+  const markerRole = surfacesOf(c.t).roles.marker;
+  const markerFill = markerRole?.fill ?? col.deep;
+  // Its ink, else (none, or under 4.5:1 on the fill) whichever of on-deep and ink reads best.
+  const markerInk =
+    markerRole?.ink && contrastRatio(markerRole.ink, markerFill) >= 4.5
+      ? markerRole.ink
+      : [col.onDeep, col.ink].reduce((a, b) =>
+          contrastRatio(b, markerFill) > contrastRatio(a, markerFill) ? b : a,
+        );
+  const marker = { fill: markerFill, ink: markerInk };
+  const seamShape: ShapeElement["shape"] =
+    surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse";
   const halo: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({
       x: cx - SEAM_D / 2 - GAP,
       y: cy - SEAM_D / 2 - GAP,
@@ -524,22 +601,48 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     }),
     fill: col.background,
   };
-  push(halo, at.fact, MYTH_NAMES.halo);
+  // A theme without a seam halo (Geometric, round 5 myth) sits its seam straight on the panels.
+  if (surfacesOf(c.t).marks.seamHalo) push(halo, at.fact, MYTH_NAMES.halo);
   const seam: ShapeElement = {
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    shape: seamShape,
     ...rnd({ x: cx - SEAM_D / 2, y: cy - SEAM_D / 2, w: SEAM_D, h: SEAM_D }),
-    fill: col.deep,
+    fill: marker.fill,
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
-  const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
-    shaft: aw * 0.22,
-    head: aw * 0.7,
-    headLen: aw * 0.45,
-  });
-  push(closedPath(pts, col.onDeep), at.fact, MYTH_NAMES.seamArrow);
+  if (seamShape === "hexagon") {
+    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px.
+    const w = 20 * K;
+    const h = 16 * K;
+    push(
+      {
+        id: uid(),
+        type: "path",
+        ...rnd({ x: cx - w / 2, y: cy - h / 2, w, h }),
+        points: [
+          { x: 0, y: 0.5 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 0 },
+          { x: 1, y: 0.5 },
+          { x: 0.55, y: 1 },
+        ],
+        closed: false,
+        stroke: marker.ink,
+        strokeWidth: 3,
+      } as PathElement,
+      at.fact,
+      MYTH_NAMES.seamArrow,
+    );
+  } else {
+    const pts = blockArrow([cx - aw / 2, cy], [cx + aw / 2, cy], {
+      shaft: aw * 0.22,
+      head: aw * 0.7,
+      headLen: aw * 0.45,
+    });
+    push(closedPath(pts, marker.ink), at.fact, MYTH_NAMES.seamArrow);
+  }
   // The label in accent-deep for AA on the field tint; on a dark theme the deep is the dark end, so
   // the accent itself reads there.
   push(
@@ -562,6 +665,8 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       factWt,
       { x: inner.x, y: inner.y + TAG_H + TAG_GAP, w: factW, h: factH },
       col.ink,
+      undefined,
+      grown,
     ),
     at.fact,
     MYTH_NAMES.fact,
@@ -642,6 +747,8 @@ function textEl(
   weight: number,
   b: Box,
   color: string,
+  fontFamily?: string,
+  fixedSize?: boolean,
 ): TextElement {
   return {
     id: uid(),
@@ -652,6 +759,8 @@ function textEl(
       preset,
       autoHeight: true,
       fontSize: size,
+      ...(fixedSize ? { fixedSize: true } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
       lineHeight,
       fontWeight: weight,
       padding: 0,
@@ -677,7 +786,11 @@ function tagEl(
     { ...b, y: b.y + (TAG_H - size) / 2, h: size },
     color,
   );
-  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12) + 4);
+  // A theme's tag tracking (Geometric 0.08em) adds its em per letter to the measured width.
+  const track = surfacesOf(c.t).marks.tagTracking;
+  const extra = track ? Number.parseFloat(track) * size * word.length : 0;
+  el.w = Math.min(b.w, Math.ceil(textWidth(c, word.toUpperCase(), size, 700) * 1.12 + extra) + 4);
+  if (track) el.style = { ...el.style, letterSpacing: track };
   return el;
 }
 
@@ -772,6 +885,9 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     lib && medal
       ? lib.iconMedalImageSrc(id, {
           medal,
+          ...(surfacesOf(c.t).marks.medal === "hex" ? { shape: "hex" as const } : {}),
+          // A theme whose gold outlines its proof icons in ink (Geometric) draws the outlined style.
+          ...(surfacesOf(c.t).marks.iconOutline ? { style: "pilot" as const } : {}),
           // As every layout's icons (iconSvgForTheme): the theme's slots, the age's drawing and
           // the size's line weights, so the feather keeps its outline at medal size.
           colours: lib.iconColoursFor({
@@ -791,7 +907,7 @@ function medalImage(c: Ctx, id: string, b: Box, col: ReturnType<typeof v2Colors>
     src,
     alt: id,
     fit: "contain",
-    radius: Math.round(b.w / 2),
+    ...(surfacesOf(c.t).marks.medal === "hex" ? {} : { radius: Math.round(b.w / 2) }),
   };
 }
 

@@ -1,4 +1,5 @@
 import {
+  answerKeyText,
   type FigureRef,
   type Finding,
   type ImagePurpose,
@@ -337,7 +338,8 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
   }
   if (q?.type === "true-false") out.push({ field: "correct", text: q.correct ? "True" : "False" });
   if (q?.type === "open-response" && q.modelAnswer) {
-    out.push({ field: "modelAnswer", text: q.modelAnswer });
+    // Its working (a field of its own) is checked with it, as when the two were one string.
+    out.push({ field: "modelAnswer", text: answerKeyText(q).trim() });
   }
   if (q?.type === "fill-gap")
     out.push({ field: "answers", text: q.gaps.map((g) => g.answer).join(", ") });

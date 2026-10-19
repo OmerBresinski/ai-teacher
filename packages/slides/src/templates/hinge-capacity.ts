@@ -27,38 +27,89 @@ export const HINGE_CAP_STAGE: Record<Age, Stage> = {
 };
 export const HINGE_CAP_OPTIONS: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
 
-export const hingeCapInput = (age: Age, words: number): TemplateInput => ({
+export const hingeCapInput = (
+  age: Age,
+  words: number,
+  options = HINGE_CAP_OPTIONS[age],
+): TemplateInput => ({
   template: "hinge",
   heading: HINGE_CAP_QUESTION,
-  options: Array.from({ length: HINGE_CAP_OPTIONS[age] }, (_, i) => hingeSample(words, i)),
+  options: Array.from({ length: options }, (_, i) => hingeSample(words, i)),
   correct: 1,
 });
 
 /** Every theme holds `words` at comfort (not tight) or at all (not over). */
-function holds(age: Age, words: number, comfort: boolean): boolean {
+function holdsInput(age: Age, input: TemplateInput, comfort: boolean): boolean {
   return THEMES.every((theme) => {
-    const r = layoutTemplate(hingeCapInput(age, words), theme, HINGE_CAP_STAGE[age]);
+    const r = layoutTemplate(input, theme, HINGE_CAP_STAGE[age]);
     return r.over.length === 0 && (!comfort || !r.tight);
   });
 }
+function holds(
+  age: Age,
+  words: number,
+  comfort: boolean,
+  options = HINGE_CAP_OPTIONS[age],
+): boolean {
+  return holdsInput(age, hingeCapInput(age, words, options), comfort);
+}
 
+/** Every option exactly `chars` long (the pool cut mid-word if need be), each from its own offset. */
+const charInput = (options: number, chars: number): TemplateInput => ({
+  template: "hinge",
+  heading: HINGE_CAP_QUESTION,
+  options: Array.from({ length: options }, (_, i) =>
+    `${POOL.slice(i)
+      .join(" ")
+      .slice(0, chars - 1)
+      .trimEnd()}.`.replace(/^./, (c) => c.toUpperCase()),
+  ),
+  correct: 1,
+});
+
+/**
+ * The most characters every option can take, to the character (GOLD-THROUGH-PROD.md, 18 Oct
+ * 2026): the word search steps 4-7 characters at a time and reads the shortest option's length,
+ * so it sat under what renders (KS2 4 options: 49, where 52-54-character options render on one
+ * line). Starts from the word search's figure; never lower.
+ */
+function charsAt(age: Age, options: number, from: number, comfort: boolean): number {
+  let c = from;
+  while (c < 200 && holdsInput(age, charInput(options, c + 1), comfort)) c += 1;
+  return c;
+}
+
+export type HingeCapCell = { words: number; maxWords: number; chars: number; maxChars: number };
+
+/** One option count's caps at an age: comfortable, then at all. */
+function measureAt(age: Age, options: number): HingeCapCell {
+  let words = 0;
+  while (words < 30 && holds(age, words + 1, true, options)) words += 1;
+  let maxWords = words;
+  while (maxWords < 30 && holds(age, maxWords + 1, false, options)) maxWords += 1;
+  const chars = charsAt(age, options, hingeSample(words).length, true);
+  return {
+    words,
+    maxWords,
+    chars,
+    maxChars: Math.max(chars, charsAt(age, options, hingeSample(maxWords).length, false)),
+  };
+}
+
+/**
+ * Per age: the caps at the most options (top level, as before) and `byCount`, each count from 2 up
+ * measured on its own (CAP-NEED-AUDIT.md row 2, 18 Oct 2026): fewer cards hold longer options.
+ */
 export function measureHingeCapacity() {
   const out: Record<
     string,
-    { words: number; maxWords: number; chars: number; maxChars: number; options: number }
+    HingeCapCell & { options: number; byCount: Record<string, HingeCapCell> }
   > = {};
   for (const age of ["early", "primary", "secondary"] as Age[]) {
-    let words = 0;
-    while (words < 30 && holds(age, words + 1, true)) words += 1;
-    let maxWords = words;
-    while (maxWords < 30 && holds(age, maxWords + 1, false)) maxWords += 1;
-    out[age] = {
-      words,
-      maxWords,
-      chars: hingeSample(words).length,
-      maxChars: hingeSample(maxWords).length,
-      options: HINGE_CAP_OPTIONS[age],
-    };
+    const most = HINGE_CAP_OPTIONS[age];
+    const byCount: Record<string, HingeCapCell> = {};
+    for (let n = 2; n <= most; n += 1) byCount[String(n)] = measureAt(age, n);
+    out[age] = { ...(byCount[String(most)] as HingeCapCell), options: most, byCount };
   }
   return out;
 }

@@ -53,6 +53,7 @@
     "./icons": "./src/icons/index.ts",
     "./picture-fit": "./src/picture-fit.ts",
     "./surfaces": "./src/themes/surfaces.ts",
+    "./marks": "./src/themes/marks.ts",
     "./arrow": "./src/paths/arrow.ts"
   },
   "scripts": {
@@ -60,7 +61,9 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "caps:check": "bun scripts/caps-check.ts",
+    "measure:calibrate": "bun scripts/measure-calibration.ts"
   },
   "devDependencies": {
     "@tj/config": "workspace:*",

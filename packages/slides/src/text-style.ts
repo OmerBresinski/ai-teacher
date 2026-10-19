@@ -171,6 +171,26 @@ export function onScale(
   );
 }
 
+/**
+ * A size a layout took from its own age table (`TextStyle.fixedSize`, UX ruling 21 A): drawn as
+ * stored, never snapped to the stage's steps. Undefined when the style has no fixed size.
+ */
+/**
+ * The style with its layout-owned size let go (ruling 21 A): once a teacher, tidy or the fitter
+ * sets a size or a preset, the size is theirs and the type scale reads it again. Every writer of
+ * `fontSize` or `preset` outside a layout goes through this, so `fixedSize` never outlives it.
+ */
+export function unfixed<T extends { fixedSize?: boolean }>(style: T): Omit<T, "fixedSize"> {
+  const { fixedSize: _, ...rest } = style;
+  return rest;
+}
+
+export function fixedSizeOf(
+  style: { fixedSize?: boolean; fontSize?: number } | undefined,
+): number | undefined {
+  return style?.fixedSize && style.fontSize !== undefined ? style.fontSize : undefined;
+}
+
 export function resolveTextStyle(
   style: TextStyle | Partial<TextStyle> | undefined,
   theme: Theme,
@@ -193,14 +213,16 @@ export function resolveTextStyle(
     preset,
     role: textRole(preset, role),
     fontFamily: style?.fontFamily ?? (isTitleFace ? theme.fonts.title : theme.fonts.body),
-    fontSize: resolveFontSize(theme, preset, style?.fontSize, role),
+    fontSize: fixedSizeOf(style) ?? resolveFontSize(theme, preset, style?.fontSize, role),
     lineHeight: style?.lineHeight ?? theme.lineHeights[preset],
     fontWeight: weight,
-    letterSpacing: TRACKED.includes(preset)
-      ? theme.titleTracking
-      : preset === "caption"
-        ? "0.08em"
-        : "normal",
+    letterSpacing: style?.letterSpacing
+      ? style.letterSpacing
+      : TRACKED.includes(preset)
+        ? theme.titleTracking
+        : preset === "caption"
+          ? "0.08em"
+          : "normal",
     textTransform: preset === "caption" ? "uppercase" : "none",
     color:
       style?.color ??
@@ -232,15 +254,16 @@ export const readingLeading = (t: Theme): number => Math.min(t.lineHeights.body,
 
 type Sized = {
   type: string;
-  style?: { preset?: TextPreset; fontSize?: number };
-  textStyle?: { preset?: TextPreset; fontSize?: number };
+  style?: { preset?: TextPreset; fontSize?: number; fixedSize?: boolean };
+  textStyle?: { preset?: TextPreset; fontSize?: number; fixedSize?: boolean };
   fontSize?: number;
   children?: Sized[];
 };
 
 /**
  * Every stored size on a slide put on the theme's key-stage scale (a no-op with no stage): text,
- * option cards (role `option`), labelled shapes, tables (`small`) and groups' children. The render
+ * option cards (role `option`), labelled shapes, tables (`small`) and groups' children; a layout's
+ * fixed size (`fixedSizeOf`) stays as it is. The render
  * reads the same `resolveFontSize`, so what is stored is what is drawn.
  */
 export function snapToScale<T extends { elements: readonly unknown[] }>(slide: T, theme: Theme): T {
@@ -248,11 +271,11 @@ export function snapToScale<T extends { elements: readonly unknown[] }>(slide: T
   const one = (raw: unknown): unknown => {
     const e = raw as Sized;
     let out: Sized = e;
-    if (e.style?.fontSize !== undefined) {
+    if (e.style?.fontSize !== undefined && !e.style.fixedSize) {
       const fontSize = resolveFontSize(theme, e.style.preset ?? "body", e.style.fontSize);
       if (fontSize !== e.style.fontSize) out = { ...out, style: { ...e.style, fontSize } };
     }
-    if (e.textStyle?.fontSize !== undefined) {
+    if (e.textStyle?.fontSize !== undefined && !e.textStyle.fixedSize) {
       const role = e.type === "option" ? "option" : undefined;
       const fontSize = resolveFontSize(
         theme,
@@ -286,7 +309,7 @@ export function steppedDown(slide: { elements: readonly unknown[] }, theme: Them
     for (const raw of els) {
       const e = raw as Sized & { name?: string };
       const st = e.style ?? e.textStyle;
-      if (st?.fontSize !== undefined) {
+      if (st?.fontSize !== undefined && !st.fixedSize) {
         const r = stageSize(
           sc,
           st.preset ?? "body",

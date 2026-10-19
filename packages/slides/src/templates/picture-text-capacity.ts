@@ -2,7 +2,7 @@
  * Picture and text (TEACH-75 part ae): the most words lead + points may have, measured by the
  * renderer in the gold's sweep filler (the KS3 composite-volcano text, 3 points, 2 at KS1) on the
  * landscape field, on every theme of the group. `words` is the hard cap (fits on the last rung of
- * the ladder), `comfortable` fits on the first. Regenerate:
+ * the ladder), `comfortable` fits on the first (KS2: on the gold's comfortable rungs, k >= .96). Regenerate:
  * `bun packages/slides/src/templates/picture-text-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
@@ -43,29 +43,68 @@ export function sweepInput(n: number, np: number) {
   };
 }
 
+/** `n` words as a lead of `leadN` words and points weighted by `weights` (an uneven split). */
+export function mixInput(n: number, leadN: number, weights: readonly number[]) {
+  const rest = n - leadN;
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const points: string[] = [];
+  let at = leadN;
+  for (const [i, w] of weights.entries()) {
+    const len = i === weights.length - 1 ? n - at : Math.round((rest * w) / sum);
+    points.push(`${ALL.slice(at, at + len).join(" ")}.`);
+    at += len;
+  }
+  return { ...sweepInput(n, weights.length), lead: `${ALL.slice(0, leadN).join(" ")}.`, points };
+}
+
+/**
+ * KS2's realistic uneven splits beside the gold's even sweep: a full 16-word lead (the lead cap)
+ * or a short 8-word one, then one long point and two short ones in each order. Ruling 162 amended
+ * by Greg 18 Oct (item 31 A): at the golds' 33-34px a long point can take a line the even sweep
+ * never does, so the cap holds for these too.
+ */
+const KS2_MIXES: { lead: number; weights: number[] }[] = [16, 8].flatMap((lead) =>
+  [
+    [2, 1, 1],
+    [1, 2, 1],
+    [1, 1, 2],
+  ].map((weights) => ({ lead, weights })),
+);
+const inputsFor = (stages: readonly Stage[], n: number, np: number) => [
+  sweepInput(n, np),
+  ...(stages.includes("ks2")
+    ? KS2_MIXES.filter((m) => n - m.lead >= 3 * np).map((m) => mixInput(n, m.lead, m.weights))
+    : []),
+];
+
 /** Whether `n` sweep words lay out on every theme and stage of the group (`first`: on rung 1). */
 export function sweepFits(stages: readonly Stage[], n: number, first: boolean): boolean {
   const np = stages.includes("ks1") ? 2 : 3;
   for (const theme of THEMES)
-    for (const stage of stages) {
-      const r = layoutTemplate(sweepInput(n, np), theme, stage);
-      if (r.over.some((o) => o.startsWith("picture-text column "))) return false;
-      if (first) {
-        const lead = r.slide.elements.find((e) => e.name === "Lead") as
-          | { style?: { fontSize?: number } }
-          | undefined;
-        const pts = r.slide.elements.filter((e) => e.name === "Point") as {
-          style?: { fontSize?: number };
-        }[];
-        const gap = r.slide.elements.filter((e) => e.name === "Point");
-        const body = lead?.style?.fontSize ?? 0;
-        // Rung 1 keeps the lead at its own step, a step over the points.
-        if (pts.some((p) => (p.style?.fontSize ?? 0) >= body)) return false;
-        // Rung 1 keeps the full spacing: the second point starts 16pt under the first.
-        const [a, b] = gap as { y: number; h: number }[];
-        if (a && b && b.y - (a.y + a.h) < 16) return false;
+    for (const stage of stages)
+      for (const input of inputsFor(stages, n, np)) {
+        const r = layoutTemplate(input, theme, stage);
+        if (r.over.some((o) => o.startsWith("picture-text column "))) return false;
+        if (first && stage === "ks2") {
+          // KS2: the gold's comfortable share, k >= .96, which the layout reports as not `tight` (ruling
+          // 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px).
+          if (r.tight) return false;
+        } else if (first) {
+          const lead = r.slide.elements.find((e) => e.name === "Lead") as
+            | { style?: { fontSize?: number } }
+            | undefined;
+          const pts = r.slide.elements.filter((e) => e.name === "Point") as {
+            style?: { fontSize?: number };
+          }[];
+          const gap = r.slide.elements.filter((e) => e.name === "Point");
+          const body = lead?.style?.fontSize ?? 0;
+          // Rung 1 keeps the lead at its own step, a step over the points.
+          if (pts.some((p) => (p.style?.fontSize ?? 0) >= body)) return false;
+          // Rung 1 keeps the full spacing: the second point starts 16pt under the first.
+          const [a, b] = gap as { y: number; h: number }[];
+          if (a && b && b.y - (a.y + a.h) < 16) return false;
+        }
       }
-    }
   return true;
 }
 

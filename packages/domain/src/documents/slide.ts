@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  type DirStamp,
+  DirStampSchema,
+  type ElementRtl,
+  ElementRtlSchema,
+  LanguageTagSchema,
+} from "./direction";
 import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
 import { type LayoutRef, LayoutRefSchema } from "./layout-ref";
@@ -93,6 +100,12 @@ export type Slide = {
    * unless the teacher turns "Show answers to class" on.
    */
   answersRole?: AnswersRole;
+  /**
+   * Which way the slide's geometry is laid out (TEACH-75 part z): "rtl" once it has been mirrored
+   * for a right-to-left lesson, absent for left to right. The lesson's language decides which it
+   * should be (`dirOf`); a slide is mirrored only when its stamp differs.
+   */
+  dir?: DirStamp;
 };
 
 /** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
@@ -135,7 +148,15 @@ export type QuestionData =
   | { type: "image-match"; pairs: { id: Id; imageId: Id; labelId: Id }[] }
   | { type: "fill-gap"; gaps: { id: Id; answer: string; alternatives?: string[] }[] }
   | { type: "sort"; order: Id[] } // element ids in the correct order
-  | { type: "open-response"; modelAnswer?: string };
+  | {
+      type: "open-response";
+      modelAnswer?: string;
+      /**
+       * Each numbered answer's working, kept apart from the answer: `working[i]` belongs to line i
+       * of `modelAnswer` ("" for none). The end Answers ledger draws it in its own column.
+       */
+      working?: string[];
+    };
 
 /* ------------------------------------------------------------------ */
 /* Elements                                                            */
@@ -163,6 +184,12 @@ type ElementBase = {
   reveal?: "fade" | "rise" | "none";
   /** Shared across slides for the 'morph' transition. */
   morphKey?: string;
+  /**
+   * The element's exception to the right-to-left mirror (TEACH-75 part z): `keep` moves the box
+   * and changes nothing inside it (maths, code, figures); `flip` draws a directional glyph flipped.
+   * Absent: the element's type decides.
+   */
+  rtl?: ElementRtl;
 } & Provenance;
 
 export type TextPreset = "title" | "subtitle" | "heading" | "body" | "small" | "caption";
@@ -171,16 +198,29 @@ export type TextStyle = {
   preset: TextPreset;
   /** Overrides. Absent = inherit from theme for the preset. */
   fontFamily?: string;
+  /** Tracking in em (`"0.1em"`); absent = the preset's own (a title's theme tracking, a caption's 0.08em). */
+  letterSpacing?: string;
   fontSize?: number;
   lineHeight?: number;
   fontWeight?: number;
   color?: string;
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
+  /**
+   * BCP-47 language of the text when it differs from the lesson's (TEACH-75 part z): Arabic words
+   * on an English slide. Absent: the lesson's language.
+   */
+  lang?: string;
   /** Grow height to fit content (default true for new text). */
   autoHeight?: boolean;
   /** Shrink font to fit the box when content overflows. */
   autoFit?: boolean;
+  /**
+   * `fontSize` is a size the layout took from its own age table (UX ruling 21 A, the approved
+   * golds' sizes), drawn as given rather than snapped to the key stage's type scale. Only layout
+   * recipes set it, and they keep their own floors.
+   */
+  fixedSize?: boolean;
   padding?: number;
   background?: string;
   radius?: number;
@@ -260,6 +300,8 @@ export type ImageElement = ElementBase & {
   /** Non-destructive adjustments layered over `src` (TEACH-153); `src` itself is never rewritten. */
   imageTransform?: ImageTransform;
   radius?: number;
+  /** The picture cut to a shape (Geometric's hexagon cover, TEACH-215 part c). */
+  mask?: "hexagon";
   /** Attribution for a searched image: "Title by Creator, CC BY 2.0". */
   credit?: string;
   /** The page the searched image came from, linked beside the credit. */
@@ -325,7 +367,11 @@ export type ShapeKind =
   | "diamond"
   | "star"
   | "speech"
-  | "pill";
+  | "pill"
+  /** A theme's mark shapes (TEACH-215 part c): flat-topped hexagon, octagon, two cut corners. */
+  | "hexagon"
+  | "octagon"
+  | "notch";
 
 export type ShapeElement = ElementBase & {
   type: "shape";
@@ -334,6 +380,11 @@ export type ShapeElement = ElementBase & {
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
+  /**
+   * A hard offset block under the shape (Poster's 8pt ink block, TEACH-215 part c): the same
+   * shape in `color`, moved by x/y. PPTX writes it as a blur-free outer shadow.
+   */
+  shadow?: { x: number; y: number; color: string };
   /** Optional centred label. */
   doc?: RichDoc;
   textStyle?: Partial<TextStyle>;
@@ -436,6 +487,8 @@ export type GroupElement = ElementBase & {
    * re-lays the group from it when an item is edited, added or removed. Ungrouping drops it.
    */
   layout?: LayoutRef;
+  /** A `layout` group's direction stamp, in its own frame, as `Slide.dir` (TEACH-75 part z). */
+  dir?: DirStamp;
 };
 
 export type SlideElement =
@@ -471,6 +524,7 @@ const elementBase = {
   revealStep: z.number().optional(),
   reveal: z.enum(["fade", "rise", "none"]).optional(),
   morphKey: z.string().optional(),
+  rtl: ElementRtlSchema.optional(),
   // F06 / F07 provenance (ADR 0025 §2). Declared here because `z.object` strips unknown keys.
   ...provenanceFields,
 };
@@ -487,14 +541,20 @@ export const TextPresetSchema = z.enum([
 export const TextStyleSchema = z.object({
   preset: TextPresetSchema,
   fontFamily: z.string().optional(),
+  letterSpacing: z
+    .string()
+    .regex(/^-?(0|0?\.\d{1,3})em$/)
+    .optional(),
   fontSize: z.number().optional(),
   lineHeight: z.number().optional(),
   fontWeight: z.number().optional(),
   color: z.string().optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   valign: z.enum(["top", "middle", "bottom"]).optional(),
+  lang: LanguageTagSchema.optional(),
   autoHeight: z.boolean().optional(),
   autoFit: z.boolean().optional(),
+  fixedSize: z.boolean().optional(),
   padding: z.number().optional(),
   background: z.string().optional(),
   radius: z.number().optional(),
@@ -509,6 +569,9 @@ export const ShapeKindSchema = z.enum([
   "star",
   "speech",
   "pill",
+  "hexagon",
+  "octagon",
+  "notch",
 ]);
 
 const TextElementSchema = z.object({
@@ -637,6 +700,7 @@ const ImageElementSchema = z.object({
     })
     .optional(),
   radius: z.number().optional(),
+  mask: z.enum(["hexagon"]).optional(),
   credit: z.string().optional(),
   // The credit line renders as an anchor in the image toolbar, and an imported lesson is
   // untrusted JSON: a `javascript:` address here would be a click away from running. Same check
@@ -659,6 +723,13 @@ const ShapeElementSchema = z.object({
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   radius: z.number().optional(),
+  shadow: z
+    .object({
+      x: z.number().min(-16).max(16),
+      y: z.number().min(-16).max(16),
+      color: z.string().max(32),
+    })
+    .optional(),
   doc: RichDocSchema.optional(),
   textStyle: TextStyleSchema.partial().optional(),
 });
@@ -745,6 +816,7 @@ const GroupElementSchema = z.object({
   alt: z.string().optional(),
   figure: FigureRefSchema.optional(),
   layout: LayoutRefSchema.optional(),
+  dir: DirStampSchema.optional(),
 });
 
 export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion("type", [
@@ -800,7 +872,11 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
     ),
   }),
   z.object({ type: z.literal("sort"), order: z.array(z.string()) }),
-  z.object({ type: z.literal("open-response"), modelAnswer: z.string().optional() }),
+  z.object({
+    type: z.literal("open-response"),
+    modelAnswer: z.string().optional(),
+    working: z.array(z.string()).optional(),
+  }),
 ]);
 
 export const SlideKindSchema = z.enum([
@@ -859,6 +935,7 @@ export const SlideSchema = z
       })
       .optional(),
     answersRole: z.enum(["guard", "answers"]).optional(),
+    dir: DirStampSchema.optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential
@@ -1081,11 +1158,61 @@ export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolea
 }
 
 /**
+ * An open response's answer key as one text, each answer followed by its working after " — "
+ * (the stored fields keep them apart): what the answer drawer edits, the answer reveal, the
+ * PowerPoint key and plain text. Untrimmed, so the drawer keeps what the teacher is typing.
+ */
+export function answerKeyText(q: { modelAnswer?: string; working?: string[] }): string {
+  const lines = (q.modelAnswer ?? "").split("\n");
+  const work = q.working ?? [];
+  return lines
+    .map((l, i) => {
+      const w = work[i];
+      return w?.trim() && l.trim() ? `${l} — ${w}` : l;
+    })
+    .join("\n");
+}
+
+/** A short answer (bold in the end Answers ledger, with optional working) is at most this many words. */
+export const SHORT_ANSWER_WORDS = 4;
+/** A working line: digits and an operator or "=", e.g. "16 ÷ 2 = 8; 8 ÷ 2 = 4". */
+const isCalculation = (s: string) => /\d/.test(s) && /[=÷×+−*/]/.test(s);
+const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/**
+ * One answer line read as answer and working (the inverse of `answerKeyText`'s join): what follows
+ * " — " is the working when the answer before it is short (at most `SHORT_ANSWER_WORDS` words,
+ * 40 characters, after any "1." number) or when it is a calculation. Anything else is all answer.
+ */
+export function splitWorkingLine(line: string): { answer: string; working?: string } {
+  const m = /^(\s*\d+[.)]\s*)?(.+?)\s+[—–]\s+(.+)$/.exec(line);
+  if (!m) return { answer: line };
+  const head = m[2] as string;
+  const tail = m[3] as string;
+  const short = head.trim().length <= 40 && wordCount(head) <= SHORT_ANSWER_WORDS;
+  if (!short && !isCalculation(tail)) return { answer: line };
+  return { answer: `${m[1] ?? ""}${head}`, working: tail };
+}
+
+/**
+ * The answer drawer's joined text back into the question's fields, line by line, so each working
+ * stays with its own answer when lines are deleted or reordered (`answerKeyText` joins them).
+ */
+export function answerKeyFields(text: string): { modelAnswer: string; working?: string[] } {
+  const lines = text.split("\n").map(splitWorkingLine);
+  const working = lines.map((l) => l.working ?? "");
+  return {
+    modelAnswer: lines.map((l) => l.answer).join("\n"),
+    ...(working.some((w) => w.trim()) ? { working } : {}),
+  };
+}
+
+/**
  * Whether the slide reveals an open response's answers itself, one element step per given answer
  * (the quick check, TEACH-101 part g): its model answer stays on the question for the worksheet,
  * the answer drawer and the PowerPoint key, and Present adds no extra step to show it again.
  */
-export function revealsOwnAnswers(slide: Slide): boolean {
+export function revealsOwnAnswers(slide: Pick<Slide, "question" | "elements">): boolean {
   const q = slide.question;
   if (q?.type !== "open-response" || !q.modelAnswer?.trim()) return false;
   // A blank answer is a "n. …" line in a numbered list (`listAnswers`): it has no step of its own.

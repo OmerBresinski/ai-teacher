@@ -1,5 +1,5 @@
 import { type RichDoc, richDocToPlainText } from "./rich-text";
-import type { Slide, SlideElement } from "./slide";
+import { answerKeyText, type Slide, type SlideElement } from "./slide";
 import type { Worksheet } from "./worksheet";
 
 /*
@@ -33,7 +33,8 @@ export function slideText(slide: Slide): string {
   const q = slide.question;
   if (q?.type === "true-false") lines.push(`Answer: ${q.correct ? "True" : "False"}`);
   if (q?.type === "fill-gap") lines.push(`Answers: ${q.gaps.map((g) => g.answer).join(", ")}`);
-  if (q?.type === "open-response" && q.modelAnswer) lines.push(`Model answer: ${q.modelAnswer}`);
+  if (q?.type === "open-response" && q.modelAnswer)
+    lines.push(`Model answer: ${answerKeyText(q).trim()}`);
   if (q?.type === "multiple-choice") {
     const correct = new Set(q.options.filter((o) => o.correct).map((o) => o.id));
     const labels = slide.elements

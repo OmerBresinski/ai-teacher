@@ -27,14 +27,17 @@ export function hingeRevealShapes(slide: Slide, theme: Theme, roles: HingeRoles)
       out.push(...hingeDimParts(slide, theme, id).map((e) => ({ ...e, id: `${e.id}-dim` })));
       continue;
     }
+    // An inside ring (Geometric) is stroked on a box inset by half its width, so it stays in the card.
+    const ri = m.ringInset;
     out.push({
       ...base,
+      ...(ri > 0 ? { x: base.x + ri / 2, y: base.y + ri / 2, w: base.w - ri, h: base.h - ri } : {}),
       id: `${id}-ring`,
       type: "shape",
       shape: "rounded",
       fill: "transparent",
       stroke: m.ring,
-      strokeWidth: 3,
+      strokeWidth: ri > 0 ? ri : 3,
       name: "Reveal ring",
     });
     const k = m.key;
@@ -42,7 +45,7 @@ export function hingeRevealShapes(slide: Slide, theme: Theme, roles: HingeRoles)
       out.push({
         id: `${id}-key`,
         type: "shape",
-        shape: "rounded",
+        shape: k.shape,
         x: k.x,
         y: k.y,
         w: k.w,

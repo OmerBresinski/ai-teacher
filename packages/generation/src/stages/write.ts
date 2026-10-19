@@ -616,7 +616,6 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const shipped = withEndAnswers(deck as unknown as Slide[], {
     theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
     stage: keyStage,
-    worksheetAnswerKey: lesson.brief?.worksheet === true,
   });
   const done = {
     ...toLesson(shipped, "generated", allIn(shipped, "done")),

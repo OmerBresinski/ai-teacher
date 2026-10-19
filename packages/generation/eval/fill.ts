@@ -354,11 +354,28 @@ const toNum = (s: string | undefined) =>
 
 /** The first "<n> [adjectives] <unit>" in a size, and "<w> words" (per item) if stated. */
 export function parseSize(size: string, units: string[]): { count?: number; words?: number } {
-  const s = size.toLowerCase();
+  // A stem's, lead's or heading's words are not an item's (v4.8 sizes name them, often first).
+  const s = size
+    .toLowerCase()
+    // "8/10" (words or not): the need is the numerator, a word count.
+    .replace(/\b(\d+)\s*\/\s*\d+(?:\s+words?\b)?/g, "$1 words")
+    // "8 of 10 words" / "8 out of 10 words": the need is the first number (v4.8 loop 1b sizes).
+    .replace(
+      new RegExp(`\\b${NUM}\\s+(?:out\\s+)?of\\s+(?:its\\s+)?${NUM}(?=\\s+words?\\b)`, "g"),
+      "$1",
+    )
+    .replace(new RegExp(`\\b(?:stem|lead|heading)s?\\b[^;,.]*?\\b${NUM}\\s+words?\\b`, "g"), "")
+    // A hinge's stem written as "question N words" (singular, the number straight after).
+    .replace(new RegExp(`\\bquestion:?\\s+${NUM}\\s+words?\\b`, "g"), "");
   const unit = new RegExp(`\\b${NUM}\\s+(?:[a-z-]+\\s+){0,2}?(?:${units.join("|")})\\b`);
-  const w = new RegExp(`\\b${NUM}\\s+words?\\b`);
   const count = toNum(unit.exec(s)?.[1]);
-  const per = toNum(w.exec(s)?.[1]);
+  const run = new RegExp(`((?:\\b${NUM}\\b(?:\\s*(?:,|and|to|or|-)\\s*)?)+)\\s*words?\\b`);
+  // Per-item words: the largest number in any run that ends "... words" ("8, 9 and 10 words").
+  const found = [...s.matchAll(new RegExp(run.source, "g"))]
+    .flatMap((m) => [...(m[1] ?? "").matchAll(new RegExp(`\\b${NUM}\\b`, "g"))])
+    .map((m) => toNum(m[1]))
+    .filter((n): n is number => n !== undefined);
+  const per = found.length ? Math.max(...found) : undefined;
   return {
     ...(count !== undefined ? { count } : {}),
     ...(per !== undefined ? { words: per } : {}),
@@ -380,8 +397,8 @@ export interface PlannedSlide {
 
 export interface PlanFitReport {
   /**
-   * Always true: the writer's flow names a shape and a free-text size, never a layout id or an
-   * item count, so the layout is inferred from the shape and the count read from the size.
+   * Always true: the count is read from the flow's free-text size. Before v4.8 loop 1b the flow
+   * named no layout, so it is inferred from the shape; from then on the flow's `layout` is used.
    */
   approximate: true;
   planned: number;
@@ -437,6 +454,24 @@ function layoutForPlan(
   return null;
 }
 
+/** The nouns a size counts, per checked layout, when the flow names its layout (v4.8 loop 1b). */
+const DECLARED_UNITS: Record<string, string[]> = {
+  "items-row": ITEM_UNITS,
+  "panel-list": ITEM_UNITS,
+  "split-compare": ["sides", "things", "columns"],
+  hinge: ["options", "choices"],
+  practice: ["tasks", "questions"],
+  "exit-ticket": ["questions"],
+  "question-set": ["questions"],
+};
+
+/** A flow entry's declared `layout` (v4.8 loop 1b) when it is one this check reads; else null. */
+function declaredLayout(r: J): { layout: string; units: string[] } | null {
+  const id = String(r.layout ?? "").split(" ")[0] ?? "";
+  const units = DECLARED_UNITS[id];
+  return units ? { layout: id, units } : null;
+}
+
 export function planFit(
   flow: unknown,
   stage: WriterStage,
@@ -449,7 +484,14 @@ export function planFit(
     const look = String((r.look_at as J | undefined)?.kind ?? "none");
     const slide = typeof r.slide === "number" ? r.slide : i + 1;
     // Slides 1 and 2 are the title and the objectives: no menu layout takes them.
-    const hit = slide <= 2 ? null : layoutForPlan({ shape, size }, i === rows.length - 1);
+    // The flow's own `layout` (v4.8 on) wins; older flows name none, so the shape picks it.
+    const declared = typeof r.layout === "string";
+    const hit =
+      slide <= 2
+        ? null
+        : declared
+          ? declaredLayout(r)
+          : layoutForPlan({ shape, size }, i === rows.length - 1);
     if (!hit) return { slide, shape, size, layout: null, verdict: "unchecked" };
     const { count, words: w } = parseSize(size, hit.units);
     const base = {

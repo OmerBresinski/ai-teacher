@@ -39,6 +39,7 @@ import { stageOf } from "../src/stages/write";
 import { type MenuWordCaps, menuWordCaps } from "../src/writer/layout-menu";
 import { WRITER_MODEL } from "../src/writer/services";
 import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
+import { type ClipReport, clipFields, clipReport } from "./clipped";
 import {
   deckFields,
   type FieldFill,
@@ -127,6 +128,8 @@ export interface WriterRow {
    */
   planWriterUsdEstimate?: number | null;
   planFit?: PlanFitReport;
+  /** Full runs: clipped wording per field kind (eval/clipped.ts). */
+  clipped?: ClipReport;
   fill?: FillReport;
 }
 
@@ -435,6 +438,7 @@ export function writerRow(
       ...(planUsd !== undefined ? { planWriterUsdEstimate: planUsd } : {}),
       ...(Array.isArray(flow) ? { planFit: planFit(flow, stage, caps) } : {}),
       ...(full ? { fill: fillReport(fields, events) } : {}),
+      ...(full ? { clipped: clipReport(clipFields(full, fields)) } : {}),
     },
     fields,
     events: events.map((e) => ({ ...e, lesson: run.result.id })),

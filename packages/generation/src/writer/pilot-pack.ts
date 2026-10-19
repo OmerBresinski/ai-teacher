@@ -35,6 +35,7 @@ import {
   questionOffer,
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
+import { measuredFitDefs } from "./slot-fill";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -74,7 +75,33 @@ export type PilotPack = {
   catalogueIcons?: boolean;
   /** Fits not offered at the floor or past a cliff leave the schema too (`droppedFits`, v4.8). */
   fitFloor?: boolean;
+  /**
+   * Each flow entry names its slide's layout and fit (`layout`, before `size`), so the fit is
+   * chosen and the idea counted against it while a split is still possible (loop 1b, v4.8).
+   */
+  flowLayout?: boolean;
 };
+
+/** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
+const FLOW_SIZE_COUNTED = {
+  type: "string",
+  description:
+    "the words the idea needs, counted from the idea: how many items, the words each item needs out of its fit's words, then the lead's or stem's words out of its fit's",
+};
+
+/** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
+export const flowLayoutOf = (defKey: string): string => defKey.replace("~", " ");
+
+/**
+ * A pack's layouts without the pilot's word `budgets` (with their `charCaps`; layouts.json, v4.4-era
+ * numbers that drifted from the menu: KS2 three sides 12 against 13). The menu constants
+ * (layout-menu.ts, from the measured capacity tables) are the one source of every word budget the
+ * writer reads and code checks; nothing may read the stale copy (18 Oct 2026).
+ */
+function menuFed(l: unknown): PilotPack["layouts"] {
+  const { budgets: _b, ...rest } = l as Record<string, unknown>;
+  return rest as unknown as PilotPack["layouts"];
+}
 
 export const PILOT_PACKS = {
   "v4.4": {
@@ -108,10 +135,10 @@ export const PILOT_PACKS = {
   // only (ruling 227) and the contrast, parts and set boundaries stated at the flow step.
   "v4.7": {
     id: "v4.7",
-    layouts: l47 as PilotPack["layouts"],
+    layouts: menuFed(l47),
     base: { KS1: b61, KS2: b62, KS3: b63 },
-    // Frozen as shipped (the snapshot `assembleWriterSystem` made on 17 Oct): v4.8 now owns the
-    // menu constants.
+    // Frozen as shipped (master's `pilot-v4.7-menu` snapshot after #582, 18 Oct): v4.8 now owns
+    // the menu constants.
     system: { KS1: s71, KS2: s72, KS3: s73 },
     uncapped: true,
     capsFrom: "v4.5",
@@ -123,7 +150,7 @@ export const PILOT_PACKS = {
   // (ruling 261); and the list and contrast layouts' text length generated from their budgets.
   "v4.8": {
     id: "v4.8",
-    layouts: l47 as PilotPack["layouts"],
+    layouts: { ...menuFed(l47), flowSize: FLOW_SIZE_COUNTED },
     base: { KS1: b61, KS2: b62, KS3: b63 },
     // The layouts' menu lines come from the menu constants (layout-menu.ts), whose numbers are
     // the measured capacity tables; the rest of the text is the pack's, byte for byte.
@@ -138,6 +165,7 @@ export const PILOT_PACKS = {
     questionDefs: true,
     catalogueIcons: true,
     fitFloor: true,
+    flowLayout: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -244,6 +272,24 @@ export function pilotRequest(
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
+  if (pack.flowLayout) {
+    // The layouts a slide may take, as the flow names them; slides 1 and 2 are the title and
+    // the objectives. Placed before `size`, so the idea is counted against the fit it names.
+    const offered = (schema.properties.slides.items.anyOf as J[]).map((r) =>
+      flowLayoutOf(String(r.$ref).split("/").pop() ?? ""),
+    );
+    const layout = {
+      type: "string",
+      description: "the layout and fit this slide is written in (the Layout step)",
+      enum: ["title", "objectives", ...offered],
+    };
+    const { size, ...rest } = fp.items.properties;
+    const before = Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "teaches"));
+    fp.items.properties = { ...before, layout, ...(size ? { size } : {}), teaches: rest.teaches };
+    const req = (fp.items.required as string[]).filter((k) => k !== "layout");
+    const at = req.indexOf(size ? "size" : "teaches");
+    fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
+  }
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
   for (const k of [...replaced, ...pack.layouts.retired, ...floored])
@@ -256,7 +302,14 @@ export function pilotRequest(
       ? pilotRequest(pack.capsFrom as PilotPackId, stageKey, prod, withLibrary).schema
       : undefined;
     const caps = capped
-      ? { ...capped, $defs: { ...capped.$defs, ...capPilotDefs(schema.$defs, writerStageOf(ks)) } }
+      ? {
+          ...capped,
+          $defs: {
+            ...capped.$defs,
+            ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+          },
+        }
       : undefined;
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }
@@ -347,15 +400,43 @@ export function capPilotDefs(defs: J, stage: WriterStage): J {
   return out;
 }
 
+/** A writer schema's slide branches: every `slides` branch, then the lesson's `close` ones. */
+const slideRefs = (writer: J): J[] => {
+  const all = [
+    ...((writer.properties?.slides?.items?.anyOf ?? []) as J[]),
+    ...((writer.properties?.close?.anyOf ?? []) as J[]),
+  ];
+  return all.filter((r, k) => all.findIndex((x) => x.$ref === r.$ref) === k);
+};
+const templatesOf = (writer: J, ref: J): string[] =>
+  writer.$defs?.[String(ref.$ref).replace("#/$defs/", "")]?.properties?.template?.enum ?? [];
+
+/** The layouts a writer schema offers: the `template` of every slide branch, close included. */
+export function offeredLayouts(writer: J): string[] {
+  return [...new Set(slideRefs(writer).flatMap((r) => templatesOf(writer, r)))];
+}
+
 /**
- * The fit repair's schema for one pilot slide: the repair's own envelope (`fix`, `slide`,
- * `to_notes`) with `slide` fixed to the layout, and only the defs that layout reaches (its pictures,
- * diagrams, icon names). Every other layout's def stays out, so the call is small.
+ * The repair's layouts menu on a pack (ruling 218): the "Layouts." line of the writer's own system
+ * text, then each line of a layout the writer is offered, word for word as the writer read them.
+ * `layoutsFor` then cuts it to the slide's layout and those it may switch to.
  */
-export function pilotRepairSchema(repair: J, writer: J, template: string): J {
+export function packRepairMenu(system: string, offered: readonly string[]): string {
+  const lines = system.split("\n");
+  const head = lines.findIndex((l) => l.startsWith("Layouts. "));
+  if (head < 0) throw new Error("pilot pack: no Layouts line in the system text");
+  const want = new Set(offered);
+  return [
+    lines[head],
+    ...lines.slice(head + 1).filter((l) => want.has(/^- ([a-z-]+): /.exec(l)?.[1] ?? "")),
+  ].join("\n");
+}
+
+/** The repair envelope with `slide` one of `refs`, and only the defs those reach. */
+function repairWith(repair: J, writer: J, refs: J[]): J {
   const out = structuredClone(repair) as J;
   const pool: J = { ...(out.$defs ?? {}), ...(writer.$defs ?? {}) };
-  out.properties.slide = { anyOf: [{ $ref: `#/$defs/${template}` }] };
+  out.properties.slide = { anyOf: refs };
   const keep: J = {};
   const walk = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(walk);
@@ -372,8 +453,29 @@ export function pilotRepairSchema(repair: J, writer: J, template: string): J {
   };
   walk(out.properties);
   out.$defs = keep;
+  return out;
+}
+
+/**
+ * The repair's schema on a pack (ruling 218): the repair's own envelope (`fix`, `slide`,
+ * `to_notes`) with `slide` any of `layouts` exactly as the writer's schema defines them, every fit
+ * with its item counts, so a repaired slide only becomes a layout production offers. A layout the
+ * writer is not offered is never added.
+ */
+export function packRepairSchema(repair: J, writer: J, layouts: readonly string[]): J {
+  const want = new Set(layouts);
+  const refs = slideRefs(writer).filter((r) => templatesOf(writer, r).some((t) => want.has(t)));
+  return repairWith(repair, writer, refs);
+}
+
+/**
+ * The fit repair's schema for one pilot slide: the repair's own envelope (`fix`, `slide`,
+ * `to_notes`) with `slide` fixed to the layout, and only the defs that layout reaches (its pictures,
+ * diagrams, icon names). Every other layout's def stays out, so the call is small.
+ */
+export function pilotRepairSchema(repair: J, writer: J, template: string): J {
   // A capped repair would cut its own fix, as the writer's decoder did.
-  return stripStringCaps(out);
+  return stripStringCaps(repairWith(repair, writer, [{ $ref: `#/$defs/${template}` }]));
 }
 
 const str = { type: "string" };

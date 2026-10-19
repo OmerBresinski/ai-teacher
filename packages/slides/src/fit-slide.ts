@@ -22,7 +22,7 @@ import {
   textPartsOf,
 } from "./reflow";
 import { measureHeadless } from "./text-measure";
-import { floorBelow, ladderStops, resolveTextStyle } from "./text-style";
+import { floorBelow, ladderStops, resolveTextStyle, unfixed } from "./text-style";
 import type { TextRole } from "./themes";
 
 /*
@@ -175,9 +175,10 @@ function stepOnce(slide: Slide, theme: Theme, ids: readonly Id[], role?: TextRol
       const current = resolveTextStyle(parts.style, theme, parts.preset, at).fontSize;
       const next = ladderStops(theme).find((s) => s < current - 0.5);
       if (next === undefined || next < floorBelow(theme, parts.preset, at)) return el;
-      if (el.type === "option") return { ...el, textStyle: { ...el.textStyle, fontSize: next } };
+      if (el.type === "option")
+        return { ...el, textStyle: { ...unfixed(el.textStyle ?? {}), fontSize: next } };
       if (el.type === "text" || el.type === "gap-text")
-        return { ...el, style: { ...el.style, fontSize: next } };
+        return { ...el, style: { ...unfixed(el.style), fontSize: next } };
       return el;
     }),
   };

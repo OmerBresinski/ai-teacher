@@ -23,14 +23,23 @@
  * named in `over`, never clipped or shrunk further. Content past the writer's caps (title, lead,
  * points, card fields) is named in `over` too.
  *
+ * **KS2 lead and points** (ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the
+ * golds' 33-34px on quick check, picture-with-points and split-compare): the gold's sizes, drawn
+ * as given (`fixedSize`): lead 37 px, points 33 px, both at the gold's line height 1.3. When full,
+ * type and spacing shrink together by k, as the gold's `--k` does (1 down to .85 in .02 steps): the
+ * gaps by k, the lead by k to 33 px; the points hold at 33 px (the ruling's floor; the gold's own
+ * floor is 28 px). Comfortable while k >= .96 (gold NOTES "Fields and caps"); under it the slide is
+ * `tight`.
+ *
  * **Input:** a picture-text slide with `pictureText` (`{ icon?, cards? }`). A saved picture-text
  * slide without it lays out exactly as before.
  */
 import type { ImageElement, RichDoc, ShapeElement, TextElement } from "@tj/domain/documents";
 import { styledRun } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { KS2_GOLD_READING } from "../layout-sizes";
 import { lineWidth } from "../text-measure";
-import { typeScale } from "../themes";
+import { keyStageOf, typeScale } from "../themes";
 import { paintSurface, surfacesOf } from "../themes/surfaces";
 import { FIGURE_WIDE_ASPECT } from "./figure-rules";
 import { type Ctx, type Figure, G, kit, type Role, type Stage, type TemplateInput } from "./index";
@@ -199,13 +208,23 @@ function put(
   c.s = s;
   return el;
 }
-const hOf = (c: Ctx, value: string, role: Role, at: Role | number, w: number, weight?: number) =>
-  kit.measure({ ...c, s: { ...c.s, [role]: sizeOf(c, at) } }, value, role, w, weight);
+const hOf = (
+  c: Ctx,
+  value: string,
+  role: Role,
+  at: Role | number,
+  w: number,
+  weight?: number,
+  lh?: number,
+) => kit.measure({ ...c, s: { ...c.s, [role]: sizeOf(c, at) } }, value, role, w, weight, lh);
 /** The scale's heading step (under the display heading): the card's term, unit and examples. */
 const nameSize = (c: Ctx) => typeScale(c.t)?.heading ?? c.s.heading;
 
-/** One rung of the fit ladder: the lead's and points' size steps and the spacing share. */
-type Rung = { lead: Role; pts: Role; k: number };
+/**
+ * One rung of the fit ladder: the lead's and points' sizes (a scale step, or the KS2 gold's points)
+ * and the spacing share.
+ */
+type Rung = { lead: Role | number; pts: Role | number; k: number };
 /** The points always sit a step under the lead (the gold: lead 1.12x body at 500, points body). */
 const RUNGS: Rung[] = [
   { lead: "body", pts: "small", k: 1 },
@@ -213,6 +232,21 @@ const RUNGS: Rung[] = [
   { lead: "body", pts: "small", k: 0.7 },
   { lead: "body", pts: "small", k: 0.55 },
 ];
+/**
+ * KS2 (ruling 162 amended by Greg 18 Oct (item 31 A)): the gold's `--k` ladder, 1 down to .85 in
+ * .02 steps; type and spacing shrink together, the lead to 33 px, the points held at 33 px.
+ */
+const G2 = KS2_GOLD_READING;
+const KS2_RUNGS: Rung[] = [1, 0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.85].map((k) => ({
+  lead: Math.max(
+    G2.pictureLeadFloor,
+    Math.min(G2.pictureLead, Math.round(G2.pictureLead * k * 100) / 100),
+  ),
+  pts: G2.picturePoint,
+  k,
+}));
+/** The gold's comfortable share: the slide is comfortable while k >= .96. */
+const KS2_COMFORT_K = 0.96;
 
 /**
  * The model on its own sand panel with every part shown (the gold: the slide does not build, so a
@@ -361,22 +395,29 @@ function plainColumn(
   const muted = c.t.colors.muted;
   const dot = stage === "ks1" ? 9 : 7;
   const leadText = lead?.trim() ?? "";
+  // KS2 with points: the gold's sizes and line height, drawn as given (ruling 162 amended by Greg
+  // 18 Oct, item 31 A). A lead alone keeps its name-size look.
+  const gold = keyStageOf(c.t) === "ks2" && !solo;
+  const lh = gold ? G2.pictureLineHeight : undefined;
+  const fixed = gold ? { fixedSize: true, lineHeight: G2.pictureLineHeight } : {};
+  const rungs = gold ? KS2_RUNGS : RUNGS;
   const plan = (r: Rung) => {
-    const ind = Math.round(c.s[r.pts] * 1.05);
+    const ind = Math.round(sizeOf(c, r.pts) * 1.05);
     let h = 0;
     if (leadText)
       h += solo
         ? hOf(c, leadText, "heading", "heading", col.w, 400)
-        : hOf(c, leadText, "lead", r.lead, col.w, 500);
+        : hOf(c, leadText, "lead", r.lead, col.w, 500, lh);
     for (const [i, p] of pts.entries())
       h +=
         (i === 0 ? (leadText ? Math.round(21 * r.k) : 0) : Math.round(16 * r.k)) +
-        hOf(c, p, "body", r.pts, col.w - ind);
+        hOf(c, p, "body", r.pts, col.w - ind, undefined, lh);
     return h;
   };
-  const rung = RUNGS.find((r) => col.y + plan(r) <= FOOT) ?? (RUNGS.at(-1) as Rung);
+  const rung = rungs.find((r) => col.y + plan(r) <= FOOT) ?? (rungs.at(-1) as Rung);
   if (col.y + plan(rung) > FOOT)
     c.over.push(`picture-text column ${Math.round(col.y + plan(rung))}/${FOOT}pt`);
+  if (gold) c.tight = rung.k < KS2_COMFORT_K;
   let y = col.y;
   if (leadText) {
     const el = solo
@@ -402,16 +443,17 @@ function plainColumn(
             color: ink,
             weight: 500,
             name: PT_NAMES.lead,
+            ...fixed,
           },
         );
     if (!solo) el.style = { ...el.style, preset: "body" };
     y = el.y + el.h;
   }
-  const ind = Math.round(c.s[rung.pts] * 1.05);
+  const ind = Math.round(sizeOf(c, rung.pts) * 1.05);
   for (const [i, p] of pts.entries()) {
     y += i === 0 ? (leadText ? Math.round(21 * rung.k) : 0) : Math.round(16 * rung.k);
-    const size = c.s[rung.pts];
-    const line = size * kit.LH[rung.pts === "small" ? "small" : "body"];
+    const size = sizeOf(c, rung.pts);
+    const line = size * (lh ?? kit.LH[rung.pts === "small" ? "small" : "body"]);
     kit.box(
       c,
       { x: col.x + Math.round(size * 0.12), y: y + (line - dot) / 2, w: dot, h: dot },
@@ -427,6 +469,7 @@ function plainColumn(
       {
         color: muted,
         name: PT_NAMES.point,
+        ...fixed,
       },
     );
     y = el.y + el.h;

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LanguageTagSchema } from "./direction";
 import { normaliseHref } from "./links";
 
 /*
@@ -117,9 +118,12 @@ const LinkAttrsSchema = z
  * - `font: "quote"` sets the run in the theme's quote face (a worked example's `x`, a source's words);
  * - `highlight: n` washes the run in colour slot n (1-4), never a hex: the theme owns the colour;
  * - `strikeStep: n` is the myth strike, an offset line through the x-height (not the `strike`
- *   mark, which is the font's own strikeout), shown from reveal step n (0 = from the start).
+ *   mark, which is the font's own strikeout), shown from reveal step n (0 = from the start);
+ * - `lang: "ar"` marks a run in another language than its text box (TEACH-75 part z): an Arabic
+ *   word in an English sentence, which renders as an isolate in its own direction.
  */
-export const RUN_FONTS = ["quote"] as const;
+/** `quote`: the theme's quote face; `math`: the theme's maths-variable face (`mathFaceOf`). */
+export const RUN_FONTS = ["quote", "math"] as const;
 export type RunFont = (typeof RUN_FONTS)[number];
 /** Colour slots a highlight can name (ruling 248: four, in a fixed hue order). */
 export const HIGHLIGHT_SLOTS = 4;
@@ -145,6 +149,8 @@ export type RunStyleAttrs = {
   font?: RunFont;
   highlight?: number;
   strikeStep?: number;
+  /** BCP-47 language of the run when it differs from its text box's (TEACH-75 part z). */
+  lang?: string;
 };
 
 /** `inner`, or undefined (with a warning) when the stored value does not parse. */
@@ -182,6 +188,7 @@ const TextStyleAttrsSchema = z
     font: lenient("font", nullish(z.enum(RUN_FONTS))),
     highlight: lenient("highlight", nullish(z.number().int().min(1).max(HIGHLIGHT_SLOTS))),
     strikeStep: lenient("strikeStep", nullish(z.number().int().min(0).max(MAX_STRIKE_STEP))),
+    lang: lenient("lang", nullish(LanguageTagSchema)),
   })
   .loose();
 
