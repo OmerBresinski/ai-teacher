@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
-import { groundArt } from "../art";
-import { footStrip } from "../background";
+import { groundArt, isGroundArt } from "../art";
+import { footStrip, slideArtLayers } from "../background";
 import { contrastRatio } from "../look";
 import { withTitleBand } from "../templates/title-band";
 import { getTheme } from "../themes";
@@ -145,11 +145,27 @@ describe("foot accent strip", () => {
     "dark-ember",
     "beacon",
   ];
-  test("the ten themes whose gold has it paint 14px at 1440 in the accent", () => {
+  // Each gold's `--accent` (round 3 themes3.css; Reading Room round 4; the darks round 5).
+  const GOLD_ACCENT: Record<string, string> = {
+    treehouse: "#245F28",
+    "reading-room": "#1F5A45",
+    crayon: "#A31F2E",
+    "exam-hall": "#1B3A8C",
+    playground: "#6532BE",
+    splash: "#0A5CA2",
+    studio: "#0B6E86",
+    "dark-slate": "#9DBBD0",
+    "dark-ember": "#F2A08C",
+    beacon: "#0A46C8",
+  };
+  test("the ten themes whose gold has it paint 14px at 1440 in the gold's accent", () => {
+    expect(Object.keys(GOLD_ACCENT).sort()).toEqual([...ON].sort());
     for (const id of ON) {
-      const t = getTheme(id);
-      const s = footStrip(t, slide("content"));
-      expect(s).toEqual({ x: 0, y: 540 - 9.3333, w: 960, h: 9.3333, fill: t.colors.accent });
+      const s = footStrip(getTheme(id), slide("content"));
+      expect({ id, s }).toEqual({
+        id,
+        s: { x: 0, y: 530.6667, w: 960, h: 9.3333, fill: GOLD_ACCENT[id] as string },
+      });
     }
   });
   test("none on the cover, none in the other themes, none over the look's own accent bar", () => {
@@ -228,5 +244,19 @@ describe("sticky key reveal (TEACH-215 part k integration)", () => {
     expect(right.fill).not.toBe(surfacesOf(t).marks.sticky?.fill);
     expect(right.ink).toBe("#FFFFFF");
     expect(contrastRatio(right.ink as string, right.fill as string)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("scrapbook's cover keeps its own ground (review S1)", () => {
+  test("a title slide wears the cover art (margin at 38pt, rules in the lower band), no lined ground", () => {
+    const t = getTheme("scrapbook");
+    const cover = slideArtLayers(t, { id: "c", kind: "title", elements: [] } as Slide);
+    expect(cover.map((l) => [l.x, l.y, l.w, l.h])).toEqual([
+      [38, 0, 1.5, 531],
+      [0, 404, 960, 127],
+    ]);
+    expect(cover.some(isGroundArt)).toBe(false);
+    const content = slideArtLayers(t, { id: "k", kind: "content", elements: [] } as Slide);
+    expect(content).toEqual([groundArt(t) as NonNullable<ReturnType<typeof groundArt>>]);
   });
 });

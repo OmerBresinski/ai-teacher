@@ -93,11 +93,13 @@ describe("the poster band in another theme", () => {
     expect(band.fill).toBe("#123C4A");
     const paper = getTheme("paper");
     const drawn = withThemeColours({ id: "s", ...s }, paper);
-    expect((named(drawn, surfaceName("title"))[0] as ShapeElement).fill).toBe("transparent");
+    // The band paper does not draw is left out, no invisible rect kept (review N1).
+    expect(named(drawn, surfaceName("title"))).toEqual([]);
     const h = named(drawn, "Heading")[0] as TextElement;
     expect(h.style.color).toBe(paper.colors.heading ?? paper.colors.ink);
     expect(JSON.stringify(h.doc)).toContain(paper.colors.accent);
     const back = withThemeColours({ id: "s", ...s }, getTheme("poster"));
     expect((named(back, "Heading")[0] as TextElement).style.color).toBe("#FFF4E2");
+    expect((named(back, surfaceName("title"))[0] as ShapeElement).fill).toBe("#123C4A");
   });
 });

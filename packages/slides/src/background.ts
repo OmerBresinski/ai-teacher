@@ -114,7 +114,7 @@ export function slideArtLayers(theme: Theme, slide: Slide): ThemeArtLayer[] {
   const hit = new Set(artCollisions(art, slide));
   // The theme's ground texture (Geometric's dot grid) goes last, under the art: it is the ground,
   // drawn under every element, so it never counts as a collision.
-  const ground = groundArt(theme);
+  const ground = groundArt(theme, want.role);
   return [...art.filter((l) => !hit.has(l)), ...(ground ? [ground] : [])];
 }
 

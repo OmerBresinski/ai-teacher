@@ -146,20 +146,26 @@ export function withThemeColours(
 ): Slide {
   const band = bandOf(slide.elements);
   const elements = slide.elements.map((e) => themedElement(e, theme, docs, band));
+  // A laid band the deck's theme does not draw is cleared above, then left out: no invisible
+  // rect stays on the slide (it is drawn only, never saved, so a switch back finds it again).
+  const ghost = (e: SlideElement) =>
+    e.name === "surface:title" && e.type === "shape" && e.fill === CLEAR;
   return {
     ...slide,
-    elements: elements.map((e, i) => {
-      const read = readable(slide.elements, elements, i, theme);
-      // A stored layout group (TEACH-75 part ap): its children are drawn as laid out, so words a
-      // layout put straight on the slide (a pilot slide saved before layouts painted their own
-      // ground) sit on whatever ground the deck's theme now draws.
-      const kids = (e as { children?: SlideElement[] }).children;
-      if (e.type !== "group" || !kids?.length) return read;
-      return {
-        ...read,
-        children: kids.map((_k, k) => readable(kids, kids, k, theme, true)),
-      } as SlideElement;
-    }),
+    elements: elements
+      .map((e, i) => {
+        const read = readable(slide.elements, elements, i, theme);
+        // A stored layout group (TEACH-75 part ap): its children are drawn as laid out, so words a
+        // layout put straight on the slide (a pilot slide saved before layouts painted their own
+        // ground) sit on whatever ground the deck's theme now draws.
+        const kids = (e as { children?: SlideElement[] }).children;
+        if (e.type !== "group" || !kids?.length) return read;
+        return {
+          ...read,
+          children: kids.map((_k, k) => readable(kids, kids, k, theme, true)),
+        } as SlideElement;
+      })
+      .filter((e) => !ghost(e)),
   };
 }
 

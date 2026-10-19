@@ -298,9 +298,25 @@ const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
  */
 
 const tok = TOKENS as Record<string, Record<string, string>>;
-// Scrapbook: round 4 moved the margin to 30px and round 2 ruled the whole page; both are its
-// lined ground now (`groundArt` below), so it has no role art to draw a second margin or rules.
-const SCRAPBOOK: Art = {};
+/**
+ * Scrapbook's cover keeps its own art (the margin at 58px and the rules in its lower band; the
+ * covers lane owns it). Content slides wear the lined ground instead (`groundArt` below: round 4
+ * moved the margin to 30px and round 2 ruled the whole page), so they draw no role art.
+ */
+const scrapRules = (y: number, h: number) =>
+  svg(
+    0,
+    y,
+    960,
+    h,
+    Array.from(
+      { length: Math.floor(h / 30) },
+      (_, i) =>
+        `<rect x='0' y='${14 + i * 30}' width='960' height='1.3' fill='${tok.scrapbook?.["set-b"]}'/>`,
+    ).join(""),
+  );
+const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
+const SCRAPBOOK: Art = { title: [scrapMargin, scrapRules(404, 127)] };
 
 /** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
 const dots = (x: number, y: number, w: number, h: number) =>
@@ -346,10 +362,11 @@ const lined = (line: string, margin: string) =>
   );
 const r2 = (v: number) => Math.round(v * 1000) / 1000;
 const GROUND_LINED = new Map<string, ThemeArtLayer>();
-export function groundArt(theme: Theme): ThemeArtLayer | null {
+export function groundArt(theme: Theme, role?: ThemeArtRole): ThemeArtLayer | null {
   const t = (TOKENS as Record<string, Record<string, string>>)[theme.id];
   if (t?.["ground-art"] === "dots") return GROUND_DOTS;
-  if (t?.["ground-art"] !== "lined") return null;
+  // The lined ground is for content slides: the cover keeps its own art, unchanged.
+  if (t?.["ground-art"] !== "lined" || role === "title") return null;
   const line = t["ground-line"] ?? t["rule"] ?? "#E3EAF2";
   const margin = t["ground-margin"] ?? t["hl-a"] ?? "#F1B9B4";
   const key = `${line}${margin}`;
