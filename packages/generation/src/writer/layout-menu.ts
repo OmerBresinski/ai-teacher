@@ -681,6 +681,11 @@ const countClauses = (pairs: [number, number][], one: string, many: string) =>
 export const HINGE_WRONG_WORKING =
   "A wrong option that states working or a result gives what its belief truly produces: the mistaken step and every step after it carried out correctly, so the belief is the option's only error.";
 
+// E1 run 1 judge (19 Oct 2026): hinge wrong options a pupil rules out at a glance. Merged into the
+// existing plausible-belief clause, saying what plausible means, rather than a sentence of its own.
+export const HINGE_TEMPTING =
+  "one that tempts a pupil who holds it, never one the question's own words rule out";
+
 // writer-prompt: owned by TEACH-110 v
 export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const o = hingeOffer(a);
@@ -693,7 +698,7 @@ export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
     hi >= 4 && fewer > most
       ? ` Options that need more words than ${hi} options allow, as a belief written as a full sentence does, take ${hi - 1} options.`
       : "";
-  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, with that belief in its why (teacher notes only; the correct option's why is null). ${HINGE_WRONG_WORKING} The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.${sentences}`;
+  return `- hinge: one multiple-choice question that checks the idea just taught (flow shape check), before the lesson moves on: ${span(lo, hi)} options with exactly one right, the correct one first (code shuffles them), then each wrong option a belief pupils plausibly hold at this point, ${HINGE_TEMPTING}, with that belief in its why (teacher notes only; the correct option's why is null). ${HINGE_WRONG_WORKING} The heading is the question itself; a longer setup goes on the slide before it. When every option is a thing one of the icon names shows, each option takes that icon and a name (picture tiles); otherwise every icon is null. Not for several questions (question-set or practice), an answer pupils write (practice), or the closing check (exit-ticket). Fits: the question up to ${o.question} words; ${countClauses(o.options, "option", "options")}; options with icons: up to ${TILE_WORDS} words each. Each limit holds only for its own option count.${sentences}`;
 });
 
 // writer-prompt: owned by TEACH-110 v

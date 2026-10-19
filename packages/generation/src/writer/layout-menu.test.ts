@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
+  HINGE_TEMPTING,
   HINGE_WRITER_MENU,
   HINGE_WRONG_WORKING,
   ITEMS_ROW_WRITER_MENU,
@@ -289,5 +290,47 @@ describe("hinge wrong options state their belief's true result", () => {
     test(`${stage}: the hinge line and the v4.8 snapshot carry it`, () => {
       expect(HINGE_WRITER_MENU[stage]).toContain(HINGE_WRONG_WORKING);
       expect(read(`system-${TEMPLATE[stage]}.snapshot.txt`)).toContain(HINGE_WRONG_WORKING);
+    });
+});
+
+/*
+ * E1 run 1's rubric judge (19 Oct 2026, build/LOG-pe-judge.md, build/PROMPT-AUDIT-v48.md): each
+ * fault's rule is merged into a line the prompt already had, not appended, and five duplicate or
+ * conflicting clauses are cut, so v4.8 is no longer than before. No number and no worked example.
+ */
+describe("v4.8 merges the rubric judge's rules into existing lines", () => {
+  const RULES = [
+    "so that every objective is taught and checked at the demand its verb names.",
+    "rather than repeating the explanation or an earlier question.",
+    "Every slide, question and task uses only the words, structures and methods this lesson teaches or that pupils of this age already know: any other word is explained in plain words where it first appears, or replaced.",
+    "Demand comes from what pupils do. The context's challenge",
+    "watch-out (a misconception pupils plausibly hold, put right, unless the misconception slide covers it)",
+  ];
+  const CUT = [
+    "Every question and task needs only the words",
+    "while the language stays at the reading level",
+    "Slide 1 is the title and slide 2 the objectives.",
+    "after the idea it checks is taught",
+    "how to run an activity goes in the notes",
+    "A line holding two ideas becomes two items",
+    "more words take a fit with fewer items",
+  ];
+  const BEFORE = { KS1: 3794, KS2: 3917, "KS3-5": 4078 } as const;
+  test("the hinge's tempting clause is pinned and sits inside the plausible-belief clause", () => {
+    expect(HINGE_TEMPTING).toBe(
+      "one that tempts a pupil who holds it, never one the question's own words rule out",
+    );
+    for (const rule of [HINGE_TEMPTING, ...RULES])
+      expect(rule).not.toMatch(/\d|e\.g\.|for example|such as/i);
+  });
+  for (const stage of STAGES)
+    test(`${stage}: each rule once, the cut clauses gone, no longer than before`, () => {
+      const text = read(`system-${TEMPLATE[stage]}.snapshot.txt`);
+      for (const rule of [HINGE_TEMPTING, ...RULES]) expect(text.split(rule).length - 1).toBe(1);
+      for (const cut of CUT) expect(text).not.toContain(cut);
+      expect(HINGE_WRITER_MENU[stage]).toContain(
+        `a belief pupils plausibly hold at this point, ${HINGE_TEMPTING}, with that belief in its why`,
+      );
+      expect(text.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(BEFORE[stage]);
     });
 });
