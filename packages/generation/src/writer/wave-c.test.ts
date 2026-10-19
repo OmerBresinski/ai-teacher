@@ -213,6 +213,23 @@ for (const ks of ["KS1", "KS2", "KS3"] as const) {
     expect(name.maxLength).toBeUndefined();
     // Six pictured stages are not offered at KS2 or KS3 (KS1 measures no sixth stage at all).
     expect(Object.keys(waveCWords(s).stages)).not.toContain("6-pictures");
+    // The step model's see shares do's two body lines, so it is capped at one line's words.
+    const step = r.caps?.$defs["steps~step-model"].properties.step.properties;
+    const see = step.see.anyOf.find((b: { type: string }) => b.type === "string");
+    expect(see.maxWords).toBe(waveCWords(s).stepModel.doOneLine);
+    expect(step.do.maxWords).toBe(waveCWords(s).stepModel.doTwoLines);
+  });
+  test(`${ks}: step-model's see shows only beside a one-line do, and tasks state their own facts`, () => {
+    const line = waveCMenu(s)["steps step-model"] ?? "";
+    expect(line).toContain(
+      "The see line shows only when do and see each fit on one line: when see matters, keep do to one line; when do needs two lines, see is null.",
+    );
+    expect(line).toContain(
+      `see ${waveCWords(s).stepModel.doOneLine === 1 ? "one word" : `up to ${waveCWords(s).stepModel.doOneLine} words`}.`,
+    );
+    expect(PILOT_PACKS["v4.8"].system[ks]).toContain(
+      "Each question and task states in its own words every fact and number its answer needs, even when a picture on its slide shows them too",
+    );
   });
 }
 

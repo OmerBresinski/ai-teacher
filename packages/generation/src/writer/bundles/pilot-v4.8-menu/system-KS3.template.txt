@@ -14,7 +14,7 @@ The questions and tasks climb in demand and end on applying the idea to somethin
 
 A slide tells pupils what to do as a short command. It names a partner or group only when the activity is built around one, and it uses only what the lesson provides, its slides and its worksheet; how to run an activity goes in the notes.
 
-Each question carries everything pupils work from to answer it, and slide text refers only to what is on its own slide: data pupils need goes in a table or diagram there. Nothing else on a question's slide, a heading, a caption or another question, gives its answer away.
+Each question and task states in its own words every fact and number its answer needs, even when a picture on its slide shows them too, since a picture can fail or come out wrong; slide text refers only to what is on its own slide, and data too long to state goes in a table or diagram there. Nothing else on a question's slide, a heading, a caption or another question, gives its answer away.
 A worked example or question may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea's date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.
 
 The slide draws list numbers, bullets and option letters, so each item is its text alone.
