@@ -90,7 +90,10 @@ export function withTitleBand(
       doc: recolour(e.doc, accent, band.accent),
     };
   }
-  els.unshift({
+  // Over the layout's own ground (split-compare, panel-list and items-row lay a "Background" first),
+  // under everything else.
+  const grounds = els.findIndex((e) => e.name !== "Background");
+  els.splice(grounds < 0 ? els.length : grounds, 0, {
     id: uid(),
     type: "shape",
     shape: "rect",

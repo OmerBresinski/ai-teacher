@@ -23,6 +23,8 @@ import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
+import { type Connector, connectorShape } from "../themes/marks";
+import { surfacesOf } from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, mix, type TemplateInput } from "./index";
 import { layoutItemsRow, PENDING_ICON, ROW_NAMES } from "./items-row";
 import {
@@ -318,8 +320,11 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
       head: 0.92 * h,
       headLen: 0.44 * w,
     }).map(([x, y]) => ({ x: round1(x), y: round1(y) }));
-    arrowPath(c, pts, col.background, STAGES_NAMES.halo, HALO);
-    arrowPath(c, pts, col.accent, STAGES_NAMES.arrow);
+    const kind = surfacesOf(c.t).marks.connector;
+    if (kind === "block") {
+      arrowPath(c, pts, col.background, STAGES_NAMES.halo, HALO);
+      arrowPath(c, pts, col.accent, STAGES_NAMES.arrow);
+    } else familyArrow(c, kind, { x: sx - w / 2, y: sy - h / 2, w, h }, col.background, col.accent);
   }
 
   // Names (sharing the tallest name's height) and lines.
@@ -463,6 +468,60 @@ function frameShape(
 }
 
 /** A closed block arrow (or its halo: the same outline stroked in paper under it). */
+/**
+ * A seam connector in the theme's family (round 2 roles-map2.js `arrowSvg`, round 5's sketch):
+ * Poster's block over an ink offset, Scrapbook's hand-drawn line with an open chevron, Storytime's
+ * round-cornered block. Drawn in the box the block arrow takes, a ground halo under it.
+ */
+function familyArrow(
+  c: Ctx,
+  kind: Connector,
+  box: { x: number; y: number; w: number; h: number },
+  ground: string,
+  ink: string,
+) {
+  const shape = connectorShape(kind, box.w, box.h);
+  const shadow = surfacesOf(c.t).marks.offset?.color ?? c.t.colors.ink;
+  const push = (
+    pts: { x: number; y: number }[],
+    closed: boolean,
+    paint: { fill?: string; stroke: string; width: number },
+    name: string,
+    dx = 0,
+  ) =>
+    c.els.push({
+      id: uid(),
+      type: "path",
+      x: round1(box.x + dx),
+      y: round1(box.y + dx),
+      w: round1(box.w),
+      h: round1(box.h),
+      points: pts.map((p) => ({ x: +(p.x / box.w).toFixed(4), y: +(p.y / box.h).toFixed(4) })),
+      closed,
+      ...(paint.fill ? { fill: paint.fill } : {}),
+      stroke: paint.stroke,
+      strokeWidth: round1(paint.width),
+      name,
+    } as PathElement);
+  for (const f of shape.fills)
+    push(f.pts, true, { fill: ground, stroke: ground, width: shape.halo }, STAGES_NAMES.halo);
+  for (const st of shape.strokes)
+    push(st, false, { stroke: ground, width: shape.halo }, STAGES_NAMES.halo);
+  for (const f of shape.fills) {
+    if (f.offset)
+      push(f.pts, true, { fill: shadow, stroke: shadow, width: 0 }, STAGES_NAMES.arrow, f.offset);
+    const edge = f.offset ? shadow : ink;
+    push(
+      f.pts,
+      true,
+      { fill: ink, stroke: edge, width: f.round ?? shape.width },
+      STAGES_NAMES.arrow,
+    );
+  }
+  for (const st of shape.strokes)
+    push(st, false, { stroke: ink, width: shape.width }, STAGES_NAMES.arrow);
+}
+
 function arrowPath(
   c: Ctx,
   pts: { x: number; y: number }[],

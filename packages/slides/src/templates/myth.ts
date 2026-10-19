@@ -505,12 +505,17 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       );
       x += cw + 24 * K;
     }
-    // The verdict's ground over the card's right half (the claim panel covers its left).
+    // The verdict's ground over the card's right half (the claim panel covers its left). A torn
+    // claim panel (Scrapbook's `field-edge: torn`) bites into its own box, so the ground then runs
+    // under it too and the claim card never shows through the tear.
+    const torn = surfacesOf(c.t).marks.field === "torn";
     const ground: ShapeElement = {
       id: uid(),
       type: "shape",
       shape: "rect",
-      ...rnd({ x: SEAM, y: band, w: W - SEAM, h: stageH }),
+      ...rnd(
+        torn ? { x: 0, y: band, w: W, h: stageH } : { x: SEAM, y: band, w: W - SEAM, h: stageH },
+      ),
       fill: col.background,
     };
     push(ground, at.verdict, MYTH_NAMES.cover);
