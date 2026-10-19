@@ -805,6 +805,19 @@ export function markLook(
   asked: string,
   ink: string,
 ): MarkLook {
+  const look = familyLook(theme, family, d, asked, ink);
+  // Scrapbook's badges turn a few degrees (round 2 `--badge-tilt`), as a sticker does.
+  const tilt = family === "badge" ? surfacesOf(theme).marks.badgeTilt : 0;
+  return tilt && !look.rotation ? { ...look, rotation: tilt } : look;
+}
+
+function familyLook(
+  theme: Pick<Theme, "id" | "dark">,
+  family: "badge" | "key" | "medal" | "chip",
+  d: number,
+  asked: string,
+  ink: string,
+): MarkLook {
   const m = surfacesOf(theme).marks;
   const kind = m[family];
   // An outline family's role is drawn as a ring on no fill: a caller that asks for the role's own

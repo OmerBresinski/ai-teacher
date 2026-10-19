@@ -75,6 +75,8 @@ export type ThemeMarks = {
   offset: { d: number; color: string } | null;
   /** The sticky key's paper and tilt (Scrapbook), or null. */
   sticky: { fill: string; tilt: number } | null;
+  /** Degrees a badge turns (Scrapbook's round 2 `--badge-tilt: -4deg`); 0 upright. */
+  badgeTilt: number;
   /** The hinge key's face: the card's ink (default) or the theme's accent (Geometric's gold). */
   keyFill: "ink" | "accent";
   /** Tracking on the myth's MYTH / FACT tags (Geometric 0.08em), or null for the preset's own. */
@@ -113,6 +115,8 @@ export const NOTCH_MAX = 11;
 export const TORN_DEPTH = 5;
 /** A sticky key tilts at most this much (THEMING.md section 6: tilt ≤ 3°). */
 export const TILT_MAX = 3;
+/** A badge tilts at most this much (Scrapbook's gold `--badge-tilt: -4deg`, its number still level enough to read). */
+export const BADGE_TILT_MAX = 4;
 
 const pick = <T extends string>(all: readonly T[], v: string | undefined, d: T): T =>
   v != null && (all as readonly string[]).includes(v) ? (v as T) : d;
@@ -143,6 +147,7 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     notch: Math.min(NOTCH_MAX, num(t["notch"])),
     offset: offset > 0 ? { d: offset, color: t["offset-color"] ?? t["ink"] ?? "#000000" } : null,
     sticky: sticky ? { fill: sticky, tilt: clampAbs(num(t["sticky-tilt"]), TILT_MAX) } : null,
+    badgeTilt: clampAbs(num(t["badge-tilt"]), BADGE_TILT_MAX),
     keyFill: t["key-fill"] === "accent" ? "accent" : "ink",
     tagTracking: em(t["tag-tracking"]),
     kickerTracking: em(t["kicker-tracking"]),

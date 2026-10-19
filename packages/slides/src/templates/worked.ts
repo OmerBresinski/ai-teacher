@@ -639,6 +639,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         shape: look.shape,
         ...(look.radius != null ? { radius: look.radius } : {}),
         ...(look.stroke && !solid ? { stroke: look.stroke, strokeWidth: look.strokeWidth } : {}),
+        ...(look.rotation ? { rotation: look.rotation } : {}),
         name,
         x: X0,
         y: y - BADGE / 2,
@@ -703,19 +704,22 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       } as PathElement);
     } else if (l.answer) {
       const pad = pt(26);
+      // Poster's plate (round 2 `--plate-radius: 0`, `--plate-fill`, `--plate-line`, 3px, offset
+      // in `--plate-off-color: var(--accent)`): a square white plate in the plate's own ink line.
+      const plate = surfacesOf(c.t).marks.card === "offset" ? surfaceStyle(c.t, "plate") : null;
       shape(
         c,
         {
-          shape: "rounded",
+          shape: plate ? "rect" : "rounded",
           name: WORKED_NAMES.plate,
           x: lx - pad,
           y: y - (p.eq * 1.5) / 2,
           w: r.lw + r.rw + signW + 2 * g + 2 * pad,
           h: p.eq * 1.5,
-          radius: 6,
-          fill: col.wash,
-          stroke: accent,
-          strokeWidth: 3,
+          ...(plate ? {} : { radius: 6 }),
+          fill: plate ? plate.fill : col.wash,
+          stroke: plate ? (plate.line ?? ink) : accent,
+          strokeWidth: plate ? 2 : 3,
           ...offsetOf(c, accent),
         },
         R,
