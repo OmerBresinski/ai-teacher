@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
+import { SaveIndicator } from "../kit/SaveIndicator";
 import { LessonEditor, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
@@ -150,5 +151,58 @@ describe("the filling editor", () => {
       fireEvent.pointerDown(canvas);
     });
     expect(getByRole("button", { name: /^Delete slide/ })).toBeTruthy();
+  });
+
+  test("a teacher's change shows its save status while the job writes, even after undo to empty", () => {
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    // A save that never settles: the change stays pending.
+    const { container, rerender, tree, getByRole, getAllByRole } = setup(lesson, {
+      onSave: () => new Promise(() => {}),
+    });
+    act(() => rerender(tree(new Set([ids[1] as Id]))));
+    const quiet = () =>
+      container.querySelector("[data-save-state]")?.hasAttribute("data-save-quiet");
+    expect(quiet()).toBe(true);
+    // Rename the lesson (a title edit), then undo it: nothing left to undo, a save still owed.
+    act(() => {
+      fireEvent.click(getAllByRole("button", { name: "Rename lesson" })[0] as HTMLElement);
+    });
+    const field = getByRole("textbox", { name: "Lesson title" });
+    act(() => {
+      fireEvent.change(field, { target: { value: "Renamed" } });
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    act(() => {
+      fireEvent.click(getAllByRole("button", { name: "Undo" })[0] as HTMLElement);
+    });
+    expect((getAllByRole("button", { name: "Undo" })[0] as HTMLButtonElement).disabled).toBe(true);
+    expect(quiet()).toBe(false);
+    expect(container.querySelector("[data-save-state]")?.getAttribute("data-save-state")).not.toBe(
+      "saved",
+    );
+  });
+
+  test("a failed save shows while the job writes", () => {
+    const failed = { subscribe: () => () => {}, getState: () => "failed" as const };
+    const { container } = render(<SaveIndicator autosave={failed} quiet />);
+    const el = container.querySelector("[data-save-state]");
+    expect(el?.hasAttribute("data-save-quiet")).toBe(false);
+    expect(el?.textContent).toContain("Not saved");
+  });
+
+  test("one live region announces the writing state across slide changes", () => {
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[1] });
+    act(() => rerender(tree(new Set([ids[1] as Id]))));
+    const region = container.querySelector("[data-writing-status]");
+    expect(region?.getAttribute("role")).toBe("status");
+    expect(region?.textContent).toContain("Planning the slides…");
+    // Slide 1 is done: the same region stays mounted, empty.
+    act(() => {
+      fireEvent.click(row(container, 1) as HTMLElement);
+    });
+    expect(container.querySelector("[data-writing-status]")).toBe(region);
   });
 });

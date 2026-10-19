@@ -61,6 +61,7 @@ import { SidePaneDock, usePaneWidth } from "./SidePaneDock";
 import { paneMode as shellPaneMode } from "./shell-layout";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
+import { createTeacherEdits } from "./teacher-edits";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import {
   EditorSessionProvider,
@@ -220,10 +221,21 @@ export function LessonEditor({
   const mobile = useMobileEditor();
   const paneW = usePaneWidth();
   const autosave = useAutosave(onSave);
+  // Every change through the history is the teacher's, except the fit migration's bookkeeping
+  // (`systemWrite`); a job's merged write reaches the autosave directly (`receiveGenerated`).
+  const teacherEdits = useMemo(() => createTeacherEdits(), []);
+  const systemWrite = useRef(false);
+  const onHistoryChange = useCallback(
+    (doc: Lesson) => {
+      if (!systemWrite.current) teacherEdits.mark();
+      autosave.onChange(doc);
+    },
+    [autosave, teacherEdits],
+  );
   const { lesson, ...history } = useDocumentHistory({
     queryKey,
     queryFn,
-    onChange: autosave.onChange,
+    onChange: onHistoryChange,
   });
   // The residual findings (ADR 0025 §12), derived at the autosave cadence rather than per edit.
   const residuals = useComputedResidualFindings(lesson, worksheet, autosave);
@@ -415,9 +427,10 @@ export function LessonEditor({
     const h = historyRef.current;
     return {
       lesson: current,
-      dispatch: h.dispatch as FitMigrationDeps["dispatch"],
+      dispatch: ((...args: Parameters<typeof h.dispatch>) =>
+        asSystem(systemWrite, () => h.dispatch(...args))) as FitMigrationDeps["dispatch"],
       beginTransaction: h.beginTransaction,
-      endTransaction: h.endTransaction,
+      endTransaction: (token?: number) => asSystem(systemWrite, () => h.endTransaction(token)),
       rollbackTransaction: h.rollbackTransaction,
       isIdle: () => {
         const s = session.read();
@@ -621,6 +634,7 @@ export function LessonEditor({
                             data-lesson-editor={lessonId}
                           >
                             <TopBar
+                              teacherEdits={teacherEdits}
                               onBack={onBack}
                               onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
                               onOpenTheme={() => setThemeOpen(true)}
@@ -681,11 +695,23 @@ export function LessonEditor({
                                       className="relative flex min-h-0 flex-1"
                                       onPointerDownCapture={quietControls ? wake : undefined}
                                     >
+                                      {/* One live region for the whole fill, mounted across slide changes, so moving
+                                          between slides never drops an announcement. */}
+                                      {writingSlideIds ? (
+                                        <span
+                                          role="status"
+                                          aria-atomic="true"
+                                          data-writing-status
+                                          className="sr-only"
+                                        >
+                                          {slide && writingSlideIds.has(slide.id)
+                                            ? writingText(lesson.slides, slide.id, writingNowId)
+                                            : ""}
+                                        </span>
+                                      ) : null}
                                       {slide && writingSlideIds?.has(slide.id) ? (
                                         <WritingOverlay
-                                          slides={lesson.slides}
-                                          slideId={slide.id}
-                                          writingNowId={writingNowId}
+                                          text={writingText(lesson.slides, slide.id, writingNowId)}
                                         />
                                       ) : null}
                                       {companion ? (
@@ -793,6 +819,16 @@ export function LessonEditor({
   );
 }
 
+/** Runs the editor's own bookkeeping: history changes inside are not the teacher's. */
+function asSystem<T>(flag: { current: boolean }, run: () => T): T {
+  flag.current = true;
+  try {
+    return run();
+  } finally {
+    flag.current = false;
+  }
+}
+
 /**
  * Live writing P1 (TEACH-202 part e): the teacher left the slide being written; one click follows
  * it again. The shell's "Newest slide" (TEACH-252) in the editor's words. Bottom left: the docked
@@ -819,24 +855,21 @@ function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
  * Over a slide the generating job is still writing (UX ruling 189): the slide shows, nothing on it
  * can be picked, and a pill says why.
  */
-function WritingOverlay({
-  slides,
-  slideId,
-  writingNowId,
-}: {
-  slides: readonly { id: Id }[];
-  slideId: Id;
-  writingNowId: Id | undefined;
-}) {
-  // UX audit J4: the pill names what the writer is doing now, so a slide waiting its turn (or the
-  // objectives, held until the end) never reads as stuck on itself.
+/**
+ * UX audit J4: what the writer is doing now, so a slide waiting its turn (or the objectives, held
+ * until the end) never reads as stuck on itself.
+ */
+function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: Id | undefined) {
   const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
-  const text =
-    writingNowId === slideId
-      ? "Writing this slide… you can edit it as soon as it is done"
-      : now >= 0
-        ? `Writing slide ${now + 1} of ${slides.length}… you can edit this one soon`
-        : "Planning the slides… you can edit this one soon";
+  return writingNowId === slideId
+    ? "Writing this slide… you can edit it as soon as it is done"
+    : now >= 0
+      ? `Writing slide ${now + 1} of ${slides.length}… you can edit this one soon`
+      : "Planning the slides… you can edit this one soon";
+}
+
+/** The visible pill; the editor's one `data-writing-status` live region announces it. */
+function WritingOverlay({ text }: { text: string }) {
   return (
     <div
       data-slide-writing-overlay
@@ -844,7 +877,7 @@ function WritingOverlay({
       onPointerDownCapture={(e) => e.stopPropagation()}
     >
       <span
-        role="status"
+        aria-hidden
         className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm"
       >
         <span aria-hidden className="block size-2 animate-pulse rounded-full bg-primary" />
