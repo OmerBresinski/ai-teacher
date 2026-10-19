@@ -538,7 +538,12 @@ export async function findDirected(args: {
   index: number;
   /** `signal` cancels this one search (a race it lost) without stopping the slot. */
   stock: (brief: ImageBrief, signal?: AbortSignal) => Promise<PlacedPhoto | undefined>;
-  judgeMade: (brief: ImageBrief, picture: MadePicture, reuse?: boolean) => Promise<boolean>;
+  judgeMade: (
+    brief: ImageBrief,
+    picture: MadePicture,
+    reuse?: boolean,
+    onWhy?: (why: string) => void,
+  ) => Promise<boolean>;
   deps: DirectorDeps;
   /** C7: race stock against generation after this long (`findPicture`); absent, one then the other. */
   raceMs?: number;
@@ -623,7 +628,7 @@ export async function findDirected(args: {
     args.bank,
     (signal) => args.stock(brief, signal),
     deps.signal,
-    (made, reuse) => args.judgeMade(brief, made, reuse),
+    (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
     Date.now,
     sharedVerdictCache,
     args.raceMs,
@@ -645,23 +650,43 @@ export async function findDirected(args: {
         return undefined;
       }),
     );
-    if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
+    if (got) out = { ...out, photo: got, via: "fetched", ms: out.ms + Date.now() - t0 };
   }
-  log({ via: out.via, ms: out.ms });
+  log({
+    via: out.via,
+    ms: out.ms,
+    attempts: out.attempts,
+    ...(out.reason ? { reason: out.reason } : {}),
+  });
+  const emptyReason =
+    req.route === "real" && (req.realFallback ?? "none") === "none"
+      ? "real-miss-no-fallback"
+      : "generation-refused-or-failed";
+  // One line per picture (codes and counts only, ADR 0015), the same shape as a set frame's, so a
+  // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
+  // picture that needed a retry.
+  deps.logger.info(
+    {
+      stage: "illustrate",
+      ev: "picture-outcome",
+      kind: "single",
+      slideIndex: args.index,
+      outcome: out.photo ? "placed" : "empty",
+      via: out.via,
+      attempts: out.attempts,
+      ...(out.reason ? { reason: out.reason } : out.photo ? {} : { reason: emptyReason }),
+    },
+    "picture outcome",
+  );
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({
     director: direction?.route ?? "failed",
     via: out.via,
     route: req.route,
     ...(req.period ? { period: req.period } : {}),
-    ...(out.photo
-      ? {}
-      : {
-          reason:
-            req.route === "real" && (req.realFallback ?? "none") === "none"
-              ? "real-miss-no-fallback"
-              : "generation-refused-or-failed",
-        }),
+    attempts: out.attempts,
+    ...(out.reason ? { failure: out.reason } : {}),
+    ...(out.photo ? {} : { reason: emptyReason }),
   });
   if (!out.photo) return undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
@@ -724,6 +749,10 @@ export interface PictureOutcome {
     | "director-failed"
     | "real-miss-no-fallback"
     | "generation-refused-or-failed";
+  /** Generations the ladder asked for (0: none ran). */
+  attempts?: number;
+  /** The last generation failure's code (`judge`, `refused-safety`, `server-error`...). */
+  failure?: string;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -865,7 +894,7 @@ export async function placeWriterPicture(args: {
         stock,
         // A made picture is shown to judge v17 with the slot's brief (TEACH-237): the same bytes
         // the slide shows. One with no bytes to show (a code-drawn count) is never judged here.
-        judgeMade: (brief, made, reuse) =>
+        judgeMade: (brief, made, reuse, onWhy) =>
           made.dataUrl
             ? judgeMadeDirected({
                 lesson,
@@ -874,6 +903,7 @@ export async function placeWriterPicture(args: {
                 deps,
                 dataUrl: made.dataUrl,
                 ...(reuse !== undefined ? { reuse } : {}),
+                ...(onWhy ? { onVerdict: (v) => v.why && onWhy(v.why) } : {}),
               })
             : Promise.resolve(false),
         deps,

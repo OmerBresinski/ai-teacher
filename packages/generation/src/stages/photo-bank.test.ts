@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { ImageGenerationError, type RetryHint } from "@tj/images";
 import { pickOrRequerySchemaFor } from "../prompts/pick-or-requery-photo-directed";
 import { directedGatePasses as gatePasses, type PlacedPhoto } from "./illustrate";
 import {
   type BankRequest,
   createVerdictCache,
   findPicture,
+  MADE_ATTEMPTS,
   type MadePicture,
   mustShowOf,
   type PictureBank,
@@ -155,6 +157,140 @@ describe("findPicture ladder", () => {
     expect(out.photo).toBeUndefined();
     expect(rejected.length).toBe(calls.filter((c) => c === "generate").length);
     expect(rejected.length).toBeGreaterThan(0);
+  });
+
+  test("a refused photo gets a second retry, each carrying the judge's latest reason", async () => {
+    const { bank } = fakeBank();
+    const hints: (RetryHint | undefined)[] = [];
+    bank.generate = async (_r, _f, _s, retry) => {
+      hints.push(retry);
+      return {
+        ...photo(`/files/bank/gen${hints.length}.png`),
+        dataUrl: "data:image/png;base64,AA==",
+      };
+    };
+    const whys = ["no calf in view", "two calves, not one"];
+    let n = 0;
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async (_p, _r, onWhy) => {
+        const why = whys[n++];
+        if (!why) return true;
+        onWhy?.(why);
+        return false;
+      },
+    );
+    expect(MADE_ATTEMPTS).toBe(3);
+    expect(out.photo?.src).toBe("/files/bank/gen3.png");
+    expect(hints).toEqual([
+      undefined,
+      { reason: "judge", why: "no calf in view" },
+      { reason: "judge", why: "two calves, not one" },
+    ]);
+    expect(out.attempts).toBe(3);
+    expect(out.reason).toBe("judge");
+  });
+
+  test("a safety refusal is retried only with its own line, never the same request", async () => {
+    const { bank } = fakeBank();
+    const hints: (RetryHint | undefined)[] = [];
+    bank.generate = async (_r, _f, _s, retry) => {
+      hints.push(retry);
+      if (!retry)
+        throw new ImageGenerationError(
+          "image generation failed (400): refused-safety",
+          "refused-safety",
+          1,
+          400,
+        );
+      return { ...photo("/files/bank/gen.png"), dataUrl: "data:image/png;base64,AA==" };
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(hints).toEqual([undefined, { reason: "refused-safety" }]);
+    expect(out.via).toBe("generated");
+    expect(out.attempts).toBe(2);
+    expect(out.reason).toBe("refused-safety");
+  });
+
+  test("refused again with the safety line on: no third request with that same prompt", async () => {
+    const { bank } = fakeBank();
+    const hints: (RetryHint | undefined)[] = [];
+    bank.generate = async (_r, _f, _s, retry) => {
+      hints.push(retry);
+      throw new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(hints).toEqual([undefined, { reason: "refused-safety" }]);
+    expect(out).toMatchObject({ via: "none", attempts: 2, reason: "refused-safety" });
+  });
+
+  test("the safety retry runs once at most, even after a judge refusal in between", async () => {
+    const { bank } = fakeBank();
+    const hints: (RetryHint | undefined)[] = [];
+    bank.generate = async (_r, _f, _s, retry) => {
+      hints.push(retry);
+      if (hints.length === 2)
+        return { ...photo("/files/bank/gen.png"), dataUrl: "data:image/png;base64,AA==" };
+      throw new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => false,
+    );
+    // Refused, safety retry (judged out), judge retry refused again: stop there.
+    expect(hints.map((h) => h?.reason)).toEqual([undefined, "refused-safety", "judge"]);
+    expect(out).toMatchObject({ via: "none", attempts: 3, reason: "refused-safety" });
+  });
+
+  test("a provider still down after the generator's own retries is a miss, not tried again", async () => {
+    const { bank } = fakeBank();
+    let n = 0;
+    bank.generate = async () => {
+      n++;
+      throw new ImageGenerationError(
+        "image generation failed (503): server-error",
+        "server-error",
+        3,
+        503,
+      );
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(n).toBe(1);
+    expect(out).toMatchObject({ via: "none", attempts: 1, reason: "server-error" });
   });
 
   test("a library pair already judged is not judged again; a different request is", async () => {
