@@ -266,9 +266,9 @@ describe("800 faces measure in their own advances (TEACH-215 part m)", () => {
   for (const [font, text, px] of CHROMIUM)
     test(`${font} 800 "${text}" is never measured short of the browser`, () => {
       const w = runWidth(text, FONT_STACKS[font], 800, 1000);
-      // Within half a percent (kerning moves Chromium a hair either way); master's 700 table ran
-      // 0.8-1.9% short.
-      expect(w).toBeGreaterThanOrEqual(px * 0.995);
+      // Within 0.2%: kerning puts Chromium a hair either way (Bricolage "Metamorphosis" 7851 vs
+      // 7859, 0.1% under); master's 700 table ran 0.8-1.9% short.
+      expect(w).toBeGreaterThanOrEqual(px * 0.998);
       expect(w).toBeLessThan(px * 1.02);
     });
 

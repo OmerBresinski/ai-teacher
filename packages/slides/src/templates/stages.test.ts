@@ -3,7 +3,6 @@ import type { PathElement, ShapeElement, SlideElement } from "@tj/domain/documen
 import { loadIcons } from "../icons/loader";
 import { blockArrow } from "../paths/arrow";
 import { addItem, relayout, removeItem } from "../relayout";
-import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, mix, type Stage, type TemplateInput } from "./index";
@@ -339,31 +338,33 @@ describe("stages: a name never prints over its line (TEACH-215 part m)", () => {
       picture: photo(name ?? ""),
     })),
   };
-  const clear = (els: SlideElement[], t: (typeof THEMES)[number]) => {
-    const names = byName(els, STAGES_NAMES.name);
-    const lines = byName(els, STAGES_NAMES.line);
-    names.forEach((el, i) => {
-      const n = el as TextEl;
-      const st = n.style as { fontSize: number; fontWeight: number; lineHeight: number };
-      const text = JSON.stringify(n.doc).match(/"text":"([^"]*)"/)?.[1] ?? "";
-      const counted = countLines(text, "heading", t, n.w, st.fontWeight, st.fontSize);
-      expect(n.h).toBeGreaterThanOrEqual(Math.floor(counted * st.fontSize * st.lineHeight));
+  /** Each name's and line's box height in lines, after checking the name sits clear of its line. */
+  const clear = (els: SlideElement[]) => {
+    const names = byName(els, STAGES_NAMES.name) as TextEl[];
+    const lines = byName(els, STAGES_NAMES.line) as TextEl[];
+    const inLines = (e: TextEl) => {
+      const st = e.style as { fontSize: number; lineHeight: number };
+      return Math.round(e.h / (st.fontSize * st.lineHeight));
+    };
+    names.forEach((n, i) => {
       const under = lines[i];
       if (under) expect(n.y + n.h).toBeLessThanOrEqual(under.y + 0.5);
     });
+    return { names: names.map(inLines), lines: lines.map(inLines) };
   };
-
-  test("Paper KS2 chicken: 'Young hen' on one line only when Chromium draws it on one", () => {
+  // Box heights in lines, read off the layout (19 Oct 2026, after the 800 table and the fixed-size edge).
+  const PIN_CHICKEN = { names: [1, 1, 1, 1], lines: [3, 4, 3, 3] };
+  test("Paper KS2 chicken: 'Young hen' is one line, at a size Chromium draws on one line", () => {
     const els = lay(chicken, "ks2").slide.elements;
     const n = byName(els, STAGES_NAMES.name)[2] as TextEl;
-    const st = n.style as { fontSize: number; lineHeight: number };
-    const oneLine = n.h < 1.5 * st.fontSize * st.lineHeight;
+    const st = n.style as { fontSize: number };
     // Chromium's Lexend 800 "Young hen": 5.495em, less Paper's -0.03em tracking on 9 letters.
-    const drawnW = (5.495 - 9 * 0.03) * st.fontSize;
-    if (oneLine) expect(drawnW).toBeLessThanOrEqual(n.w);
-    clear(els, theme);
+    expect((5.495 - 9 * 0.03) * st.fontSize).toBeLessThanOrEqual(n.w);
+    expect(clear(els)).toEqual(PIN_CHICKEN);
   });
 
+  // Every name and line box, in lines, summed over the 16 themes and every cell (19 Oct 2026).
+  const PIN_TOTAL: Record<string, number> = { ks1: 4928, ks2: 8092, ks3: 8268 };
   const AGE: Record<string, Age> = { ks1: "early", ks2: "primary", ks3: "secondary" };
   const WORDS = [
     "Metamorphosis",
@@ -375,6 +376,7 @@ describe("stages: a name never prints over its line (TEACH-215 part m)", () => {
   ];
   for (const ks of ["ks1", "ks2", "ks3"] as const)
     test(`${ks}: every theme, 3-6 frames, icons and pictures, longest names`, () => {
+      let total = 0;
       for (const cell of (
         CAPACITY as Record<
           string,
@@ -400,8 +402,12 @@ describe("stages: a name never prints over its line (TEACH-215 part m)", () => {
               };
             }),
           };
-          for (const t of THEMES) clear(lay(input, ks, t).slide.elements, t);
+          for (const t of THEMES) {
+            const got = clear(lay(input, ks, t).slide.elements);
+            total += [...got.names, ...got.lines].reduce((a, b) => a + b, 0);
+          }
         }
+      expect(total).toBe(PIN_TOTAL[ks] as number);
     });
 
   test("six pictured stages are not offered at KS2 or KS3; every other measured cell is", () => {
