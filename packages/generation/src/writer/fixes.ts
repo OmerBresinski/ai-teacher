@@ -9,6 +9,7 @@ import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
+import { wordsWithin, writerStageOfKey } from "./shown-cap";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -502,8 +503,13 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
   };
 }
 
-/** The room a slide has, in the writer's units, for a stand-alone or reroute call. */
-export function roomLine(slide: unknown, stage: string): string {
+/**
+ * The room a slide has, in the writer's units, for a stand-alone or reroute call: characters, or on
+ * a pack run (`words`, as `charsOver` and `repairTerms` take it) words at the stage's long-word
+ * rate (`wordsWithin`, the hard limit in words; the heading as the menu shows it), so the room line
+ * and the fault lines share one unit.
+ */
+export function roomLine(slide: unknown, stage: string, words = false): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
   const F = fitTable()[stage];
@@ -521,7 +527,10 @@ export function roomLine(slide: unknown, stage: string): string {
     .find((x) => Math.max(0, ...Object.values(x.counts)) >= n);
   const lim = v?.limit;
   if (!lim) return "";
-  return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  const ws = writerStageOfKey(stage);
+  const u = (chars: number) =>
+    words ? nWords(Math.max(1, wordsWithin(chars, ws))) : `${chars} characters`;
+  return `room: the heading up to ${u(F.heading)}; each item up to ${u(lim.item)}; all the slide's text up to ${u(lim.total)}${lim.instruction ? `; an instruction up to ${u(lim.instruction)}` : ""}`;
 }
 
 /** Points over the room, summed over a slide's overflow faults ("overflow: x 354/328pt"). */

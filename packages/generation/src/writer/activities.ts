@@ -5,6 +5,7 @@ import { isHistoricalLesson, type PeriodFields } from "../period";
 import MENU from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
 import { ANSWER_FIRST, answerFirstMenu } from "./contract";
 import type { WriterStage } from "./schema";
+import { wordsWithin } from "./shown-cap";
 
 /*
  * The activity templates (TEACH-101 part b) as writer layouts (TEACH-101 part c), behind
@@ -93,15 +94,41 @@ const orWords = (xs: number[]) => {
   return u.length === 1 ? `${u[0]}` : `${u.slice(0, -1).join(", ")} or ${u.at(-1)}`;
 };
 
-/** One family's `Fits:` clause at a stage, rendered from the capacity table (never hand-copied). */
-export function fitsLine(id: WriterActivity, stage: WriterStage): string {
+/** "one word" for a 1-word room, else "up to N words" (the pack's unit; ruling: words, not characters). */
+const labelWords = (w: number) => (w === 1 ? "one word" : `up to ${w} words`);
+
+/**
+ * One family's `Fits:` clause at a stage, rendered from the capacity table (never hand-copied).
+ * `words` (the pack's menu, `fit-fits.ts`): the label room in words at the stage's long-word rate
+ * (`wordsWithin`, the hard cap in words; labels are names and terms), adjacent counts with the same
+ * words joined ("3 to 4 cards"). Without it, characters (the base4f menu, unchanged).
+ */
+export function fitsLine(id: WriterActivity, stage: WriterStage, words = false): string {
   const v = variants(id, stage);
   if (id === "group-sort") {
     const cards = [...new Set(v.map((x) => x.cards))];
     const lo = Math.min(...cards);
     const hi = Math.max(...cards);
     const n = lo === hi ? `${lo}` : `${lo} to ${hi}`;
-    return `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels up to ${Math.min(...v.map((x) => x.chars))} characters`;
+    const least = Math.min(...v.map((x) => x.chars));
+    return words
+      ? `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels ${labelWords(wordsWithin(least, stage))} each`
+      : `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels up to ${least} characters`;
+  }
+  if (words) {
+    const runs: { lo: number; hi: number; w: number }[] = [];
+    for (const x of v) {
+      const w = wordsWithin(x.chars, stage);
+      const last = runs.at(-1);
+      if (last && last.w === w) last.hi = x.cards;
+      else runs.push({ lo: x.cards, hi: x.cards, w });
+    }
+    return runs
+      .map((r) => {
+        const n = r.lo === r.hi ? `${r.lo}` : `${r.lo} to ${r.hi}`;
+        return `${n} cards, labels ${labelWords(r.w)} each`;
+      })
+      .join("; ");
   }
   return v
     .map((x, k) =>

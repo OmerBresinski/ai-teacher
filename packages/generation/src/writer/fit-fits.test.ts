@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { droppedFits, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
+import { cellFor, variants } from "./activities";
+import { droppedFits, FIT_ACTIVITIES, FIT_LAYOUTS, fitOffer, fitSlots, withFits } from "./fit-fits";
 import { fitTable } from "./fixes";
 import { assembleWriterSystem, LAYOUT_WRITER_MENUS, WRITER_RULES } from "./layout-menu";
 import { flowLayoutOf, PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
-import { MIN_SHOWN_WORDS, PLAN_SHARE } from "./shown-cap";
+import { MIN_SHOWN_WORDS, PLAN_SHARE, wordsWithin } from "./shown-cap";
 import { defCaps, fitKey, slotLayouts, variantCaps } from "./slot-fill";
 
 /*
@@ -198,4 +199,31 @@ describe("the flow chooses the layout before the slide count is final", () => {
     const { schema } = pilotRequest("v4.7", "KS2", {}, (sc) => sc);
     expect(Object.keys(schema.properties.flow.items.properties)).not.toContain("layout");
   });
+});
+
+describe("the activities' label room is in words", () => {
+  // Every other v4.8 Fits number is in words, the unit the writer plans in; a character count
+  // here was the odd one out (TEACH-110 part ae, 19 Oct 2026). Each run's words are the hard cap
+  // in words at the stage's long-word rate (`wordsWithin`) of every card count it names.
+  const RUN =
+    /(\d+)(?: to (\d+))? cards(?: in [\d, or]+ groups)?, labels (?:one word|up to (\d+) words) each/g;
+  for (const stage of STAGES)
+    for (const id of FIT_ACTIVITIES)
+      test(`${KS[stage]} ${id}: words, never characters, within each count's cell`, () => {
+        const line = fitSlots(stage)[id] ?? "";
+        expect(line).not.toMatch(/character/);
+        const runs = [...line.matchAll(RUN)];
+        expect(runs.length).toBeGreaterThan(0);
+        // Every clause is a run the parser read: nothing else is said in the line.
+        expect(runs.length).toBe(line.split("; ").length);
+        for (const m of runs) {
+          const w = m[3] ? Number(m[3]) : 1;
+          for (let n = Number(m[1]); n <= Number(m[2] ?? m[1]); n += 1) {
+            const cell = cellFor(id, stage, n);
+            if (!variants(id, stage).some((v) => v.cards === n)) continue;
+            if (id === "group-sort") expect(w).toBeLessThanOrEqual(wordsWithin(cell, stage));
+            else expect(w).toBe(wordsWithin(cell, stage));
+          }
+        }
+      });
 });

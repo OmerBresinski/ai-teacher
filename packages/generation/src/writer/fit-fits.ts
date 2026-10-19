@@ -144,7 +144,7 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
     out[layout] = line;
   }
   for (const id of FIT_ACTIVITIES)
-    out[id] = `Fits: ${activityFitsLine(id as WriterActivity, stage)}.`;
+    out[id] = `Fits: ${activityFitsLine(id as WriterActivity, stage, true)}.`;
   // The flow step's headroom (loop 1b): a share of the shown Fits, never a typed number.
   out["plan-share"] = `${Math.round(PLAN_SHARE * 100)}%`;
   return out;

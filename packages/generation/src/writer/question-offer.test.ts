@@ -337,3 +337,16 @@ describe("the writer's question items reach the templates", () => {
     expect(r?.rest[0]?.items).toEqual(items.slice(4));
   });
 });
+
+describe("the quick check's question length is its Fits", () => {
+  // The line count differs by stage (KS2 one line; KS1 and KS3 up to two, TEACH-215 part j), and a
+  // fixed "fits one line" contradicted the KS1 and KS3 Fits. The Fits' words carry the length, so
+  // the line names no line count at any stage (TEACH-110 part ae, 19 Oct 2026).
+  for (const stage of ["KS1", "KS2", "KS3-5"] as const)
+    test(`${stage}: no line count beside the Fits`, () => {
+      const line = QUESTION_SET_WRITER_MENU[stage];
+      expect(line).not.toMatch(/\b(one|two|a single) lines?\b/i);
+      expect(line).toContain("Each answer is a number, a word or a short phrase.");
+      expect(line).toMatch(/Fits: .*up to \d+ words each/);
+    });
+});

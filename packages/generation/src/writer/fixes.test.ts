@@ -2,8 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { countMiss } from "./count";
-import { fnv, shuffleHinge, withCorrectLetter, writerIncomplete } from "./fixes";
+import {
+  fitTable,
+  fnv,
+  roomLine,
+  shuffleHinge,
+  withCorrectLetter,
+  writerIncomplete,
+} from "./fixes";
 import { writerSchema } from "./schema";
+import { wordsWithin, writerStageOfKey } from "./shown-cap";
 
 const FIX = join(import.meta.dir, "fixtures");
 
@@ -116,4 +124,31 @@ describe("seeded hinge shuffle (row 6)", () => {
     expect(shuffleHinge(s, "a")).toBe(s);
   });
   test("fnv is the 32-bit FNV-1a", () => expect(fnv("a")).toBe(0xe40c292c));
+});
+
+describe("a restage is told its room in the run's unit", () => {
+  // A pack run's fault lines are in words (`repairTerms`, `charsOver`); its room line was the one
+  // in characters (TEACH-110 part ae, 19 Oct 2026). stage.ts passes `!!pilot`.
+  const T = fitTable();
+  const cases = Object.entries(T).flatMap(([stage, F]) =>
+    Object.keys(F.layouts).map((template) => [stage, template] as const),
+  );
+  test.each(cases)(
+    "%s %s: words on a pack run, the same limits as the characters",
+    (stage, template) => {
+      const slide = { template, heading: "x" };
+      const chars = roomLine(slide, stage);
+      const words = roomLine(slide, stage, true);
+      expect(Boolean(words)).toBe(Boolean(chars));
+      if (!chars) return;
+      expect(words).toMatch(/^room: /);
+      expect(words).not.toMatch(/character/);
+      const c = [...chars.matchAll(/(\d+) characters/g)].map((m) => Number(m[1]));
+      const w = [...words.matchAll(/(\d+) words?\b/g)].map((m) => Number(m[1]));
+      expect(w).toEqual(c.map((n) => Math.max(1, wordsWithin(n, writerStageOfKey(stage)))));
+    },
+  );
+  test("some layout has a room line, so the cases above test something", () => {
+    expect(cases.some(([st, t]) => roomLine({ template: t }, st, true) !== "")).toBe(true);
+  });
 });

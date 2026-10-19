@@ -1654,9 +1654,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
     const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
-    // A restaging call is told its room in characters.
+    // A restaging call is told its room: in words on a pack run, as its fault lines are.
     if (mode !== "fit") {
-      const room = roomLine(plan.slides[i], stageKey);
+      const room = roomLine(plan.slides[i], stageKey, !!pilot);
       if (room) faultLines.push(room);
     }
     const u = fillTemplate(tpl, brief, {

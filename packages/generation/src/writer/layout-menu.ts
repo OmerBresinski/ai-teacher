@@ -690,6 +690,9 @@ export const HINGE_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
 });
 
 // writer-prompt: owned by TEACH-110 v
+// The question length is the Fits' words alone: the line count differs by stage (KS2 one line;
+// KS1 and KS3 up to two, `question-set.ts` comfort, TEACH-215 part j) and a fixed "fits one line"
+// contradicted the KS1 and KS3 Fits (TEACH-110 part ae, 19 Oct 2026).
 export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
   const q = quickOffer(a);
   const [lo, hi] = ends(
@@ -706,7 +709,7 @@ export const QUESTION_SET_WRITER_MENU: Record<WriterStage, string> = byStage((a)
     parts.push(`${span(x.n, q[j]?.n ?? x.n)} questions: up to ${x.q} words each, ${ans(x.a)}`);
     i = j + 1;
   }
-  return `- question-set: a quick check: ${span(lo, hi)} short questions pupils answer at once from memory, aloud or on whiteboards (flow shape recall or check), each with its answer, which the slide reveals one click at a time. Each question fits one line; each answer is a number, a word or a short phrase. Not for one question whose wrong options are beliefs to spot (hinge), tasks that take pupils time to work out or write (practice), or the closing check (exit-ticket); questions about a picture or diagram go to practice. Fits: ${parts.join("; ")}. Each limit holds only for its own question count.`;
+  return `- question-set: a quick check: ${span(lo, hi)} short questions pupils answer at once from memory, aloud or on whiteboards (flow shape recall or check), each with its answer, which the slide reveals one click at a time. Each answer is a number, a word or a short phrase. Not for one question whose wrong options are beliefs to spot (hinge), tasks that take pupils time to work out or write (practice), or the closing check (exit-ticket); questions about a picture or diagram go to practice. Fits: ${parts.join("; ")}. Each limit holds only for its own question count.`;
 });
 
 // writer-prompt: owned by TEACH-110 v
