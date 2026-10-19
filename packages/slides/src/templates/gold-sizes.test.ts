@@ -5,12 +5,7 @@ import { coverStepped } from "../fit-check";
 import { coverTypeAt, readingFloorOf } from "../layout-sizes";
 import { resolveTextStyle, snapToScale } from "../text-style";
 import { atKeyStage, getTheme, THEMES, typeScale } from "../themes";
-import {
-  COVER_GROUPS,
-  type CoverGroup,
-  coverCapInput,
-  measureCoverCapacity,
-} from "./cover-capacity";
+import { COVER_GROUPS, type CoverGroup, coverCapacityBinds, coverCapInput } from "./cover-capacity";
 import CAPACITY from "./cover-capacity.json" with { type: "json" };
 import { hingeCapInput } from "./hinge-capacity";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
@@ -148,9 +143,10 @@ describe("worked: the gold's equations and moves", () => {
 });
 
 describe("the cover's caps: the gold's three title lines, two question lines", () => {
-  // Every theme, stage and word mix at 2-char steps: a few seconds.
+  // Every theme, stage and word mix at each cap and two characters past it: the generator's own
+  // stopping rule at its answer. The full 2-character walk runs in `caps:check`.
   test("renderer = table (cover-capacity.json)", () => {
-    expect(measureCoverCapacity()).toEqual(CAPACITY);
+    expect(coverCapacityBinds(CAPACITY)).toEqual([]);
   }, 60_000);
   // The box less its ink margin (a padded title, TEACH-152 part b), in lines of its size.
   const lines = (t: TextElement) => {
