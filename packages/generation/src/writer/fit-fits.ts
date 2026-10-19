@@ -131,7 +131,7 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
   for (const layout of FIT_LAYOUTS)
     for (const [k, def] of fitDefs(stage, layout))
       if (offer[layout]?.includes(k.slice(layout.length + 1))) $defs[k] = def;
-  const { heading } = fitsLines({ $defs }, stage, { namedLabels: true });
+  const { heading } = fitsLines({ $defs }, stage, { namedLabels: true, pack: true });
   if (!heading) throw new Error(`fit fits: no heading cap at ${stage}`);
   const out: Record<string, string> = { heading: String(heading) };
   for (const layout of FIT_LAYOUTS) {
@@ -139,7 +139,7 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
     const own = Object.fromEntries(
       Object.entries($defs).filter(([k]) => k.startsWith(`${layout}~`)),
     );
-    const line = fitsLines({ $defs: own }, stage, { namedLabels: true }).lines[layout];
+    const line = fitsLines({ $defs: own }, stage, { namedLabels: true, pack: true }).lines[layout];
     if (!line) throw new Error(`fit fits: ${layout} has no line`);
     out[layout] = line;
   }

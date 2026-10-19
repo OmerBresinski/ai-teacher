@@ -11,7 +11,6 @@ import {
   writerIncomplete,
 } from "./fixes";
 import { writerSchema } from "./schema";
-import { wordsWithin, writerStageOfKey } from "./shown-cap";
 
 const FIX = join(import.meta.dir, "fixtures");
 
@@ -143,11 +142,51 @@ describe("a restage is told its room in the run's unit", () => {
       if (!chars) return;
       expect(words).toMatch(/^room: /);
       expect(words).not.toMatch(/character/);
-      const c = [...chars.matchAll(/(\d+) characters/g)].map((m) => Number(m[1]));
-      const w = [...words.matchAll(/(\d+) words?\b/g)].map((m) => Number(m[1]));
-      expect(w).toEqual(c.map((n) => Math.max(1, wordsWithin(n, writerStageOfKey(stage)))));
+      expect(words).not.toMatch(/\b[01] words?\b/);
     },
   );
+  // Literal rooms (review S3): the heading as the menu shows it, a body field at the comfortable
+  // room (`shownFor`), never a computed expectation.
+  test.each([
+    [
+      "KS1",
+      "title",
+      "room: the heading up to 5 words; each item up to 13 words; all the slide's text up to 24 words",
+    ],
+    [
+      "KS2",
+      "title",
+      "room: the heading up to 10 words; each item up to 11 words; all the slide's text up to 21 words",
+    ],
+    [
+      "KS3-5",
+      "title",
+      "room: the heading up to 10 words; each item up to 12 words; all the slide's text up to 21 words",
+    ],
+    [
+      "KS1",
+      "practice",
+      "room: the heading up to 5 words; each item up to 18 words; all the slide's text up to 33 words; an instruction up to 6 words",
+    ],
+    [
+      "KS2",
+      "practice",
+      "room: the heading up to 10 words; each item up to 24 words; all the slide's text up to 59 words; an instruction up to 8 words",
+    ],
+    [
+      "KS3-5",
+      "practice",
+      "room: the heading up to 10 words; each item up to 25 words; all the slide's text up to 76 words; an instruction up to 8 words",
+    ],
+  ])("%s %s on a pack run", (stage, template, want) => {
+    const points = template === "title" ? undefined : ["a", "b", "c"];
+    expect(roomLine({ template, points }, stage, true)).toBe(want);
+  });
+  test("characters off a pack run, as master", () => {
+    expect(roomLine({ template: "title" }, "KS2")).toBe(
+      "room: the heading up to 68 characters; each item up to 106 characters; all the slide's text up to 194 characters",
+    );
+  });
   test("some layout has a room line, so the cases above test something", () => {
     expect(cases.some(([st, t]) => roomLine({ template: t }, st, true) !== "")).toBe(true);
   });

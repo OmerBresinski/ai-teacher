@@ -60,22 +60,45 @@ const OPERATOR = /^[+\-\u2212\u00d7\u00f7=<>\u2264\u2265*/^()\u00b1%:\u2192\u21d
 /** A single-letter term with an optional coefficient or power (`x`, `3x`, `5n`, `x²`), not "a" or "I". */
 const LETTER_TERM = /^\d*[a-zA-Z][\d\u00b2\u00b3]*$/u;
 
+/** Leading and trailing punctuation a token sheds before it is read. */
+const strip = (token: string): string =>
+  token.replace(/^[("'\u2018\u201c]+|[.,;:!?)"'\u2019\u201d]+$/gu, "");
+/** A relation or arrow inside a longer token (`3x=12`, `x\u2192y`): the field is maths. */
+const INLINE_OPERATOR = /[=<>\u2264\u2265\u00d7\u00f7\u2212\u2192\u21d2]/u;
+
 /**
- * Whether a token is maths that takes almost no room: an operator, or a single-letter term.
- * The caps are measured in characters and shown as words of prose (`wordsWithin`), so these
- * one- or two-character tokens are not words against a cap. Numbers still count.
+ * Whether a token is maths that takes almost no room: an operator, or (when `inMaths`, the field
+ * holding an operator) a single-letter term. The caps are measured in characters and shown as
+ * words of prose (`wordsWithin`), so these one- or two-character tokens are not words against a
+ * cap. Numbers still count, and so does a letter in prose ("Option B", "Vitamin C", "10m", "3D").
  */
-export function isMathToken(token: string): boolean {
-  const t = token.replace(/^[("'\u2018\u201c]+|[.,;:!?)"'\u2019\u201d]+$/gu, "");
+export function isMathToken(token: string, inMaths = true): boolean {
+  const t = strip(token);
   if (!t) return true;
   if (OPERATOR.test(t)) return true;
-  return LETTER_TERM.test(t) && t !== "a" && t !== "A" && t !== "I";
+  return inMaths && LETTER_TERM.test(t) && t !== "a" && t !== "A" && t !== "I";
 }
 
-/** The words a text spends against a cap: whitespace tokens, less operators and letter terms. */
+/**
+ * The words a text spends against a cap: whitespace tokens, less operators, and less letter terms
+ * when the field is maths (it holds an operator, standalone or inside a token).
+ */
 export function capWords(text: unknown): number {
   if (typeof text !== "string") return 0;
-  return text.split(/\s+/).filter((w) => w && !isMathToken(w)).length;
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const inMaths = tokens.some((w) => OPERATOR.test(strip(w)) || INLINE_OPERATOR.test(w));
+  return tokens.filter((w) => !isMathToken(w, inMaths)).length;
+}
+
+/**
+ * A fit layout field's key in the content-need table (`content-need.json`): its lead, or its
+ * points (a key card's text when the fit is a key fit). Headings, labels and formulas have none.
+ */
+export function fitNeedKey(layout: string, path: string, fitKey = ""): string | undefined {
+  if (path === "lead") return `${layout}.lead`;
+  if (/^points\[\d*\](\.text)?$/.test(path))
+    return `${layout}.${/key/.test(fitKey) ? "keycard" : "point"}`;
+  return undefined;
 }
 
 /** The characters the writer is shown for a measured cap of `chars`. */

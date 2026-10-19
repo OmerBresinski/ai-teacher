@@ -635,7 +635,7 @@ describe("pilot pack v4.6 (no string caps a model reads)", () => {
       options: ["Arteries leave the heart; capillaries exchange; veins return", "B", "C", "D"],
       correct: 1,
     };
-    const withCaps = slotFillArrival(slide, "KS2", r.schema, r.caps);
+    const withCaps = slotFillArrival(slide, "KS2", r.schema, r.caps, true);
     expect(withCaps.fields.find((f) => f.path === "options[0]")?.capWords).toBeGreaterThan(0);
     expect(withCaps.route).toBe("writer-fault");
     expect(slotFillArrival(slide, "KS2", r.schema).fields).toHaveLength(0);

@@ -154,7 +154,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: every field is logged against its cap`, (
       },
     ];
     for (const s of slides) {
-      const a = slotFillArrival(s, "KS2", r.schema, r.caps);
+      const a = slotFillArrival(s, "KS2", r.schema, r.caps, true);
       const paths = a.fields.map((f) => f.path);
       expect(paths.length, s.template).toBeGreaterThan(0);
       for (const f of a.fields) {
@@ -183,8 +183,18 @@ describe("capWords: maths counted as the caps were measured (land check, 19 Oct)
     expect(capWords("")).toBe(0);
     expect(capWords(undefined)).toBe(0);
   });
+  test("a letter in prose counts when the field holds no operator (review S1, 19 Oct)", () => {
+    expect(capWords("Option B is wrong")).toBe(4);
+    expect(capWords("Vitamin C helps")).toBe(3);
+    expect(capWords("Run 10m then 5s")).toBe(4);
+    expect(capWords("a 3D shape")).toBe(3);
+    expect(capWords("So 3x=12 and x is 4")).toBe(5);
+    expect(isMathToken("B", false)).toBe(false);
+  });
   test("isMathToken reads one token", () => {
-    expect(["+", "=", "−", "÷", "x", "3x", "5n", "x²", "(x)", "x."].every(isMathToken)).toBe(true);
-    expect(["a", "I", "19", "Seed", "ax", "two"].some(isMathToken)).toBe(false);
+    expect(
+      ["+", "=", "−", "÷", "x", "3x", "5n", "x²", "(x)", "x."].every((t) => isMathToken(t)),
+    ).toBe(true);
+    expect(["a", "I", "19", "Seed", "ax", "two"].some((t) => isMathToken(t))).toBe(false);
   });
 });

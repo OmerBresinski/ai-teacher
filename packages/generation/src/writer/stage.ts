@@ -1030,7 +1030,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps);
+      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps, !!pilot);
       raw = a.slide;
       log({
         ev: "slot-fill",
