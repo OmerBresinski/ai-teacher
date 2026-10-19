@@ -260,3 +260,47 @@ describe("scrapbook's cover keeps its own ground (review S1)", () => {
     expect(content).toEqual([groundArt(t) as NonNullable<ReturnType<typeof groundArt>>]);
   });
 });
+
+describe("corners are the golds' 1440px radii in slide points (review item 47)", () => {
+  // Each gold's `--radius-pic` in CSS px at 1440 wide (round 2 themes2.css, round 3 themes3.css,
+  // round 4 themes4.css, round 5 themes5.css; Paper and Scrapbook inherit theme-v2.css's 20px), and
+  // the slide point it becomes (px / 1.5, to 0.1pt). Paper keeps each layout's own field corners.
+  const GOLD: Record<string, [px: number, pt: number | "own"]> = {
+    paper: [20, "own"],
+    poster: [0, 0],
+    treehouse: [15, 10],
+    "reading-room": [9, 6],
+    storytime: [32, 21.3],
+    scrapbook: [20, 13.3],
+    calm: [12, 8],
+    geometric: [0, 0],
+    beacon: [9, 6],
+    crayon: [9, 6],
+    "exam-hall": [6, 4],
+    playground: [33, 22],
+    splash: [39, 26],
+    studio: [21, 14],
+    "dark-slate": [14, 9.3],
+    "dark-ember": [12, 8],
+  };
+  test("every theme's field and card corner", () => {
+    for (const [id, [, pt]] of Object.entries(GOLD)) {
+      const r = surfacesOf(getTheme(id)).roles;
+      // Scrapbook's fields are torn paper (round 2 `--fb-edge: var(--edge-torn)`): no radius.
+      // Cards take the gold's own `--card-radius` where it differs: Scrapbook 2px, Storytime 26px.
+      const card = id === "scrapbook" ? 1.3 : id === "storytime" ? 17.3 : pt;
+      expect({ id, field: r["field-b"].corner, card: r.card.corner }).toEqual({
+        id,
+        field: id === "scrapbook" ? 0 : pt,
+        card,
+      });
+    }
+  });
+  test("a picture frame takes the gold's radius-pic in points (Paper included)", () => {
+    for (const [id, [px]] of Object.entries(GOLD))
+      expect({ id, frame: surfacesOf(getTheme(id)).roles.frame.corner }).toEqual({
+        id,
+        frame: Math.round(((px * 2) / 3) * 10) / 10,
+      });
+  });
+});

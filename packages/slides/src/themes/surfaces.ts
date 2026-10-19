@@ -5,6 +5,7 @@ import { ALL_THEMES } from "../themes";
 /** Unlabelled surfaces: a cut corner is drawn as a closed path in box fractions (RTL mirrors it). */
 const FIELD_LIKE: ReadonlySet<string> = new Set(["field-a", "field-b", "card", "plate", "frame"]);
 
+import { pxToPt } from "../theme-v2-paper";
 import {
   innerSides,
   type MarkShape,
@@ -127,8 +128,6 @@ export type ThemeSurfaces = {
 
 export type SurfaceTokens = Record<string, string>;
 const px = (v: string | undefined): number => Number.parseFloat(v ?? "0") || 0;
-/** A gold CSS length at 1440 wide in slide points (960 wide), to 0.01pt. */
-const pxToPt = (v: number): number => Math.round((v / 1.5) * 100) / 100;
 
 /** True when a colour paints nothing: `transparent` or an `#RRGGBB00`. */
 export const isClear = (c: string | undefined): boolean =>
@@ -270,6 +269,9 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
   // a radius is px / 1.5 (215k review item 47: Treehouse 15px is 10pt, Splash 39px is 26pt).
   const corner = need("corner") === "own" ? undefined : pxToPt(px(need("corner")));
   const field = corner ?? "own";
+  // A gold whose cards round less than its fields (round 2 Scrapbook `--card-radius: 2px`, round 4
+  // Storytime 26px against `--radius-pic` 32px) sets `card-radius`, also in 1440px.
+  const cardCorner = t["card-radius"] ? pxToPt(px(t["card-radius"])) : field;
   const lineOf = (c: string) => (isClear(c) ? undefined : c);
   const s = (
     fill: string,
@@ -302,7 +304,7 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       ink: need("card-ink"),
       line: cardLine,
       lineWidth: cardLine ? px(need("card-lw")) : undefined,
-      corner: field,
+      corner: cardCorner,
     }),
     plate: s(need("plate-fill"), {
       ink: need("ink"),
@@ -342,13 +344,13 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       ink: need("card-ink"),
       line: flatLine,
       lineWidth: flatLine ? px(need("card-flat-lw")) : undefined,
-      corner: field,
+      corner: cardCorner,
     }),
     "card:right": s(need("card-fill"), {
       ink: need("card-ink"),
       line: need("sem-correct"),
       lineWidth: Math.max(2, px(need("card-lw"))),
-      corner: field,
+      corner: cardCorner,
     }),
     "key:right": s(need("sem-correct"), { ink: need("key-ink"), corner: "full" }),
     "medal:tint": s(need("medal-tint"), {
