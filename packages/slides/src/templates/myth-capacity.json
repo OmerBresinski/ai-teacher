@@ -9,12 +9,12 @@
       "hardMax": 15
     },
     "fact": {
-      "cap": 12,
-      "hardMax": 12
+      "cap": 13,
+      "hardMax": 13
     },
     "factPicture": {
-      "cap": 8,
-      "hardMax": 8
+      "cap": 9,
+      "hardMax": 9
     },
     "proof": {
       "cap": 13,
@@ -28,11 +28,11 @@
     },
     "claim": {
       "cap": 12,
-      "hardMax": 19
+      "hardMax": 16
     },
     "fact": {
-      "cap": 17,
-      "hardMax": 17
+      "cap": 18,
+      "hardMax": 18
     },
     "factPicture": {
       "cap": 9,
@@ -50,15 +50,15 @@
     },
     "claim": {
       "cap": 12,
-      "hardMax": 30
+      "hardMax": 25
     },
     "fact": {
       "cap": 18,
-      "hardMax": 31
+      "hardMax": 36
     },
     "factPicture": {
       "cap": 14,
-      "hardMax": 15
+      "hardMax": 16
     },
     "proof": {
       "cap": 14,
