@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
 import { groundArt } from "../art";
 import { footStrip } from "../background";
+import { contrastRatio } from "../look";
 import { withTitleBand } from "../templates/title-band";
 import { getTheme } from "../themes";
 import { CONNECTORS, connectorShape } from "./marks";
@@ -18,7 +19,7 @@ const marks = (id: string) => surfacesOf(getTheme(id)).marks;
 describe("shape families from each gold", () => {
   test("poster: outline keys, tile medals, square chips, offset cards", () => {
     expect(marks("poster")).toMatchObject({
-      title: "none",
+      title: "band",
       badge: "disc",
       key: "outline",
       medal: "tile",
@@ -217,5 +218,14 @@ describe("title accent and the quick check's answer column", () => {
       ink: "#FFF4E2",
     });
     expect(surfacesOf(getTheme("paper")).states["field-b:inverse"]).toBeUndefined();
+  });
+});
+
+describe("sticky key reveal (TEACH-215 part k integration)", () => {
+  test("scrapbook's right key keeps the correct green, not the sticky paper", () => {
+    const t = getTheme("scrapbook");
+    const right = surfaceStyle(t, "key", "right");
+    expect(right.fill).not.toBe(surfacesOf(t).marks.sticky?.fill);
+    expect(contrastRatio(right.ink as string, right.fill as string)).toBeGreaterThanOrEqual(3);
   });
 });

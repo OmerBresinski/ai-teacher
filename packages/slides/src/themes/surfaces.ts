@@ -216,7 +216,16 @@ function withMarks(
       states[k] = solid(states[k], marks.badge);
   if (marks.chip !== "pill")
     for (const k of ["chip:now", "chip:quiet"] as const) states[k] = solid(states[k], marks.chip);
-  if (marks.key !== "rounded") states["key:right"] = solid(states["key:right"], marks.key);
+  if (marks.key !== "rounded") {
+    const right = states["key:right"];
+    const shaped = solid(right, marks.key);
+    // A sticky key's right state keeps the correct green (scrapbook gold's revealed key), not the
+    // sticky paper: only its shape and tilt come from the family.
+    states["key:right"] =
+      marks.key === "sticky" && right && shaped
+        ? { ...shaped, fill: right.fill, ink: right.ink }
+        : shaped;
+  }
   if (marks.medal !== "disc") states["medal:tint"] = solid(states["medal:tint"], marks.medal);
   const offset = marks.offset
     ? { x: marks.offset.d, y: marks.offset.d, color: marks.offset.color }
