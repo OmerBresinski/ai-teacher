@@ -158,6 +158,7 @@ import {
 import { slideStates } from "./slide-states";
 import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
 import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
+import { withWaveCLibrary } from "./wave-c-scratch";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -691,7 +692,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   if (brief.exitTicketOnSlides && !hasExitLayout(closable))
     throw new WriterIncompleteError(NO_EXIT_LAYOUT);
   const schema = withClose(closable, brief.exitTicketOnSlides);
-  const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
+  const libbedSystem = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
+  // SCRATCH (loop1b-fullmenu-scratch, pe-wavec2): a model may go to figure-slide or step-model.
+  const system0 = run.pilotPack === "v4.8" ? withWaveCLibrary(libbedSystem) : libbedSystem;
   const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */

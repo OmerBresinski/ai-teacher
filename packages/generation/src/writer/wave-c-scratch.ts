@@ -17,6 +17,7 @@ import STEPS_MODEL_CAPACITY from "@tj/slides/templates/steps-model-capacity.json
   type: "json",
 };
 import WORKED_CAPACITY from "@tj/slides/templates/worked-capacity.json" with { type: "json" };
+import L47 from "./bundles/pilot-v4.7/layouts.json" with { type: "json" };
 import type { WriterStage } from "./schema";
 import { CHARS_PER_WORD, wordsWithin } from "./shown-cap";
 
@@ -64,8 +65,21 @@ const reasonsCells = (s: WriterStage): Record<string, J> =>
   );
 const countOf = (k: string) => Number(k.split("-")[1]);
 
-/** The wave C writer defs at a stage (template names as the materialiser reads them). */
-export function waveCDefs(s: WriterStage): J {
+/** The flow shape a why or how question takes (pe-wavec2): reasons had none, so it hid in "one big idea". */
+const WHY_SHAPE = "reasons or causes";
+/** v4.7's flow shapes with the why shape after "one big idea" (the v4.8 schema's `shape` enum). */
+export const WAVE_C_FLOW_SHAPES: string[] = (L47.flowShapes as string[]).flatMap((s) =>
+  s === "one big idea" ? [s, WHY_SHAPE] : [s],
+);
+
+/**
+ * The wave C writer defs at a stage (template names as the materialiser reads them). `hasModels`:
+ * the request carries the lesson's library models (`dg-model-full`, from `libSchema`). A model is
+ * the figure the figure slide and the step model are built for; without one, figure-slide takes a
+ * photo only and step-model is not offered (pe-wavec2: both pointed at diagram-side, which holds no
+ * model, so neither could carry one).
+ */
+export function waveCDefs(s: WriterStage, hasModels = false): J {
   const age = AGE[s];
   const w = (WORKED_CAPACITY as J)[age];
   const ns = stageCells(s).map((c) => c.n);
@@ -130,7 +144,9 @@ export function waveCDefs(s: WriterStage): J {
       heading: str,
       caption: str,
       icon,
-      figure: { anyOf: [{ $ref: "#/$defs/picture" }, { $ref: "#/$defs/diagram-side" }] },
+      figure: hasModels
+        ? { anyOf: [{ $ref: "#/$defs/picture" }, { $ref: "#/$defs/dg-model-full" }] }
+        : { $ref: "#/$defs/picture" },
     }),
     myth: obj({
       template: lit("myth"),
@@ -176,14 +192,22 @@ export function waveCDefs(s: WriterStage): J {
       ),
       figure: { $ref: "#/$defs/picture" },
     }),
-    // steps-model wiring: one step beside a library model.
-    "steps~step-model": obj({
-      template: lit("steps"),
-      fit: lit("step-model"),
-      heading: str,
-      step: obj({ n: { anyOf: [{ type: "integer" }, { type: "null" }] }, do: str, see: strOrNull }),
-      figure: { $ref: "#/$defs/diagram-side" },
-    }),
+    // steps-model wiring: one step beside a library model, offered only when the lesson has one.
+    ...(hasModels
+      ? {
+          "steps~step-model": obj({
+            template: lit("steps"),
+            fit: lit("step-model"),
+            heading: str,
+            step: obj({
+              n: { anyOf: [{ type: "integer" }, { type: "null" }] },
+              do: str,
+              see: strOrNull,
+            }),
+            figure: { $ref: "#/$defs/dg-model-full" },
+          }),
+        }
+      : {}),
   };
 }
 
@@ -342,18 +366,60 @@ export function waveCMenu(s: WriterStage): Record<string, string> {
       stageCounts.map((n): [number, string] => [n, stageCell(n)]),
       "stages",
     )}.`,
-    reasons: `- reasons: the heading asks why or how something happened or is so (flow shape one big idea), answered by ${span(reasonNs[0] ?? 0, reasonNs.at(-1) ?? 0)} reasons, one per click, each a head, one line and its closest listed icon, or every icon null; kind chain is a chain of consequences instead, each link leading to the next, ${span(chainNs[0] ?? 0, chainNs.at(-1) ?? 0)} links. lead is null or one line under the question. A why or how question answered by its reasons comes here rather than panel-list or explain. Fits: the question ${upTo(anyR.question)}; the lead ${upTo(anyR.lead)}; ${runs(rCells("reasons"), "reasons")}; a chain of ${runs(rCells("chain"), "links")}.`,
+    reasons: `- reasons: why or how something happened or is so (flow shape ${WHY_SHAPE}): the heading asks the question, answered on this one slide by ${span(reasonNs[0] ?? 0, reasonNs.at(-1) ?? 0)} reasons, one per click, each a head, one line and its closest listed icon, or every icon null; kind chain is a chain of consequences instead, each link leading to the next, ${span(chainNs[0] ?? 0, chainNs.at(-1) ?? 0)} links. lead is null or one line under the question. The reasons of a why or how question come here together, rather than one visual-text slide a reason, a flow diagram of causes, panel-list or explain; a reason pupils must see to grasp may take a picture slide of its own after this one, never in its place. Fits: the question ${upTo(anyR.question)}; the lead ${upTo(anyR.lead)}; ${runs(rCells("reasons"), "reasons")}; a chain of ${runs(rCells("chain"), "links")}.`,
     source: `- source: a real extract pupils read closely, as prose, verse or a picture, copied word for word from the context and never written by you as if it were a source, with from naming where it comes from and ${span(nLo, nHi)} notes, each pinned by its anchor to words copied exactly from the extract, with a label and one short line. picture is null unless the form is picture. Fits: the extract ${upTo(W.source.extractWords)}.`,
-    "figure-slide": `- figure-slide: one library model or one photo filling the slide, for an idea pupils learn by looking at one figure whole, with a one-line caption and the topic's closest listed icon, shown if the figure fails. At most one figure-slide per lesson. A chart or diagram drawn from your data goes to big-visual. Fits: the caption ${upTo(W.figure.caption)}.`,
-    myth: `- myth: one belief pupils plausibly hold, or a surprising truth, settled on its own slide: the claim in plain words, its verdict (myth or true), the fact that settles it, with factEm null or one exact span of the fact to show in colour, and proof null or one short line with ${span(icLo, icHi)} listed icons or one picture. opening vote asks the class first; straight starts at the verdict and is only for a myth. The slide asks no question: a belief among options to choose from goes to hinge. Fits: the heading ${upTo(my.title)}; the claim ${upTo(my.claim)}; the fact ${upTo(my.fact)}, or ${my.factPicture} with a proof picture; the proof ${upTo(my.proof)}.`,
+    "figure-slide": `- figure-slide: one figure filling the slide that carries the slide's idea on its own, so pupils learn it by looking at the figure whole: a model from the Models list, or a photo pupils study the way they would a model. A one-line caption says what to take from it, with the topic's closest listed icon, shown if the figure fails. At most one figure-slide per lesson. Such a model comes here rather than big-visual, and a further one goes to big-visual; a chart or diagram drawn from your data goes to big-visual. Fits: the caption ${upTo(W.figure.caption)}.`,
+    myth: `- myth: the misconception slide: one belief pupils of this age commonly hold about this lesson's idea, one a teacher would recognise, settled on its own slide: the claim in plain words, its verdict (myth, or true for a true claim pupils commonly doubt), the fact that settles it, with factEm null or one exact span of the fact to show in colour, and proof null or one short line with ${span(icLo, icHi)} listed icons or one picture. opening vote asks the class first; straight starts at the verdict and is only for a myth. The slide asks no question: a belief among options to choose from goes to hinge. A lesson whose idea pupils hold no such belief about has no myth slide; never make one up to fill it. Fits: the heading ${upTo(my.title)}; the claim ${upTo(my.claim)}; the fact ${upTo(my.fact)}, or ${my.factPicture} with a proof picture; the proof ${upTo(my.proof)}.`,
     "visual-text key-card-fig": `- visual-text key-card-fig: a picture beside a lead, up to ${points} points and ${span(cLo, cHi)} key cards, for one named idea pupils need to see, plus the closest listed icon, shown if the picture fails. Each card is a word or rule (label, term and meaning), examples (label and pairs) or a fact (label, number and unit); fields a card does not use are null. A card with a meaning, examples or a number comes here rather than visual-text's points-1-key-fig. Fits: lead and points together ${upTo(W.pictureText.leadAndPoints)}; each label ${upTo(K.label)}; a term ${upTo(K.term)}; a meaning ${upTo(K.meaning)}; up to ${K.pairs} example pairs, ${upTo(K.side)} a side; a number up to ${K.num} characters, its unit ${upTo(K.unit)}.`,
-    "steps step-model": `- steps step-model: one step of a method beside a library model that shows it, one step per slide: n is the step's number, or null for a single step; do says what to do in one sentence; see is null or one short line on what pupils see happen. A method shown on a library model comes here; a method in words alone goes to steps. Fits: do ${upTo(W.stepModel.doOneLine)} on one line, ${W.stepModel.doTwoLines} on two.`,
+    "steps step-model": `- steps step-model: one step of a method shown on a model from the Models list, one step per slide, the model's intent saying what it shows at that step: n is the step's number, or null for a single step; do says what to do in one sentence; see is null or one short line on what pupils see happen on the model. A method a listed model shows comes here, a slide a step, rather than steps followed by the model on big-visual; a method in words alone, or one no listed model shows, goes to steps. Fits: do ${upTo(W.stepModel.doOneLine)} on one line, ${W.stepModel.doTwoLines} on two.`,
   };
 }
 
+/**
+ * The flow step's wording where it blocked routing to a wave C layout (pe-wavec2, from run 1's
+ * plans): no why shape (reasons), a misconception slide planned in every lesson whether or not
+ * pupils hold one (myth), and an order line that left out stages. Each anchor must occur once.
+ */
+const FLOW_EDITS: [string, string][] = [
+  [
+    "(recall, hook, one big idea, sequence,",
+    `(recall, hook, one big idea, ${WHY_SHAPE}, sequence,`,
+  ],
+  [
+    "two worked cases of one method or rule are a worked example, never a contrast.",
+    `two worked cases of one method or rule are a worked example, never a contrast. Why or how something happened or is so, answered by its reasons or causes, is ${WHY_SHAPE}, never one big idea.`,
+  ],
+  [
+    "and one slide on the misconception pupils most often hold here, with the example that corrects it.",
+    "and, only when pupils of this age commonly hold a misconception about this lesson's idea, one a teacher would recognise, one slide on it, with the example that corrects it; plan none rather than make one up.",
+  ],
+  [
+    "An order is shown once: steps or picture-sequence,",
+    "An order is shown once: steps, stages or picture-sequence,",
+  ],
+];
+
 /** The writer's system text with the wave C lines after the last teaching layout (before Key cards). */
 export function withWaveCMenu(system: string, s: WriterStage): string {
-  const at = system.indexOf("\nKey cards. ");
+  let out = system;
+  for (const [from, to] of FLOW_EDITS) {
+    if (out.split(from).length !== 2)
+      throw new Error(`wave C flow: "${from}" is not in the text once`);
+    out = out.replace(from, to);
+  }
+  const at = out.indexOf("\nKey cards. ");
   if (at < 0) throw new Error("wave C menu: no Key cards line in the writer's system text");
-  return `${system.slice(0, at)}\n${Object.values(waveCMenu(s)).join("\n")}${system.slice(at)}`;
+  return `${out.slice(0, at)}\n${Object.values(waveCMenu(s)).join("\n")}${out.slice(at)}`;
+}
+
+/** The library models' menu line (appended by `libSystem`) with figure-slide and step-model able to take a model. */
+const LIB_FROM =
+  "Unlike the kinds above, a model always fills a big-visual slide of its own: its heading, the drawing, and a caption of one short line saying what pupils should take from it.";
+const LIB_TO =
+  "Unlike the kinds above, a model always fills a slide of its own: big-visual, with its heading, the drawing, and a caption of one short line saying what pupils should take from it, unless figure-slide or steps step-model takes it, as their lines say.";
+export function withWaveCLibrary(system: string): string {
+  if (!system.includes("\nModels (id")) return system;
+  if (system.split(LIB_FROM).length !== 2)
+    throw new Error("wave C library: model line not found once");
+  return system.replace(LIB_FROM, LIB_TO);
 }

@@ -139,3 +139,13 @@ for (const [ks, s] of [
     }
     expect(lines.myth).toContain(`the claim up to ${waveCWords(s).myth.claim} words`);
   });
+
+// SCRATCH (pe-wavec2): the flow offers a why shape and plans a misconception slide only when one is held.
+for (const ks of ["KS1", "KS2", "KS3"] as const)
+  test(`scratch: ${ks} flow has the why shape and no standing misconception slot`, () => {
+    const sys = PILOT_PACKS["v4.8"].system[ks];
+    expect(sys).toContain("one big idea, reasons or causes, sequence,");
+    expect(sys).toContain("(flow shape reasons or causes)");
+    expect(sys).not.toContain("the misconception pupils most often hold here");
+    expect(PILOT_PACKS["v4.8"].layouts.flowShapes).toContain("reasons or causes");
+  });
