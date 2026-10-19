@@ -36,6 +36,7 @@ import {
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
+import { capWaveCDefs, waveCDefs } from "./wave-c-scratch";
 
 /*
  * The pilot writer pack (TEACH-110 part s): the menu and schema the prompt-engineer generates
@@ -251,6 +252,8 @@ export function pilotRequest(
     ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
     ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
     ...(pack.catalogueIcons ? { "layout-icon": layoutIconDef() } : {}),
+    // SCRATCH (loop1b-fullmenu-scratch): wave C offered as if in production.
+    ...(pack.id === "v4.8" ? waveCDefs(writerStageOf(ks)) : {}),
   };
   const refs = (schema.properties.slides.items.anyOf as J[]).filter(
     (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),
@@ -308,6 +311,7 @@ export function pilotRequest(
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
             ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+            ...capWaveCDefs(schema.$defs, writerStageOf(ks)),
           },
         }
       : undefined;
