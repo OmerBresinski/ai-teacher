@@ -1,5 +1,6 @@
 import { type MenuWordCaps, menuWordCaps } from "../src/writer/layout-menu";
 import type { WriterStage } from "../src/writer/schema";
+import { capWords } from "../src/writer/shown-cap";
 
 /*
  * Fill scoring for the writer's output (TEACH-110 part af): every capped field's length against
@@ -43,8 +44,8 @@ export interface WriterEvent {
 /** A pilot-fit outcome that left the slide over its measured room (fill.py's "measured"). */
 const MEASURED_OVER = new Set(["tight", "trimmed", "still-over", "clipped"]);
 
-export const words = (s: unknown): number =>
-  typeof s === "string" ? s.split(/\s+/).filter(Boolean).length : 0;
+/** Words against a cap, counted as the caps were measured (`capWords`, shown-cap.ts). */
+export const words = (s: unknown): number => capWords(s);
 
 const NOT_BODY = ["heading", "title", "label", "instruction"];
 const isBody = (path: string) => !NOT_BODY.some((x) => path.includes(x));

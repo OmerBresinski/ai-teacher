@@ -4,6 +4,8 @@ import { PILOT_PACK_ID, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
 import {
   CHARS_PER_WORD,
+  capWords,
+  isMathToken,
   MIN_SHOWN_WORDS,
   offerable,
   SHOWN_SHARE,
@@ -162,5 +164,26 @@ describe(`pilot pack ${PILOT_PACK_ID}: every field is logged against its cap`, (
       if (s.template === "hinge") expect(paths).toContain("options[0].text");
       else expect(paths).toContain("items[0].question");
     }
+  });
+});
+
+describe("capWords: maths counted as the caps were measured (land check, 19 Oct)", () => {
+  test("operators and single-letter terms are not words; numbers and prose are", () => {
+    expect(capWords("Subtract 3 from both sides: 2x + 3 − 3 = 11 − 3, so 2x = 8.")).toBe(11);
+    expect(
+      capWords("An invented game awards 3n − 2 points. Test whether n = 6 gives 16 points."),
+    ).toBe(12);
+    expect(capWords("Follow the solution: 3x + 4 = 19")).toBe(5);
+    expect(capWords("x² ÷ (y) = 4")).toBe(1);
+  });
+  test("prose counts as before, the article a and the pronoun I included", () => {
+    const prose = "Write a sentence I can read, then check it.";
+    expect(capWords(prose)).toBe(prose.split(/\s+/).length);
+    expect(capWords("")).toBe(0);
+    expect(capWords(undefined)).toBe(0);
+  });
+  test("isMathToken reads one token", () => {
+    expect(["+", "=", "−", "÷", "x", "3x", "5n", "x²", "(x)", "x."].every(isMathToken)).toBe(true);
+    expect(["a", "I", "19", "Seed", "ax", "two"].some(isMathToken)).toBe(false);
   });
 });

@@ -55,6 +55,29 @@ export function wordsWithin(chars: number, stage: WriterStage): number {
   return w;
 }
 
+/** An operator token: only signs, brackets and the like (`+`, `−`, `=`, `÷`, `(`). */
+const OPERATOR = /^[+\-\u2212\u00d7\u00f7=<>\u2264\u2265*/^()\u00b1%:]+$/u;
+/** A single-letter term with an optional coefficient or power (`x`, `3x`, `5n`, `x²`), not "a" or "I". */
+const LETTER_TERM = /^\d*[a-zA-Z][\d\u00b2\u00b3]*$/u;
+
+/**
+ * Whether a token is maths that takes almost no room: an operator, or a single-letter term.
+ * The caps are measured in characters and shown as words of prose (`wordsWithin`), so these
+ * one- or two-character tokens are not words against a cap. Numbers still count.
+ */
+export function isMathToken(token: string): boolean {
+  const t = token.replace(/^[("'\u2018\u201c]+|[.,;:!?)"'\u2019\u201d]+$/gu, "");
+  if (!t) return true;
+  if (OPERATOR.test(t)) return true;
+  return LETTER_TERM.test(t) && t !== "a" && t !== "A" && t !== "I";
+}
+
+/** The words a text spends against a cap: whitespace tokens, less operators and letter terms. */
+export function capWords(text: unknown): number {
+  if (typeof text !== "string") return 0;
+  return text.split(/\s+/).filter((w) => w && !isMathToken(w)).length;
+}
+
 /** The characters the writer is shown for a measured cap of `chars`. */
 export const shownChars = (chars: number): number => Math.floor(chars * SHOWN_SHARE);
 

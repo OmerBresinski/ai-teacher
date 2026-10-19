@@ -110,7 +110,7 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
       kinds({
         template: "hinge",
         heading: w(10),
-        options: [{ text: w(9) }, { text: w(3) }, { text: "x", icon: "sun" }],
+        options: [{ text: w(9) }, { text: w(3) }, { text: "sun", icon: "sun" }],
       }),
     ).toEqual(["heading(question):10/16", "options[0]:9/9", "options[1]:3/9", "options[2]:1/2"]);
     expect(
