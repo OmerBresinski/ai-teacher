@@ -1,0 +1,208 @@
+import NEED from "./content-need.json" with { type: "json" };
+import type { WriterStage } from "./schema";
+
+/*
+ * The one place a measured cap becomes the number the writer is shown (loop 1 of the layout pilot,
+ * 17 Oct 2026; build/CRAMMING-ROOT-CAUSE.md). Writers read a cap as a target: 26% of fields were
+ * written at 85% or more of whatever cap was shown, and caps of 5 words or under were filled to
+ * 90% or more two times in three. So the writer is shown about three quarters of each measured cap,
+ * in words and in characters, while the measured cap (the schema's `maxLength`, the layout's own fit
+ * check) stays the hard limit. Every menu number, every slot-fill Fits number and every logged
+ * field's cap goes through here; nothing else divides characters by words.
+ */
+
+/**
+ * Characters a word, spaces included, per stage: the 80th percentile of body text the writers
+ * actually wrote (pilot build/CPW-BY-STAGE.md, 742 fields: KS1 p80 5.71, KS2 6.44 to 6.60, KS3-5
+ * 7.12). The capacity tables are measured in characters with a sample passage of about 5.6
+ * characters a word (`panel-list-capacity.ts` "Measuring text"), the corpus mean, so a word count
+ * taken at the mean overflows about half the time; at p80 a field written to its words fits its
+ * characters four times in five. Slot-fill's old flat 8 (a p95 guess with no stage) under-counted
+ * every stage by 1 to 2 characters a word and so showed fewer words than the slide holds.
+ */
+export const CHARS_PER_WORD: Record<WriterStage, number> = {
+  KS1: 5.8,
+  KS2: 6.6,
+  "KS3-5": 7.0,
+};
+
+/** The share of a measured cap the writer is shown (about 75%, Greg's loop-1 approval, 17 Oct). */
+export const SHOWN_SHARE = 0.75;
+
+/**
+ * No body field is offered with a shown cap under this many words: a count or zone that would go
+ * below it is not offered (ceiling words of 1 to 5 were written at 100% median fill).
+ */
+export const MIN_SHOWN_WORDS = 5;
+
+/**
+ * Planning headroom (loop 1b, Greg 17 Oct 2026): at the flow step, an idea whose counted words
+ * need more than this share of its fit's shown words takes a roomier fit or two slides, decided
+ * while the slide count can still change. Rendered into the prompt by `{{fits:plan-share}}`.
+ */
+export const PLAN_SHARE = 0.8;
+
+/** A writer stage from a stage key (`KS1`, `KS2`, `KS3`, `KS4`, `KS3-5`, `KS5`). */
+export function writerStageOfKey(stageKey: string): WriterStage {
+  if (stageKey === "KS1" || stageKey === "KS2") return stageKey;
+  return "KS3-5";
+}
+
+/** The most whole words whose characters stay within `chars` at this stage (the hard cap in words). */
+export function wordsWithin(chars: number, stage: WriterStage): number {
+  let w = 0;
+  while ((w + 1) * CHARS_PER_WORD[stage] <= chars + 1e-9) w += 1;
+  return w;
+}
+
+/** An operator token: only signs, brackets and the like (`+`, `−`, `=`, `÷`, `→`, `(`). */
+const OPERATOR = /^[+\-\u2212\u00d7\u00f7=<>\u2264\u2265*/^()\u00b1%:\u2192\u21d2]+$/u;
+/** A single-letter term with an optional coefficient or power (`x`, `3x`, `5n`, `x²`), not "a" or "I". */
+const LETTER_TERM = /^\d*[a-zA-Z][\d\u00b2\u00b3]*$/u;
+
+/** Leading and trailing punctuation a token sheds before it is read. */
+const strip = (token: string): string =>
+  token.replace(/^[("'\u2018\u201c]+|[.,;:!?)"'\u2019\u201d]+$/gu, "");
+/** A relation or arrow inside a longer token (`3x=12`, `x\u2192y`): the field is maths. */
+const INLINE_OPERATOR = /[=<>\u2264\u2265\u00d7\u00f7\u2212\u2192\u21d2]/u;
+
+/**
+ * Whether a token is maths that takes almost no room: an operator, or (when `inMaths`, the field
+ * holding an operator) a single-letter term. The caps are measured in characters and shown as
+ * words of prose (`wordsWithin`), so these one- or two-character tokens are not words against a
+ * cap. Numbers still count, and so does a letter in prose ("Option B", "Vitamin C", "10m", "3D").
+ */
+export function isMathToken(token: string, inMaths = true): boolean {
+  const t = strip(token);
+  if (!t) return true;
+  if (OPERATOR.test(t)) return true;
+  return inMaths && LETTER_TERM.test(t) && t !== "a" && t !== "A" && t !== "I";
+}
+
+/**
+ * The words a text spends against a cap: whitespace tokens, less operators, and less letter terms
+ * when the field is maths (it holds an operator, standalone or inside a token).
+ */
+export function capWords(text: unknown): number {
+  if (typeof text !== "string") return 0;
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const inMaths = tokens.some((w) => OPERATOR.test(strip(w)) || INLINE_OPERATOR.test(w));
+  return tokens.filter((w) => !isMathToken(w, inMaths)).length;
+}
+
+/**
+ * A fit layout field's key in the content-need table (`content-need.json`): its lead, or its
+ * points (a key card's text when the fit is a key fit). Headings, labels and formulas have none.
+ */
+export function fitNeedKey(layout: string, path: string, fitKey = ""): string | undefined {
+  if (path === "lead") return `${layout}.lead`;
+  if (/^points\[\d*\](\.text)?$/.test(path))
+    return `${layout}.${/key/.test(fitKey) ? "keycard" : "point"}`;
+  return undefined;
+}
+
+/** The characters the writer is shown for a measured cap of `chars`. */
+export const shownChars = (chars: number): number => Math.floor(chars * SHOWN_SHARE);
+
+/** The words the writer is shown for a measured cap of `chars` characters. */
+export const shownWords = (chars: number, stage: WriterStage): number =>
+  wordsWithin(shownChars(chars), stage);
+
+/**
+ * Characters a word in the capacity probes' own sample text (panel-list's and the hinge's pools,
+ * 5.4 with its space), which is also the KS2 quick-check gold's (v12/questions-b: 213 characters
+ * in 40 words). A comfortable cap the probe measured in characters holds this many words of
+ * ordinary text; `CHARS_PER_WORD` (the stored lessons' long-word p80) is kept for the hard maximum,
+ * so a long-worded field at the shown count runs tight, never over (18 Oct 2026).
+ */
+export const PROBE_CHARS_PER_WORD = 5.4;
+
+/** Fields shown their `probeRoom` instead of a share: the cover question (the title's lead). */
+export const PROBE_ROOM_KEYS: ReadonlySet<string> = new Set(["title.lead"]);
+
+/** The words a probe-measured comfortable cap holds, within the hard max at the stage's rate. */
+export function probeRoom(cap: number, hardMax: number, stage: WriterStage): number {
+  return Math.min(
+    Math.floor((cap + 1) / PROBE_CHARS_PER_WORD),
+    wordsWithin(Math.max(cap, hardMax), stage),
+  );
+}
+
+/**
+ * Content need (CAP-NEED-AUDIT.md, 18 Oct 2026): the words a good version of a field takes, p80
+ * per stage, checked in as data with its source (`content-need.json`). Keyed `layout.field`
+ * (`practice.task`, `hinge.option`, `visual-text.lead`, ...). Undefined is need unknown.
+ */
+/** The field's median need at a stage (`content-need.json`), or undefined when unknown. */
+export function needMedianOf(key: string, stage: WriterStage): number | undefined {
+  const row = (NEED as unknown as Record<string, Record<string, { median: number } | undefined>>)[
+    key
+  ];
+  return row?.[stage]?.median;
+}
+
+export function needOf(key: string | undefined, stage: WriterStage): number | undefined {
+  if (!key) return undefined;
+  const row = (NEED as unknown as Record<string, Record<string, { p80: number } | undefined>>)[key];
+  return row?.[stage]?.p80;
+}
+
+/**
+ * The words the writer is shown for a field with a known need: what the slide holds at comfort
+ * (`wordsWithin`, the room), never less than the need where the room allows it, never more than
+ * twice the need (a cap far above the need is read as a target and padded), and otherwise the 75%
+ * share. Need unknown keeps the 75% share (`shownWords`). The measured cap stays the hard limit.
+ */
+export function shownFor(
+  chars: number,
+  stage: WriterStage,
+  key?: string,
+  /** The room in characters when it is less than the measured cap (a pictured side's headroom). */
+  roomChars = chars,
+  /** The room in words when a probe measured it directly (the hinge's options per count). */
+  roomWords?: number,
+): number {
+  // The cover question (the title's lead): its one cap is both comfort and hard max, so its room
+  // is `probeRoom` with no 75% share (approved 18 Oct 2026, as for the quick check's questions).
+  if (key !== undefined && PROBE_ROOM_KEYS.has(key)) return probeRoom(chars, chars, stage);
+  const room = roomWords ?? wordsWithin(roomChars, stage);
+  const share = Math.min(shownWords(chars, stage), room);
+  const need = needOf(key, stage);
+  if (need === undefined) return share;
+  // A censored need (many stored fields pinned at their cap) is a lower bound, so twice it is no
+  // ceiling either: show the room (decision 32, 18 Oct: 3 sentence options of about 15-16 words).
+  if (isCensored(key, stage)) return room;
+  return Math.min(room, Math.max(share, need), Math.floor(2 * need));
+}
+
+/** The need row is a lower bound at this stage (`censored` in content-need.json). */
+export function isCensored(key: string | undefined, stage: WriterStage): boolean {
+  if (!key) return false;
+  const row = (
+    NEED as unknown as Record<string, Record<string, { censored?: boolean } | undefined>>
+  )[key];
+  return row?.[stage]?.censored === true;
+}
+
+/**
+ * The longest prefix of `[count, words]` pairs (ascending counts) a menu may offer: every shown cap
+ * at least `floor`, and no cliff, so one more item never leaves less than half the previous cap.
+ * Counts past the first that fails are dropped too, so the offer stays contiguous.
+ */
+export function offerable(
+  pairs: [number, number][],
+  floor = MIN_SHOWN_WORDS,
+  /**
+   * Waive the no-cliff rule for a count whose words still hold the field's median need (practice
+   * and the exit ticket: CAP-NEED-AUDIT.md rows 1d, 3b). The floor always holds.
+   */
+  waive: (w: number) => boolean = () => false,
+): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [n, w] of pairs) {
+    const prev = out.at(-1)?.[1];
+    if (w < floor || (!waive(w) && prev !== undefined && w * 2 < prev)) break;
+    out.push([n, w]);
+  }
+  return out;
+}

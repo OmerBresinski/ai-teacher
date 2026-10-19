@@ -692,7 +692,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     throw new WriterIncompleteError(NO_EXIT_LAYOUT);
   const schema = withClose(closable, brief.exitTicketOnSlides);
   const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
-  const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
+  const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
@@ -1030,7 +1030,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps);
+      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps, !!pilot);
       raw = a.slide;
       log({
         ev: "slot-fill",
@@ -1654,9 +1654,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
     const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
-    // A restaging call is told its room in characters.
+    // A restaging call is told its room: in words on a pack run, as its fault lines are.
     if (mode !== "fit") {
-      const room = roomLine(plan.slides[i], stageKey);
+      const room = roomLine(plan.slides[i], stageKey, !!pilot);
       if (room) faultLines.push(room);
     }
     const u = fillTemplate(tpl, brief, {

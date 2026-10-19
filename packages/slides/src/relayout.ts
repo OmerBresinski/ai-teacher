@@ -322,8 +322,39 @@ function untouchedAnswers(
   ];
   return (
     rebuilt.length === old.length &&
-    rebuilt.every((s, i) => contentOf(s, false) === contentOf(old[i] as Slide, false))
+    rebuilt.every(
+      (s, i) => contentOf(s, false) === contentOf(kickerAsCaption(old[i] as Slide), false),
+    )
   );
+}
+
+/** The style keys the builder wrote on a body kicker before TEACH-215 part l, and no others. */
+const OLD_KICKER_KEYS = "autoHeight,color,fontSize,fontWeight,lineHeight,padding,preset";
+
+/**
+ * Slides built before the group kicker was a caption (TEACH-215 part l) set it as body. Only that
+ * exact builder form (bold, unpadded, auto height, line height 1.2, no other field) reads back as
+ * the caption; any other body kicker is the teacher's and stays as it is, so the slides count as
+ * edited. Its words and colour are then compared with the rebuild like every other element.
+ */
+function kickerAsCaption(slide: Slide): Slide {
+  return {
+    ...slide,
+    elements: slide.elements.map((e) => {
+      if (e.type !== "text" || e.name !== ANSWERS_NAMES.kicker) return e;
+      const st = e.style;
+      const builderBody =
+        st?.preset === "body" &&
+        Object.keys(st).sort().join(",") === OLD_KICKER_KEYS &&
+        st.fontWeight === 700 &&
+        st.padding === 0 &&
+        st.autoHeight === true &&
+        st.lineHeight === 1.2 &&
+        typeof st.fontSize === "number" &&
+        typeof st.color === "string";
+      return builderBody ? { ...e, style: { ...st, preset: "caption" } } : e;
+    }),
+  };
 }
 
 /**

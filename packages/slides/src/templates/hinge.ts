@@ -731,16 +731,15 @@ function accent(c: Ctx, el: TextElement, word: string | null | undefined) {
   } as TextElement["doc"];
 }
 
-type Caps = Record<
-  Age,
-  { words: number; maxWords: number; chars: number; maxChars: number; options: number }
->;
+type CapCell = { words: number; maxWords: number; chars: number; maxChars: number };
+type Caps = Record<Age, CapCell & { options: number; byCount?: Record<string, CapCell> }>;
 /** The measured caps (`hinge-capacity.json`, written by `measureHingeCapacity`). */
 export const HINGE_CAPS = CAPACITY as Caps;
 
 /** One counter per option: its length against the measured comfortable cap and hard maximum. */
 function fieldsOf(choices: HingeChoice[], age: Age): FieldReport[] {
-  const cap = HINGE_CAPS[age];
+  // Each option count is measured on its own (fewer cards hold longer options); else the most.
+  const cap = HINGE_CAPS[age].byCount?.[String(choices.length)] ?? HINGE_CAPS[age];
   return choices.map((o, k) => {
     const chars = o.text.length;
     return {

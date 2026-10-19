@@ -1,0 +1,126 @@
+{
+  "$comment": "Words a good version of each field needs, p80 per writer stage (CAP-NEED-AUDIT.md, 18 Oct 2026; NORTHSTAR/pilot/build). src: G = golds (northstars-v13 cases, steps-model, v12 questions, v12 myth-c; probe cases excluded), S = stored lessons' fields written under 90% of their cap (24 lessons, CRAMMING-ROOT-CAUSE corpus). n is the pooled count. A stage with no entry is need unknown and keeps the 75% rule. `censored` marks a p80 that is a lower bound (many stored fields pinned at their cap). Headings, titles, equation-hero and activities are deliberately absent (audit: no action, unknown, or a Greg proposal).",
+  "practice.task": {
+    "KS1": { "p80": 7, "median": 6, "n": 7, "src": "G6 S1" },
+    "KS2": { "p80": 12, "median": 8, "n": 51, "src": "G15 S36" },
+    "KS3-5": { "p80": 17, "median": 13, "n": 61, "src": "G8 S53" }
+  },
+  "hinge.option": {
+    "KS1": { "p80": 5, "median": 1, "n": 8, "src": "G" },
+    "KS2": {
+      "p80": 7,
+      "median": 1,
+      "n": 32,
+      "src": "G16 S16; 48% of stored options pinned at their cap of 5, so S p80 >= 5; belief-sentence options run 7-11 (KS3 gold); set to the room at 4 options (audit 2(ii))",
+      "censored": true
+    },
+    "KS3-5": { "p80": 8, "median": 3, "n": 35, "src": "G11 S24; 38% pinned at 7", "censored": true }
+  },
+  "hinge.question": {
+    "KS2": { "p80": 7, "median": 6, "n": 11, "src": "G+S" },
+    "KS3-5": { "p80": 9, "median": 8.5, "n": 10, "src": "G+S" }
+  },
+  "exit-ticket.question": {
+    "KS1": { "p80": 8, "median": 7, "n": 5, "src": "G3 S2" },
+    "KS2": { "p80": 11, "median": 8, "n": 22, "src": "G6 S16" },
+    "KS3-5": { "p80": 18, "median": 13, "n": 27, "src": "G3 S24" }
+  },
+  "split-compare.side": {
+    "KS1": { "p80": 9, "median": 7, "n": 8, "src": "S" },
+    "KS2": { "p80": 13, "median": 12, "n": 20, "src": "S" },
+    "KS3-5": { "p80": 16, "median": 14.5, "n": 22, "src": "S; 35% pinned", "censored": true }
+  },
+  "panel-list.item": {
+    "KS1": { "p80": 6, "median": 5, "n": 6, "src": "S" },
+    "KS2": { "p80": 7, "median": 6, "n": 17, "src": "S, cap-biased low" },
+    "KS3-5": { "p80": 8, "median": 6, "n": 31, "src": "S; 30% pinned", "censored": true }
+  },
+  "panel-list.lead": {
+    "KS3-5": { "p80": 5, "median": 5, "n": 5, "src": "S" }
+  },
+  "items-row.item": {
+    "KS1": { "p80": 10, "median": 6, "n": 9, "src": "G6 S3" },
+    "KS2": { "p80": 7, "median": 6, "n": 39, "src": "G29 S10" },
+    "KS3-5": { "p80": 10, "median": 7, "n": 35, "src": "G22 S13" }
+  },
+  "question-set.question": {
+    "KS1": { "p80": 11, "median": 5, "n": 12, "src": "G" },
+    "KS2": { "p80": 9, "median": 8, "n": 28, "src": "G" },
+    "KS3-5": { "p80": 13, "median": 11.5, "n": 18, "src": "G" }
+  },
+  "question-set.answer": {
+    "KS1": { "p80": 1, "median": 1, "n": 12, "src": "G" },
+    "KS2": { "p80": 2, "median": 1, "n": 28, "src": "G" },
+    "KS3-5": { "p80": 4, "median": 2.5, "n": 18, "src": "G" }
+  },
+  "visual-text.lead": {
+    "KS2": { "p80": 11, "median": 9, "n": 25, "src": "G8 S17" },
+    "KS3-5": { "p80": 19, "median": 14, "n": 13, "src": "G2 S11" }
+  },
+  "visual-text.point": {
+    "KS2": { "p80": 14, "median": 11, "n": 13, "src": "G (S capped at 9)" },
+    "KS3-5": { "p80": 15, "median": 11, "n": 20, "src": "G3 S17" }
+  },
+  "visual-text.keycard": {
+    "KS2": { "p80": 14, "median": 13, "n": 9, "src": "G (myth-c fact, picture-text card meaning)" }
+  },
+  "explain.keycard": {
+    "KS2": { "p80": 14, "median": 13, "n": 9, "src": "G (myth-c fact, picture-text card meaning)" }
+  },
+  "explain.lead": {
+    "KS3-5": { "p80": 22, "median": 13, "n": 8, "src": "G3 S5" }
+  },
+  "explain.point": {
+    "KS1": { "p80": 7, "median": 6, "n": 5, "src": "G" },
+    "KS2": { "p80": 11, "median": 9, "n": 9, "src": "G" },
+    "KS3-5": { "p80": 16, "median": 12.5, "n": 24, "src": "G12 S12" }
+  },
+  "steps.point": {
+    "KS2": { "p80": 12, "median": 10, "n": 21, "src": "G11 S10" },
+    "KS3-5": { "p80": 15, "median": 9, "n": 15, "src": "G8 S7" }
+  },
+  "big-visual.lead": {
+    "KS2": { "p80": 13, "median": 10, "n": 7, "src": "G figure cap + S" },
+    "KS3-5": { "p80": 11, "median": 9, "n": 6, "src": "G figure cap + S" }
+  },
+  "discussion.lead": {
+    "KS1": {
+      "p80": 9,
+      "median": 7,
+      "n": 6,
+      "src": "G pooled across stages (KS1 8, KS2 5-6, KS3 9-10); S wrote 19-24 (padding)"
+    },
+    "KS2": {
+      "p80": 9,
+      "median": 7,
+      "n": 6,
+      "src": "G pooled across stages (KS1 8, KS2 5-6, KS3 9-10); S wrote 19-24 (padding)"
+    },
+    "KS3-5": {
+      "p80": 9,
+      "median": 7,
+      "n": 6,
+      "src": "G pooled across stages (KS1 8, KS2 5-6, KS3 9-10); S wrote 19-24 (padding)"
+    }
+  },
+  "hook.lead": {
+    "KS1": {
+      "p80": 11,
+      "median": 9,
+      "n": 6,
+      "src": "G hook2 (question or number line), all stages; quote hooks about 26 with source"
+    },
+    "KS2": {
+      "p80": 11,
+      "median": 9,
+      "n": 6,
+      "src": "G hook2 (question or number line), all stages; quote hooks about 26 with source"
+    },
+    "KS3-5": {
+      "p80": 11,
+      "median": 9,
+      "n": 6,
+      "src": "G hook2 (question or number line), all stages; quote hooks about 26 with source"
+    }
+  }
+}
