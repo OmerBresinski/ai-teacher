@@ -39,7 +39,13 @@ import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
-import { paintSurface, type SurfaceRole, surfaceStyle, surfacesOf } from "../themes/surfaces";
+import {
+  paintSurface,
+  rgbOf,
+  type SurfaceRole,
+  surfaceStyle,
+  surfacesOf,
+} from "../themes/surfaces";
 import { type Ctx, type FieldReport, type Figure, kit, type TemplateInput } from "./index";
 import { type Age, ageProfileOf, resolveIcons, v2Colors, v2Profile } from "./items-row-deps";
 import CAPACITY from "./myth-capacity.json" with { type: "json" };
@@ -110,7 +116,8 @@ const CARD_IN = 72 * K;
 const CARD_FOOT = 72 * K;
 const TAG_H = 30 * K;
 const TAG_GAP = 24 * K;
-const STAMP_DISC_0 = 30 * K;
+/** The verdict disc: round 4 themes4.css, all themes, `.stamp i { width: 42px }` (THEME-AUDIT-r2 #9). */
+const STAMP_DISC_0 = 42 * K;
 const SEAM_D = 84 * K;
 const SEAM_TOP = 86 * K;
 const ASK_GAP = 48 * K;
@@ -526,14 +533,17 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   surface("field-b", { x: 0, y: band, w: SEAM, h: stageH }, at.verdict, MYTH_NAMES.panel, 0);
   const sy = band + TOP;
   const right = verdict === "true";
-  // A theme's own verdict disc (Geometric: 42px = 28pt, round 5 myth); the other golds' 30px.
+  // A theme's own verdict disc (`verdict-disc`), else every gold's 42px.
   const ownDisc = surfacesOf(c.t).marks.verdictDisc;
   const STAMP_DISC = ownDisc > 0 ? ownDisc * K : STAMP_DISC_0;
-  const stampFill =
-    paintSurface(
-      { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
-      c.t,
-    )?.fill ?? col.accent;
+  // The locked semantic colour (roles-map.js: the stamp is `verdict-wrong` / `verdict-right`),
+  // written as rgb() so render-time re-theming never reads Paper's #D7263D as an accent and paints
+  // the disc in this theme's accent (Scrapbook's blue, Calm's teal).
+  const verdictFill = paintSurface(
+    { role: right ? "verdict-right" : "verdict-wrong", box: { x: 0, y: 0, w: 1, h: 1 }, id: "x" },
+    c.t,
+  )?.fill;
+  const stampFill = verdictFill?.startsWith("#") ? rgbOf(verdictFill) : (verdictFill ?? col.accent);
   const sd: ShapeElement = {
     id: uid(),
     type: "shape",
@@ -557,7 +567,7 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     MYTH_NAMES.stampGlyph,
   );
   push(
-    tagEl(say.stamp, label, { x: PAD_L + STAMP_DISC + 12 * K, y: sy, w: claimW }, col.ink, c),
+    tagEl(say.stamp, label, { x: PAD_L + STAMP_DISC + 14 * K, y: sy, w: claimW }, col.ink, c),
     at.verdict,
     MYTH_NAMES.stamp,
   );
