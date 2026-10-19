@@ -97,10 +97,14 @@ export function breakRuns(
     }
     if (places) {
       let into = 0;
+      // A letter goes where it ends: one that straddles a column's edge starts the next line, as
+      // the browser breaks it (TEACH-215 part m: Paper's 800 heading put a long word's last
+      // letter on the line before the one counted).
       for (const i of wordChars) {
-        const k = cut === 0 ? 0 : Math.min(cut, Math.floor(into / ems));
+        const adv = places.adv[i] ?? 0;
+        const k = cut === 0 ? 0 : Math.min(cut, Math.ceil((into + adv) / ems) - 1);
         put(i, line0 + k, k === 0 ? x0 + into : into - k * ems);
-        into += places.adv[i] ?? 0;
+        into += adv;
       }
     }
     for (let k = 1; k <= cut; k++) {
@@ -109,11 +113,12 @@ export function breakRuns(
       let into = 0;
       let at = wordStart;
       for (const i of wordChars) {
-        if (into >= k * ems) {
+        const adv = places?.adv[i] ?? 0;
+        if (into + adv > k * ems) {
           at = i;
           break;
         }
-        into += places?.adv[i] ?? 0;
+        into += adv;
       }
       starts.push(at);
     }

@@ -112,6 +112,18 @@ let MEASURING = false;
 export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
   (TABLE[age] ?? []).find((c) => c.n === n && c.vis === vis);
 
+/**
+ * Cells the writer is never offered, whatever they measure (TEACH-215 part m): six pictured stages
+ * at KS2 and KS3 hold a 6-character name and a 24-character line, which reads cramped. A saved
+ * slide still lays out from its measured cell; a stages menu line must skip these.
+ */
+export const STAGES_NOT_OFFERED: Partial<Record<Age, readonly `${number}${"i" | "p"}`[]>> = {
+  primary: ["6p"],
+  secondary: ["6p"],
+};
+export const stageOffered = (age: Age, n: number, vis: StageVis) =>
+  !STAGES_NOT_OFFERED[age]?.includes(`${n}${vis === "pictures" ? "p" : "i"}`);
+
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
 /* ------------------------------------------------------------------ */
@@ -197,7 +209,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
   const colW = (SLIDE_W - 2 * pad - (n - 1) * gap) / n;
   const gutter = (n >= 5 ? 20 : 24) * K;
   // Tiles stand apart already (the arrow gutter): only a joined strip keeps a gutter in each frame.
-  const textW = tiles ? colW : colW - gutter;
+  // Measured at the width it is drawn at: `textBox` draws the box on whole points, and at 5 frames
+  // a name measured on one line in 157.3 wrapped in the 157 it was drawn in (TEACH-215 part m).
+  const textW = Math.round(tiles ? colW : colW - gutter);
   const nameWt = c.t.weights.heading;
   const bodyWt = c.t.weights.body;
   const rowTop = Math.max(ROW_TOP, top + UNDER_TITLE);
