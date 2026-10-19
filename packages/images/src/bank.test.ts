@@ -4,9 +4,18 @@ import {
   directedImagePrompt,
   expectedImageCostUsd,
   familyOf,
+  IMAGE_ATTEMPT_TIMEOUT_MS,
   IMAGE_MODEL,
+  IMAGE_RETRY_BUDGET_MS,
+  ImageGenerationError,
   imageCostUsd,
+  imageFailReason,
+  RETRY_NOTE_CHARS,
+  requestsSent,
+  retryLine,
+  retryNote,
   sizeForAspect,
+  withRetryLine,
 } from "./bank";
 
 describe("sizeForAspect (ruling 158 item 3)", () => {
@@ -118,5 +127,211 @@ describe("createOpenAiImageGenerator (fake fetch)", () => {
         size: "1024x1024",
       }),
     ).rejects.toThrow("returned no image");
+  });
+
+  /** A fake provider that answers each request from a script, counting requests and waits. */
+  const scripted = (script: (() => Response | Promise<Response>)[]) => {
+    let n = 0;
+    const waits: number[] = [];
+    const fetch = (async () => {
+      const step = script[Math.min(n, script.length - 1)];
+      n++;
+      return step ? step() : new Response("", { status: 500 });
+    }) as unknown as typeof globalThis.fetch;
+    const gen = createOpenAiImageGenerator({
+      apiKey: "k",
+      fetch,
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+      random: () => 0,
+    });
+    return { gen, waits, calls: () => n };
+  };
+  const ok = () =>
+    new Response(JSON.stringify({ data: [{ b64_json: Buffer.from(png).toString("base64") }] }));
+  test("a 429 is retried after its backoff, then succeeds on the second request", async () => {
+    const { gen, waits, calls } = scripted([() => new Response("slow down", { status: 429 }), ok]);
+    const out = await gen.generate({ prompt: "p", size: "1024x1024" });
+    expect(calls()).toBe(2);
+    expect(out.attempts).toBe(2);
+    expect(waits).toEqual([1500]);
+  });
+  test("a 429's Retry-After is honoured (capped at 20 s)", async () => {
+    const { gen, waits } = scripted([
+      () => new Response("", { status: 429, headers: { "retry-after": "3" } }),
+      () => new Response("", { status: 429, headers: { "retry-after": "600" } }),
+      ok,
+    ]);
+    await gen.generate({ prompt: "p", size: "1024x1024" });
+    expect(waits).toEqual([3000, 20000]);
+  });
+  test("5xx every time: two retries with doubling backoff, then a server-error", async () => {
+    const { gen, waits, calls } = scripted([() => new Response("down", { status: 503 })]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err).toBeInstanceOf(ImageGenerationError);
+    expect(err.reason).toBe("server-error");
+    expect(err.status).toBe(503);
+    expect(err.attempts).toBe(3);
+    expect(String(err)).toContain("image generation failed (503)");
+    expect(imageFailReason(err)).toBe("server-error");
+    expect(calls()).toBe(3);
+    expect(waits).toEqual([1500, 3000]);
+  });
+  test("a connection refused before sending is retried, and is not counted as an attempt", async () => {
+    const { gen, calls } = scripted([
+      () => {
+        throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } });
+      },
+      ok,
+    ]);
+    expect((await gen.generate({ prompt: "p", size: "1024x1024" })).attempts).toBe(1);
+    expect(calls()).toBe(2);
+  });
+  test("a network error after the request may have been sent is never repeated", async () => {
+    const { gen, calls } = scripted([
+      () => {
+        throw Object.assign(new TypeError("socket closed"), { code: "ECONNRESET" });
+      },
+      ok,
+    ]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("network-unsure");
+    expect(err.attempts).toBe(1);
+    expect(requestsSent(err)).toBe(1);
+    expect(calls()).toBe(1);
+  });
+  test("a quota or billing 429 is not retried", async () => {
+    const { gen, calls, waits } = scripted([
+      () =>
+        new Response(
+          JSON.stringify({
+            error: { code: "insufficient_quota", message: "You exceeded your current quota" },
+          }),
+          { status: 429 },
+        ),
+      ok,
+    ]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("quota");
+    expect(calls()).toBe(1);
+    expect(waits).toEqual([]);
+  });
+  test("each request has its own time limit even when the caller passes a signal", async () => {
+    const hang = (async (_u: string, init: RequestInit) =>
+      new Promise((_, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+      })) as unknown as typeof globalThis.fetch;
+    const gen = createOpenAiImageGenerator({ apiKey: "k", fetch: hang, attemptTimeoutMs: 20 });
+    const caller = new AbortController();
+    const err = await gen
+      .generate({ prompt: "p", size: "1024x1024", signal: caller.signal })
+      .catch((e) => e);
+    expect(err.reason).toBe("timeout");
+    expect(caller.signal.aborted).toBe(false);
+    expect(IMAGE_ATTEMPT_TIMEOUT_MS).toBe(60_000);
+  });
+  test("no retry starts that could not finish inside the picture's time budget", async () => {
+    let t = 0;
+    let n = 0;
+    const fetch = (async () => {
+      n++;
+      return new Response("", { status: 503, headers: { "retry-after": "15" } });
+    }) as unknown as typeof globalThis.fetch;
+    const gen = createOpenAiImageGenerator({
+      apiKey: "k",
+      fetch,
+      budgetMs: 30_000,
+      now: () => t,
+      sleep: async (ms) => {
+        t += ms;
+      },
+    });
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    // 0 s + a 15 s wait + a 20 s minimum request > 30 s: the first failure is the answer.
+    expect(err.reason).toBe("server-error");
+    expect(n).toBe(1);
+    expect(IMAGE_RETRY_BUDGET_MS).toBe(90_000);
+  });
+  test("a safety refusal is never retried and has its own reason code", async () => {
+    const { gen, waits, calls } = scripted([
+      () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "moderation_blocked",
+              message: "Your request was rejected by the safety system.",
+            },
+          }),
+          { status: 400 },
+        ),
+    ]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("refused-safety");
+    expect(err.attempts).toBe(1);
+    expect(calls()).toBe(1);
+    expect(waits).toEqual([]);
+    expect(String(err)).not.toContain("safety system");
+  });
+  test("a plain 400 is a bad-request, not retried; the caller's abort stops a backoff", async () => {
+    const { gen, calls } = scripted([() => new Response("no", { status: 400 })]);
+    const err = await gen.generate({ prompt: "p", size: "1024x1024" }).catch((e) => e);
+    expect(err.reason).toBe("bad-request");
+    expect(calls()).toBe(1);
+    const ctl = new AbortController();
+    const fetch = (async () => {
+      ctl.abort();
+      return new Response("", { status: 503 });
+    }) as unknown as typeof globalThis.fetch;
+    const real = createOpenAiImageGenerator({ apiKey: "k", fetch, backoffMs: 10 });
+    await expect(
+      real.generate({ prompt: "p", size: "1024x1024", signal: ctl.signal }),
+    ).rejects.toThrow();
+  });
+});
+
+describe("retryLine", () => {
+  test("a retry always changes the prompt, with the judge's reason when it gave one", () => {
+    expect(withRetryLine("A hen.")).toBe("A hen.");
+    expect(withRetryLine("A hen.", { reason: "judge", why: "no chick visible." })).toBe(
+      "A hen.\nA previous attempt at this picture was turned down. The reviewer's note, which describes that attempt and not this picture: no chick visible. Correct what the note found, and keep the subject, style and framing the request above sets. Nothing from this note is written in the picture.",
+    );
+    expect(retryLine({ reason: "judge" })).toContain("turned down");
+    expect(retryLine({ reason: "odd", why: "a different breed" })).toContain(
+      "which describes the set and not this picture: a different breed.",
+    );
+    // A safety retry points at the teaching need; it never asks to get round a filter.
+    const safe = retryLine({ reason: "refused-safety" });
+    expect(safe).toContain("what the lesson teaches");
+    expect(safe).not.toMatch(/filter|policy|fictional|artistic|hypothetical/i);
+    // Every judged retry says its note is not to be drawn.
+    for (const reason of ["judge", "odd"])
+      for (const why of [undefined, "x"])
+        expect(retryLine({ reason, ...(why ? { why } : {}) })).toEndWith(
+          "Nothing from this note is written in the picture.",
+        );
+  });
+  test("a judge's note never carries quoted words or quote marks into the prompt", () => {
+    expect(retryNote('the barn has a sign reading "FARM" on it.')).toBe(
+      "the barn has a sign reading some writing on it",
+    );
+    expect(retryNote("a label \u2018Hen\u2019 and a \u201ctitle\u201d")).toBe(
+      "a label some writing and a some writing",
+    );
+    expect(retryNote("the chick's beak is 'open' here")).toBe(
+      "the chick's beak is some writing here",
+    );
+    expect(retryNote("a  hen\n on   grass. ")).toBe("a hen on grass");
+    const long = retryNote(`${"word ".repeat(80)}end`);
+    expect(long.length).toBeLessThanOrEqual(RETRY_NOTE_CHARS);
+    expect(long.endsWith("word")).toBe(true);
+  });
+});
+
+describe("retryLine with an empty note", () => {
+  test("a judge's note that cleans to nothing falls back to the plain line", () => {
+    expect(retryLine({ reason: "judge", why: "  .  " })).toBe(retryLine({ reason: "judge" }));
+    expect(retryLine({ reason: "odd", why: " " })).toBe(retryLine({ reason: "odd" }));
+    expect(retryLine({ reason: "judge", why: "  .  " })).not.toContain("note,");
   });
 });
