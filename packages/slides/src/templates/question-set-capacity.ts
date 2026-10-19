@@ -2,9 +2,10 @@
  * Quick check capacity (TEACH-101 part g, ruling 215): the published character limits, measured by
  * the renderer on every theme, never guessed. For each age (early KS1, primary KS2, secondary KS3)
  * and question count (3 to the age's maximum), each field gets a `cap` (the longest text that
- * stays comfortable: every question on one line at the body size; at KS2 down to the gold's 33 px
+ * stays comfortable: KS2 every question on one line, down to the gold's 33 px
  * rows: ruling 162 amended by Greg 18 Oct (item 31 A): KS2 reading text at the golds' 33-34px on
- * quick check, picture-with-points and split-compare) and a
+ * quick check, picture-with-points and split-compare; KS1 and KS3 on up to two lines, as their
+ * golds lay out, TEACH-215 part j) and a
  * `hardMax` (the longest that still fits at the floor; past it the slide is over and the writer
  * splits it). Questions are
  * measured all long beside short answers; answers all long beside short questions. A cap of 0
@@ -15,7 +16,18 @@ import { writeFileSync } from "node:fs";
 import type { Theme } from "@tj/domain/documents";
 import { THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { panelSample as sample } from "./panel-list-capacity";
+import { panelSample } from "./panel-list-capacity";
+
+/**
+ * Sample text of exactly `chars` characters (TEACH-215 part j): the passage cut to the character,
+ * never ending on a space, so every row is measured at its real length and the cap is that length
+ * (the word-at-a-time sample stepped 42 -> 48 and read the first row's length).
+ */
+export function exactSample(chars: number, seed = 0): string {
+  const s = panelSample(chars + 40, seed).slice(0, chars);
+  return s.endsWith(" ") ? `${s.slice(0, -1)}s` : s;
+}
+const sample = exactSample;
 
 export type QuickAge = "early" | "primary" | "secondary";
 export const QUICK_AGES: Record<QuickAge, Stage> = {
@@ -77,10 +89,9 @@ function capOf(
   make: (chars: number) => TemplateInput,
   themes: readonly Theme[],
 ): QuickCap {
-  const len = (ch: number) => (ch ? sample(ch, 0).length : 0);
   return {
-    cap: len(longest((ch) => quickFits(make(ch), stage, themes).comfortable)),
-    hardMax: len(longest((ch) => quickFits(make(ch), stage, themes).fits)),
+    cap: longest((ch) => quickFits(make(ch), stage, themes).comfortable),
+    hardMax: longest((ch) => quickFits(make(ch), stage, themes).fits),
   };
 }
 

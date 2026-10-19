@@ -25,6 +25,7 @@ import {
 } from "./pilot-fit";
 import {
   layoutIconNames,
+  PILOT_PACK_ID,
   PILOT_PACKS,
   pilotRepairSchema,
   pilotRequest,
@@ -302,7 +303,7 @@ describe("one repair, then whole sentences", () => {
     );
     expect(want).toContain("root");
     for (const ks of ["KS1", "KS2", "KS3"]) {
-      const { schema } = pilotRequest("v4.7", ks, {}, (sc) => sc);
+      const { schema } = pilotRequest(PILOT_PACK_ID, ks, {}, (sc) => sc);
       const icon = schema.$defs["layout-icon"];
       expect(icon.anyOf[0].enum).toEqual(want);
       expect(icon.anyOf[1]).toEqual({ type: "null" });
@@ -634,7 +635,7 @@ describe("pilot pack v4.6 (no string caps a model reads)", () => {
       options: ["Arteries leave the heart; capillaries exchange; veins return", "B", "C", "D"],
       correct: 1,
     };
-    const withCaps = slotFillArrival(slide, "KS2", r.schema, r.caps);
+    const withCaps = slotFillArrival(slide, "KS2", r.schema, r.caps, true);
     expect(withCaps.fields.find((f) => f.path === "options[0]")?.capWords).toBeGreaterThan(0);
     expect(withCaps.route).toBe("writer-fault");
     expect(slotFillArrival(slide, "KS2", r.schema).fields).toHaveLength(0);

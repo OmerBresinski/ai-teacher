@@ -1,11 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
+import { contrastRatio } from "@tj/slides";
 import { dimGround, dimInk, surfaceStyle } from "@tj/slides/surfaces";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import JSZip from "jszip";
 import { choiceMarks, choiceText } from "../slide/elements/choice";
+import { hingeFade } from "../slide/elements/HingeMarks";
 import { buildSlidePlan, exportLessonPptx, hexagonAdj } from "./pptx";
 
 /*
@@ -68,16 +70,24 @@ describe("PPTX hinge reveal", () => {
     }, 30_000);
 
   /*
-   * Part d (ruling 258): each wrong card is redrawn opaque on `dimGround` with its words in the dim
-   * tone; the right card's words keep their ink. Read per card from the shapes PowerPoint draws: the
+   * Part d (ruling 258): each wrong card is redrawn opaque with its words in the dim tone; the right
+   * card's words keep their ink. Part i (TEACH-215): that card is the gold's `.34` fade over the
+   * stage (`hingeFade`), drawn as plain colours: PowerPoint gets the faded state as its build slide. Read per card from the shapes PowerPoint draws: the
    * last shape drawn at a card's place is the one a pupil sees.
    */
   for (const id of ["paper", "dark-slate", "dark-ember"])
     it(`${id}: each wrong card's words are dim on the ground, the right card's keep their ink`, async () => {
       const { ask, reveal, theme, lesson } = await hingeDeck(id);
-      const dim = hex(dimInk(theme));
-      const ground = hex(dimGround(theme));
       const slide = lesson.slides[0] as Slide;
+      const dimOf = (cardId: string) =>
+        hex(hingeFade(slide, theme, cardId)?.words ?? dimInk(theme));
+      const groundOf = (cardId: string) =>
+        hex(hingeFade(slide, theme, cardId)?.ground ?? dimGround(theme));
+      const wrongIds = choiceMarks(slide, true, Number.POSITIVE_INFINITY)
+        .filter((m) => m.state === "dim")
+        .map((m) => m.id);
+      const dims = new Set(wrongIds.map(dimOf));
+      const grounds = new Set(wrongIds.map(groundOf));
       const words = new Map(
         slide.elements.filter((e) => e.type === "text").map((e) => [e, choiceText(slide, e.id)]),
       );
@@ -92,7 +102,9 @@ describe("PPTX hinge reveal", () => {
         const asked = shapes(ask).filter((s) => s.text === text);
         const shown = drawn.filter((s) => s.text === text);
         expect(asked).toHaveLength(1);
-        expect(asked[0]?.runs.some((c) => c === dim)).toBe(false);
+        const dim = dimOf(cardId);
+        const ground = groundOf(cardId);
+        expect(asked[0]?.runs.some((c) => dims.has(c))).toBe(false);
         const top = shown.at(-1);
         const atCard = drawn.filter((s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text);
         if (state === "dim") {
@@ -106,9 +118,54 @@ describe("PPTX hinge reveal", () => {
         } else {
           expect(shown).toHaveLength(1);
           expect(top?.runs.length).toBeGreaterThan(0);
-          expect(top?.runs.some((c) => c === dim)).toBe(false);
-          expect(atCard.some((s) => s.fill === ground)).toBe(false);
+          expect(top?.runs.some((c) => dims.has(c))).toBe(false);
+          // Never redrawn faded (a dark card on its own-coloured stage fades to itself: skip that).
+          const own = card.type === "shape" && card.fill ? hex(card.fill) : "";
+          expect(atCard.some((s) => s.fill && s.fill !== own && grounds.has(s.fill))).toBe(false);
         }
+      }
+    }, 30_000);
+
+  /*
+   * TEACH-215 part i: the build slide's wrong cards and keys against the gold, worked by hand from
+   * the gold's own CSS (never from the code under test): each colour at `.34` over the stage.
+   * Treehouse (round 3 themes3.css): card --surface #FFFFFF, stage --p-panel #FBF5E3, keys --opt-1
+   * #0E6B78, --opt-3 #B0306A, --opt-4 #5B3FA0. Dark Ember (round 5 themes5.css): card and stage
+   * --surface #252528, keys --opt-1 #F2A08C, --opt-3 #E3C870, --opt-4 #BBA8F0.
+   */
+  const GOLD: Record<string, { card: string; keys: Record<string, string> }> = {
+    treehouse: { card: "FCF8ED", keys: { A: "AAC6BF", C: "E1B2BA", D: "C5B7CC" } },
+    "dark-ember": { card: "252528", keys: { A: "6B4F4A", C: "665C40", D: "58526C" } },
+  };
+  for (const [id, gold] of Object.entries(GOLD))
+    it(`${id}: the build slide's wrong cards and keys are the gold's .34 fade; words and letters read at 4.5:1`, async () => {
+      const { reveal, lesson } = await hingeDeck(id);
+      const slide = lesson.slides[0] as Slide;
+      const drawn = shapes(reveal);
+      for (const { id: cardId, state } of choiceMarks(slide, true, Number.POSITIVE_INFINITY)) {
+        if (state !== "dim") continue;
+        const card = slide.elements.find((e) => e.id === cardId) as SlideElement;
+        const atCard = drawn.filter((s) => s.x === emu(card.x) && s.y === emu(card.y) && !s.text);
+        const ground = atCard.at(-1)?.fill as string;
+        expect(ground).toBe(gold.card);
+        const inCard = drawn.filter(
+          (s) =>
+            s.x >= emu(card.x) &&
+            s.y >= emu(card.y) &&
+            s.x < emu(card.x + card.w) &&
+            s.y < emu(card.y + card.h),
+        );
+        // The letter is a text box over the key's own shape at the same place (no text).
+        const letter = inCard.filter((s) => /^[A-D]$/.test(s.text)).at(-1) as Sp;
+        const keyFill = inCard.filter((s) => !s.text && s.x === letter.x && s.y === letter.y).at(-1)
+          ?.fill as string;
+        expect(keyFill).toBe(gold.keys[letter.text] as string);
+        for (const c of letter.runs)
+          expect(contrastRatio(`#${c}`, `#${keyFill}`)).toBeGreaterThanOrEqual(4.5);
+        const words = inCard.filter((s) => s.text.length > 1).at(-1) as Sp;
+        expect(words.runs.length).toBeGreaterThan(0);
+        for (const c of words.runs)
+          expect(contrastRatio(`#${c}`, `#${ground}`)).toBeGreaterThanOrEqual(4.5);
       }
     }, 30_000);
 

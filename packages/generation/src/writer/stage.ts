@@ -79,6 +79,7 @@ import {
   repairTerms,
   roomLine,
   shuffleHinge,
+  switchesFor,
   titleOneThing,
   withCorrectLetter,
   withLook,
@@ -127,9 +128,12 @@ import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
 import { carryFigures, fitPilot, isPilot, pilotOvers, pilotSlips } from "./pilot-fit";
 import {
+  offeredLayouts,
   PILOT_PACKS,
   type PilotPack,
   type PilotPackId,
+  packRepairMenu,
+  packRepairSchema,
   pilotRepairSchema,
   pilotRequest,
   stripStringCaps,
@@ -441,10 +445,41 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
       ),
     );
-  // The repair's layouts menu: the one the lab's repair calls sent (BAKEOFF prompts/T, heading
-  // room in characters), not the arm's menu the system text was built from (TEACH-110 part f).
+  // The repair's layouts menu. On a pilot pack (production), the pack's own layout lines, so a
+  // repair offers only what the writer is offered (ruling 218: never the retired compare).
+  // Otherwise the one the lab's repair calls sent (BAKEOFF prompts/T, heading room in characters),
+  // not the arm's menu the system text was built from (TEACH-110 part f).
   const layoutsMenu = (k: string) =>
-    k === "KS1" ? P.repairLayoutsKS1 : k === "KS2" ? P.repairLayoutsKS2 : P.repairLayoutsKS3_5;
+    pilot
+      ? packRepairMenu(pilot.system, offeredLayouts(schema))
+      : k === "KS1"
+        ? P.repairLayoutsKS1
+        : k === "KS2"
+          ? P.repairLayoutsKS2
+          : P.repairLayoutsKS3_5;
+  /**
+   * The repair's schema when a call names none. On a pilot pack, `slide` is one of the layouts its
+   * menu shows (`layoutsFor`: the slide's own and those it may switch to) that the writer is
+   * offered, defined as the writer's schema defines it; a slide whose layouts the writer is not
+   * offered at all (stored JSON) may take any offered layout but an activity, as base4f-p123's
+   * repair could. Else the bundle's repair schema. An uncapped pack strips the envelope's caps
+   * too: a capped repair cuts its own fix.
+   */
+  const generalRepairSchema = (k: string, own: string) => {
+    let r = repairSchemaFor(k);
+    if (pilot) {
+      const offered = offeredLayouts(schema);
+      const shown = switchesFor(own, true).filter((l) => offered.includes(l));
+      r = packRepairSchema(
+        r,
+        schema,
+        shown.length ? shown : offered.filter((l) => !isWriterActivity(l)),
+      );
+    }
+    return run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).uncapped
+      ? stripStringCaps(r)
+      : r;
+  };
   const baseVisuals = (k: string) =>
     k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 
@@ -657,7 +692,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     throw new WriterIncompleteError(NO_EXIT_LAYOUT);
   const schema = withClose(closable, brief.exitTicketOnSlides);
   const system0 = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
-  const system = slotFill && !pilot ? slotFillSystem(system0, schema) : system0;
+  const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
   const asksPupils = (s: S) =>
@@ -995,7 +1030,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps);
+      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps, !!pilot);
       raw = a.slide;
       log({
         ev: "slot-fill",
@@ -1618,10 +1653,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const own = String((plan.slides[i] as S)?.template ?? "");
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
-    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey));
-    // A restaging call is told its room in characters.
+    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
+    // A restaging call is told its room: in words on a pack run, as its fault lines are.
     if (mode !== "fit") {
-      const room = roomLine(plan.slides[i], stageKey);
+      const room = roomLine(plan.slides[i], stageKey, !!pilot);
       if (room) faultLines.push(room);
     }
     const u = fillTemplate(tpl, brief, {
@@ -1633,6 +1668,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       "the arm's layouts menu for this key stage: <arm>/layouts.<stage>.txt": layoutsFor(
         layoutsMenu(stageKey),
         own,
+        !!pilot,
       ),
       "the slide's JSON exactly as the main call wrote it": JSON.stringify(plan.slides[i]),
       [String(tpl.match(/\{\{(one line per placed picture[^}]*)\}\}/)?.[1] ?? "-")]: placed.length
@@ -1651,12 +1687,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // Restaging (stand-alone, reroute) has its own prompt, never repair.txt.
       system: mode === "fit" ? P.repair : P.restage,
       user: u,
-      // An uncapped pack (v4.6) strips the generic repair too: a capped repair cuts its own fix.
-      schema:
-        ro.schema ??
-        (run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).uncapped
-          ? stripStringCaps(repairSchemaFor(stageKey))
-          : repairSchemaFor(stageKey)),
+      schema: ro.schema ?? generalRepairSchema(stageKey, own),
       name: "slide",
       // Strict JSON, as base4f-p123 ran repair and restage (TEACH-110 part f).
       strict: true,
@@ -1670,6 +1701,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, mode, ok: false });
       return false;
+    }
+    // A pack's schema has the slide name its fit, as the writer's does; arrival strips it there.
+    if (pilot && !ro.schema) {
+      const { fit: _fit, ...rest } = o2.slide;
+      o2.slide = rest;
     }
     const before = plan.slides[i] as S;
     const keyed = keepAnswerKey(
@@ -1746,7 +1782,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!left.length) return first;
     return repairOne({
       slide: c.slide,
-      faults: [...left, "still over after one reword: cut the characters given above"],
+      faults: [
+        ...left,
+        `still over after one reword: cut the ${pilot ? "words" : "characters"} given above`,
+      ],
     });
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
@@ -1773,7 +1812,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           return ok ? (plan.slides[i] as S) : undefined;
         }
       : undefined;
-    const r = await fitPilot(s0, pctx, repair);
+    const r = await fitPilot(s0, pctx, repair, !!pilot);
     log({
       ev: "pilot-fit",
       slide: i + 1,
@@ -2032,7 +2071,22 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // (flag off) or, by default, in the speaker notes beside the writer's own slide.
     const t = tableRows(visualState(i)(dAsk.key), dAsk);
     if (dAsk.kind === "table" && t.rows.length && !flags.noTableText) {
-      swapSlide(i, asTableText(s, t));
+      swapSlide(
+        i,
+        asTableText(
+          s,
+          t,
+          pilot
+            ? {
+                stage: stageKey,
+                holds: (x) => {
+                  const o = pilotOvers(x, { ...base, index: i, plan, visual: visualState(i) });
+                  return !o.tooMany && !o.overs.length;
+                },
+              }
+            : undefined,
+        ),
+      );
       path.set(i, "table-text");
       return;
     }

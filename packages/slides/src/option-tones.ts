@@ -7,13 +7,11 @@ import type { Theme } from "@tj/domain/documents";
  */
 
 /**
- * Hinge option colours (UX ruling 203, P8; Chalkie's teal, mustard, pink and black squares): four
- * tokens per theme, one per option letter, in order. Each is clear of the others and of the
- * theme's correct and incorrect hues (the reveal's ring), at 3:1 or better on the option card,
- * with a letter in white or near-black at 4.5:1 (`hinge-colours.test.ts`).
+ * The themes whose hinge gold gives each letter its own colour, and those colours (TEACH-215 part
+ * i): round 3's per-letter option tones (`themes3.css` `--opt-1..4` on `[data-k]`) and the round 5
+ * darks (`themes5.css`). The hinge keys of exactly these themes take them (`HINGE_TONED_KEYS`).
  */
-export const OPTION_TONES: Record<string, readonly [string, string, string, string]> = {
-  chalk: ["#A94A18", "#4A5D8C", "#0E6B78", "#B0306A"],
+export const LETTER_TONES: Record<string, readonly [string, string, string, string]> = {
   playground: ["#6532BE", "#855000", "#0E6B78", "#B0306A"],
   crayon: ["#A31F2E", "#805000", "#1A52A8", "#B0306A"],
   splash: ["#0A5CA2", "#7E5600", "#B8175A", "#5B3FA0"],
@@ -21,8 +19,22 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   "reading-room": ["#2C5A4D", "#7C5810", "#B0306A", "#5B3FA0"],
   studio: ["#0B6E86", "#7A580A", "#6D35D6", "#B0306A"],
   "exam-hall": ["#1B3A8C", "#78580C", "#B0306A", "#5B3FA0"],
-  "night-lab": ["#F2B551", "#D083A6", "#9D8CC6", "#ECEDEF"],
   beacon: ["#0A46C8", "#7A5200", "#0E6B78", "#B0306A"],
+  // The darks' hinge golds (round 5 themes5.css --opt-1..4, TEACH-215 part i).
+  "dark-slate": ["#9DBBD0", "#D3BE96", "#B9A7D2", "#E4E7EB"],
+  "dark-ember": ["#F2A08C", "#8CC7F2", "#E3C870", "#BBA8F0"],
+};
+
+/**
+ * Hinge option colours (UX ruling 203, P8; Chalkie's teal, mustard, pink and black squares): four
+ * tokens per theme, one per option letter, in order. Each is clear of the others and of the
+ * theme's correct and incorrect hues (the reveal's ring), at 3:1 or better on the option card,
+ * with a letter in white or near-black at 4.5:1 (`hinge-colours.test.ts`). The themes outside
+ * `LETTER_TONES` keep one key colour on the hinge (their golds reset `[data-k]`).
+ */
+export const OPTION_TONES: Record<string, readonly [string, string, string, string]> = {
+  chalk: ["#A94A18", "#4A5D8C", "#0E6B78", "#B0306A"],
+  "night-lab": ["#F2B551", "#D083A6", "#9D8CC6", "#ECEDEF"],
   paper: ["#A94A18", "#4A5D8C", "#0E6B78", "#B0306A"],
   // Round 5 themes (TEACH-215 part c): tokens.json cat-1..4-ink.
   poster: ["#A8112D", "#014580", "#7A5805", "#065650"],
@@ -30,8 +42,7 @@ export const OPTION_TONES: Record<string, readonly [string, string, string, stri
   scrapbook: ["#9C2A44", "#014580", "#7A5805", "#055452"],
   calm: ["#792235", "#01305C", "#604501", "#003D3B"],
   geometric: ["#9C2A44", "#014580", "#7A5805", "#055452"],
-  "dark-slate": ["#FFAEB7", "#8FB6E3", "#F9DBA6", "#91C8C6"],
-  "dark-ember": ["#FEABB5", "#85B7EE", "#FFDA97", "#84CBC8"],
+  ...LETTER_TONES,
 };
 
 /** A theme's option colours; one the table does not know takes Splash's, or Night Lab's when dark. */
