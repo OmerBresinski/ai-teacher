@@ -27,7 +27,7 @@ import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
 import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
 import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
 import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
-import { droppedFits, withFits } from "./fit-fits";
+import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   layoutFieldCaps,
@@ -327,7 +327,9 @@ export function pilotRequest(
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
             ...capPilotDefs(schema.$defs, writerStageOf(ks)),
-            ...(pack.waveC ? waveCWordCaps(schema.$defs, writerStageOf(ks)) : {}),
+            ...(pack.waveC
+              ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
+              : {}),
           },
         }
       : undefined;

@@ -193,7 +193,8 @@ export function waveCDefs(s: WriterStage, hasModels = false): J {
             fit: lit("step-model"),
             heading: str,
             step: obj({
-              n: { anyOf: [{ type: "integer" }, { type: "null" }] },
+              // One digit in the step disc (steps-model.ts draws n in a disc beside the heading).
+              n: { anyOf: [{ type: "integer", minimum: 1, maximum: 9 }, { type: "null" }] },
               do: str,
               see: strOrNull,
             }),
@@ -250,11 +251,14 @@ const capWords = (node: J | undefined, words: number) => {
 };
 
 /**
- * The wave C defs with word caps for the caps request (`maxWords`, the loosest offered cell's
- * comfortable words, straight from `waveCWords`): code checks each field's words against these
- * (`slotFillArrival`); the writer never sees them. No characters are derived from words.
+ * The wave C defs with word caps for the caps request (`maxWords`, straight from `waveCWords` and
+ * picture-text's `KEY_CAPS`): code checks each field's words against these (`slotFillArrival`);
+ * the writer never sees them. No characters are derived from words. A field whose room depends on
+ * the slide's count (stages, reasons, worked rows, picture-text points) carries the loosest cell
+ * here and is checked at its own count by `waveCCountCaps`. `headingWords` is the stage's measured
+ * slide-heading words (fit-fits.ts `headingWords`), for headings no wave C table measures.
  */
-export function waveCWordCaps(defs: J, s: WriterStage): J {
+export function waveCWordCaps(defs: J, s: WriterStage, headingWords: number): J {
   const W = waveCWords(s);
   const max = (o: J, k: string) => Math.max(...Object.values(o).map((c) => (c as J)[k] as number));
   const out: J = {};
@@ -266,38 +270,120 @@ export function waveCWordCaps(defs: J, s: WriterStage): J {
   };
   const st = take("stages");
   if (st) {
+    capWords(st.properties.heading, headingWords);
+    // The accent is a span of the heading, so it holds no more than the heading does.
+    capWords(st.properties.accentWord, headingWords);
     capWords(st.properties.items.items.properties.name, max(W.stages, "name"));
     capWords(st.properties.items.items.properties.line, max(W.stages, "line"));
   }
   const r = take("reasons");
   if (r) {
+    // The heading is the question (reasons-capacity.json `question`).
+    capWords(r.properties.heading, max(W.reasons, "question"));
     capWords(r.properties.lead, max(W.reasons, "lead"));
     capWords(r.properties.items.items.properties.head, max(W.reasons, "head"));
     capWords(r.properties.items.items.properties.line, max(W.reasons, "line"));
   }
   const f = take("figure-slide");
-  if (f) capWords(f.properties.caption, W.figure.caption);
+  if (f) {
+    capWords(f.properties.heading, headingWords);
+    capWords(f.properties.caption, W.figure.caption);
+  }
   const my = take("myth");
   if (my) {
+    // myth-capacity.json `title` is the slide's heading.
+    capWords(my.properties.heading, W.myth.title);
     const p = my.properties.myth.properties;
     capWords(p.claim, W.myth.claim);
     capWords(p.fact, W.myth.fact);
+    // factEm is an exact span of the fact, so the fact's cap bounds it.
+    capWords(p.factEm, W.myth.fact);
     capWords(p.proof.anyOf[0].properties.line, W.myth.proof);
   }
   const wk = take("worked");
   if (wk) {
     capWords(wk.properties.heading, W.worked.titleWords);
     capWords(wk.properties.lines.items.properties.move, W.worked.moveWords);
+    // eq and check are maths, measured where they are drawn: worked.ts lays each equation and the
+    // check at the gold's size and falls back to its text-only base when a row does not fit.
   }
   const kc = take("visual-text~key-card-fig");
-  if (kc) capWords(kc.properties.lead, W.pictureText.leadAndPoints);
+  if (kc) {
+    const p = kc.properties;
+    capWords(p.heading, headingWords);
+    capWords(p.lead, W.pictureText.leadAndPoints);
+    // Each point within the lead-and-points budget; the two together at the count (`waveCCountCaps`).
+    capWords(p.points.items, W.pictureText.leadAndPoints);
+    const c = p.cards.items.properties;
+    capWords(c.label, KEY_CAPS.label);
+    capWords(c.term, KEY_CAPS.term);
+    capWords(c.meaning, KEY_CAPS.meaning);
+    capWords(c.examples.anyOf[0].items.items, KEY_CAPS.side);
+    capWords(c.unit, KEY_CAPS.unit);
+    // The fact card's number is measured in characters (picture-text KEY_CAPS.num).
+    for (const b of c.num.anyOf ?? []) if (b.type === "string") b.maxLength = KEY_CAPS.num;
+  }
   const sm = take("steps~step-model");
   if (sm) {
+    capWords(sm.properties.heading, headingWords);
     capWords(sm.properties.step.properties.do, W.stepModel.doTwoLines);
     // see shares do's body line (steps-model.ts: do + see within two lines), so one line at most.
     capWords(sm.properties.step.properties.see, W.stepModel.doOneLine);
   }
   return out;
+}
+
+const wordsOf = (t: unknown) =>
+  typeof t === "string" ? t.trim().split(/\s+/).filter(Boolean).length : 0;
+
+/**
+ * A wave C slide's caps at its own count (review, 19 Oct 2026): `caps` overrides `maxWords` by
+ * path (`items[].line`), and `cuts` names what the count itself breaks (a count no cell offers,
+ * more worked rows than a panel leaves room for, lead and points over their shared budget).
+ */
+export function waveCCountCaps(
+  layout: string,
+  fit: string | undefined,
+  raw: J,
+  s: WriterStage,
+): { caps: Record<string, number>; cuts: string[] } {
+  const W = waveCWords(s);
+  const caps: Record<string, number> = {};
+  const cuts: string[] = [];
+  const items = Array.isArray(raw.items) ? (raw.items as J[]) : [];
+  if (layout === "stages") {
+    const vis = items.some((i) => i?.picture) ? "pictures" : "icons";
+    const cell = W.stages[`${items.length}-${vis}`] as J | undefined;
+    if (!cell) cuts.push("items");
+    else {
+      caps["items[].name"] = cell.name;
+      caps["items[].line"] = cell.line;
+    }
+  } else if (layout === "reasons") {
+    const kind = raw.kind === "chain" ? "chain" : "reasons";
+    const cell = W.reasons[`${kind}-${items.length}`] as J | undefined;
+    if (!cell) cuts.push("items");
+    else {
+      caps.heading = cell.question;
+      caps.lead = cell.lead;
+      caps["items[].head"] = cell.head;
+      caps["items[].line"] = cell.line;
+    }
+  } else if (layout === "worked") {
+    const lines = Array.isArray(raw.lines) ? raw.lines.length : 0;
+    if (raw.panel && typeof raw.panel === "object" && lines > W.worked.rowsWithPanel)
+      cuts.push("lines");
+  } else if (layout === "myth") {
+    // A proof picture leaves the fact less room (myth-capacity.json `factPicture`).
+    const proof = (raw.myth as J | undefined)?.proof as J | null | undefined;
+    if (proof?.picture) caps["myth.fact"] = W.myth.factPicture;
+  } else if (layout === "visual-text" && fit === "key-card-fig") {
+    const points = Array.isArray(raw.points) ? (raw.points as unknown[]) : [];
+    if (points.length > PT_CAPS[s].points) cuts.push("points");
+    const together = wordsOf(raw.lead) + points.reduce((n: number, p) => n + wordsOf(p), 0);
+    if (together > W.pictureText.leadAndPoints) cuts.push("lead");
+  }
+  return { caps, cuts };
 }
 
 /* ------------------------------------------------------------------ */

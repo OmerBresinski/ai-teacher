@@ -1,6 +1,8 @@
 // Wave C offered to the production writer (TEACH-110 part v): each shape materialises and lays
 // out, slot-fill accepts it against the v4.8 request, and the menu carries only generated numbers.
-import { expect, test } from "bun:test";
+
+import { describe, expect, test } from "bun:test";
+import { KEY_CAPS } from "@tj/slides/templates/picture-text";
 import { getTheme } from "@tj/slides/themes";
 import { materialise } from "./materialise";
 
@@ -293,4 +295,49 @@ test("picture-text takes the key cards and icon; a step model keeps its step bes
   expect(sm.template).toBe("steps");
   expect(sm.step).toEqual({ n: 1, do: "Heat the water", see: "Steam rises" });
   expect(sm.figure).toBeDefined();
+});
+
+describe("wave C caps at the slide's own count (review, 19 Oct 2026)", () => {
+  const r = request("KS2");
+  const W = waveCWords("KS2");
+  const arrive = (s: unknown) =>
+    slotFillArrival(structuredClone(s) as never, "KS2", r.schema, r.caps, true);
+  const words = (n: number) => Array.from({ length: n }, () => "word").join(" ");
+  test("a key card's over-long term is a cut; the num is held in characters", () => {
+    const kc = structuredClone(offered.keycard);
+    kc.cards[0].term = words(KEY_CAPS.term + 2);
+    expect(arrive(kc).cuts).toContain("cards[0].term");
+    const caps = r.caps?.$defs["visual-text~key-card-fig"].properties.cards.items.properties;
+    expect(caps.label.maxWords).toBe(KEY_CAPS.label);
+    expect(caps.meaning.anyOf[0].maxWords).toBe(KEY_CAPS.meaning);
+    expect(caps.num.anyOf[0].maxLength).toBe(KEY_CAPS.num);
+  });
+  test("a stage line fits three stages but not five: checked at five", () => {
+    const n = W.stages["5-icons"].line + 1;
+    expect(n).toBeLessThanOrEqual(W.stages["3-icons"].line);
+    const at = (count: number) => {
+      const st = structuredClone(slides.stages);
+      st.items = Array.from({ length: count }, (_, i) => ({
+        name: `Step${i}`,
+        line: words(n),
+        icon: null,
+        picture: null,
+      }));
+      return arrive(st).cuts;
+    };
+    expect(at(3)).toEqual([]);
+    expect(at(5)).toContain("items[0].line");
+  });
+  test("a reasons count no cell offers is a cut; the heading is held to the question", () => {
+    const rs = structuredClone(slides.reasons);
+    rs.heading = words(W.reasons["reasons-2"].question + 1);
+    expect(arrive(rs).cuts).toContain("heading");
+  });
+  test("the myth heading and factEm are capped; step n is one digit", () => {
+    const my = structuredClone(slides.myth);
+    my.heading = words(W.myth.title + 1);
+    expect(arrive(my).cuts).toContain("heading");
+    const n = r.schema.$defs["steps~step-model"].properties.step.properties.n.anyOf[0];
+    expect([n.minimum, n.maximum]).toEqual([1, 9]);
+  });
 });

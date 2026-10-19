@@ -2,6 +2,7 @@ import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { typ
 import { charsOver, fitTable } from "./fixes";
 import { capWords, fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
+import { waveCCountCaps } from "./wave-c";
 
 /*
  * Slot-fill (lab/slotfill round 2, 3a26ce97; on with writer bundle base4g): layout first, then
@@ -566,7 +567,6 @@ const PILOT_LAYOUTS = new Set([
   "worked",
   "stages",
   "reasons",
-  "source",
   "myth",
   "figure",
 ]);
@@ -603,6 +603,11 @@ export function slotFillArrival(
     // An uncapped request (pilot v4.6) is checked against a capped one with the same defs: the
     // writer never sees a cap, code still reads each field's room from the cap table.
     const capDefs = ((caps ?? schema).$defs ?? {}) as Record<string, J>;
+    // Wave C at its own count (stages, reasons, worked rows, picture-text points): pack runs only.
+    const atCount = pack
+      ? waveCCountCaps(layout, key, raw, writerStageOfKey(stage))
+      : { caps: {}, cuts: [] };
+    cuts.push(...atCount.cuts);
     const walk = (s: J, v: unknown, path: string) => {
       if (s.$ref) return walk(capDefs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
       if (s.anyOf) {
@@ -612,10 +617,12 @@ export function slotFillArrival(
       // A word cap (wave C, `maxWords`): the field's words as the caps were measured, no characters.
       if (pack && s.type === "string" && typeof v === "string" && typeof s.maxWords === "number") {
         const words = capWords(v);
-        fields.push({ path, words, capWords: s.maxWords, shownWords: s.maxWords });
+        const cap =
+          (atCount.caps as Record<string, number>)[path.replace(/\[\d+\]/g, "[]")] ?? s.maxWords;
+        fields.push({ path, words, capWords: cap, shownWords: cap });
         const t = v.trim();
         const sentence = SENTENCE_FIELD.test(path) || INNER_SENTENCE.test(t);
-        if (words > s.maxWords || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
+        if (words > cap || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
       } else if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
         fields.push(
           pack
