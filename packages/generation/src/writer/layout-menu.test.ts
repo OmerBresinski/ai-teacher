@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
+  HINGE_WRITER_MENU,
+  HINGE_WRONG_WORKING,
   ITEMS_ROW_WRITER_MENU,
   LAYOUT_WRITER_MENUS,
   layoutOffer,
@@ -268,5 +270,24 @@ describe("pilot pack v4.7 is frozen as shipped", () => {
       expect(PILOT_PACKS["v4.7"].system[ks]).toBe(
         readFileSync(new URL(`system-${ks}.snapshot.txt`, v47), "utf8"),
       );
+    });
+});
+
+/*
+ * TEACH-110 part ae (19 Oct 2026, build/FULLMENU-RUN4.md): a KS3 hinge's wrong options stated
+ * arithmetic that was simply wrong. Each wrong option's working is its belief's own result, computed
+ * correctly; the rule is a constraint with no worked example in it.
+ */
+describe("hinge wrong options state their belief's true result", () => {
+  test("the rule's text is pinned", () => {
+    expect(HINGE_WRONG_WORKING).toBe(
+      "A wrong option that states working or a result gives what its belief truly produces: the mistaken step and every step after it carried out correctly, so the belief is the option's only error.",
+    );
+    expect(HINGE_WRONG_WORKING).not.toMatch(/\d|=|e\.g\.|for example/i);
+  });
+  for (const stage of STAGES)
+    test(`${stage}: the hinge line and the v4.8 snapshot carry it`, () => {
+      expect(HINGE_WRITER_MENU[stage]).toContain(HINGE_WRONG_WORKING);
+      expect(read(`system-${TEMPLATE[stage]}.snapshot.txt`)).toContain(HINGE_WRONG_WORKING);
     });
 });
