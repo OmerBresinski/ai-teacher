@@ -5,7 +5,7 @@ import { layoutTemplate } from "../templates/index";
 import { MYTH_NAMES } from "../templates/myth";
 import { MYTH_CASES } from "../templates/myth-fixtures";
 import { WORKED_CASES } from "../templates/worked-fixtures";
-import { mathFaceOf, quoteFaceOf } from "../text-measure";
+import { mathFaceOf } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { getTheme, THEMES } from "../themes";
 import { surfacesOf } from "./surfaces";
@@ -54,10 +54,11 @@ describe("(a) letterSpacing on a text style", () => {
 });
 
 describe("(b) the maths run face", () => {
-  test("Geometric's variables are Source Serif italic; another theme's stay its quote face", () => {
-    expect(mathFaceOf(geo).italic).toBe(true);
-    expect(mathFaceOf(geo).family).toContain("source-serif");
-    for (const t of others) expect(mathFaceOf(t)).toEqual(quoteFaceOf(t));
+  test("every theme's variables are Source Serif italic (the worked gold's `.v`, C11)", () => {
+    for (const t of [geo, ...others]) {
+      expect(mathFaceOf(t).italic).toBe(true);
+      expect(mathFaceOf(t).family).toContain("source-serif");
+    }
   });
   test("worked variables are math runs; the myth claim stays a quote run", () => {
     const w = WORKED_CASES["y8-panel"]!;
