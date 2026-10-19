@@ -114,6 +114,18 @@ let MEASURING = false;
 export const stageCapsOf = (age: Age, n: number, vis: StageVis) =>
   (TABLE[age] ?? []).find((c) => c.n === n && c.vis === vis);
 
+/**
+ * Cells the writer is never offered, whatever they measure (TEACH-215 part m): six pictured stages
+ * at KS2 and KS3 hold a 6-character name and a 24-character line, which reads cramped. A saved
+ * slide still lays out from its measured cell; a stages menu line must skip these.
+ */
+export const STAGES_NOT_OFFERED: Partial<Record<Age, readonly `${number}${"i" | "p"}`[]>> = {
+  primary: ["6p"],
+  secondary: ["6p"],
+};
+export const stageOffered = (age: Age, n: number, vis: StageVis) =>
+  !STAGES_NOT_OFFERED[age]?.includes(`${n}${vis === "pictures" ? "p" : "i"}`);
+
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
 /* ------------------------------------------------------------------ */
@@ -129,13 +141,23 @@ const goldStage = (c: Ctx) => {
 };
 const drawn = (c: Ctx, preset: TextPreset, size: number) =>
   goldStage(c) ? round1(size) : resolveFontSize(c.t, preset, size);
+/**
+ * Half a point kept clear at the column's edge where the stage is drawn at a fixed size (KS1 and
+ * KS2, `fixedSize`), which the editor's fitting engine never re-fits (TEACH-215 part m). The
+ * advances are rounded to a thousandth of an em and kerning can widen a pair, so a name or line
+ * the tables put within half a point of the edge (187.85 of 188, 146.95 of 147) drew one line
+ * longer than counted and printed over the text under it. KS3 snaps to the type scale and is
+ * re-fitted in the editor, so it measures to the edge as before.
+ */
+const FIXED_EDGE = 0.5;
+const room = (c: Ctx, w: number) => (goldStage(c) ? w - FIXED_EDGE : w);
 const lines = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
-  v.trim() ? countLines(v, p, c.t, w, wt, size) : 0;
+  v.trim() ? countLines(v, p, c.t, room(c, w), wt, size) : 0;
 const wordsFit = (c: Ctx, v: string, p: TextPreset, w: number, wt: number, size: number) =>
   v
     .split(/\s+/)
     .filter(Boolean)
-    .every((word) => countLines(word, p, c.t, w, wt, size) === 1);
+    .every((word) => countLines(word, p, c.t, room(c, w), wt, size) === 1);
 
 /** Whether a stage's picture is there (an open slot counts: it is coming). */
 type Photo = Extract<Figure, { photo: string }>;
@@ -199,7 +221,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
   const colW = (SLIDE_W - 2 * pad - (n - 1) * gap) / n;
   const gutter = (n >= 5 ? 20 : 24) * K;
   // Tiles stand apart already (the arrow gutter): only a joined strip keeps a gutter in each frame.
-  const textW = tiles ? colW : colW - gutter;
+  // Measured at the width it is drawn at: `textBox` draws the box on whole points, and at 5 frames
+  // a name measured on one line in 157.3 wrapped in the 157 it was drawn in (TEACH-215 part m).
+  const textW = Math.round(tiles ? colW : colW - gutter);
   const nameWt = c.t.weights.heading;
   const bodyWt = c.t.weights.body;
   const rowTop = Math.max(ROW_TOP, top + UNDER_TITLE);
