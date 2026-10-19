@@ -292,7 +292,7 @@ describe("worksheetValueAdd without a worksheet", () => {
     const on = scoresOf(output, true);
     expect(off.worksheetValueAdd).toBeNull();
     expect(on.worksheetValueAdd).toBe(2);
-    expect({ ...off, worksheetValueAdd: 2 }).toEqual(on);
+    expect({ ...off, worksheetValueAdd: on.worksheetValueAdd }).toEqual(on);
   });
 });
 
