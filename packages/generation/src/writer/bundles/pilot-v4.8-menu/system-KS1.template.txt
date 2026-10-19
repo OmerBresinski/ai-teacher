@@ -30,7 +30,7 @@ Layouts. A heading is up to {{fits:heading}} words. Fits gives each fit's words 
 {{menu:items-row}}
 {{menu:panel-list}}
 {{menu:split-compare}}
-- equation-hero: a worked calculation beside the graph or diagram it needs: the formula as the focal line, then the substitution and the answer. A calculation with no graph or diagram goes to worked. {{fits:equation-hero}}
+- equation-hero: a worked calculation beside the graph or diagram it needs: the formula as the focal line, then the substitution and the answer. A calculation with no graph or diagram, or with only a bar model worked draws, goes to worked. {{fits:equation-hero}}
 - discussion: one short question for pupils to talk about, shown large, with a picture if one helps; a question that needs a setup or source goes in practice. {{fits:discussion}}
 - explain: teaching in words alone, for an idea no picture or diagram would show: a lead sentence and up to 3 points. {{fits:explain}}
 {{menu:wave-c}}

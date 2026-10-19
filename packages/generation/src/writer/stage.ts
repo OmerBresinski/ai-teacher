@@ -155,6 +155,7 @@ import {
   whenNonFatal,
   writerMaxTokens,
 } from "./services";
+import { writerStageOfKey } from "./shown-cap";
 import { slideStates } from "./slide-states";
 import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
 import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
@@ -695,7 +696,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const libbedSystem = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   // Wave C (TEACH-110 part v): a model may go to figure-slide or step-model, as their lines say.
   const waveC = !!(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).waveC);
-  const system0 = waveC ? withWaveCLibrary(libbedSystem) : libbedSystem;
+  const system0 = waveC ? withWaveCLibrary(libbedSystem, writerStageOfKey(stageKey)) : libbedSystem;
   const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */

@@ -362,8 +362,8 @@ export function waveCMenu(s: WriterStage): Record<string, string> {
   const K = KEY_CAPS;
 
   return {
-    worked: `- worked: one problem solved one move at a time (flow shape worked example), one row per click: each row the move in words, then the equation it gives, with answer true on the row that reaches the answer. check is null or one line putting the answer back into the problem, the value put back in between asterisks. panel is null, or a bar model drawn beside the rows: algebra-bar (a, b, c) for an equation, percent-bar (amount, percent) for a percentage of an amount. A worked calculation comes here rather than equation-hero, unless it needs a graph or diagram beside it. Fits: the heading, the problem itself, ${upTo(wk.titleWords)}; up to ${wk.rows} rows, or ${wk.rowsWithPanel} with a panel; each move ${upTo(wk.moveWords)}.`,
-    stages: `- stages: ${span(stageCounts[0] ?? 0, stageCounts.at(-1) ?? 0)} named stages of one process that runs one way (flow shape sequence), in a strip joined by arrows, each a name, one line on what happens at that stage (empty when the name says it all), and its closest listed icon; every stage has a picture or none does. A one-way process pupils learn stage by stage, by what happens at each, comes here rather than steps or picture-sequence, with a picture on every stage when each is a thing a camera shows; picture-sequence is for frames pupils need only to name. A method pupils carry out goes to steps, and parts that work together go to items-row. Fits: ${runs(
+    worked: `- worked: one problem solved one move at a time (flow shape worked example), one row per click: each row the move in words, then the equation it gives, with answer true on the row that reaches the answer. check is null or one line putting the answer back into the problem, the value put back in between asterisks. panel is null, or a bar model drawn beside the rows: algebra-bar (a, b, c) for an equation, percent-bar (amount, percent) for a percentage of an amount. A worked calculation comes here rather than equation-hero, unless it needs a graph or diagram beside it other than these bar models. Fits: the heading, the problem itself, ${upTo(wk.titleWords)}; up to ${wk.rows} rows, or ${wk.rowsWithPanel} with a panel; each move ${upTo(wk.moveWords)}.`,
+    stages: `- stages: ${span(stageCounts[0] ?? 0, stageCounts.at(-1) ?? 0)} named stages of one process that runs one way (flow shape sequence), in a strip joined by arrows, each a name, one line on what happens at that stage (empty for a stage whose name says it all, never for every stage), and its closest listed icon; every stage has a picture or none does. A one-way process pupils learn stage by stage, by what happens at each, comes here rather than steps or picture-sequence, with a picture on every stage when each is a thing a camera shows; picture-sequence is for frames pupils need only to name. A method pupils carry out goes to steps, and parts that work together go to items-row. Fits: ${runs(
       stageCounts.map((n): [number, string] => [n, stageCell(n)]),
       "stages",
     )}.`,
@@ -388,19 +388,37 @@ export const WAVE_C_ROUTED_FITS = [
   "equation-hero~points-4",
 ] as const;
 
-/** The wave C menu lines at a stage, in menu order, for the template's `{{menu:wave-c}}` slot. */
-export const waveCMenuBlock = (s: WriterStage): string => Object.values(waveCMenu(s)).join("\n");
+/** Offered only with a library model, so its line joins the menu with the Models list (`withWaveCLibrary`). */
+const MODEL_ONLY = "steps step-model";
+
+/**
+ * The wave C menu lines at a stage, in menu order, for the template's `{{menu:wave-c}}` slot:
+ * every line but step-model's, which a lesson without a library model is never offered.
+ */
+export const waveCMenuBlock = (s: WriterStage): string =>
+  Object.entries(waveCMenu(s))
+    .filter(([k]) => k !== MODEL_ONLY)
+    .map(([, l]) => l)
+    .join("\n");
 
 /** The library models' menu line (appended by `libSystem`) with figure-slide and step-model able to take a model. */
 const LIB_FROM =
   "Unlike the kinds above, a model always fills a big-visual slide of its own: its heading, the drawing, and a caption of one short line saying what pupils should take from it.";
 const LIB_TO =
   "Unlike the kinds above, a model always fills a slide of its own: big-visual, with its heading, the drawing, and a caption of one short line saying what pupils should take from it, unless figure-slide or steps step-model takes it, as their lines say.";
-export function withWaveCLibrary(system: string): string {
+/**
+ * A wave C system text for a lesson with library models (the Models list is in it): the model line
+ * names figure-slide and step-model, and step-model's line joins the menu after the wave C block.
+ * Without models the text is unchanged, so step-model is neither offered nor described.
+ */
+export function withWaveCLibrary(system: string, s: WriterStage): string {
   if (!system.includes("\nModels (id")) return system;
   if (system.split(LIB_FROM).length !== 2)
     throw new Error("wave C library: model line not found once");
-  return system.replace(LIB_FROM, LIB_TO);
+  const at = system.indexOf("\nKey cards. ");
+  if (at < 0) throw new Error("wave C library: no Key cards line to put step-model's line before");
+  const line = waveCMenu(s)[MODEL_ONLY];
+  return `${system.slice(0, at)}\n${line}${system.slice(at)}`.replace(LIB_FROM, LIB_TO);
 }
 
 /** The library's model menu line as a wave C pack sends it (`withWaveCLibrary`). */

@@ -70,7 +70,10 @@ describe("v4.8 templates type no fit number", () => {
         ...Object.values(LAYOUT_WRITER_MENUS).map((m) => m[stage]),
         ...Object.values(WRITER_RULES),
         // Wave C's lines, generated from the capacity tables (wave-c.ts, TEACH-110 part v).
-        ...Object.values(waveCMenu(stage)),
+        // step-model's line joins only with a library model (withWaveCLibrary), not the pack text.
+        ...Object.entries(waveCMenu(stage))
+          .filter(([k]) => k !== "steps step-model")
+          .map(([, l]) => l),
       ];
       const count = (s: string) => s.split("Fits:").length - 1;
       expect(count(text)).toBe(generated.reduce((n, g) => n + count(g), 0));

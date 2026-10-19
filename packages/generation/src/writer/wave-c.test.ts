@@ -120,13 +120,13 @@ for (const [k, s] of Object.entries(slides))
     expect(els.length).toBeGreaterThan(2);
   });
 
-import { libSchema } from "../library/catalogue";
+import { libSchema, WRITER_WORDS } from "../library/catalogue";
 import { writerBundle } from "./bundle";
 import { visualsOf } from "./materialise";
 import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { writerSchema } from "./schema";
 import { slotFillArrival } from "./slot-fill";
-import { WAVE_C_ROUTED_FITS, WHY_SHAPE, waveCMenu, waveCWords } from "./wave-c";
+import { WAVE_C_ROUTED_FITS, WHY_SHAPE, waveCMenu, waveCWords, withWaveCLibrary } from "./wave-c";
 
 const STAGE_OF = { KS1: "KS1", KS2: "KS2", KS3: "KS3-5" } as const;
 const request = (ks: keyof typeof STAGE_OF) =>
@@ -158,13 +158,26 @@ for (const ks of ["KS1", "KS2", "KS3"] as const) {
     const sys = PILOT_PACKS["v4.8"].system[ks];
     for (const [name, line] of Object.entries(lines)) {
       expect(line.startsWith(`- ${name}: `)).toBe(true);
-      expect(sys.split("\n")).toContain(line);
+      // step-model's line is sent only with a library model (withWaveCLibrary), never in the pack text.
+      if (name === "steps step-model") expect(sys.split("\n")).not.toContain(line);
+      else expect(sys.split("\n")).toContain(line);
       // Characters only for the fact card's number (picture-text KEY_CAPS.num).
       expect(line.replace(/a number up to \d+ characters/, "")).not.toMatch(/character/);
     }
     expect(lines.myth).toContain(`the claim up to ${waveCWords(s).myth.claim} words`);
     expect(Object.keys(lines)).not.toContain("source");
     expect(sys).not.toContain("\n- source: ");
+  });
+  test(`${ks}: step-model's line joins the menu only with the Models list`, () => {
+    const sys = PILOT_PACKS["v4.8"].system[ks];
+    const line = waveCMenu(s)["steps step-model"] ?? "";
+    expect(withWaveCLibrary(sys, s)).toBe(sys);
+    const withModels = withWaveCLibrary(
+      `${sys}\n${WRITER_WORDS.menuLine}\n\n${WRITER_WORDS.header}\n`,
+      s,
+    );
+    expect(withModels.split("\n")).toContain(line);
+    expect(withModels.indexOf(line)).toBeLessThan(withModels.indexOf("\nKey cards. "));
   });
   test(`${ks}: the flow has the why shape and no standing misconception slot`, () => {
     const sys = PILOT_PACKS["v4.8"].system[ks];

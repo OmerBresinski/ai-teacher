@@ -243,6 +243,8 @@ describe("the diagram library is on for the writer (TEACH-247 part m)", () => {
     expect(system).toContain("Diagram kinds:");
     // Production's pack offers wave C (TEACH-110 part v): a model may go to figure-slide or step-model.
     expect(system).toContain(waveCLibraryLine(WRITER_WORDS.menuLine));
+    // With models, step-model's line joins the menu (never sent without one).
+    expect(system).toContain("\n- steps step-model: ");
     expect(system).not.toContain(WRITER_WORDS.menuLine);
     expect(system).toContain(WRITER_WORDS.header);
   });
