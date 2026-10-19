@@ -83,12 +83,6 @@ export const KNOWN_GAPS: {
   match: (r: Row) => boolean;
 }[] = [
   {
-    id: "weight-800",
-    reason:
-      "800 is read from the 700 table (text-measure.ts advancesFor): Lexend 800 draws ~2% wider than measured, so lines are under-counted (Paper, Poster headings). M1 adds the weight.",
-    match: (r) => r.weight >= 750,
-  },
-  {
     id: "weight-500",
     reason:
       "500 is read from the 600 table unless exact500 (quote runs only): ~2% wide, over-counts (picture-text's lead). M1.",
@@ -111,15 +105,17 @@ export const KNOWN_GAPS: {
 /**
  * What each gap bucket measured on 18 Oct 2026 (CI sample; worst of macOS and the CI runner where
  * both ran). A bucket is the rows that carry exactly that set of gaps, so two gaps at once are
- * judged together ("weight-800+non-ascii") and no gap hides behind another. A bucket fails when it
+ * judged together ("weight-500+non-ascii") and no gap hides behind another. A bucket fails when it
  * is worse than its measured value by more than MARGIN, and when it meets CURRENT (the gap closed).
  */
 export const MEASURED: Record<string, Bound> = {
   // Single gaps: worst of macOS and the CI runner (run 39175379965). Combinations: macOS.
+  // TEACH-215 part m measures 800 in its own advances, so the weight-800 gap is gone: its rows
+  // are clean (exact 97.8%, under 0, width p01 +0.09% p99 +1.21%) and its combinations fall in
+  // the px-spacing and non-ascii buckets, which still sit within these rows (macOS, 19 Oct).
   "non-ascii": { exact: 0.8982, under: 0.0011, widthLow: -0.0014, widthHigh: 0.1203 },
   "px-spacing": { exact: 0.766, under: 0.2342, widthLow: -0.1676, widthHigh: -0.0587 },
   "weight-500": { exact: 0.943, under: 0, widthLow: -0.003, widthHigh: 0.0377 },
-  "weight-800": { exact: 0.959, under: 0.0406, widthLow: -0.0302, widthHigh: -0.001 },
   "px-spacing+non-ascii": { exact: 0.8327, under: 0.1491, widthLow: -0.1454, widthHigh: 0.0295 },
   "weight-500+non-ascii": { exact: 0.875, under: 0, widthLow: 0.01, widthHigh: 0.1338 },
   "weight-500+px-spacing": { exact: 0.8141, under: 0.1859, widthLow: -0.1538, widthHigh: -0.042 },
@@ -128,14 +124,6 @@ export const MEASURED: Record<string, Bound> = {
     under: 0.1235,
     widthLow: -0.1352,
     widthHigh: 0.0423,
-  },
-  "weight-800+non-ascii": { exact: 0.8899, under: 0.0208, widthLow: -0.0178, widthHigh: 0.0971 },
-  "weight-800+px-spacing": { exact: 0.7625, under: 0.2375, widthLow: -0.1707, widthHigh: -0.0739 },
-  "weight-800+px-spacing+non-ascii": {
-    exact: 0.7857,
-    under: 0.1964,
-    widthLow: -0.1516,
-    widthHigh: 0.0193,
   },
 };
 /** How far a bucket may drift from MEASURED before it fails: 2 points of exact, 1 of under, 1% of width. */
