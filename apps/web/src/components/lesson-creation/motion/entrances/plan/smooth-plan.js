@@ -50,6 +50,9 @@
     let clipOn = null, groundOn = null, regionBox = null;
     function fitClip() {
       const box = svg.getBoundingClientRect(), r = region(), k = box.width / svg.viewBox.baseVal.width;
+      // A scene with no width yet (hidden, or laid out at 0 on a phone) has no scale: writing
+      // Infinity/NaN into the clip only logs SVG errors (UX audit J13). The next fit sets it.
+      if (!(k > 0) || !Number.isFinite(k)) return;
       regionBox = [(r.left - box.left) / k, (r.top - box.top) / k, (r.right - box.left) / k, (r.bottom - box.top) / k];
       clipRect.setAttribute("x", f1(regionBox[0])); clipRect.setAttribute("y", f1(regionBox[1]));
       clipRect.setAttribute("width", f1(regionBox[2] - regionBox[0])); clipRect.setAttribute("height", f1(regionBox[3] - regionBox[1]));
@@ -77,7 +80,7 @@
     }
 
     function shadowFor(p) {
-      if (!shadow) return;
+      if (!shadow || !regionBox) return;
       const u = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
       const lift = -(p.ty + p.bob) * (1 - (p.gnd || 0));
       const h = clamp01(lift / 400);
