@@ -97,6 +97,22 @@ export function useDraftLead(store: DraftStore | undefined): string | undefined 
 }
 
 /**
+ * The newest draft of `slideId` (undefined when there is none, or no id): a thumbnail of a slide
+ * being written shows what the canvas shows rather than its blank saved copy (UX audit J6).
+ * Re-renders only when that slide's draft changes.
+ */
+export function useSlideDraft(
+  store: DraftStore | undefined,
+  slideId: string | undefined,
+): Slide | undefined {
+  return useSyncExternalStore(
+    store?.subscribe ?? NO_SUBSCRIBE,
+    () => (slideId ? store?.get(slideId)?.slide : undefined),
+    () => undefined,
+  );
+}
+
+/**
  * A slide the writer has planned but not written yet (live writing, ADR 0039): blank, or holding
  * only its muted "Planned" line (what the slide will do, from the writer's flow).
  */

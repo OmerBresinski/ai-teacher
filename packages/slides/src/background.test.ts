@@ -92,9 +92,11 @@ describe("theme art per slide role (UX ruling 107)", () => {
   test("the role mapping: title, content and picture, with the picture's side", () => {
     const t = getTheme("playground");
     expect(slideArtRole(laidOut("title", t, "stack"))).toEqual({ role: "title" });
+    // A theme's cover composition sets every picture variant in it (TEACH-215 part g: Playground's
+    // photo bleeds over the right half), as Geometric's hexagon does.
     expect(slideArtRole(laidOut("title", t, "photo-band"))).toEqual({
       role: "picture",
-      side: "full",
+      side: "right",
     });
     expect(slideArtRole(laidOut("title", t, "split"))).toEqual({ role: "picture", side: "right" });
     expect(slideArtRole(laidOut("image-text", t, "photo-left"))).toEqual({

@@ -91,7 +91,13 @@ export function GenerationCompanion({
       // The slot may have been replaced while the character was in the air.
       const slot = (slotRef.current ?? destination).getBoundingClientRect();
       const now = actor.getBoundingClientRect();
-      if (Math.abs(slot.left - now.left) < 0.5 && Math.abs(slot.top - now.top) < 0.5) return;
+      // Size too: the release flight moves and scales the character but keeps the box it had, so a
+      // slot of another size (the editor's margin slot, UX audit J1) is met here, not on a resize.
+      const sized =
+        Math.abs(slot.width - actor.offsetWidth) < 0.5 &&
+        Math.abs(slot.height - actor.offsetHeight) < 0.5;
+      if (sized && Math.abs(slot.left - now.left) < 0.5 && Math.abs(slot.top - now.top) < 0.5)
+        return;
       flight.current = gsap.timeline().to(actor, {
         x: slot.left,
         y: slot.top,
