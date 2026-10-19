@@ -8,7 +8,9 @@ import {
   ImageGenerationError,
   imageCostUsd,
   imageFailReason,
+  RETRY_NOTE_CHARS,
   retryLine,
+  retryNote,
   sizeForAspect,
   withRetryLine,
 } from "./bank";
@@ -224,10 +226,36 @@ describe("retryLine", () => {
   test("a retry always changes the prompt, with the judge's reason when it gave one", () => {
     expect(withRetryLine("A hen.")).toBe("A hen.");
     expect(withRetryLine("A hen.", { reason: "judge", why: "no chick visible." })).toBe(
-      "A hen.\nThe last picture was turned down because: no chick visible. Fix that.",
+      "A hen.\nA previous attempt at this picture was turned down. The reviewer's note, which describes that attempt and not this picture: no chick visible. Correct what the note found, and keep the subject, style and framing the request above sets. Nothing from this note is written in the picture.",
     );
     expect(retryLine({ reason: "judge" })).toContain("turned down");
-    expect(retryLine({ reason: "odd", why: "a different breed" })).toContain("a different breed");
-    expect(retryLine({ reason: "refused-safety" })).toContain("primary school classroom");
+    expect(retryLine({ reason: "odd", why: "a different breed" })).toContain(
+      "which describes the set and not this picture: a different breed.",
+    );
+    // A safety retry points at the teaching need; it never asks to get round a filter.
+    const safe = retryLine({ reason: "refused-safety" });
+    expect(safe).toContain("what the lesson teaches");
+    expect(safe).not.toMatch(/filter|policy|fictional|artistic|hypothetical/i);
+    // Every judged retry says its note is not to be drawn.
+    for (const reason of ["judge", "odd"])
+      for (const why of [undefined, "x"])
+        expect(retryLine({ reason, ...(why ? { why } : {}) })).toEndWith(
+          "Nothing from this note is written in the picture.",
+        );
+  });
+  test("a judge's note never carries quoted words or quote marks into the prompt", () => {
+    expect(retryNote('the barn has a sign reading "FARM" on it.')).toBe(
+      "the barn has a sign reading some writing on it",
+    );
+    expect(retryNote("a label \u2018Hen\u2019 and a \u201ctitle\u201d")).toBe(
+      "a label some writing and a some writing",
+    );
+    expect(retryNote("the chick's beak is 'open' here")).toBe(
+      "the chick's beak is some writing here",
+    );
+    expect(retryNote("a  hen\n on   grass. ")).toBe("a hen on grass");
+    const long = retryNote(`${"word ".repeat(80)}end`);
+    expect(long.length).toBeLessThanOrEqual(RETRY_NOTE_CHARS);
+    expect(long.endsWith("word")).toBe(true);
   });
 });

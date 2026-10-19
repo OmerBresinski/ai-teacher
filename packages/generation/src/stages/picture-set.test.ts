@@ -7,6 +7,7 @@ import {
   encodePng,
   ImageGenerationError,
   type ImageGenerator,
+  retryLine,
 } from "@tj/images";
 import { BudgetExceeded } from "../types";
 import { mustShowOf } from "./photo-bank";
@@ -659,7 +660,7 @@ describe("solo panels settle one by one (TEACH-251 part h, LAYOUT-SEL Egypt s6)"
     // The fakes saw calls 0, 2, 3 and then p1's solo (call 1 threw before reaching them).
     const solo = f.full[3] ?? "";
     expect(solo).toContain("A growing young chicken");
-    expect(solo.split("\n").at(-1)).toContain("primary school classroom");
+    expect(solo.split("\n").at(-1)).toBe(retryLine({ reason: "refused-safety" }));
     expect(f.full.filter((p) => p.includes("A growing young chicken"))).toHaveLength(1);
     expect(f.logs).toContainEqual(
       expect.objectContaining({ ev: "set-panel-error", key: "p1", reason: "refused-safety" }),
@@ -711,8 +712,10 @@ describe("a frame's second retry carries the reason (picture retries)", () => {
     expect(SOLO_ATTEMPTS).toBe(2);
     expect(f.made()).toBe(3);
     expect(out.map((p) => p?.set)).toEqual(["p0+p1", "p0+p1#solo1"]);
-    expect(f.full[1]).toContain("because: no beak visible. Fix that.");
-    expect(f.full[2]).toContain("because: the chick is orange, not yellow. Fix that.");
+    expect(f.full[1]).toContain(retryLine({ reason: "judge", why: "no beak visible." }));
+    expect(f.full[2]).toContain(
+      retryLine({ reason: "judge", why: "the chick is orange, not yellow." }),
+    );
     expect(f.full[2]).not.toBe(f.full[1]);
     expect(f.logs).toContainEqual(
       expect.objectContaining({ ev: "set-solo", key: "p1", try: 2, retry: "judge", ok: true }),
@@ -743,7 +746,7 @@ describe("a frame's second retry carries the reason (picture retries)", () => {
     const out = await makePictureSet(asks(2), f.deps);
     expect(out.map(Boolean)).toEqual([true, true]);
     expect(f.full[1]?.split("\n").at(-1)).toBe(
-      "Match the rest of the set exactly: the same kind, colours and markings (last time: panel 2 is a different breed).",
+      retryLine({ reason: "odd", why: "panel 2 is a different breed" }),
     );
   });
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { StorageAdapter, WorkspaceId } from "@tj/domain";
 import type { BankRequest } from "@tj/generation";
-import { decodePng, encodePng, type ImageGenerator } from "@tj/images";
+import { decodePng, encodePng, type ImageGenerator, retryLine } from "@tj/images";
 import {
   createDailyImageCap,
   createGeneratingBank,
@@ -62,9 +62,9 @@ describe("the generating bank", () => {
     await bank.generate(req, false, signal, { reason: "refused-safety" });
     expect(calls[0]?.prompt).not.toContain("turned down");
     expect(calls[1]?.prompt.split("\n").at(-1)).toBe(
-      "The last picture was turned down because: no farmyard in view. Fix that.",
+      retryLine({ reason: "judge", why: "no farmyard in view" }),
     );
-    expect(calls[2]?.prompt.split("\n").at(-1)).toContain("primary school classroom");
+    expect(calls[2]?.prompt.split("\n").at(-1)).toBe(retryLine({ reason: "refused-safety" }));
     expect(new Set(calls.map((c) => c.prompt)).size).toBe(3);
   });
   test("generates at the size nearest the slot, stores it whole, and the judge sees those bytes", async () => {

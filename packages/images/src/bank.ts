@@ -404,16 +404,46 @@ export interface RetryHint {
   why?: string;
 }
 
-/** The line a retry adds to its image prompt. */
+/** A judge's note as a retry may quote it: one line, no quoted words, cut at a word. */
+export function retryNote(why: string | undefined): string {
+  const note = (why ?? "")
+    .replace(/\s+/g, " ")
+    // Quoted words (a sign's text, a label) would be drawn as text: name them, never copy them.
+    .replace(
+      /["\u201c\u201d`][^"\u201c\u201d`]*["\u201c\u201d`]|\u2018[^\u2019]*\u2019/g,
+      "some writing",
+    )
+    .replace(/(^|\s)'[^']+'(?=[\s.,;:!?]|$)/g, "$1some writing")
+    .replace(/["\u201c\u201d`\u2018\u2019]/g, "")
+    .trim()
+    .replace(/[.\s]+$/, "");
+  if (note.length <= RETRY_NOTE_CHARS) return note;
+  const cut = note.slice(0, RETRY_NOTE_CHARS);
+  return cut.slice(0, Math.max(cut.lastIndexOf(" "), 0)).trim();
+}
+/** The longest judge's note a retry carries (a one-sentence `why` fits whole). */
+export const RETRY_NOTE_CHARS = 240;
+
+/** Every retry line ends here: a note is for the image model to read, never to draw. */
+const NOT_DRAWN = "Nothing from this note is written in the picture.";
+
+/**
+ * The line a retry adds to its image prompt (prompt-engineer, 19 Oct 2026). It changes only what
+ * failed: the judge's note is framed as describing the rejected picture, so its words are not read
+ * as new things to draw, and the request above keeps the subject, style and framing. A safety
+ * refusal is rephrased toward what the lesson needs pupils to see, never toward getting past a filter.
+ */
 export function retryLine(hint: RetryHint): string {
-  const why = hint.why?.replace(/\s+/g, " ").trim().replace(/\.$/, "").slice(0, 240);
   if (hint.reason === "refused-safety")
-    return "Keep it calm and suitable for a primary school classroom: nothing graphic, frightening, injured or unsafe.";
+    return "Show it the way a school textbook would, for what the lesson teaches: calm, factual and suitable for pupils, with nothing graphic or distressing.";
+  const note = retryNote(hint.why);
   if (hint.reason === "odd")
-    return `Match the rest of the set exactly: the same kind, colours and markings${why ? ` (last time: ${why})` : ""}.`;
-  return why
-    ? `The last picture was turned down because: ${why}. Fix that.`
-    : "The last picture was turned down: show the request plainly and whole.";
+    return note
+      ? `This picture replaces one that did not match the rest of its set. The reviewer's note, which describes the set and not this picture: ${note}. Make this picture match the set in what the note says differed, and keep the subject, style and framing the request above sets. ${NOT_DRAWN}`
+      : `This picture replaces one that did not match the rest of its set. Show the request above exactly as written, in the same style and framing. ${NOT_DRAWN}`;
+  return note
+    ? `A previous attempt at this picture was turned down. The reviewer's note, which describes that attempt and not this picture: ${note}. Correct what the note found, and keep the subject, style and framing the request above sets. ${NOT_DRAWN}`
+    : `A previous attempt at this picture was turned down. Show the request above plainly, whole and exactly as written, in the same style and framing. ${NOT_DRAWN}`;
 }
 
 /** The prompt for a retry: the same request with the retry's line after it. */
