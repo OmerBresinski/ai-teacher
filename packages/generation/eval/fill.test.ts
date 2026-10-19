@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { menuWordCaps } from "../src/writer/layout-menu";
+import type { MenuWordCaps } from "../src/writer/layout-menu";
 import { PILOT_PACK_ID } from "../src/writer/pilot-pack";
 import type { WriterStage } from "../src/writer/schema";
 import {
@@ -28,6 +28,16 @@ const LESSONS: [string, WriterStage][] = [
   ["a-hinge-y9-forces", "KS3-5"],
   ["y4-romans", "KS2"],
 ];
+/**
+ * The v4.7 menu's caps, as master's `menuWordCaps` returned them at 0db793cbc (before TEACH-110
+ * part ae showed 75% of each measured cap): the menu these two decks were written against and the
+ * caps fill.py scored them with. Live scoring reads the current menu (`menuWordCaps`).
+ */
+const V47 = JSON.parse(readFileSync(join(DIR, "menu-word-caps-v4.7.json"), "utf8")) as Record<
+  "KS2" | "KS3-5",
+  MenuWordCaps
+>;
+const v47 = (stage: WriterStage) => V47[stage as "KS2" | "KS3-5"];
 const load = (id: string) => ({
   writer: JSON.parse(readFileSync(join(DIR, `${id}.writer-raw.txt`), "utf8")) as Record<
     string,
@@ -45,7 +55,7 @@ function pooled(withClose: boolean) {
   for (const [id, stage] of LESSONS) {
     const { writer, events: ev } = load(id);
     const last = (writer.slides as unknown[]).length + 2;
-    for (const f of deckFields(writer, stage, ev, id))
+    for (const f of deckFields(writer, stage, ev, id, v47(stage)))
       if (withClose || f.slide <= last) fields.push(f);
     for (const e of ev) events.push({ ...e, lesson: id });
   }
@@ -57,7 +67,9 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
     const { fields, events } = pooled(false);
     const r = fillReport(fields, events);
     expect(r.body.fields).toBe(44);
-    expect(r.body.nearCapPct).toBe(18.2);
+    // fill.py split on spaces (18.2%); the port counts maths as the caps were measured (capWords),
+    // so one maths field no longer reads as at its cap.
+    expect(r.body.nearCapPct).toBe(15.9);
     expect(r.body.overPct).toBe(2.3);
     expect(r.body.medianFillPct).toBe(75);
     expect(Object.fromEntries(Object.entries(r.byLayout).map(([t, s]) => [t, s.fields]))).toEqual({
@@ -79,7 +91,9 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
 
   test("scores the close (exit ticket) too, against the menu's cap for its count", () => {
     const { writer, events } = load("y4-romans");
-    const close = deckFields(writer, "KS2", events).filter((f) => f.template === "exit-ticket");
+    const close = deckFields(writer, "KS2", events, "", v47("KS2")).filter(
+      (f) => f.template === "exit-ticket",
+    );
     expect(close.map((f) => `${f.path} ${f.words}/${f.cap}`)).toEqual([
       "items[0].question 8/13",
       "items[1].question 8/13",
@@ -88,8 +102,9 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
     expect(pooled(true).fields.length).toBeGreaterThan(pooled(false).fields.length);
   });
 
-  test("covers every menu layout's field kinds, caps read from menuWordCaps", () => {
-    const caps = menuWordCaps("KS2");
+  test("covers every menu layout's field kinds, caps read from the menu's data", () => {
+    // menuWordCaps' shape, with the v4.7 numbers; menu-word-caps.test pins today's to the menu text.
+    const caps = v47("KS2");
     const w = (n: number) => Array.from({ length: n }, () => "word").join(" ");
     const kinds = (s: Record<string, unknown>) =>
       menuSlideFields(s, caps)?.map((f) => `${f.path}:${f.words}/${f.cap}`);
@@ -97,7 +112,7 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
       kinds({
         template: "hinge",
         heading: w(10),
-        options: [{ text: w(9) }, { text: w(3) }, { text: "x", icon: "sun" }],
+        options: [{ text: w(9) }, { text: w(3) }, { text: "sun", icon: "sun" }],
       }),
     ).toEqual(["heading(question):10/16", "options[0]:9/9", "options[1]:3/9", "options[2]:1/2"]);
     expect(
@@ -193,7 +208,7 @@ describe("plan-only fit check", () => {
 
   test("reads the planned count and words and checks them against the layout's cap", () => {
     const { writer } = load("y4-romans");
-    const r = planFit(writer.flow, "KS2");
+    const r = planFit(writer.flow, "KS2", v47("KS2"));
     expect(r.planned).toBe(10);
     expect(r.counts).toEqual({ fits: 2, "near-cap": 3, over: 0, "no-cell": 0, unparsed: 0 });
     const s3 = r.slides.find((s) => s.slide === 3);
@@ -227,6 +242,51 @@ describe("plan-only fit check", () => {
       "fits",
     ]);
     expect(r.slides[5]?.layout).toBe("exit-ticket");
+  });
+
+  test("a flow that names its layout is checked against that layout, not its shape", () => {
+    const flow = [
+      { slide: 1, shape: "hook", layout: "title", size: "Title" },
+      { slide: 2, shape: "one big idea", layout: "objectives", size: "Objectives" },
+      // The shape would say panel-list; the declared layout is split-compare.
+      {
+        slide: 3,
+        shape: "a set of kinds or examples",
+        layout: "split-compare",
+        size: "Two sides, up to twenty-five words each",
+      },
+      { slide: 4, shape: "one big idea", layout: "visual-text points-2-fig", size: "Two points" },
+      { slide: 5, shape: "check", layout: "hinge", size: "Three options, five words each" },
+    ];
+    const r = planFit(flow, "KS2");
+    expect(r.slides.map((s) => s.layout)).toEqual([null, null, "split-compare", null, "hinge"]);
+    expect(r.slides[2]?.verdict).toBe("over");
+    expect(r.slides[3]?.verdict).toBe("unchecked");
+  });
+
+  test("a stem's or lead's words are not an item's; a run of per-item words gives its largest", () => {
+    expect(parseSize("Stem 9 words; four options of 5, 5, 4, 5 words", ["options"])).toEqual({
+      count: 4,
+      words: 5,
+    });
+    expect(parseSize("Lead 7 words; 3 items, 6 words each", ["items"])).toEqual({
+      count: 3,
+      words: 6,
+    });
+    expect(parseSize("Three questions, 8, 9 and 10 words", ["questions"])).toEqual({
+      count: 3,
+      words: 10,
+    });
+    expect(parseSize("2 tasks: 18/25, 16/25 words", ["tasks"])).toEqual({ count: 2, words: 18 });
+    expect(parseSize("Question 9/11; three options 4/5, 4/5, 4/5", ["options"])).toEqual({
+      count: 3,
+      words: 4,
+    });
+    // "need out of fit": the need is what is checked.
+    expect(parseSize("Stem 7 of 12 words; 3 options, 3 out of 5 words each", ["options"])).toEqual({
+      count: 3,
+      words: 3,
+    });
   });
 
   test("parses number words and digits", () => {

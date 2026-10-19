@@ -20,6 +20,7 @@ import {
 } from "./layout-menu";
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import type { WriterStage } from "./schema";
+import { PROBE_CHARS_PER_WORD } from "./shown-cap";
 
 /*
  * The question layouts' writer offer (TEACH-110 part v): every number a menu line promises is read
@@ -37,7 +38,10 @@ const fitsOf = (line: string) =>
  */
 function clauses(fits: string, unit: RegExp, other: RegExp[] = []): [number, number][] {
   const out: [number, number][] = [];
-  for (const c of fits.split("; ")) {
+  // Decision 30: counts past WORD_TASK_MAX carry the calculation-only qualifier.
+  for (const c of fits
+    .replaceAll(", only when every task is a one-line calculation", "")
+    .split("; ")) {
     const m = new RegExp(`^(\\d+)(?: to (\\d+))? ${unit.source}: up to (\\d+) words`).exec(c);
     if (!m) {
       if (!other.some((r) => r.test(c))) throw new Error(`unparsed Fits clause: "${c}"`);
@@ -66,7 +70,13 @@ describe("question layout menu lines", () => {
       expect(qs.length).toBeGreaterThan(0);
       for (const [n, w] of qs) {
         expect(table[String(n)], `${stage} ${n} questions`).toBeDefined();
-        expect(fitsIn(w, table[String(n)].questions.cap, stage)).toBe(true);
+        // Ordinary words (the probe's and the gold's 5.4 a word) fit the comfortable one-line cap;
+        // long words (the stage's p80 rate) never pass the hard max: tight at worst, never over.
+        const cell = table[String(n)].questions;
+        expect(w * PROBE_CHARS_PER_WORD, `${stage} ${n}: comfortable`).toBeLessThanOrEqual(
+          cell.cap + 1,
+        );
+        expect(fitsIn(w, cell.hardMax, stage), `${stage} ${n}: never over`).toBe(true);
       }
       for (const c of fits.split("; ")) {
         const m =
@@ -93,7 +103,8 @@ describe("question layout menu lines", () => {
         expect(fitsIn(w, cell("practice+figure", n), stage)).toBe(true);
       }
       const exit = clauses(fitsOf(EXIT_TICKET_WRITER_MENU[stage]), /questions?/);
-      expect(exit.map(([n]) => n)).toEqual([1, 2, 3]);
+      // From 1, contiguous; a count whose shown cap goes under the floor or halves is dropped.
+      expect(exit.map(([n]) => n)).toEqual(exit.map((_, i) => i + 1));
       expect(monotonic(exit)).toBe(true);
       for (const [n, w] of exit) expect(fitsIn(w, cell("exit", n), stage)).toBe(true);
     });
@@ -110,7 +121,9 @@ describe("question layout menu lines", () => {
         Array.from({ length: cap.options - 1 }, (_, i) => i + 2),
       );
       expect(monotonic(opts)).toBe(true);
-      for (const [, w] of opts) expect(w).toBeLessThanOrEqual(cap.words);
+      // Each option count against its own measured cell (18 Oct 2026), else the most-options one.
+      for (const [n, w] of opts)
+        expect(w).toBeLessThanOrEqual((cap.byCount?.[String(n)] ?? cap).words);
     });
     test(`${stage}: a full row of picture tiles named in ${TILE_WORDS} words fits on every theme`, () => {
       const cap = (HINGE_CAP as J)[age];
@@ -141,11 +154,11 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.7", () => {
-    expect(PILOT_PACK_ID).toBe("v4.7");
+  test("production runs v4.8", () => {
+    expect(PILOT_PACK_ID).toBe("v4.8");
   });
   for (const stage of STAGES) {
-    const req = pilotRequest("v4.7", KS[stage], {}, (sc) => sc);
+    const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
     const defs = req.schema.$defs as J;
     const refs = (req.schema.properties.slides.items.anyOf as J[]).map((r) =>
       String(r.$ref).split("/").pop(),
@@ -209,16 +222,16 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
       // v4.7's line is cut by the menu's own text; v4.6 is frozen text with no builder, so its
       // line goes by prefix. Each cut must remove exactly one line, so neither can miss silently.
       const line = LAYOUT_WRITER_MENUS["panel-list"][ks === "KS3" ? "KS3-5" : ks];
-      const size = (id: "v4.6" | "v4.7") => {
+      const size = (id: "v4.6" | typeof PILOT_PACK_ID) => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
         const lines = r.system.split("\n");
         const kept = lines.filter((l) =>
-          id === "v4.7" ? l !== line : !l.startsWith("- panel-list: "),
+          id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
         expect(lines.length - kept.length, `${id} ${ks}: one panel-list line`).toBe(1);
         return kept.join("\n").length + JSON.stringify(r.schema).length;
       };
-      expect(size("v4.7")).toBeLessThan(size("v4.6"));
+      expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {
@@ -254,7 +267,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     expect(ANSWERS_RULE).not.toMatch(/working, up to \d+/);
   });
   test("the answers rule slot is required exactly once", () => {
-    const t = PILOT_PACKS["v4.7"].system.KS2;
+    const t = PILOT_PACKS[PILOT_PACK_ID].system.KS2;
     expect(t).toContain("Answers on question-set");
     expect(() => assembleWriterSystem("{{menu:items-row}}", "KS2")).toThrow();
   });
@@ -323,4 +336,17 @@ describe("the writer's question items reach the templates", () => {
     expect(r?.first.items).toEqual(items.slice(0, 4));
     expect(r?.rest[0]?.items).toEqual(items.slice(4));
   });
+});
+
+describe("the quick check's question length is its Fits", () => {
+  // The line count differs by stage (KS2 one line; KS1 and KS3 up to two, TEACH-215 part j), and a
+  // fixed "fits one line" contradicted the KS1 and KS3 Fits. The Fits' words carry the length, so
+  // the line names no line count at any stage (TEACH-110 part ae, 19 Oct 2026).
+  for (const stage of ["KS1", "KS2", "KS3-5"] as const)
+    test(`${stage}: no line count beside the Fits`, () => {
+      const line = QUESTION_SET_WRITER_MENU[stage];
+      expect(line).not.toMatch(/\b(one|two|a single) lines?\b/i);
+      expect(line).toContain("Each answer is a number, a word or a short phrase.");
+      expect(line).toMatch(/Fits: .*up to \d+ words each/);
+    });
 });

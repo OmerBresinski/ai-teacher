@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
+  HINGE_WRITER_MENU,
+  HINGE_WRONG_WORKING,
   ITEMS_ROW_WRITER_MENU,
   LAYOUT_WRITER_MENUS,
   layoutOffer,
@@ -14,6 +17,7 @@ import {
   SPLIT_COMPARE_WRITER_MENU,
   sideCaps,
 } from "./layout-menu";
+import { PILOT_PACKS } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 
 /*
@@ -24,7 +28,7 @@ import { type WriterStage, writerSchema } from "./schema";
  */
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const TEMPLATE = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
-const dir = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+const dir = new URL("./bundles/pilot-v4.8-menu/", import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, dir), "utf8");
 const must = <T>(x: T | null | undefined, what = "value"): T => {
   if (x === null || x === undefined) throw new Error(`missing ${what}`);
@@ -193,8 +197,10 @@ describe("layout menu lines", () => {
       expect(faults).toEqual([]);
       expect(layoutOffer(stage)["split-compare"].sides).toEqual(keys);
       expect(keys).toContain("2");
-      expect(keys).toContain("3");
-      expect(line.startsWith("- split-compare: a vs: 2 or 3 things")).toBe(true);
+      // Three sides are offered only while their shown cap keeps the floor and no cliff (loop 1).
+      expect(
+        line.startsWith(`- split-compare: a vs: ${keys.includes("3") ? "2 or 3" : "2"} things`),
+      ).toBe(true);
     });
   }
 });
@@ -209,7 +215,7 @@ describe("writer system text", () => {
           template.includes(`\n- ${layout}: `),
           `${ks} template holds a copy of ${layout}`,
         ).toBe(false);
-      const text = assembleWriterSystem(template, stage);
+      const text = withFits(assembleWriterSystem(template, stage), stage);
       for (const menu of Object.values(LAYOUT_WRITER_MENUS))
         expect(text.split("\n")).toContain(menu[stage]);
       // A deliberate change regenerates the snapshot from assembleWriterSystem, never by hand.
@@ -233,4 +239,55 @@ describe("split-compare at KS2: three pictured sides stay off the menu", () => {
     expect(line).toContain("every side carries a picture (2 sides only)");
     expect(line).not.toContain("3 sides with pictures");
   });
+});
+
+/*
+ * TEACH-110 part ae (build/CRAMMING-ROOT-CAUSE.md): a description that promised "a sentence or two"
+ * over a 7-word cell read as a length to reach. The length it names starts at the tightest cell.
+ */
+describe("layout descriptions match their budgets", () => {
+  const word = (w: number) =>
+    w <= 6 ? "a phrase" : w <= 14 ? "a short sentence" : "a sentence or two";
+  const LENGTH = "(a phrase|a short sentence|a sentence or two)";
+  for (const stage of STAGES)
+    test(`${stage}: panel-list and split-compare name the tightest cell's length first`, () => {
+      const lines = [
+        [PANEL_LIST_WRITER_MENU[stage], new RegExp(`one fact, in ${LENGTH}`)],
+        [SPLIT_COMPARE_WRITER_MENU[stage], new RegExp(`each a title and ${LENGTH}`)],
+      ] as const;
+      for (const [line, re] of lines) {
+        const fits = line.slice(line.indexOf("Fits:"));
+        const each = [...fits.matchAll(/up to (\d+) words each/g)].map((m) => Number(m[1]));
+        expect(re.exec(line)?.[1]).toBe(word(Math.min(...each)));
+      }
+    });
+});
+
+describe("pilot pack v4.7 is frozen as shipped", () => {
+  const v47 = new URL("./bundles/pilot-v4.7-menu/", import.meta.url);
+  for (const ks of ["KS1", "KS2", "KS3"] as const)
+    test(`${ks}: byte for byte its last assembled snapshot`, () => {
+      expect(PILOT_PACKS["v4.7"].system[ks]).toBe(
+        readFileSync(new URL(`system-${ks}.snapshot.txt`, v47), "utf8"),
+      );
+    });
+});
+
+/*
+ * TEACH-110 part ae (19 Oct 2026, build/FULLMENU-RUN4.md): a KS3 hinge's wrong options stated
+ * arithmetic that was simply wrong. Each wrong option's working is its belief's own result, computed
+ * correctly; the rule is a constraint with no worked example in it.
+ */
+describe("hinge wrong options state their belief's true result", () => {
+  test("the rule's text is pinned", () => {
+    expect(HINGE_WRONG_WORKING).toBe(
+      "A wrong option that states working or a result gives what its belief truly produces: the mistaken step and every step after it carried out correctly, so the belief is the option's only error.",
+    );
+    expect(HINGE_WRONG_WORKING).not.toMatch(/\d|=|e\.g\.|for example/i);
+  });
+  for (const stage of STAGES)
+    test(`${stage}: the hinge line and the v4.8 snapshot carry it`, () => {
+      expect(HINGE_WRITER_MENU[stage]).toContain(HINGE_WRONG_WORKING);
+      expect(read(`system-${TEMPLATE[stage]}.snapshot.txt`)).toContain(HINGE_WRONG_WORKING);
+    });
 });
