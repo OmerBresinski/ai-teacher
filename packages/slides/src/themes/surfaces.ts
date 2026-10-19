@@ -219,11 +219,13 @@ function withMarks(
   if (marks.key !== "rounded") {
     const right = states["key:right"];
     const shaped = solid(right, marks.key);
-    // A sticky key's right state keeps the correct green (scrapbook gold's revealed key), not the
-    // sticky paper: only its shape and tilt come from the family.
+    // A sticky key's right state keeps the correct green with a white letter (scrapbook gold's
+    // revealed key), not the sticky paper and its dark ink: only shape and tilt are the family's.
+    const white = (f: string | undefined) =>
+      f && contrastRatio("#FFFFFF", f) >= contrastRatio(right?.ink ?? "#000000", f);
     states["key:right"] =
       marks.key === "sticky" && right && shaped
-        ? { ...shaped, fill: right.fill, ink: right.ink }
+        ? { ...shaped, fill: right.fill, ink: white(right.fill) ? "#FFFFFF" : right.ink }
         : shaped;
   }
   if (marks.medal !== "disc") states["medal:tint"] = solid(states["medal:tint"], marks.medal);

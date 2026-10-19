@@ -226,6 +226,7 @@ describe("sticky key reveal (TEACH-215 part k integration)", () => {
     const t = getTheme("scrapbook");
     const right = surfaceStyle(t, "key", "right");
     expect(right.fill).not.toBe(surfacesOf(t).marks.sticky?.fill);
+    expect(right.ink).toBe("#FFFFFF");
     expect(contrastRatio(right.ink as string, right.fill as string)).toBeGreaterThanOrEqual(3);
   });
 });
