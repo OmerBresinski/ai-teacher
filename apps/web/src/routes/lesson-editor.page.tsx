@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { isBudgetStopMessage } from "@tj/domain";
 import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
-import { SaveDeferredError } from "@tj/editor/autosave";
+import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
 import {
   displayInTheme,
@@ -228,8 +228,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         const lock = queryClient.getQueryData(
           libraryQueries.documentMeta(lessonId).queryKey,
         )?.generatingJobId;
+        // Not the teacher's content: held quietly ("Saved" stays), written once the job ends.
         if (holdsFitStamp(merged, base.body, lock, base.jobId))
-          throw new SaveDeferredError("The lesson is still being written.");
+          throw new SaveHeldError("The fit stamp waits for the job to end.");
         return saveDocument(merged);
       }
       throw new SaveDeferredError("The lesson is still being written.");
@@ -710,7 +711,7 @@ export function onlyFitStampDiffers(mine: Lesson, row: Lesson): boolean {
 }
 
 /**
- * Whether a save of `mine` waits (deferred, still "Unsaved changes"): it differs from the job's
+ * Whether a save of `mine` is held (`SaveHeldError`, the indicator stays "Saved"): it differs from the job's
  * row only in the fit stamp, and `jobId` still holds the lesson. Once the lock is gone the stamp
  * saves like any change, so it is never left unwritten behind a "Saved".
  */

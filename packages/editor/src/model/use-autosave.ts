@@ -48,6 +48,17 @@ export class SaveDeferredError extends Error {
   override readonly name = "SaveDeferredError";
 }
 
+/**
+ * Reject `onSave` with this when what is waiting is not the teacher's content (UX-A: the editor's
+ * fit stamp while the lesson's own job still writes) and cannot be written yet. The indicator
+ * stays on the teacher's truth ("Saved" when every edit is saved), the store is `held`
+ * (`getHeld`), and the write is tried again quietly (no "Saving…") until it lands. A held write
+ * that then fails is a failure like any other; a new edit makes it an ordinary pending change.
+ */
+export class SaveHeldError extends Error {
+  override readonly name = "SaveHeldError";
+}
+
 /** The first retry after a deferred write, then doubling up to the max. */
 export const DEFERRED_RETRY_MS = 1_500;
 export const DEFERRED_RETRY_MAX_MS = 8_000;
@@ -72,6 +83,11 @@ export type Autosave<D extends SavableDocument = SavableDocument> = {
   getUnreportedFailure: () => boolean;
   /** When a write last succeeded (ms since epoch), or `null` before the first one. */
   getLastSavedAt: () => number | null;
+  /**
+   * `true` while only a non-teacher change waits (`SaveHeldError`): the state reads "saved" and
+   * the write is retried quietly. A status that wants to stay quiet can read this.
+   */
+  getHeld: () => boolean;
 };
 
 export type AutosaveOptions = {
@@ -100,6 +116,8 @@ export function useAutosave<D extends SavableDocument>(
     let lastSavedAt: number | null = null;
     /** The wait before the next retry of a deferred write; reset by any write that lands. */
     let retryMs = deferredRetry;
+    /** Only a non-teacher change waits (`SaveHeldError`): retried quietly, state "saved". */
+    let held = false;
 
     const notify = () => {
       for (const l of listeners) l();
@@ -130,18 +148,38 @@ export function useAutosave<D extends SavableDocument>(
       const document = pending;
       if (!document) return;
       pending = null;
-      setState("saving");
+      // A held write (nothing of the teacher's) goes out quietly: the indicator stays "Saved".
+      const quiet = held;
+      if (!quiet) setState("saving");
       try {
         await onSaveRef.current(document);
         unreported = false;
         lastSavedAt = Date.now();
         retryMs = deferredRetry;
+        if (quiet && pending === null) {
+          held = false;
+          notify();
+          return;
+        }
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
       } catch (error) {
+        const newer = pending !== null;
         pending = pending ?? document;
-        if (error instanceof SaveDeferredError) {
+        if (error instanceof SaveHeldError && !newer) {
+          // Nothing of the teacher's is waiting: the teacher's truth is "Saved".
+          held = true;
+          setState("saved");
+          notify();
+          if (!timer) {
+            timer = setTimeout(() => void flush(), retryMs);
+            retryMs = Math.min(retryMs * 2, DEFERRED_RETRY_MAX_MS);
+          }
+          return;
+        }
+        held = false;
+        if (error instanceof SaveDeferredError || error instanceof SaveHeldError) {
           // Not a failure: still unsaved, tried again shortly (a newer change resets the timer).
           setState("unsaved");
           if (!timer) {
@@ -169,6 +207,7 @@ export function useAutosave<D extends SavableDocument>(
     return {
       onChange: (document: D) => {
         pending = document;
+        held = false;
         setState("unsaved");
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void flush(), delay);
@@ -184,6 +223,7 @@ export function useAutosave<D extends SavableDocument>(
       getSettled: () => settled,
       getUnreportedFailure: () => state === "failed" && unreported,
       getLastSavedAt: () => lastSavedAt,
+      getHeld: () => held,
       hasPending: () => pending !== null,
     };
   }, []);
@@ -193,7 +233,8 @@ export function useAutosave<D extends SavableDocument>(
       if (document.visibilityState === "hidden") void store.flush();
     };
     const onUnload = (e: BeforeUnloadEvent) => {
-      if (store.getState() === "saved" && !store.hasPending()) return;
+      // A held change is not the teacher's: it is written again on the next visit, no warning.
+      if (store.getState() === "saved" && (!store.hasPending() || store.getHeld())) return;
       void store.flush();
       // Unsaved work: ask before the tab goes.
       e.preventDefault();
@@ -217,7 +258,7 @@ const SAVED = (): SaveState => "saved";
  * a failed state is a Retry button.
  */
 export type SaveStateSource = Pick<Autosave, "subscribe" | "getState"> &
-  Partial<Pick<Autosave, "flush" | "getUnreportedFailure" | "getLastSavedAt">>;
+  Partial<Pick<Autosave, "flush" | "getUnreportedFailure" | "getLastSavedAt" | "getHeld">>;
 
 /** What the saved indicator should say right now. */
 export function useSaveState(autosave: SaveStateSource): SaveState {
@@ -229,4 +270,11 @@ const NONE = () => null;
 /** The document at the save cadence: the last one the debounce handed to the write, or `null`. */
 export function useSettledDocument<D extends SavableDocument>(autosave: Autosave<D>): D | null {
   return useSyncExternalStore(autosave.subscribe, autosave.getSettled, NONE);
+}
+
+const NOT_HELD = () => false;
+
+/** Whether only a non-teacher change waits (`Autosave.getHeld`); `false` for a source without it. */
+export function useSaveHeld(autosave: SaveStateSource): boolean {
+  return useSyncExternalStore(autosave.subscribe, autosave.getHeld ?? NOT_HELD, NOT_HELD);
 }

@@ -6,6 +6,7 @@ import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
   SaveDeferredError,
+  SaveHeldError,
   SaveRefusedError,
   useAutosave,
   useSaveState,
@@ -212,6 +213,62 @@ describe("useAutosave", () => {
     act(() => result.current.autosave.onChange(newLesson("New")));
     await waitFor(() => expect(result.current.state).toBe("saved"));
     expect(saved).toEqual(["New"]);
+  });
+
+  test("UX-A: a held non-teacher change reads Saved, retries quietly and is written once the job ends", async () => {
+    let jobRunning = true;
+    const written: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      if (jobRunning) return Promise.reject(new SaveHeldError("fit stamp waits"));
+      written.push(l.title);
+      return Promise.resolve();
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 15 });
+      const state = useSaveState(autosave);
+      states.push(state);
+      return { autosave, state };
+    });
+    act(() => result.current.autosave.onChange(newLesson("Stamped")));
+    await waitFor(() => expect(result.current.autosave.getHeld()).toBe(true));
+    expect(result.current.state).toBe("saved");
+    // Quiet retries while the job runs: never "Saving…", never "Not saved".
+    await waitFor(() => expect(onSave.mock.calls.length).toBeGreaterThanOrEqual(3));
+    const afterHold = states.slice(states.indexOf("saved", 1));
+    expect(afterHold).not.toContain("saving");
+    expect(afterHold).not.toContain("unsaved");
+    expect(states).not.toContain("failed");
+    // No warning on leaving: nothing of the teacher's is waiting.
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
+    // The job ends, with no teacher edit: the stamp is written on its own.
+    jobRunning = false;
+    await waitFor(() => expect(written).toEqual(["Stamped"]));
+    expect(result.current.autosave.getHeld()).toBe(false);
+    expect(result.current.state).toBe("saved");
+  });
+
+  test("UX-A: a held write that then fails shows as a failure; a teacher edit beside it is Unsaved changes", async () => {
+    let mode: "held" | "fail" = "held";
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(mode === "held" ? new SaveHeldError("fit stamp waits") : new Error("down")),
+    );
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 15 });
+      return { autosave, state: useSaveState(autosave) };
+    });
+    act(() => result.current.autosave.onChange(newLesson("Stamped")));
+    await waitFor(() => expect(result.current.autosave.getHeld()).toBe(true));
+    mode = "fail";
+    await waitFor(() => expect(result.current.state).toBe("failed"));
+    expect(result.current.autosave.getHeld()).toBe(false);
+
+    mode = "held";
+    act(() => result.current.autosave.onChange(newLesson("Teacher typed")));
+    expect(result.current.state).toBe("unsaved");
+    expect(result.current.autosave.getHeld()).toBe(false);
   });
 
   test("nothing unsaved: beforeunload passes untouched", () => {
