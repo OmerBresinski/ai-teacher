@@ -127,6 +127,8 @@ export type ThemeSurfaces = {
 
 export type SurfaceTokens = Record<string, string>;
 const px = (v: string | undefined): number => Number.parseFloat(v ?? "0") || 0;
+/** A gold CSS length at 1440 wide in slide points (960 wide), to 0.01pt. */
+const pxToPt = (v: number): number => Math.round((v / 1.5) * 100) / 100;
 
 /** True when a colour paints nothing: `transparent` or an `#RRGGBB00`. */
 export const isClear = (c: string | undefined): boolean =>
@@ -264,7 +266,9 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
     if (v == null) throw new Error(`surface token "${k}" is missing`);
     return v;
   };
-  const corner = need("corner") === "own" ? undefined : px(need("corner"));
+  // The `corner` and `radius-pic` tokens are the golds' CSS px at 1440 wide; slides are 960pt, so
+  // a radius is px / 1.5 (215k review item 47: Treehouse 15px is 10pt, Splash 39px is 26pt).
+  const corner = need("corner") === "own" ? undefined : pxToPt(px(need("corner")));
   const field = corner ?? "own";
   const lineOf = (c: string) => (isClear(c) ? undefined : c);
   const s = (
@@ -314,7 +318,7 @@ export function surfacesFromTokens(t: SurfaceTokens): ThemeSurfaces {
       corner: "full",
     }),
     chip: s(need("chip-fill"), { ink: need("chip-ink"), corner: "full" }),
-    frame: s(need("surface"), { corner: corner ?? px(need("radius-pic")) }),
+    frame: s(need("surface"), { corner: corner ?? pxToPt(px(need("radius-pic"))) }),
     rule: s(need("rule")),
     key: s(need("accent"), { ink: need("key-ink"), corner: "full" }),
     connector: s(need("rule")),

@@ -623,8 +623,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   };
   push(seam, at.fact, MYTH_NAMES.seam);
   const aw = SEAM_D * 0.44;
-  if (seamShape === "hexagon") {
-    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px.
+  if (seamShape === "hexagon" || seamShape === "rect") {
+    // The gold's open line arrow: a shaft and a chevron head, 4.5px (3pt) round strokes, 20x16px
+    // (Geometric's hexagon; Poster's square seam draws the same 24x20px arrow, review item 43).
     const w = 20 * K;
     const h = 16 * K;
     push(

@@ -629,6 +629,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const badgeSize = stop(c, "body", BADGE * 0.46);
   // The newest row's badge is the theme's now badge (gold: `.lb.now`); the next click lays the done
   // badge over it, so only the latest row is lit. The last row's badge stays lit.
+  const badgeFont = surfacesOf(c.t).marks.badgeFont;
   const badge = (i: number, y: number, name: string, fill: string, ink2: string, step: number) => {
     // The theme's badge family (hex, rounded square, outline ring ...); the now badge stays solid.
     const look = markLook(c.t, "badge", BADGE, fill, ink2);
@@ -649,9 +650,12 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
         fill: solid ? fill : look.fill === "transparent" ? c.t.colors.background : look.fill,
         doc: kit.doc(String(i + 1)),
         textStyle: {
-          preset: "body",
+          // A theme whose gold sets its badges in the display face (Scrapbook, Poster).
+          preset: badgeFont ? "heading" : "body",
           fontSize: resolveFontSize(c.t, "body", badgeSize),
-          fontWeight: 700,
+          fontWeight: badgeFont?.weight ?? 700,
+          // The body size, held: the heading preset would read it on the heading's ladder.
+          ...(badgeFont ? { fixedSize: true } : {}),
           color: solid ? ink2 : look.ink,
           align: "center",
           valign: "middle",

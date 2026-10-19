@@ -77,6 +77,11 @@ export type ThemeMarks = {
   sticky: { fill: string; tilt: number } | null;
   /** Degrees a badge turns (Scrapbook's round 2 `--badge-tilt: -4deg`); 0 upright. */
   badgeTilt: number;
+  /**
+   * A badge's numeral in the display face (round 2 `--badge-font`: Scrapbook's Playpen Sans,
+   * Poster's `var(--font-display)`) at `--badge-weight`, or null for the body face.
+   */
+  badgeFont: { weight: number } | null;
   /** The hinge key's face: the card's ink (default) or the theme's accent (Geometric's gold). */
   keyFill: "ink" | "accent";
   /** Tracking on the myth's MYTH / FACT tags (Geometric 0.08em), or null for the preset's own. */
@@ -148,6 +153,10 @@ export function marksFromTokens(t: Readonly<Record<string, string>>): ThemeMarks
     offset: offset > 0 ? { d: offset, color: t["offset-color"] ?? t["ink"] ?? "#000000" } : null,
     sticky: sticky ? { fill: sticky, tilt: clampAbs(num(t["sticky-tilt"]), TILT_MAX) } : null,
     badgeTilt: clampAbs(num(t["badge-tilt"]), BADGE_TILT_MAX),
+    badgeFont:
+      t["badge-font"] === "display"
+        ? { weight: Math.min(800, Math.max(400, num(t["badge-weight"]) || 700)) }
+        : null,
     keyFill: t["key-fill"] === "accent" ? "accent" : "ink",
     tagTracking: em(t["tag-tracking"]),
     kickerTracking: em(t["kicker-tracking"]),

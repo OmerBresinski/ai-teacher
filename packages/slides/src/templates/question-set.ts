@@ -340,6 +340,19 @@ function roleDisc(
   const el = c.els[c.els.length - 1] as ShapeElement;
   el.name = name;
   if (st.ink && el.textStyle) el.textStyle = { ...el.textStyle, color: st.ink };
+  // A theme whose gold sets its badge numerals in the display face (round 2 `--badge-font`).
+  const font = role === "badge" ? surfacesOf(c.t).marks.badgeFont : null;
+  if (font && el.textStyle)
+    el.textStyle = {
+      ...el.textStyle,
+      preset: "heading",
+      // The size the body preset gave it, held: the heading preset reads sizes on its own ladder.
+      fontSize: el.textStyle.fixedSize
+        ? el.textStyle.fontSize
+        : resolveFontSize(c.t, el.textStyle.preset ?? "body", el.textStyle.fontSize),
+      fixedSize: true,
+      fontWeight: font.weight,
+    };
   // The theme's badge or chip family (THEMING.md section 6): Scrapbook's outline ring, Calm's
   // rounded square, Poster's square chip. A disc, pill or hexagon is what `kit.disc` already draws.
   const marks = surfacesOf(c.t).marks;
