@@ -322,8 +322,25 @@ function untouchedAnswers(
   ];
   return (
     rebuilt.length === old.length &&
-    rebuilt.every((s, i) => contentOf(s, false) === contentOf(old[i] as Slide, false))
+    rebuilt.every(
+      (s, i) => contentOf(s, false) === contentOf(kickerAsCaption(old[i] as Slide), false),
+    )
   );
+}
+
+/**
+ * Slides built before the group kicker was a caption (TEACH-215 part l) set it as body; that is
+ * the builder's own form of the time, not a teacher's format, so it reads back as the caption.
+ */
+function kickerAsCaption(slide: Slide): Slide {
+  return {
+    ...slide,
+    elements: slide.elements.map((e) =>
+      e.type === "text" && e.name === ANSWERS_NAMES.kicker && e.style?.preset === "body"
+        ? { ...e, style: { ...e.style, preset: "caption" } }
+        : e,
+    ),
+  };
 }
 
 /**
