@@ -5,6 +5,7 @@ import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
+  SaveDeferredError,
   SaveRefusedError,
   useAutosave,
   useSaveState,
@@ -158,6 +159,59 @@ describe("useAutosave", () => {
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
+  });
+
+  test("UX-A: a SaveDeferredError stays Unsaved changes, shows nothing and retries until it lands", async () => {
+    let refusals = 2;
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      if (refusals > 0) {
+        refusals -= 1;
+        return Promise.reject(new SaveDeferredError("the job wrote first"));
+      }
+      saved.push(l.title);
+      return Promise.resolve();
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 20 });
+      const state = useSaveState(autosave);
+      states.push(state);
+      return { autosave, state };
+    });
+    act(() => result.current.autosave.onChange(newLesson("Kept")));
+    await waitFor(() => expect(result.current.state).toBe("saved"));
+    // Two deferred attempts, then the third lands the same change: never "Not saved", no bar.
+    expect(onSave).toHaveBeenCalledTimes(3);
+    expect(saved).toEqual(["Kept"]);
+    expect(states).not.toContain("failed");
+    expect(result.current.autosave.getUnreportedFailure()).toBe(false);
+    expect(toastSpy).not.toHaveBeenCalled();
+    expect(toastErrorSpy).not.toHaveBeenCalled();
+  });
+
+  test("UX-A: while a write is deferred the unload warning stands, and a newer edit replaces it", async () => {
+    let refuse = true;
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      if (refuse) return Promise.reject(new SaveDeferredError("the job wrote first"));
+      saved.push(l.title);
+      return Promise.resolve();
+    });
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 10_000 });
+      return { autosave, state: useSaveState(autosave) };
+    });
+    act(() => result.current.autosave.onChange(newLesson("Old")));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(result.current.state).toBe("unsaved");
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+    refuse = false;
+    act(() => result.current.autosave.onChange(newLesson("New")));
+    await waitFor(() => expect(result.current.state).toBe("saved"));
+    expect(saved).toEqual(["New"]);
   });
 
   test("nothing unsaved: beforeunload passes untouched", () => {

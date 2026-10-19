@@ -37,6 +37,21 @@ export class SaveRefusedError extends Error {
   override readonly name = "SaveRefusedError";
 }
 
+/**
+ * Reject `onSave` with this when the write could not land *yet* and nobody needs telling: a
+ * lesson that is still filling, whose job wrote the row between the editor's read and its write
+ * (ADR 0037). The change is kept, the indicator says "Unsaved changes" rather than "Not saved",
+ * no bar shows, and the write is tried again on its own (`DEFERRED_RETRY_MS`, doubling to
+ * `DEFERRED_RETRY_MAX_MS`) until it lands or a newer change replaces it. The unload warning stands.
+ */
+export class SaveDeferredError extends Error {
+  override readonly name = "SaveDeferredError";
+}
+
+/** The first retry after a deferred write, then doubling up to the max. */
+export const DEFERRED_RETRY_MS = 1_500;
+export const DEFERRED_RETRY_MAX_MS = 8_000;
+
 export type Autosave<D extends SavableDocument = SavableDocument> = {
   /** Hand to the history hook's `onChange`: one call per committed change. */
   onChange: (document: D) => void;
@@ -62,16 +77,18 @@ export type Autosave<D extends SavableDocument = SavableDocument> = {
 export type AutosaveOptions = {
   /** The debounce, `AUTOSAVE_MS` unless a test shortens it. */
   delay?: number;
+  /** The first retry after a deferred write, `DEFERRED_RETRY_MS` unless a test shortens it. */
+  deferredRetry?: number;
 };
 
 export function useAutosave<D extends SavableDocument>(
   onSave: (document: D) => Promise<void>,
-  { delay = AUTOSAVE_MS }: AutosaveOptions = {},
+  { delay = AUTOSAVE_MS, deferredRetry = DEFERRED_RETRY_MS }: AutosaveOptions = {},
 ): Autosave<D> {
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the store is built once; `delay` is read at creation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the store is built once; `delay` and `deferredRetry` are read at creation
   const store = useMemo(() => {
     let state: SaveState = "saved";
     const listeners = new Set<() => void>();
@@ -81,6 +98,8 @@ export function useAutosave<D extends SavableDocument>(
     let inFlight: Promise<void> | null = null;
     let unreported = false;
     let lastSavedAt: number | null = null;
+    /** The wait before the next retry of a deferred write; reset by any write that lands. */
+    let retryMs = deferredRetry;
 
     const notify = () => {
       for (const l of listeners) l();
@@ -116,11 +135,21 @@ export function useAutosave<D extends SavableDocument>(
         await onSaveRef.current(document);
         unreported = false;
         lastSavedAt = Date.now();
+        retryMs = deferredRetry;
         // Only "Saved" if nothing changed while the write was in flight.
         if (pending === null) setState("saved");
         else setState("unsaved");
       } catch (error) {
         pending = pending ?? document;
+        if (error instanceof SaveDeferredError) {
+          // Not a failure: still unsaved, tried again shortly (a newer change resets the timer).
+          setState("unsaved");
+          if (!timer) {
+            timer = setTimeout(() => void flush(), retryMs);
+            retryMs = Math.min(retryMs * 2, DEFERRED_RETRY_MAX_MS);
+          }
+          return;
+        }
         fail(error instanceof SaveRefusedError);
       }
     };

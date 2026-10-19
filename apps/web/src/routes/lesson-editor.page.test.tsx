@@ -28,9 +28,11 @@ const actualUi = await import("@tj/ui");
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
-const { LessonEditorPage } = await import("./lesson-editor.page");
-const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNCE_MS } =
-  await import("@/components/generating-lesson");
+const { LessonEditorPage, onlyFitStampDiffers } = await import("./lesson-editor.page");
+const { REFETCH_DEBOUNCE_MS } = await import("@/components/generating-lesson");
+const { FAILED_NOTICE, STOPPED_NOTICE, TRY_AGAIN_LABEL } = await import(
+  "@/components/generating-lesson/StoppedNotice"
+);
 const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
 const { SIGN_IN_TO_EDIT, SIGN_IN_TO_EXPORT } = await import("@/components/sign-in/sign-in-copy");
@@ -376,14 +378,17 @@ describe("LessonEditorPage", () => {
     expect(documentInvalidations(spy)).toBe(1);
   });
 
-  it("row 3: a failed job shows the error and Back to library, keeps the slides and never mounts the editor", async () => {
+  it("UX-A: a failed job keeps the teacher in the editor with the slides, a plain line and Try again", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const stored = fakeApi.get("demo-water-cycle");
+    if (!stored) throw new Error("fake api has no demo lesson");
+    const slides = (stored.body as Lesson).slides.length;
     renderPage();
-    const banner = await screen.findByTestId("generating-shell");
+    await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
-    // The api releases the lock on the terminal event; the view must not hand over regardless.
+    // The api releases the lock on the terminal event.
     fakeApi.setGenerating("demo-water-cycle", null);
     act(() =>
       source.emit(
@@ -392,27 +397,58 @@ describe("LessonEditorPage", () => {
         "1",
       ),
     );
-    expect(banner).toHaveTextContent(GENERATION_FAILED_MESSAGE);
-    expect(banner).toHaveTextContent("The model timed out.");
-    expect(banner).toHaveAttribute("data-state", "failed");
-    fireEvent.click(within(banner).getByRole("button", { name: "Back to library" }));
-    expect(navigate).toHaveBeenCalledWith({ to: "/" });
-    // The partial deck is still on screen, read-only: the viewer's slide list, no rename.
-    expect(document.querySelector("[data-slide-frame], [data-slide-id]")).not.toBeNull();
-    await wait(50);
-    expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+    // The editor, not a read-only view: rename is there, every slide is in the strip.
+    expect(
+      await screen.findByRole("button", { name: "Rename lesson" }, { timeout: 5000 }),
+    ).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
+    expect(document.querySelectorAll("[data-navigator-thumb]").length).toBe(slides);
+    const line = await waitFor(() => {
+      const el = document.querySelector("[data-stopped-notice]");
+      if (!el) throw new Error("no notice yet");
+      return el as HTMLElement;
+    });
+    expect(line).toHaveAttribute("data-stopped-notice", "failed");
+    expect(line).toHaveTextContent(FAILED_NOTICE);
+    // Try again asks for the rest: one resume, and the page follows the new job.
+    fakeApi.nextProposalJobId = "01a06a15-1849-7000-ac6a-c07e27fe3999";
+    fireEvent.click(within(line).getByRole("button", { name: TRY_AGAIN_LABEL }));
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.filter(
+          (r) => r.method === "POST" && r.path === "/lessons/demo-water-cycle/resume",
+        ),
+      ).toHaveLength(1),
+    );
+    await waitFor(() => expect(document.querySelector("[data-stopped-notice]")).toBeNull());
+    // The page follows the new job: its Stop is back.
+    expect(await screen.findByRole("button", { name: "Stop" })).toBeVisible();
   });
 
-  it("a cancelled job says so", async () => {
+  it("UX-A: a cancelled job keeps the editor and says stopped, with nothing more to do", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
-    const banner = await screen.findByTestId("generating-shell");
+    await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
     act(() => source.emit("cancelled", jobEvent("cancelled"), "1"));
-    expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
-    expect(within(banner).getByRole("button", { name: "Back to library" })).toBeVisible();
+    expect(
+      await screen.findByRole("button", { name: "Rename lesson" }, { timeout: 5000 }),
+    ).toBeVisible();
+    const line = await waitFor(() => {
+      const el = document.querySelector("[data-stopped-notice]");
+      if (!el) throw new Error("no notice yet");
+      return el as HTMLElement;
+    });
+    expect(line).toHaveAttribute("data-stopped-notice", "cancelled");
+    expect(line).toHaveTextContent(STOPPED_NOTICE);
+    expect(within(line).queryByRole("button", { name: TRY_AGAIN_LABEL })).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Dismiss" }));
+    expect(document.querySelector("[data-stopped-notice]")).toBeNull();
+    // Back still leaves the way it always did.
+    expect(screen.getByRole("button", { name: "Rename lesson" })).toBeVisible();
   });
 
   it("a lock released before the cancelled event arrives keeps the generating view and says stopped", async () => {
@@ -442,8 +478,13 @@ describe("LessonEditorPage", () => {
     );
     expect(screen.getByTestId("generating-shell")).toBe(banner);
     act(() => source.emit("cancelled", jobEvent("cancelled"), "2"));
-    await waitFor(() => expect(banner).toHaveAttribute("data-state", "cancelled"));
-    expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
+    // It learnt how the job ended: the editor opens on what was written and says it stopped.
+    await waitFor(() =>
+      expect(document.querySelector("[data-stopped-notice]")).toHaveAttribute(
+        "data-stopped-notice",
+        "cancelled",
+      ),
+    );
   });
 
   it("a completed job opens the editor even when the hand-over read fails", async () => {
@@ -1024,5 +1065,27 @@ describe("LessonEditorPage, the answer drawer's working (end Answers column)", (
       modelAnswer: `3. ${SENTENCE}\n2. 6 red beads`,
       working: ["", "24 ÷ 4 = 6"],
     });
+  });
+});
+
+describe("onlyFitStampDiffers (UX-A)", () => {
+  const row = generatedLesson();
+  it("the editor's fit stamp alone is not the teacher's change, whatever the key order", () => {
+    const reordered = JSON.parse(JSON.stringify({ fitVersion: 3, ...row })) as Lesson;
+    expect(onlyFitStampDiffers({ ...reordered, fitVersion: 3 }, { ...row, fitVersion: 0 })).toBe(
+      true,
+    );
+  });
+  it("any other change still counts, so a real edit is always written", () => {
+    expect(
+      onlyFitStampDiffers({ ...row, fitVersion: 3, title: "Edited" }, { ...row, fitVersion: 0 }),
+    ).toBe(false);
+    const slides = structuredClone(row.slides);
+    const first = slides[0]?.elements[0];
+    if (first) first.x += 1;
+    expect(onlyFitStampDiffers({ ...row, slides, fitVersion: 3 }, { ...row, fitVersion: 0 })).toBe(
+      false,
+    );
+    expect(onlyFitStampDiffers({ ...row, fitVersion: 0 }, { ...row, fitVersion: 0 })).toBe(false);
   });
 });
