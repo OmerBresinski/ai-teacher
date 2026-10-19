@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { TextElement } from "@tj/domain/documents";
+import { groundArt } from "./art";
+import { slideArtLayers } from "./background";
 import { coverDropsQuestion } from "./cover-comps";
 import { coverTypeAt } from "./layout-sizes";
 import { layoutSlide } from "./layouts";
@@ -295,5 +297,21 @@ describe("a teacher's own cover ground survives the look", () => {
     expect(look({ color: "#123456" })?.color).toBe("#123456");
     expect(look({ image: "/bg.jpg" })?.image).toBe("/bg.jpg");
     expect(look({ color: getTheme("splash").colors.accent })?.color).toBeUndefined();
+  });
+});
+
+describe("Scrapbook's covers are ruled across the page, as the gold (TEACH-215 part g)", () => {
+  test("the picture cover and the picture-failed cover both draw the lined ground", () => {
+    const t = atKeyStage(getTheme("scrapbook"), "ks3");
+    const ground = groundArt(t, "content");
+    const lined = (input: unknown) =>
+      slideArtLayers(t, { id: "c", ...layoutTemplate(input as never, t, "ks3").slide }).some(
+        (l) => l === ground,
+      );
+    expect(ground).not.toBeNull();
+    expect({ picture: lined(withPic), fallback: lined(VOLCANO) }).toEqual({
+      picture: true,
+      fallback: true,
+    });
   });
 });

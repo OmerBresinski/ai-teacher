@@ -795,7 +795,10 @@ export function composeCoverFallback(
       }),
       ...p.rest,
     ]),
-    background: {},
+    // `cover-ground: content` (Scrapbook): the gold's picture-failed cover is ruled across the
+    // whole page like a content slide, not the title art's lower band, so it wears the content art
+    // (the lined ground; Scrapbook draws no content role art). The picture cover gets it already.
+    background: coverToken(t, "cover-ground") === "content" ? { art: "content" } : {},
   };
 }
 
