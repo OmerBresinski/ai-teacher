@@ -28,7 +28,9 @@ const actualUi = await import("@tj/ui");
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
-const { LessonEditorPage, onlyFitStampDiffers } = await import("./lesson-editor.page");
+const { LessonEditorPage, holdsFitStamp, onlyFitStampDiffers } = await import(
+  "./lesson-editor.page"
+);
 const { REFETCH_DEBOUNCE_MS } = await import("@/components/generating-lesson");
 const { FAILED_NOTICE, STOPPED_NOTICE, TRY_AGAIN_LABEL } = await import(
   "@/components/generating-lesson/StoppedNotice"
@@ -1087,5 +1089,39 @@ describe("onlyFitStampDiffers (UX-A)", () => {
       false,
     );
     expect(onlyFitStampDiffers({ ...row, fitVersion: 0 }, { ...row, fitVersion: 0 })).toBe(false);
+  });
+});
+
+describe("holdsFitStamp (UX-A)", () => {
+  const row = generatedLesson();
+  const stamped = { ...row, fitVersion: 3 };
+  const stored = { ...row, fitVersion: 0 };
+  it("waits while the job still holds the lesson", () => {
+    expect(holdsFitStamp(stamped, stored, "job-1", "job-1")).toBe(true);
+  });
+  it("saves as usual once the job has let go, or under another job's lock", () => {
+    expect(holdsFitStamp(stamped, stored, null, "job-1")).toBe(false);
+    expect(holdsFitStamp(stamped, stored, undefined, "job-1")).toBe(false);
+    expect(holdsFitStamp(stamped, stored, "job-2", "job-1")).toBe(false);
+  });
+  it("never holds a real edit", () => {
+    expect(holdsFitStamp({ ...stamped, title: "Edited" }, stored, "job-1", "job-1")).toBe(false);
+  });
+});
+
+describe("the budget-stop notice (UX-A)", () => {
+  it("says the budget is spent and offers no Try again", async () => {
+    const { StoppedNotice, BUDGET_NOTICE } = await import(
+      "@/components/generating-lesson/StoppedNotice"
+    );
+    const { container } = render(
+      <TooltipProvider>
+        <StoppedNotice outcome="failed" budget onTryAgain={() => {}} onDismiss={() => {}} />
+      </TooltipProvider>,
+    );
+    const line = container.querySelector("[data-stopped-notice]") as HTMLElement;
+    expect(line).toHaveAttribute("data-stopped-notice", "budget");
+    expect(line).toHaveTextContent(BUDGET_NOTICE);
+    expect(within(line).queryByRole("button", { name: TRY_AGAIN_LABEL })).toBeNull();
   });
 });

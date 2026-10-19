@@ -8,6 +8,7 @@ import {
   SLIDE_TIER_RANGES,
   type Slide,
   type SlideGenerationState,
+  SlideSchema,
   type SlideTier,
 } from "@tj/domain/documents";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
@@ -559,6 +560,13 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // length or broke off (K3) too: a slide is closed only once the writer moved past it, so
       // its words are whole; only the slide still being written goes back (UX-A: the screen
       // promises what was written is kept, and Try again resumes after these slides).
+      // A closed slide is kept only if it is a whole slide: a stream cut off (by length or
+      // otherwise) never leaves a slide that fails the schema in the lesson; that one goes back.
+      const whole = (i: number) => {
+        const slide = latest.get(i);
+        return slide !== undefined && SlideSchema.safeParse(slide).success;
+      };
+      for (const i of [...closed]) if (!whole(i)) closed.delete(i);
       const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
       const keep = Array.from({ length: count }, (_, i) => {
         const saved = lesson.slides[i];

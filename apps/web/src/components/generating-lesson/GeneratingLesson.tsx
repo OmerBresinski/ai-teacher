@@ -51,7 +51,7 @@ export function GeneratingLesson({
   exportSlot?: ReactNode;
   onBack: () => void;
   /** The job ended without completing, once the row it left has been read (the page opens the editor on it). */
-  onStopped: (jobId: string, outcome: "failed" | "cancelled") => void;
+  onStopped: (jobId: string, outcome: "failed" | "cancelled", message?: string) => void;
   /** The job completed and its finished row is in the cache: the page may open the editor. */
   onCompleted?: (jobId: string) => void;
   /** The slide the teacher is looking at (`null` = the newest), so the editor opens on it at Ready. */
@@ -68,6 +68,7 @@ export function GeneratingLesson({
   // The job's end: the terminal event, or the backup poll below when the stream missed it.
   const [polledEnd, setPolledEnd] = useState<"completed" | "stopped" | null>(null);
   const terminalType = stream.terminal?.type;
+  const failure = stream.terminal?.type === "failed" ? stream.terminal.error?.message : undefined;
   const ended = stream.terminal
     ? stream.terminal.type === "completed"
       ? "completed"
@@ -129,7 +130,7 @@ export function GeneratingLesson({
       if (!sessionIsCurrent(queryClient)) return;
       if (ended === "completed") onCompleted?.(jobId);
       // Only a reported failure offers Try again; an end the poll found is said as stopped.
-      else onStopped(jobId, terminalType === "failed" ? "failed" : "cancelled");
+      else onStopped(jobId, terminalType === "failed" ? "failed" : "cancelled", failure);
     };
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
@@ -146,7 +147,7 @@ export function GeneratingLesson({
       .catch(() => {
         /* The session may have ended while handing over the document. */
       });
-  }, [ended, terminalType, lesson.id, jobId, queryClient, onStopped, onCompleted]);
+  }, [ended, terminalType, failure, lesson.id, jobId, queryClient, onStopped, onCompleted]);
 
   const cancel = useMutation(
     sessionMutation(queryClient, {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai/testing";
-import type { Lesson, Slide } from "@tj/domain/documents";
+import { type Lesson, type Slide, SlideSchema } from "@tj/domain/documents";
 import pino from "pino";
 import { labAi, romansLesson } from "../planner/testing";
 import { initialState, type RecordedDeps, recordingDeps, writerFixture } from "../testing";
@@ -32,7 +32,8 @@ function writerAi(
       const text = cut
         ? fixture.main.slice(0, Math.floor(fixture.main.length * cut))
         : fixture.main;
-      return { text, stream };
+      // A cut stream ends as the token cap ends it (K3: `finish_reason length`).
+      return { text, stream, ...(cut ? { finishReason: "length" as const } : {}) };
     }
     if (v.endsWith("/notes")) return notes === "ok" ? fixture.notes : "not json";
     if (v.endsWith("/objectives"))
@@ -227,7 +228,7 @@ describe("hasEditableDeck", () => {
 describe("UX-A: a writer that breaks off mid-stream", () => {
   test("keeps every finished slide (never the half-written one), and the retry resumes after them", async () => {
     const planned = await plannedState();
-    // The writer's output stops part-way: its JSON never closes (WriterIncompleteError).
+    // The writer runs out of length part-way: its JSON never closes (WriterIncompleteError).
     const broken = writerAi({ pieceChars: 60, paceMs: 5 }, "ok", 0.6);
     const a0 = recordingDeps(broken.ai);
     let shownDone = 0;
@@ -244,10 +245,12 @@ describe("UX-A: a writer that breaks off mid-stream", () => {
     const states = stored.generation?.slideStates ?? {};
     const finished = stored.slides.filter((s, i) => i >= 2 && states[s.id] === "done");
     // Every slide the stream finished is still there and done; nothing is left `writing`.
-    expect(shownDone).toBeGreaterThanOrEqual(2);
-    expect(finished.length).toBe(shownDone);
+    // The fixture cut at 60% has streamed past two body slides: those two, exactly, are kept.
+    expect(shownDone).toBe(2);
+    expect(finished.length).toBe(2);
+    for (const slide of finished) expect(SlideSchema.safeParse(slide).success).toBe(true);
     expect(Object.values(states)).not.toContain("writing");
-    expect(stored.slides.length).toBe(shownDone + 2);
+    expect(stored.slides.length).toBe(4);
     expect(stored.generation?.stage).toBe("planned");
 
     // Try again: the finished slides stand, in place, and the rest follows them once each.

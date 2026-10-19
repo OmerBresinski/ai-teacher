@@ -60,12 +60,14 @@ import {
   type SetPlanRevisionOptions,
   type SetPlanRevisionResult,
   setPlanRevisionAndLock,
+  terminalJobEventFor,
   toSourceRef,
   unbindSource,
   unbindSourcesFromLesson,
   type WorkspaceDb,
 } from "@tj/db";
 import {
+  isBudgetStopMessage,
   type JobId,
   type JobName,
   type JobPayloadInputs,
@@ -73,6 +75,7 @@ import {
   type LessonId,
   LessonRegeneratePayloadSchema,
   newId,
+  safeError,
 } from "@tj/domain";
 import {
   CreateLessonSchema,
@@ -269,6 +272,9 @@ export const NO_BRIEF_MESSAGE = "This lesson has no brief to plan from.";
 export const RESUME_GENERATING_MESSAGE = "This lesson is still being written.";
 export const RESUME_NOT_CONFIRMED_MESSAGE = "Confirm the plan before writing the slides.";
 export const RESUME_FINISHED_MESSAGE = "This lesson is already finished.";
+export const RESUME_BUDGET_MESSAGE =
+  "This lesson has used its whole generation budget, so the rest cannot be written.";
+const ResumeBodySchema = z.object({ jobId: z.uuid() });
 const JOBS_UNAVAILABLE_MESSAGE = "Background jobs are not available right now.";
 
 /**
@@ -697,57 +703,84 @@ export function lessonRoutes(
        * queue refuses, the lock is let go. `409 generating` while a job holds the lesson,
        * `409 planning` before the plan is confirmed or once the lesson is finished.
        */
-      .post("/lessons/:id/resume", zValidator("param", lessonParam, validationHook), async (c) => {
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
-        const row = await getDocument(ws, lessonId);
-        if (row === null || row.kind !== "lesson") {
-          throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
-        }
-        const lesson = row.body as Lesson;
-        if (row.generatingJobId) {
-          throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
-            jobId: row.generatingJobId as JobId,
-          });
-        }
-        const plan = lesson.plan;
-        if (plan?.state !== "confirmed" || lesson.generation?.stage === undefined) {
-          throw new ConflictError("planning", RESUME_NOT_CONFIRMED_MESSAGE, {
-            ...(plan ? { revision: plan.revision } : {}),
-          });
-        }
-        if (lesson.generation.completedAt !== undefined) {
-          throw new ConflictError("planning", RESUME_FINISHED_MESSAGE, {
-            revision: plan.revision,
-          });
-        }
-        const jobId = newId<JobId>();
-        if (!(await relockLesson(ws, lessonId, jobId))) {
-          const now = await getDocument(ws, lessonId);
-          throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
-            ...(now?.generatingJobId ? { jobId: now.generatingJobId as JobId } : {}),
-          });
-        }
-        let queued: JobId | null = null;
-        let failure: unknown;
-        try {
-          queued = await enqueue(
-            rt.jobs,
-            "lesson.generate",
-            { lessonId, revision: plan.revision },
-            { workspaceId: ws.workspaceId, id: jobId },
-          );
-        } catch (error) {
-          failure = error;
-        }
-        if (queued === null) {
-          await clearGenerating(ws, lessonId, jobId).catch(() => undefined);
-          throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: failure });
-        }
-        c.get("logger")?.info({ lessonId, jobId, revision: plan.revision }, "lesson resumed");
-        return c.json({ jobId }, 202);
-      })
+      .post(
+        "/lessons/:id/resume",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", ResumeBodySchema, validationHook),
+        async (c) => {
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          const lesson = row.body as Lesson;
+          if (row.generatingJobId) {
+            throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
+              jobId: row.generatingJobId as JobId,
+            });
+          }
+          const plan = lesson.plan;
+          if (plan?.state !== "confirmed" || lesson.generation?.stage === undefined) {
+            throw new ConflictError("planning", RESUME_NOT_CONFIRMED_MESSAGE, {
+              ...(plan ? { revision: plan.revision } : {}),
+            });
+          }
+          if (lesson.generation.completedAt !== undefined) {
+            throw new ConflictError("planning", RESUME_FINISHED_MESSAGE, {
+              revision: plan.revision,
+            });
+          }
+          // The job that stopped (the client's `jobId`): a budget stop cannot be finished by trying
+          // again, since a new job starts from the usage the lesson already spent (422).
+          const stoppedBy = await terminalJobEventFor(ws, c.req.valid("json").jobId as JobId);
+          const stopReason =
+            stoppedBy?.type === "failed"
+              ? (stoppedBy.payload as { error?: { message?: string } }).error?.message
+              : undefined;
+          if (isBudgetStopMessage(stopReason)) {
+            throw new HTTPException(422, { message: RESUME_BUDGET_MESSAGE });
+          }
+          const jobId = newId<JobId>();
+          if (!(await relockLesson(ws, lessonId, jobId))) {
+            const now = await getDocument(ws, lessonId);
+            throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
+              ...(now?.generatingJobId ? { jobId: now.generatingJobId as JobId } : {}),
+            });
+          }
+          let queued: JobId | null = null;
+          let failure: unknown;
+          try {
+            queued = await enqueue(
+              rt.jobs,
+              "lesson.generate",
+              { lessonId, revision: plan.revision },
+              { workspaceId: ws.workspaceId, id: jobId },
+            );
+          } catch (error) {
+            failure = error;
+          }
+          if (queued === null) {
+            // Let the lock go. Should this fail too (or the process die between the lock and the
+            // queue), no `queued` event exists for the job, so `releaseStaleLock` frees the row on
+            // the next `GET /documents/:id` once it is `STALE_LOCK_AFTER_MS` (10 minutes) untouched.
+            await clearGenerating(ws, lessonId, jobId).catch((error: unknown) =>
+              c
+                .get("logger")
+                ?.warn(
+                  { lessonId, jobId, err: safeError(error) },
+                  "resume: could not release the lock after a failed enqueue",
+                ),
+            );
+            throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: failure });
+          }
+          c.get("logger")?.info({ lessonId, jobId, revision: plan.revision }, "lesson resumed");
+          return c.json({ jobId }, 202);
+        },
+      )
       .post(
         "/lessons/:id/cascade",
         smallJsonBodyLimit(),

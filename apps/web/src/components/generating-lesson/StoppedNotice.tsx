@@ -4,6 +4,8 @@ import { X } from "lucide-react";
 export const STOPPED_NOTICE = "Stopped. The slides written so far are here to edit.";
 export const FAILED_NOTICE =
   "Something went wrong before the lesson was finished. The slides written so far are here to edit.";
+export const BUDGET_NOTICE =
+  "This lesson used its whole budget before it was finished. The slides written so far are here to edit.";
 export const TRY_AGAIN_LABEL = "Try again";
 export const TRY_AGAIN_FAILED = "That didn’t start. Try again in a moment.";
 
@@ -14,12 +16,15 @@ export const TRY_AGAIN_FAILED = "That didn’t start. Try again in a moment.";
  */
 export function StoppedNotice({
   outcome,
+  budget,
   onTryAgain,
   trying,
   error,
   onDismiss,
 }: {
   outcome: "failed" | "cancelled";
+  /** A budget stop: trying again cannot finish it, so there is no Try again. */
+  budget?: boolean;
   onTryAgain?: () => void;
   trying?: boolean;
   error?: boolean;
@@ -29,16 +34,16 @@ export function StoppedNotice({
   return (
     <div
       role="status"
-      data-stopped-notice={outcome}
+      data-stopped-notice={budget ? "budget" : outcome}
       // Bottom left of the canvas, above the slide strip, where "Follow writing" sat: clear of the
       // slide's toolbar (top of the canvas) and of the zoom row (bottom right).
       className="fixed bottom-[120px] left-16 z-40 flex w-[min(560px,calc(100vw-96px))] items-center gap-3 rounded-lg border border-border bg-background py-2 pr-2 pl-4 text-sm text-foreground shadow-md"
     >
       <p className="m-0 flex-1">
-        {failed ? FAILED_NOTICE : STOPPED_NOTICE}
+        {budget ? BUDGET_NOTICE : failed ? FAILED_NOTICE : STOPPED_NOTICE}
         {error ? <span className="mt-1 block text-destructive">{TRY_AGAIN_FAILED}</span> : null}
       </p>
-      {failed && onTryAgain ? (
+      {failed && !budget && onTryAgain ? (
         <Button size="sm" variant="default" disabled={trying} onClick={onTryAgain}>
           {TRY_AGAIN_LABEL}
         </Button>

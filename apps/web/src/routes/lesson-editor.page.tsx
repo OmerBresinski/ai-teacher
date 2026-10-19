@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { isBudgetStopMessage } from "@tj/domain";
 import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
 import { SaveDeferredError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
@@ -219,10 +220,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           libraryQueries.documentMeta(lessonId).queryKey,
         )?.updatedAt;
         if (!merged || !base || at !== base.at) continue;
-        // Nothing of the teacher's that the row lacks: there is nothing to write. The editor's
-        // fit stamp (`fitVersion`, set when it opens) is not the teacher's either: a copy that
-        // differs from the row only there waits for the job to end (UX-A, the slow-network 409s).
-        if (merged === base.body || onlyFitStampDiffers(merged, base.body)) return;
+        // Nothing of the teacher's that the row lacks: there is nothing to write.
+        if (merged === base.body) return;
+        // The editor's fit stamp (`fitVersion`, set when it opens) is not the teacher's: a copy
+        // that differs from the row only there waits while the job still writes (still "Unsaved
+        // changes", tried again), then saves as usual once the job has let the lesson go.
+        const lock = queryClient.getQueryData(
+          libraryQueries.documentMeta(lessonId).queryKey,
+        )?.generatingJobId;
+        if (holdsFitStamp(merged, base.body, lock, base.jobId))
+          throw new SaveDeferredError("The lesson is still being written.");
         return saveDocument(merged);
       }
       throw new SaveDeferredError("The lesson is still being written.");
@@ -279,11 +286,13 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const [stopped, setStopped] = useState<{
     jobId: string;
     outcome: "failed" | "cancelled";
+    budget?: boolean;
     dismissed?: boolean;
   } | null>(null);
   const stoppedJobId = stopped?.jobId ?? null;
   const onStopped = useCallback(
-    (jobId: string, outcome: "failed" | "cancelled") => setStopped({ jobId, outcome }),
+    (jobId: string, outcome: "failed" | "cancelled", message?: string) =>
+      setStopped({ jobId, outcome, budget: isBudgetStopMessage(message) }),
     [],
   );
   const keepEditing = !!stopped && !anonymous;
@@ -342,11 +351,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   // Try again (UX-A): a new job writes the rest. The row it starts from is read first, so the next
   // fold merges onto the stored copy (the teacher's saved edits) and never onto unsaved ones.
+  const stoppedJob = stopped?.jobId;
   const onTryAgain = useCallback(async () => {
     setRetry("trying");
     try {
       const row = await libraryCache.readFilling(queryClient, lessonId);
-      const { jobId } = await resumeLesson(queryClient, lessonId);
+      if (!stoppedJob) {
+        setRetry("idle");
+        return;
+      }
+      const { jobId } = await resumeLesson(queryClient, lessonId, stoppedJob);
       if (row) folded.current = { jobId, body: row.body, at: row.meta.updatedAt };
       const metaKey = libraryQueries.documentMeta(lessonId).queryKey;
       queryClient.setQueryData(metaKey, (meta) =>
@@ -357,7 +371,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     } catch {
       setRetry("error");
     }
-  }, [queryClient, lessonId]);
+  }, [queryClient, lessonId, stoppedJob]);
   const onOpenWorksheet = useCallback(
     (id: string) => void navigate({ to: "/w/$worksheetId", params: { worksheetId: id } }),
     [navigate],
@@ -628,6 +642,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       {keepEditing && stopped && !stopped.dismissed && editorOpen ? (
         <StoppedNotice
           outcome={stopped.outcome}
+          budget={stopped.budget}
           onTryAgain={() => void onTryAgain()}
           trying={retry === "trying"}
           error={retry === "error"}
@@ -692,6 +707,20 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
 export function onlyFitStampDiffers(mine: Lesson, row: Lesson): boolean {
   if ((mine.fitVersion ?? 0) === (row.fitVersion ?? 0)) return false;
   return sameValue({ ...mine, fitVersion: 0 }, { ...row, fitVersion: 0 });
+}
+
+/**
+ * Whether a save of `mine` waits (deferred, still "Unsaved changes"): it differs from the job's
+ * row only in the fit stamp, and `jobId` still holds the lesson. Once the lock is gone the stamp
+ * saves like any change, so it is never left unwritten behind a "Saved".
+ */
+export function holdsFitStamp(
+  mine: Lesson,
+  row: Lesson,
+  lockedBy: string | null | undefined,
+  jobId: string,
+): boolean {
+  return !!lockedBy && lockedBy === jobId && onlyFitStampDiffers(mine, row);
 }
 
 /** Deep equality of JSON values, key order ignored; an `undefined` field counts as absent. */

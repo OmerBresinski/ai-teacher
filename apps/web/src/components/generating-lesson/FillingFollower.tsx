@@ -46,7 +46,7 @@ export function FillingFollower({
    * The job failed or was cancelled: the page keeps the editor open on what was written and says
    * so (UX-A), after the last fold has landed the row the job left.
    */
-  onStopped?: (jobId: string, outcome: "failed" | "cancelled") => void;
+  onStopped?: (jobId: string, outcome: "failed" | "cancelled", message?: string) => void;
   /** Live writing (ADR 0039): the job's slide drafts go here, for the editor's canvas to show. */
   drafts?: DraftStore;
 }) {
@@ -64,15 +64,16 @@ export function FillingFollower({
   // The end of the job, and a poll in case the stream missed it: the last fold carries the
   // released lock into the row state, which hands the page to the plain editor.
   const terminal = stream.terminal?.type;
+  const failure = stream.terminal?.type === "failed" ? stream.terminal.error?.message : undefined;
   useEffect(() => {
     if (!terminal) return;
     void fold()
       .catch(() => undefined)
       .then(() => {
         if (terminal !== "completed")
-          onStopped?.(jobId, terminal === "failed" ? "failed" : "cancelled");
+          onStopped?.(jobId, terminal === "failed" ? "failed" : "cancelled", failure);
       });
-  }, [terminal, fold, onStopped, jobId]);
+  }, [terminal, failure, fold, onStopped, jobId]);
   useEffect(() => {
     const timer = window.setInterval(() => void fold().catch(() => undefined), JOB_POLL_MS);
     return () => window.clearInterval(timer);

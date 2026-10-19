@@ -11,6 +11,7 @@ import {
   forWorkspace,
   getDocument,
   getSource,
+  insertJobEvent,
   listJobEvents,
   putDocumentAsJob,
 } from "@tj/db";
@@ -37,6 +38,7 @@ import type { ErrorEnvelope } from "../errors";
 import { createEventsRuntime, type EventsRuntime } from "../events/runtime";
 import { silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
+import { RESUME_BUDGET_MESSAGE } from "./lessons";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -1287,10 +1289,14 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
   });
 
   describe("POST /lessons/:id/resume (UX-A: Try again after a failed generation)", () => {
-    const post = (ws: WorkspaceId | null, id: string) =>
+    /** `stopped` is the job that failed (the client sends the one it followed). */
+    const post = (ws: WorkspaceId | null, id: string, stopped: string = newId()) =>
       app.request(`/lessons/${id}/resume`, {
         method: "POST",
-        headers: ws ? headers(ws, { "content-type": "application/json" }) : {},
+        headers: ws
+          ? headers(ws, { "content-type": "application/json" })
+          : { "content-type": "application/json" },
+        body: JSON.stringify({ jobId: stopped }),
       });
     type Accepted = { jobId: JobId };
 
@@ -1341,8 +1347,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
         workspaceId: wsA,
         payload: { lessonId, revision: 1 },
       });
+      // The lock was taken for the new job (the stub job here never lets it go).
       const row = await getDocument(forWorkspace(unsafeDb, wsA), lessonId);
-      expect(row?.generatingJobId === jobId || row?.generatingJobId === null).toBe(true);
+      expect(row?.generatingJobId).toBe(jobId);
     });
 
     test("a double click starts one job: the second request is 409 generating", async () => {
@@ -1355,7 +1362,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       // The refusal names the job that won: the lock was taken once, so one job was queued.
       expect(await jobData("lesson.generate", accepted.jobId)).toBeDefined();
       const lock = (await getDocument(forWorkspace(unsafeDb, wsA), lessonId))?.generatingJobId;
-      expect(lock === accepted.jobId || lock === null).toBe(true);
+      expect(lock).toBe(accepted.jobId);
     });
 
     test("refused while a job holds the lesson, before the plan is confirmed, and once it is finished", async () => {
@@ -1390,10 +1397,42 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       ).toBeNull();
     });
 
+    test("a budget stop is refused (422, no lock); any other failure may try again", async () => {
+      const lessonId = await seedStopped();
+      const spent = newId<JobId>();
+      await insertJobEvent(unsafeDb, {
+        type: "failed",
+        jobId: spent,
+        workspaceId: wsA,
+        at: new Date().toISOString(),
+        error: { message: "lesson budget exceeded (usd cap)", retryable: false },
+      } as Parameters<typeof insertJobEvent>[1]);
+      const refused = await post(wsA, lessonId, spent);
+      expect(refused.status).toBe(422);
+      expect((await errorOf(refused)).message).toBe(RESUME_BUDGET_MESSAGE);
+      expect(
+        (await getDocument(forWorkspace(unsafeDb, wsA), lessonId))?.generatingJobId,
+      ).toBeNull();
+      const other = newId<JobId>();
+      await insertJobEvent(unsafeDb, {
+        type: "failed",
+        jobId: other,
+        workspaceId: wsA,
+        at: new Date().toISOString(),
+        error: { message: "Something went wrong while running this job.", retryable: false },
+      } as Parameters<typeof insertJobEvent>[1]);
+      expect((await post(wsA, lessonId, other)).status).toBe(202);
+    });
+
     test("it shares the workspace's model-call limit with /generate", async () => {
       const limited = createApp({ env: TEST_ENV, db: t.db, logger: silentLogger, jobs: jobsCtx });
       const path = `/lessons/${newId()}/resume`;
-      const call = () => limited.request(path, { method: "POST", headers: headers(wsA) });
+      const call = () =>
+        limited.request(path, {
+          method: "POST",
+          headers: headers(wsA, { "content-type": "application/json" }),
+          body: JSON.stringify({ jobId: newId() }),
+        });
       for (let i = 0; i < 30; i++) expect((await call()).status).toBe(404);
       const over = await call();
       expect(over.status).toBe(429);
