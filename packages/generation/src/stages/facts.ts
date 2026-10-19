@@ -2,11 +2,17 @@ import {
   type Finding,
   type Lesson,
   type LessonFacts,
+  type OutlineEntry,
   plannerSlideCount,
+  type Slide,
+  sameJson,
 } from "@tj/domain/documents";
+import { materialiseSlide, type SlideSpec, uid } from "@tj/slides";
 import { mergeObjectiveFacts } from "../merge-objective-facts";
 import { type OutlineFromFactsResult, outlineFromFacts } from "../outline-from-facts";
+import { CODE_MODEL, codedSetSpec, withAnswersReveal } from "../planner/coded-slides";
 import { runWaves, type WavesReport, withExitAsPlanned } from "../planner/plan-pipeline";
+import { generateSlidePrompt } from "../prompts";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { assignFactIds, type PlanFactsLike } from "../specs";
 import {
@@ -45,6 +51,8 @@ export interface FactsStepOptions {
   /** Start the Verify call (default `true`). `false`: no call, an empty result handed to Generate. */
   verify?: boolean;
   effort?: PlannerEffortOption;
+  /** Save the retrieval starter before the waves when its slot is certain (default `true`). */
+  preview?: boolean;
 }
 
 export interface FactsStepReport {
@@ -73,7 +81,12 @@ export async function runFactsStep(
   if (!brief) throw new Error("facts: the lesson has no brief");
   const confirmed = lesson.facts?.objectives ?? [];
   if (confirmed.length === 0) throw new StageFailure("plan", "facts: the lesson has no objectives");
-  await deps.onProgress(PROGRESS_PLANNED, "Planning the slides", "plan");
+  // Slide 3 before the waves (latency lane L1): see `starterPreview`.
+  const preview = options.preview === false ? undefined : starterPreview(lesson);
+  const shown = preview
+    ? await deps.persist({ ...lesson, slides: [...lesson.slides, preview.slide] })
+    : undefined;
+  await deps.onProgress(PROGRESS_PLANNED, "Planning the slides", "plan", shown?.updatedAt);
   const startedAt = lesson.generation?.startedAt ?? deps.now().toISOString();
 
   const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
@@ -224,6 +237,14 @@ export async function runFactsStep(
   }
 
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
+  // The preview stays on the saved row only while it is the slide Generate will write first, to
+  // the letter; `state.lesson` never carries it, so Generate runs exactly as without it and its
+  // first save puts its own copy of the same slide in the preview's place (the merge, ADR 0037).
+  const keepPreview =
+    preview !== undefined && sameJson(starterSpec(facts, lesson.id), preview.spec);
+  if (preview && !keepPreview) {
+    deps.logger.info({ stage: "plan", call: "outline" }, "starter preview withdrawn");
+  }
   const planned: Lesson = {
     ...lesson,
     slides: [title, objectivesSlide],
@@ -237,7 +258,9 @@ export async function runFactsStep(
       findings,
     },
   };
-  const { updatedAt } = await deps.persist(planned);
+  const { updatedAt } = await deps.persist(
+    keepPreview && preview ? { ...planned, slides: [...planned.slides, preview.slide] } : planned,
+  );
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
 
   return {
@@ -262,4 +285,54 @@ export async function runFactsStep(
 /** The workflow step: the facts step without its report. */
 export async function facts(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   return (await runFactsStep(state, deps)).state;
+}
+
+/** Where the retrieval starter sits: straight after the title and objectives slides. */
+const STARTER_INDEX = 2;
+
+/**
+ * The retrieval starter's spec as Generate prints it for outline entry 2 (`codedSetSpec`, seeded
+ * `<lesson id>:2`), or `undefined` when that entry is not a retrieval starter.
+ */
+function starterSpec(facts: LessonFacts, lessonId: string): SlideSpec | undefined {
+  const entry = facts.outline[STARTER_INDEX];
+  if (entry?.kind !== "starter" || (facts.retrieval?.length ?? 0) === 0) return undefined;
+  return codedSetSpec(entry, facts, `${lessonId}:${STARTER_INDEX}`)?.spec;
+}
+
+/**
+ * Slide 3 before the waves (latency lane L1). With a retrieval set from the objectives call and no
+ * prior knowledge declared, `outlineFromFacts` places the retrieval starter first, on objective 1,
+ * and Generate prints it in code from the retrieval set alone (`codedSetSpec`): nothing it shows
+ * waits on the waves. So it is printed here, from the same inputs, and saved with the title and
+ * objectives slides; the planned checkpoint keeps it only if the outline's starter prints to the
+ * same spec, else it is withdrawn (logged). Element ids are drawn from `uid`, not `deps.ids`, and
+ * the stamp from the wall clock, so the deck Generate writes is the same with or without it.
+ */
+function starterPreview(lesson: Lesson): { slide: Slide; spec: SlideSpec } | undefined {
+  const retrieval = lesson.facts?.retrieval ?? [];
+  const first = lesson.facts?.objectives[0];
+  if (retrieval.length === 0 || !first || lesson.slides.length !== STARTER_INDEX) return undefined;
+  if ((lesson.brief?.classContext?.priorKnowledge?.trim() ?? "") !== "") return undefined;
+  const entry: OutlineEntry = {
+    kind: "starter",
+    phase: "starter",
+    factRefs: [first.id],
+  } as OutlineEntry;
+  const facts = {
+    ...(lesson.facts as LessonFacts),
+    retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })),
+  };
+  const spec = codedSetSpec(entry, facts, `${lesson.id}:${STARTER_INDEX}`)?.spec;
+  if (!spec) return undefined;
+  const meta = {
+    promptVersion: generateSlidePrompt.version,
+    model: CODE_MODEL,
+    at: new Date().toISOString(),
+  };
+  const slide = withAnswersReveal(
+    materialiseSlide(spec, lesson.themeId, meta, uid),
+    lesson.themeId,
+  );
+  return { slide, spec };
 }
