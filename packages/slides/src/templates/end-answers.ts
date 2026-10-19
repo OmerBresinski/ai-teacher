@@ -28,7 +28,7 @@ import {
 } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { contrastRatio } from "../look";
-import { lineWidth } from "../text-measure";
+import { countLines, lineWidth } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import {
   paintSurface,
@@ -98,8 +98,26 @@ export const ANSWER_TYPE: Record<Stage, { top: number; comfort: number }> = {
   ks4: { top: 27, comfort: 20 },
   ks5: { top: 27, comfort: 20 },
 };
-/** The caption floor for the kicker and the pill (gold label floor 22, or 26 at KS1). */
+/** The caption floor for the pill (gold label floor 22, or 26 at KS1). */
 const labelSize = (t: Theme, stage: Stage) => px(t, stage === "ks1" ? 17 : 15);
+/**
+ * The group kicker is a caption, as the gold's red caps label (`answers-r2.html` `--kick-size`: 30px
+ * at KS1, 26px over it, at 1440; 20 / 17 here): the theme's caption step at the key stage, caps
+ * and tracked by the caption preset. Set as body it snapped up to the body step (28 at KS1), and
+ * "EXIT TICKET" wrapped in the rail over the source title (ANSBUG a2).
+ */
+/**
+ * The kicker as measured and as drawn, from one place: its preset (which gives the caps and the
+ * tracking to both the measurer and the renderer), weight and line height.
+ */
+export const KICKER = { preset: "caption", weight: 700, lineHeight: 1.2 } as const;
+const kickerSize = (t: Theme) => resolveFontSize(t, KICKER.preset);
+/** The kicker's drawn height in the rail: every line it wraps to, never one assumed. */
+export function kickerHeight(t: Theme, word: string): number {
+  const size = kickerSize(t);
+  const lines = countLines(word, KICKER.preset, t, RAIL.w, KICKER.weight, size);
+  return Math.ceil(Math.max(1, lines) * size * KICKER.lineHeight);
+}
 
 /**
  * The size `size` is drawn at in `t`: a writer lesson's theme is bound to its key stage, and there
@@ -192,10 +210,12 @@ type Laid = { h: number; draw: (y: number, stepOf?: StepOf) => void };
 /** A group's band at `z`: the rail and the answers side by side, drawn from `y`. */
 function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const t = c.t;
-  const kick = labelSize(t, stage);
   const sub = z.sub;
   const railTitleH = measureAt(c, g.title, RAIL.w, sub, 500, 1.2);
-  const railH = Math.round(kick * 1.2) + 6 + railTitleH;
+  // The source title stacks under the kicker's measured lines, so a kicker that wraps pushes the
+  // title down rather than printing over it.
+  const kickH = kickerHeight(t, kickerWord(g));
+  const railH = kickH + 6 + railTitleH;
   const cols = answerColumns(t, stage, g.items);
   const line = Math.round(z.size * 1.3);
   const lineH = Math.max(line, z.badge);
@@ -242,11 +262,8 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const ansH = rows.reduce((a, b) => a + b, 0) + Math.max(0, rows.length - 1) * z.rowGap;
   const h = Math.max(railH, ansH);
   const draw = (y: number, stepOf: StepOf = () => undefined) => {
-    text(c, kickerWord(g), { x: RAIL.x, y, w: RAIL.w }, kick, 700, 1.2, {
-      color: t.colors.accent,
-      name: ANSWERS_NAMES.kicker,
-    });
-    text(c, g.title, { x: RAIL.x, y: y + Math.round(kick * 1.2) + 6, w: RAIL.w }, sub, 500, 1.2, {
+    kicker(c, kickerWord(g), y, kickH);
+    text(c, g.title, { x: RAIL.x, y: y + kickH + 6, w: RAIL.w }, sub, 500, 1.2, {
       color: t.colors.ink,
       name: ANSWERS_NAMES.source,
     });
@@ -321,6 +338,29 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
     });
   };
   return { h, draw };
+}
+
+/** The group's red caps kicker, a caption-preset box `h` tall (`kickerHeight`). */
+function kicker(c: Ctx, word: string, y: number, h: number) {
+  const el = kit.text(
+    c,
+    word,
+    "body",
+    { x: RAIL.x, y, w: RAIL.w },
+    {
+      color: c.t.colors.accent,
+      weight: KICKER.weight,
+      name: ANSWERS_NAMES.kicker,
+    },
+  );
+  el.h = h;
+  el.style = {
+    ...el.style,
+    preset: KICKER.preset,
+    fontSize: kickerSize(c.t),
+    lineHeight: KICKER.lineHeight,
+  };
+  return el;
 }
 
 const kickerWord = (g: AnswerGroup) =>

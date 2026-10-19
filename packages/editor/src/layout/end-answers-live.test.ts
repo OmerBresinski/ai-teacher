@@ -43,8 +43,10 @@ function overlaps(slide: Slide, theme: Theme): string[] {
     .filter((e) => e.name !== "Heading")
     .map((e) => {
       const words = richDocToPlainText(e.doc);
-      const size = resolveFontSize(theme, "body", e.style?.fontSize);
-      const lines = countLines(words, "body", theme, e.w, e.style?.fontWeight, size);
+      // Measured as drawn: the kicker is a caption (caps, tracked), the rest body.
+      const preset = e.style?.preset ?? "body";
+      const size = resolveFontSize(theme, preset, e.style?.fontSize);
+      const lines = countLines(words, preset, theme, e.w, e.style?.fontWeight, size);
       return {
         words,
         x: e.x,
