@@ -87,6 +87,11 @@ export type CanvasProps = {
    * reserved width (`shell-layout.ts`, rule 3), so opening the pane only recentres the slide.
    */
   fitInset?: number;
+  /**
+   * False keeps the slide's floating controls (toolbar, actions, tabs) closed while the slide stays
+   * editable: the hand-over from writing waits for the teacher (UX audit J1).
+   */
+  controls?: boolean;
 };
 
 /** Air kept between the slide and a pane lying over the canvas. */
@@ -116,6 +121,7 @@ export function Canvas({
   bubble = true,
   fitInset = 0,
   readOnly = false,
+  controls = true,
 }: CanvasProps) {
   const lesson = useLesson();
   const zoom = useZoom();
@@ -497,7 +503,7 @@ export function Canvas({
       </div>
 
       {/* A slide the generating job is still writing has no floating controls (ADR 0037). */}
-      {readOnly ? null : (
+      {readOnly || !controls ? null : (
         <>
           {/* A click on the slide's floating controls must not blur the canvas — that would disable
               `useCanvasKeys` until the canvas is clicked again. Suppressing the mousedown's default
