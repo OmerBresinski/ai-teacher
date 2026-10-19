@@ -27,7 +27,14 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
-import { composeCover } from "../cover-comps";
+import {
+  composeCover,
+  composeCoverFallback,
+  coverDropsQuestion,
+  coverOver,
+  coverTitleDoc,
+  hasCoverFallback,
+} from "../cover-comps";
 import { uid } from "../factories";
 import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
@@ -1932,6 +1939,9 @@ function layoutOnce(
   const pts = raw.map(pointText);
   switch (tpl) {
     case "title": {
+      // Greg's call 36: no question on a photo-right or Beacon picture cover (`coverDropsQuestion`).
+      if (input.lead && input.figure && "photo" in input.figure && coverDropsQuestion(c.t))
+        input = { ...input, lead: undefined };
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
       // The ground is the look's cover colour: the accent, or a v2 theme's deep (Paper's wine).
@@ -2044,10 +2054,34 @@ function layoutOnce(
       }
       if (total > 444) c.over.push(`title ${total}/444pt`);
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
+      // The accent word (cover5 `.title em`) in the accent: each composition recolours it to its
+      // own (the title accent, a band's yellow). The flat type card has no accent word (it is set
+      // on the accent), and Geometric's cover is pinned to its gold check (post-582) as it is.
+      const comp = surfacesOf(c.t).marks.cover;
+      const photo = !!f && "photo" in f;
+      const fallback = !photo && hasCoverFallback(c.t);
+      if (input.accentWord && comp !== "shape" && ((photo && comp !== "type") || fallback))
+        titleEl.doc = coverTitleDoc(input.heading, input.accentWord, c.t.colors.accent);
+      // A picture-failed cover takes the theme's own fallback (round 5 `coverFallback`).
+      if (fallback) {
+        const plain = c.els.map((e) =>
+          e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
+            ? { ...e, style: { ...e.style, color: undefined, valign: "top" as const } }
+            : e,
+        );
+        const own = composeCoverFallback(
+          { id: "cover", kind: "title", elements: plain, background: {} } as Slide,
+          c.t,
+        );
+        if (own) {
+          background = own.background;
+          c.els.splice(0, c.els.length, ...own.elements);
+        }
+      }
       // A theme with its own cover composition (Geometric's hexagon, `marks.cover`) sets a
       // generated cover in it, as the look does a hand-made one: on its own ground (dot grid), the
       // title and question in the theme's ink, the photo in the composition's frame.
-      if (f && "photo" in f && surfacesOf(c.t).marks.cover !== "type") {
+      if (photo && comp !== "type") {
         background = {};
         const plain = c.els.map((e) =>
           e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
@@ -2059,6 +2093,12 @@ function layoutOnce(
           c.t,
         );
         c.els.splice(0, c.els.length, ...composed.elements);
+      }
+      // A composed cover (not Geometric's, pinned as it was) reports on its own boxes: the plain
+      // column's measure above no longer describes what is drawn (TEACH-215 part g).
+      if ((fallback || (photo && comp !== "type")) && comp !== "shape") {
+        const kept = c.over.filter((o) => !o.startsWith("title "));
+        c.over.splice(0, c.over.length, ...kept, ...coverOver(c.els, c.t));
       }
       break;
     }
