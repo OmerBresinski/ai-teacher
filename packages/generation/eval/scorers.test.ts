@@ -12,6 +12,7 @@ import {
   judgeImages,
   modelFindingsScorer,
   rubricJudgeInput,
+  rubricJudgeScorer,
   rubricMean,
   schemaScorer,
   scoreLesson,
@@ -293,6 +294,32 @@ describe("worksheetValueAdd without a worksheet", () => {
     expect(off.worksheetValueAdd).toBeNull();
     expect(on.worksheetValueAdd).toBe(2);
     expect({ ...off, worksheetValueAdd: on.worksheetValueAdd }).toEqual(on);
+  });
+});
+
+describe("rubric judge scorer: nothing scored is unscored, never 0", () => {
+  test("an answer with no scored dimension (the schema refuses it) is notScorable, and the lesson's rubric null", async () => {
+    const none = Object.fromEntries(RUBRIC_DIMENSIONS.map((d) => [d, null]));
+    const run = { input: "fixture", output: { lesson: generatedLesson() } };
+    const scorer = await rubricJudgeScorer(
+      judgeOn(createFakeAi({ script: [rubricJson(4, none)] })),
+    ).run(run);
+    expect(scorer.score).toBeUndefined();
+    expect(scorer.notScorable).toBeDefined();
+    const scored = await scoreLesson(
+      "fixture",
+      { lesson: generatedLesson() },
+      judgeOn(createFakeAi({ script: [rubricJson(4, none)] })),
+    );
+    expect(scored.scores.rubric).toBeNull();
+  });
+
+  test("a scored lesson still returns its mean as the scorer's score", async () => {
+    const run = { input: "fixture", output: { lesson: generatedLesson() } };
+    const scorer = await rubricJudgeScorer(judgeOn(createFakeAi({ script: [rubricJson(4)] }))).run(
+      run,
+    );
+    expect(scorer.score).toBe(4);
   });
 });
 
