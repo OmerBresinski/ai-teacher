@@ -38,6 +38,10 @@ function advancesFor(
   // An italic quote face measures in its own advances when the font has them (TEACH-75 part ab).
   const table = key ? ((italic ? ITALIC_ADVANCES[key] : undefined) ?? ADVANCES[key]) : undefined;
   if (!table) return undefined;
+  // An 800 face (Paper's and Poster's headings) reads its own advances: Lexend at 800 is about 2%
+  // wider than at 700, enough that a name measured on one line wrapped onto two in the browser and
+  // printed over the line under it (TEACH-215 part m).
+  if (weight >= 750) return table[800];
   if (weight >= 650) return table[700];
   // A quote run at 500 reads its own 500 advances (TEACH-75 part ab); everything else keeps the
   // 600 table at 500, so laid-out lessons stay byte-identical.
