@@ -125,12 +125,17 @@ export function headingWords(stage: WriterStage): number {
  * Each slot's generated text at a stage: `heading` (words), each fit layout's and activity's
  * `Fits: ….`, and `plan-share` (the flow step's headroom, `PLAN_SHARE`).
  */
-export function fitSlots(stage: WriterStage): Record<string, string> {
+export function fitSlots(
+  stage: WriterStage,
+  /** Fits a pack routes elsewhere (`PilotPack.routedFits`): not sent, so not in the Fits. */
+  routed: readonly string[] = [],
+): Record<string, string> {
   const offer = fitOffer(stage);
   const $defs: J = {};
   for (const layout of FIT_LAYOUTS)
     for (const [k, def] of fitDefs(stage, layout))
-      if (offer[layout]?.includes(k.slice(layout.length + 1))) $defs[k] = def;
+      if (offer[layout]?.includes(k.slice(layout.length + 1)) && !routed.includes(k))
+        $defs[k] = def;
   const { heading } = fitsLines({ $defs }, stage, { namedLabels: true, pack: true });
   if (!heading) throw new Error(`fit fits: no heading cap at ${stage}`);
   const out: Record<string, string> = { heading: String(heading) };
@@ -154,9 +159,13 @@ export function fitSlots(stage: WriterStage): Record<string, string> {
  * A template's `{{fits:<name>}}` slots filled for a stage. Throws on a missing, repeated or
  * unknown slot, so no Fits can ship hand-typed or unfilled.
  */
-export function withFits(template: string, stage: WriterStage): string {
+export function withFits(
+  template: string,
+  stage: WriterStage,
+  routed: readonly string[] = [],
+): string {
   let out = template;
-  for (const [name, text] of Object.entries(fitSlots(stage))) {
+  for (const [name, text] of Object.entries(fitSlots(stage, routed))) {
     const slot = `{{fits:${name}}}`;
     if (out.split(slot).length !== 2)
       throw new Error(`writer system: ${slot} must appear exactly once`);

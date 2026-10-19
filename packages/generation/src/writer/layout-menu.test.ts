@@ -19,6 +19,7 @@ import {
 } from "./layout-menu";
 import { PILOT_PACKS } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
+import { WAVE_C_ROUTED_FITS } from "./wave-c";
 
 /*
  * The menu lines read back against the renderer's measured tables (TEACH-110 part s). Every number
@@ -215,7 +216,7 @@ describe("writer system text", () => {
           template.includes(`\n- ${layout}: `),
           `${ks} template holds a copy of ${layout}`,
         ).toBe(false);
-      const text = withFits(assembleWriterSystem(template, stage), stage);
+      const text = withFits(assembleWriterSystem(template, stage), stage, WAVE_C_ROUTED_FITS);
       for (const menu of Object.values(LAYOUT_WRITER_MENUS))
         expect(text.split("\n")).toContain(menu[stage]);
       // A deliberate change regenerates the snapshot from assembleWriterSystem, never by hand.
