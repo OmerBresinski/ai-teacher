@@ -1285,4 +1285,119 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     const foreign = await app.request(`/documents/${lessonId}`, { headers: headers(wsB) });
     expect(foreign.status).toBe(404);
   });
+
+  describe("POST /lessons/:id/resume (UX-A: Try again after a failed generation)", () => {
+    const post = (ws: WorkspaceId | null, id: string) =>
+      app.request(`/lessons/${id}/resume`, {
+        method: "POST",
+        headers: ws ? headers(ws, { "content-type": "application/json" }) : {},
+      });
+    type Accepted = { jobId: JobId };
+
+    /** A confirmed lesson whose job stopped: at `planned`, unlocked unless `lockedBy`. */
+    async function seedStopped(
+      opts: {
+        ws?: WorkspaceId;
+        lockedBy?: JobId;
+        finished?: boolean;
+        state?: "proposed" | "confirmed";
+      } = {},
+    ) {
+      const { artefacts: _artefacts, ...base } = generatedLesson();
+      const { completedAt: _done, ...generation } = base.generation as NonNullable<
+        Lesson["generation"]
+      >;
+      const lesson: Lesson = {
+        ...base,
+        brief: { topic: "The water cycle", durationMin: 60, slideCount: 10 },
+        facts: lessonFacts(),
+        generation: {
+          ...generation,
+          stage: "planned",
+          ...(opts.finished ? { completedAt: new Date().toISOString() } : {}),
+        },
+        plan: {
+          revision: 1,
+          state: opts.state ?? "confirmed",
+          jobId: newId<JobId>(),
+          confirmedAt: new Date().toISOString(),
+        },
+      };
+      const row = await createDocument(forWorkspace(unsafeDb, opts.ws ?? wsA), "lesson", lesson, {
+        ...(opts.lockedBy ? { generatingJobId: opts.lockedBy } : {}),
+      });
+      return row.id as LessonId;
+    }
+
+    test("202: the lesson is locked to a new lesson.generate job, queued as a confirmation queues it", async () => {
+      const lessonId = await seedStopped();
+      const res = await post(wsA, lessonId);
+      expect(res.status).toBe(202);
+      const { jobId } = (await res.json()) as Accepted;
+      // The same payload as `/generate`: the worker resumes from the checkpoint, and its budget
+      // counts the usage the failed run already recorded (`generation.usage`).
+      expect(await jobData("lesson.generate", jobId)).toMatchObject({
+        jobId,
+        workspaceId: wsA,
+        payload: { lessonId, revision: 1 },
+      });
+      const row = await getDocument(forWorkspace(unsafeDb, wsA), lessonId);
+      expect(row?.generatingJobId === jobId || row?.generatingJobId === null).toBe(true);
+    });
+
+    test("a double click starts one job: the second request is 409 generating", async () => {
+      const lessonId = await seedStopped();
+      const [a, b] = await Promise.all([post(wsA, lessonId), post(wsA, lessonId)]);
+      expect([a.status, b.status].sort()).toEqual([202, 409]);
+      const refused = a.status === 409 ? a : b;
+      expect(await errorOf(refused)).toMatchObject({ reason: "generating" });
+      const accepted = (await (a.status === 202 ? a : b).json()) as Accepted;
+      // The refusal names the job that won: the lock was taken once, so one job was queued.
+      expect(await jobData("lesson.generate", accepted.jobId)).toBeDefined();
+      const lock = (await getDocument(forWorkspace(unsafeDb, wsA), lessonId))?.generatingJobId;
+      expect(lock === accepted.jobId || lock === null).toBe(true);
+    });
+
+    test("refused while a job holds the lesson, before the plan is confirmed, and once it is finished", async () => {
+      const locked = await seedStopped({ lockedBy: newId<JobId>() });
+      const running = await post(wsA, locked);
+      expect(running.status).toBe(409);
+      expect(await errorOf(running)).toMatchObject({ reason: "generating" });
+      for (const lessonId of [
+        await seedStopped({ state: "proposed" }),
+        await seedStopped({ finished: true }),
+      ]) {
+        const res = await post(wsA, lessonId);
+        expect(res.status).toBe(409);
+        expect(await errorOf(res)).toMatchObject({ reason: "planning" });
+      }
+    });
+
+    test("another Workspace's lesson, an unknown id and a worksheet are 404; no session is 401", async () => {
+      const lessonId = await seedStopped();
+      const sheet = await createDocument(
+        forWorkspace(unsafeDb, wsA),
+        "worksheet",
+        generatedWorksheet(),
+      );
+      expect((await post(wsB, lessonId)).status).toBe(404);
+      expect((await post(wsA, newId())).status).toBe(404);
+      expect((await post(wsA, sheet.id)).status).toBe(404);
+      expect((await post(null, lessonId)).status).toBe(401);
+      // Nothing was locked by the refusals.
+      expect(
+        (await getDocument(forWorkspace(unsafeDb, wsA), lessonId))?.generatingJobId,
+      ).toBeNull();
+    });
+
+    test("it shares the workspace's model-call limit with /generate", async () => {
+      const limited = createApp({ env: TEST_ENV, db: t.db, logger: silentLogger, jobs: jobsCtx });
+      const path = `/lessons/${newId()}/resume`;
+      const call = () => limited.request(path, { method: "POST", headers: headers(wsA) });
+      for (let i = 0; i < 30; i++) expect((await call()).status).toBe(404);
+      const over = await call();
+      expect(over.status).toBe(429);
+      expect(await errorOf(over)).toMatchObject({ code: "rate_limited" });
+    });
+  });
 });

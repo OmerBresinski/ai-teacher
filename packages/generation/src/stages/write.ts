@@ -555,10 +555,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     if (error instanceof WriterIncompleteError || streamed) {
       // Slides whose words were done stay (ADR 0037: they are the teacher's) and stay `done`, so
       // a retry keeps them as they are (TEACH-312 part j); the rest go back to the plan, and no
-      // slide stays `writing` once the job has stopped. A writer that ran out of length (K3)
-      // shipped no valid deck, so this run's streamed slides go back to the plan too (a slide the
-      // teacher edited is still kept by the merge); an earlier attempt's finished slides stay.
-      if (error instanceof WriterIncompleteError) closed.clear();
+      // slide stays `writing` once the job has stopped. That holds for a writer that ran out of
+      // length or broke off (K3) too: a slide is closed only once the writer moved past it, so
+      // its words are whole; only the slide still being written goes back (UX-A: the screen
+      // promises what was written is kept, and Try again resumes after these slides).
       const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
       const keep = Array.from({ length: count }, (_, i) => {
         const saved = lesson.slides[i];

@@ -30,7 +30,9 @@ export function StoppedNotice({
     <div
       role="status"
       data-stopped-notice={outcome}
-      className="fixed top-14 left-1/2 z-40 flex w-[min(640px,calc(100vw-32px))] -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-background py-2 pr-2 pl-4 text-sm text-foreground shadow-md"
+      // Bottom left of the canvas, above the slide strip, where "Follow writing" sat: clear of the
+      // slide's toolbar (top of the canvas) and of the zoom row (bottom right).
+      className="fixed bottom-[120px] left-16 z-40 flex w-[min(560px,calc(100vw-96px))] items-center gap-3 rounded-lg border border-border bg-background py-2 pr-2 pl-4 text-sm text-foreground shadow-md"
     >
       <p className="m-0 flex-1">
         {failed ? FAILED_NOTICE : STOPPED_NOTICE}
