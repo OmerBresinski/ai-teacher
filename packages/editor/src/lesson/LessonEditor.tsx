@@ -47,6 +47,7 @@ import { EditChatPane, EditChatProvider } from "./edit-chat/EditChatPane";
 import { type EditChatApi, EditChatContext } from "./edit-chat/edit-chat-context";
 import { readPaneOpen, writePaneOpen } from "./edit-chat/thread";
 import { FactsPanel } from "./FactsPanel";
+import { useFirstSlidesReveal, useRevealCurrent } from "./first-slides-reveal";
 import { FollowMarkContext } from "./follow-mark";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
@@ -299,6 +300,13 @@ export function LessonEditor({
     [lesson?.artefacts?.worksheetId, worksheet],
   );
   const lead = useDraftLead(drafts);
+  // A new lesson's title and objectives type out while the writer plans (presentation only).
+  const reveal = useFirstSlidesReveal({
+    slides: lesson?.slides,
+    writingSlideIds,
+    leadIndex: lead === undefined ? -1 : (lesson?.slides.findIndex((s) => s.id === lead) ?? -1),
+  });
+  const revealing = useRevealCurrent(reveal);
   // The slide being written now: the streaming slide, while the job still owns it.
   const writingNowId = lead !== undefined && writingSlideIds?.has(lead) ? lead : undefined;
   const proposals = useMemo<ProposalsApi>(
@@ -314,14 +322,16 @@ export function LessonEditor({
             writingSlideIds,
             writingNowId,
             drafts,
+            reveal,
           }
         : writingSlideIds
-          ? { ...NO_PROPOSALS, writingSlideIds, writingNowId, drafts }
+          ? { ...NO_PROPOSALS, writingSlideIds, writingNowId, drafts, reveal }
           : NO_PROPOSALS,
     [
       writingSlideIds,
       writingNowId,
       drafts,
+      reveal,
       proposalsEnabled,
       onFactsChanged,
       onRegenerate,
@@ -521,6 +531,7 @@ export function LessonEditor({
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
   const follow = useFollowWriting({
     lead,
+    revealing,
     slides: lesson?.slides,
     writingSlideIds,
     activeSlideId: session.state.activeSlideId,
@@ -742,6 +753,7 @@ export function LessonEditor({
                                           slideId={slide?.id}
                                           slide={slide}
                                           writing={!!slide && !!writingSlideIds?.has(slide.id)}
+                                          reveal={reveal}
                                           render={(shown, live) => (
                                             <Canvas
                                               readOnly={
