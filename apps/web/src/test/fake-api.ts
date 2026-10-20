@@ -346,6 +346,19 @@ export class FakeApi {
     if (segments[0] === "lessons" && segments[2] === "generate" && method === "POST") {
       return this.confirmLesson(segments[1] ?? "", body);
     }
+    if (segments[0] === "lessons" && segments[2] === "resume" && method === "POST") {
+      // `POST /lessons/:id/resume` (UX-A): lock the stopped lesson to a new job.
+      const row = this.rows.get(segments[1] ?? "");
+      if (row?.kind !== "lesson") return error(404, "not_found", "That document does not exist.");
+      if (row.generatingJobId !== null)
+        return error(409, "conflict", "This lesson is still being written.", {
+          reason: "generating",
+        });
+      const jobId = this.nextProposalJobId ?? newId();
+      this.nextProposalJobId = null;
+      row.generatingJobId = jobId;
+      return json(202, { jobId });
+    }
     if (segments[0] === "lessons" && segments[2] === "plan" && method === "POST") {
       const row = this.rows.get(segments[1] ?? "");
       if (!row) return error(404, "not_found", "That document does not exist.");

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai/testing";
-import type { Lesson, Slide } from "@tj/domain/documents";
+import { type Lesson, type Slide, SlideSchema } from "@tj/domain/documents";
 import pino from "pino";
 import { labAi, romansLesson } from "../planner/testing";
 import { initialState, type RecordedDeps, recordingDeps, writerFixture } from "../testing";
@@ -17,14 +17,23 @@ import { hasEditableDeck, write } from "./write";
  */
 
 const fixture = writerFixture();
-function writerAi(stream = { pieceChars: 120, paceMs: 15 }, notes: "ok" | "fail" = "ok") {
+function writerAi(
+  stream = { pieceChars: 120, paceMs: 15 },
+  notes: "ok" | "fail" = "ok",
+  /** Cut the writer's output to this share of its characters (a stream that breaks off). */
+  cut?: number,
+) {
   const calls = { lesson: 0 };
   const answers = (call: FakeCall) => {
     const v = call.context?.promptVersion ?? "";
     if (!v.startsWith(`${WRITER_VERSION}/`)) return undefined;
     if (v.endsWith("/lesson")) {
       calls.lesson += 1;
-      return { text: fixture.main, stream };
+      const text = cut
+        ? fixture.main.slice(0, Math.floor(fixture.main.length * cut))
+        : fixture.main;
+      // A cut stream ends as the token cap ends it (K3: `finish_reason length`).
+      return { text, stream, ...(cut ? { finishReason: "length" as const } : {}) };
     }
     if (v.endsWith("/notes")) return notes === "ok" ? fixture.notes : "not json";
     if (v.endsWith("/objectives"))
@@ -214,4 +223,46 @@ describe("hasEditableDeck", () => {
     ).toBe(false);
     expect(hasEditableDeck({ ...stored, generation: { ...g, editableAt: undefined } })).toBe(false);
   });
+});
+
+describe("UX-A: a writer that breaks off mid-stream", () => {
+  test("keeps every finished slide (never the half-written one), and the retry resumes after them", async () => {
+    const planned = await plannedState();
+    // The writer runs out of length part-way: its JSON never closes (WriterIncompleteError).
+    const broken = writerAi({ pieceChars: 60, paceMs: 5 }, "ok", 0.6);
+    const a0 = recordingDeps(broken.ai);
+    let shownDone = 0;
+    const save = a0.persist;
+    a0.persist = async (lesson, worksheet) => {
+      const states = lesson.generation?.slideStates ?? {};
+      const done = lesson.slides.filter((s, i) => i >= 2 && states[s.id] === "done").length;
+      shownDone = Math.max(shownDone, done);
+      return save(lesson, worksheet);
+    };
+    await expect(write(planned, a0)).rejects.toThrow(/incomplete/);
+    await new Promise((r) => setTimeout(r, 300));
+    const stored = a0.persisted.at(-1)?.lesson as Lesson;
+    const states = stored.generation?.slideStates ?? {};
+    const finished = stored.slides.filter((s, i) => i >= 2 && states[s.id] === "done");
+    // Every slide the stream finished is still there and done; nothing is left `writing`.
+    // The fixture cut at 60% has streamed past two body slides: those two, exactly, are kept.
+    expect(shownDone).toBe(2);
+    expect(finished.length).toBe(2);
+    for (const slide of finished) expect(SlideSchema.safeParse(slide).success).toBe(true);
+    expect(Object.values(states)).not.toContain("writing");
+    expect(stored.slides.length).toBe(4);
+    expect(stored.generation?.stage).toBe("planned");
+
+    // Try again: the finished slides stand, in place, and the rest follows them once each.
+    const retry = recordingDeps(writerAi().ai);
+    const out = await write({ ...planned, lesson: stored }, retry);
+    expectFinishedUntouched(stored, retry);
+    const ids = out.lesson.slides.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Each finished slide sits where it was (the plan's title and objectives slides are the
+    // writer's to replace, as on any run).
+    for (const slide of finished) expect(ids.indexOf(slide.id)).toBe(stored.slides.indexOf(slide));
+    expect(out.lesson.slides.length).toBeGreaterThan(stored.slides.length);
+    expect(out.lesson.generation?.stage).toBe("generated");
+  }, 20_000);
 });

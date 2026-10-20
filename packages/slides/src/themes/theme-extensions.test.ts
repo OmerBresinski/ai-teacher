@@ -84,11 +84,11 @@ describe("(c) the emphasis colour", () => {
 });
 
 describe("(d) outlined proof icons", () => {
-  test("only Geometric and Poster outline their proof medals' icons in ink", () => {
-    // Poster's myth gold draws its proof icons outlined on tile medals (TEACH-215 part k).
-    const inked = new Set(["geometric", "poster"]);
+  test("every theme outlines its library icons in ink", () => {
+    // Every round 5 gold draws the pilot library, outlined (THEME-AUDIT-r2 #1; Poster's tile
+    // medals since TEACH-215 part k, Geometric's since part c).
     expect(surfacesOf(geo).marks.iconOutline).toBe(true);
-    for (const t of others) expect(surfacesOf(t).marks.iconOutline).toBe(inked.has(t.id));
+    for (const t of others) expect([t.id, surfacesOf(t).marks.iconOutline]).toEqual([t.id, true]);
   });
 });
 

@@ -96,15 +96,19 @@ test.describe("lesson generation over the fake worker", () => {
     // slide is the first persist, so its thumb means the worker has the job.
     await expect(banner.locator("[data-slide-thumb]").first()).toBeVisible({ timeout: 20_000 });
     await banner.getByRole("button", { name: "Stop" }).click();
-    await expect(banner).toHaveAttribute("data-state", "cancelled", { timeout: 20_000 });
-    await expect(page.getByTestId("generating-stage")).toHaveText("Generation stopped.");
-    await expect(page.getByTestId("generating-lock")).toHaveText(
-      "Stopped. What was written is kept.",
-    );
-    await expect(banner.getByRole("button", { name: "Stop" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Rename lesson" })).toHaveCount(0);
-    await expectNoSeriousA11yViolations(page, "generating shell (cancelled)");
-    await banner.getByRole("button", { name: "Back to library" }).click();
+    // Greg 60 A (UX-A): Stop keeps the teacher in the editor with every slide written so far and a
+    // plain notice; nothing more is written, so there is no Try again.
+    const notice = page.locator('[data-stopped-notice="cancelled"]');
+    await expect(notice).toBeVisible({ timeout: 20_000 });
+    await expect(notice).toContainText("Stopped. The slides written so far are here to edit.");
+    await expect(notice.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    await expect(banner).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+    const rail = page.getByRole("listbox", { name: "Slides" });
+    await expect(rail.getByRole("option").first()).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "editor after Stop");
+    await page.getByRole("button", { name: "Back to library" }).click();
     await expect(page).toHaveURL(/\/(lessons)?$/);
   });
 });

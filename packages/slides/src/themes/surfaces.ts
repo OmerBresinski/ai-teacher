@@ -82,6 +82,8 @@ export type SurfaceStyle = {
   tilt?: number;
 };
 
+/** The roles drawn square when they bleed off the slide (the golds' fields: radius 0). */
+const BLEED_SQUARE: ReadonlySet<SurfaceRole> = new Set(["field-a", "field-b"]);
 /** The roles whose notch cuts all four corners (Geometric's fields and plate). */
 const ALL_CUT = new Set<SurfaceRole>(["field-a", "field-b", "plate"]);
 
@@ -513,6 +515,22 @@ export function titleBand(
 export const surfacesOf = (theme: Pick<Theme, "id" | "dark">): ThemeSurfaces =>
   SURFACES[tableId(theme)] as ThemeSurfaces;
 
+/**
+ * The worked answer plate's own edge, from the theme's `plate-lw` and `plate-radius` tokens (the
+ * golds' `--plate-lw` / `--plate-radius`, CSS px at 1440 wide) in points. A theme without them
+ * (Paper, whose gold is the roles.css default) leaves the layout's own.
+ */
+export function plateOf(theme: Pick<Theme, "id" | "dark">): {
+  lineWidth?: number;
+  radius?: number;
+} {
+  const t = SURFACE_TOKENS[tableId(theme)];
+  const pt = (k: string) => (t?.[k] ? Math.round(pxToPt(px(t[k])) * 100) / 100 : undefined);
+  const lineWidth = pt("plate-lw");
+  const radius = pt("plate-radius");
+  return { ...(lineWidth != null ? { lineWidth } : {}), ...(radius != null ? { radius } : {}) };
+}
+
 /** The least contrast the dim tone keeps on its ground (ruling 248, WCAG AA body text). */
 export const DIM_CONTRAST = 4.5;
 
@@ -755,7 +773,14 @@ export function paintSurface(
       ...extra,
     };
   }
-  const r = cornerRadii(style, box, spec.own);
+  // A field that runs off the slide is square (every gold's `--fa-radius` / `--fb-radius: 0px`):
+  // rounding it shows a gap at the slide's edge, a floating card (THEME-AUDIT-r2 #3). A layout
+  // that names its own rounded corners (a half panel's inner pair) keeps them.
+  const bleeds =
+    BLEED_SQUARE.has(spec.role) &&
+    !spec.own?.some((c) => c > 0) &&
+    Object.values(innerSides(box)).some((v) => !v);
+  const r: Corners = bleeds ? [0, 0, 0, 0] : cornerRadii(style, box, spec.own);
   const same = r.every((c) => c === r[0]);
   if (style.corner === "full" && box.w === box.h) {
     return { ...base, type: "shape", shape: "ellipse", fill, ...lines, ...extra };

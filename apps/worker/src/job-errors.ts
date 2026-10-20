@@ -1,4 +1,5 @@
 import { BudgetReservationError, isAiError } from "@tj/ai";
+import { BUDGET_STOP_MESSAGE_PREFIX } from "@tj/domain";
 import {
   BudgetExceeded,
   InputRejected,
@@ -18,8 +19,8 @@ export function publicJobFailure(error: unknown): string | undefined {
   if (isBudgetRefusal(original)) {
     const by = budgetCap(original);
     return by === "tokens"
-      ? "lesson budget exceeded (tokens cap)"
-      : "lesson budget exceeded (usd cap)";
+      ? `${BUDGET_STOP_MESSAGE_PREFIX} (tokens cap)`
+      : `${BUDGET_STOP_MESSAGE_PREFIX} (usd cap)`;
   }
   if (isAiError(original, "unconfigured") || isAiError(original, "invalid_model")) {
     return "AI generation is not available. Please try again later.";
