@@ -44,6 +44,54 @@ determined independently by cancellation/shutdown and `NonRetryableError`. Previ
 terminal failures are not copied verbatim into new pg-boss outputs. Historical records and sink
 retention require their own retention/incident decision; this change does not delete them.
 
+## Amendment (per-lesson debug records, 2026-10-20)
+
+Greg decided on 20 Oct 2026: every lesson's generation keeps a **debug record for 30 days**, so a
+bad production lesson can be root-caused without re-running it. Until now the worker kept only
+pino lines on Railway (no `lessonId` on most of them), never the writer's raw output, counts but
+not the faults behind them, and `safeError`'s class and code for a failed job.
+
+- **What is stored.** A tenant table `generation_debug` (migration `0013`): `workspace_id`,
+  `lesson_id`, `job_id`, `attempt`, `seq`, `kind`, nullable `slide_index`, `payload jsonb`,
+  `created_at`, indexed on `(workspace_id)` (tenancy), `(lesson_id, created_at)` (one lesson's
+  timeline) and `(created_at)` (the TTL delete). The writer path records its raw streamed
+  output, the objectives or plan, each slide's check (fault lines and measured overflows), each
+  repair, fit or restage attempt (slide before and after, accepted, rejected or reverted), each
+  split, each picture-director decision (the director's answer, queries, choice, outcome), every
+  fact check in full (Verify: the facts checked, each correction with its reason, applied or
+  dropped, field before and after, model, latency, cost, and whether the list was capped or the
+  call skipped; on the writer path the code checks gas8, figure-sync and figure-text, per slide,
+  with the slide's words before and after), the call that tripped the budget stop, a stage's
+  thrown error, and a failed attempt's **full error with message, stack and cause chain**. The writer stage's structured
+  events are copied in too, so one table holds the whole timeline.
+- **Content in our own database, for 30 days.** This is not a new data class: the lesson body,
+  which holds the same teaching content, is already stored in `documents`. Rows are kept for
+  `GENERATION_DEBUG_TTL_DAYS` (default 30) and deleted by the worker's daily
+  `generation.debug-cleanup` pg-boss cron; deleting the Workspace or hard-deleting the lesson
+  removes them at once (FK cascades). The record is **never sent to a third party**: it is not
+  logged, not in any job event, not in pg-boss outputs, not sent to PostHog or any analytics
+  sink, and not returned by any API route. It is read only by `tools/lesson-debug`, with database
+  access.
+- **Every model request, whole.** One `model-call` row per request, retries included (each
+  attempt its own row), captured once by `@tj/ai`'s capture middleware (`withCallCapture`), which
+  the lesson and worksheet jobs wrap around their `ai`: the system prompt, the messages, the
+  schema and tool names, model, effort and settings, the full response text and finish reason,
+  usage, cost and latency, keyed by `lessonId`, `jobId`, stage and prompt version. Pictures sent
+  to a model are kept as their media type and size only.
+- **Logs are unchanged.** The no-content rule for logs stands, and so does `safeError` for log
+  lines, job events and pg-boss outputs: the full error goes to `generation_debug` only. Every log
+  line of a lesson job now carries `lessonId` (the job logger's child bindings).
+- **Never on the lesson's path.** Records are snapshotted, capped at 128 KiB of JSON per row
+  (about twice the largest writer `model-call` row; over it the longest strings are cut and the
+  row is marked `truncated: true` with its original size and the cut fields), at most 5000 rows
+  per attempt, and written
+  in batches off the pipeline, on the worker's own one-connection debug pool, within a 32 MiB
+  per-worker budget for buffered and in-flight rows; a failed or slow write is one warn line and never fails, slows or
+  changes a lesson. The last batch is written after the job's terminal event.
+- **Cost warning.** `AI_LESSON_COST_WARN_USD` (ADR 0033) defaults to 0.12, about 1.5 times the
+  median real writer lesson in the lab ($0.079 over 20 lessons on pack v4.8); 0.03 warned on every
+  writer lesson.
+
 ## Consequences
 
 - Boot-time failures are explicit and readable.

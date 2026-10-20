@@ -1,0 +1,401 @@
+{
+  "lesson": {
+    "id": "0192f7a0-0000-7000-8000-000000000011",
+    "workspaceId": "0192f7a0-0000-7000-8000-00000000000a",
+    "title": "The Roman invasion",
+    "generatingJobId": null,
+    "updatedAt": "2026-10-20T09:01:30.000Z",
+    "generation": {
+      "stage": "planned",
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "usage": {
+        "calls": 4,
+        "costUsd": 0.0412
+      },
+      "findings": [],
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives"
+      }
+    },
+    "plan": {
+      "revision": 1,
+      "state": "confirmed",
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2"
+    },
+    "slides": [
+      {
+        "id": "s1",
+        "elements": []
+      },
+      {
+        "id": "s2",
+        "elements": [
+          {
+            "generatedFrom": {
+              "factRefs": ["v2"]
+            }
+          }
+        ]
+      },
+      {
+        "id": "s3",
+        "elements": []
+      },
+      {
+        "id": "s4",
+        "elements": []
+      },
+      {
+        "id": "s5",
+        "elements": []
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 1,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "type": "started",
+      "at": "2026-10-20T09:00:00.000Z",
+      "payload": {
+        "type": "started"
+      }
+    },
+    {
+      "id": 2,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "type": "completed",
+      "at": "2026-10-20T09:00:04.000Z",
+      "payload": {
+        "type": "completed"
+      }
+    },
+    {
+      "id": 3,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "started",
+      "at": "2026-10-20T09:00:10.000Z",
+      "payload": {
+        "type": "started"
+      }
+    },
+    {
+      "id": 4,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "progress",
+      "at": "2026-10-20T09:00:12.000Z",
+      "payload": {
+        "progress": {
+          "percent": 40,
+          "stage": "generate",
+          "message": "Writing slides"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "failed",
+      "at": "2026-10-20T09:00:40.000Z",
+      "payload": {
+        "error": {
+          "message": "The lesson could not be finished.",
+          "retryable": true
+        }
+      }
+    }
+  ],
+  "debug": [
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 0,
+      "kind": "model-call",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.000Z",
+      "payload": {
+        "context": {
+          "lessonId": "0192f7a0-0000-7000-8000-000000000011",
+          "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+          "stage": "write-frontier",
+          "promptVersion": "lesson-writer.v1/objectives",
+          "effort": "low"
+        },
+        "modelId": "openai/gpt-6.1-sol",
+        "provider": "openai.responses",
+        "mode": "generate",
+        "request": {
+          "system": ["You are the lesson writer."],
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Topic: the Roman invasion"
+                }
+              ]
+            }
+          ],
+          "schemaName": "objectives",
+          "responseFormat": "json",
+          "settings": {
+            "maxOutputTokens": 8000
+          }
+        },
+        "response": {
+          "text": "{\"objectives\":[\"Describe AD 43\"]}",
+          "finishReason": "stop"
+        },
+        "usage": {
+          "inputTokens": 1200,
+          "outputTokens": 300
+        },
+        "costUsd": 0.004,
+        "durationMs": 2900,
+        "ok": true
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 1,
+      "kind": "plan",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.500Z",
+      "payload": {
+        "stage": "objectives",
+        "plan": null,
+        "facts": {
+          "objectives": [
+            {
+              "id": "o1",
+              "text": "Describe AD 43"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 2,
+      "kind": "fact-check",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.800Z",
+      "payload": {
+        "checker": "verify",
+        "model": "openai/gpt-6-luna",
+        "attempts": 1,
+        "ms": 1800,
+        "usd": 0.0011,
+        "checked": ["v1", "v2", "r1"],
+        "corrections": [
+          {
+            "factId": "v2",
+            "field": "term",
+            "verdict": "corrected",
+            "reason": "wrong-term",
+            "correction": "Legion",
+            "applied": true,
+            "before": "Clan",
+            "after": "Legion"
+          },
+          {
+            "factId": "v9",
+            "field": "term",
+            "verdict": "corrected",
+            "reason": "wrong-term",
+            "correction": "X",
+            "applied": false,
+            "dropped": "failed the field, index or limit rules, or an off-topic starter",
+            "before": null,
+            "after": null
+          }
+        ],
+        "applied": 1,
+        "dropped": 1,
+        "capped": false
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 0,
+      "kind": "model-call",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:30.000Z",
+      "payload": {
+        "context": {
+          "lessonId": "0192f7a0-0000-7000-8000-000000000011",
+          "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+          "stage": "write",
+          "promptVersion": "lesson-writer.v1/lesson",
+          "effort": "low"
+        },
+        "modelId": "openai/gpt-6.1-sol",
+        "provider": "openai.responses",
+        "mode": "stream",
+        "request": {
+          "system": ["You are the lesson writer."],
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Write the lesson."
+                }
+              ]
+            }
+          ],
+          "schemaName": "lesson",
+          "responseFormat": "json",
+          "settings": {
+            "maxOutputTokens": 8000
+          }
+        },
+        "response": {
+          "text": "{\"slides\":[]}",
+          "finishReason": "length"
+        },
+        "usage": {
+          "inputTokens": 9000,
+          "outputTokens": 4000
+        },
+        "costUsd": 0.031,
+        "durationMs": 19000,
+        "ok": true
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 1,
+      "kind": "writer-output",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:30.001Z",
+      "payload": {
+        "text": "{\"slides\":[]}",
+        "finishReason": "length",
+        "usd": 0.031,
+        "ms": 19000
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 2,
+      "kind": "check",
+      "slideIndex": 2,
+      "createdAt": "2026-10-20T09:00:31.000Z",
+      "payload": {
+        "faults": ["overflow:body 18pt over"],
+        "over": [
+          {
+            "element": "body",
+            "by": 18
+          }
+        ]
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 3,
+      "kind": "repair",
+      "slideIndex": 2,
+      "createdAt": "2026-10-20T09:00:33.000Z",
+      "payload": {
+        "mode": "fit",
+        "ok": true,
+        "reverted": true,
+        "fix": "shortened",
+        "faultsBefore": ["overflow:body 18pt over"],
+        "faultsAfter": ["overflow:body 4pt over"],
+        "before": {},
+        "after": {}
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 4,
+      "kind": "picture",
+      "slideIndex": 4,
+      "createdAt": "2026-10-20T09:00:34.000Z",
+      "payload": {
+        "ask": "a Roman legionary",
+        "plan": "photo",
+        "outcome": "empty",
+        "via": "generated",
+        "reason": "generation-refused-or-failed"
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 7,
+      "kind": "fact-check",
+      "slideIndex": 3,
+      "createdAt": "2026-10-20T09:00:36.000Z",
+      "payload": {
+        "model": "code",
+        "usd": 0,
+        "checker": "gas8",
+        "claim": "every claimed gas volume is possible",
+        "verdict": "contradicted",
+        "reason": "gas8: 500 cm3 from 0.1 g Mg",
+        "applied": true,
+        "cleared": true,
+        "beforeText": "Magnesium makes 500 cm3 of hydrogen. Collect it in a syringe.",
+        "afterText": "Magnesium makes 90 cm3 of hydrogen. Collect it in a syringe.",
+        "ms": 0.4
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 8,
+      "kind": "fact-check",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:36.100Z",
+      "payload": {
+        "checker": "gas8",
+        "summary": true,
+        "slidesChecked": 5,
+        "flagged": 1,
+        "model": "code",
+        "usd": 0
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 5,
+      "kind": "budget-stop",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:39.000Z",
+      "payload": {
+        "name": "notes",
+        "model": "openai/gpt-6-luna",
+        "totals": {
+          "costUsd": 0.25
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 6,
+      "kind": "job-error",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:39.500Z",
+      "payload": {
+        "name": "BudgetExceeded",
+        "message": "lesson budget exceeded by $0.01",
+        "stack": "BudgetExceeded: lesson budget exceeded by $0.01\n    at call (packages/generation/src/call.ts:10:5)"
+      }
+    }
+  ]
+}

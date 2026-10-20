@@ -1,5 +1,6 @@
 import {
   BudgetReservationError,
+  costUsd,
   isAiError,
   isAnthropicModelId,
   isOpenAiModelId,
@@ -22,6 +23,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
+import { fullError, recordDebug } from "./debug";
 import type { PromptName } from "./prompts";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
@@ -70,7 +72,10 @@ export const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh"] as c
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
+  deps: Pick<
+    PipelineDeps,
+    "ai" | "budget" | "signal" | "logger" | "context" | "effortFor" | "debug"
+  >;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -361,6 +366,36 @@ export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodTy
 export const PROVIDER_RETRY_DELAY_MS = 1500;
 
 export async function callStructured<I, T>(
+  options: CallStructuredOptions<I, T>,
+): Promise<CallResult<T>> {
+  const sink = options.deps.debug;
+  if (!sink) return callStructuredOnce(options);
+  try {
+    return await callStructuredOnce(options);
+  } catch (error) {
+    // The calls themselves are recorded by `@tj/ai`'s capture middleware (`model-call`).
+    if (error instanceof BudgetExceeded)
+      recordDebug(sink, "budget-stop", {
+        name: options.prompt.version,
+        stage: options.stage,
+        cls: options.cls,
+        totals: options.deps.budget.totals(),
+        error: fullError(error),
+      });
+    throw error;
+  }
+}
+
+/** A call's cost for the debug record; null when the model has no price row or pricing throws. */
+export function callUsd(modelId: string, t: { input: number; output: number }): number | null {
+  try {
+    return costUsd(modelId, { inputTokens: t.input, outputTokens: t.output } as never);
+  } catch {
+    return null;
+  }
+}
+
+async function callStructuredOnce<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
   const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images } = options;
