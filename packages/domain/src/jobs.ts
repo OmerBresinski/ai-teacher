@@ -184,6 +184,17 @@ export type JobEventType = z.infer<typeof JobEventType>;
 
 /** Event types after which no further events are emitted for a job. */
 export const JOB_TERMINAL_EVENT_TYPES = ["completed", "failed", "cancelled"] as const;
+
+/**
+ * How every budget-stop failure message starts (the worker's `publicJobFailure`): the lesson spent
+ * its cap, so trying again cannot finish it (UX-A: no Try again, and `/resume` refuses).
+ */
+export const BUDGET_STOP_MESSAGE_PREFIX = "lesson budget exceeded";
+
+/** Whether a job's failure message is a budget stop. */
+export function isBudgetStopMessage(message: string | undefined): boolean {
+  return message?.startsWith(BUDGET_STOP_MESSAGE_PREFIX) === true;
+}
 export type JobTerminalEventType = (typeof JOB_TERMINAL_EVENT_TYPES)[number];
 
 /**
