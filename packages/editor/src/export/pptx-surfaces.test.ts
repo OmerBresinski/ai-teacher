@@ -235,7 +235,7 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
 
   it("decision 41 A: the PPTX ground draws the vine where the editor does, cut at the panel", () => {
     const t = atKeyStage(getTheme("treehouse"), "ks2");
-    const { slide: quick } = layoutTemplate(
+    const { slide: laid } = layoutTemplate(
       {
         template: "question-set",
         heading: "Quick check: the heart",
@@ -245,6 +245,7 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
       t,
       "ks2",
     );
+    const quick: Slide = { id: "q", ...laid };
     const [vine] = slideArtLayers(t, quick);
     expect(vine && vine.x === 906 && vine.y === 0 && vine.h < 330).toBe(true);
     const body = decodeURIComponent(
