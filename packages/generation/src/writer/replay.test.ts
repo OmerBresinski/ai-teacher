@@ -59,6 +59,13 @@ const UNSHOWN: Record<string, number[]> = {
  */
 const OBJECTIVE_KEPT: Record<string, number[]> = { "y2-maths-halves-quarters": [3] };
 /**
+ * UX-C J8: a slide still over its template's room after the fit rewords goes to continuation
+ * slides (`fit-continued`). The original y5 run shipped slide 5 "Find ¾ of 24" 26 pt over its
+ * equation column (354/328) after both rewords; its steps now continue on a second slide, so only
+ * its heading is compared (deck index, title = 0).
+ */
+const FIT_CONTINUED: Record<string, number[]> = { "y5-maths-fractions-of-amounts": [4] };
+/**
  * TEACH-247 part n (register diagrams-02): drawings the lab could not show because their labels
  * clashed now find clear spots and draw (y8 s3's family tree, y11 and y11-r2 s3's apparatus, y11-r2 s9's
  * worked-example drawing). The slide keeps
@@ -147,10 +154,19 @@ describe.each(LESSONS)("replay %s", (b) => {
     const out = await replayRun(b);
     const saved = savedSlides(b);
     const roles = rolesOf(b);
-    expect(out.slides.length).toBe(saved.length);
-    out.slides.forEach((s, i) => {
+    // A fit-continued slide's continuations are new since the lab (checked below), not compared.
+    const cont = (id: string) =>
+      (FIT_CONTINUED[b] ?? []).some((k) => new RegExp(`^s${k + 1}c\\d+$`).test(id));
+    const shown = out.slides.filter((s) => !cont(s.id));
+    expect(shown.length).toBe(saved.length);
+    shown.forEach((s, i) => {
       const want = saved[i] as El & { elements: El[] };
       const got = s.elements as unknown as El[];
+      if (FIT_CONTINUED[b]?.includes(i)) {
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        expect(out.slides.some((x) => x.id === `s${i + 1}c1`)).toBe(true);
+        return;
+      }
       if (b === "y1-science-animals-young-r2" && i === 5) {
         // splitOk: the landed single photos, each once, never the reroute's word table
         const photos = got.filter((e) => e.type === "image" && e.name === "Photo");

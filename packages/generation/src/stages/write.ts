@@ -18,6 +18,7 @@ import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
 import { withEndAnswers } from "../writer/materialise";
+import { overflowFindings, withOverflowFindings } from "../writer/overflow-findings";
 import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
@@ -617,8 +618,24 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
     stage: keyStage,
   });
+  const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
+  // UX-C J8: a slide the stage could not fit ships with a "things to check" finding, never silently.
+  const overflow = overflowFindings(out.overflow, shipped);
+  if (overflow.length)
+    deps.logger.warn(
+      { stage: "generate", slides: out.overflow.map((o) => o.slide) },
+      "slides shipped overflowing, flagged to check",
+    );
   const done = {
-    ...toLesson(shipped, "generated", allIn(shipped, "done")),
+    ...generated,
+    ...(generated.generation
+      ? {
+          generation: {
+            ...generated.generation,
+            findings: withOverflowFindings(generated.generation.findings, overflow),
+          },
+        }
+      : {}),
     title: writtenTitle(lesson, out.title),
   };
   const { updatedAt } = await deps.persist(done);

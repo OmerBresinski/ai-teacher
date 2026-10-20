@@ -205,7 +205,9 @@ describe("live writing: close is drafted and opened like any slide (draft mode)"
     },
   });
   // The closing slide's deck index: the slide after the last of `slides` (title 0, objectives 1).
-  const i = run.slides.findIndex((s) => JSON.stringify(s).includes(CLOSE.lead));
+  // Its plan index from its id: a fit continuation (UX-C J8) can sit before it in the deck.
+  const shownAt = run.slides.findIndex((s) => JSON.stringify(s).includes(CLOSE.lead));
+  const i = Number(run.slides[shownAt]?.id.slice(1)) - 1;
 
   test("the closing slide is the deck's last written slide", () => {
     const last = run.slides.filter((s) => !(s as { answersRole?: unknown }).answersRole).at(-1);
@@ -222,7 +224,7 @@ describe("live writing: close is drafted and opened like any slide (draft mode)"
   test("its draft ids carry its own prefix and survive the hand-over", () => {
     const last = (drafts.get(i) ?? []).at(-1) ?? [];
     for (const e of flat(last)) expect(e.id).toStartWith(`d-s${i + 1}-`);
-    const shown = run.slides[i] as unknown as { elements: El[] };
+    const shown = run.slides[shownAt] as unknown as { elements: El[] };
     const ids = new Set(flat(shown.elements).map((e) => e.id));
     expect(flat(last).filter((e) => ids.has(e.id)).length).toBeGreaterThan(0);
   });

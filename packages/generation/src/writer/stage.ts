@@ -412,6 +412,12 @@ export type WriterOutput = {
   title: string;
   writer: { usd: number; ms: number; firstTokenMs?: number; finishReason?: string | null };
   summary: { textOnlyTeach: number; dangling: { slide: number; fault: string }[] };
+  /**
+   * Slides that still overflow as shipped (a template flag or clipped text the fit did not clear,
+   * or the checks only logged): the deck slide's id and its overflow faults, for the saved
+   * findings. Never empty-handed silently: each is also logged as `overflow-shipped`.
+   */
+  overflow: { slide: number; id: string; faults: string[] }[];
 };
 
 /**
@@ -1793,6 +1799,34 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ],
     });
   };
+  /**
+   * Slide i's list split over continuation slides so each part fits (`continueForFit`), measured
+   * with `visual`. True when it split; false (nothing changed) when no split fits.
+   */
+  const continueSlide = (i: number, visual: (key: string) => VisualState): boolean => {
+    const fits = (sl: S) => {
+      const m = materialise(sl, { ...base, index: i, plan, visual });
+      const f = checkSlide({
+        specs: [],
+        index: i,
+        slide: m.slide,
+        over: m.over ?? [],
+        questions: [],
+        answers: undefined,
+        notesChecked: true,
+        words: "",
+      });
+      return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
+    };
+    const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
+    if (!cont) return false;
+    swapSlide(i, cont.first);
+    continued.set(
+      i,
+      cont.rest.map((sl) => fits(sl).m),
+    );
+    return true;
+  };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
   // ── pilot layouts: validate at the drawn size and repair (TEACH-110 part s) ──
@@ -1849,6 +1883,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       await fitLoop(c);
     });
     phaseSlides = undefined;
+    // A template overflow the rewords did not clear (a failed, rejected or reverted call) goes to
+    // continuation slides, as the restage's last resort does; what cannot split is reported at
+    // the end as a residual (`overflow` on the output), never shipped silently.
+    const after = check();
+    for (const c of failing) {
+      const i = c.slide - 1;
+      if (!(after[i]?.faults ?? []).some((f) => OVERFLOW.test(f))) continue;
+      if (continueSlide(i, visualState(i))) log({ ev: "fit-continued", slide: c.slide });
+    }
   } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
@@ -1948,36 +1991,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     restore(i, orig, n0, oldAsks);
     swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
     // The last resort never ships overflow: what still does not fit moves to continuation slides.
-    if (over().length) {
-      const fits = (sl: S) => {
-        const m = materialise(sl, {
-          ...base,
-          index: i,
-          plan,
-          visual: () => ({ status: "failed" }),
-        });
-        const f = checkSlide({
-          specs: [],
-          index: i,
-          slide: m.slide,
-          over: m.over ?? [],
-          questions: [],
-          answers: undefined,
-          notesChecked: true,
-          words: "",
-        });
-        return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
-      };
-      const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
-      if (cont) {
-        swapSlide(i, cont.first);
-        continued.set(
-          i,
-          cont.rest.map((sl) => fits(sl).m),
-        );
-        log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
-        return "strip-continued";
-      }
+    if (over().length && continueSlide(i, () => ({ status: "failed" }))) {
+      log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
+      return "strip-continued";
     }
     log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
     return "strip";
@@ -2493,8 +2509,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
+  const overflow = checks.flatMap((c) => {
+    const faults = c.faults.filter((f) => OVERFLOW.test(f));
+    const id = slideAt(c.slide - 1)?.id;
+    return faults.length && id ? [{ slide: c.slide, id, faults }] : [];
+  });
+  for (const o of overflow) log({ ev: "overflow-shipped", level: "warn", ...o });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
   return {
+    overflow,
     slides: deck(),
     plan,
     checks,
