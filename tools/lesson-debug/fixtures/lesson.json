@@ -21,7 +21,35 @@
       "revision": 1,
       "state": "confirmed",
       "jobId": "0192f7a0-0000-7000-8000-0000000000b2"
-    }
+    },
+    "slides": [
+      {
+        "id": "s1",
+        "elements": []
+      },
+      {
+        "id": "s2",
+        "elements": [
+          {
+            "generatedFrom": {
+              "factRefs": ["v2"]
+            }
+          }
+        ]
+      },
+      {
+        "id": "s3",
+        "elements": []
+      },
+      {
+        "id": "s4",
+        "elements": []
+      },
+      {
+        "id": "s5",
+        "elements": []
+      }
+    ]
   },
   "events": [
     {
@@ -82,20 +110,50 @@
       "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
       "attempt": 0,
       "seq": 0,
-      "kind": "call",
+      "kind": "model-call",
       "slideIndex": null,
       "createdAt": "2026-10-20T09:00:03.000Z",
       "payload": {
-        "name": "objectives",
-        "model": "openai/gpt-6.1-sol",
-        "stage": "write-frontier",
-        "ms": 2900,
-        "ok": true,
-        "usd": 0.004,
-        "tokens": {
-          "input": 1200,
-          "output": 300
-        }
+        "context": {
+          "lessonId": "0192f7a0-0000-7000-8000-000000000011",
+          "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+          "stage": "write-frontier",
+          "promptVersion": "lesson-writer.v1/objectives",
+          "effort": "low"
+        },
+        "modelId": "openai/gpt-6.1-sol",
+        "provider": "openai.responses",
+        "mode": "generate",
+        "request": {
+          "system": ["You are the lesson writer."],
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Topic: the Roman invasion"
+                }
+              ]
+            }
+          ],
+          "schemaName": "objectives",
+          "responseFormat": "json",
+          "settings": {
+            "maxOutputTokens": 8000
+          }
+        },
+        "response": {
+          "text": "{\"objectives\":[\"Describe AD 43\"]}",
+          "finishReason": "stop"
+        },
+        "usage": {
+          "inputTokens": 1200,
+          "outputTokens": 300
+        },
+        "costUsd": 0.004,
+        "durationMs": 2900,
+        "ok": true
       }
     },
     {
@@ -119,23 +177,95 @@
       }
     },
     {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 2,
+      "kind": "fact-check",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.800Z",
+      "payload": {
+        "checker": "verify",
+        "model": "openai/gpt-6-luna",
+        "attempts": 1,
+        "ms": 1800,
+        "usd": 0.0011,
+        "checked": ["v1", "v2", "r1"],
+        "corrections": [
+          {
+            "factId": "v2",
+            "field": "term",
+            "verdict": "corrected",
+            "reason": "wrong-term",
+            "correction": "Legion",
+            "applied": true,
+            "before": "Clan",
+            "after": "Legion"
+          },
+          {
+            "factId": "v9",
+            "field": "term",
+            "verdict": "corrected",
+            "reason": "wrong-term",
+            "correction": "X",
+            "applied": false,
+            "dropped": "failed the field, index or limit rules, or an off-topic starter",
+            "before": null,
+            "after": null
+          }
+        ],
+        "applied": 1,
+        "dropped": 1,
+        "capped": false
+      }
+    },
+    {
       "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
       "attempt": 0,
       "seq": 0,
-      "kind": "call",
+      "kind": "model-call",
       "slideIndex": null,
       "createdAt": "2026-10-20T09:00:30.000Z",
       "payload": {
-        "name": "lesson",
-        "model": "openai/gpt-6.1-sol",
-        "stage": "write",
-        "ms": 19000,
-        "ok": true,
-        "usd": 0.031,
-        "tokens": {
-          "input": 9000,
-          "output": 4000
-        }
+        "context": {
+          "lessonId": "0192f7a0-0000-7000-8000-000000000011",
+          "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+          "stage": "write",
+          "promptVersion": "lesson-writer.v1/lesson",
+          "effort": "low"
+        },
+        "modelId": "openai/gpt-6.1-sol",
+        "provider": "openai.responses",
+        "mode": "stream",
+        "request": {
+          "system": ["You are the lesson writer."],
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Write the lesson."
+                }
+              ]
+            }
+          ],
+          "schemaName": "lesson",
+          "responseFormat": "json",
+          "settings": {
+            "maxOutputTokens": 8000
+          }
+        },
+        "response": {
+          "text": "{\"slides\":[]}",
+          "finishReason": "length"
+        },
+        "usage": {
+          "inputTokens": 9000,
+          "outputTokens": 4000
+        },
+        "costUsd": 0.031,
+        "durationMs": 19000,
+        "ok": true
       }
     },
     {
@@ -200,6 +330,43 @@
         "outcome": "empty",
         "via": "generated",
         "reason": "generation-refused-or-failed"
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 7,
+      "kind": "fact-check",
+      "slideIndex": 3,
+      "createdAt": "2026-10-20T09:00:36.000Z",
+      "payload": {
+        "model": "code",
+        "usd": 0,
+        "checker": "gas8",
+        "claim": "every claimed gas volume is possible",
+        "verdict": "contradicted",
+        "reason": "gas8: 500 cm3 from 0.1 g Mg",
+        "applied": true,
+        "cleared": true,
+        "beforeText": "Magnesium makes 500 cm3 of hydrogen. Collect it in a syringe.",
+        "afterText": "Magnesium makes 90 cm3 of hydrogen. Collect it in a syringe.",
+        "ms": 0.4
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 8,
+      "kind": "fact-check",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:36.100Z",
+      "payload": {
+        "checker": "gas8",
+        "summary": true,
+        "slidesChecked": 5,
+        "flagged": 1,
+        "model": "code",
+        "usd": 0
       }
     },
     {

@@ -56,23 +56,34 @@ not the faults behind them, and `safeError`'s class and code for a failed job.
   `created_at`, indexed on `(lesson_id, created_at)`. The writer path records its raw streamed
   output, the objectives or plan, each slide's check (fault lines and measured overflows), each
   repair, fit or restage attempt (slide before and after, accepted, rejected or reverted), each
-  split, each picture-director decision (the director's answer, queries, choice, outcome), each
-  Verify (fact-check) correction before and after, every model call (name, model, tokens, cost,
-  duration, stage), the call that tripped the budget stop, a stage's thrown error, and a failed
-  attempt's **full error with message, stack and cause chain**. The writer stage's structured
+  split, each picture-director decision (the director's answer, queries, choice, outcome), every
+  fact check in full (Verify: the facts checked, each correction with its reason, applied or
+  dropped, field before and after, model, latency, cost, and whether the list was capped or the
+  call skipped; on the writer path the code checks gas8, figure-sync and figure-text, per slide,
+  with the slide's words before and after), the call that tripped the budget stop, a stage's
+  thrown error, and a failed attempt's **full error with message, stack and cause chain**. The writer stage's structured
   events are copied in too, so one table holds the whole timeline.
 - **Content in our own database, for 30 days.** This is not a new data class: the lesson body,
   which holds the same teaching content, is already stored in `documents`. Rows are kept for
   `GENERATION_DEBUG_TTL_DAYS` (default 30) and deleted by the worker's daily
   `generation.debug-cleanup` pg-boss cron; deleting the Workspace or hard-deleting the lesson
   removes them at once (FK cascades). The record is **never sent to a third party**: it is not
-  logged, not in any job event, not in pg-boss outputs, and not returned by any API route. It is
-  read only by `tools/lesson-debug`, with database access.
+  logged, not in any job event, not in pg-boss outputs, not sent to PostHog or any analytics
+  sink, and not returned by any API route. It is read only by `tools/lesson-debug`, with database
+  access.
+- **Every model request, whole.** One `model-call` row per request, retries included (each
+  attempt its own row), captured once by `@tj/ai`'s capture middleware (`withCallCapture`), which
+  the lesson and worksheet jobs wrap around their `ai`: the system prompt, the messages, the
+  schema and tool names, model, effort and settings, the full response text and finish reason,
+  usage, cost and latency, keyed by `lessonId`, `jobId`, stage and prompt version. Pictures sent
+  to a model are kept as their media type and size only.
 - **Logs are unchanged.** The no-content rule for logs stands, and so does `safeError` for log
   lines, job events and pg-boss outputs: the full error goes to `generation_debug` only. Every log
   line of a lesson job now carries `lessonId` (the job logger's child bindings).
-- **Never on the lesson's path.** Records are snapshotted, capped at 256 KiB of JSON per row (a
-  larger payload keeps its first 256 KiB and its size), at most 5000 rows per attempt, and written
+- **Never on the lesson's path.** Records are snapshotted, capped at 128 KiB of JSON per row
+  (about twice the largest writer `model-call` row; over it the longest strings are cut and the
+  row is marked `truncated: true` with its original size and the cut fields), at most 5000 rows
+  per attempt, and written
   in batches off the pipeline; a failed or slow write is one warn line and never fails, slows or
   changes a lesson. The last batch is written after the job's terminal event.
 - **Cost warning.** `AI_LESSON_COST_WARN_USD` (ADR 0033) defaults to 0.12, about 1.5 times the

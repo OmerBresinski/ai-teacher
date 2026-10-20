@@ -24,7 +24,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
-import { createDebugRecorder, type DebugRecorder } from "../generation-debug";
+import { captureCalls, createDebugRecorder, type DebugRecorder } from "../generation-debug";
 import { budgetFailure } from "../job-errors";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
@@ -195,7 +195,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     }
     const priorUsage = stored.generation?.usage;
     const pipelineDeps: PipelineDeps = {
-      ai: deps.ai,
+      // Every model request of the job lands in its debug record (`model-call`), captured once.
+      ai: captureCalls(deps.ai, recorder),
       budget: createBudget(deps.caps, { spent: priorUsage }),
       ...(deps.planFrontierFromYear !== undefined
         ? { planFrontierFromYear: deps.planFrontierFromYear }

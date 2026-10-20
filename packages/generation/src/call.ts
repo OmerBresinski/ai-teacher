@@ -1,5 +1,6 @@
 import {
   BudgetReservationError,
+  costUsd,
   isAiError,
   isAnthropicModelId,
   isOpenAiModelId,
@@ -369,28 +370,28 @@ export async function callStructured<I, T>(
 ): Promise<CallResult<T>> {
   const sink = options.deps.debug;
   if (!sink) return callStructuredOnce(options);
-  const t0 = Date.now();
-  const call = { name: options.prompt.version, stage: options.stage, cls: options.cls };
   try {
-    const result = await callStructuredOnce(options);
-    recordDebug(sink, "call", {
-      ...call,
-      ok: true,
-      model: result.modelId,
-      attempts: result.attempts,
-      tokens: { input: result.usage.inputTokens ?? 0, output: result.usage.outputTokens ?? 0 },
-      ms: Date.now() - t0,
-    });
-    return result;
+    return await callStructuredOnce(options);
   } catch (error) {
-    recordDebug(sink, "call", { ...call, ok: false, ms: Date.now() - t0, error: fullError(error) });
+    // The calls themselves are recorded by `@tj/ai`'s capture middleware (`model-call`).
     if (error instanceof BudgetExceeded)
       recordDebug(sink, "budget-stop", {
-        ...call,
+        name: options.prompt.version,
+        stage: options.stage,
+        cls: options.cls,
         totals: options.deps.budget.totals(),
         error: fullError(error),
       });
     throw error;
+  }
+}
+
+/** A call's cost for the debug record; null when the model has no price row or pricing throws. */
+export function callUsd(modelId: string, t: { input: number; output: number }): number | null {
+  try {
+    return costUsd(modelId, { inputTokens: t.input, outputTokens: t.output } as never);
+  } catch {
+    return null;
   }
 }
 

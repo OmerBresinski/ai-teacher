@@ -26,11 +26,18 @@ describe("capPayload", () => {
     expect(capPayload({ text: "a\u0000b" })).toEqual({ text: "ab" });
   });
 
-  test("a payload over the cap is stored as its head, with its size", () => {
-    const stored = capPayload({ text: "x".repeat(2000) }, 100) as Record<string, unknown>;
+  test("over the cap, the longest strings are cut and the row is marked truncated", () => {
+    const payload = { request: { system: "s".repeat(3000) }, response: { text: "r".repeat(500) } };
+    const stored = capPayload(payload, 2000) as Record<string, unknown>;
     expect(stored.truncated).toBe(true);
-    expect(stored.bytes).toBe(2011);
-    expect(String(stored.head)).toHaveLength(100);
+    expect(stored.originalBytes).toBe(Buffer.byteLength(JSON.stringify(payload)));
+    expect(stored.truncatedFields).toEqual([{ path: "$.request.system", originalLength: 3000 }]);
+    expect((stored.response as { text: string }).text).toHaveLength(500);
+    expect(String((stored.request as { system: string }).system)).toEndWith("…[truncated]");
+  });
+
+  test("under the cap nothing is marked", () => {
+    expect(capPayload({ text: "short" })).toEqual({ text: "short" });
   });
 });
 

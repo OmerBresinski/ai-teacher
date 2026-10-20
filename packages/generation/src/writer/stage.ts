@@ -489,6 +489,28 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** The lesson's debug record (`../debug`): fire and forget, never awaited, never throws. */
   const debug = (kind: DebugKind, payload: unknown, slideIndex?: number) =>
     recordDebug(run.services.debug, kind, payload, slideIndex);
+  /**
+   * One per-slide fact check in the debug record (full verbosity, Greg 20 Oct): the claim, the
+   * verdict and reason, whether it applied or was dropped, and the slide's words before and after.
+   */
+  const factCheck = (
+    slideIndex: number,
+    p: Record<string, unknown> & { before?: unknown; after?: unknown },
+  ) => {
+    if (!run.services.debug) return;
+    const { before, after, ...rest } = p;
+    debug(
+      "fact-check",
+      {
+        model: "code",
+        usd: 0,
+        ...rest,
+        ...(before !== undefined ? { beforeText: wordsOf(before as S), before } : {}),
+        ...(after !== undefined ? { afterText: wordsOf(after as S), after } : {}),
+      },
+      slideIndex,
+    );
+  };
   const log = (e: object) => {
     run.services.log(e);
     // Every stage event also lands in the debug record, on its slide when it names one (1-based).
@@ -1502,11 +1524,26 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
     // otherwise.
+    const syncT0 = performance.now();
     const sync = syncFigure(plan.slides[i] as S | undefined, slideNoEmDash(next0));
+    const syncMs = +(performance.now() - syncT0).toFixed(2);
     const synced =
       sync.action === "redrawn" || sync.action === "drop"
         ? actOn({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why })
         : true;
+    // The figure fact check (code, no model) in the debug record, per slide, with what it changed.
+    if (run.services.debug && sync.action !== "none")
+      factCheck(i, {
+        checker: "figure-sync",
+        claim: "the slide's figure agrees with its words",
+        verdict: sync.action,
+        ...("why" in sync && sync.why ? { reason: sync.why } : {}),
+        applied: synced,
+        ...(synced ? {} : { dropped: "dry run (act off)" }),
+        before: plan.slides[i],
+        after: synced ? sync.slide : next0,
+        ms: syncMs,
+      });
     const next = splitTable(
       i,
       !synced
@@ -1925,13 +1962,48 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // whole lesson, so volumes compared across slides keep their order.
   const gasHits = gasFaults(gasTexts());
   const gasAll = gasHits.flatMap((x) => x.volumes);
+  const gasClaim = (h: (typeof gasHits)[number]) => ({
+    checker: "gas8",
+    claim: "every claimed gas volume is possible from the lesson's stated quantities",
+    verdict: "contradicted",
+    reason: h.fault,
+    volumes: h.volumes,
+    ...(h.vmax !== undefined ? { vmax: h.vmax } : {}),
+  });
   for (const h of gasHits) {
-    if (!repairable(plan.slides[h.slide] as S, h.slide)) continue;
-    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) continue;
+    if (!repairable(plan.slides[h.slide] as S, h.slide)) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "slide not repairable" });
+      continue;
+    }
+    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "dry run (act off)" });
+      continue;
+    }
+    const before = plan.slides[h.slide];
+    const t0 = performance.now();
     swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
     const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
     log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
+    factCheck(h.slide, {
+      ...gasClaim(h),
+      correction: "every volume rescaled under the stated maximum by one factor",
+      applied: true,
+      cleared: !left,
+      before,
+      after: plan.slides[h.slide],
+      ms: +(performance.now() - t0).toFixed(2),
+    });
   }
+  // The writer path's fact check, per lesson: how many slides it read and how many it flagged.
+  if (run.services.debug)
+    debug("fact-check", {
+      checker: "gas8",
+      summary: true,
+      slidesChecked: n,
+      flagged: [...new Set(gasHits.map((h) => h.slide))].length,
+      model: "code",
+      usd: 0,
+    });
   // figureSync: after repair, every drawn figure is checked against its slide's words; one that
   // disagrees is dropped, so the fallback below restages the slide without it.
   for (let i = 0; i < n; i++)
@@ -1940,8 +2012,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (a.type !== "diagram" || v.status !== "diagram") continue;
       const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
       if (!why) continue;
-      if (!actOn({ ev: "figure-text-mismatch", slide: i + 1, key: a.key, why, dropped: act }))
-        continue;
+      const actedOn = actOn({
+        ev: "figure-text-mismatch",
+        slide: i + 1,
+        key: a.key,
+        why,
+        dropped: act,
+      });
+      factCheck(i, {
+        checker: "figure-text",
+        claim: "the drawn figure's numbers are the ones the words say",
+        verdict: "mismatch",
+        reason: why,
+        correction: "figure dropped",
+        applied: actedOn,
+        ...(actedOn ? {} : { dropped: "dry run (act off)" }),
+        figure: v.spec,
+        words: wordsOf(plan.slides[i] as S),
+      });
+      if (!actedOn) continue;
       override.set(`${i}:${a.key}`, { status: "failed" });
       relay(i);
     }

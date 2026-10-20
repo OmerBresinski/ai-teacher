@@ -30,6 +30,7 @@ import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { captureCalls, createDebugRecorder, type DebugRecorder } from "../generation-debug";
 import { budgetFailure } from "../job-errors";
 
 /**
@@ -64,6 +65,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     // Kept only for a retry pg-boss will run (TEACH-202 part g); the last attempt releases it.
     const attemptsLeft = ctx.attemptsLeft !== false;
     let keepLockForRetry = false;
+    let recorder: DebugRecorder | undefined;
     try {
       if (signal.aborted) {
         keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
@@ -71,6 +73,17 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       }
       const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
       const { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
+      // The worksheet's model requests and failure go to its lesson's debug record (Greg, 20 Oct).
+      recorder = deps.generationDebug
+        ? createDebugRecorder({
+            store: deps.generationDebug,
+            workspaceId,
+            lessonId,
+            jobId,
+            attempt: ctx.attempt ?? 0,
+            logger,
+          })
+        : undefined;
       if (deps.ai.kind === "unconfigured") {
         throw new NonRetryableError(
           "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
@@ -85,7 +98,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       const recipe = resolveRecipe(recipeId, facts);
       const stage = "worksheet" as const;
       const pipelineDeps: FillDeps = {
-        ai: deps.ai,
+        ai: captureCalls(deps.ai, recorder),
         budget,
         signal,
         logger: logger.child({
@@ -197,6 +210,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         "worksheet ready",
       );
     } catch (error) {
+      recorder?.recordError(error, signal.aborted ? { aborted: String(signal.reason) } : undefined);
       // What was persisted stays (item 9). A cancel is terminal (`runJob` records `cancelled`);
       // a shutdown is retried by pg-boss, so the next attempt needs the lock.
       if (signal.aborted) {
@@ -216,6 +230,11 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       if (!(error instanceof NonRetryableError)) keepLockForRetry = attemptsLeft;
       throw error;
     } finally {
+      if (recorder) {
+        const debug = recorder;
+        if (ctx.afterSettle) ctx.afterSettle(() => debug.close());
+        else await debug.close();
+      }
       if (keepLockForRetry) {
         logger.info({ worksheetId }, "worksheet generating lock kept for the retry");
       } else {

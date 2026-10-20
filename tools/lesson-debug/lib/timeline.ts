@@ -32,7 +32,7 @@ export interface DebugRow {
 }
 
 export interface LessonDebug {
-  lesson: LessonRow;
+  lesson: LessonRow & { slides?: unknown[] | null };
   events: JobEventRow[];
   debug: DebugRow[];
 }
@@ -69,18 +69,25 @@ function firstStackLine(stack: unknown): string {
 /** One debug row in a line: the fields that matter for its kind. */
 export function describeDebug(row: DebugRow): string {
   const p = (row.payload ?? {}) as P;
-  if (p.truncated === true) return `[truncated payload, ${p.bytes} bytes]`;
+  if (p.truncated === true && "head" in p)
+    return `[truncated payload, ${p.originalBytes ?? p.bytes} bytes]`;
   switch (row.kind) {
     case "event": {
       const { ev, slide: _slide, ...rest } = p;
       return `${String(ev ?? "?")} ${Object.keys(rest).length ? json(rest, 120) : ""}`.trim();
     }
-    case "call": {
-      const tokens = p.tokens as { input?: number; output?: number } | undefined;
-      const cost = typeof p.usd === "number" ? ` $${p.usd.toFixed(4)}` : "";
+    case "model-call": {
+      const ctx = (p.context ?? {}) as P;
+      const usage = (p.usage ?? {}) as P;
+      const resp = (p.response ?? {}) as P;
+      const cost = typeof p.costUsd === "number" ? ` $${p.costUsd.toFixed(4)}` : "";
       const err =
-        p.ok === false ? ` FAILED: ${clip(String((p.error as P)?.message ?? ""), 80)}` : "";
-      return `${p.name} on ${p.model ?? p.cls ?? "?"} (${p.stage ?? "?"}) ${p.ms}ms${tokens ? ` ${tokens.input}/${tokens.output} tok` : ""}${cost}${err}`;
+        p.ok === false
+          ? ` FAILED: ${clip(String((p.error as P | undefined)?.message ?? resp.finishReason ?? ""), 80)}`
+          : "";
+      const out =
+        typeof resp.text === "string" ? ` -> ${resp.text.length} chars, ${resp.finishReason}` : "";
+      return `${ctx.promptVersion ?? "?"} on ${p.modelId} (${ctx.stage ?? "?"}, ${p.mode}) ${p.durationMs}ms ${usage.inputTokens ?? "?"}/${usage.outputTokens ?? "?"} tok${cost}${out}${err}${p.truncated ? " [truncated]" : ""}  [--call ${row.jobId.slice(-8)}:${row.attempt}:${row.seq}]`;
     }
     case "writer-output": {
       const text = typeof p.text === "string" ? p.text : "";
@@ -113,8 +120,13 @@ export function describeDebug(row: DebugRow): string {
     case "picture":
       return `${p.outcome} via ${p.via ?? p.plan} for "${clip(String(p.ask ?? ""), 60)}"${p.reason ? ` (${p.reason})` : ""}${p.failure ? ` (${p.failure})` : ""}`;
     case "fact-check": {
-      const c = (p.correction ?? {}) as P;
-      return `${c.factId}.${c.field}${c.index !== undefined ? `[${c.index}]` : ""} -> ${json(c.value, 80)}${c.reason ? ` (${c.reason})` : ""}`;
+      if (p.summary) return `${p.checker}: read ${p.slidesChecked} slides, flagged ${p.flagged}`;
+      if (p.checker === "verify") {
+        const cs = (p.corrections as P[] | undefined) ?? [];
+        const cost = typeof p.usd === "number" ? ` $${p.usd.toFixed(4)}` : "";
+        return `verify on ${p.model ?? "?"} ${p.ms}ms${cost}: ${(p.checked as unknown[] | undefined)?.length ?? "?"} facts checked, ${cs.length} corrections, ${p.applied ?? 0} applied, ${p.dropped ?? 0} dropped${p.capped ? ", CAPPED" : ""}${p.skipped ? `, skipped (${p.skipped})` : ""}`;
+      }
+      return `${p.checker}: ${p.verdict}${p.reason ? ` (${clip(String(p.reason), 70)})` : ""}${p.applied ? ", applied" : p.dropped ? `, dropped (${p.dropped})` : ""}`;
     }
     case "budget-stop":
       return `${p.name} on ${p.model ?? p.cls ?? "?"} refused; totals ${json(p.totals, 100)}`;
@@ -139,6 +151,137 @@ export function describeEvent(e: JobEventRow): string {
   if (e.type === "failed") return json(p.error);
   if (e.type === "completed" && p.result) return `result ${json(p.result, 100)}`;
   return "";
+}
+
+/** Where each fact id is taught: slide indexes whose elements cite it (`generatedFrom.factRefs`). */
+export function slidesByFact(slides: readonly unknown[] | null | undefined): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  (slides ?? []).forEach((slide, i) => {
+    for (const el of ((slide as P)?.elements as P[] | undefined) ?? [])
+      for (const ref of ((el.generatedFrom as P | undefined)?.factRefs as string[] | undefined) ??
+        []) {
+        const at = out.get(ref) ?? [];
+        if (!at.includes(i)) at.push(i);
+        out.set(ref, at);
+      }
+  });
+  return out;
+}
+
+/** A sentence diff of two texts: unchanged kept, removed `-`, added `+`. */
+export function lineDiff(before: string, after: string): string[] {
+  const split = (t: string) => t.split(/\n|(?<=[.!?])\s+/).filter(Boolean);
+  const a = split(before);
+  const b = split(after);
+  const inA = new Set(a);
+  const inB = new Set(b);
+  return [
+    ...a.map((l) => (inB.has(l) ? `      ${l}` : `    - ${l}`)),
+    ...b.filter((l) => !inA.has(l)).map((l) => `    + ${l}`),
+  ];
+}
+
+/**
+ * The fact check section: per lesson, the slides checked and changed and the change rate, then a
+ * before/after diff per changed slide (writer checks: the slide's words; Verify: each corrected
+ * field, with the slides that cite the fact).
+ */
+export function factCheckSection(
+  debug: readonly DebugRow[],
+  slides?: readonly unknown[] | null,
+): string {
+  const p = (r: DebugRow) => (r.payload ?? {}) as P;
+  const rows = debug.filter((r) => r.kind === "fact-check");
+  const out = ["FACT CHECK"];
+  if (rows.length === 0) return [...out, "  (no fact-check rows)"].join("\n");
+  const deckSize = Math.max(
+    0,
+    (slides ?? []).length,
+    ...rows.filter((r) => p(r).summary).map((r) => Number(p(r).slidesChecked) || 0),
+  );
+  const perSlide = rows.filter((r) => r.slideIndex !== null && !p(r).summary);
+  const verify = rows.filter((r) => p(r).checker === "verify");
+  const byFact = slidesByFact(slides);
+  const changed = new Map<number, DebugRow[]>();
+  for (const r of perSlide)
+    if (p(r).applied && p(r).beforeText !== p(r).afterText) {
+      const i = r.slideIndex as number;
+      changed.set(i, [...(changed.get(i) ?? []), r]);
+    }
+  const verifyChanged = new Set<number>();
+  for (const r of verify)
+    for (const c of ((p(r).corrections as P[] | undefined) ?? []).filter((c) => c.applied))
+      for (const i of byFact.get(String(c.factId)) ?? []) verifyChanged.add(i);
+  const allChanged = new Set([...changed.keys(), ...verifyChanged]);
+  const rate = deckSize ? ` (${((100 * allChanged.size) / deckSize).toFixed(0)}%)` : "";
+  out.push(
+    `  slides checked ${deckSize}, changed ${allChanged.size}${rate}; ${perSlide.length} per-slide checks, ${verify.length} verify runs`,
+  );
+  for (const r of rows.filter((x) => p(x).summary)) out.push(`  ${describeDebug(r)}`);
+  for (const r of verify) {
+    out.push(`  ${describeDebug(r)}`);
+    for (const c of (p(r).corrections as P[] | undefined) ?? []) {
+      const at = byFact.get(String(c.factId)) ?? [];
+      out.push(
+        `  ${c.applied ? "changed" : "DROPPED"} ${c.factId}.${c.field}${c.index !== undefined ? `[${c.index}]` : ""} (${c.reason})${at.length ? ` on slides ${at.map((i) => i + 1).join(", ")}` : ""}${c.dropped ? `: ${c.dropped}` : ""}`,
+        `    - ${json(c.before, 200)}`,
+        `    + ${json(c.applied ? c.after : c.correction, 200)}`,
+      );
+    }
+  }
+  for (const [i, rs] of [...changed].sort((x, y) => x[0] - y[0])) {
+    out.push(
+      `  slide ${i + 1}: ${rs.map((r) => `${p(r).checker} ${p(r).verdict}${p(r).reason ? ` (${clip(String(p(r).reason), 60)})` : ""}`).join(", ")}`,
+    );
+    const first = rs[0] as DebugRow;
+    const last = rs[rs.length - 1] as DebugRow;
+    out.push(...lineDiff(String(p(first).beforeText ?? ""), String(p(last).afterText ?? "")));
+  }
+  for (const r of perSlide.filter((x) => !p(x).applied))
+    out.push(`  slide ${(r.slideIndex as number) + 1}: ${describeDebug(r)}`);
+  return out.join("\n");
+}
+
+/** One model call in full: the request (system, messages, schema, settings) and the response. */
+export function callDetail(row: DebugRow): string {
+  const p = (row.payload ?? {}) as P;
+  const req = (p.request ?? {}) as P;
+  const resp = (p.response ?? {}) as P;
+  const out = [
+    `CALL ${row.jobId}:${row.attempt}:${row.seq} at ${row.createdAt}`,
+    `  ${describeDebug(row)}`,
+    `  context ${JSON.stringify(p.context)}`,
+    `  schema ${req.schemaName ?? "-"} (${req.responseFormat ?? "text"}); tools ${JSON.stringify(req.tools ?? [])}`,
+    `  settings ${JSON.stringify(req.settings ?? {})}`,
+  ];
+  if (p.truncated)
+    out.push(`  TRUNCATED from ${p.originalBytes} bytes: ${JSON.stringify(p.truncatedFields)}`);
+  for (const sys of (req.system as string[] | undefined) ?? []) out.push("", "--- system ---", sys);
+  for (const m of (req.messages as P[] | undefined) ?? []) {
+    out.push("", `--- ${m.role} ---`);
+    if (typeof m.content === "string") out.push(m.content);
+    else
+      for (const part of (m.content as P[] | undefined) ?? [])
+        out.push(part.type === "text" ? String(part.text) : JSON.stringify(part));
+  }
+  out.push("", `--- response (${resp.finishReason ?? "?"}) ---`, String(resp.text ?? ""));
+  if (resp.reasoning) out.push("", "--- reasoning ---", String(resp.reasoning));
+  if (p.error) out.push("", `--- error --- ${JSON.stringify(p.error)}`);
+  return out.join("\n");
+}
+
+/** A call by `<jobId suffix>:<attempt>:<seq>` (as the timeline prints it) or a bare seq. */
+export function findCall(debug: readonly DebugRow[], ref: string): DebugRow | undefined {
+  const calls = debug.filter((r) => r.kind === "model-call");
+  const parts = ref.split(":");
+  if (parts.length === 3) {
+    const [job, attempt, seq] = parts;
+    return calls.find(
+      (r) =>
+        r.jobId.endsWith(String(job)) && r.attempt === Number(attempt) && r.seq === Number(seq),
+    );
+  }
+  return calls.find((r) => r.seq === Number(ref));
 }
 
 /** The readable report: the generation block, then every event and debug row in time order. */
@@ -181,5 +324,6 @@ export function timeline({ lesson, events, debug }: LessonDebug): string {
   }
   if (items.length === 0)
     out.push("(no job events or debug rows: older than the TTL, or never recorded)");
+  out.push("", factCheckSection(debug, lesson.slides));
   return out.join("\n");
 }

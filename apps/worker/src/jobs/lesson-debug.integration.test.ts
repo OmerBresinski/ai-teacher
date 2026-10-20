@@ -166,11 +166,12 @@ describeDb("the lesson debug record (generation_debug)", () => {
   ) {
     const lessonId = await planned(store, ids);
     const job = await confirm(lessonId, ids.generate);
+    const genAi = ai();
     await lessonGenerateJob(
-      ctxFor(job, { lessonId, revision: 1 }, depsWith(ai(), store), settled) as never,
+      ctxFor(job, { lessonId, revision: 1 }, depsWith(genAi, store), settled) as never,
     );
     const stored = await getDocument(ws(), lessonId);
-    return { lessonId, lesson: parseLesson(stored?.body) };
+    return { lessonId, lesson: parseLesson(stored?.body), calls: genAi.calls.length };
   }
 
   test("the same deck with debug on and off; the record holds the writer's raw output", async () => {
@@ -186,12 +187,28 @@ describeDb("the lesson debug record (generation_debug)", () => {
 
     const rows = await listGenerationDebug(unsafeDb, workspaceId, on.lessonId);
     const kinds = new Set(rows.map((r) => r.kind));
-    for (const k of ["plan", "call", "writer-output", "check", "event"]) expect(kinds).toContain(k);
+    for (const k of ["plan", "model-call", "writer-output", "check", "event", "fact-check"])
+      expect(kinds).toContain(k);
     const output = rows.find((r) => r.kind === "writer-output")?.payload as { text?: string };
     expect(output.text).toBe(fixture.main);
-    const call = rows.find((r) => r.kind === "call")?.payload as Record<string, unknown>;
-    expect(call).toMatchObject({ ok: true });
-    expect(typeof call.ms).toBe("number");
+    // One model-call row per model request of the generate job, each with its full exchange.
+    const generateJob = rows.at(-1)?.jobId;
+    const calls = rows.filter((r) => r.kind === "model-call" && r.jobId === generateJob);
+    expect(calls.length).toBe(on.calls);
+    type Call = Record<string, unknown> & {
+      context: { promptVersion?: string };
+      request: { system: string[] };
+      response: { text: string };
+    };
+    const writer = calls
+      .map((r) => r.payload as Call)
+      .find((p) => p.context.promptVersion === `${WRITER_VERSION}/lesson`) as Call;
+    expect(writer.response.text).toBe(fixture.main);
+    expect(writer.request.system[0]?.length).toBeGreaterThan(1000);
+    expect(writer.truncated).toBeUndefined();
+    expect(writer).toMatchObject({ ok: true, mode: "stream" });
+    // DEBUG_PAYLOAD_MAX_BYTES is sized from this row: printed for the record.
+    console.info(`writer model-call row: ${Buffer.byteLength(JSON.stringify(writer))} bytes`);
     // seq orders each attempt's rows from 0 without gaps.
     const ofGenerate = rows.filter((r) => r.jobId === rows.at(-1)?.jobId).map((r) => r.seq);
     expect([...ofGenerate].sort((a, b) => a - b)).toEqual(ofGenerate.map((_, i) => i));

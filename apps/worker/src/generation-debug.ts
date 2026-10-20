@@ -5,17 +5,22 @@
  * lesson: the sink only pushes to a buffer, writes run off the pipeline's path, a failure is one
  * warn line, and `close()` (run after the job's terminal event) never throws.
  */
+import { type CreatedAi, withCallCapture } from "@tj/ai";
 import type { GenerationDebugInsert } from "@tj/db";
 import { type JobId, type LessonId, safeError, type WorkspaceId } from "@tj/domain";
 import { type DebugRecord, type DebugSink, fullError } from "@tj/generation";
 import type { Logger } from "pino";
 
 /**
- * The cap on one row's payload, as serialised JSON (256 KiB). A larger payload is stored as
- * `{ truncated: true, bytes, head }`, `head` being the first 256 KiB of its JSON text. The writer's
- * raw output (the largest record, about 20–60 KB for a 20-slide deck) fits whole.
+ * The cap on one row's payload, as serialised JSON: 128 KiB, about twice the largest row it must
+ * keep whole, rounded up. That row is the writer's `model-call`: 40.5 KB measured in
+ * `lesson-debug.integration.test.ts` (KS3 system prompt 28.5 KB, user turn, an 8.3 KB answer);
+ * with the largest lab writer answer (13.8 KB, the y12 psychology replay) about 46 KB, so 2x is
+ * 92 KB. Over the cap the longest strings are cut first (a pasted source, then the system prompt)
+ * and the row says so: `truncated: true`, `originalBytes`, and each cut field's path and original
+ * length (`truncatedFields`).
  */
-export const DEBUG_PAYLOAD_MAX_BYTES = 256 * 1024;
+export const DEBUG_PAYLOAD_MAX_BYTES = 128 * 1024;
 /** Rows per attempt; past it, records are counted and dropped (one warn line at close). */
 export const DEBUG_MAX_ROWS = 5000;
 /** A buffer is written when it holds this many rows, or this long after its first row. */
@@ -54,13 +59,55 @@ export interface DebugRecorder {
 
 /**
  * The payload as stored: a JSON snapshot taken now (the pipeline mutates slides later), without
- * NUL characters (Postgres `jsonb` refuses `\u0000`), capped at `maxBytes`.
+ * NUL characters (Postgres `jsonb` refuses `\u0000`), capped at `maxBytes` by cutting its longest
+ * strings (each to half, longest first) and saying what was cut.
  */
 export function capPayload(payload: unknown, maxBytes = DEBUG_PAYLOAD_MAX_BYTES): unknown {
   const text = (JSON.stringify(payload ?? null) ?? "null").replaceAll("\\u0000", "");
-  const bytes = Buffer.byteLength(text);
-  if (bytes <= maxBytes) return JSON.parse(text);
-  return { truncated: true, bytes, head: Buffer.from(text).subarray(0, maxBytes).toString() };
+  const originalBytes = Buffer.byteLength(text);
+  if (originalBytes <= maxBytes) return JSON.parse(text);
+  // Room kept for the truncation marks themselves.
+  const reserve = Math.min(4096, Math.floor(maxBytes / 8));
+  const root = { value: JSON.parse(text) as unknown };
+  const cut = new Map<string, number>();
+  for (let round = 0; round < 64; round++) {
+    // The longest string in the payload, wherever it is.
+    let best: { holder: Record<string, unknown>; key: string; path: string; len: number } | null =
+      null;
+    const walk = (holder: Record<string, unknown>, key: string, path: string) => {
+      const v = holder[key];
+      if (typeof v === "string") {
+        if (!best || v.length > best.len) best = { holder, key, path, len: v.length };
+      } else if (v && typeof v === "object")
+        for (const k of Object.keys(v)) walk(v as Record<string, unknown>, k, `${path}.${k}`);
+    };
+    walk(root as Record<string, unknown>, "value", "$");
+    const found = best as {
+      holder: Record<string, unknown>;
+      key: string;
+      path: string;
+      len: number;
+    } | null;
+    if (!found || found.len < 64) break;
+    if (!cut.has(found.path)) cut.set(found.path, found.len);
+    found.holder[found.key] =
+      `${(found.holder[found.key] as string).slice(0, Math.floor(found.len / 2))}…[truncated]`;
+    if (Buffer.byteLength(JSON.stringify(root.value)) + reserve <= maxBytes) break;
+  }
+  const truncatedFields = [...cut].map(([path, originalLength]) => ({ path, originalLength }));
+  const body = JSON.stringify(root.value);
+  if (Buffer.byteLength(body) + reserve > maxBytes)
+    return { truncated: true, originalBytes, truncatedFields, head: body.slice(0, maxBytes / 2) };
+  const value = root.value;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as object), truncated: true, originalBytes, truncatedFields }
+    : { value, truncated: true, originalBytes, truncatedFields };
+}
+
+/** `ai` for one job, with every model request captured as a `model-call` debug row. */
+export function captureCalls(ai: CreatedAi, recorder: DebugRecorder | undefined): CreatedAi {
+  if (!recorder) return ai;
+  return withCallCapture(ai, (call) => recorder.sink({ kind: "model-call", payload: call }));
 }
 
 export function createDebugRecorder(opts: DebugRecorderOptions): DebugRecorder {

@@ -27,8 +27,12 @@ export type DebugKind =
   | "fact-check"
   /** The model call that tripped the lesson's budget stop. */
   | "budget-stop"
-  /** One model call: name, model, tokens, cost, duration, stage. */
-  | "call"
+  /**
+   * One model request (an SDK or caller retry is its own row), captured once in `@tj/ai`'s capture
+   * middleware: the full request (system, messages, schema name, model, settings), the full
+   * response and finish reason, usage, cost, latency, and lessonId, jobId, stage, prompt version.
+   */
+  | "model-call"
   /** A writer stage event (the same object the `writer stage` log line carries). */
   | "event"
   /** A pipeline stage that threw: its stage name and the full error. */

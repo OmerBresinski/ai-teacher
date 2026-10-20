@@ -4,6 +4,7 @@
  * README.md.
  *
  *   DATABASE_URL=postgres://… bun tools/lesson-debug/run.ts <lessonId> [--json <file>]
+ *   DATABASE_URL=postgres://… bun tools/lesson-debug/run.ts <lessonId> --call <job>:<attempt>:<seq>
  *
  * Read-only. Prints the document's generation block, its job events and its `generation_debug`
  * rows as one timeline, writes the JSON dump (default `.data/lesson-debug/<lessonId>.json`), and
@@ -14,7 +15,9 @@ import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { createDb } from "../../packages/db/src/client";
 import {
+  callDetail,
   type DebugRow,
+  findCall,
   type JobEventRow,
   jobIdsOf,
   type LessonDebug,
@@ -27,7 +30,7 @@ const ROOT = join(import.meta.dir, "..", "..");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const { values: args, positionals } = parseArgs({
-  options: { json: { type: "string" } },
+  options: { json: { type: "string" }, call: { type: "string" } },
   allowPositionals: true,
 });
 const lessonId = positionals[0];
@@ -43,7 +46,8 @@ const { sql, close } = createDb(url, { max: 1 });
 try {
   const [doc] = await sql<LessonRow[]>`
     select id, workspace_id as "workspaceId", title, generating_job_id as "generatingJobId",
-      to_json(updated_at)#>>'{}' as "updatedAt", body->'generation' as generation, body->'plan' as plan
+      to_json(updated_at)#>>'{}' as "updatedAt", body->'generation' as generation, body->'plan' as plan,
+      body->'slides' as slides
     from documents where id = ${lessonId} and kind = 'lesson'`;
   if (!doc) {
     console.error(`no lesson ${lessonId} in this database`);
@@ -64,13 +68,32 @@ try {
           order by id`
       : [];
     const all: LessonDebug = { lesson: doc, events: [...events], debug: [...debug] };
+    if (args.call !== undefined) {
+      // One call's full prompt and response, nothing else.
+      const row = findCall(all.debug, args.call);
+      if (!row) {
+        console.error(
+          `no model call ${args.call}; the timeline prints each call's --call reference`,
+        );
+        process.exitCode = 1;
+      } else console.log(callDetail(row));
+    } else {
+      printReport(all);
+    }
+  }
+} finally {
+  await close();
+}
+
+function printReport(all: LessonDebug): void {
+  {
     console.log(timeline(all));
     const file = resolve(args.json ?? join(ROOT, ".data", "lesson-debug", `${lessonId}.json`));
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, `${JSON.stringify(all, null, 2)}\n`);
     console.log(`\nJSON dump: ${file}`);
-    console.log(`Worker log lines (Railway, optional; not run): ${railwayCommand(lessonId)}`);
+    console.log(
+      `Worker log lines (Railway, optional; not run): ${railwayCommand(String(lessonId))}`,
+    );
   }
-} finally {
-  await close();
 }
