@@ -130,6 +130,8 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
 | `gen_figure_sync` | `action`*, `slide`, `why` |
 | `gen_figure_text` | `action`*, `key`, `kind`*, `slide` |
 | `gen_figure_text_mismatch` | `dropped`, `key`, `slide`, `why` |
+| `gen_fit_continue_failed` | `slide` |
+| `gen_fit_continued` | `slide` |
 | `gen_gas8` | `fault`, `slide` |
 | `gen_gas8_fallback` | `cleared`, `fault`, `slide` |
 | `gen_grid_pick` | `judged`, `pick`, `set` |
@@ -160,6 +162,7 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
 | `gen_on_flow_failed` | none |
 | `gen_on_flow_item_failed` | none |
 | `gen_orphan6_drop` | `moved`, `orphans`, `slide` |
+| `gen_overflow_shipped` | `level`* |
 | `gen_picture_outcome` | `attempts`, `key`, `kind`*, `outcome`*, `set`, `slideIndex`, `stage`*, `via`* |
 | `gen_pilot_fit` | `overs`, `path`, `slide`, `steps` |
 | `gen_pilot_members_over` | `id`, `slide`, `template`* |
