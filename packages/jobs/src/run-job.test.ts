@@ -22,7 +22,7 @@ import pino from "pino";
 import { cancel } from "./enqueue";
 import type { emitJobEvent } from "./events";
 import type { BossJob } from "./run-job";
-import { dispositionForTerminal, runJob } from "./run-job";
+import { dispositionForTerminal, lessonIdOf, runJob } from "./run-job";
 import { defineJob, type JobRegistry, type JobsContext, NonRetryableError } from "./types";
 
 const t = await withTestDb();
@@ -169,6 +169,28 @@ describeDb("runJob dependencies", () => {
         });
     },
   );
+
+  test("every line of a lesson job carries its lessonId, and the handler sees its attempt", async () => {
+    const lines: string[] = [];
+    const logger = pino({ level: "trace" }, { write: (line) => void lines.push(line) });
+    const jobId = newId<JobId>();
+    let attempt: number | undefined;
+    const registry = {
+      ...stubs,
+      "lesson.cascade": defineJob("lesson.cascade", async (ctx) => {
+        attempt = ctx.attempt;
+        ctx.logger.info("inside the handler");
+      }),
+    };
+    await runJob({ boss, db: unsafeDb, sql }, "lesson.cascade", registry, cascadeJob(jobId), {
+      deps: undefined,
+      logger,
+    });
+    expect(attempt).toBe(0);
+    const parsed = lines.map((l) => JSON.parse(l) as { lessonId?: string; msg?: string });
+    expect(parsed.map((l) => l.msg)).toContain("inside the handler");
+    for (const line of parsed) expect(line.lessonId).toBe(lessonId);
+  });
 
   test("a handler's return value rides on the completed event as `result` (ADR 0025 §19)", async () => {
     const result: JobResult = { job: "lesson.cascade", proposals: [], flagged: [] };
@@ -541,5 +563,14 @@ describe("dispositionForTerminal", () => {
     expect(() => dispositionForTerminal(jobId, row({ type: "started", ...base }))).toThrow(
       "not a terminal event type",
     );
+  });
+});
+
+describe("lessonIdOf", () => {
+  test("reads a string lessonId off an unvalidated payload, else undefined", () => {
+    expect(lessonIdOf({ lessonId: "abc" })).toBe("abc");
+    expect(lessonIdOf({ lessonId: 7 })).toBeUndefined();
+    expect(lessonIdOf(null)).toBeUndefined();
+    expect(lessonIdOf("x")).toBeUndefined();
   });
 });

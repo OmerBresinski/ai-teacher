@@ -912,7 +912,20 @@ const CONTRACT = [
     format: "number",
     files: ["worker"],
     description:
-      "Per-lesson cost target in USD (TEACH-93, default 0.03): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`.",
+      "Per-lesson cost target in USD (TEACH-93, default 0.12): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`. The default is about 1.5x the median real writer lesson ($0.079 over 20 lab lessons on writer pack v4.8, 20 Oct 2026); the old 0.03 fired on every writer lesson.",
+  },
+  {
+    name: "GENERATION_DEBUG_TTL_DAYS",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "Days a lesson's debug record (`generation_debug`: the writer's raw output, checks, repairs, splits, picture decisions, model calls, a failed job's full error) is kept; the worker's daily `generation.debug-cleanup` job deletes older rows (Greg, 20 Oct 2026; ADR 0015 amendment). Default 30.",
   },
   {
     name: "AI_MODEL_JUDGE",
