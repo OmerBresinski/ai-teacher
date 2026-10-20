@@ -22,6 +22,7 @@ import {
   type CheckResult,
   checkSlide,
   duplicateFaults,
+  offSlide,
   referentFault,
   slideNoEmDash,
 } from "./checks";
@@ -71,7 +72,6 @@ import {
   linkSteps,
   lookOf,
   lostFault,
-  OFF_SLIDE,
   OVERFLOW,
   overflowPt,
   plainWords,
@@ -1493,7 +1493,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
+  /** Slide i's continuation parts dropped: they belong to the version of it being replaced. */
+  const dropContinued = (i: number) => {
+    continued.delete(i);
+    continuedFrom.delete(i);
+  };
+  /** Slide i's text and cards past the slide's edge, as laid now. */
+  const offSlideAt = (i: number) => offSlide(laid.get(i)?.slide.elements ?? []);
   const swapSlide = (i: number, next0: S) => {
+    dropContinued(i);
     states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
@@ -1587,6 +1595,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     n0: { notes: string; answers: string[] } | undefined,
     oldAsks: VisualAsk[],
   ) => {
+    dropContinued(i);
     plan.slides[i] = slide;
     states.put(i, slide);
     if (n0) notes.set(i, n0);
@@ -1911,20 +1920,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     });
     phaseSlides = undefined;
   } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
-  // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
-  // or with none when checks only log) splits into continuation slides, as the restage's last
-  // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a
-  // block a little past its room but on the slide stays as it is. What cannot split is reported at
-  // the end (`overflow` on the output). Root cause (the writer overfilling the layout) is open.
-  {
-    const after = check();
-    for (let i = 0; i < n; i++) {
-      if (!(after[i]?.faults ?? []).some((f) => OFF_SLIDE.test(f))) continue;
-      if (!repairable(plan.slides[i] as S, i)) continue;
-      const ok = continueSlide(i, visualState(i));
-      log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
-    }
-  }
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
@@ -2487,6 +2482,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
+  // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
+  // or with none when checks only log) splits into continuation slides, as the restage's last
+  // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a
+  // block a little past its room but on the slide stays as it is. It runs last, once every slide
+  // is final (gas8, figure checks, restage and the tails), so no later swap of slide i leaves
+  // parts of an older version behind. What cannot split is reported at the end (`overflow` on the
+  // output). Root cause (the writer overfilling the layout) is open.
+  for (let i = 0; i < n; i++) {
+    if (!offSlideAt(i).length || continued.has(i)) continue;
+    if (!repairable(plan.slides[i] as S, i)) continue;
+    const ok = continueSlide(i, visualState(i));
+    log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
+  }
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;
     log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
@@ -2541,10 +2549,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
-  const overflow = checks.flatMap((c) => {
-    const faults = c.faults.filter((f) => OFF_SLIDE.test(f));
-    const id = slideAt(c.slide - 1)?.id;
-    return faults.length && id ? [{ slide: c.slide, id, faults }] : [];
+  const overflow = Array.from({ length: n }, (_, i) => i).flatMap((i) => {
+    const faults = offSlideAt(i);
+    const id = slideAt(i)?.id;
+    return faults.length && id ? [{ slide: i + 1, id, faults }] : [];
   });
   for (const o of overflow) log({ ev: "overflow-shipped", level: "warn", ...o });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });

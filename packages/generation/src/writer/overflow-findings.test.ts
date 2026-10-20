@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Finding } from "@tj/domain/documents";
-import { OFF_SLIDE } from "./fixes";
+import { layoutTemplate } from "@tj/slides/templates";
+import { templateSamples } from "@tj/slides/templates/samples";
+import { THEMES } from "@tj/slides/themes";
+import { offSlide } from "./checks";
 import { OVERFLOW_CHECK, overflowFindings, withOverflowFindings } from "./overflow-findings";
-import { replayRun, replayServices } from "./replay-fixture";
+import { replayRun, replayServices, withUnshowable } from "./replay-fixture";
 import type { ChatReq, WriterServices } from "./services";
 import { CONTINUED_NOTE } from "./stage";
 
@@ -28,6 +31,11 @@ async function run(
   checks: "act" | "log",
   repairs: "recorded" | "empty",
   text?: (t: string) => string,
+  visual?: Parameters<typeof replayRun>[1] extends infer O
+    ? O extends { visual?: infer V }
+      ? V
+      : never
+    : never,
 ) {
   const events: Ev[] = [];
   const base = replayServices(b);
@@ -46,8 +54,22 @@ async function run(
 type El = { type: string; y: number; h: number; children?: El[] };
 const flat = (els: El[]): El[] => els.flatMap((e) => [e, ...flat(e.children ?? [])]);
 /** A slide whose text runs below the slide's bottom edge, measured on the shipped elements. */
-const offSlide = (s: { elements: unknown[] }) =>
+const textBelow = (s: { elements: unknown[] }) =>
   flat(s.elements as El[]).some((e) => e.type === "text" && e.y + e.h > SLIDE_H + 0.5);
+
+type Box = { type: string; name?: string; x: number; y: number; w: number; h: number };
+/** Any text, card or non-bleed picture past the 960 x 540 slide (an independent measure). */
+const pastEdge = (s: { elements: unknown[] }) =>
+  (s.elements as Box[]).some((e) => {
+    const out = e.x < -1 || e.y < -1 || e.x + e.w > 961 || e.y + e.h > SLIDE_H + 1;
+    if (!out) return false;
+    if (e.type === "text") return true;
+    if (e.type === "shape")
+      return /card|option|chip/i.test(e.name ?? "") && !e.name?.startsWith("surface:");
+    if (e.type === "image")
+      return !((e.x <= 0 && e.x + e.w >= 960) || (e.y <= 0 && e.y + e.h >= SLIDE_H));
+    return false;
+  });
 
 /** The slide's words in reading order (its text elements top to bottom). */
 const words = (s: { elements: unknown[] }) =>
@@ -67,7 +89,7 @@ describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 
     const [s9, c1] = [out.slides[at], out.slides[at + 1]];
     expect(c1?.id).toBe("s9c1");
     if (!s9 || !c1) throw new Error("no split");
-    expect(offSlide(s9) || offSlide(c1)).toBe(false);
+    expect(textBelow(s9) || textBelow(c1)).toBe(false);
     // Content in order: lead and formula first, then the three steps, every word kept.
     const all = `${textOf(s9)} ${textOf(c1)}`;
     const order = [
@@ -95,7 +117,7 @@ describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 
     });
     expect(events.some((e) => e.ev === "fit-continue-failed" && e.slide === 9)).toBe(true);
     const o = out.overflow.find((x) => x.id === "s9");
-    expect(o?.faults.every((f) => OFF_SLIDE.test(f))).toBe(true);
+    expect(o?.faults.every((f) => f.startsWith("off-slide: "))).toBe(true);
     expect(events.some((e) => e.ev === "overflow-shipped" && e.slide === 9)).toBe(true);
     expect(overflowFindings(out.overflow, out.slides)).toEqual([
       {
@@ -117,7 +139,7 @@ describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 
     });
     const parts = out.slides.filter((s) => /^s11(c\d+)?$/.test(s.id));
     expect(parts.length).toBeGreaterThan(1);
-    for (const s of parts) expect(offSlide(s)).toBe(false);
+    for (const s of parts) expect(textBelow(s)).toBe(false);
     // The run's notes answer slide 11's first three questions: 6 apples, 21 cm, 15 kg.
     const asked = parts.flatMap((s) => [...textOf(s).matchAll(/Question (\d)/g)].map((m) => m[1]));
     expect(asked).toEqual(["1", "2", "3", "4"]);
@@ -143,6 +165,56 @@ describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 
   });
 });
 
+describe("the split runs once every slide is final", () => {
+  test("a split slide whose figure cannot be shown is restaged first: no stale parts", async () => {
+    const { out } = await run(Y5, "act", "empty", undefined, withUnshowable(Y5, 8));
+    const parts = out.slides.filter((s) => /^s9(c\d+)?$/.test(s.id));
+    const all = parts.map(textOf).join(" ");
+    for (const t of ["One fifth: £30 ÷ 5 = £6", "Two fifths: £6 × 2 = £12", "Mia spends £12."])
+      expect({ t, n: all.split(t).length - 1 }).toEqual({ t, n: 1 });
+    for (const s of parts) expect(pastEdge(s)).toBe(false);
+  });
+
+  test("a split gas slide has every part rescaled", async () => {
+    const step = (k: number, v: number) =>
+      `Reading ${k}: after ${k * 10} s, ${v} cm³ of hydrogen is collected in the gas syringe, read at eye level against the scale.`;
+    const { out, events } = await run(Y5, "act", "empty", (t) => {
+      const d = JSON.parse(t);
+      d.slides[6] = {
+        ...d.slides[6],
+        heading: "Hydrogen from magnesium",
+        lead: "We add 0.040 g of magnesium to excess dilute acid and collect the gas.",
+        formula: "mean rate = volume ÷ time",
+        points: [step(1, 48), step(2, 54), step(3, 72), step(4, 80)],
+      };
+      return JSON.stringify(d);
+    });
+    expect(events.some((e) => e.ev === "gas8-fallback" && e.slide === 9)).toBe(true);
+    const parts = out.slides.filter((s) => /^s9(c\d+)?$/.test(s.id));
+    expect(parts.length).toBeGreaterThan(1);
+    const vols = parts.flatMap((s) =>
+      [...textOf(s).matchAll(/(\d+(?:\.\d+)?) cm³ of hydrogen/g)].map((m) => Number(m[1])),
+    );
+    expect(vols).toHaveLength(4);
+    // 0.040 g of magnesium gives at most 40 cm³ of hydrogen at room temperature.
+    for (const v of vols) expect(v).toBeLessThanOrEqual(40);
+  });
+});
+
+describe("offSlide counts only text and cards", () => {
+  test("every template sample on every theme and stage lays with none off the slide", () => {
+    let laid = 0;
+    for (const theme of Object.values(THEMES))
+      for (const stage of ["ks1", "ks2", "ks3"] as const)
+        for (const input of templateSamples()) {
+          const els = layoutTemplate(input, theme, stage).slide.elements;
+          expect({ t: input.template, off: offSlide(els) }).toEqual({ t: input.template, off: [] });
+          laid++;
+        }
+    expect(laid).toBeGreaterThan(100);
+  });
+});
+
 describe.each(LESSONS)("off-slide overflow splits or is flagged: %s", (b) => {
   for (const checks of ["act", "log"] as const)
     for (const repairs of ["recorded", "empty"] as const)
@@ -151,14 +223,12 @@ describe.each(LESSONS)("off-slide overflow splits or is flagged: %s", (b) => {
         const reported = new Set(out.overflow.map((x) => x.id));
         const ids = new Set(out.slides.map((s) => s.id));
         for (const id of reported) expect(ids.has(id)).toBe(true);
-        // Only off-slide faults are reported, and every one the final checks see is.
-        for (const o of out.overflow) expect(o.faults.every((f) => OFF_SLIDE.test(f))).toBe(true);
-        for (const c of out.checks)
-          if (c.faults.some((f) => OFF_SLIDE.test(f)))
-            expect(out.overflow.some((x) => x.slide === c.slide)).toBe(true);
-        // Measured on the shipped deck: no text below the slide's edge goes unreported.
+        for (const o of out.overflow)
+          expect(o.faults.every((f) => f.startsWith("off-slide: "))).toBe(true);
+        // Measured here from the shipped element boxes, not with the stage's rule: text, a card,
+        // or a picture that is not full-bleed past the slide's edge is always reported.
         for (const s of out.slides)
-          if (offSlide(s))
+          if (pastEdge(s))
             expect({ id: s.id, reported: reported.has(s.id) }).toEqual({
               id: s.id,
               reported: true,
