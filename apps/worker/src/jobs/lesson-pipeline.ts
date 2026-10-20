@@ -24,6 +24,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { captureCalls, createDebugRecorder, type DebugRecorder } from "../generation-debug";
 import { budgetFailure } from "../job-errors";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
@@ -170,11 +171,24 @@ export async function runLessonJob<K extends LessonPipelineJob>(
   // writer's off-screen diagram and picture calls) makes no model call after the terminal event.
   const settled = new AbortController();
   const runSignal = AbortSignal.any([signal, settled.signal]);
+  let recorder: DebugRecorder | undefined;
   try {
     if (signal.aborted) {
       keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
       return;
     }
+    // The lesson's debug record (Greg, 20 Oct 2026): fire and forget, written after the job settles.
+    // Made before the lesson loads, so a failed load is recorded too (no I/O until a row exists).
+    recorder = deps.generationDebug
+      ? createDebugRecorder({
+          store: deps.generationDebug,
+          workspaceId,
+          lessonId,
+          jobId,
+          attempt: ctx.attempt ?? 0,
+          logger,
+        })
+      : undefined;
     const stored = await loadOwnedLesson(ws, lessonId, jobId, payload.revision);
     spec.check?.(stored);
     if (deps.ai.kind === "unconfigured") {
@@ -182,7 +196,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     }
     const priorUsage = stored.generation?.usage;
     const pipelineDeps: PipelineDeps = {
-      ai: deps.ai,
+      // Every model request of the job lands in its debug record (`model-call`), captured once.
+      ai: captureCalls(deps.ai, recorder),
       budget: createBudget(deps.caps, { spent: priorUsage }),
       ...(deps.planFrontierFromYear !== undefined
         ? { planFrontierFromYear: deps.planFrontierFromYear }
@@ -206,6 +221,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
       images: imagePlacer(deps, workspaceId),
       ...pictureMaker(deps, workspaceId, logger),
+      ...(recorder ? { debug: recorder.sink } : {}),
     };
     let final: PipelineState;
     try {
@@ -252,8 +268,17 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       throw error;
     }
     if (spec.after && !signal.aborted) handedOff = await spec.after(ws, final);
+  } catch (error) {
+    // The full error goes to the debug record only; logs and the job's event keep `safeError`.
+    recorder?.recordError(error, signal.aborted ? { aborted: String(signal.reason) } : undefined);
+    throw error;
   } finally {
     settled.abort("settled");
+    if (recorder) {
+      const debug = recorder;
+      if (ctx.afterSettle) ctx.afterSettle(() => debug.close());
+      else await debug.close();
+    }
     if (keepLockForRetry) {
       logger.info({ lessonId }, "generating lock kept for the retry");
     } else if (handedOff) {

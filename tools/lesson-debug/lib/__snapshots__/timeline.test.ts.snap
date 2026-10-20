@@ -1,0 +1,42 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`lesson-debug timeline the fixture's report, line for line 1`] = `
+"Lesson 0192f7a0-0000-7000-8000-000000000011 "The Roman invasion" (workspace 0192f7a0-0000-7000-8000-00000000000a)
+  updated 2026-10-20T09:01:30.000Z; lock none
+  generation: stage planned, job 0192f7a0-0000-7000-8000-0000000000b2, usage {"calls":4,"costUsd":0.0412}
+  prompts: {"planned":"lesson-writer.v1+writer-objectives"}
+  5 job events, 12 debug rows (model-call 2, plan 1, fact-check 3, writer-output 1, check 1, repair 1, picture 1, budget-stop 1, job-error 1)
+
+09:00:00.000    +0.0s  job 000000a1      EVENT started
+09:00:03.000    +3.0s  job 000000a1 a0 model-call        lesson-writer.v1/objectives on openai/gpt-6.1-sol (write-frontier, generate) 2900ms 1200/300 tok $0.0040 -> 33 chars, stop  [--call 000000a1:0:0]
+09:00:03.500    +3.5s  job 000000a1 a0 plan              objectives: {"plan":null,"objectives":[{"id":"o1","text":"Describe AD 43"}]}
+09:00:03.800    +3.8s  job 000000a1 a0 fact-check        verify on openai/gpt-6-luna 1800ms $0.0011: 3 facts checked, 2 corrections, 1 applied, 1 dropped
+09:00:04.000    +4.0s  job 000000a1      EVENT completed
+09:00:10.000   +10.0s  job 000000b2      EVENT started
+09:00:12.000   +12.0s  job 000000b2      EVENT progress    40% generate Writing slides
+09:00:30.000   +30.0s  job 000000b2 a0 model-call        lesson-writer.v1/lesson on openai/gpt-6.1-sol (write, stream) 19000ms 9000/4000 tok $0.0310 -> 13 chars, length  [--call 000000b2:0:0]
+09:00:30.001   +30.0s  job 000000b2 a0 writer-output     13 chars, finish length, 19000ms $0.0310
+09:00:31.000   +31.0s  job 000000b2 a0 check         s3  overflow:body 18pt over | over [{"element":"body","by":18}]
+09:00:33.000   +33.0s  job 000000b2 a0 repair        s3  fit: accepted then reverted, fix shortened | faults overflow:body 18pt over
+09:00:34.000   +34.0s  job 000000b2 a0 picture       s5  empty via generated for "a Roman legionary" (generation-refused-or-failed)
+09:00:36.000   +36.0s  job 000000b2 a0 fact-check    s4  gas8: contradicted (gas8: 500 cm3 from 0.1 g Mg), applied
+09:00:36.100   +36.1s  job 000000b2 a0 fact-check        gas8: read 5 slides, flagged 1
+09:00:39.000   +39.0s  job 000000b2 a0 budget-stop       notes on openai/gpt-6-luna refused; totals {"costUsd":0.25}
+09:00:39.500   +39.5s  job 000000b2 a0 job-error         BudgetExceeded: lesson budget exceeded by $0.01 (at call (packages/generation/src/call.ts:10:5))
+09:00:40.000   +40.0s  job 000000b2      EVENT failed      {"message":"The lesson could not be finished.","retryable":true}
+
+FACT CHECK
+  slides checked 5, changed 2 (40%); 1 per-slide checks, 1 verify runs
+  gas8: read 5 slides, flagged 1
+  verify on openai/gpt-6-luna 1800ms $0.0011: 3 facts checked, 2 corrections, 1 applied, 1 dropped
+  changed v2.term (wrong-term) on slides 2
+    - "Clan"
+    + "Legion"
+  DROPPED v9.term (wrong-term): failed the field, index or limit rules, or an off-topic starter
+    - null
+    + "X"
+  slide 4: gas8 contradicted (gas8: 500 cm3 from 0.1 g Mg)
+    - Magnesium makes 500 cm3 of hydrogen.
+      Collect it in a syringe.
+    + Magnesium makes 90 cm3 of hydrogen."
+`;
