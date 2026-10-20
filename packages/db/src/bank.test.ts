@@ -51,7 +51,10 @@ function row(request: string, embedding: number[]) {
 describeDb("bank_images", () => {
   if (!t.ok) return;
   const db = t.db.unsafeDb;
-  beforeEach(() => db.execute(sql`TRUNCATE bank_images`));
+  // Awaited: a returned Drizzle query is a lazy thenable, and on a reused database its rows stayed.
+  beforeEach(async () => {
+    await db.execute(sql`TRUNCATE bank_images`);
+  });
   afterAll(() => t.db.close());
 
   test("nearest ready rows come back by cosine, rejected rows never", async () => {
