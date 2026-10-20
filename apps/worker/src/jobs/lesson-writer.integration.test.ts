@@ -202,10 +202,15 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
     expect(done.lock).toBeNull();
     expect(done.lesson.generation?.stage).toBe("generated");
-    // 12 written slides, then the guard and three Answers pages (TEACH-191 parts b and d): measured
-    // at the size KS2 draws them, the sentence answers no longer fit two pages without overlapping.
-    expect(done.lesson.slides.length).toBe(16);
-    expect(done.lesson.slides.slice(12).map((s) => s.answersRole)).toEqual([
+    // 12 written slides plus slide 9's continuation, then the guard and three Answers pages
+    // (TEACH-191 parts b and d): measured at the size KS2 draws them, the sentence answers no
+    // longer fit two pages without overlapping. Slide 9 (equation-hero, "A fraction of some
+    // money") lays its steps to y 648 on the 540-tall slide, so it splits onto s9c1 (UX-C J8,
+    // Greg 70 B).
+    expect(done.lesson.slides.length).toBe(17);
+    const ids = done.lesson.slides.map((s) => s.id);
+    expect(ids.indexOf("s9c1")).toBe(ids.indexOf("s9") + 1);
+    expect(done.lesson.slides.slice(13).map((s) => s.answersRole)).toEqual([
       "guard",
       "answers",
       "answers",
@@ -269,7 +274,8 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(editable?.states.every((x) => x === "done")).toBe(true);
     const done = await row(lessonId);
     expect(done.lesson.generation?.stage).toBe("generated");
-    expect(done.lesson.slides.filter((s) => !s.answersRole).length).toBe(12);
+    // 12 written slides plus slide 9's continuation (it runs off the slide; UX-C J8, Greg 70 B).
+    expect(done.lesson.slides.filter((s) => !s.answersRole).length).toBe(13);
   });
 
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {

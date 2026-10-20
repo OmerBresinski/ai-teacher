@@ -77,6 +77,8 @@ export interface JobContext<K extends JobName, D = unknown> {
    * releases the lock. Hand-built test contexts may leave it out: `undefined` reads as `true`.
    */
   attemptsLeft?: boolean;
+  /** This attempt's number, from 0 (pg-boss `retryCount`). `runJob` always sets it. */
+  attempt?: number;
   /**
    * Runs `hook` once this attempt is settled: after its terminal event (or its retry notice) is
    * written, or after the attempt failed to write one. A handler releases its generating lock
