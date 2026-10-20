@@ -50,8 +50,8 @@ export function GeneratingLesson({
   /** The export control (TEACH-110): the locked lesson exports its current body. */
   exportSlot?: ReactNode;
   onBack: () => void;
-  /** The job ended without completing; the page keeps this view for `jobId` once the lock clears. */
-  onStopped: (jobId: string) => void;
+  /** The job ended without completing, once the row it left has been read (the page opens the editor on it). */
+  onStopped: (jobId: string, outcome: "failed" | "cancelled", message?: string) => void;
   /** The job completed and its finished row is in the cache: the page may open the editor. */
   onCompleted?: (jobId: string) => void;
   /** The slide the teacher is looking at (`null` = the newest), so the editor opens on it at Ready. */
@@ -67,6 +67,8 @@ export function GeneratingLesson({
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
   // The job's end: the terminal event, or the backup poll below when the stream missed it.
   const [polledEnd, setPolledEnd] = useState<"completed" | "stopped" | null>(null);
+  const terminalType = stream.terminal?.type;
+  const failure = stream.terminal?.type === "failed" ? stream.terminal.error?.message : undefined;
   const ended = stream.terminal
     ? stream.terminal.type === "completed"
       ? "completed"
@@ -120,30 +122,32 @@ export function GeneratingLesson({
   // once and writes the body and its released lock together, so the editor mounts on the finished
   // document and never on the last debounced copy (TEACH-251 — the fit migration used to run on
   // that copy and be spent when the real body landed at `fitVersion: 0`). A `failed` /
-  // `cancelled` outcome is reported to the page first, so it keeps this view — the message, the
-  // partial slides, the way back — rather than opening the editor on the unlocked row; the next
-  // visit reads the row afresh and edits what was written.
+  // `cancelled` outcome is reported to the page once that read has landed too (UX-A): the page
+  // then opens the editor on what was written, with the outcome, never on the last debounced copy.
   useEffect(() => {
     if (ended === null || !sessionIsCurrent(queryClient)) return;
-    if (ended !== "completed") onStopped(jobId);
+    const report = () => {
+      if (!sessionIsCurrent(queryClient)) return;
+      if (ended === "completed") onCompleted?.(jobId);
+      // Only a reported failure offers Try again; an end the poll found is said as stopped.
+      else onStopped(jobId, terminalType === "failed" ? "failed" : "cancelled", failure);
+    };
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
       .then(
         () => {
+          report();
           if (!sessionIsCurrent(queryClient)) return;
-          if (ended === "completed") onCompleted?.(jobId);
           return queryClient.invalidateQueries({ queryKey: queryKeys.libraryDocuments });
         },
-        () => {
-          // The read failed: the job still completed, so the page still opens the editor, on the
-          // copy it holds. Nothing to do once the session has ended.
-          if (sessionIsCurrent(queryClient) && ended === "completed") onCompleted?.(jobId);
-        },
+        // The read failed: the job still ended, so the page still opens the editor, on the copy
+        // it holds. Nothing to do once the session has ended.
+        report,
       )
       .catch(() => {
         /* The session may have ended while handing over the document. */
       });
-  }, [ended, lesson.id, jobId, queryClient, onStopped, onCompleted]);
+  }, [ended, terminalType, failure, lesson.id, jobId, queryClient, onStopped, onCompleted]);
 
   const cancel = useMutation(
     sessionMutation(queryClient, {

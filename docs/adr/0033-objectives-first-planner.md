@@ -18,7 +18,8 @@ slides stream in, Check finishes after.
 ## Decision
 
 1. **A worker flag picks the planner for a new lesson.** `AI_LESSON_PLANNER` is `legacy`
-   or `objectives-first` (the default since 25–26 Sept 2026, see the amendment below). `lesson.plan` passes it as `PipelineOptions.planner`. The API
+   or `objectives-first` (the default from 25–26 Sept 2026, see the amendments below; `writer`,
+   added by TEACH-110 part b, is the default from 20 Oct 2026). `lesson.plan` passes it as `PipelineOptions.planner`. The API
    never reads it.
 2. **A second workflow.** `objectivesFirstWorkflow` runs check-input → objectives → facts →
    generate → illustrate → evaluate → repair. Its steps order and resume on their own table
@@ -65,3 +66,21 @@ The decision of 25–26 Sept 2026 (SHIP-H-PLAN §3 item 9, ticket G) ships objec
 worker's `AI_LESSON_PLANNER` now defaults to `objectives-first` when unset. Rollback is setting
 `AI_LESSON_PLANNER=legacy`, not unsetting it. The e2e worker pins `legacy`: its scripted fake
 answers the legacy planner's prompts only.
+
+## Amendment 2026-10-20 — the writer is the default
+
+Greg, 20 Oct 2026: "Just switch. I don't care about the old ones. No one is using the platform
+yet. Need to get to MVP asap." The worker's `AI_LESSON_PLANNER` now defaults to `writer` when
+unset, the third value added by TEACH-110 part b: `lesson.plan` makes the same objectives call,
+stamped for the writer, and stops for the teacher; `lesson.generate` runs the lesson writer (one
+streamed `openai/gpt-6.1-sol` call, its small calls on `openai/gpt-6-luna`, the prompt bundle
+pinned in code) with its own checks, repair and notes. It needs nothing production lacks:
+`OPENAI_API_KEY` serves both models, Commons needs no key, Pexels and the picture generator use
+the keys already set, and the budget caps keep their defaults.
+
+Decision 5 still holds: a lesson already planned keeps the planner its stamp names, so lessons
+planned objectives-first or legacy finish on their own path. `objectives-first` and `legacy` stay
+selectable. Rollback is reverting the change or setting `AI_LESSON_PLANNER=objectives-first` on
+the Railway worker. The e2e worker still pins `legacy` (its scripted fake answers the legacy
+prompts) except the live writing timeline run, which pins `writer` over a recorded writer replay
+(`AI_FAKE_WRITER_REPLAY`).
