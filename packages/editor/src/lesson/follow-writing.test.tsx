@@ -147,6 +147,8 @@ describe("the editor follows the slide being written", () => {
 
   test("before the writer's first content words, the next planned slide opens as an outline", () => {
     const lesson = worded(seededLesson());
+    // Planning: slides 3 and 4 are planned blanks (no words of their own yet).
+    (lesson.slides[2] as Slide).elements = [];
     lesson.slides.push({ id: "s4", kind: "content", elements: [] });
     const { write, container } = setup(lesson);
     write(2);
@@ -157,6 +159,18 @@ describe("the editor follows the slide being written", () => {
     expect(
       container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
     ).not.toBeNull();
+  });
+
+  test("slide 3 written and no draft streaming (lead undefined): the next outline does not open", () => {
+    const lesson = worded(seededLesson());
+    lesson.slides.push({ id: "s4", kind: "content", elements: [] });
+    const { write } = setup(lesson, { drafts: createDraftStore() });
+    // Slide 3's words are saved; the draft store is empty between slides, so `lead` is undefined.
+    write(2);
+    expect(open(3)).toBe("true");
+    write(3);
+    expect(open(3)).toBe("true");
+    expect(open(4)).toBe("false");
   });
 
   test("following never moves focus, even with a strip row focused", () => {

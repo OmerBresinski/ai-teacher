@@ -53,8 +53,11 @@ export function useFollowWriting({
     const at = (id: Id | undefined) => slides.findIndex((s) => s.id === id);
     // Before then (Greg, 20 Oct 2026, amending part f): the title and objectives type out first,
     // then the view opens the next planned slide as an outline instead of holding on the
-    // objectives for the writer's planning time. Real words from slide 3 on always lead.
-    if (at(lead) < 2) {
+    // objectives for the writer's planning time. Real words from slide 3 on always lead, saved or
+    // streaming: once a later slide has words, `lead` may be undefined between drafts and the view
+    // must hold on the written slide, not jump to the next outline.
+    const planning = slides.slice(2).every((s) => s.elements === undefined || isPlannedBlank(s));
+    if (at(lead) < 2 && planning) {
       if (revealing !== undefined && writingSlideIds.has(revealing)) return revealing;
       const outline = slides.find(
         (s, i) =>

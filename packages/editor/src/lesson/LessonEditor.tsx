@@ -302,6 +302,7 @@ export function LessonEditor({
   const lead = useDraftLead(drafts);
   // A new lesson's title and objectives type out while the writer plans (presentation only).
   const reveal = useFirstSlidesReveal({
+    lessonId,
     slides: lesson?.slides,
     writingSlideIds,
     leadIndex: lead === undefined ? -1 : (lesson?.slides.findIndex((s) => s.id === lead) ?? -1),
