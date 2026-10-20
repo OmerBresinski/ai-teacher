@@ -2,21 +2,17 @@ import type { Finding } from "@tj/domain/documents";
 import type { WriterOutput } from "./stage";
 
 /*
- * Fit residuals (UX-C J8): a slide the writer stage could not fit (a template overflow flag or
- * clipped text that no reword or continuation cleared, or the checks only logged) is saved with a
- * "things to check" finding on it, so it never ships overflowing silently. The editor shows stored
- * findings as they are (ADR 0025 §12).
+ * Fit residuals (UX-C J8): a slide whose text or a card still runs off the slide after the
+ * continuation split (Greg 70 B and 71 A, 20 Oct) is saved with a "things to check" finding on it,
+ * so it never ships over the edge silently. The editor shows stored findings as they are (ADR 0025
+ * §12).
  */
 
 /** The finding's check name. */
 export const OVERFLOW_CHECK = "slide-overflow";
 
-/**
- * Every template flag shares it: most are words past their room, a few are a picture squeezed
- * below its shape or a question past its lines, so it names the space, not the words.
- */
 const MESSAGE =
-  "Something on this slide does not fit its space. Shorten the words, or move some to a new slide.";
+  "Something on this slide runs off its edge and does not fit. Shorten the words, or move some to a new slide.";
 
 /**
  * One warning per overflowing slide the deck ships, aimed at the slide by id. Slides missing from

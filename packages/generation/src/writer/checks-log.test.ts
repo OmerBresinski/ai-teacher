@@ -95,10 +95,15 @@ describe('checks: "log" acts on no check result', () => {
   test("no slide loses a visual it kept when checks act", async () => {
     for (const b of LESSONS) {
       const logged = (await run(b, "log")).res.slides;
-      // Compared by slide: a fit continuation (UX-C J8) is an extra slide only when checks act.
-      const ids = new Set(logged.map((s) => s.id));
-      const act = images((await run(b, "act")).res.slides.filter((s) => ids.has(s.id)) as never);
-      const log = images(logged as never);
+      const acted = (await run(b, "act")).res.slides;
+      // Compared by slide id: a continuation (Greg 70 B, both modes) is only in one deck when the
+      // modes leave different slides off the slide.
+      const both = (xs: typeof logged, ys: typeof logged) => {
+        const ids = new Set(ys.map((s) => s.id));
+        return xs.filter((s) => ids.has(s.id));
+      };
+      const act = images(both(acted, logged) as never);
+      const log = images(both(logged, acted) as never);
       for (let i = 0; i < act.length; i++)
         expect(log[i] ?? 0, `${b} s${i + 1}`).toBeGreaterThanOrEqual(act[i] ?? 0);
     }

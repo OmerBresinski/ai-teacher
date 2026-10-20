@@ -551,6 +551,11 @@ export function overflowPt(faults: string[]): number {
   return t;
 }
 export const OVERFLOW = /^(overflow|clipped|cut):/;
+/**
+ * Text or a card past the slide's edge (Greg 71 A, 20 Oct): the overflow that splits and is
+ * flagged. A full-bleed `surface:` ground is drawn to the edge by design.
+ */
+export const OFF_SLIDE = /^clipped: (?!surface:)/;
 /** A request's content words, sorted (two requests for the same subject compare equal). */
 export const plainWords = (t: string) =>
   [...new Set(t.toLowerCase().match(/[a-z]{4,}/g) ?? [])].sort().join(" ");

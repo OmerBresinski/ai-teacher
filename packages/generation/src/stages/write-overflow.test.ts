@@ -10,7 +10,8 @@ import { write } from "./write";
 /*
  * UX-C J8: the recorded y5 writer output through the production write stage (checks only log, so
  * no fit repair runs; every other call answered as the local fake answers it). Slide 9, the
- * equation-hero whose steps run off the slide, is saved with a "things to check" finding.
+ * equation-hero whose steps ran off the slide, is saved split onto a continuation (Greg 70 B),
+ * with no finding; a slide that cannot split is saved with one (71 A).
  */
 
 const fixture = writerFixture();
@@ -31,24 +32,45 @@ const answers = (call: FakeCall) => {
   return "{}";
 };
 
-describe("a slide the writer stage could not fit", () => {
-  test("is saved with a things-to-check finding on it", async () => {
-    const ai = () => labAi({ extra: answers, route: writerRoute });
-    const planned = await checkedWriterObjectives(
-      initialState(romansLesson()),
-      recordingDeps(ai()),
+const runWrite = async (main = fixture.main) => {
+  const ai = () =>
+    labAi({
+      extra: (call) => {
+        const v = call.context?.promptVersion ?? "";
+        return v.endsWith("/lesson") && v.startsWith(`${WRITER_VERSION}/`)
+          ? { text: main }
+          : answers(call);
+      },
+      route: writerRoute,
+    });
+  const planned = await checkedWriterObjectives(initialState(romansLesson()), recordingDeps(ai()));
+  const deps = recordingDeps(ai());
+  const out = await write(planned, deps);
+  return { out, saved: deps.persisted.at(-1)?.lesson };
+};
+
+describe("the production write stage", () => {
+  test("saves an off-slide slide split onto a continuation, in order, with no finding", async () => {
+    const { out, saved } = await runWrite();
+    const ids = (saved?.slides ?? []).map((s) => s.id);
+    expect(ids.indexOf("s9c1")).toBe(ids.indexOf("s9") + 1);
+    const both = JSON.stringify(saved?.slides.filter((s) => s.id === "s9" || s.id === "s9c1"));
+    expect(both.indexOf("Mia has £30.")).toBeLessThan(both.indexOf("Mia spends £12."));
+    expect(saved?.generation?.slideStates?.s9c1).toBe("done");
+    expect((saved?.generation?.findings ?? []).filter((f) => f.check === OVERFLOW_CHECK)).toEqual(
+      [],
     );
-    const deps = recordingDeps(ai());
-    const out = await write(planned, deps);
-    const saved = deps.persisted.at(-1)?.lesson;
-    const s9 = saved?.slides.find((s) => s.id === "s9");
-    expect(JSON.stringify(s9)).toContain("Mia spends £12.");
+    expect(out.lesson.slides.map((s) => s.id)).toEqual(ids);
+  });
+
+  test("saves a slide that cannot split with a things-to-check finding on it", async () => {
+    const main = JSON.parse(fixture.main);
+    main.slides[6].points = [
+      Array(12).fill("One fifth: £30 ÷ 5 = £6 and then two fifths.").join(" "),
+    ];
+    const { saved } = await runWrite(JSON.stringify(main));
     const flagged = (saved?.generation?.findings ?? []).filter((f) => f.check === OVERFLOW_CHECK);
-    expect(flagged.map((f) => f.target.slideId)).toContain("s9");
-    for (const f of flagged) {
-      expect(f.severity).toBe("warning");
-      expect(saved?.slides.some((s) => s.id === f.target.slideId)).toBe(true);
-    }
-    expect(out.lesson.generation?.findings).toEqual(saved?.generation?.findings ?? []);
+    expect(flagged.map((f) => f.target.slideId)).toEqual(["s9"]);
+    expect(flagged[0]?.severity).toBe("warning");
   });
 });

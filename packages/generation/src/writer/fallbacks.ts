@@ -302,7 +302,8 @@ const LIST_KEYS = ["points", "questions"] as const;
 /**
  * The last-resort strip never ships overflow: its list items are carried onto continuation slides
  * of the same layout, each keeping the longest run of items, in order, that fits. Words are never
- * cut or rewritten; a slide with no such list, or whose first item cannot fit alone, is left.
+ * cut or rewritten. When not one item fits beside the slide's other words, those stay alone and the
+ * whole list continues. A slide with no such list, or one item too big for a part, is left.
  */
 export function continueForFit(
   slide: S,
@@ -312,7 +313,15 @@ export function continueForFit(
   if (!key) return undefined;
   const items = slide[key] as unknown[];
   const cont = (c: unknown[]): S => {
-    const s: S = { template: slide.template, heading: slide.heading, [key]: c };
+    // A worked example's formula heads each part too: its panel is never drawn empty.
+    const s: S = {
+      template: slide.template,
+      heading: slide.heading,
+      [key]: c,
+      ...(typeof slide.formula === "string" && slide.formula.trim()
+        ? { formula: slide.formula }
+        : {}),
+    };
     for (const [k, v] of Object.entries(slide))
       if (!(k in s))
         s[k] = typeof v === "string" ? (k === "lead" ? "" : null) : Array.isArray(v) ? [] : null;
@@ -328,6 +337,12 @@ export function continueForFit(
         take = k;
         break;
       }
+    }
+    // Nothing of the list fits beside the slide's other words: they stand alone on this slide and
+    // the whole list continues on the next (UX-C J8, a worked example's steps under its formula).
+    if (!take && !chunks.length && fits({ ...slide, [key]: [] })) {
+      chunks.push([]);
+      continue;
     }
     if (!take) return undefined;
     chunks.push(items.slice(at, at + take));

@@ -2,10 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Finding } from "@tj/domain/documents";
-import { OVERFLOW } from "./fixes";
+import { OFF_SLIDE } from "./fixes";
 import { OVERFLOW_CHECK, overflowFindings, withOverflowFindings } from "./overflow-findings";
 import { replayRun, replayServices } from "./replay-fixture";
 import type { ChatReq, WriterServices } from "./services";
+import { CONTINUED_NOTE } from "./stage";
 
 /*
  * UX-C J8: a slide over its template's room never ships silently. Either the fit clears it (a
@@ -22,7 +23,12 @@ type Ev = Record<string, unknown>;
  * The replay with every repair call answered `{}` (what the local fake worker answers, so no fit
  * repair lands) or with the run's recorded repairs.
  */
-async function run(b: string, checks: "act" | "log", repairs: "recorded" | "empty") {
+async function run(
+  b: string,
+  checks: "act" | "log",
+  repairs: "recorded" | "empty",
+  text?: (t: string) => string,
+) {
   const events: Ev[] = [];
   const base = replayServices(b);
   const services: WriterServices = {
@@ -33,7 +39,7 @@ async function run(b: string, checks: "act" | "log", repairs: "recorded" | "empt
         ? base.chat
         : async (r: ChatReq) => (r.name === "slide" ? { out: {}, usd: 0, ms: 0 } : base.chat(r)),
   };
-  const out = await replayRun(b, { services, checks });
+  const out = await replayRun(b, { services, checks, ...(text ? { text } : {}) });
   return { out, events };
 }
 
@@ -43,18 +49,55 @@ const flat = (els: El[]): El[] => els.flatMap((e) => [e, ...flat(e.children ?? [
 const offSlide = (s: { elements: unknown[] }) =>
   flat(s.elements as El[]).some((e) => e.type === "text" && e.y + e.h > SLIDE_H + 0.5);
 
+/** The slide's words in reading order (its text elements top to bottom). */
+const words = (s: { elements: unknown[] }) =>
+  flat(s.elements as (El & { doc?: unknown })[])
+    .filter((e) => e.type === "text")
+    .sort((x, y) => x.y - y.y)
+    .map((e) => JSON.stringify((e as { doc?: unknown }).doc ?? ""))
+    .join(" ");
+const textOf = (s: { elements: unknown[] }) =>
+  [...words(s).matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join(" ");
+
 describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 607)", () => {
-  test("production (checks log, no repair lands): it ships flagged, never silently", async () => {
+  test("production (checks log, no repair lands): it splits onto a continuation (Greg 70 B)", async () => {
     const { out, events } = await run(Y5, "log", "empty");
-    const s9 = out.slides.find((s) => s.id === "s9");
-    expect(JSON.stringify(s9)).toContain("Mia spends £12.");
-    // As UX-C measured it: the steps run past the 540-tall slide.
-    expect(s9 && offSlide(s9)).toBe(true);
+    expect(events.some((e) => e.ev === "fit-continued" && e.slide === 9)).toBe(true);
+    const at = out.slides.findIndex((s) => s.id === "s9");
+    const [s9, c1] = [out.slides[at], out.slides[at + 1]];
+    expect(c1?.id).toBe("s9c1");
+    if (!s9 || !c1) throw new Error("no split");
+    expect(offSlide(s9) || offSlide(c1)).toBe(false);
+    // Content in order: lead and formula first, then the three steps, every word kept.
+    const all = `${textOf(s9)} ${textOf(c1)}`;
+    const order = [
+      "Mia has £30.",
+      "One fifth: £30 ÷ 5 = £6",
+      "Two fifths: £6 × 2 = £12",
+      "Mia spends £12.",
+    ].map((t) => all.indexOf(t));
+    expect(order.every((k) => k >= 0)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+    // The slide's own notes stay on its first part; the continuation says where it comes from.
+    expect(s9.notes.length).toBeGreaterThan(0);
+    expect(c1.notes).toBe(CONTINUED_NOTE);
+    expect(out.overflow).toEqual([]);
+  });
+
+  test("a slide that cannot split ships with a finding, never silently", async () => {
+    const { out, events } = await run(Y5, "log", "empty", (t) => {
+      const d = JSON.parse(t);
+      // One step too long for any part: nothing to split between.
+      d.slides[6].points = [
+        Array(12).fill("One fifth: £30 ÷ 5 = £6 and then two fifths.").join(" "),
+      ];
+      return JSON.stringify(d);
+    });
+    expect(events.some((e) => e.ev === "fit-continue-failed" && e.slide === 9)).toBe(true);
     const o = out.overflow.find((x) => x.id === "s9");
-    expect(o?.faults).toContain("overflow: equation column 488/328pt");
+    expect(o?.faults.every((f) => OFF_SLIDE.test(f))).toBe(true);
     expect(events.some((e) => e.ev === "overflow-shipped" && e.slide === 9)).toBe(true);
-    const f = overflowFindings(out.overflow, out.slides);
-    expect(f.filter((x) => x.target.slideId === "s9")).toEqual([
+    expect(overflowFindings(out.overflow, out.slides)).toEqual([
       {
         check: OVERFLOW_CHECK,
         severity: "warning",
@@ -64,24 +107,43 @@ describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 
     ]);
   });
 
-  test("checks act, the rewords fail: it is still reported when no continuation fits", async () => {
-    const { out, events } = await run(Y5, "act", "empty");
-    const fits = events.filter((e) => e.ev === "repair" && e.slide === 9 && e.mode === "fit");
-    expect(fits).toHaveLength(2);
-    expect(out.overflow.map((x) => x.id)).toContain("s9");
-    // Slide 5 (equation column 354/328) splits its steps onto a continuation slide instead.
-    expect(events.some((e) => e.ev === "fit-continued" && e.slide === 5)).toBe(true);
-    expect(out.slides.some((s) => s.id === "s5c1")).toBe(true);
-    expect(out.overflow.map((x) => x.id)).not.toContain("s5");
+  test("a split question list's answers follow their questions, in order", async () => {
+    const long = (k: number) =>
+      `Question ${k}: ${"A shop packs the same number of pencils in each box for the class. ".repeat(3)}`;
+    const { out } = await run(Y5, "log", "empty", (t) => {
+      const d = JSON.parse(t);
+      d.slides[8] = { ...d.slides[8], template: "question-set", questions: [1, 2, 3, 4].map(long) };
+      return JSON.stringify(d);
+    });
+    const parts = out.slides.filter((s) => /^s11(c\d+)?$/.test(s.id));
+    expect(parts.length).toBeGreaterThan(1);
+    for (const s of parts) expect(offSlide(s)).toBe(false);
+    // The run's notes answer slide 11's first three questions: 6 apples, 21 cm, 15 kg.
+    const asked = parts.flatMap((s) => [...textOf(s).matchAll(/Question (\d)/g)].map((m) => m[1]));
+    expect(asked).toEqual(["1", "2", "3", "4"]);
+    const shown = parts.map(
+      (s) => (s.question as { modelAnswer?: string } | undefined)?.modelAnswer,
+    );
+    const answerOf = (q: number) =>
+      shown[parts.findIndex((s) => textOf(s).includes(`Question ${q}:`))] ?? "";
+    expect(answerOf(1)).toContain("6 apples");
+    expect(answerOf(2)).toContain("21 cm");
+    expect(answerOf(3)).toContain("15 kg");
+    // Each answer is shown once, on its own question's part, in the deck's order.
+    const all = shown.filter(Boolean).join(" | ");
+    expect(all).toMatch(/6 apples[\s\S]*21 cm[\s\S]*15 kg/);
+    for (const a of ["6 apples", "21 cm", "15 kg"]) expect(all.split(a)).toHaveLength(2);
   });
 
-  test("with the run's recorded repair the slide fits and carries no finding", async () => {
-    const { out } = await run(Y5, "act", "recorded");
-    expect(out.overflow.map((x) => x.id)).not.toContain("s9");
+  test("a block a little past its room but on the slide is left as it is (Greg 71 A)", async () => {
+    const { out } = await run(Y5, "log", "empty");
+    // s5's equation column is 26 pt past its room and on the slide: no split, no finding.
+    expect(out.slides.some((s) => s.id === "s5c1")).toBe(false);
+    expect(out.overflow.map((x) => x.id)).not.toContain("s5");
   });
 });
 
-describe.each(LESSONS)("every template overflow flag goes to repair or a finding: %s", (b) => {
+describe.each(LESSONS)("off-slide overflow splits or is flagged: %s", (b) => {
   for (const checks of ["act", "log"] as const)
     for (const repairs of ["recorded", "empty"] as const)
       test(`checks ${checks}, repairs ${repairs}`, async () => {
@@ -89,9 +151,10 @@ describe.each(LESSONS)("every template overflow flag goes to repair or a finding
         const reported = new Set(out.overflow.map((x) => x.id));
         const ids = new Set(out.slides.map((s) => s.id));
         for (const id of reported) expect(ids.has(id)).toBe(true);
-        // Every overflow the final checks still see is reported, on the shipped slide's id.
+        // Only off-slide faults are reported, and every one the final checks see is.
+        for (const o of out.overflow) expect(o.faults.every((f) => OFF_SLIDE.test(f))).toBe(true);
         for (const c of out.checks)
-          if (c.faults.some((f) => OVERFLOW.test(f)))
+          if (c.faults.some((f) => OFF_SLIDE.test(f)))
             expect(out.overflow.some((x) => x.slide === c.slide)).toBe(true);
         // Measured on the shipped deck: no text below the slide's edge goes unreported.
         for (const s of out.slides)
@@ -100,27 +163,10 @@ describe.each(LESSONS)("every template overflow flag goes to repair or a finding
               id: s.id,
               reported: true,
             });
-        // A flag seen at the first check: log mode reports it as is; act mode sends it to a fit
-        // repair (title and objectives are laid by code, never sent), and what that leaves is
-        // continued or reported.
-        if (checks === "log") {
-          for (const e of events)
-            if (e.ev === "repair-skipped" && (e.faults as string[]).some((f) => OVERFLOW.test(f)))
-              expect(out.overflow.some((x) => x.slide === e.slide)).toBe(true);
-        } else {
-          for (const e of events.filter(
-            (x) => x.ev === "overflow-shipped" && Number(x.slide) > 2,
-          )) {
-            const repaired = events.some(
-              (x) => x.ev === "repair" && x.slide === e.slide && x.mode !== undefined,
-            );
-            const pilot = events.some((x) => x.ev === "pilot-fit" && x.slide === e.slide);
-            expect({ slide: e.slide, repaired: repaired || pilot }).toEqual({
-              slide: e.slide,
-              repaired: true,
-            });
-          }
-        }
+        // Every off-slide flag the stage saw was split or reported.
+        for (const e of events)
+          if (e.ev === "fit-continue-failed")
+            expect(out.overflow.some((x) => x.slide === e.slide)).toBe(true);
       });
 });
 

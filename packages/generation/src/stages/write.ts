@@ -428,7 +428,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // stay off. Asking slides hold the answer back (roleAsk). Each switch turns one piece off.
       // Checks only log (Greg, 10 Oct: "turn off the ENTIRE check system... logging what it would
       // have done"): no repair, no check-driven word change, and a model is kept as drawn rather
-      // than falling back for overlapping or split labels (TEACH-312 part i).
+      // than falling back for overlapping or split labels (TEACH-312 part i). One exception (Greg
+      // 70 B, 20 Oct): a slide whose text or a card runs off the slide still splits onto a
+      // continuation slide.
       checks: "log",
       library: true,
       libraryMenuFilter: true,
