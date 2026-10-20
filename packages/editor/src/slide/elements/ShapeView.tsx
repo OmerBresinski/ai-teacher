@@ -1,6 +1,6 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
-import { badgeGlyph, DIAGRAM_NAME } from "@tj/slides";
+import { type BadgeGlyph, badgeGlyph, DIAGRAM_NAME, isBadgeBox } from "@tj/slides";
 import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import { surfacesOf } from "@tj/slides/surfaces";
 import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
@@ -129,22 +129,29 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
 
   // A badge's numeral or letter centres on its cap height, not its line box (`badgeGlyph`):
   // no padding, line height 1, an unconditional centre (`safe center` drops an overflowing line
-  // to the top), the line trimmed to the cap band and the glyph's own ink offset.
-  const glyph = label ? badgeGlyph(richDocToPlainText(label), r.fontFamily, r.fontSize) : null;
-  const shellStyle: CSSProperties = glyph
-    ? { position: "relative", padding: 0, justifyContent: "center" }
-    : { position: "relative" };
-  const typeCss = glyph ? badgeGlyphType(textTypeCss(r), r.fontSize) : textTypeCss(r);
-  const glyphWrap = (children: ReactNode, style?: CSSProperties) =>
-    glyph ? (
-      <div className="tj-badge-glyph" style={badgeGlyphVars(glyph)}>
-        {children}
-      </div>
-    ) : style ? (
-      <div style={style}>{children}</div>
-    ) : (
-      children
-    );
+  // to the top), the line trimmed to the cap band and the glyph's own ink offset. Only a badge
+  // (a small, near-square shape) gets it, and only at rest: while the label is being typed into
+  // it keeps the plain layout, so the editor's tree never changes under the caret.
+  const glyphOf = (editing: boolean) =>
+    label && !editing && isBadgeBox(element.w, element.h)
+      ? badgeGlyph(richDocToPlainText(label), r.fontFamily, r.fontSize)
+      : null;
+  const shellStyle = (glyph: BadgeGlyph | null): CSSProperties =>
+    glyph
+      ? { position: "relative", padding: 0, justifyContent: "center" }
+      : { position: "relative" };
+  const typeCss = (glyph: BadgeGlyph | null) =>
+    glyph ? badgeGlyphType(textTypeCss(r), r.fontSize) : textTypeCss(r);
+  const glyph = glyphOf(false);
+  /** One wrapper element whatever the label: only its class and style change. */
+  const glyphWrap = (glyph: BadgeGlyph | null, children: ReactNode, style?: CSSProperties) => (
+    <div
+      className={glyph ? "tj-badge-glyph" : undefined}
+      style={glyph ? badgeGlyphVars(glyph) : style}
+    >
+      {children}
+    </div>
+  );
 
   /** The shape, drawn either with its label, with the editor in the label's place, or bare. */
   const shape = (editor: ReactNode) => (
@@ -191,12 +198,15 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         />
       ) : null}
       {editor ? (
-        <TextShell r={r} mode={mode} theme={theme} style={shellStyle}>
-          {glyphWrap(editor)}
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle(null)}>
+          {glyphWrap(null, editor)}
         </TextShell>
       ) : label ? (
-        <TextShell r={r} mode={mode} theme={theme} style={shellStyle}>
-          {glyphWrap(<RichText doc={label} style={typeCss} />, { width: "100%", flex: "0 0 auto" })}
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle(glyph)}>
+          {glyphWrap(glyph, <RichText doc={label} style={typeCss(glyph)} />, {
+            width: "100%",
+            flex: "0 0 auto",
+          })}
         </TextShell>
       ) : null}
     </div>
@@ -211,7 +221,7 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         doc={element.doc}
         // A shape can be given a label it never had, so the first edit seeds one.
         seedEmpty={element.doc === undefined}
-        style={{ flex: "0 0 auto", ...typeCss }}
+        style={{ flex: "0 0 auto", ...typeCss(null) }}
         render={({ editor }) => shape(editor)}
       />
     </Suspense>

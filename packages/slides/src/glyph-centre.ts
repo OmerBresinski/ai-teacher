@@ -48,6 +48,18 @@ export function fontKeyOf(stack: string): FontKey | null {
   return KEY_BY_STACK.get(stack) ?? null;
 }
 
+/** The largest side of a badge, in slide units (hinge keys are 43, "vs" discs 56, numerals 28-40). */
+export const BADGE_MAX = 72;
+
+/**
+ * True for a shape that is a badge: small and near square. A teacher's own "OK" or "42" box is
+ * larger and keeps the line-box layout every text box uses; only a badge's glyph is re-centred.
+ */
+export function isBadgeBox(w: number, h: number): boolean {
+  const big = Math.max(w, h);
+  return big > 0 && big <= BADGE_MAX && Math.min(w, h) / big >= 0.6;
+}
+
 /**
  * True for a badge glyph: one to three characters on one line (a numeral, a letter, "?", "vs",
  * "10"). Longer labels are words and keep the line-box centring every text box uses.
@@ -72,7 +84,7 @@ export function glyphShiftY(text: string, fontStack: string, fontSize: number): 
 }
 
 /** Text centred on the cap height: any capital, digit or tall mark; lower case only takes the x-height. */
-const CAP_BAND = /[\p{Lu}\p{N}?!#%&@]/u;
+export const CAP_BAND = /[\p{Lu}\p{N}?!#%&@]/u;
 
 type Pt = readonly [number, number];
 

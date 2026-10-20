@@ -4,12 +4,13 @@ import { richDocToPlainText } from "@tj/domain/documents";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import {
   badgeGlyph,
+  CAP_BAND,
   crossPolygon,
   FONT_V_METRICS,
   fontKeyOf,
   GLYPH_CHARS,
-  GLYPH_DX,
-  GLYPH_DY,
+  isBadgeBox,
+  isBadgeGlyph,
   tickPolygon,
 } from "./glyph-centre";
 import { LAYOUT_CATALOGUE, layoutSlide } from "./layouts";
@@ -21,10 +22,10 @@ import { atKeyStage, THEMES } from "./themes";
 /*
  * Glyph centring (Greg, 20 Oct 2026). Every badge's glyph is centred on the badge to within half
  * a pixel at 1440 wide (1.5px per slide unit), in every theme, in both render paths (the writer
- * templates and the legacy LAYOUT_CATALOGUE). The ink box of each glyph is predicted from the
- * measured tables (`GLYPH_DX`, `GLYPH_DY`, `FONT_V_METRICS`) and the corrections `badgeGlyph`
- * applies; the drawn ✓ and ✕ are measured from their own outline. Pixel checks of the same
- * badges in Chromium are in the PR (scratch harness, before/after per theme).
+ * templates and the legacy LAYOUT_CATALOGUE). Here: every badge takes `badgeGlyph` with a
+ * measured face, only badges do, and the drawn ✓ and ✕ are centred by their own outline. The ink
+ * itself is measured from pixels in Chromium by the opt-in
+ * packages/editor/src/slide/badge-glyph-pixels.test.tsx (TEACH_GLYPH_PIXELS=1).
  */
 const PX = 1.5; // screen px per slide unit at 1440 wide
 const TOL_PX = 0.5;
@@ -76,17 +77,15 @@ describe("badge glyphs sit on the badge's centre", () => {
   test("every theme face has measured metrics and glyph offsets", () => {
     for (const t of THEMES)
       for (const stack of Object.values(t.fonts)) expect(fontKeyOf(stack)).not.toBeNull();
-    for (const k of Object.keys(FONT_STACKS) as FontKey[]) {
+    for (const k of Object.keys(FONT_STACKS) as FontKey[])
       expect(FONT_V_METRICS[k]).toHaveLength(4);
-      expect(GLYPH_DX[k]).toHaveLength(GLYPH_CHARS.length);
-      expect(GLYPH_DY[k]).toHaveLength(GLYPH_CHARS.length);
-    }
   });
 
-  test(`each label badge's predicted ink centre is within ${TOL_PX}px of the shape's`, () => {
+  test("every label badge in every theme takes the glyph treatment, with its tables", () => {
     const off: string[] = [];
     for (const { theme, badge } of all) {
       const { shape, text } = badge;
+      if (!isBadgeBox(shape.w, shape.h)) continue;
       const r = resolveTextStyle(
         {
           align: "center",
@@ -98,26 +97,24 @@ describe("badge glyphs sit on the badge's centre", () => {
         (shape as { textStyle?: { preset?: "body" } }).textStyle?.preset ?? "body",
       );
       const g = badgeGlyph(text, r.fontFamily, r.fontSize);
-      if (!g) {
-        off.push(`${theme.id} ${badge.where} "${text}": not a badge glyph`);
-        continue;
-      }
-      const key = fontKeyOf(r.fontFamily) as FontKey;
-      const col = [...text].length === 1 ? GLYPH_CHARS.indexOf(text) : -1;
-      // The ink's own offset from its trimmed, centred box, then the correction applied to it.
-      const inkX = col >= 0 ? ((GLYPH_DX[key][col] as number) / 1000) * r.fontSize : 0;
-      const inkY = col >= 0 ? ((GLYPH_DY[key][col] as number) / 1000) * r.fontSize : 0;
-      const dx = (inkX + g.shiftX) * PX;
-      const dy = (inkY + g.trimY) * PX;
-      if (Math.hypot(dx, dy) > TOL_PX)
-        off.push(`${theme.id} ${badge.where} "${text}" ${dx.toFixed(2)},${dy.toFixed(2)}`);
-      // Without a trimmed box: the cap (or x) band's middle, after the shift, on the line's.
-      const [ascent, descent, cap, x] = FONT_V_METRICS[key];
-      const band = /[\p{Lu}\p{N}?]/u.test(text) ? cap : x;
-      const fallback = (((ascent - descent - band) / 2000) * r.fontSize + g.shiftY) * PX;
-      if (Math.abs(fallback) > 0.01) off.push(`${theme.id} ${badge.where} "${text}" fallback`);
+      if (!g) off.push(`${theme.id} ${badge.where} "${text}": not a badge glyph`);
+      else if (!fontKeyOf(r.fontFamily)) off.push(`${theme.id} ${badge.where}: unmeasured face`);
+      else if ([...text].length === 1 && CAP_BAND.test(text) && !GLYPH_CHARS.includes(text))
+        off.push(`${theme.id} ${badge.where} "${text}": no ink offsets`);
     }
     expect(off).toEqual([]);
+    // The ink itself is measured in Chromium: packages/editor badge-glyph-pixels.test.tsx (opt-in).
+  });
+
+  test("only a badge is re-centred: a teacher's own short-label box keeps its layout", () => {
+    expect(isBadgeBox(28, 28)).toBe(true); // a numeral disc
+    expect(isBadgeBox(43, 43)).toBe(true); // a hinge key
+    expect(isBadgeBox(160, 80)).toBe(false); // an "OK" button-sized box
+    expect(isBadgeBox(200, 200)).toBe(false); // a big "42" square
+    expect(isBadgeBox(70, 30)).toBe(false); // a short pill
+    expect(isBadgeGlyph("42")).toBe(true);
+    expect(isBadgeGlyph("Yes no")).toBe(false);
+    expect(isBadgeGlyph("1234")).toBe(false);
   });
 
   test("the myth verdict's drawn ✓ and ✕ are centred on the disc in every theme", () => {
