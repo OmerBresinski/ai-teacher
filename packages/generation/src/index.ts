@@ -29,6 +29,7 @@ export {
   curriculumBlock,
   curriculumFor,
 } from "./curriculum";
+export * from "./debug";
 export {
   EDIT_FAST_EFFORT,
   EDIT_FAST_MODEL_ID,

@@ -3,6 +3,7 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
+import { type DebugKind, recordDebug } from "../debug";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
@@ -22,6 +23,7 @@ import {
   type CheckResult,
   checkSlide,
   duplicateFaults,
+  offSlide,
   referentFault,
   slideNoEmDash,
 } from "./checks";
@@ -246,7 +248,8 @@ export type WriterRun = {
    * still computed and logged ("checks", "repair-skipped" per slide), but nothing acts on a
    * result: no repair call, revert, check-driven relayout, rewrite, strip or visual drop, and a
    * library model or writer spec falls back only when it cannot be drawn at all. Answer hiding
-   * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act.
+   * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act, and so
+   * does the split of a slide whose text or a card runs off the slide (Greg 70 B, 20 Oct).
    */
   checks?: "act" | "log";
   /**
@@ -412,6 +415,12 @@ export type WriterOutput = {
   title: string;
   writer: { usd: number; ms: number; firstTokenMs?: number; finishReason?: string | null };
   summary: { textOnlyTeach: number; dangling: { slide: number; fault: string }[] };
+  /**
+   * Slides whose text or a card still runs off the slide as shipped (no continuation split fits):
+   * the deck slide's id and its off-slide faults, for the saved findings (Greg 71 A: a block past
+   * its room but on the slide is not reported). Each is also logged as `overflow-shipped`.
+   */
+  overflow: { slide: number; id: string; faults: string[] }[];
 };
 
 /**
@@ -422,6 +431,12 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
   const k = promptStage(brief.keyStage);
   return contractSystem(k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5);
 }
+
+/**
+ * A continuation slide's speaker notes (Greg 70 B): the slide's own notes stay on its first part,
+ * and the parts after it say where they come from.
+ */
+export const CONTINUED_NOTE = "Continued from the previous slide: the same content, split to fit.";
 
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
 export const PUPIL_WORDING_DEADLINE_MS = 8_000;
@@ -485,7 +500,39 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const baseVisuals = (k: string) =>
     k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 
-  const log = (e: object) => run.services.log(e);
+  /** The lesson's debug record (`../debug`): fire and forget, never awaited, never throws. */
+  const debug = (kind: DebugKind, payload: unknown, slideIndex?: number) =>
+    recordDebug(run.services.debug, kind, payload, slideIndex);
+  /**
+   * One per-slide fact check in the debug record (full verbosity, Greg 20 Oct): the claim, the
+   * verdict and reason, whether it applied or was dropped, and the slide's words before and after.
+   */
+  const factCheck = (
+    slideIndex: number,
+    p: Record<string, unknown> & { before?: unknown; after?: unknown },
+  ) => {
+    if (!run.services.debug) return;
+    const { before, after, ...rest } = p;
+    debug(
+      "fact-check",
+      {
+        model: "code",
+        usd: 0,
+        ...rest,
+        ...(before !== undefined ? { beforeText: wordsOf(before as S), before } : {}),
+        ...(after !== undefined ? { afterText: wordsOf(after as S), after } : {}),
+      },
+      slideIndex,
+    );
+  };
+  const log = (e: object) => {
+    run.services.log(e);
+    // Every stage event also lands in the debug record, on its slide when it names one (1-based).
+    if (run.services.debug) {
+      const slide = (e as { slide?: unknown }).slide;
+      debug("event", e, typeof slide === "number" && slide >= 1 ? slide - 1 : undefined);
+    }
+  };
   // Every model call's texts go through the locale step (`{{locale.country}}` in notes.txt).
   const chat: WriterServices["chat"] = (r) =>
     run.services.chat({ ...r, system: localise(r.system), user: localise(r.user) });
@@ -1006,6 +1053,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     tableRest.set(idx, tc.rest);
     tableFirst.set(idx, specKey(tc.first.figure));
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
+    debug("split", { how: "table-continued", before: s, first: tc.first, rest: tc.rest }, idx);
     return tc.first;
   };
   /**
@@ -1028,6 +1076,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       slide: idx + 1,
       slides: qc.rest.length + 1,
     });
+    debug(
+      "split",
+      {
+        how: s.template === "practice" ? "practice-continued" : "quick-check-continued",
+        before: s,
+        first: qc.first,
+        rest: qc.rest,
+      },
+      idx,
+    );
     return qc.first;
   };
   const openSlide = (idx: number, arrived: S) => {
@@ -1233,6 +1291,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           );
         },
       );
+  // The writer's raw output, as streamed (the debug record only; ADR 0015 keeps it out of logs).
+  debug("writer-output", {
+    text: main.text,
+    finishReason: main.finishReason ?? null,
+    usd: main.usd,
+    ms: main.ms,
+    ...(main.firstTokenMs !== undefined ? { firstTokenMs: main.firstTokenMs } : {}),
+    ...(run.recordedWriter ? { recorded: true } : {}),
+  });
   if (draftStats)
     log({
       ev: "drafts",
@@ -1311,6 +1378,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
+  /** Each continuation slide's own slide JSON, for its answers (a split question list). */
+  const continuedFrom = new Map<number, S[]>();
+  /**
+   * Continuation k of slide i as shown: a split question list's part keeps its own questions'
+   * answers, in order, after those of the slide and the parts before it.
+   */
+  const continuedSlide = (i: number, k: number, c: Materialised) => {
+    const parts = continuedFrom.get(i) ?? [];
+    const qs = (x: S | undefined) => (Array.isArray(x?.questions) ? x.questions.length : 0);
+    const before = qs(plan.slides[i] as S) + parts.slice(0, k).reduce((t, p) => t + qs(p), 0);
+    const answers = notes.get(i)?.answers;
+    const q = answers ? listQuestion(parts[k], { answers: answers.slice(before) }) : undefined;
+    return { ...c.slide, ...(q ? { question: q } : {}) };
+  };
   const deck = (): WriterSlide[] => {
     const slides: WriterSlide[] = [];
     /** Plan slide number (1-based) to its number in the deck, once continuations sit between. */
@@ -1321,7 +1402,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       slides.push(own);
       at.set(i + 1, slides.length);
       for (const [k, c] of (continued.get(i) ?? []).entries())
-        slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
+        slides.push({
+          id: `s${i + 1}c${k + 1}`,
+          ...continuedSlide(i, k, c),
+          notes: CONTINUED_NOTE,
+        });
       for (const [k, q] of (quickRest.get(i) ?? []).entries()) {
         const m = materialise(q, {
           ...base,
@@ -1458,19 +1543,47 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // Each slide's check in the debug record: the fault lines and the measured overflows (which
+  // element, by how much), failing or not.
+  if (run.services.debug)
+    for (const c of checks)
+      debug("check", { faults: c.faults, over: laid.get(c.slide - 1)?.over ?? [] }, c.slide - 1);
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
+  /** Slide i's continuation parts dropped: they belong to the version of it being replaced. */
+  const dropContinued = (i: number) => {
+    continued.delete(i);
+    continuedFrom.delete(i);
+  };
+  /** Slide i's text and cards past the slide's edge, as laid now. */
+  const offSlideAt = (i: number) => offSlide(laid.get(i)?.slide.elements ?? []);
   const swapSlide = (i: number, next0: S) => {
+    dropContinued(i);
     states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
     // otherwise.
+    const syncT0 = performance.now();
     const sync = syncFigure(plan.slides[i] as S | undefined, slideNoEmDash(next0));
+    const syncMs = +(performance.now() - syncT0).toFixed(2);
     const synced =
       sync.action === "redrawn" || sync.action === "drop"
         ? actOn({ ev: "figure-sync", slide: i + 1, action: sync.action, why: sync.why })
         : true;
+    // The figure fact check (code, no model) in the debug record, per slide, with what it changed.
+    if (run.services.debug && sync.action !== "none")
+      factCheck(i, {
+        checker: "figure-sync",
+        claim: "the slide's figure agrees with its words",
+        verdict: sync.action,
+        ...("why" in sync && sync.why ? { reason: sync.why } : {}),
+        applied: synced,
+        ...(synced ? {} : { dropped: "dry run (act off)" }),
+        before: plan.slides[i],
+        after: synced ? sync.slide : next0,
+        ms: syncMs,
+      });
     const next = splitTable(
       i,
       !synced
@@ -1555,6 +1668,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     n0: { notes: string; answers: string[] } | undefined,
     oldAsks: VisualAsk[],
   ) => {
+    dropContinued(i);
     plan.slides[i] = slide;
     states.put(i, slide);
     if (n0) notes.set(i, n0);
@@ -1705,6 +1819,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, mode, ok: false });
+      debug(
+        "repair",
+        { mode, ok: false, why: "no slide", faults: c.faults, out: r?.out ?? null },
+        i,
+      );
       return false;
     }
     // A pack's schema has the slide name its fit, as the writer's does; arrival strips it there.
@@ -1740,6 +1859,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     ];
     if (why.length) {
       log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
+      debug(
+        "repair",
+        {
+          mode,
+          ok: false,
+          rejected: why,
+          fix: o2.fix,
+          faults: c.faults,
+          before,
+          proposed: o2.slide,
+        },
+        i,
+      );
       return false;
     }
     // orphan6 (BAKEOFF base4f): a fit repair that moved the only words naming a pictured thing drops
@@ -1776,6 +1908,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (worse) restore(i, before, n0, oldAsks);
     else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
     log({ ev: "repair", slide: i + 1, mode, ok: true, fix: o2.fix, reverted: worse });
+    debug(
+      "repair",
+      {
+        mode,
+        ok: true,
+        reverted: worse,
+        fix: o2.fix,
+        faultsBefore: c.faults,
+        faultsAfter: now,
+        before,
+        after: o2.slide,
+        toNotes: moved,
+      },
+      i,
+    );
     return !worse;
   };
   /** Measure and retry: an overflowing slide gets at most two rewords. */
@@ -1792,6 +1939,35 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         `still over after one reword: cut the ${pilot ? "words" : "characters"} given above`,
       ],
     });
+  };
+  /**
+   * Slide i's list split over continuation slides so each part fits (`continueForFit`), measured
+   * with `visual`. True when it split; false (nothing changed) when no split fits.
+   */
+  const continueSlide = (i: number, visual: (key: string) => VisualState): boolean => {
+    const fits = (sl: S) => {
+      const m = materialise(sl, { ...base, index: i, plan, visual });
+      const f = checkSlide({
+        specs: [],
+        index: i,
+        slide: m.slide,
+        over: m.over ?? [],
+        questions: [],
+        answers: undefined,
+        notesChecked: true,
+        words: "",
+      });
+      return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
+    };
+    const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
+    if (!cont) return false;
+    swapSlide(i, cont.first);
+    continued.set(
+      i,
+      cont.rest.map((sl) => fits(sl).m),
+    );
+    continuedFrom.set(i, cont.rest);
+    return true;
   };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
@@ -1856,13 +2032,48 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // whole lesson, so volumes compared across slides keep their order.
   const gasHits = gasFaults(gasTexts());
   const gasAll = gasHits.flatMap((x) => x.volumes);
+  const gasClaim = (h: (typeof gasHits)[number]) => ({
+    checker: "gas8",
+    claim: "every claimed gas volume is possible from the lesson's stated quantities",
+    verdict: "contradicted",
+    reason: h.fault,
+    volumes: h.volumes,
+    ...(h.vmax !== undefined ? { vmax: h.vmax } : {}),
+  });
   for (const h of gasHits) {
-    if (!repairable(plan.slides[h.slide] as S, h.slide)) continue;
-    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) continue;
+    if (!repairable(plan.slides[h.slide] as S, h.slide)) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "slide not repairable" });
+      continue;
+    }
+    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "dry run (act off)" });
+      continue;
+    }
+    const before = plan.slides[h.slide];
+    const t0 = performance.now();
     swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
     const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
     log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
+    factCheck(h.slide, {
+      ...gasClaim(h),
+      correction: "every volume rescaled under the stated maximum by one factor",
+      applied: true,
+      cleared: !left,
+      before,
+      after: plan.slides[h.slide],
+      ms: +(performance.now() - t0).toFixed(2),
+    });
   }
+  // The writer path's fact check, per lesson: how many slides it read and how many it flagged.
+  if (run.services.debug)
+    debug("fact-check", {
+      checker: "gas8",
+      summary: true,
+      slidesChecked: n,
+      flagged: [...new Set(gasHits.map((h) => h.slide))].length,
+      model: "code",
+      usd: 0,
+    });
   // figureSync: after repair, every drawn figure is checked against its slide's words; one that
   // disagrees is dropped, so the fallback below restages the slide without it.
   for (let i = 0; i < n; i++)
@@ -1871,8 +2082,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (a.type !== "diagram" || v.status !== "diagram") continue;
       const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
       if (!why) continue;
-      if (!actOn({ ev: "figure-text-mismatch", slide: i + 1, key: a.key, why, dropped: act }))
-        continue;
+      const actedOn = actOn({
+        ev: "figure-text-mismatch",
+        slide: i + 1,
+        key: a.key,
+        why,
+        dropped: act,
+      });
+      factCheck(i, {
+        checker: "figure-text",
+        claim: "the drawn figure's numbers are the ones the words say",
+        verdict: "mismatch",
+        reason: why,
+        correction: "figure dropped",
+        applied: actedOn,
+        ...(actedOn ? {} : { dropped: "dry run (act off)" }),
+        figure: v.spec,
+        words: wordsOf(plan.slides[i] as S),
+      });
+      if (!actedOn) continue;
       override.set(`${i}:${a.key}`, { status: "failed" });
       relay(i);
     }
@@ -1948,36 +2176,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     restore(i, orig, n0, oldAsks);
     swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
     // The last resort never ships overflow: what still does not fit moves to continuation slides.
-    if (over().length) {
-      const fits = (sl: S) => {
-        const m = materialise(sl, {
-          ...base,
-          index: i,
-          plan,
-          visual: () => ({ status: "failed" }),
-        });
-        const f = checkSlide({
-          specs: [],
-          index: i,
-          slide: m.slide,
-          over: m.over ?? [],
-          questions: [],
-          answers: undefined,
-          notesChecked: true,
-          words: "",
-        });
-        return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
-      };
-      const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
-      if (cont) {
-        swapSlide(i, cont.first);
-        continued.set(
-          i,
-          cont.rest.map((sl) => fits(sl).m),
-        );
-        log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
-        return "strip-continued";
-      }
+    if (over().length && continueSlide(i, () => ({ status: "failed" }))) {
+      log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
+      return "strip-continued";
     }
     log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
     return "strip";
@@ -2207,6 +2408,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ok,
         ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
       });
+      if (kind === "split")
+        debug(
+          "split",
+          {
+            how: "lost-picture",
+            ok,
+            before: s0,
+            after: now,
+            landed: landed.length,
+            asked: all.length,
+          },
+          i,
+        );
       if (ok && landed.length < all.length) {
         const shows = new Set(landed.map((a) => a.shows));
         swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
@@ -2439,6 +2653,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
+  // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
+  // or with none when checks only log) splits into continuation slides, as the restage's last
+  // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a
+  // block a little past its room but on the slide stays as it is. It runs last, once every slide
+  // is final (gas8, figure checks, restage and the tails), so no later swap of slide i leaves
+  // parts of an older version behind. What cannot split is reported at the end (`overflow` on the
+  // output). Root cause (the writer overfilling the layout) is open.
+  for (let i = 0; i < n; i++) {
+    if (!offSlideAt(i).length || continued.has(i)) continue;
+    if (!repairable(plan.slides[i] as S, i)) continue;
+    const ok = continueSlide(i, visualState(i));
+    log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
+  }
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;
     log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
@@ -2493,8 +2720,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
+  const overflow = Array.from({ length: n }, (_, i) => i).flatMap((i) => {
+    const faults = offSlideAt(i);
+    const id = slideAt(i)?.id;
+    return faults.length && id ? [{ slide: i + 1, id, faults }] : [];
+  });
+  for (const o of overflow) log({ ev: "overflow-shipped", level: "warn", ...o });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
   return {
+    overflow,
     slides: deck(),
     plan,
     checks,
