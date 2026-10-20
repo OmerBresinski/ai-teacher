@@ -32,6 +32,7 @@ import { SHOW_ANSWERS_LABEL, touchesAnswers, useSetAnswersSlides } from "./answe
 import { useHistory, useLesson } from "./document-context";
 import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
+import { useSlideDraft } from "./live-draft";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
@@ -112,7 +113,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   const setAnswersSlides = useSetAnswersSlides();
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const { bySlide: residuals } = useResidualFindings();
-  const { busySlideIds, onRegenerate, writingSlideIds } = useProposals();
+  const { busySlideIds, onRegenerate, writingSlideIds, writingNowId } = useProposals();
 
   const compactChrome = useCompactChrome();
   const [preferredMode, setMode] = useState<Mode>(readMode);
@@ -619,6 +620,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
               residuals={residuals.get(slide.id)}
               busy={busySlideIds.has(slide.id)}
               writing={writingSlideIds?.has(slide.id) ?? false}
+              writingNow={writingNowId === slide.id}
               onPointerDown={onRowPointerDown}
               onPointerMove={onRowPointerMove}
               onPointerUp={onRowPointerUp}
@@ -802,6 +804,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
                   residuals={residuals.get(slide.id)}
                   busy={busySlideIds.has(slide.id)}
                   writing={writingSlideIds?.has(slide.id) ?? false}
+                  writingNow={writingNowId === slide.id}
                   onPointerDown={onRowPointerDown}
                   onPointerMove={onRowPointerMove}
                   onPointerUp={onRowPointerUp}
@@ -881,6 +884,7 @@ const NavigatorRow = memo(function NavigatorRow({
   residuals,
   busy,
   writing = false,
+  writingNow = false,
   ...handlers
 }: {
   slide: Slide;
@@ -897,11 +901,15 @@ const NavigatorRow = memo(function NavigatorRow({
   busy: boolean;
   /** The generating job is still writing this slide (ADR 0037): selectable, read-only. */
   writing?: boolean;
+  /** The slide the writer is writing now: the one thumbnail marked "Writing…" (UX audit J5). */
+  writingNow?: boolean;
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
+  // A slide being written shows its newest draft, as the canvas does (UX audit J6).
+  const draft = useSlideDraft(useProposals().drafts, writing ? slide.id : undefined);
   const hasNotes = !!slide.notes?.trim();
   const hasSteps = slideStepCount(slide) > 0;
   // Text fitting engine: a slide whose boxes collide, or whose text has been pushed off the slide,
@@ -989,16 +997,24 @@ const NavigatorRow = memo(function NavigatorRow({
         }}
       >
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
-          <SlideView slide={slide} theme={theme} mode="thumb" />
+          <SlideView slide={draft ?? slide} theme={theme} mode="thumb" />
         </SlideScaler>
+        {/* Every slide the job still owns keeps the marker (read-only, ADR 0037); only the one being
+            written says so, as a chip under its words rather than a veil over them (UX audit J5). */}
         {writing && !busy ? (
-          <span
-            data-slide-writing
-            role="status"
-            className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/70 font-medium text-foreground text-meta"
-          >
-            <span aria-hidden className="block size-1.5 animate-pulse rounded-full bg-primary" />
-            Writing…
+          <span data-slide-writing className="pointer-events-none absolute inset-0">
+            {writingNow ? (
+              <span
+                data-slide-writing-now
+                className="absolute bottom-1 left-1 flex items-center gap-1 rounded-full border border-border bg-background px-1.5 py-0.5 font-medium text-[10px] text-foreground leading-none shadow-sm"
+              >
+                <span
+                  aria-hidden
+                  className="block size-1.5 rounded-full bg-primary motion-safe:animate-pulse"
+                />
+                Writing…
+              </span>
+            ) : null}
           </span>
         ) : null}
         {busy ? (

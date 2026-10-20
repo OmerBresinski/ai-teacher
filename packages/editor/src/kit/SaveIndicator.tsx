@@ -25,18 +25,32 @@ const SAVE_LABELS: Record<SaveState, string> = {
  * and a write can fail. Polite live region, so a screen reader hears "Saving…" → "Saved" without
  * being interrupted by it.
  */
-export function SaveIndicator({ autosave }: { autosave: SaveStateSource }) {
+export function SaveIndicator({
+  autosave,
+  quiet = false,
+}: {
+  autosave: SaveStateSource;
+  /**
+   * Holds its place but shows nothing unless a save failed: while a generating job fills the
+   * lesson the teacher has not edited, the job's own writes are not the teacher's to watch (UX
+   * audit J3).
+   */
+  quiet?: boolean;
+}) {
   const state = useSaveState(autosave);
   const failed = state === "failed";
+  const hidden = quiet && !failed;
   const retry = autosave.flush;
   return (
     <span
       aria-live="polite"
       data-save-state={state}
+      data-save-quiet={hidden ? "" : undefined}
       data-tabular
       className={cn(
         "mr-1 inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-meta",
         failed ? "text-destructive" : "text-ink-3",
+        hidden && "invisible",
       )}
     >
       <span

@@ -5,7 +5,7 @@
  * pilot's theme-v2.css derived them.
  */
 import { ICON_LIBRARY, iconSizeFor, iconSvg } from "./library";
-import { DEFAULT_ICON_COLOURS, mixOklab, parseHex, safeHex } from "./treatment";
+import { DEFAULT_ICON_COLOURS, type IconStyle, mixOklab, parseHex, safeHex } from "./treatment";
 import type { IconAge, IconColours } from "./types";
 
 export interface IconThemeInput {
@@ -63,6 +63,7 @@ export function iconSvgForTheme(
   theme: IconThemeInput,
   boxPt: number,
   px?: number,
+  style?: IconStyle,
 ): string | null {
   if (!Object.hasOwn(ICON_LIBRARY, id)) return null;
   return iconSvg(id, {
@@ -70,5 +71,6 @@ export function iconSvgForTheme(
     age: iconAgeFor(theme.keyStage),
     size: iconSizeFor(boxPt),
     ...(px ? { px } : {}),
+    ...(style ? { style } : {}),
   });
 }
