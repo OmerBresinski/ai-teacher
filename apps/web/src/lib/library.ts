@@ -616,7 +616,7 @@ export const libraryMutations = {
           // (the one the theme picker drew), not the older text-only cover.
           const at = body.slides.findIndex((slide) => slide.kind === "title");
           if (at >= 0) {
-            const { blankCover } = await import("@tj/editor/theme-picker");
+            const { blankCover } = await import("@tj/editor/theme-picker/samples");
             const words = [input.yearGroup, input.subject?.trim()].filter(Boolean).join(" · ");
             body.slides[at] = await blankCover(input.themeId, body.title, words);
           }
