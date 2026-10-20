@@ -53,6 +53,12 @@ import { layoutFigure } from "./figure";
 import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
 import { asPrompt, hookOk, layoutHook } from "./hook";
 import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
+import {
+  layoutObjectivesLook,
+  layoutStarterLook,
+  type ObjectivesLook,
+  type StarterLook,
+} from "./list-looks";
 // TEACH-75 part ag (G1): myth and fact.
 import { layoutMyth, type MythInput } from "./myth";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
@@ -457,6 +463,10 @@ export type Ctx = {
   processLine?: boolean;
   /** `LayoutOptions.objectiveCards` (UX ruling 203). */
   objectiveCards?: boolean;
+  /** `LayoutOptions.objectivesLook` (lane OBJ exploration). */
+  objectivesLook?: ObjectivesLook;
+  /** `LayoutOptions.starterLook` (lane OBJ exploration). */
+  starterLook?: StarterLook;
   /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
   panelNoVisual?: "plain" | "icon";
   /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
@@ -1779,6 +1789,10 @@ export type LayoutOptions = {
   processLine?: boolean;
   /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
   objectiveCards?: boolean;
+  /** Lane OBJ exploration: the objectives as goal cards, beside the hero picture, or as a journey. Off by default. */
+  objectivesLook?: ObjectivesLook;
+  /** Lane OBJ exploration: the starter as question cards or with its picture as the cue. Off by default. */
+  starterLook?: StarterLook;
   /** Panel list with no visual: the title alone in the panel (the default) or the group's icon large in it. */
   panelNoVisual?: "plain" | "icon";
   /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
@@ -1911,6 +1925,8 @@ function layoutOnce(
     ...(opts.optionColours ? { optionColours: true } : {}),
     ...(opts.processLine ? { processLine: true } : {}),
     ...(opts.objectiveCards ? { objectiveCards: true } : {}),
+    ...(opts.objectivesLook ? { objectivesLook: opts.objectivesLook } : {}),
+    ...(opts.starterLook ? { starterLook: opts.starterLook } : {}),
     ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
     ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
     ...(opts.setTint ? { setTint: opts.setTint } : {}),
@@ -2103,6 +2119,8 @@ function layoutOnce(
       break;
     }
     case "objectives": {
+      if (c.objectivesLook && layoutObjectivesLook(c, input, c.objectivesLook)) break;
+      if (c.objectivesLook) c.els.splice(0);
       heading(c, input.heading);
       // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
       const fig =
@@ -2525,6 +2543,8 @@ function layoutOnce(
       layoutFigure(c, input, stage);
       break;
     case "question-set": {
+      if (c.starterLook && layoutStarterLook(c, input, c.starterLook)) break;
+      if (c.starterLook) c.els.splice(0);
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.
       if (isQuickCheck(input)) {
         layoutQuestionSet(c, input);
