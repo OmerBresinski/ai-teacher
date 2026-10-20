@@ -78,6 +78,7 @@ export async function deleteExpiredGenerationDebug(
       where id in (
         select id from generation_debug
         where created_at < now() - make_interval(days => ${ttlDays})
+        order by created_at
         limit ${batch}
       )
     `;

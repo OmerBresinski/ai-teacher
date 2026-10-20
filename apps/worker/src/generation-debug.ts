@@ -26,8 +26,23 @@ export const DEBUG_MAX_ROWS = 5000;
 /** A buffer is written when it holds this many rows, or this long after its first row. */
 export const DEBUG_BATCH_ROWS = 50;
 export const DEBUG_FLUSH_MS = 1000;
+/** A buffer is also written once it holds this many bytes, so one insert stays small. */
+export const DEBUG_BATCH_BYTES = 1024 * 1024;
 /** How long `close()` waits for writes still in flight before giving up on them. */
 export const DEBUG_CLOSE_TIMEOUT_MS = 5000;
+/**
+ * The worker's memory budget for debug rows buffered or in flight, across every job: past it a
+ * record is dropped and counted (one warn line at close), so a slow debug database never grows
+ * the worker's heap without bound.
+ */
+export const DEBUG_BUDGET_BYTES = 32 * 1024 * 1024;
+
+/** Bytes held by debug rows not yet written; one per worker unless a test passes its own. */
+export interface DebugBudget {
+  used: number;
+  max: number;
+}
+const workerBudget: DebugBudget = { used: 0, max: DEBUG_BUDGET_BYTES };
 
 /** Where the rows go: `insertGenerationDebug` on the worker's pool in production. */
 export type DebugStore = (
@@ -46,7 +61,9 @@ export interface DebugRecorderOptions {
   maxRows?: number;
   batchRows?: number;
   flushMs?: number;
+  batchBytes?: number;
   closeTimeoutMs?: number;
+  budget?: DebugBudget;
 }
 
 export interface DebugRecorder {
@@ -57,23 +74,61 @@ export interface DebugRecorder {
   close(): Promise<void>;
 }
 
+/** NUL-free, well-formed text: Postgres `jsonb` refuses `\u0000` and lone surrogates. */
+function cleanString(s: string): string {
+  return s.toWellFormed().replaceAll("\u0000", "");
+}
+
+/** A deep copy with every string (and key) cleaned; JSON-shaped input. */
+function clean(value: unknown): unknown {
+  if (typeof value === "string") return cleanString(value);
+  if (Array.isArray(value)) return value.map(clean);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[cleanString(k)] = clean(v);
+    return out;
+  }
+  return value;
+}
+
+/** UTF-8 bytes of one code point. */
+const bytesOf = (cp: number) => (cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4);
+
+/** The longest prefix of `s` within `maxBytes` of UTF-8, cut between code points. */
+export function cutUtf8(s: string, maxBytes: number): string {
+  let bytes = 0;
+  let end = 0;
+  for (const ch of s) {
+    const b = bytesOf(ch.codePointAt(0) ?? 0);
+    if (bytes + b > maxBytes) break;
+    bytes += b;
+    end += ch.length;
+  }
+  return s.slice(0, end);
+}
+
 /**
- * The payload as stored: a JSON snapshot taken now (the pipeline mutates slides later), without
- * NUL characters (Postgres `jsonb` refuses `\u0000`), capped at `maxBytes` by cutting its longest
- * strings (each to half, longest first) and saying what was cut.
+ * The payload as stored: a JSON snapshot taken now (the pipeline mutates slides later), its strings
+ * cleaned (no NUL, no lone surrogate), capped at `maxBytes` of UTF-8 by cutting its longest
+ * strings (each to half its bytes, longest first, between code points) and saying what was cut.
  */
 export function capPayload(payload: unknown, maxBytes = DEBUG_PAYLOAD_MAX_BYTES): unknown {
-  const text = (JSON.stringify(payload ?? null) ?? "null").replaceAll("\\u0000", "");
+  return capPayloadSized(payload, maxBytes).value;
+}
+
+function capPayloadSized(payload: unknown, maxBytes: number): { value: unknown; bytes: number } {
+  const snapshot = clean(JSON.parse(JSON.stringify(payload ?? null) ?? "null"));
+  const text = JSON.stringify(snapshot);
   const originalBytes = Buffer.byteLength(text);
-  if (originalBytes <= maxBytes) return JSON.parse(text);
+  if (originalBytes <= maxBytes) return { value: snapshot, bytes: originalBytes };
   // Room kept for the truncation marks themselves.
   const reserve = Math.min(4096, Math.floor(maxBytes / 8));
-  const root = { value: JSON.parse(text) as unknown };
+  const root = { value: snapshot };
   const cut = new Map<string, number>();
+  type Found = { holder: Record<string, unknown>; key: string; path: string; len: number };
   for (let round = 0; round < 64; round++) {
     // The longest string in the payload, wherever it is.
-    let best: { holder: Record<string, unknown>; key: string; path: string; len: number } | null =
-      null;
+    let best: Found | null = null;
     const walk = (holder: Record<string, unknown>, key: string, path: string) => {
       const v = holder[key];
       if (typeof v === "string") {
@@ -82,26 +137,26 @@ export function capPayload(payload: unknown, maxBytes = DEBUG_PAYLOAD_MAX_BYTES)
         for (const k of Object.keys(v)) walk(v as Record<string, unknown>, k, `${path}.${k}`);
     };
     walk(root as Record<string, unknown>, "value", "$");
-    const found = best as {
-      holder: Record<string, unknown>;
-      key: string;
-      path: string;
-      len: number;
-    } | null;
+    const found = best as Found | null;
     if (!found || found.len < 64) break;
-    if (!cut.has(found.path)) cut.set(found.path, found.len);
-    found.holder[found.key] =
-      `${(found.holder[found.key] as string).slice(0, Math.floor(found.len / 2))}…[truncated]`;
+    const str = found.holder[found.key] as string;
+    const strBytes = Buffer.byteLength(str);
+    if (!cut.has(found.path)) cut.set(found.path, strBytes);
+    found.holder[found.key] = `${cutUtf8(str, Math.floor(strBytes / 2))}…[truncated]`;
     if (Buffer.byteLength(JSON.stringify(root.value)) + reserve <= maxBytes) break;
   }
-  const truncatedFields = [...cut].map(([path, originalLength]) => ({ path, originalLength }));
+  const truncatedFields = [...cut].map(([path, originalBytes]) => ({ path, originalBytes }));
   const body = JSON.stringify(root.value);
+  let value: unknown;
   if (Buffer.byteLength(body) + reserve > maxBytes)
-    return { truncated: true, originalBytes, truncatedFields, head: body.slice(0, maxBytes / 2) };
-  const value = root.value;
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? { ...(value as object), truncated: true, originalBytes, truncatedFields }
-    : { value, truncated: true, originalBytes, truncatedFields };
+    // A quarter of the cap in bytes: escaped inside JSON, the head at most doubles.
+    value = { truncated: true, originalBytes, truncatedFields, head: cutUtf8(body, maxBytes / 4) };
+  else
+    value =
+      root.value && typeof root.value === "object" && !Array.isArray(root.value)
+        ? { ...(root.value as object), truncated: true, originalBytes, truncatedFields }
+        : { value: root.value, truncated: true, originalBytes, truncatedFields };
+  return { value, bytes: Buffer.byteLength(JSON.stringify(value)) };
 }
 
 /** `ai` for one job, with every model request captured as a `model-call` debug row. */
@@ -115,33 +170,68 @@ export function createDebugRecorder(opts: DebugRecorderOptions): DebugRecorder {
   const maxRows = opts.maxRows ?? DEBUG_MAX_ROWS;
   const batchRows = opts.batchRows ?? DEBUG_BATCH_ROWS;
   const flushMs = opts.flushMs ?? DEBUG_FLUSH_MS;
+  const batchBytes = opts.batchBytes ?? DEBUG_BATCH_BYTES;
+  const budget = opts.budget ?? workerBudget;
   let seq = 0;
   let dropped = 0;
+  let overBudget = 0;
   let failedRows = 0;
   let buffer: GenerationDebugInsert[] = [];
+  let bufferBytes = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const inflight = new Set<Promise<void>>();
+
+  /** The batch, or row by row when the batch fails (one bad row costs only itself). */
+  const write = async (rows: GenerationDebugInsert[]) => {
+    try {
+      await opts.store(opts.workspaceId, rows);
+      return;
+    } catch (err) {
+      if (rows.length === 1) {
+        failedRows += 1;
+        opts.logger.warn(
+          { err: safeError(err), rows: 1, lessonId: opts.lessonId },
+          "generation debug write failed",
+        );
+        return;
+      }
+    }
+    let failed = 0;
+    let lastErr: unknown;
+    for (const row of rows) {
+      try {
+        await opts.store(opts.workspaceId, [row]);
+      } catch (err) {
+        failed += 1;
+        lastErr = err;
+      }
+    }
+    if (failed > 0) {
+      failedRows += failed;
+      opts.logger.warn(
+        { err: safeError(lastErr), rows: failed, of: rows.length, lessonId: opts.lessonId },
+        "generation debug write failed",
+      );
+    }
+  };
 
   const flush = () => {
     if (timer) clearTimeout(timer);
     timer = undefined;
     if (buffer.length === 0) return;
     const rows = buffer;
+    const bytes = bufferBytes;
     buffer = [];
-    const write: Promise<void> = Promise.resolve()
-      .then(() => opts.store(opts.workspaceId, rows))
-      .then(
-        () => undefined,
-        (err: unknown) => {
-          failedRows += rows.length;
-          opts.logger.warn(
-            { err: safeError(err), rows: rows.length, lessonId: opts.lessonId },
-            "generation debug write failed",
-          );
-        },
-      )
-      .finally(() => inflight.delete(write));
-    inflight.add(write);
+    bufferBytes = 0;
+    // Off the caller's path: the store is first called after the sink has returned.
+    const done: Promise<void> = Promise.resolve()
+      .then(() => write(rows))
+      .catch(() => undefined)
+      .finally(() => {
+        budget.used -= bytes;
+        inflight.delete(done);
+      });
+    inflight.add(done);
   };
 
   const sink: DebugSink = (record: DebugRecord) => {
@@ -150,6 +240,13 @@ export function createDebugRecorder(opts: DebugRecorderOptions): DebugRecorder {
         dropped += 1;
         return;
       }
+      const { value, bytes } = capPayloadSized(record.payload, maxBytes);
+      if (budget.used + bytes > budget.max) {
+        overBudget += 1;
+        return;
+      }
+      budget.used += bytes;
+      bufferBytes += bytes;
       buffer.push({
         lessonId: opts.lessonId,
         jobId: opts.jobId,
@@ -157,10 +254,10 @@ export function createDebugRecorder(opts: DebugRecorderOptions): DebugRecorder {
         seq: seq++,
         kind: record.kind,
         slideIndex: record.slideIndex ?? null,
-        payload: capPayload(record.payload, maxBytes),
+        payload: value,
         createdAt: new Date(),
       });
-      if (buffer.length >= batchRows) flush();
+      if (buffer.length >= batchRows || bufferBytes >= batchBytes) flush();
       else if (!timer) {
         timer = setTimeout(flush, flushMs);
         timer.unref?.();
@@ -188,9 +285,9 @@ export function createDebugRecorder(opts: DebugRecorderOptions): DebugRecorder {
           ]);
           if (late) clearTimeout(late);
         }
-        if (dropped > 0 || failedRows > 0)
+        if (dropped > 0 || overBudget > 0 || failedRows > 0)
           opts.logger.warn(
-            { lessonId: opts.lessonId, dropped, failedRows, maxRows },
+            { lessonId: opts.lessonId, dropped, overBudget, failedRows, maxRows },
             "generation debug record incomplete",
           );
       } catch (err) {

@@ -261,4 +261,17 @@ describeDb("the lesson debug record (generation_debug)", () => {
     expect(stageError.stage).toBe("write");
     expect(rows.some((r) => r.kind === "writer-output")).toBe(true);
   });
+
+  test("a failure before the pipeline starts (the lesson load) is in the debug record too", async () => {
+    const lessonId = await planned(realStore);
+    await confirm(lessonId);
+    // Another job holds the lock: the load throws before any stage runs.
+    const err = await lessonGenerateJob(
+      ctxFor(newId<JobId>(), { lessonId, revision: 1 }, depsWith(ai(), realStore)) as never,
+    ).catch((e: unknown) => e);
+    expect(String((err as Error).message)).toContain("lock lost");
+    const rows = await listGenerationDebug(unsafeDb, workspaceId, lessonId);
+    const failure = rows.find((r) => r.kind === "job-error")?.payload as Record<string, unknown>;
+    expect(String(failure.message)).toContain("lock lost");
+  });
 });

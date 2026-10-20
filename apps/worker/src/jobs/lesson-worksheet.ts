@@ -71,9 +71,8 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
-      const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
-      const { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
-      // The worksheet's model requests and failure go to its lesson's debug record (Greg, 20 Oct).
+      // The worksheet's model requests and failure go to its lesson's debug record (Greg, 20 Oct),
+      // made before the loads so a failed load is recorded too.
       recorder = deps.generationDebug
         ? createDebugRecorder({
             store: deps.generationDebug,
@@ -84,6 +83,8 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
             logger,
           })
         : undefined;
+      const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
+      const { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
       if (deps.ai.kind === "unconfigured") {
         throw new NonRetryableError(
           "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",

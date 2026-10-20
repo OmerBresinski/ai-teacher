@@ -177,8 +177,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
       return;
     }
-    const stored = await loadOwnedLesson(ws, lessonId, jobId, payload.revision);
     // The lesson's debug record (Greg, 20 Oct 2026): fire and forget, written after the job settles.
+    // Made before the lesson loads, so a failed load is recorded too (no I/O until a row exists).
     recorder = deps.generationDebug
       ? createDebugRecorder({
           store: deps.generationDebug,
@@ -189,6 +189,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
           logger,
         })
       : undefined;
+    const stored = await loadOwnedLesson(ws, lessonId, jobId, payload.revision);
     spec.check?.(stored);
     if (deps.ai.kind === "unconfigured") {
       throw new NonRetryableError("AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)");

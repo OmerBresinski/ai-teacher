@@ -70,6 +70,8 @@ export function createWorkerDeps(
   env: Env,
   logger: Logger,
   db: Db,
+  /** The debug record's own pool (max 1); absent, debug rows share `db` (tests, scripts). */
+  debugDb: Db = db,
 ): WorkerDeps & { storageKind: StorageKind } {
   // ADR 0026: the Railway Bucket (S3) when S3_BUCKET is set, else local disk — the same call the
   // api makes. These variables are `runtimeOnly` and read from the process environment directly.
@@ -96,7 +98,7 @@ export function createWorkerDeps(
     ...(env.AI_REASONING_EFFORT !== undefined ? { reasoningEffort: env.AI_REASONING_EFFORT } : {}),
     planner: env.AI_LESSON_PLANNER,
     costWarnUsd: env.AI_LESSON_COST_WARN_USD,
-    generationDebug: (workspaceId, rows) => insertGenerationDebug(db, workspaceId, rows),
+    generationDebug: (workspaceId, rows) => insertGenerationDebug(debugDb, workspaceId, rows),
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {

@@ -209,38 +209,52 @@ export function createCaptureMiddleware(
           ...extra,
         });
       };
-      const tap = new TransformStream({
-        transform(part, controller) {
-          const p = part as {
-            type: string;
-            delta?: string;
-            usage?: Usage;
-            finishReason?: { unified: string; raw?: string };
-            error?: unknown;
-          };
-          if (p.type === "text-delta" && p.delta) text += p.delta;
-          else if (p.type === "reasoning-delta" && p.delta) reasoning += p.delta;
-          else if (p.type === "finish")
-            finish({
-              response: {
-                text,
-                ...(reasoning ? { reasoning } : {}),
-                finishReason: p.finishReason?.unified ?? "unknown",
-                ...(p.finishReason?.raw ? { rawFinishReason: p.finishReason.raw } : {}),
-              },
-              ...usageOf(model.modelId, p.usage),
-              ok: true,
-            });
-          else if (p.type === "error")
-            finish({
-              response: { text, finishReason: "error" },
-              ok: false,
-              error: errorOf(p.error),
-            });
-          controller.enqueue(part);
-        },
-        flush() {
-          finish({ response: { text, finishReason: "incomplete" }, ok: false });
+      const see = (part: unknown) => {
+        const p = part as {
+          type: string;
+          delta?: string;
+          usage?: Usage;
+          finishReason?: { unified: string; raw?: string };
+          error?: unknown;
+        };
+        if (p.type === "text-delta" && p.delta) text += p.delta;
+        else if (p.type === "reasoning-delta" && p.delta) reasoning += p.delta;
+        else if (p.type === "finish")
+          finish({
+            response: {
+              text,
+              ...(reasoning ? { reasoning } : {}),
+              finishReason: p.finishReason?.unified ?? "unknown",
+              ...(p.finishReason?.raw ? { rawFinishReason: p.finishReason.raw } : {}),
+            },
+            ...usageOf(model.modelId, p.usage),
+            ok: true,
+          });
+        else if (p.type === "error")
+          finish({ response: { text, finishReason: "error" }, ok: false, error: errorOf(p.error) });
+      };
+      // A reader, not a pipe: an error the source stream itself throws (a dropped connection)
+      // reaches `pull` here and is recorded before it goes on to the caller.
+      const reader = result.stream.getReader();
+      const stream = new ReadableStream<
+        typeof result.stream extends ReadableStream<infer T> ? T : never
+      >({
+        async pull(controller) {
+          let next: Awaited<ReturnType<typeof reader.read>>;
+          try {
+            next = await reader.read();
+          } catch (error) {
+            finish({ response: { text, finishReason: "error" }, ok: false, error: errorOf(error) });
+            controller.error(error);
+            return;
+          }
+          if (next.done) {
+            finish({ response: { text, finishReason: "incomplete" }, ok: false });
+            controller.close();
+            return;
+          }
+          see(next.value);
+          controller.enqueue(next.value);
         },
         cancel(reason: unknown) {
           finish({
@@ -248,9 +262,10 @@ export function createCaptureMiddleware(
             ok: false,
             error: errorOf(reason),
           });
+          return reader.cancel(reason);
         },
-      } as Transformer & { cancel?: (reason: unknown) => void });
-      return { ...result, stream: result.stream.pipeThrough(tap) };
+      });
+      return { ...result, stream };
     },
   };
 }

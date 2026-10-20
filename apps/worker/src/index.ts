@@ -32,9 +32,12 @@ const env = parseEnv();
 const logger = createLogger(env);
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
+// The debug record's own pool (Greg, 20 Oct): one connection, so a debug batch never holds a
+// connection a lesson save is waiting for.
+const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
-const deps = { ...createWorkerDeps(env, logger, unsafeDb), jobs: ctx };
+const deps = { ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb), jobs: ctx };
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
@@ -189,6 +192,7 @@ async function stop(signal: string): Promise<void> {
   bossState = "stopped";
   server.stop(true);
   await close();
+  await debugPool.close();
   logger.info("worker exited cleanly");
   process.exit(0);
 }

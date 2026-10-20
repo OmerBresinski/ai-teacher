@@ -115,4 +115,34 @@ describe("the call capture middleware (generation_debug model-call rows)", () =>
     const g = await generateText({ model: throwing.model("small", context), prompt: "go" });
     expect(g.text).toBe("streamed text");
   });
+
+  test("a stream whose source throws mid-way is recorded with the text so far and the error", async () => {
+    const calls: CapturedCall[] = [];
+    const inner = new MockLanguageModelV4({
+      provider: "openai",
+      modelId: "gpt-6-luna",
+      doStream: async () => {
+        let sent = 0;
+        return {
+          stream: new ReadableStream({
+            pull(controller) {
+              sent += 1;
+              if (sent === 1) controller.enqueue({ type: "stream-start", warnings: [] });
+              else if (sent === 2) controller.enqueue({ type: "text-start", id: "t" });
+              else if (sent === 3)
+                controller.enqueue({ type: "text-delta", id: "t", delta: "half" });
+              else controller.error(new Error("connection reset"));
+            },
+          }),
+        };
+      },
+    });
+    const base = { kind: "openai", region: "x", model: () => inner, modelId: () => "gpt-6-luna" };
+    const ai = withCallCapture(base as unknown as CreatedAi, (c) => calls.push(c));
+    const r = streamText({ model: ai.model("small", context), prompt: "go", onError: () => {} });
+    await r.consumeStream({ onError: () => {} });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ mode: "stream", ok: false, response: { text: "half" } });
+    expect(calls[0]?.error?.message).toContain("connection reset");
+  });
 });

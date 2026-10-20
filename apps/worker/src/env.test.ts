@@ -205,7 +205,7 @@ describe("worker env", () => {
   });
 
   describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
-    test("unset: the writer planner and a 0.03 cost target", () => {
+    test("unset: the writer planner and a 0.12 cost target", () => {
       const env = parseEnv({ DATABASE_URL: DB });
       expect(env.AI_LESSON_PLANNER).toBe("writer");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0.12);
