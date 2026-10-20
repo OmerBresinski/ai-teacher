@@ -13,12 +13,14 @@ import {
   type ReactNode,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import type { FirstSlidesReveal } from "./first-slides-reveal";
+import { useProposals } from "./proposals-context";
 
 export type LiveDraft = {
   index: number;
@@ -122,6 +124,30 @@ export function useSlideDraft(
     store?.subscribe ?? NO_SUBSCRIBE,
     () => (slideId ? store?.get(slideId)?.slide : undefined),
     () => undefined,
+  );
+}
+
+/**
+ * What a small picture of `slide` (a strip thumbnail, a mobile card) draws while the job writes it,
+ * as the canvas does: its newest draft (`withDraft`), else its outline while it is only planned,
+ * else, on a new lesson's first two slides, the words the reveal has typed so far. Otherwise the
+ * slide itself (TEACH-202 part f, amended 20 Oct 2026).
+ */
+export function useWritingPicture(slide: Slide, withDraft = true): Slide {
+  const { drafts, reveal, writingSlideIds } = useProposals();
+  const writing = writingSlideIds?.has(slide.id) ?? false;
+  const draft = useSlideDraft(withDraft ? drafts : undefined, writing ? slide.id : undefined);
+  const paced = useRevealed(reveal, writing && !draft ? slide.id : undefined);
+  const outline = writing && !draft && isPlannedBlank(slide);
+  return useMemo(
+    () =>
+      draft ??
+      (outline
+        ? skeletonSlide(slide)
+        : paced !== undefined
+          ? revealSlide(slide, paced).slide
+          : slide),
+    [draft, outline, paced, slide],
   );
 }
 
