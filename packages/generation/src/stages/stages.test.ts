@@ -1442,6 +1442,11 @@ describe("generate", () => {
       expect(deps.persisted).toHaveLength(written);
       deps.persisted.forEach((p, k) => {
         expect(p.lesson.slides).toHaveLength(PLANNED_SLIDES + k + 1);
+        // Each mid-run save carries an unverified mark on every slide saved so far.
+        const marks = p.lesson.generation?.findings.filter(isUnverifiedMark);
+        expect(marks?.map((f) => f.target.slideId)).toEqual(
+          p.lesson.slides.slice(PLANNED_SLIDES).map((slide) => slide.id),
+        );
       });
       expect(deps.persisted.at(-1)?.lesson.generation?.stage).toBe("planned");
       release();
@@ -1661,8 +1666,13 @@ describe("generate", () => {
       const result = await run;
       expect(result.lesson.generation?.stage).toBe("generated");
       // Slides before the touched one stay; the touched one and everything after are gone.
-      expect(result.lesson.slides).toHaveLength(touched);
-      expect(deps.persisted.at(-2)?.lesson.slides).toHaveLength(touched);
+      const beforeDrop = deps.persisted.at(-3)?.lesson.slides ?? [];
+      expect(beforeDrop.length).toBeGreaterThan(touched);
+      const dropped = beforeDrop.slice(touched).map((slide) => slide.id);
+      const kept = result.lesson.slides.map((slide) => slide.id);
+      expect(kept).toEqual(beforeDrop.slice(0, touched).map((slide) => slide.id));
+      for (const id of dropped) expect(kept).not.toContain(id);
+      expect(deps.persisted.at(-2)?.lesson.slides.map((slide) => slide.id)).toEqual(kept);
       expect(result.lesson.generation?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
         expect.objectContaining({ check: "budget" }),
@@ -1689,6 +1699,40 @@ describe("generate", () => {
       const result = await run;
       expect(id).toBeDefined();
       expect(result.lesson.generation?.findings).toContainEqual(mayBeWrongFinding(id ?? ""));
+    });
+
+    test("a failed save during a correction fails the stage and leaves the slide marked", async () => {
+      const touched = fullFacts().outline.findIndex((e) => e.factRefs.includes("v1"));
+      const { state, release } = await plannedWithHeldVerify([v1Correction]);
+      const deps = recordingDeps(slideFake());
+      const recorded = deps.persist;
+      const written = FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES;
+      // Every slide saves; the correction's save is the one that fails.
+      deps.persist = async (lesson, worksheet) => {
+        if (deps.persisted.length >= written) throw new Error("lock lost");
+        return recorded(lesson, worksheet);
+      };
+      const run = generate(state, deps);
+      await until(() => deps.persisted.length >= written);
+      release();
+      await expect(run).rejects.toThrow("lock lost");
+      const row = deps.persisted.at(-1)?.lesson;
+      expect(marked(row)).toContain(row?.slides[touched]?.id);
+      expect(slideText(row?.slides[touched] as never)).not.toContain("Clan");
+    });
+
+    test("a failed save fails the stage instead of leaving later slides waiting (no hang)", async () => {
+      const { state, release } = await plannedWithHeldVerify([]);
+      release();
+      const deps = recordingDeps(createFakeAi({ script: generateScript(), usage }));
+      const recorded = deps.persist;
+      deps.persist = async (lesson, worksheet) => {
+        if (deps.persisted.length >= 1) throw new Error("database gone");
+        return recorded(lesson, worksheet);
+      };
+      // Within the test's timeout: before the fix the later slides' gates never opened.
+      await expect(generate(state, deps)).rejects.toThrow("database gone");
+      expect(deps.persisted).toHaveLength(1);
     });
 
     test("Stop mid-Verify: every slide saved so far is marked unverified on the row", async () => {
