@@ -26,6 +26,25 @@ export async function confirmLesson(client: QueryClient, id: string, input: Gene
   assertCurrentSession(client);
   return result;
 }
+/**
+ * Try again after a failed generation (UX-A): a new job writes the rest of the lesson, keeping
+ * every slide already written. Resolves with the new job's id.
+ */
+export async function resumeLesson(
+  client: QueryClient,
+  id: string,
+  /** The job that stopped: the api refuses a budget stop (422). */
+  stoppedJobId: string,
+): Promise<{ jobId: string }> {
+  const res = await api.lessons[":id"].resume.$post(
+    { param: { id }, json: { jobId: stoppedJobId } },
+    sessionRequest(client),
+  );
+  if (res.status !== 202) throw await apiErrorFromResponse(res);
+  const result = await res.json();
+  assertCurrentSession(client);
+  return result;
+}
 /** A new local row has a UUID; only server fact ids are returned to /generate. */
 export function objectiveEdits(lesson: Lesson, drafts: { id: string; text: string }[]) {
   const existing = new Set(lesson.facts?.objectives.map(({ id }) => id));

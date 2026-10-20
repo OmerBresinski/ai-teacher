@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { isBudgetStopMessage } from "@tj/domain";
 import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
+import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
 import {
   displayInTheme,
@@ -24,10 +26,10 @@ import {
 } from "react";
 import {
   FillingFollower,
-  type FillingFollowerHandle,
   opensFillingEditor,
   StopFillingButton,
 } from "@/components/generating-lesson/FillingFollower";
+import { StoppedNotice } from "@/components/generating-lesson/StoppedNotice";
 import { stageOf } from "@/components/generating-lesson/stage";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
 import { sessionBoundary } from "@/lib/session-boundary";
@@ -53,9 +55,11 @@ import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { rememberTheme } from "@/lib/brief-memory";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
-import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
+import { resumeLesson } from "@/lib/lesson-intake";
+import { isFullDocument, kindOf, libraryCache, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
 import { meQueryOptions } from "@/lib/query";
+import { sessionIsCurrent } from "@/lib/session-boundary";
 import { lessonEditorRoute } from "./documents.route";
 
 // Both are off the editor's first paint (and its chunk budget): the worksheets dialog pulls the
@@ -164,17 +168,75 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       void navigate({ to: "/lessons/new", search: { lesson: lessonId }, replace: true });
     }
   }, [data, lessonId, navigate]);
-  // ADR 0037: while the lesson fills, a stale save folds the job's row in and saves again.
-  const followerRef = useRef<FillingFollowerHandle | null>(null);
-  const onStale = useCallback(
-    async () => (followerRef.current ? followerRef.current.pull() : undefined),
-    [],
-  );
-  // Live writing (ADR 0039): the job this editor follows while the lesson fills, so a refused save
-  // is silent only under this lesson's own stream, never under another job's lock.
-  const followedJob = useRef<string | undefined>(undefined);
-  const ownJob = useCallback(() => followedJob.current, []);
+  // The proposal jobs (TEACH-134) apply through it; while the lesson fills, each newer row is folded
+  // into the open document through it (ADR 0037).
+  const editorRef = useRef<LessonEditorHandle | null>(null);
+  // Live writing (ADR 0039): the job this editor follows while the lesson fills, and for
+  // `FOLD_GRACE_MS` after it ends (the row settles: the last fold, a save already on the wire).
+  // Under it a refused save is the job's own writing racing the editor's, never the teacher's
+  // conflict: it is deferred and tried again (`useSaveWithConflictToast`), never toasted.
+  const followed = useRef<{ jobId: string; until: number } | null>(null);
+  const ownJob = useCallback(() => {
+    const f = followed.current;
+    return f && Date.now() < f.until ? f.jobId : undefined;
+  }, []);
+  // ADR 0037: the row last folded into the editor (the base of the next three-way merge) and its
+  // version. `fold` reads the newest row and merges it in; a save while the job owns the lesson
+  // folds first and sends the merged copy at that row's version, so it never carries an older
+  // body under a newer version, and a fold never applies a row older than the one it holds.
+  const folded = useRef<{ jobId: string; body: Lesson; at: string } | null>(null);
+  const foldRun = useRef<Promise<Lesson | undefined> | null>(null);
+  const fold = useCallback(async (): Promise<Lesson | undefined> => {
+    // One read at a time, and never a read that began before this call.
+    while (foldRun.current) await foldRun.current.catch(() => undefined);
+    const run = (async () => {
+      const row = await libraryCache.readFilling(queryClient, lessonId);
+      const base = folded.current;
+      const editor = editorRef.current;
+      if (!row || !base || !editor || !sessionIsCurrent(queryClient)) return undefined;
+      if (row.meta.updatedAt < base.at) return undefined;
+      const merged = editor.receiveGenerated(base.body, row.body);
+      folded.current = { jobId: base.jobId, body: row.body, at: row.meta.updatedAt };
+      libraryCache.setMetaIfNewer(queryClient, lessonId, row.meta);
+      return merged;
+    })();
+    foldRun.current = run;
+    try {
+      return await run;
+    } finally {
+      if (foldRun.current === run) foldRun.current = null;
+    }
+  }, [queryClient, lessonId]);
+  // A stale save under the followed job folds the row in and saves the merged copy once more.
+  const onStale = useCallback(async () => (ownJob() ? fold() : undefined), [ownJob, fold]);
   const saveDocument = useSaveWithConflictToast(lessonId, onStale, ownJob);
+  const saveFolded = useCallback(
+    async (lesson: Parameters<typeof saveDocument>[0]) => {
+      if (!ownJob() || !folded.current) return saveDocument(lesson);
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const merged = await fold();
+        const base = folded.current;
+        const at = queryClient.getQueryData(
+          libraryQueries.documentMeta(lessonId).queryKey,
+        )?.updatedAt;
+        if (!merged || !base || at !== base.at) continue;
+        // Nothing of the teacher's that the row lacks: there is nothing to write.
+        if (merged === base.body) return;
+        // The editor's fit stamp (`fitVersion`, set when it opens) is not the teacher's: a copy
+        // that differs from the row only there waits while the job still writes (still "Unsaved
+        // changes", tried again), then saves as usual once the job has let the lesson go.
+        const lock = queryClient.getQueryData(
+          libraryQueries.documentMeta(lessonId).queryKey,
+        )?.generatingJobId;
+        // Not the teacher's content: held quietly ("Saved" stays), written once the job ends.
+        if (holdsFitStamp(merged, base.body, lock, base.jobId))
+          throw new SaveHeldError("The fit stamp waits for the job to end.");
+        return saveDocument(merged);
+      }
+      throw new SaveDeferredError("The lesson is still being written.");
+    },
+    [ownJob, fold, saveDocument, queryClient, lessonId],
+  );
   // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
   // The theme the lesson opened with is not a choice (it may be the automatic default).
   const openedTheme = useRef<string | undefined>(undefined);
@@ -186,7 +248,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // Live writing (ADR 0039): a save while every slide is still the job's waits for the first done
   // slide, then the editor's copy is saved (`useHeldSave`).
   const heldSave = useHeldSave<Parameters<typeof saveDocument>[0]>({
-    save: saveDocument,
+    save: saveFolded,
     row:
       data && isFullDocument(data) ? (data as Parameters<typeof useHeldSave>[0]["row"]) : undefined,
     generating: !!meta?.generatingJobId,
@@ -219,9 +281,23 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     ...lessonWorksheetsQuery(queryClient, lessonId),
     enabled: !!data && isFullDocument(data) && "slides" in data,
   });
-  // A job that failed or was cancelled releases the lock, yet the page stays on the generating
-  // view for it (the outcome, the partial slides, Back to library) until the teacher leaves.
-  const [stoppedJobId, setStoppedJobId] = useState<string | null>(null);
+  // A job that failed or was cancelled (UX-A): the teacher stays in the editor with every slide
+  // written so far and one line saying so; a failure offers Try again for the rest. A guest's
+  // read-only lesson keeps the generating view's stopped state instead.
+  const [stopped, setStopped] = useState<{
+    jobId: string;
+    outcome: "failed" | "cancelled";
+    budget?: boolean;
+    dismissed?: boolean;
+  } | null>(null);
+  const stoppedJobId = stopped?.jobId ?? null;
+  const onStopped = useCallback(
+    (jobId: string, outcome: "failed" | "cancelled", message?: string) =>
+      setStopped({ jobId, outcome, budget: isBudgetStopMessage(message) }),
+    [],
+  );
+  const keepEditing = !!stopped && !anonymous;
+  const [retry, setRetry] = useState<"idle" | "trying" | "error">("idle");
   // The job the generating view is following (TEACH-202 part j). The body and the job's events
   // reach the page on two channels with no order between them, so a refetch can show the lock gone
   // while the view has not yet learnt how the job ended; the view stays until it has
@@ -249,7 +325,6 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       : undefined;
   // The proposal jobs (TEACH-134): the app enqueues and follows, the editor applies through the
   // handle as one undo step.
-  const editorRef = useRef<LessonEditorHandle | null>(null);
   const proposals = useProposalJobs(lessonId, editorRef, worksheetId);
   const onPromptEdit = usePromptEdit(lessonId);
 
@@ -268,13 +343,36 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const editing = !!data && isFullDocument(data) && !!meta && !meta.generatingJobId;
   // A layout effect, so the editor's first paint is already in the picked theme.
   useLayoutEffect(() => {
-    if (!editing || stoppedJobId || !pickedTheme || !editorRef.current) return;
+    if (!editing || (stoppedJobId && !keepEditing) || !pickedTheme || !editorRef.current) return;
     editorRef.current.retheme(pickedTheme);
     writePickedTheme(lessonId, null);
     setPickedTheme(null);
-  }, [editing, stoppedJobId, pickedTheme, lessonId]);
+  }, [editing, stoppedJobId, keepEditing, pickedTheme, lessonId]);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
+  // Try again (UX-A): a new job writes the rest. The row it starts from is read first, so the next
+  // fold merges onto the stored copy (the teacher's saved edits) and never onto unsaved ones.
+  const stoppedJob = stopped?.jobId;
+  const onTryAgain = useCallback(async () => {
+    setRetry("trying");
+    try {
+      const row = await libraryCache.readFilling(queryClient, lessonId);
+      if (!stoppedJob) {
+        setRetry("idle");
+        return;
+      }
+      const { jobId } = await resumeLesson(queryClient, lessonId, stoppedJob);
+      if (row) folded.current = { jobId, body: row.body, at: row.meta.updatedAt };
+      const metaKey = libraryQueries.documentMeta(lessonId).queryKey;
+      queryClient.setQueryData(metaKey, (meta) =>
+        meta ? { ...meta, generatingJobId: jobId } : meta,
+      );
+      setStopped(null);
+      setRetry("idle");
+    } catch {
+      setRetry("error");
+    }
+  }, [queryClient, lessonId, stoppedJob]);
   const onOpenWorksheet = useCallback(
     (id: string) => void navigate({ to: "/w/$worksheetId", params: { worksheetId: id } }),
     [navigate],
@@ -415,19 +513,26 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     })
   ) {
     setUnlocked({ jobId: fillingJobId, base: data });
+    // The first merge's base: the row the editor opens on, unless Try again already read it.
+    if (folded.current?.jobId !== fillingJobId)
+      folded.current = { jobId: fillingJobId, body: data, at: meta.updatedAt };
   }
   const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
   // The filling editor follows the job's end itself (`FillingFollower`), so it needs no latch.
   if (fillingJobId && !filling && watchedJobId !== fillingJobId) setWatchedJobId(fillingJobId);
   if (filling && watchedJobId !== null) setWatchedJobId(null);
   const generatingJobId =
-    fillingJobId ?? stoppedJobId ?? (watchedJobId !== completedJobId ? watchedJobId : null);
+    fillingJobId ??
+    (keepEditing ? null : stoppedJobId) ??
+    (watchedJobId !== completedJobId && watchedJobId !== stoppedJobId ? watchedJobId : null);
   // Live writing (ADR 0039): one store of slide drafts per job, fed by whichever view follows it.
   const draftStore = generatingJobId ? draftStoreFor(generatingJobId) : undefined;
   // The job's store outlives its end by a moment: the last slide finishes typing over the hand-over
   // (the store empties itself shortly after the job ends).
   if (draftStore) rowRef.current.drafts = draftStore;
-  followedJob.current = filling && fillingJobId ? fillingJobId : undefined;
+  if (filling && fillingJobId) followed.current = { jobId: fillingJobId, until: Infinity };
+  else if (followed.current?.until === Infinity)
+    followed.current = { jobId: followed.current.jobId, until: Date.now() + FOLD_GRACE_MS };
   const editorOpen = !generatingJobId || filling;
   const writing = filling ? writingSlideIds(data) : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
@@ -453,7 +558,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onStage={setStage}
         jobId={generatingJobId}
         onBack={onBack}
-        onStopped={setStoppedJobId}
+        onStopped={onStopped}
         onCompleted={setCompletedJobId}
         onViewSlide={setViewedSlideId}
         exportSlot={exportSlot}
@@ -515,12 +620,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       />
       {filling && unlocked ? (
         <FillingFollower
-          lessonId={lessonId}
           jobId={unlocked.jobId}
-          base={unlocked.base}
-          editorRef={editorRef}
-          followerRef={followerRef}
-          onStopped={setStoppedJobId}
+          fold={fold}
+          onStopped={onStopped}
           drafts={draftStore}
         />
       ) : null}
@@ -538,6 +640,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       onDoubleClick={onReadOnlyDoubleClick}
     >
       {content}
+      {keepEditing && stopped && !stopped.dismissed && editorOpen ? (
+        <StoppedNotice
+          outcome={stopped.outcome}
+          budget={stopped.budget}
+          onTryAgain={() => void onTryAgain()}
+          trying={retry === "trying"}
+          error={retry === "error"}
+          onDismiss={() => setStopped({ ...stopped, dismissed: true })}
+        />
+      ) : null}
       {anonymous && signInOpen ? (
         <Suspense fallback={null}>
           <SignInSheet
@@ -588,6 +700,49 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     </div>
   );
 }
+
+/**
+ * Whether `mine` differs from the job's row only in the editor's fit stamp. Every other field,
+ * slide and element still counts, so a real teacher edit is always written.
+ */
+export function onlyFitStampDiffers(mine: Lesson, row: Lesson): boolean {
+  if ((mine.fitVersion ?? 0) === (row.fitVersion ?? 0)) return false;
+  return sameValue({ ...mine, fitVersion: 0 }, { ...row, fitVersion: 0 });
+}
+
+/**
+ * Whether a save of `mine` is held (`SaveHeldError`, the indicator stays "Saved"): it differs from the job's
+ * row only in the fit stamp, and `jobId` still holds the lesson. Once the lock is gone the stamp
+ * saves like any change, so it is never left unwritten behind a "Saved".
+ */
+export function holdsFitStamp(
+  mine: Lesson,
+  row: Lesson,
+  lockedBy: string | null | undefined,
+  jobId: string,
+): boolean {
+  return !!lockedBy && lockedBy === jobId && onlyFitStampDiffers(mine, row);
+}
+
+/** Deep equality of JSON values, key order ignored; an `undefined` field counts as absent. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b))
+    return a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(ra), ...Object.keys(rb)]);
+  for (const k of keys) if (!sameValue(ra[k], rb[k])) return false;
+  return true;
+}
+
+/**
+ * How long after the followed job ends a refused save is still the job's own last write racing
+ * the editor's (the final fold, a save already on the wire), not another tab's.
+ */
+const FOLD_GRACE_MS = 20_000;
 
 /** The theme picked while `lessonId` was being made, for this tab (ruling 123). */
 const pickedThemeKey = (lessonId: string) => `tj:generating-theme:${lessonId}`;

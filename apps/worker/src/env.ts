@@ -39,12 +39,12 @@ export const EnvSchema = z
     /** Plan on the frontier class from this year group up (TEACH-259); unset keeps every Plan call `standard`. */
     AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
     /**
-     * Which planner plans a new lesson (TEACH-93, ADR 0033): `objectives-first` (default, decision
-     * 25–26 Sept 2026: the objectives call, then the facts waves in the generate job) or `legacy`
-     * (skeleton + facts calls). A lesson already planned keeps the planner its stamp names whatever
-     * this says.
+     * Which planner plans a new lesson (TEACH-93, ADR 0033): `writer` (default from 20 Oct 2026,
+     * Greg: the objectives call, then the lesson writer in the generate job), `objectives-first`
+     * (the objectives call, then the facts waves) or `legacy` (skeleton + facts calls), both kept
+     * for rollback. A lesson already planned keeps the planner its stamp names whatever this says.
      */
-    AI_LESSON_PLANNER: z.enum(PLANNERS).default("objectives-first"),
+    AI_LESSON_PLANNER: z.enum(PLANNERS).default("writer"),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
     AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
     /**

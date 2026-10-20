@@ -329,10 +329,14 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(err).toBeInstanceOf(NonRetryableError);
     const after = await row(lessonId);
     expect(after.lock).toBeNull();
-    // The job re-materialises the objectives slide (fresh ids); no writer slide was saved.
-    expect(after.lesson.slides.map((x) => x.kind)).toEqual(
+    // UX-A: the slides the writer closed before the cut are kept, after the plan's own slides, so
+    // the teacher keeps them in the editor; only whole, schema-valid slides survive.
+    const kinds = after.lesson.slides.map((x) => x.kind);
+    expect(kinds.slice(0, planned.lesson.slides.length)).toEqual(
       planned.lesson.slides.map((x) => x.kind),
     );
+    expect(kinds.length).toBeGreaterThan(planned.lesson.slides.length);
+    expect(new Set(after.lesson.slides.map((x) => x.id)).size).toBe(kinds.length);
   });
 
   // TEACH-202 part g (the part f bug): a lesson hung for good when the writer's retry was refused

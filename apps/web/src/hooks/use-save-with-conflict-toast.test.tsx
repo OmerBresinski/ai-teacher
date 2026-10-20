@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
-import { SaveRefusedError } from "@tj/editor/autosave";
+import { SaveDeferredError, SaveRefusedError } from "@tj/editor/autosave";
 import type { ReactNode } from "react";
 import type { DocumentMeta, LibraryDocument } from "@/lib/library";
 import { queryKeys } from "@/lib/query";
@@ -28,7 +28,7 @@ const puts = () =>
 /** A hook whose cached row state is the stored one, then another writer moves the row on. */
 function setup(
   onStale: () => Promise<LibraryDocument | undefined>,
-  lock?: { holder: string; following?: string },
+  lock?: { holder: string | null; following?: string },
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const row = fakeApi.get(ID);
@@ -41,7 +41,8 @@ function setup(
   };
   if (lock) fakeApi.setGenerating(ID, lock.holder);
   queryClient.setQueryData(queryKeys.libraryDocumentMeta(ID), meta);
-  if (!lock) fakeApi.touch(ID);
+  // Another writer moves the row on (with a lock held, the lock refuses the save instead).
+  if (!lock?.holder) fakeApi.touch(ID);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -94,9 +95,24 @@ describe("useSaveWithConflictToast under a generating lock (ADR 0039)", () => {
   const JOB = "01a06a15-1849-7000-ac6a-c07e27fe3001";
   const OTHER = "01a06a15-1849-7000-ac6a-c07e27fe3002";
 
-  it("the lesson's own streaming job holding the lock: refused quietly, no toast", async () => {
+  it("the lesson's own streaming job holding the lock: deferred quietly, no toast", async () => {
     const { refusal, body } = setup(async () => undefined, { holder: JOB, following: JOB });
-    expect(await refusal(body)).toBeInstanceOf(SaveRefusedError);
+    expect(await refusal(body)).toBeInstanceOf(SaveDeferredError);
+    expect(toastSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it("UX-A: just after the followed job ends, a save its last write beat is deferred, not toasted", async () => {
+    const before = puts();
+    // The slow-network race: the job's write lands between the pull and the merged retry.
+    const { refusal, body } = setup(
+      async () => {
+        fakeApi.touch(ID);
+        return body;
+      },
+      { holder: null, following: JOB },
+    );
+    expect(await refusal(body)).toBeInstanceOf(SaveDeferredError);
+    expect(puts() - before).toBe(2);
     expect(toastSpy).toHaveBeenCalledTimes(0);
   });
 
