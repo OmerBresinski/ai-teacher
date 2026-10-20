@@ -1,5 +1,5 @@
 import { type CreatedAi, createAi } from "@tj/ai";
-import type { Db } from "@tj/db";
+import { type Db, insertGenerationDebug } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { type Planner, type ReasoningEffort, writerRoute } from "@tj/generation";
 import {
@@ -16,6 +16,7 @@ import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { createPerJobFakeAi } from "./fake-ai";
+import type { DebugStore } from "./generation-debug";
 import { createDailyImageCap, type DailyImageCap } from "./picture-generator";
 
 /**
@@ -58,6 +59,11 @@ export type WorkerDeps = {
    */
   pictureLibrary?: { embedder: Embedder };
   jobs?: JobsContext;
+  /**
+   * The per-lesson debug record (Greg, 20 Oct 2026; `generation-debug.ts`): where a lesson job
+   * writes its `generation_debug` rows. Absent (tests), nothing is recorded.
+   */
+  generationDebug?: DebugStore;
 };
 
 export function createWorkerDeps(
@@ -90,6 +96,7 @@ export function createWorkerDeps(
     ...(env.AI_REASONING_EFFORT !== undefined ? { reasoningEffort: env.AI_REASONING_EFFORT } : {}),
     planner: env.AI_LESSON_PLANNER,
     costWarnUsd: env.AI_LESSON_COST_WARN_USD,
+    generationDebug: (workspaceId, rows) => insertGenerationDebug(db, workspaceId, rows),
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {

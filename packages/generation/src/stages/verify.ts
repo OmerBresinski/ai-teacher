@@ -2,6 +2,7 @@ import type { FigureRef, Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
 import { FIGURE_TEMPLATES } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { recordDebug } from "../debug";
 import { figureFindings } from "../figure-check";
 import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
@@ -60,6 +61,14 @@ export async function runVerify(
       maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
     });
     const patched = applyVerifyPatch(facts, call.output.corrections);
+    // The debug record (Greg, 20 Oct 2026): each correction that took effect, before and after.
+    if (deps.debug)
+      for (const c of patched.applied)
+        recordDebug(deps.debug, "fact-check", {
+          correction: c,
+          before: factOf(facts, c.factId),
+          after: factOf(patched.facts, c.factId),
+        });
     deps.logger.info(
       {
         stage: "plan",
@@ -197,6 +206,18 @@ function figureValuesOf(
  * bypass the field, index and per-field limit rules: an invalid correction is skipped, never
  * applied. Returns the parsed facts and the corrections that took effect.
  */
+/** The fact (or retrieval item) a correction names, for the debug record; undefined if none. */
+function factOf(facts: LessonFacts, factId: string): unknown {
+  const r = retrievalIndexOf(factId);
+  if (r !== undefined) return facts.retrieval?.[r];
+  for (const value of Object.values(facts))
+    if (Array.isArray(value)) {
+      const hit = value.find((f) => (f as { id?: unknown } | null)?.id === factId);
+      if (hit !== undefined) return hit;
+    }
+  return undefined;
+}
+
 export function applyVerifyPatch(
   facts: LessonFacts,
   corrections: readonly VerifyCorrection[],

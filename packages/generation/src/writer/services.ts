@@ -1,4 +1,5 @@
 import { BudgetReservationError, UnestimableCallError } from "@tj/ai";
+import type { DebugSink } from "../debug";
 import { BudgetExceeded } from "../types";
 /*
  * The model calls the writer stage makes, as an interface the stage is handed: one streamed
@@ -117,7 +118,9 @@ export type ChatReq = {
   /** Pictures (data URLs) sent after the user text, in order, at low detail (the set judge). */
   images?: string[];
 };
-export type ChatResult = { out?: unknown; usd: number; ms: number };
+/** Token counts of one call, when the provider reported them (the debug record's `call` rows). */
+export type CallTokens = { input: number; output: number };
+export type ChatResult = { out?: unknown; usd: number; ms: number; tokens?: CallTokens };
 
 export type WriterReq = {
   model: string;
@@ -134,6 +137,7 @@ export type WriterResult = {
   usd: number;
   ms: number;
   firstTokenMs?: number;
+  tokens?: CallTokens;
 };
 
 export interface WriterServices {
@@ -143,4 +147,9 @@ export interface WriterServices {
   writer(req: WriterReq, onDelta: (delta: string) => void): Promise<WriterResult>;
   /** A structured event for the stage's log (ids and counts, never content in production). */
   log(event: object): void;
+  /**
+   * The lesson's debug record (`../debug`): content the log never carries. Fire and forget;
+   * absent (tests, lab replays), nothing is recorded.
+   */
+  debug?: DebugSink;
 }

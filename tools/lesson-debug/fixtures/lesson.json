@@ -1,0 +1,234 @@
+{
+  "lesson": {
+    "id": "0192f7a0-0000-7000-8000-000000000011",
+    "workspaceId": "0192f7a0-0000-7000-8000-00000000000a",
+    "title": "The Roman invasion",
+    "generatingJobId": null,
+    "updatedAt": "2026-10-20T09:01:30.000Z",
+    "generation": {
+      "stage": "planned",
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "usage": {
+        "calls": 4,
+        "costUsd": 0.0412
+      },
+      "findings": [],
+      "promptVersions": {
+        "planned": "lesson-writer.v1+writer-objectives"
+      }
+    },
+    "plan": {
+      "revision": 1,
+      "state": "confirmed",
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2"
+    }
+  },
+  "events": [
+    {
+      "id": 1,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "type": "started",
+      "at": "2026-10-20T09:00:00.000Z",
+      "payload": {
+        "type": "started"
+      }
+    },
+    {
+      "id": 2,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "type": "completed",
+      "at": "2026-10-20T09:00:04.000Z",
+      "payload": {
+        "type": "completed"
+      }
+    },
+    {
+      "id": 3,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "started",
+      "at": "2026-10-20T09:00:10.000Z",
+      "payload": {
+        "type": "started"
+      }
+    },
+    {
+      "id": 4,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "progress",
+      "at": "2026-10-20T09:00:12.000Z",
+      "payload": {
+        "progress": {
+          "percent": 40,
+          "stage": "generate",
+          "message": "Writing slides"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "type": "failed",
+      "at": "2026-10-20T09:00:40.000Z",
+      "payload": {
+        "error": {
+          "message": "The lesson could not be finished.",
+          "retryable": true
+        }
+      }
+    }
+  ],
+  "debug": [
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 0,
+      "kind": "call",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.000Z",
+      "payload": {
+        "name": "objectives",
+        "model": "openai/gpt-6.1-sol",
+        "stage": "write-frontier",
+        "ms": 2900,
+        "ok": true,
+        "usd": 0.004,
+        "tokens": {
+          "input": 1200,
+          "output": 300
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000a1",
+      "attempt": 0,
+      "seq": 1,
+      "kind": "plan",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:03.500Z",
+      "payload": {
+        "stage": "objectives",
+        "plan": null,
+        "facts": {
+          "objectives": [
+            {
+              "id": "o1",
+              "text": "Describe AD 43"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 0,
+      "kind": "call",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:30.000Z",
+      "payload": {
+        "name": "lesson",
+        "model": "openai/gpt-6.1-sol",
+        "stage": "write",
+        "ms": 19000,
+        "ok": true,
+        "usd": 0.031,
+        "tokens": {
+          "input": 9000,
+          "output": 4000
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 1,
+      "kind": "writer-output",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:30.001Z",
+      "payload": {
+        "text": "{\"slides\":[]}",
+        "finishReason": "length",
+        "usd": 0.031,
+        "ms": 19000
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 2,
+      "kind": "check",
+      "slideIndex": 2,
+      "createdAt": "2026-10-20T09:00:31.000Z",
+      "payload": {
+        "faults": ["overflow:body 18pt over"],
+        "over": [
+          {
+            "element": "body",
+            "by": 18
+          }
+        ]
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 3,
+      "kind": "repair",
+      "slideIndex": 2,
+      "createdAt": "2026-10-20T09:00:33.000Z",
+      "payload": {
+        "mode": "fit",
+        "ok": true,
+        "reverted": true,
+        "fix": "shortened",
+        "faultsBefore": ["overflow:body 18pt over"],
+        "faultsAfter": ["overflow:body 4pt over"],
+        "before": {},
+        "after": {}
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 4,
+      "kind": "picture",
+      "slideIndex": 4,
+      "createdAt": "2026-10-20T09:00:34.000Z",
+      "payload": {
+        "ask": "a Roman legionary",
+        "plan": "photo",
+        "outcome": "empty",
+        "via": "generated",
+        "reason": "generation-refused-or-failed"
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 5,
+      "kind": "budget-stop",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:39.000Z",
+      "payload": {
+        "name": "notes",
+        "model": "openai/gpt-6-luna",
+        "totals": {
+          "costUsd": 0.25
+        }
+      }
+    },
+    {
+      "jobId": "0192f7a0-0000-7000-8000-0000000000b2",
+      "attempt": 0,
+      "seq": 6,
+      "kind": "job-error",
+      "slideIndex": null,
+      "createdAt": "2026-10-20T09:00:39.500Z",
+      "payload": {
+        "name": "BudgetExceeded",
+        "message": "lesson budget exceeded by $0.01",
+        "stack": "BudgetExceeded: lesson budget exceeded by $0.01\n    at call (packages/generation/src/call.ts:10:5)"
+      }
+    }
+  ]
+}

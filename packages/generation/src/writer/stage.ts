@@ -3,6 +3,7 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
+import { type DebugKind, recordDebug } from "../debug";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
@@ -485,7 +486,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const baseVisuals = (k: string) =>
     k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 
-  const log = (e: object) => run.services.log(e);
+  /** The lesson's debug record (`../debug`): fire and forget, never awaited, never throws. */
+  const debug = (kind: DebugKind, payload: unknown, slideIndex?: number) =>
+    recordDebug(run.services.debug, kind, payload, slideIndex);
+  const log = (e: object) => {
+    run.services.log(e);
+    // Every stage event also lands in the debug record, on its slide when it names one (1-based).
+    if (run.services.debug) {
+      const slide = (e as { slide?: unknown }).slide;
+      debug("event", e, typeof slide === "number" && slide >= 1 ? slide - 1 : undefined);
+    }
+  };
   // Every model call's texts go through the locale step (`{{locale.country}}` in notes.txt).
   const chat: WriterServices["chat"] = (r) =>
     run.services.chat({ ...r, system: localise(r.system), user: localise(r.user) });
@@ -1006,6 +1017,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     tableRest.set(idx, tc.rest);
     tableFirst.set(idx, specKey(tc.first.figure));
     log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
+    debug("split", { how: "table-continued", before: s, first: tc.first, rest: tc.rest }, idx);
     return tc.first;
   };
   /**
@@ -1028,6 +1040,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       slide: idx + 1,
       slides: qc.rest.length + 1,
     });
+    debug(
+      "split",
+      {
+        how: s.template === "practice" ? "practice-continued" : "quick-check-continued",
+        before: s,
+        first: qc.first,
+        rest: qc.rest,
+      },
+      idx,
+    );
     return qc.first;
   };
   const openSlide = (idx: number, arrived: S) => {
@@ -1233,6 +1255,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           );
         },
       );
+  // The writer's raw output, as streamed (the debug record only; ADR 0015 keeps it out of logs).
+  debug("writer-output", {
+    text: main.text,
+    finishReason: main.finishReason ?? null,
+    usd: main.usd,
+    ms: main.ms,
+    ...(main.firstTokenMs !== undefined ? { firstTokenMs: main.firstTokenMs } : {}),
+    ...(run.recordedWriter ? { recorded: true } : {}),
+  });
   if (draftStats)
     log({
       ev: "drafts",
@@ -1458,6 +1489,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // Each slide's check in the debug record: the fault lines and the measured overflows (which
+  // element, by how much), failing or not.
+  if (run.services.debug)
+    for (const c of checks)
+      debug("check", { faults: c.faults, over: laid.get(c.slide - 1)?.over ?? [] }, c.slide - 1);
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
@@ -1705,6 +1741,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
       log({ ev: "repair", slide: i + 1, mode, ok: false });
+      debug(
+        "repair",
+        { mode, ok: false, why: "no slide", faults: c.faults, out: r?.out ?? null },
+        i,
+      );
       return false;
     }
     // A pack's schema has the slide name its fit, as the writer's does; arrival strips it there.
@@ -1740,6 +1781,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     ];
     if (why.length) {
       log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
+      debug(
+        "repair",
+        {
+          mode,
+          ok: false,
+          rejected: why,
+          fix: o2.fix,
+          faults: c.faults,
+          before,
+          proposed: o2.slide,
+        },
+        i,
+      );
       return false;
     }
     // orphan6 (BAKEOFF base4f): a fit repair that moved the only words naming a pictured thing drops
@@ -1776,6 +1830,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (worse) restore(i, before, n0, oldAsks);
     else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
     log({ ev: "repair", slide: i + 1, mode, ok: true, fix: o2.fix, reverted: worse });
+    debug(
+      "repair",
+      {
+        mode,
+        ok: true,
+        reverted: worse,
+        fix: o2.fix,
+        faultsBefore: c.faults,
+        faultsAfter: now,
+        before,
+        after: o2.slide,
+        toNotes: moved,
+      },
+      i,
+    );
     return !worse;
   };
   /** Measure and retry: an overflowing slide gets at most two rewords. */
@@ -2207,6 +2276,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ok,
         ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
       });
+      if (kind === "split")
+        debug(
+          "split",
+          {
+            how: "lost-picture",
+            ok,
+            before: s0,
+            after: now,
+            landed: landed.length,
+            asked: all.length,
+          },
+          i,
+        );
       if (ok && landed.length < all.length) {
         const shows = new Set(landed.map((a) => a.shows));
         swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);

@@ -22,6 +22,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
+import { fullError, recordDebug } from "./debug";
 import type { PromptName } from "./prompts";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
@@ -70,7 +71,10 @@ export const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh"] as c
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
+  deps: Pick<
+    PipelineDeps,
+    "ai" | "budget" | "signal" | "logger" | "context" | "effortFor" | "debug"
+  >;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -361,6 +365,36 @@ export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodTy
 export const PROVIDER_RETRY_DELAY_MS = 1500;
 
 export async function callStructured<I, T>(
+  options: CallStructuredOptions<I, T>,
+): Promise<CallResult<T>> {
+  const sink = options.deps.debug;
+  if (!sink) return callStructuredOnce(options);
+  const t0 = Date.now();
+  const call = { name: options.prompt.version, stage: options.stage, cls: options.cls };
+  try {
+    const result = await callStructuredOnce(options);
+    recordDebug(sink, "call", {
+      ...call,
+      ok: true,
+      model: result.modelId,
+      attempts: result.attempts,
+      tokens: { input: result.usage.inputTokens ?? 0, output: result.usage.outputTokens ?? 0 },
+      ms: Date.now() - t0,
+    });
+    return result;
+  } catch (error) {
+    recordDebug(sink, "call", { ...call, ok: false, ms: Date.now() - t0, error: fullError(error) });
+    if (error instanceof BudgetExceeded)
+      recordDebug(sink, "budget-stop", {
+        ...call,
+        totals: options.deps.budget.totals(),
+        error: fullError(error),
+      });
+    throw error;
+  }
+}
+
+async function callStructuredOnce<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
   const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images } = options;
