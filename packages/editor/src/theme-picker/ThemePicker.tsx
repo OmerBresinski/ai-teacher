@@ -76,6 +76,8 @@ export type ThemePickerProps = {
   title: string;
   /** The lesson's age band: the previews use its type scale. */
   ageBand?: string | null;
+  /** The cover's second line ("Year 4 · Science"); none when empty. */
+  subtitle?: string;
   variant?: PickerVariant;
   className?: string;
 };
@@ -220,10 +222,9 @@ function Spotlight({ samples, stage = false }: { samples: ThemeSamples; stage?: 
   const { who, look } = suitsOf(theme);
   return (
     <div className="flex min-w-0 flex-col gap-3" data-theme-spotlight={theme.id} aria-hidden>
-      <Mini slide={samples.cover} theme={theme} near />
-      <div className="grid grid-cols-2 gap-2">
+      <div className={cn("grid gap-2", stage && "grid-cols-2")}>
+        <Mini slide={samples.cover} theme={theme} near />
         <Mini slide={samples.content} theme={theme} near />
-        <Mini slide={samples.check} theme={theme} near />
       </div>
       <div className="flex flex-col gap-2">
         <ThemeName theme={theme} className={stage ? "text-title" : "text-heading"} />
@@ -259,6 +260,7 @@ type TileProps = {
   theme: Theme;
   title: string;
   ageBand?: string | null;
+  subtitle?: string;
   selected: boolean;
   tabbable: boolean;
   layout: PickerVariant;
@@ -271,6 +273,7 @@ const Tile = memo(function Tile({
   theme: base,
   title,
   ageBand,
+  subtitle,
   selected,
   tabbable,
   layout,
@@ -278,10 +281,10 @@ const Tile = memo(function Tile({
   onPeek,
 }: TileProps) {
   const descId = useId();
-  const [ref, near] = useNearView(`${base.id}|${title}|${ageBand ?? ""}`);
+  const [ref, near] = useNearView(`${base.id}|${title}|${ageBand ?? ""}|${subtitle ?? ""}`);
   const samples = useMemo(
-    () => (near ? themeSamples(base.id, title, ageBand) : null),
-    [near, base.id, title, ageBand],
+    () => (near ? themeSamples(base.id, title, ageBand, subtitle) : null),
+    [near, base.id, title, ageBand, subtitle],
   );
   const theme = samples?.theme ?? base;
   const fonts = fontPair(theme);
@@ -292,17 +295,22 @@ const Tile = memo(function Tile({
     </span>
   ) : null;
 
+  const ready = Boolean(samples);
+  const cover = samples?.cover as Slide;
+  const content = samples?.content as Slide;
+  const whoLine = <span className="line-clamp-2 text-meta text-ink-3">{who}</span>;
+
   let body: ReactNode;
   if (layout === "list") {
     body = (
       <span className="flex w-full items-center gap-3">
-        <span className="relative w-24 shrink-0">
-          <Mini slide={samples?.cover as Slide} theme={theme} near={Boolean(samples)} />
+        <span className="relative w-28 shrink-0">
+          <Mini slide={cover} theme={theme} near={ready} />
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <ThemeName theme={theme} className="text-body" />
+          {whoLine}
           <span className="truncate text-meta text-ink-3">{fonts.label}</span>
-          <Palette theme={theme} />
         </span>
         {selected ? <Check size={16} className="shrink-0 text-primary" /> : null}
       </span>
@@ -311,12 +319,14 @@ const Tile = memo(function Tile({
     body = (
       <span className="flex w-full flex-col gap-2">
         <span className="relative grid grid-cols-2 gap-1.5">
-          <Mini slide={samples?.cover as Slide} theme={theme} near={Boolean(samples)} />
-          <Mini slide={samples?.content as Slide} theme={theme} near={Boolean(samples)} />
+          <Mini slide={cover} theme={theme} near={ready} />
+          <Mini slide={content} theme={theme} near={ready} />
           {check}
         </span>
-        <Palette theme={theme} size="strip" />
-        <ThemeName theme={theme} className="text-body" />
+        <span className="flex items-center justify-between gap-2">
+          <ThemeName theme={theme} className="text-body" />
+          <Palette theme={theme} />
+        </span>
         <span className="line-clamp-2 text-meta text-ink-2">
           <span className="text-foreground">{who}</span> · {fonts.label}
         </span>
@@ -324,17 +334,21 @@ const Tile = memo(function Tile({
       </span>
     );
   } else {
+    // The cover with a teaching slide tucked into its corner: the theme's ground and art, and its
+    // badges, cards and accent shapes, in one tile.
     body = (
       <span className="flex w-full flex-col gap-1.5">
-        <span className="relative">
-          <Mini slide={samples?.cover as Slide} theme={theme} near={Boolean(samples)} />
+        <span className="relative block pb-[14%]">
+          <span className="block w-[82%]">
+            <Mini slide={cover} theme={theme} near={ready} />
+          </span>
+          <span className="absolute right-0 bottom-0 block w-[52%] rounded-chip shadow-2">
+            <Mini slide={content} theme={theme} near={ready} />
+          </span>
           {check}
         </span>
         <ThemeName theme={theme} className="text-body" />
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-meta text-ink-3">{who}</span>
-          <Palette theme={theme} />
-        </span>
+        {whoLine}
       </span>
     );
   }
@@ -411,6 +425,7 @@ export function ThemePicker({
   onPick,
   title,
   ageBand,
+  subtitle,
   variant = "spotlight",
   className,
 }: ThemePickerProps) {
@@ -485,8 +500,13 @@ export function ThemePicker({
   const shownId = peek ?? selectedId;
   const spotlight = useMemo(
     () =>
-      themeSamples(THEMES.some((t) => t.id === shownId) ? shownId : "paper", shownTitle, ageBand),
-    [shownId, shownTitle, ageBand],
+      themeSamples(
+        THEMES.some((t) => t.id === shownId) ? shownId : "paper",
+        shownTitle,
+        ageBand,
+        subtitle,
+      ),
+    [shownId, shownTitle, ageBand, subtitle],
   );
 
   // Keep the chosen tile in view when the picker opens (on open only, not on every pick).
@@ -503,6 +523,7 @@ export function ThemePicker({
       theme={theme}
       title={shownTitle}
       ageBand={ageBand}
+      subtitle={subtitle}
       selected={theme.id === selectedId}
       tabbable={theme.id === tabbableId}
       layout={variant}
@@ -555,7 +576,7 @@ export function ThemePicker({
             style={{ top: peekAt.top, left: peekAt.left, width: peekAt.width }}
             data-theme-peek={peekAt.id}
           >
-            <Spotlight samples={themeSamples(peekAt.id, shownTitle, ageBand)} />
+            <Spotlight samples={themeSamples(peekAt.id, shownTitle, ageBand, subtitle)} />
           </div>
         ) : null}
       </div>

@@ -162,6 +162,7 @@ function ThemeChoices({
         onPick={onPick}
         title={opening.title}
         ageBand={boundAgeBand(opening)}
+        subtitle={[opening.yearGroup, opening.subject].filter(Boolean).join(" · ")}
         variant={variant}
       />
       <div className="flex justify-end gap-2">

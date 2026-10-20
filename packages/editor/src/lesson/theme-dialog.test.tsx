@@ -143,7 +143,7 @@ describe("where the theme lives (ruling 123)", () => {
     // Tiles draw lazily as they scroll in; the large preview draws the chosen theme at once.
     const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
     expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
-    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(3);
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(2);
     expect(spot.textContent).toContain(read().title);
   });
 });

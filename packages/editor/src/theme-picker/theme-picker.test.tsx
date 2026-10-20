@@ -124,7 +124,7 @@ describe("ThemePicker", () => {
     // The spotlight names the fonts and the colours.
     const shown = document.querySelector("[data-theme-spotlight]") as HTMLElement;
     expect(shown.textContent).toContain("Lexend");
-    expect(shown.querySelectorAll("[data-slide-fluid]")).toHaveLength(3);
+    expect(shown.querySelectorAll("[data-slide-fluid]")).toHaveLength(2);
   });
 
   test("one tab stop; arrows, Home and End move and choose", () => {
@@ -184,7 +184,7 @@ describe("theme samples", () => {
     expect(themeSamples("treehouse", "Cache check")).toBe(a);
     expect(cachedSampleCount()).toBe(before + 1);
     expect(a.cover.kind).toBe("title");
-    expect(a.check.question).toBeDefined();
+    expect(a.content.kind).toBe("starter");
     expect(a.theme.id).toBe("treehouse");
     expect(themeSamples("poster", "Cache check").cover).not.toBe(a.cover);
   });

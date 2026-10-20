@@ -181,6 +181,7 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
                 selectedId={themeId}
                 onPick={setThemeId}
                 title={title.trim() || `Untitled ${noun}`}
+                subtitle={[yearGroup, subject.trim()].filter(Boolean).join(" · ")}
               />
             </Suspense>
             <div className="flex flex-col gap-1.5">

@@ -8,11 +8,22 @@ export default function NewDocumentThemePicker({
   selectedId,
   onPick,
   title,
+  subtitle,
 }: {
   selectedId: string;
   onPick: (themeId: string) => void;
   title: string;
+  /** "Year 4 · Science" from the first step, or nothing. */
+  subtitle?: string;
 }) {
   const [variant] = useState(pickerVariant);
-  return <ThemePicker selectedId={selectedId} onPick={onPick} title={title} variant={variant} />;
+  return (
+    <ThemePicker
+      selectedId={selectedId}
+      onPick={onPick}
+      title={title}
+      subtitle={subtitle}
+      variant={variant}
+    />
+  );
 }

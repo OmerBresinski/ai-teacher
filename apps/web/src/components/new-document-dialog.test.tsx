@@ -129,10 +129,14 @@ describe("NewDocumentDialog", () => {
       expect(radios).toHaveLength(16);
       // Real slides, not swatches: every tile carries the renderer's fluid slide.
       await waitFor(() =>
-        expect(document.querySelectorAll("[data-theme-preview] [data-slide-fluid]").length).toBe(
-          16,
-        ),
+        expect(
+          [...document.querySelectorAll("[data-theme-preview]")].filter((tile) =>
+            tile.querySelector("[data-slide-fluid]"),
+          ),
+        ).toHaveLength(16),
       );
+      // The cover carries the first step's title and nothing else: no placeholder line.
+      expect(document.body.textContent).not.toContain("Add the class and the date");
       const treehouse = screen.getByRole("radio", { name: "Treehouse" });
       expect(treehouse).toHaveAccessibleDescription(
         /KS2.*Fonts: Figtree and Nunito.*Early learners/,
