@@ -199,7 +199,7 @@ describe("createObservability with a key (mocked transport)", () => {
     obs.captureLessonSummary({ ...summary, lesson: { title: OUTPUT } } as LessonSummary);
     await obs.flush();
     const [event] = sent.flatMap((s) => s.events);
-    expect(event?.event).toBe("lesson_generation");
+    expect(event?.event).toBe("gen_lesson");
     expect(event?.properties).toMatchObject({
       outcome: "success",
       planner: "writer",
@@ -329,6 +329,162 @@ describe("createObservability with a key (mocked transport)", () => {
     const stopping = Date.now();
     await obs.shutdown();
     expect(Date.now() - stopping).toBeLessThan(1500);
+  });
+});
+
+describe("gen_* events from log lines", () => {
+  test("writer, pipeline and message lines become gen_* events with metadata only", async () => {
+    const { fetch, sent } = recordingFetch();
+    const obs = createObservability({
+      apiKey: "phc_test",
+      logger: pino({ level: "silent" }),
+      service: "worker",
+      fetch,
+    });
+    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    const b = {
+      jobId: JOB,
+      job: "lesson.generate",
+      attempt: 1,
+      resumed: true,
+      workspaceId: WORKSPACE,
+    };
+    // A writer repair line: `fix` is the model's own words and must never be sent.
+    obs.captureLogLine(
+      b,
+      { writer: { ev: "repair", slide: 3, mode: "fit", ok: true, reverted: true, fix: OUTPUT } },
+      "writer stage",
+    );
+    obs.captureLogLine(
+      b,
+      {
+        ev: "stage",
+        stage: "write",
+        outcome: "done",
+        startedAt: "2026-10-20T10:00:00.000Z",
+        durationMs: 4200,
+      },
+      "generation stage timeline",
+    );
+    obs.captureLogLine(
+      b,
+      {
+        ev: "fact-check",
+        outcome: "checked",
+        factsChecked: 10,
+        corrections: 3,
+        factsChanged: 2,
+        wordsChanged: 7,
+        byField: { answer: 2, stem: 1 },
+      },
+      "facts verified",
+    );
+    obs.captureLogLine(
+      b,
+      { stage: "illustrate", spentUsd: 0.4, capUsd: 0.5 },
+      "illustrate budget stop",
+    );
+    obs.captureLogLine(
+      b,
+      {
+        ev: "picture-outcome",
+        via: "stock",
+        attempts: 2,
+        reason: "nothing fit the slide",
+        query: "volcano",
+      },
+      "picture outcome",
+    );
+    obs.captureLogLine(b, {}, "job failed; pg-boss will retry");
+    // Not job events: no jobId, a line with no ev and no known message, the summary line.
+    obs.captureLogLine({}, { ev: "stage" }, "x");
+    obs.captureLogLine(b, { ai: { modelId: "m" } }, undefined);
+    obs.captureLogLine(b, { generation: {} }, "generation summary");
+    obs.captureJobEvent(JOB, "gen_job", { status: "picked", queueWaitMs: 850, prompt: PROMPT });
+    obs.captureLessonSummary(summary);
+    await obs.flush();
+
+    const events = sent.flatMap((s) => s.events);
+    expect(events.map((e) => e.event)).toEqual([
+      "gen_repair",
+      "gen_stage",
+      "gen_fact_check",
+      "gen_budget_stop",
+      "gen_picture_outcome",
+      "gen_job",
+      "gen_job",
+      "gen_lesson",
+    ]);
+    for (const e of events) {
+      expect(e.distinct_id).toBe(distinctIdFor(WORKSPACE));
+      expect(e.properties.$ai_trace_id).toBe(JOB);
+      for (const key of [
+        "$ai_input",
+        "$ai_output_choices",
+        "fix",
+        "prompt",
+        "query",
+        "text",
+        "output",
+      ]) {
+        expect(e.properties).not.toHaveProperty(key);
+      }
+    }
+    const byName = (n: string) => events.find((e) => e.event === n)?.properties ?? {};
+    expect(byName("gen_repair")).toMatchObject({
+      slide: 3,
+      mode: "fit",
+      ok: true,
+      reverted: true,
+      source: "writer",
+      attempt: 1,
+      resumed: true,
+      lessonId: LESSON,
+    });
+    expect(byName("gen_stage")).toMatchObject({
+      stage: "write",
+      outcome: "done",
+      durationMs: 4200,
+    });
+    expect(byName("gen_fact_check")).toMatchObject({
+      factsChecked: 10,
+      corrections: 3,
+      byField_answer: 2,
+      byField_stem: 1,
+    });
+    expect(byName("gen_budget_stop")).toMatchObject({
+      stage: "illustrate",
+      spentUsd: 0.4,
+      capUsd: 0.5,
+    });
+    // A sentence is not an identifier: the free-text reason is dropped, the codes stay.
+    expect(byName("gen_picture_outcome")).toMatchObject({ via: "stock", attempts: 2 });
+    expect(byName("gen_picture_outcome")).not.toHaveProperty("reason");
+    expect(events.filter((e) => e.event === "gen_job").map((e) => e.properties.status)).toEqual([
+      "retry",
+      "picked",
+    ]);
+    expect(byName("gen_lesson")).toMatchObject({
+      factChecks: 1,
+      factsChecked: 10,
+      factsCorrected: 3,
+      factsChanged: 2,
+      factWordsChanged: 7,
+      factChangeRate: 0.2,
+      repairs: 1,
+      repairsReverted: 1,
+    });
+    const all = sent.map((s) => s.text).join("\n");
+    for (const sentinel of [
+      "OUTPUT-SENTINEL",
+      "PROMPT-SENTINEL",
+      "volcano",
+      "nothing fit",
+      WORKSPACE,
+    ]) {
+      expect(all).not.toContain(sentinel);
+    }
+    await obs.shutdown();
   });
 });
 

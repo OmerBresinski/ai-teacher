@@ -168,11 +168,26 @@ function stageStep<S extends StepName>(
       if (!shouldRun(steps.order, stage, from, stopAfter)) return inputData;
       const entered = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
       requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
+      // The stage timeline (ADR 0041): one line per stage run, start and end, never content.
+      const stageStartedAt = Date.now();
+      const timeline = (outcome: "done" | "failed") =>
+        deps.logger.info(
+          {
+            ev: "stage",
+            stage,
+            outcome,
+            startedAt: new Date(stageStartedAt).toISOString(),
+            durationMs: Date.now() - stageStartedAt,
+          },
+          "generation stage timeline",
+        );
       try {
         const next = await run(inputData, deps);
         requestContext.setRaw(CHECKPOINT_KEY, next);
+        timeline("done");
         return next;
       } catch (error) {
+        timeline("failed");
         requestContext.setRaw(FAILURE_KEY, error);
         deps.logger.error(
           { stage, err: safeError(error), where: safeErrorWhere(error) },

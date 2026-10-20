@@ -43,9 +43,18 @@ output and lesson content stay in our own database (the generation debug records
      `$ai_cache_creation_input_tokens`, `$ai_total_cost_usd` (our list price), `$ai_latency`
      (seconds), `$ai_stop_reason`, `$ai_is_error`, plus `lessonId`, `promptVersion`, `effort`,
      `modelClass`.
-   - `lesson_generation`, one per lesson job, from the pipeline's `onSummary` hook (the
+   - `gen_lesson`, one per lesson job, from the pipeline's `onSummary` hook (the
      `generation summary` line): outcome, planner, stages, cost, calls, tokens, duration,
-     readable and checked ms, findings by severity, picture counts.
+     readable and checked ms, findings by severity, picture counts, and per-job totals of the
+     fact checker (facts checked and changed, change rate, words changed) and of repairs.
+   - `gen_*` for every pipeline fact the logs already carry (Greg, 20 Oct: "logging everything we
+     can for full verbosity"): the worker's logger hook offers each job log line to PostHog; a line
+     with an `ev` (the writer's checks, repairs, splits, pictures, diagrams; the stage timeline;
+     the fact check) becomes `gen_<ev>`, and job-lifecycle and budget messages map to `gen_job`
+     (picked with queue wait, started, retry, cancelled, failed, lock kept) and
+     `gen_budget_stop`. Only numbers, booleans and identifier-shaped strings (no spaces) are kept,
+     content keys are dropped, and a job sends at most 2,000 such events. Every event and property
+     is listed in `docs/observability.md`.
 5. **Never fail or slow a lesson.** Capture only queues. Batches of 20 or every 5 s, a 3 s request
    timeout, no retries; a failed send is logged (`posthog send failed; events dropped`, first and
    every 50th) and dropped. After each job a flush starts in the background and is never awaited.

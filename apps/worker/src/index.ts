@@ -18,7 +18,7 @@ import {
   registry,
   runAnonymousCleanup,
 } from "./jobs";
-import { createLogger } from "./logger";
+import { createLogger, type LogTap } from "./logger";
 import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
@@ -27,9 +27,14 @@ const SHUTDOWN_GRACE_MS = 25_000;
 const POLLING_INTERVAL_SECONDS = 0.5;
 
 const env = parseEnv();
-const logger = createLogger(env);
+// ADR 0041: every job log line is also offered to PostHog as a `gen_*` event (metadata only).
+let logTap: LogTap | undefined;
+const logger = createLogger(env, undefined, (bindings, record, msg) =>
+  logTap?.(bindings, record, msg),
+);
 // ADR 0041: PostHog (EU) error tracking and model-call metrics; a no-op without POSTHOG_API_KEY.
 const observability = createWorkerObservability(env, logger);
+if (observability.enabled) logTap = observability.captureLogLine;
 if (observability.enabled) {
   // A crash still crashes (exit 1, as before); it is reported first, scrubbed, within the flush
   // timeout. Registered only with a key, so dev and tests keep the runtime's own behaviour.
@@ -80,6 +85,14 @@ for (const name of Object.values(JobName)) {
                 lessonId: lessonIdOf(job.data),
               })
             : undefined;
+        if (typeof data?.jobId === "string") {
+          // Queue wait: from the enqueue to this pick-up (and, on a retry, from the re-queue).
+          observability.captureJobEvent(data.jobId, "gen_job", {
+            status: "picked",
+            attempt: job.retryCount,
+            queueWaitMs: Date.now() - new Date(job.createdOn).getTime(),
+          });
+        }
         const run = runJob(ctx, name, registry, job, {
           shutdown: shutdown.signal,
           logger,

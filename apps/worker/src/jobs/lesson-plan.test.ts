@@ -191,7 +191,7 @@ describeDb("lesson.plan job", () => {
       expect(done.generation?.stage).toBe("repaired");
       // The summary was handed to the transport, metadata only.
       const sent = bodies.join("\n");
-      expect(sent).toContain('"lesson_generation"');
+      expect(sent).toContain('"gen_lesson"');
       expect(sent).toContain('"outcome":"success"');
       expect(sent).not.toContain(workspaceId);
       // No lesson content: neither the title nor the brief's topic.

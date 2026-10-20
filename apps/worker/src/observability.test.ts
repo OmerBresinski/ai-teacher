@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Observability } from "@tj/observability";
 import pino from "pino";
 import { parseEnv } from "./env";
+import { createLogger } from "./logger";
 import {
   aiGenerationOf,
   createWorkerObservability,
@@ -21,6 +22,8 @@ function recorder() {
     captureException: (e, source) => void seen.push(["exception", { e, source }]),
     captureAiGeneration: (c) => void seen.push(["ai", c]),
     captureLessonSummary: (s) => void seen.push(["summary", s]),
+    captureLogLine: () => {},
+    captureJobEvent: () => {},
     flush: async () => {},
     shutdown: async () => {},
   };
@@ -102,5 +105,27 @@ describe("worker observability (ADR 0041)", () => {
     expect(
       parseEnv({ DATABASE_URL: DB, POSTHOG_HOST: "https://eu.i.posthog.com" }).POSTHOG_HOST,
     ).toBe("https://eu.i.posthog.com");
+  });
+
+  test("the logger tap sees each line with its bindings and never breaks logging", () => {
+    const seen: unknown[] = [];
+    const lines: string[] = [];
+    const logger = createLogger(
+      { NODE_ENV: "test", LOG_LEVEL: "info" },
+      { write: (l: string) => void lines.push(l) },
+      (bindings, record, msg) => {
+        seen.push({ bindings, record, msg });
+        throw new Error("tap down");
+      },
+    );
+    logger.child({ jobId: "j1", attempt: 0 }).info({ ev: "stage", stage: "write" }, "timeline");
+    logger.info("plain message");
+    expect(lines).toHaveLength(2);
+    expect(seen[0]).toMatchObject({
+      bindings: { jobId: "j1", attempt: 0 },
+      record: { ev: "stage", stage: "write" },
+      msg: "timeline",
+    });
+    expect(seen[1]).toMatchObject({ record: {}, msg: "plain message" });
   });
 });

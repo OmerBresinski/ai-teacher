@@ -1,3 +1,4 @@
+export { eventNameOf, MESSAGE_EVENTS, metadataOf } from "./events";
 export {
   type AiGeneration,
   createObservability,
