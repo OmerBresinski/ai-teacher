@@ -513,7 +513,12 @@ export function LiveSlide({
   const at = (draft || paced !== undefined) && !reduced && "at" in shown ? shown.at : undefined;
   // A card or line that joins a slide already on screen slides in gently; a slide's first draft
   // shows at once (fading it in would read as a blank canvas when the view moves on).
-  const joined = useRef<{ slide?: string; ids: Set<string> }>({ ids: new Set() });
+  // A box the next draft moves glides from where it stood by a transform (FLIP), never by animating
+  // its left/top/size, so the settling is not a layout shift (UX audit, 20 Oct: CLS at 1440).
+  const joined = useRef<{ slide?: string; ids: Set<string>; at: Map<string, [number, number]> }>({
+    ids: new Set(),
+    at: new Map(),
+  });
   useLayoutEffect(() => {
     const root = host.current;
     if (!root) return;
@@ -521,10 +526,19 @@ export function LiveSlide({
     if (seen.slide !== slideId) {
       seen.slide = slideId;
       seen.ids = new Set();
+      seen.at = new Map();
     }
     const first = seen.ids.size === 0;
     for (const el of root.querySelectorAll<HTMLElement>('[data-element-id^="d-"]')) {
       const id = el.dataset.elementId ?? "";
+      const was = seen.at.get(id);
+      const now: [number, number] = [el.offsetLeft, el.offsetTop];
+      seen.at.set(id, now);
+      if (was && !reduced && (was[0] !== now[0] || was[1] !== now[1]))
+        el.animate?.(
+          [{ translate: `${was[0] - now[0]}px ${was[1] - now[1]}px` }, { translate: "0 0" }],
+          { duration: 220, easing: "ease" },
+        );
       if (seen.ids.has(id)) continue;
       seen.ids.add(id);
       if (!first && !reduced)

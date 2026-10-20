@@ -183,3 +183,59 @@ describe("the editor shows a writing slide's drafts and hands over to the saved 
     }
   });
 });
+
+describe("a draft box that moves glides by a transform, never by its left or top", () => {
+  test("the moved box animates `translate` from where it stood; its place changes at once", async () => {
+    const lesson = seededLesson();
+    const id = lesson.slides[1]?.id as Id;
+    const at = (x: number): Slide => ({
+      id,
+      kind: "content",
+      elements: [{ ...textEl("d-card", "Find a quarter"), x }],
+    });
+    // happy-dom does no layout: offsets read the frame's own left/top.
+    const proto = HTMLElement.prototype;
+    const left = Object.getOwnPropertyDescriptor(proto, "offsetLeft");
+    const top = Object.getOwnPropertyDescriptor(proto, "offsetTop");
+    const animate = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
+    const calls: { id: string; frames: Keyframe[] }[] = [];
+    Object.defineProperty(proto, "offsetLeft", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return Number.parseFloat(this.style.left) || 0;
+      },
+    });
+    Object.defineProperty(proto, "offsetTop", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return Number.parseFloat(this.style.top) || 0;
+      },
+    });
+    Object.defineProperty(Element.prototype, "animate", {
+      configurable: true,
+      value(this: HTMLElement, frames: Keyframe[]) {
+        calls.push({ id: this.dataset.elementId ?? "", frames });
+        return { cancel() {}, finished: Promise.resolve() };
+      },
+    });
+    try {
+      const { store, tree } = setup(lesson);
+      store.set([{ index: 1, slideId: id, slide: at(64) }]);
+      const r = render(tree(new Set([id])));
+      await act(() => settle());
+      calls.length = 0;
+      act(() => store.set([{ index: 1, slideId: id, slide: at(400) }]));
+      await act(() => settle());
+      const box = r.container.querySelector<HTMLElement>('[data-element-id="d-card"]');
+      expect(box?.style.left).toBe("400px");
+      const glide = calls.find((c) => c.id === "d-card" && "translate" in (c.frames[0] ?? {}));
+      expect(glide?.frames[0]?.translate).toBe("-336px 0px");
+      expect(glide?.frames[1]?.translate).toBe("0 0");
+    } finally {
+      if (left) Object.defineProperty(proto, "offsetLeft", left);
+      if (top) Object.defineProperty(proto, "offsetTop", top);
+      if (animate) Object.defineProperty(Element.prototype, "animate", animate);
+      else delete (Element.prototype as { animate?: unknown }).animate;
+    }
+  });
+});
