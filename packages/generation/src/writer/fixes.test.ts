@@ -151,17 +151,17 @@ describe("a restage is told its room in the run's unit", () => {
     [
       "KS1",
       "title",
-      "room: the heading up to 5 words; each item up to 13 words; all the slide's text up to 24 words",
+      "room: the heading up to 5 words; each item up to 13 words; all the slide's text up to 25 words",
     ],
     [
       "KS2",
       "title",
-      "room: the heading up to 10 words; each item up to 11 words; all the slide's text up to 21 words",
+      "room: the heading up to 10 words; each item up to 11 words; all the slide's text up to 22 words",
     ],
     [
       "KS3-5",
       "title",
-      "room: the heading up to 10 words; each item up to 12 words; all the slide's text up to 21 words",
+      "room: the heading up to 10 words; each item up to 12 words; all the slide's text up to 22 words",
     ],
     [
       "KS1",
@@ -184,7 +184,7 @@ describe("a restage is told its room in the run's unit", () => {
   });
   test("characters off a pack run, as master", () => {
     expect(roomLine({ template: "title" }, "KS2")).toBe(
-      "room: the heading up to 68 characters; each item up to 106 characters; all the slide's text up to 194 characters",
+      "room: the heading up to 68 characters; each item up to 106 characters; all the slide's text up to 198 characters",
     );
   });
   test("some layout has a room line, so the cases above test something", () => {

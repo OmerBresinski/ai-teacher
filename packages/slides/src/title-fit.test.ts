@@ -148,12 +148,15 @@ describe("a title too long for the floor grows its box and pushes the subtitle (
         );
         const grown = growFixedText(els, theme);
         const title = grown.find((e) => e.name === "Title") as TextElement;
-        const sub = grown.find((e) => e.name === "Subtitle") as TextElement;
+        // Greg's call 36 (TEACH-215 part g): photo-right and Beacon picture covers draw no question.
+        const sub = grown.find((e) => e.name === "Subtitle") as TextElement | undefined;
         const fitted = fittedFontSize(title, theme);
         const size = fitted ?? resolveTextStyle(title.style, theme, "title").fontSize;
         expect(size).toBeGreaterThanOrEqual(fontFloor("heading"));
         expect(needAt(title, theme, size, fitted !== undefined)).toBeLessThanOrEqual(title.h + 1);
         expect(title.y).toBeGreaterThanOrEqual(0);
+        expect(title.y + title.h).toBeLessThanOrEqual(SLIDE.h);
+        if (!sub) return;
         expect(sub.y).toBeGreaterThanOrEqual(title.y + title.h - 1);
         expect(sub.y + sub.h).toBeLessThanOrEqual(SLIDE.h);
       });

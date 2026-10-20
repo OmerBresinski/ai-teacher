@@ -84,6 +84,33 @@ export function measureCoverCapacity(): Record<CoverGroup, Record<"picture" | "n
   return out;
 }
 
+/**
+ * The table checked where it binds (TEACH-215 part g, CI time): each cap holds on every seed,
+ * theme and stage, and two characters more does not. That is the generator's own stopping rule at
+ * its answer, without walking every 2-character step up to it (about 12k layouts, not 350k). The
+ * full walk still runs in `caps:check` (scripts/caps-check.ts), which compares this generator's
+ * output with the committed JSON.
+ */
+export function coverCapacityBinds(
+  table: Record<CoverGroup, Record<"picture" | "none", Cap>>,
+): string[] {
+  const out: string[] = [];
+  for (const group of Object.keys(COVER_GROUPS) as CoverGroup[])
+    for (const picture of [true, false]) {
+      const cap = table[group][picture ? "picture" : "none"];
+      const at = {
+        title: (n: number) => (s: number) => coverCapInput(n, OTHER, picture, s),
+        question: (n: number) => (s: number) => coverCapInput(OTHER, n, picture, s),
+      };
+      for (const k of ["title", "question"] as const) {
+        const where = `${group} ${picture ? "picture" : "none"} ${k} ${cap[k]}`;
+        if (!holds(group, at[k](cap[k]))) out.push(`${where}: does not hold`);
+        if (cap[k] < 300 && holds(group, at[k](cap[k] + 2))) out.push(`${where}: +2 still holds`);
+      }
+    }
+  return out;
+}
+
 if (import.meta.main) {
   const table = measureCoverCapacity();
   writeFileSync(
