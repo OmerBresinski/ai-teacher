@@ -3,7 +3,8 @@ import { Button } from "@tj/ui";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
-import { useWritingPicture } from "./live-draft";
+import { LiveSlide, useWritingPicture } from "./live-draft";
+import { useProposals } from "./proposals-context";
 
 /** One native scroll surface; inactive slides never mount editing or drag handlers. */
 export function MobileSlideList({
@@ -130,9 +131,23 @@ export function MobileSlideList({
 
 /**
  * A card while the lesson is written: a planned slide as its outline, a new lesson's first two
- * slides typing out (live-draft `useWritingPicture`). Drafts stay off the cards: they show the
- * saved slides, as before.
+ * slides typing out (live-draft `useWritingPicture`), and the slide being written typing in from
+ * its draft as it does on the desktop canvas (Greg's answer 68). `LiveSlide` keeps the last draft
+ * until the saved copy catches up, so a card never flashes an older copy at the hand-over.
  */
 function WritingSlideView({ slide, theme }: { slide: Slide; theme: Theme }) {
-  return <SlideView slide={useWritingPicture(slide, false)} theme={theme} mode="view" />;
+  const { drafts, writingSlideIds } = useProposals();
+  const pictured = useWritingPicture(slide, false);
+  if (!drafts) return <SlideView slide={pictured} theme={theme} mode="view" />;
+  return (
+    <LiveSlide
+      store={drafts}
+      slideId={slide.id}
+      slide={slide}
+      writing={writingSlideIds?.has(slide.id) ?? false}
+      render={(shown, live) => (
+        <SlideView slide={live && shown ? shown : pictured} theme={theme} mode="view" />
+      )}
+    />
+  );
 }

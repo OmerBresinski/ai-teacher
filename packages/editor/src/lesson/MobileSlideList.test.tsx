@@ -1,7 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
+import type { Slide } from "@tj/domain/documents";
 import { renderTheme } from "../model/themes";
+import { createDraftStore } from "./live-draft";
 import { MobileSlideList } from "./MobileSlideList";
+import { NO_PROPOSALS, ProposalsContext } from "./proposals-context";
 import { seededLesson } from "./test-harness";
 
 /*
@@ -47,5 +50,55 @@ describe("MobileSlideList follow", () => {
     } finally {
       proto.scrollTo = was;
     }
+  });
+});
+
+/*
+ * Greg's answer 68: a phone card shows the slide being written typing in from its draft, as the
+ * desktop canvas does, and the saved copy once the slide is done.
+ */
+describe("MobileSlideList drafts", () => {
+  const doc = (text: string) => ({
+    type: "doc" as const,
+    content: [{ type: "paragraph" as const, content: [{ type: "text" as const, text }] }],
+  });
+  const textSlide = (id: string, text: string): Slide => ({
+    id,
+    kind: "content",
+    elements: [
+      {
+        id: "d-1",
+        type: "text",
+        x: 64,
+        y: 46,
+        w: 832,
+        h: 120,
+        doc: doc(text),
+        style: { preset: "body", fontSize: 28 },
+      } as Slide["elements"][number],
+    ],
+  });
+
+  test("a writing slide's card shows its draft; without a draft store it shows the saved slide", () => {
+    const lesson = seededLesson();
+    const theme = renderTheme(lesson);
+    const target = lesson.slides[1];
+    if (!target) throw new Error("seeded lesson has no second slide");
+    const drafts = createDraftStore();
+    const view = render(
+      <ProposalsContext.Provider
+        value={{ ...NO_PROPOSALS, drafts, writingSlideIds: new Set([target.id]) }}
+      >
+        <MobileSlideList slides={lesson.slides} theme={theme} />
+      </ProposalsContext.Provider>,
+    );
+    act(() =>
+      drafts.set([{ index: 1, slideId: target.id, slide: textSlide(target.id, "Halves") }]),
+    );
+    const card = view.container.querySelector(`[data-mobile-slide="${target.id}"]`);
+    expect(card?.querySelector("[data-live-slide]")).not.toBeNull();
+    view.unmount();
+    const plain = render(<MobileSlideList slides={lesson.slides} theme={theme} />);
+    expect(plain.container.querySelector("[data-live-slide]")).toBeNull();
   });
 });
