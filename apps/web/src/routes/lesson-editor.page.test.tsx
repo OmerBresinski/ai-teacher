@@ -1122,6 +1122,9 @@ describe("the budget-stop notice (UX-A)", () => {
     const line = container.querySelector("[data-stopped-notice]") as HTMLElement;
     expect(line).toHaveAttribute("data-stopped-notice", "budget");
     expect(line).toHaveTextContent(BUDGET_NOTICE);
+    expect(line.textContent).toContain(
+      "This lesson reached its writing limit, so it stopped early. The slides written so far are here to edit.",
+    );
     expect(within(line).queryByRole("button", { name: TRY_AGAIN_LABEL })).toBeNull();
   });
 });
