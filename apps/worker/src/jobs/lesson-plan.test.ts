@@ -28,6 +28,7 @@ import {
   scriptedPipelineAi,
 } from "@tj/generation/testing";
 import { NonRetryableError, type ProgressExtra } from "@tj/jobs";
+import { createObservability } from "@tj/observability";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { SOURCE_UNAVAILABLE_MESSAGE } from "../sources";
@@ -145,6 +146,60 @@ describeDb("lesson.plan job", () => {
     expect(h.stages).toContain("plan");
     expect(h.stages).toContain("generate");
   });
+
+  test.each(["refused", "hanging"])(
+    "a PostHog transport that is %s never fails or slows the lesson job (ADR 0041)",
+    async (mode) => {
+      const jobId = newId<JobId>();
+      const lessonId = await briefLesson(jobId);
+      const ai = scriptedPipelineAi();
+      const bodies: string[] = [];
+      const observability = createObservability({
+        apiKey: "phc_test_key",
+        logger: quiet,
+        service: "worker",
+        flushAt: 1,
+        requestTimeoutMs: 60_000,
+        flushTimeoutMs: 100,
+        fetch: async (_url, options) => {
+          const body = options.body as unknown;
+          bodies.push(
+            typeof body === "string"
+              ? body
+              : options.headers["Content-Encoding"] === "gzip"
+                ? new TextDecoder().decode(
+                    Bun.gunzipSync(new Uint8Array(await (body as Blob).arrayBuffer())),
+                  )
+                : await (body as Blob).text(),
+          );
+          if (mode === "refused") throw new Error("ECONNREFUSED");
+          return new Promise(() => {});
+        },
+      });
+      const end = observability.beginJob(jobId, { job: "lesson.plan", workspaceId, lessonId });
+      const h = ctx(jobId, lessonId, { ...depsWith(ai), observability });
+
+      const started = Date.now();
+      await lessonPlanJob(h.ctx);
+      end();
+      await observability.shutdown();
+
+      expect(Date.now() - started).toBeLessThan(30_000);
+      const row = await getDocument(ws(), lessonId);
+      expect(row?.generatingJobId).toBeNull();
+      const done = parseLesson(row?.body);
+      expect(done.generation?.stage).toBe("repaired");
+      // The summary was handed to the transport, metadata only.
+      const sent = bodies.join("\n");
+      expect(sent).toContain('"lesson_generation"');
+      expect(sent).toContain('"outcome":"success"');
+      expect(sent).not.toContain(workspaceId);
+      // No lesson content: neither the title nor the brief's topic.
+      expect(done.title.length).toBeGreaterThan(0);
+      expect(sent).not.toContain(done.title);
+      expect(sent).not.toContain(done.brief?.topic ?? "<no topic>");
+    },
+  );
 
   test("stopAfter planned: Plan and Verify only, the stamped checkpoint, the lock released", async () => {
     const jobId = newId<JobId>();

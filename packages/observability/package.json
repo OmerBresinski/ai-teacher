@@ -1,0 +1,27 @@
+{
+  "name": "@tj/observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PostHog (EU) error tracking and model-call metrics for the worker, metadata only (ADR 0041). A no-op when POSTHOG_API_KEY is unset. Server-only; never imported by apps/web.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tj/domain": "workspace:*",
+    "pino": "10.3.1",
+    "posthog-node": "5.55.0"
+  },
+  "devDependencies": {
+    "@tj/config": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

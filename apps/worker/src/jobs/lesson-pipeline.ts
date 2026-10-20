@@ -25,6 +25,7 @@ import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
 import { budgetFailure } from "../job-errors";
+import { lessonSummaryOf } from "../observability";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
@@ -201,6 +202,13 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
+      // ADR 0041: the summary line's metrics to PostHog (outcome, cost, timings, findings, images).
+      ...(deps.observability?.enabled
+        ? {
+            onSummary: (summary) =>
+              deps.observability?.captureLessonSummary(lessonSummaryOf(summary)),
+          }
+        : {}),
       // Live writing (ADR 0039): drafts ride the job's events, never the lesson row.
       ...(ctx.draft ? { onDraft: ctx.draft } : {}),
       worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),

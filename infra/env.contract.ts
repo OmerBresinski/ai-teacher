@@ -732,6 +732,34 @@ const CONTRACT = [
       "Model ID for the F13 §7 small class: items, glossary, variants and summaries. Default `openai/gpt-6-luna` (OpenAI direct, `OPENAI_API_KEY`); a value set on Railway overrides it.",
   },
 
+  // --- observability (PostHog EU, ADR 0041) -----------------------------------------------------
+  {
+    name: "POSTHOG_API_KEY",
+    services: ["worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "PostHog project API key (`phc_…`, ADR 0041): the worker reports job errors and model-call metrics (tokens, cost, latency) to PostHog EU, metadata only, never prompt text, model output or lesson content. Unset: nothing is sent (dev, tests and CI). Set on Railway, never in git.",
+  },
+  {
+    name: "POSTHOG_HOST",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "url",
+    files: ["worker"],
+    description:
+      "PostHog ingestion host for the worker (ADR 0041). Default `https://eu.i.posthog.com` (EU cloud); set it to that value on Railway so the region is explicit.",
+  },
+
   // --- images (Pexels, Images project) ----------------------------------------------------------
   {
     name: "PEXELS_API_KEY",

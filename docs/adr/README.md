@@ -45,6 +45,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0038 | The teacher picks a slide length tier; the writer picks the count inside it | Accepted |
 | 0039 | Slide drafts stream as an ephemeral job-event side channel; the persisted slide always wins | Accepted |
 | 0040 | One measured system for text limits: one ruler, one slot registry, words from the generator; drift and Chromium calibration in CI | Proposed |
+| 0041 | PostHog (EU) for worker error tracking and model-call metrics, metadata only | Accepted |
 
 Template: `0000-template.md`.
 
@@ -96,3 +97,4 @@ Template: `0000-template.md`.
 - 2026-10-12 — ADR 0039 (TEACH-202 part f): live writing streams `slide-draft` job events, the slide being written laid out as it stands, throttled to 200 ms in the worker and pruned when the job ends; drafts never touch the document, show only on `writing` slides, and the persisted slide always wins. See `0039-slide-draft-side-channel.md`.
 - 2026-10-20 — ADR 0033: the worker's `AI_LESSON_PLANNER` defaults to `writer` (Greg, 20 Oct); `objectives-first` and `legacy` stay selectable, a planned lesson keeps the planner its stamp names, and rollback is a revert or `AI_LESSON_PLANNER=objectives-first` on Railway. See the second amendment in `0033-objectives-first-planner.md`.
 - 2026-10-18 — ADR 0040 (proposed): text limits become one measured system. M0 adds the `text-measure` CI job: `caps:check` (every capacity generator re-run against its committed JSON) and `measure:calibrate` (the headless measurer against Chromium), each with its known gaps listed. See `0040-text-limits-one-measured-system.md`.
+- 2026-10-20 — ADR 0041: the worker reports job errors and model-call metrics to PostHog (EU cloud), metadata only: `$exception` per failed attempt or crash (own messages only, scrubbed, frames only), `$ai_generation` per model call and `lesson_generation` per lesson job; hashed Workspace distinct id; a no-op without `POSTHOG_API_KEY`; sends are batched, time out and are dropped on failure, never slowing a job. See `0041-posthog-worker-observability.md`.

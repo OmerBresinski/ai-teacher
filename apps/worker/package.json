@@ -21,6 +21,7 @@
     "@tj/generation": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/jobs": "workspace:*",
+    "@tj/observability": "workspace:*",
     "@tj/slides": "workspace:*",
     "@tj/storage": "workspace:*",
     "ai": "7.0.114",

@@ -39,6 +39,7 @@ interface ConfiguredAiOptions {
   modelIds: ModelIds;
   logger: pino.Logger;
   route?: CreateAiOptions["route"];
+  onCall?: CreateAiOptions["onCall"];
   createModel(
     modelClass: ModelClassType,
     modelId: string,
@@ -95,6 +96,7 @@ export function createConfiguredAi(options: ConfiguredAiOptions): ConfiguredAi {
           modelClass: modelClassValue,
           modelId,
           context,
+          onCall: options.onCall,
         }),
       });
     },
@@ -161,6 +163,7 @@ export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
     modelIds,
     logger,
     route: options.route,
+    onCall: options.onCall,
     createModel: (_modelClass, modelId) => {
       // Before the gateway check: an `openai/` id also contains a slash.
       if (isOpenAiModelId(modelId)) {

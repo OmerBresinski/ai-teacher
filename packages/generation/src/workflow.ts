@@ -27,6 +27,7 @@ import { repair } from "./stages/repair";
 import { write } from "./stages/write";
 import {
   emptyImageCounts,
+  type GenerationSummary,
   type PipelineDeps,
   type PipelineStageName,
   type PipelineState,
@@ -380,25 +381,28 @@ export async function runLessonPipeline(
       checkpoint && hasGeneratedSlides(checkpoint.lesson)
         ? fitOf(checkpoint.lesson, deps)
         : undefined;
-    deps.logger.info(
-      {
-        generation: {
-          lessonId: deps.context.lessonId,
-          jobId: deps.context.jobId,
-          outcome,
-          planner,
-          stages,
-          ...totals,
-          findings,
-          images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
-          durationMs,
-          ...(readableMs !== undefined ? { readableMs } : {}),
-          ...(checkedMs !== undefined ? { checkedMs } : {}),
-          ...(fit ? { fit } : {}),
-        },
-      },
-      "generation summary",
-    );
+    const generation: GenerationSummary = {
+      lessonId: deps.context.lessonId,
+      jobId: deps.context.jobId,
+      outcome,
+      planner,
+      stages,
+      ...totals,
+      findings,
+      images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
+      durationMs,
+      ...(readableMs !== undefined ? { readableMs } : {}),
+      ...(checkedMs !== undefined ? { checkedMs } : {}),
+      ...(fit ? { fit } : {}),
+    };
+    deps.logger.info({ generation }, "generation summary");
+    if (deps.onSummary) {
+      try {
+        deps.onSummary(generation);
+      } catch (err) {
+        deps.logger.warn({ err: safeError(err) }, "generation summary reporter failed");
+      }
+    }
     // FR7: a lesson over the per-lesson cost target is one warn line, never a stop
     // (`AI_LESSON_COST_WARN_USD`; the cap is `AI_LESSON_COST_CAP_USD`).
     if (
