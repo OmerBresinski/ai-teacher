@@ -154,7 +154,7 @@ export default defineConfig({
         AI_FAKE_SCRIPT: "pipeline",
         AI_FAKE_DELAY_MS: "250",
         // The fake answers the legacy planner's prompts (skeleton + facts) only; the worker's
-        // default is objectives-first since 25–26 Sept 2026, so the e2e run pins legacy.
+        // default is the writer from 20 Oct 2026, so the e2e run pins legacy.
         AI_LESSON_PLANNER: "legacy",
         // Live writing P0 (`live-writing-timeline.spec.ts`): the writer planner over a recorded
         // writer run streamed at its own pace (`AI_FAKE_WRITER_REPLAY`, a replay fixture folder).

@@ -54,6 +54,7 @@ export {
   putDocumentAsJob,
   type ReleaseStaleLockOptions,
   releaseStaleLock,
+  relockLesson,
   relockWorksheet,
   restore,
   type SetPlanRevisionOptions,
