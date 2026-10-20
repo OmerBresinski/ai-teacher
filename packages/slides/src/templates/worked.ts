@@ -37,7 +37,7 @@ import { countLines, exactWidth, lineWidth, mathFaceOf } from "../text-measure";
 import { resolveFontSize, resolveTextStyle } from "../text-style";
 import { ageProfileOf, v2Colors } from "../theme-v2";
 import { notchPoints } from "../themes/marks";
-import { markLook, paintSurface, surfaceStyle, surfacesOf } from "../themes/surfaces";
+import { markLook, paintSurface, plateOf, surfaceStyle, surfacesOf } from "../themes/surfaces";
 import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -711,6 +711,12 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       // Poster's plate (round 2 `--plate-radius: 0`, `--plate-fill`, `--plate-line`, 3px, offset
       // in `--plate-off-color: var(--accent)`): a square white plate in the plate's own ink line.
       const plate = surfacesOf(c.t).marks.card === "offset" ? surfaceStyle(c.t, "plate") : null;
+      // Every other gold's plate (roles.css `[data-role="plate"]`, round 3-5 themes CSS): the
+      // theme's `--plate-fill` (its surface: white, Exam Hall's grey, the darks' card) in a
+      // `--plate-line` accent edge, `--plate-lw` wide, `--plate-radius` round (THEME-AUDIT-r2 #2).
+      // Paper's is the accent wash, 3pt and 6pt as it was (its gold already).
+      const look = surfaceStyle(c.t, "plate");
+      const own = plateOf(c.t);
       shape(
         c,
         {
@@ -720,10 +726,10 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
           y: y - (p.eq * 1.5) / 2,
           w: r.lw + r.rw + signW + 2 * g + 2 * pad,
           h: p.eq * 1.5,
-          ...(plate ? {} : { radius: 6 }),
-          fill: plate ? plate.fill : col.wash,
-          stroke: plate ? (plate.line ?? ink) : accent,
-          strokeWidth: plate ? 2 : 3,
+          ...(plate ? {} : { radius: own.radius ?? 6 }),
+          fill: plate ? plate.fill : look.fill,
+          stroke: plate ? (plate.line ?? ink) : (look.line ?? accent),
+          strokeWidth: plate ? 2 : (own.lineWidth ?? 3),
           ...offsetOf(c, accent),
         },
         R,
