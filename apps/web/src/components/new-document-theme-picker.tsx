@@ -1,5 +1,5 @@
-import { pickerVariant, ThemePicker } from "@tj/editor/theme-picker";
-import { useState } from "react";
+import { ThemePicker } from "@tj/editor/theme-picker";
+import "@/lib/theme-picker-photos";
 // The previews are slides: the theme fonts and slide rules travel with the picker's chunk.
 import "@tj/editor/styles/editor.css";
 
@@ -16,14 +16,5 @@ export default function NewDocumentThemePicker({
   /** "Year 4 · Science" from the first step, or nothing. */
   subtitle?: string;
 }) {
-  const [variant] = useState(pickerVariant);
-  return (
-    <ThemePicker
-      selectedId={selectedId}
-      onPick={onPick}
-      title={title}
-      subtitle={subtitle}
-      variant={variant}
-    />
-  );
+  return <ThemePicker selectedId={selectedId} onPick={onPick} title={title} subtitle={subtitle} />;
 }

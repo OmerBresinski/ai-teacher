@@ -83,7 +83,9 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
 
   // Fetch the picker's chunk while the teacher fills in the first step.
   useEffect(() => {
+    // The picker's chunk and its template code, while the teacher fills in the first step.
     void loadPicker().catch(() => undefined);
+    void import("@tj/editor/theme-picker").then((m) => m.loadSampleKit()).catch(() => undefined);
   }, []);
 
   async function submit(): Promise<void> {

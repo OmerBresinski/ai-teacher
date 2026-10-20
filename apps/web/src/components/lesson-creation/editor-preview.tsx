@@ -16,6 +16,8 @@ import { GeneratingShell } from "@/components/generating-lesson/GeneratingShell"
 import type { CharacterOrigin } from "./character-origin";
 import { GenerationCompanion } from "./generation-companion";
 import "@tj/editor/styles/editor.css";
+// The theme picker's sample photographs (decision 72).
+import "@/lib/theme-picker-photos";
 
 const KEY = ["first-experience-local-preview"] as const;
 const saveLocally = async () => undefined;

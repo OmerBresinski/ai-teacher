@@ -38,6 +38,7 @@
     "./templates/end-answers-capacity.json": "./src/templates/end-answers-capacity.json",
     "./templates/practice-capacity.json": "./src/templates/practice-capacity.json",
     "./templates/hinge-capacity.json": "./src/templates/hinge-capacity.json",
+    "./templates/samples": "./src/templates/samples.ts",
     "./templates/source": "./src/templates/source.ts",
     "./templates/source-capacity.json": "./src/templates/source-capacity.json",
     "./templates/source-fixtures": "./src/templates/source-fixtures.ts",

@@ -1,63 +1,120 @@
 import { type Lesson, richDocToPlainText, type Slide, type Theme } from "@tj/domain/documents";
-import { DEMO_LESSON_SPECS, demoLessonSlides } from "@tj/slides";
+import { uid } from "@tj/slides";
 import { FONT_LABELS, FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
 
 /*
- * What the theme picker draws (Greg, decision 34): each theme's own cover, a starter slide and a
- * check question, laid out by the materialiser that writes a generated lesson (the demo lesson's
- * specs, the cover carrying the teacher's title), so every tile shows the theme's approved
- * composition (TEACH-215 part g), never a recoloured copy of another theme's slide.
- * Built once per title, theme and age band and cached for the session, so reopening the picker
- * costs nothing.
+ * What the theme picker draws (Greg, decisions 34 and 72-75): each theme's own slides, laid out by
+ * the writer's templates (`layoutTemplate`, the code a generated lesson is laid out by): the cover
+ * with its picture slot, then its most visual layouts (a picture with text, stages, a hinge
+ * question with answer cards). The cover carries the lesson's own title and second line.
+ *
+ * The template code is a chunk of its own: `loadSampleKit` fetches it once, when the picker opens,
+ * and the slides are built once per theme and words and cached for the session.
  */
+
+type Kit = {
+  layoutTemplate: typeof import("@tj/slides/templates").layoutTemplate;
+  templateSamples: typeof import("@tj/slides/templates/samples").templateSamples;
+};
+
+let kit: Kit | null = null;
+let loading: Promise<Kit> | null = null;
+
+/** Fetch the template code (once). Resolves when `themeSamples` can build slides. */
+export function loadSampleKit(): Promise<Kit> {
+  if (kit) return Promise.resolve(kit);
+  loading ??= Promise.all([
+    import("@tj/slides/templates"),
+    import("@tj/slides/templates/samples"),
+  ]).then(([templates, samples]) => {
+    kit = { layoutTemplate: templates.layoutTemplate, templateSamples: samples.templateSamples };
+    return kit;
+  });
+  return loading;
+}
+
+export const sampleKitReady = (): boolean => kit !== null;
+
+/**
+ * The sample photographs the previews place in a picture slot: set once by the app (bundled,
+ * licence-free files). Unset, a slot draws the theme's picture placeholder.
+ */
+let photoFor: (label: string) => string = () => "";
+export function setSamplePhotos(fn: (label: string) => string): void {
+  photoFor = fn;
+  cache.clear();
+}
 
 export type ThemeSamples = {
   theme: Theme;
+  /** The cover, its picture slot filled with a sample photo. */
   cover: Slide;
-  content: Slide;
-  check: Slide;
-  /** Every slide of the sample lesson (the debug sheet). */
-  all: Slide[];
+  /** The tile's second slide: the theme's stages (its shapes, accent and connectors). */
+  visual: Slide;
+  /** The large preview's layouts: a picture with text, stages and a hinge question. */
+  layouts: Slide[];
 };
 
 const MAX_CACHED = 96;
 const cache = new Map<string, ThemeSamples>();
 
-/** Which sample slides the picker shows (indices into the demo lesson). */
-// The "Do now" starter: its eyebrow chip and numbered badges carry the theme's shapes and accent;
-// the true/false check carries its answer cards (a sheet of all ten demo slides in all sixteen
-// themes, 20 Oct: the cover and the starter differ most from theme to theme).
-export const SAMPLE_PICK = { content: 2, check: 8 };
+/** The writer's key stage for an age band ("ks3"), else KS2. */
+function stageOf(ageBand?: string | null): "ks1" | "ks2" | "ks3" | "ks4" | "ks5" {
+  return ageBand && /^ks[1-5]$/.test(ageBand) ? (ageBand as "ks1") : "ks2";
+}
+
+/** The picker's layouts, in the order the large preview shows them. */
+export const SAMPLE_LAYOUTS = ["picture-text", "stages", "hinge"] as const;
 
 /**
  * The theme's sample slides for a lesson called `title` (with `subtitle` on the cover, or none),
- * at `ageBand`'s type scale when given: the demo lesson laid out by the real materialiser.
+ * at `ageBand`'s key stage when given. `null` until `loadSampleKit` has resolved.
  */
 export function themeSamples(
   themeId: string,
   title: string,
   ageBand?: string | null,
   subtitle?: string,
-): ThemeSamples {
+): ThemeSamples | null {
+  if (!kit) return null;
   const key = `${themeId}\u0000${title}\u0000${ageBand ?? ""}\u0000${subtitle ?? ""}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const specs = DEMO_LESSON_SPECS.map((spec) =>
-    spec.kind === "title" ? { ...spec, title, subtitle: subtitle ?? "" } : spec,
-  );
-  const { slides } = demoLessonSlides(themeId, { specs });
-  const cover = slides[0];
-  const content = slides[SAMPLE_PICK.content];
-  const check = slides[SAMPLE_PICK.check];
-  if (!cover || !content || !check) throw new Error("sample lesson is missing a slide");
-  const samples = { theme: getTheme(themeId, ageBand), cover, content, check, all: slides };
+  const theme = getTheme(themeId, ageBand);
+  const stage = stageOf(ageBand);
+  const inputs = kit.templateSamples(photoFor);
+  const lay = (template: string, patch: Record<string, unknown> = {}): Slide => {
+    const input = inputs.find((i) => i.template === template);
+    if (!input) throw new Error(`no sample for ${template}`);
+    const laid = (kit as Kit).layoutTemplate({ ...input, ...patch } as typeof input, theme, stage);
+    return { id: `sample-${themeId}-${template}`, ...laid.slide };
+  };
+  const cover = lay("title", { heading: title, lead: subtitle || undefined });
+  const layouts = SAMPLE_LAYOUTS.map((t) => lay(t));
+  const samples = { theme, cover, visual: layouts[1] as Slide, layouts };
   if (cache.size >= MAX_CACHED) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
   }
   cache.set(key, samples);
   return samples;
+}
+
+/**
+ * A blank lesson's cover (decision 75): the theme's cover with its picture slot open, so the
+ * teacher sees where the photo goes. Built by the same template as the previews.
+ */
+export async function blankCover(
+  themeId: string,
+  title: string,
+  subtitle?: string,
+): Promise<Slide> {
+  const k = await loadSampleKit();
+  const input = k.templateSamples(() => "").find((i) => i.template === "title");
+  if (!input) throw new Error("no title sample");
+  const patched = { ...input, heading: title, lead: subtitle || undefined } as typeof input;
+  return { id: uid(), ...k.layoutTemplate(patched, getTheme(themeId), "ks2").slide } as Slide;
 }
 
 /**
@@ -134,38 +191,9 @@ export function suitsOf(theme: Theme): { who: string; look: string } {
 
 export type ThemeTagId = Theme["tags"][number];
 
+export const tagLabel = (tag: ThemeTagId): string => THEME_TAG_LABELS[tag];
+
 /** The filter chips: every tag a picker theme carries, in the labels' order. */
 export const FILTER_TAGS: ThemeTagId[] = (Object.keys(THEME_TAG_LABELS) as ThemeTagId[]).filter(
   (tag) => THEMES.some((t) => t.tags.includes(tag)),
 );
-
-export const tagLabel = (tag: ThemeTagId): string => THEME_TAG_LABELS[tag];
-
-/** The groups the card variant lists, each theme in the first group it fits. */
-export const THEME_GROUPS: { id: string; label: string; fits: (t: Theme) => boolean }[] = [
-  {
-    id: "young",
-    label: "For younger classes",
-    fits: (t) => t.tags.includes("early-learners"),
-  },
-  {
-    id: "dark",
-    label: "For a dark room",
-    fits: (t) => t.tags.includes("dark") || Boolean(t.dark),
-  },
-  {
-    id: "calm",
-    label: "Calm and accessible",
-    fits: (t) => t.tags.some((tag) => tag !== "early-learners" && tag !== "dark"),
-  },
-  { id: "everyday", label: "Everyday", fits: () => true },
-];
-
-export function groupThemes(themes: Theme[]): { id: string; label: string; themes: Theme[] }[] {
-  const placed = new Set<string>();
-  return THEME_GROUPS.map((group) => {
-    const members = themes.filter((t) => !placed.has(t.id) && group.fits(t));
-    for (const t of members) placed.add(t.id);
-    return { id: group.id, label: group.label, themes: members };
-  }).filter((g) => g.themes.length > 0);
-}

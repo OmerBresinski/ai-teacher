@@ -5,13 +5,13 @@ import { expect, test } from "./fixtures";
 
 /*
  * Opt-in (TEACH_SCREENSHOTS=1, never in CI): the theme picker at every place a teacher picks a
- * theme, light, at 1440 and 390 wide. `PICKER_SHOTS` is the folder, `PICKER_VARIANTS` the variants
- * to shoot (comma-separated; "" for the build as it is). Writes `timings.json` beside the shots:
+ * theme, light, at 1440 and 390 wide. `PICKER_SHOTS` is the folder, `PICKER_LABEL` names the
+ * shots. Writes `timings.json` beside the shots:
  * milliseconds from opening the picker until the previews in view are drawn, and until all are.
  */
 const env = process.env as Record<string, string | undefined>;
 const OUT = env.PICKER_SHOTS ?? "/tmp/theme-picker-shots";
-const VARIANTS = (env.PICKER_VARIANTS ?? "").split(",");
+const LABEL = env.PICKER_LABEL ?? "now";
 const WIDTHS = [1440, 390];
 const timings: Record<string, number | null> = {};
 
@@ -47,21 +47,20 @@ async function timePreviews(page: Page, key: string, start: number): Promise<voi
   await tiles.first().scrollIntoViewIfNeeded();
 }
 
-for (const variant of VARIANTS) {
+{
   for (const width of WIDTHS) {
-    const tag = `${variant || "now"}-${width}`;
-    const q = variant ? `?picker=${variant}` : "";
+    const tag = `${LABEL}-${width}`;
 
     test(`blank lesson picker ${tag}`, async ({ signedInPage: { page } }) => {
       mkdirSync(OUT, { recursive: true });
       await page.setViewportSize({ width, height: width > 600 ? 900 : 844 });
-      await page.goto(`/lessons/new${q}`);
+      await page.goto("/lessons/new");
       await page.getByRole("button", { name: "Blank lesson" }).click();
       await page.getByLabel("Title").fill("The water cycle");
       const start = Date.now();
       await page.getByRole("button", { name: "Next" }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
-      if (variant) await page.locator("[data-theme-preview]").first().waitFor();
+      await page.locator("[data-theme-preview]").first().waitFor();
       await timePreviews(page, `blank ${tag}`, start);
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUT, `blank-${tag}.png`) });
@@ -76,7 +75,7 @@ for (const variant of VARIANTS) {
     test(`editor theme picker ${tag}`, async ({ signedInPage: { page, paths } }) => {
       mkdirSync(OUT, { recursive: true });
       await page.setViewportSize({ width, height: width > 600 ? 900 : 844 });
-      await page.goto(`${paths.lesson("demo-water-cycle")}${q}`);
+      await page.goto(paths.lesson("demo-water-cycle"));
       const callout = page.locator("[data-theme-callout]:visible").first();
       await callout.click();
       const start = Date.now();

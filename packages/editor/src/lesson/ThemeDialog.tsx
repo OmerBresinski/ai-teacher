@@ -6,7 +6,7 @@ import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layo
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
 import { coverWords } from "../theme-picker/samples";
-import { pickerVariant, ThemePicker } from "../theme-picker/ThemePicker";
+import { ThemePicker } from "../theme-picker/ThemePicker";
 import { useHistory, useLesson } from "./document-context";
 
 /*
@@ -155,7 +155,6 @@ function ThemeChoices({
   onDone: () => void;
   applying?: boolean;
 }) {
-  const [variant] = useState(pickerVariant);
   // The previews carry this lesson's own cover words: its title, its year and its subject.
   const words = useMemo(() => coverWords(opening), [opening]);
   return (
@@ -166,7 +165,6 @@ function ThemeChoices({
         title={words.title}
         ageBand={boundAgeBand(opening)}
         subtitle={words.subtitle}
-        variant={variant}
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>

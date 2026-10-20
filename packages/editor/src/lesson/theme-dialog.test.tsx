@@ -4,7 +4,7 @@ import { useState } from "react";
 import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
-import { coverWords } from "../theme-picker/samples";
+import { coverWords, SAMPLE_LAYOUTS } from "../theme-picker/samples";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -141,10 +141,12 @@ describe("where the theme lives (ruling 123)", () => {
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
     expect(tiles).toHaveLength(THEMES.length);
-    // Tiles draw lazily as they scroll in; the large preview draws the chosen theme at once.
+    // Tiles draw lazily as they scroll in; the large preview draws the chosen theme once the
+    // template code has loaded.
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
     const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
     expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
-    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(2);
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + SAMPLE_LAYOUTS.length);
     // The lesson's own cover words, never sample text (coordinator, 20 Oct: a Year 5 lesson's
     // previews said "Year 4 · Science").
     const words = coverWords(read());

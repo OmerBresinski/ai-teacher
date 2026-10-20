@@ -1,22 +1,26 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { demoLibrary } from "../model/starter";
 import { getTheme, THEMES } from "../model/themes";
 import {
+  blankCover,
   cachedSampleCount,
   coverWords,
   fontPair,
-  groupThemes,
+  loadSampleKit,
   paletteOf,
+  SAMPLE_LAYOUTS,
+  setSamplePhotos,
   suitsOf,
   themeSamples,
 } from "./samples";
-import { type PickerVariant, ThemePicker } from "./ThemePicker";
+import { ThemePicker } from "./ThemePicker";
 
 /*
- * The theme picker (Greg, decision 34): real slides per theme, its fonts, colours and who it suits;
- * filters; a larger preview on hover or focus; one radio group for the keyboard; lazy previews.
+ * The theme picker (Greg, decisions 34 and 72-75, layout A): each theme's real slides (a cover
+ * with a picture, then its visual layouts), its fonts and who it suits; filters; a larger preview
+ * on hover or focus that says whose theme it shows; one radio group for the keyboard; lazy tiles.
  */
 
 type Observed = { el: Element; cb: IntersectionObserverCallback; io: IntersectionObserver };
@@ -44,26 +48,24 @@ function reveal(themeId: string) {
   });
 }
 
+const PHOTO = "https://example.test/chicks.jpg";
+
+beforeAll(async () => {
+  setSamplePhotos(() => PHOTO);
+  await loadSampleKit();
+});
 beforeEach(installObserver);
 afterEach(() => {
   cleanup();
   globalThis.IntersectionObserver = realIO;
 });
 
-function Harness({
-  initial = "paper",
-  variant,
-  title = "Volcanoes",
-}: {
-  initial?: string;
-  variant?: PickerVariant;
-  title?: string;
-}) {
+function Harness({ initial = "paper", title = "Volcanoes" }: { initial?: string; title?: string }) {
   const [id, setId] = useState(initial);
   return (
     <>
       <output data-testid="picked">{id}</output>
-      <ThemePicker selectedId={id} onPick={setId} title={title} variant={variant} />
+      <ThemePicker selectedId={id} onPick={setId} title={title} subtitle="Year 5. Rocks" />
     </>
   );
 }
@@ -71,35 +73,34 @@ function Harness({
 const picked = () => screen.getByTestId("picked").textContent;
 const preview = (id: string) =>
   document.querySelector<HTMLElement>(`[data-theme-preview="${id}"]`) as HTMLElement;
+const spot = () => document.querySelector<HTMLElement>("[data-theme-spotlight]") as HTMLElement;
 
 describe("ThemePicker", () => {
-  for (const variant of ["spotlight", "cards", "list"] as const) {
-    test(`${variant}: sixteen radios, named and described, the chosen one checked`, () => {
-      render(<Harness variant={variant} initial="splash" />);
-      const radios = screen.getAllByRole("radio");
-      const names = radios.map((r) => r.getAttribute("aria-label"));
-      // The cards list by group; the others in the catalogue order.
-      expect(variant === "cards" ? [...names].sort() : names).toEqual(
-        variant === "cards" ? THEMES.map((t) => t.name).sort() : THEMES.map((t) => t.name),
-      );
-      expect(screen.getByRole("radio", { name: "Splash" })).toHaveAttribute("aria-checked", "true");
-      expect(screen.getByRole("radio", { name: "Ember" })).toHaveAccessibleDescription(
-        /Dark and warm.*Fonts: .*Good for: Dark room/,
-      );
-      fireEvent.click(screen.getByRole("radio", { name: "Beacon" }));
-      expect(picked()).toBe("beacon");
-    });
-  }
+  test("sixteen radios in catalogue order, named and described, the chosen one checked", () => {
+    render(<Harness initial="splash" />);
+    const radios = screen.getAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual(THEMES.map((t) => t.name));
+    expect(screen.getByRole("radio", { name: "Splash" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Ember" })).toHaveAccessibleDescription(
+      /Dark and warm.*Fonts: .*Good for: Dark room/,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Beacon" }));
+    expect(picked()).toBe("beacon");
+  });
 
-  test("a tile draws its slides only once it comes into view, with the slide renderer", () => {
-    render(<Harness variant="cards" title="Volcanoes lazy" />);
+  test("a tile draws once in view: the cover with its photo and the stages slide, no colour dots", () => {
+    render(<Harness title="Volcanoes lazy" />);
     expect(preview("poster").dataset.ready).toBe("false");
     expect(preview("poster").querySelector("[data-slide-fluid]")).toBeNull();
     reveal("poster");
-    expect(preview("poster").dataset.ready).toBe("true");
-    // The cards show the theme's cover and a teaching slide, drawn by SlideView.
-    expect(preview("poster").querySelectorAll("[data-slide-fluid]")).toHaveLength(2);
-    expect(preview("poster").textContent).toContain("Volcanoes lazy");
+    const tile = preview("poster");
+    expect(tile.dataset.ready).toBe("true");
+    expect(tile.querySelectorAll("[data-slide-fluid]")).toHaveLength(2);
+    expect(tile.textContent).toContain("Volcanoes lazy");
+    expect(tile.textContent).toContain("Year 5. Rocks");
+    expect(tile.querySelector(`img[src="${PHOTO}"]`)).not.toBeNull();
+    // Decision 72: no palette blobs on the tiles.
+    expect(tile.querySelector("[data-palette]")).toBeNull();
     expect(preview("treehouse").dataset.ready).toBe("false");
   });
 
@@ -112,21 +113,22 @@ describe("ThemePicker", () => {
     expect(preview("calm").dataset.ready).toBe("false");
   });
 
-  test("the large preview follows hover and focus, else shows the chosen theme", () => {
-    render(<Harness initial="paper" />);
-    const spot = () =>
-      document.querySelector("[data-theme-spotlight]")?.getAttribute("data-theme-spotlight");
-    expect(spot()).toBe("paper");
+  test("the large preview says whose theme it shows and follows hover and focus", () => {
+    render(<Harness initial="splash" />);
+    expect(spot().dataset.themeSpotlight).toBe("splash");
+    expect(spot().dataset.spotlightState).toBe("chosen");
+    expect(spot().textContent).toContain("Your theme");
     fireEvent.pointerEnter(screen.getByRole("radio", { name: "Treehouse" }));
-    expect(spot()).toBe("treehouse");
+    expect(spot().dataset.themeSpotlight).toBe("treehouse");
+    expect(spot().textContent).toContain("Preview");
     fireEvent.pointerLeave(screen.getByRole("radiogroup", { name: "Theme" }));
-    expect(spot()).toBe("paper");
+    expect(spot().dataset.themeSpotlight).toBe("splash");
     fireEvent.focus(screen.getByRole("radio", { name: "Slate" }));
-    expect(spot()).toBe("dark-slate");
-    // The spotlight names the fonts and the colours.
-    const shown = document.querySelector("[data-theme-spotlight]") as HTMLElement;
-    expect(shown.textContent).toContain("Lexend");
-    expect(shown.querySelectorAll("[data-slide-fluid]")).toHaveLength(2);
+    expect(spot().dataset.themeSpotlight).toBe("dark-slate");
+    // The cover and three visual layouts at full width, the fonts, one quiet row of swatches.
+    expect(spot().querySelectorAll("[data-slide-fluid]")).toHaveLength(1 + SAMPLE_LAYOUTS.length);
+    expect(spot().textContent).toContain("Lexend");
+    expect(spot().querySelector("[data-palette]")?.textContent).toBe("");
   });
 
   test("one tab stop; arrows, Home and End move and choose", () => {
@@ -158,46 +160,37 @@ describe("ThemePicker", () => {
     expect(names).toEqual(
       THEMES.filter((t) => t.tags.includes("early-learners")).map((t) => t.name),
     );
-    // Paper is filtered out but stays chosen; the first shown tile takes the tab stop.
     expect(picked()).toBe("paper");
     expect(screen.getAllByRole("radio").filter((r) => r.tabIndex === 0)).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: /^All/ }));
     expect(screen.getAllByRole("radio")).toHaveLength(16);
   });
-
-  test("the cards group every theme once: younger classes, dark room, calm and accessible, everyday", () => {
-    render(<Harness variant="cards" />);
-    const groups = screen.getAllByRole("group").filter((g) => g.getAttribute("aria-label"));
-    expect(groups.map((g) => g.getAttribute("aria-label"))).toEqual([
-      "For younger classes",
-      "For a dark room",
-      "Calm and accessible",
-      "Everyday",
-    ]);
-    const all = groupThemes(THEMES).flatMap((g) => g.themes.map((t) => t.id));
-    expect([...all].sort()).toEqual(THEMES.map((t) => t.id).sort());
-  });
 });
 
 describe("theme samples", () => {
-  test("each theme's own cover, teaching slide and question, built once and cached", () => {
+  test("the writer's own layouts per theme, built once and cached", () => {
     const before = cachedSampleCount();
     const a = themeSamples("treehouse", "Cache check");
+    if (!a) throw new Error("kit not loaded");
     expect(themeSamples("treehouse", "Cache check")).toBe(a);
     expect(cachedSampleCount()).toBe(before + 1);
     expect(a.cover.kind).toBe("title");
-    expect(a.content.kind).toBe("starter");
-    expect(a.theme.id).toBe("treehouse");
-    expect(themeSamples("poster", "Cache check").cover).not.toBe(a.cover);
+    // A picture with text, stages and a hinge question: no numbered-list slide.
+    expect(a.layouts.map((s) => s.kind)).toEqual(["image-text", "content", "multiple-choice"]);
+    expect(a.layouts.some((s) => s.kind === "objectives" || s.kind === "starter")).toBe(false);
+    expect(JSON.stringify(a.cover)).toContain(PHOTO);
+    expect(JSON.stringify(a.layouts[0])).toContain(PHOTO);
+    expect(themeSamples("poster", "Cache check")?.cover).not.toBe(a.cover);
   });
 
-  test("fonts, palette and who it suits read from the theme", () => {
-    expect(fontPair(getTheme("splash")).label).toBe("Fredoka and Nunito");
-    expect(fontPair(getTheme("paper")).label).toBe("Lexend");
-    const palette = paletteOf(getTheme("paper"));
-    expect(new Set(palette.map((c) => c.value.toLowerCase())).size).toBe(palette.length);
-    expect(palette[0]?.name).toBe("Background");
-    expect(suitsOf(getTheme("playground")).who).toBe("Reception and KS1");
+  test("a blank lesson's cover keeps its picture slot open (the placeholder)", async () => {
+    const cover = await blankCover("poster", "Volcanoes", "Year 4 · Science");
+    expect(cover.kind).toBe("title");
+    const pictures = cover.elements.filter((e) => e.type === "image");
+    expect(pictures).toHaveLength(1);
+    expect(JSON.stringify(cover)).not.toContain(PHOTO);
+    expect(JSON.stringify(cover)).toContain("Volcanoes");
+    expect(JSON.stringify(cover)).toContain("Year 4 · Science");
   });
 
   test("an existing lesson's previews carry its own cover words; none are invented", () => {
@@ -216,7 +209,16 @@ describe("theme samples", () => {
       null,
       "Year 5. Where rain comes from",
     );
-    expect(JSON.stringify(samples.cover)).toContain("Year 5. Where rain comes from");
-    expect(JSON.stringify(samples.cover)).not.toContain("Year 4");
+    expect(JSON.stringify(samples?.cover)).toContain("Year 5. Where rain comes from");
+    expect(JSON.stringify(samples?.cover)).not.toContain("Year 4");
+  });
+
+  test("fonts, palette and who it suits read from the theme", () => {
+    expect(fontPair(getTheme("splash")).label).toBe("Fredoka and Nunito");
+    expect(fontPair(getTheme("paper")).label).toBe("Lexend");
+    const palette = paletteOf(getTheme("paper"));
+    expect(new Set(palette.map((c) => c.value.toLowerCase())).size).toBe(palette.length);
+    expect(suitsOf(getTheme("playground")).who).toBe("Reception and KS1");
+    expect(suitsOf(getTheme("calm")).who).toBe("Any age, for a calm room");
   });
 });
