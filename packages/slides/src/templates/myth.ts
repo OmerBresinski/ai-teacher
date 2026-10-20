@@ -116,6 +116,9 @@ const CARD_IN = 72 * K;
 const CARD_FOOT = 72 * K;
 const TAG_H = 30 * K;
 const TAG_GAP = 24 * K;
+/** The verdict's label row: round 4 themes4.css, all themes, `.myth .tag { height: 44px }`, so the
+ * 42px disc sits inside it; the claim still drops the gold's 76px from the row's top. */
+const STAMP_ROW = 44 * K;
 /** The verdict disc: round 4 themes4.css, all themes, `.stamp i { width: 42px }` (THEME-AUDIT-r2 #9). */
 const STAMP_DISC_0 = 42 * K;
 const SEAM_D = 84 * K;
@@ -544,11 +547,15 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
     c.t,
   )?.fill;
   const stampFill = verdictFill?.startsWith("#") ? rgbOf(verdictFill) : (verdictFill ?? col.accent);
+  // The cross or tick in the gold's `--on-deep` (the ground on the dark themes, themes5.css): of the
+  // theme's on-deep ink and its ground, the one that reads on the disc (the darks' salmon disc
+  // takes the dark ground, at least 3:1 for a graphic, WCAG 1.4.11).
+  const glyphInk = verdictGlyphInk(verdictFill ?? col.accent, col.onDeep, col.background);
   const sd: ShapeElement = {
     id: uid(),
     type: "shape",
     shape: "ellipse",
-    ...rnd({ x: PAD_L, y: sy + (TAG_H - STAMP_DISC) / 2, w: STAMP_DISC, h: STAMP_DISC }),
+    ...rnd({ x: PAD_L, y: sy + (STAMP_ROW - STAMP_DISC) / 2, w: STAMP_DISC, h: STAMP_DISC }),
     fill: stampFill,
   };
   push(sd, at.verdict, MYTH_NAMES.stampDisc);
@@ -557,17 +564,23 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
       right ? "true" : "myth",
       {
         x: PAD_L + STAMP_DISC * 0.2,
-        y: sy + (TAG_H - STAMP_DISC) / 2 + STAMP_DISC * 0.2,
+        y: sy + (STAMP_ROW - STAMP_DISC) / 2 + STAMP_DISC * 0.2,
         s: STAMP_DISC * 0.6,
       },
-      col.onDeep,
+      glyphInk,
       3.2,
     ),
     at.verdict,
     MYTH_NAMES.stampGlyph,
   );
   push(
-    tagEl(say.stamp, label, { x: PAD_L + STAMP_DISC + 14 * K, y: sy, w: claimW }, col.ink, c),
+    tagEl(
+      say.stamp,
+      label,
+      { x: PAD_L + STAMP_DISC + 14 * K, y: sy + (STAMP_ROW - TAG_H) / 2, w: claimW },
+      col.ink,
+      c,
+    ),
     at.verdict,
     MYTH_NAMES.stamp,
   );
@@ -858,6 +871,14 @@ const textWidth = (c: Ctx, s: string, size: number, weight: number) => {
 };
 
 /** The ✓ (true) or ✕ (myth) glyph, an open stroked path in a 24-unit box scaled to `s`. */
+/** The verdict glyph's ink on its disc: the on-deep ink, or the ground when that reads better. */
+export function verdictGlyphInk(disc: string, onDeep: string, ground: string): string {
+  const hex = (c: string) => (c.startsWith("#") ? c.slice(0, 7) : c);
+  return contrastRatio(hex(onDeep), hex(disc)) >= contrastRatio(hex(ground), hex(disc))
+    ? onDeep
+    : ground;
+}
+
 function glyph(
   k: "true" | "myth",
   b: { x: number; y: number; s: number },
