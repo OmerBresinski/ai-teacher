@@ -172,9 +172,10 @@ export function visualRank(slide: Slide): number {
 /**
  * The open lesson's own slides for the picker ("see your lesson in this theme"): its cover's
  * words and picture, its most visual slide for the tile, and up to three of its most visual slides
- * (by `visualRank`, kept in deck order) for the large preview.
+ * (by `visualRank`, kept in deck order) for the large preview. `null` for a lesson with no
+ * slides: the picker then draws the topic-free sample with the lesson's title.
  */
-export function lessonPicks(lesson: Lesson): {
+export function lessonPicks(lesson: Lesson): null | {
   title: string;
   subtitle: string;
   photo: string;
@@ -193,7 +194,7 @@ export function lessonPicks(lesson: Lesson): {
     .sort((a, b) => b.rank - a.rank || a.at - b.at);
   const chosen = ranked.slice(0, 3);
   const first = chosen[0]?.slide ?? cover ?? lesson.slides[0];
-  if (!first) throw new Error("lesson has no slides");
+  if (!first) return null;
   const words = coverWords(lesson);
   return {
     ...words,

@@ -177,6 +177,7 @@ function ThemeChoices({
   }, [kitReady]);
   const samplesFor = useMemo(() => {
     const picks = lessonPicks(opening);
+    if (!picks) return undefined;
     const from = renderTheme(opening);
     const ageBand = boundAgeBand(opening);
     const built = new Map<string, ThemeSamples>();
@@ -206,6 +207,7 @@ function ThemeChoices({
         title={opening.title}
         ageBand={boundAgeBand(opening)}
         samplesFor={samplesFor}
+        scope={opening.id}
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>

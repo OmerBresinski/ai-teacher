@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { accentTint } from "@tj/slides";
 import { useState } from "react";
 import { demoLibrary } from "../model/starter";
 import { getTheme, THEMES } from "../model/themes";
@@ -18,7 +19,7 @@ import {
   themeSamples,
   visualRank,
 } from "./samples";
-import { ThemePicker } from "./ThemePicker";
+import { drawnCount, ThemePicker } from "./ThemePicker";
 
 /*
  * The theme picker (Greg, decisions 34 and 72-75, layout A): each theme's real slides (a cover
@@ -180,7 +181,15 @@ describe("theme samples", () => {
     if (!a) throw new Error("kit not loaded");
     expect(themeSamples("treehouse", "Cache check")).toBe(a);
     expect(cachedSampleCount()).toBe(before + 1);
+    expect(a.theme.id).toBe("treehouse");
     expect(a.cover.kind).toBe("title");
+    expect(JSON.stringify(a.cover)).toContain('"text":"Cache check"');
+    expect(a.layouts.map((s) => s.id)).toEqual([
+      "sample-treehouse-picture-text",
+      "sample-treehouse-stages",
+      "sample-treehouse-hinge",
+    ]);
+    expect(a.visual).toBe(a.layouts[1] as never);
     // Topic-free teaching slides: nothing names a topic the teacher did not type.
     expect(a.layouts).toHaveLength(3);
     expect(a.layouts.some((s) => s.kind === "objectives" || s.kind === "starter")).toBe(false);
@@ -189,7 +198,6 @@ describe("theme samples", () => {
       expect(words).toContain(generic);
     for (const topic of ["Lambs", "egg", "hen", "river", "animal"])
       expect(words).not.toContain(topic);
-    expect(a.visual.elements.length).toBeGreaterThan(0);
     // Every picture slot is the theme's drawn placeholder (tinted, a camera), never a white box.
     expect(JSON.stringify(a.cover)).toContain(DRAWN_SLOT);
     expect(JSON.stringify(a.layouts[0])).toContain(DRAWN_SLOT);
@@ -197,14 +205,26 @@ describe("theme samples", () => {
     expect(themeSamples("poster", "Cache check")?.cover).not.toBe(a.cover);
   });
 
+  test("drawn tiles are remembered per lesson and the memory is bounded", () => {
+    for (let i = 0; i < 12; i++) {
+      render(<ThemePicker selectedId="paper" onPick={() => {}} title="T" scope={`lesson-${i}`} />);
+      for (const t of THEMES) reveal(t.id);
+      cleanup();
+    }
+    expect(drawnCount()).toBeLessThanOrEqual(128);
+    expect(drawnCount()).toBeGreaterThan(0);
+  });
+
   test("the drawn slot is tinted in the theme's accent and carries a camera", () => {
     const poster = themeSamples("poster", "Tint")?.theme;
     const paper = themeSamples("paper", "Tint")?.theme;
     if (!poster || !paper) throw new Error("kit not loaded");
     const a = decodeURIComponent(slotPicture(poster, 400, 300));
+    expect(a).toContain(`<rect width="400" height="300" fill="${accentTint(poster)}"/>`);
+    expect(a).toContain(`stroke="${poster.colors.muted}"`);
     expect(a).toContain("<circle");
-    expect(a).not.toBe(decodeURIComponent(slotPicture(paper, 400, 300)));
-    expect(a).not.toMatch(/fill="#fff(fff)?"/i);
+    expect(accentTint(poster)).not.toBe(accentTint(paper));
+    expect(accentTint(poster).toLowerCase()).not.toMatch(/^#fff(fff)?$/);
   });
 
   test("the theme's own cover carries the lesson's photo, else the drawn slot", () => {
@@ -221,6 +241,7 @@ describe("theme samples", () => {
     const lesson = demoLibrary()[0];
     if (!lesson) throw new Error("no demo lesson");
     const picks = lessonPicks(lesson);
+    if (!picks) throw new Error("lesson has slides");
     const best = Math.max(...lesson.slides.filter((s) => s.kind !== "title").map(visualRank));
     expect(visualRank(picks.visual)).toBe(best);
     const tf = lesson.slides.find((s) => s.kind === "true-false");
@@ -231,6 +252,7 @@ describe("theme samples", () => {
     const lesson = demoLibrary()[0];
     if (!lesson) throw new Error("no demo lesson");
     const picks = lessonPicks(lesson);
+    if (!picks) throw new Error("lesson has slides");
     expect(picks.cover.kind).toBe("title");
     expect(picks.layouts.length).toBeGreaterThan(0);
     expect(picks.layouts.length).toBeLessThanOrEqual(3);
@@ -244,7 +266,9 @@ describe("theme samples", () => {
       ...lesson,
       slides: lesson.slides.filter((s) => s.kind === "title" || s.kind === "objectives"),
     };
-    expect(lessonPicks(plain).visual.kind).toBe("objectives");
+    expect(lessonPicks(plain)?.visual.kind).toBe("objectives");
+    // A lesson with no slides has no picks: the picker draws the topic-free sample instead.
+    expect(lessonPicks({ ...lesson, slides: [] })).toBeNull();
   });
 
   test("a blank lesson's cover keeps its picture slot open (the placeholder)", async () => {

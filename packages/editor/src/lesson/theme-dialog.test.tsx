@@ -149,6 +149,7 @@ describe("where the theme lives (ruling 123)", () => {
     // "See your lesson in this theme": the lesson's own cover and its most visual slides, never
     // the sample lesson (review 20 Oct: a water cycle lesson showed lambs and chicks).
     const picks = lessonPicks(read());
+    if (!picks) throw new Error("lesson has slides");
     expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + picks.layouts.length);
     expect(spot.textContent).not.toContain("Animals and their young");
     expect(spot.textContent).not.toContain("Lambs and ewes");
@@ -188,6 +189,37 @@ describe("while the lesson is being made (ruling 123)", () => {
       </>
     );
   }
+
+  test("an empty lesson opens the picker on the topic-free sample with its title, no throw", async () => {
+    const empty = { ...lesson, slides: [] };
+    render(<GeneratingThemeDialog open lesson={empty} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    expect(screen.getAllByRole("radio")).toHaveLength(THEMES.length);
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.textContent).toContain(lesson.title);
+    expect(spot.textContent).toContain("Key words");
+  });
+
+  test("opening the picker and hovering every theme never changes the lesson", async () => {
+    const shown = displayInTheme(lesson, lesson.themeId);
+    const before = structuredClone(shown);
+    render(<GeneratingThemeDialog open lesson={shown} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    for (const tile of screen.getAllByRole("radio")) {
+      fireEvent.pointerEnter(tile);
+      fireEvent.mouseEnter(tile);
+      fireEvent.focus(tile);
+    }
+    const last = THEMES[THEMES.length - 1];
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-theme-spotlight]")?.getAttribute("data-theme-spotlight"),
+      ).toBe(last?.id),
+    );
+    expect(shown).toEqual(before);
+  });
 
   test("a tile re-themes live, Done keeps it, Cancel goes back to the opening theme", async () => {
     const changes: string[] = [];

@@ -58,10 +58,45 @@ export type ThemePickerProps = {
    */
   samplesFor?: (themeId: string) => ThemeSamples;
   className?: string;
+  /** What the drawn tiles are remembered by (the open lesson's id); none, the words alone. */
+  scope?: string;
 };
 
-/** Themes drawn at least once this session: they draw at once when the picker reopens. */
+/**
+ * Tiles drawn at least once this session, keyed by lesson, theme and words: they draw at once when
+ * the picker reopens on the same lesson. Bounded: the oldest key goes past `MAX_DRAWN`.
+ */
 const drawn = new Set<string>();
+const MAX_DRAWN = 128;
+function markDrawn(key: string): void {
+  drawn.delete(key);
+  drawn.add(key);
+  while (drawn.size > MAX_DRAWN) {
+    const oldest = drawn.values().next().value;
+    if (oldest === undefined) break;
+    drawn.delete(oldest);
+  }
+}
+/** For tests: how many tiles are remembered as drawn. */
+export const drawnCount = (): number => drawn.size;
+
+/** Whether `query` matches, following changes (no `matchMedia`: true). */
+function useMediaQuery(query: string): boolean {
+  const get = () =>
+    typeof window === "undefined" || typeof window.matchMedia !== "function"
+      ? true
+      : window.matchMedia(query).matches;
+  const [matches, setMatches] = useState(get);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const list = window.matchMedia(query);
+    const on = () => setMatches(list.matches);
+    on();
+    list.addEventListener?.("change", on);
+    return () => list.removeEventListener?.("change", on);
+  }, [query]);
+  return matches;
+}
 
 /** Whether the box has come within reach of the view. */
 function useNearView(key: string): [React.RefObject<HTMLDivElement | null>, boolean] {
@@ -71,7 +106,7 @@ function useNearView(key: string): [React.RefObject<HTMLDivElement | null>, bool
   );
   useEffect(() => {
     if (near) {
-      drawn.add(key);
+      markDrawn(key);
       return;
     }
     const el = ref.current;
@@ -204,6 +239,7 @@ function CompactSpotlight({ samples, chosen }: { samples: ThemeSamples; chosen: 
 }
 
 type TileProps = {
+  scope?: string | undefined;
   theme: Theme;
   title: string;
   ageBand?: string | null;
@@ -218,6 +254,7 @@ type TileProps = {
 
 /** One theme: a radio drawn as its cover with a visual layout tucked into the corner. */
 const Tile = memo(function Tile({
+  scope,
   theme: base,
   title,
   ageBand,
@@ -230,7 +267,9 @@ const Tile = memo(function Tile({
   onPeek,
 }: TileProps) {
   const descId = useId();
-  const [ref, near] = useNearView(`${base.id}|${title}|${ageBand ?? ""}|${subtitle ?? ""}`);
+  const [ref, near] = useNearView(
+    `${scope ?? ""}|${base.id}|${title}|${ageBand ?? ""}|${subtitle ?? ""}`,
+  );
   const samples = useMemo(
     () =>
       !near
@@ -333,6 +372,7 @@ export function ThemePicker({
   subtitle,
   samplesFor,
   className,
+  scope,
 }: ThemePickerProps) {
   const [tag, setTag] = useState<ThemeTagId | null>(null);
   const [peek, setPeek] = useState<string | null>(null);
@@ -377,6 +417,8 @@ export function ThemePicker({
     groupRef.current?.querySelector<HTMLElement>(`[data-theme-tile="${id}"]`)?.focus();
   };
 
+  // One preview is mounted: the large one beside the tiles from `md` up, else the compact one.
+  const wide = useMediaQuery("(min-width: 768px)");
   // The large preview follows the pointer or focus, else the chosen theme.
   const shownId = peek ?? selectedId;
   const chosen = shownId === selectedId;
@@ -415,6 +457,7 @@ export function ThemePicker({
               ageBand={ageBand}
               subtitle={subtitle}
               samplesFor={samplesFor}
+              scope={scope}
               kitReady={kitReady}
               selected={theme.id === selectedId}
               tabbable={theme.id === tabbableId}
@@ -423,15 +466,12 @@ export function ThemePicker({
             />
           ))}
         </div>
-        {spotlight ? (
-          <>
-            <div className="min-w-0 overflow-y-auto pr-1 max-md:hidden md:max-h-[min(66vh,580px)]">
-              <Spotlight samples={spotlight} chosen={chosen} />
-            </div>
-            <div className="md:hidden">
-              <CompactSpotlight samples={spotlight} chosen={chosen} />
-            </div>
-          </>
+        {spotlight && wide ? (
+          <div className="min-w-0 overflow-y-auto pr-1 md:max-h-[min(66vh,580px)]">
+            <Spotlight samples={spotlight} chosen={chosen} />
+          </div>
+        ) : spotlight ? (
+          <CompactSpotlight samples={spotlight} chosen={chosen} />
         ) : (
           <div className="min-h-24" aria-hidden />
         )}
