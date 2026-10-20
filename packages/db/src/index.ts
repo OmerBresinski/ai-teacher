@@ -67,6 +67,14 @@ export {
 } from "./documents";
 export { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./errors";
 export {
+  deleteExpiredGenerationDebug,
+  GENERATION_DEBUG_DELETE_BATCH,
+  type GenerationDebugInsert,
+  type GenerationDebugRow,
+  insertGenerationDebug,
+  listGenerationDebug,
+} from "./generation-debug";
+export {
   getTerminalJobEvent,
   hasQueuedJobEvent,
   insertJobEvent,

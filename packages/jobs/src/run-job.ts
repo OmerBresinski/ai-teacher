@@ -225,7 +225,14 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     return { id: bossJob.id, status: "deadletter", event: "failed" };
   }
   const { jobId, workspaceId } = envelope.data;
-  const logger = opts.logger.child({ job: name, jobId, workspaceId, attempt: bossJob.retryCount });
+  // Every line of a lesson job carries its lesson (pino drops an undefined `lessonId`).
+  const logger = opts.logger.child({
+    job: name,
+    jobId,
+    workspaceId,
+    lessonId: lessonIdOf(envelope.data.payload),
+    attempt: bossJob.retryCount,
+  });
   const base = { jobId, workspaceId } as const;
   const emit = (event: JobEvent) => (opts.emit ?? emitJobEvent)(ctx, event);
 
@@ -328,6 +335,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     logger,
     deps: opts.deps,
     attemptsLeft: bossJob.retryCount < bossJob.retryLimit,
+    attempt: bossJob.retryCount,
     afterSettle: (hook) => {
       afterSettle.push(hook);
     },
@@ -439,6 +447,12 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     { type: "failed", ...base, at: nowIso(), error },
     { id: bossJob.id, status: "failed", output: error, event: "failed" },
   );
+}
+
+/** The payload's `lessonId` when it has a string one (every lesson job), read before validation. */
+export function lessonIdOf(payload: unknown): string | undefined {
+  const id = (payload as { lessonId?: unknown } | null | undefined)?.lessonId;
+  return typeof id === "string" ? id : undefined;
 }
 
 /** Narrow a pg-boss job to the envelope type without trusting it (use `runJob` for validation). */

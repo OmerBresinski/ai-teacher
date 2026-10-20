@@ -1,5 +1,5 @@
 import { type CreatedAi, createAi } from "@tj/ai";
-import type { Db } from "@tj/db";
+import { type Db, insertGenerationDebug } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { type Planner, type ReasoningEffort, writerRoute } from "@tj/generation";
 import {
@@ -17,6 +17,7 @@ import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { createPerJobFakeAi } from "./fake-ai";
+import type { DebugStore } from "./generation-debug";
 import { aiGenerationOf } from "./observability";
 import { createDailyImageCap, type DailyImageCap } from "./picture-generator";
 
@@ -62,12 +63,19 @@ export type WorkerDeps = {
   /** PostHog reporting (ADR 0041); absent or disabled, nothing is sent. */
   observability?: Observability;
   jobs?: JobsContext;
+  /**
+   * The per-lesson debug record (Greg, 20 Oct 2026; `generation-debug.ts`): where a lesson job
+   * writes its `generation_debug` rows. Absent (tests), nothing is recorded.
+   */
+  generationDebug?: DebugStore;
 };
 
 export function createWorkerDeps(
   env: Env,
   logger: Logger,
   db: Db,
+  /** The debug record's own pool (max 1); absent, debug rows share `db` (tests, scripts). */
+  debugDb: Db = db,
   observability?: Observability,
 ): WorkerDeps & { storageKind: StorageKind } {
   // ADR 0041: every model call's metadata, beside its `ai` log line. Not the scripted fake's.
@@ -101,6 +109,7 @@ export function createWorkerDeps(
     planner: env.AI_LESSON_PLANNER,
     ...(observability ? { observability } : {}),
     costWarnUsd: env.AI_LESSON_COST_WARN_USD,
+    generationDebug: (workspaceId, rows) => insertGenerationDebug(debugDb, workspaceId, rows),
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {

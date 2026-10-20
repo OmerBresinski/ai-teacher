@@ -46,7 +46,12 @@ export const EnvSchema = z
      */
     AI_LESSON_PLANNER: z.enum(PLANNERS).default("writer"),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
-    AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
+    AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.12),
+    /**
+     * Days a lesson's `generation_debug` rows are kept (Greg, 20 Oct 2026); the worker's daily
+     * `generation.debug-cleanup` cron deletes older ones.
+     */
+    GENERATION_DEBUG_TTL_DAYS: z.coerce.number().int().min(1).default(30),
     /**
      * Every model call runs at this reasoning effort (TEACH-72). Unset or blank: `low`, the
      * shipped setting (decision 25–26 Sept 2026, SHIP-H-PLAN §3 item 9).

@@ -13,6 +13,12 @@ export {
   withGenerationBudget,
 } from "./budget-middleware";
 export {
+  type CallCapture,
+  type CapturedCall,
+  createCaptureMiddleware,
+  withCallCapture,
+} from "./capture-middleware";
+export {
   createAi,
   DEFAULT_MODEL_IDS,
   DEFAULT_REGION,

@@ -12,6 +12,7 @@ import type {
 import type { ImageGenerator, ImageSize, PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 import type { ReasoningEffort } from "./call";
+import type { DebugSink } from "./debug";
 import type { VerifyCorrection } from "./specs";
 import type { PictureBank } from "./stages/photo-bank";
 
@@ -209,6 +210,11 @@ export interface PipelineDeps {
    * `budget`, which stages charge the same way). Created by illustrate when absent.
    */
   imageCounts?: ImageCounts;
+  /**
+   * The lesson's debug record (`./debug`, Greg 20 Oct 2026): fire and forget, never awaited,
+   * never read back. Absent (tests, lab), nothing is recorded and the run is unchanged.
+   */
+  debug?: DebugSink;
   /**
    * Receives the `generation summary` line's fields once per run, whatever the outcome (ADR 0041:
    * the worker's PostHog lesson event). Counts, costs and durations only, never content. A throw

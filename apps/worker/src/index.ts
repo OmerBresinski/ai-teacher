@@ -15,8 +15,11 @@ import { publicJobFailure } from "./job-errors";
 import {
   ANONYMOUS_CLEANUP_CRON,
   ANONYMOUS_CLEANUP_QUEUE,
+  GENERATION_DEBUG_CLEANUP_CRON,
+  GENERATION_DEBUG_CLEANUP_QUEUE,
   registry,
   runAnonymousCleanup,
+  runGenerationDebugCleanup,
 } from "./jobs";
 import { createLogger, type LogTap } from "./logger";
 import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
@@ -48,9 +51,15 @@ if (observability.enabled) {
 }
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
+// The debug record's own pool (Greg, 20 Oct): one connection, so a debug batch never holds a
+// connection a lesson save is waiting for.
+const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
-const deps = { ...createWorkerDeps(env, logger, unsafeDb, observability), jobs: ctx };
+const deps = {
+  ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
+  jobs: ctx,
+};
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
@@ -140,6 +149,31 @@ logger.info(
   "worker registered",
 );
 
+// Greg, 20 Oct 2026: the daily delete of `generation_debug` rows past their TTL, the same shape.
+await boss.createQueue(GENERATION_DEBUG_CLEANUP_QUEUE);
+await boss.schedule(
+  GENERATION_DEBUG_CLEANUP_QUEUE,
+  GENERATION_DEBUG_CLEANUP_CRON,
+  {},
+  { tz: "UTC" },
+);
+await boss.work(GENERATION_DEBUG_CLEANUP_QUEUE, { batchSize: 1 }, async () => {
+  await runGenerationDebugCleanup({
+    sql,
+    ttlDays: env.GENERATION_DEBUG_TTL_DAYS,
+    logger: logger.child({ job: GENERATION_DEBUG_CLEANUP_QUEUE }),
+    signal: shutdown.signal,
+  });
+});
+logger.info(
+  {
+    queue: GENERATION_DEBUG_CLEANUP_QUEUE,
+    cron: GENERATION_DEBUG_CLEANUP_CRON,
+    ttlDays: env.GENERATION_DEBUG_TTL_DAYS,
+  },
+  "worker registered",
+);
+
 // TEACH-202 part g: a job that died on its last attempt (crash, OOM) never ran its `finally`;
 // once pg-boss settles it, this sweep writes its terminal event and releases its lock.
 const reaper = setInterval(() => {
@@ -205,6 +239,7 @@ async function stop(signal: string): Promise<void> {
   // Whatever is still queued for PostHog, bounded by its flush timeout (ADR 0041).
   await observability.shutdown();
   await close();
+  await debugPool.close();
   logger.info("worker exited cleanly");
   process.exit(0);
 }

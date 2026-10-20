@@ -1,7 +1,8 @@
 import type { FigureRef, Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
 import { FIGURE_TEMPLATES } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, callUsd, MAX_OUTPUT_TOKENS } from "../call";
+import { fullError, recordDebug } from "../debug";
 import { figureFindings } from "../figure-check";
 import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
@@ -62,6 +63,45 @@ export async function runVerify(
       maxOutputTokens: MAX_OUTPUT_TOKENS.verify,
     });
     const patched = applyVerifyPatch(facts, call.output.corrections);
+    // The debug record (Greg, 20 Oct 2026, full verbosity): what was checked, every correction the
+    // verifier returned with its reason, which took effect (field before and after), which were
+    // dropped, and the call's model, latency and cost.
+    if (deps.debug) {
+      const returned = call.output.corrections;
+      const tokens = { input: call.usage.inputTokens ?? 0, output: call.usage.outputTokens ?? 0 };
+      recordDebug(deps.debug, "fact-check", {
+        checker: "verify",
+        model: call.modelId,
+        attempts: call.attempts,
+        ms: Date.now() - startedAt,
+        tokens,
+        usd: callUsd(call.modelId, tokens),
+        checked: checkedFactIds(facts),
+        corrections: returned.map((c) => {
+          const applied = patched.applied.includes(c);
+          return {
+            factId: c.factId,
+            field: c.field,
+            ...(c.index !== undefined ? { index: c.index } : {}),
+            verdict: "corrected",
+            reason: c.reason,
+            correction: c.value,
+            applied,
+            ...(applied
+              ? {}
+              : { dropped: "failed the field, index or limit rules, or an off-topic starter" }),
+            before: fieldOf(facts, c),
+            after: applied ? fieldOf(patched.facts, c) : fieldOf(facts, c),
+            factBefore: factOf(facts, c.factId),
+            factAfter: factOf(patched.facts, c.factId),
+          };
+        }),
+        applied: patched.applied.length,
+        dropped: returned.length - patched.applied.length,
+        // The answer schema allows at most 12 corrections: a full list may have been cut short.
+        capped: returned.length >= 12,
+      });
+    }
     deps.logger.info(
       {
         stage: "plan",
@@ -96,6 +136,15 @@ export async function runVerify(
       findings: [...patched.applied.map(verifyFinding), ...codeFindings(verified)],
     };
   } catch (error) {
+    recordDebug(deps.debug, "fact-check", {
+      checker: "verify",
+      ms: Date.now() - startedAt,
+      checked: checkedFactIds(facts),
+      corrections: [],
+      ...(error instanceof BudgetExceeded
+        ? { capped: true, skipped: "budget", by: error.by }
+        : { skipped: "failed", error: fullError(error) }),
+    });
     if (error instanceof BudgetExceeded) {
       deps.logger.info(
         { stage: "plan", call: "verify", ev: "fact-check", outcome: "capped", by: error.by },
@@ -227,6 +276,41 @@ function figureValuesOf(
  * bypass the field, index and per-field limit rules: an invalid correction is skipped, never
  * applied. Returns the parsed facts and the corrections that took effect.
  */
+/** Every fact id and starter id Verify was shown, for the debug record. */
+function checkedFactIds(facts: LessonFacts): string[] {
+  const ids: string[] = [];
+  for (const value of Object.values(facts))
+    if (Array.isArray(value))
+      for (const f of value) {
+        const id = (f as { id?: unknown } | null)?.id;
+        if (typeof id === "string") ids.push(id);
+      }
+  for (let i = 0; i < (facts.retrieval?.length ?? 0); i++) ids.push(`r${i + 1}`);
+  return ids;
+}
+
+/** The one field a correction names (the step or distractor at its index), for before/after. */
+function fieldOf(facts: LessonFacts, c: VerifyCorrection): unknown {
+  const fact = factOf(facts, c.factId) as Record<string, unknown> | undefined;
+  if (!fact) return undefined;
+  const key = retrievalIndexOf(c.factId) !== undefined && c.field === "stem" ? "question" : c.field;
+  const v = fact[key];
+  if (Array.isArray(v) && c.index !== undefined) return v[c.index];
+  return v;
+}
+
+/** The fact (or retrieval item) a correction names, for the debug record; undefined if none. */
+function factOf(facts: LessonFacts, factId: string): unknown {
+  const r = retrievalIndexOf(factId);
+  if (r !== undefined) return facts.retrieval?.[r];
+  for (const value of Object.values(facts))
+    if (Array.isArray(value)) {
+      const hit = value.find((f) => (f as { id?: unknown } | null)?.id === factId);
+      if (hit !== undefined) return hit;
+    }
+  return undefined;
+}
+
 export function applyVerifyPatch(
   facts: LessonFacts,
   corrections: readonly VerifyCorrection[],

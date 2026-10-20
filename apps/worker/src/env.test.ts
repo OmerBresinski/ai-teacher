@@ -23,10 +23,11 @@ describe("worker env", () => {
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
       AI_LESSON_COST_CAP_USD: 0.5,
       ANONYMOUS_USER_TTL_DAYS: 14,
+      GENERATION_DEBUG_TTL_DAYS: 30,
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
       AI_LESSON_PLANNER: "writer",
-      AI_LESSON_COST_WARN_USD: 0.03,
+      AI_LESSON_COST_WARN_USD: 0.12,
       AI_REASONING_EFFORT: "low",
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
@@ -206,10 +207,10 @@ describe("worker env", () => {
   });
 
   describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
-    test("unset: the writer planner and a 0.03 cost target", () => {
+    test("unset: the writer planner and a 0.12 cost target", () => {
       const env = parseEnv({ DATABASE_URL: DB });
       expect(env.AI_LESSON_PLANNER).toBe("writer");
-      expect(env.AI_LESSON_COST_WARN_USD).toBe(0.03);
+      expect(env.AI_LESSON_COST_WARN_USD).toBe(0.12);
     });
 
     test("accepts legacy and a numeric target", () => {

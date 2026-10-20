@@ -4,6 +4,7 @@ import { safeError, safeErrorWhere } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
+import { fullError, recordDebug } from "./debug";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
 import { facts } from "./stages/facts";
@@ -64,6 +65,9 @@ const ENTERED_KEY = "entered";
 const CHECKPOINT_KEY = "checkpoint";
 
 type Ctx = { requestContext: RequestContext; runId: string };
+
+/** The steps whose output is the lesson's plan (the debug record's `plan` rows). */
+const PLANNER_STAGES: ReadonlySet<string> = new Set(["plan", "objectives", "facts"]);
 
 /**
  * Studio (`mastra.dev.ts`) starts runs from a JSON form, which cannot carry functions or an
@@ -184,11 +188,20 @@ function stageStep<S extends StepName>(
       try {
         const next = await run(inputData, deps);
         requestContext.setRaw(CHECKPOINT_KEY, next);
+        // The planner's output in the debug record (Greg, 20 Oct 2026): the objectives or the plan
+        // as the stage saved them, so a bad lesson's plan can be read without re-running it.
+        if (PLANNER_STAGES.has(stage))
+          recordDebug(deps.debug, "plan", {
+            stage,
+            plan: next.lesson.plan ?? null,
+            facts: next.lesson.facts ?? null,
+          });
         timeline("done");
         return next;
       } catch (error) {
         timeline("failed");
         requestContext.setRaw(FAILURE_KEY, error);
+        recordDebug(deps.debug, "stage-error", { stage, error: fullError(error) });
         deps.logger.error(
           { stage, err: safeError(error), where: safeErrorWhere(error) },
           "generation stage failed",
