@@ -134,13 +134,17 @@ describe("where the theme lives (ruling 123)", () => {
     );
   });
 
-  test("each tile is the lesson's own title slide", async () => {
-    renderEditor();
+  test("the picker draws each theme's own slides with the lesson's title (decision 34)", async () => {
+    const { read } = renderEditor();
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
     expect(tiles).toHaveLength(THEMES.length);
-    for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
+    // Tiles draw lazily as they scroll in; the large preview draws the chosen theme at once.
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(3);
+    expect(spot.textContent).toContain(read().title);
   });
 });
 

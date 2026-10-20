@@ -7,22 +7,26 @@ import {
   DialogTitle,
   Input,
   Label,
-  RadioGroup,
-  RadioGroupItem,
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Skeleton,
   Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
-import { useId, useMemo, useState } from "react";
-import { LIBRARY_THEMES, NEW_DIALOG_DEFAULT_THEME_ID } from "@/lib/library-themes";
+import { lazy, Suspense, useEffect, useId, useState } from "react";
+import { NEW_DIALOG_DEFAULT_THEME_ID } from "@/lib/library-themes";
+
+// The picker draws every theme with the slide renderer (decision 34): its own chunk, fetched when
+// the dialog opens and drawn on the theme step.
+const loadPicker = () => import("./new-document-theme-picker");
+const ThemeStep = lazy(loadPicker);
 
 /**
  * State lives for the life of the mount: callers render the dialog only while it is open (or give
@@ -49,18 +53,15 @@ export type NewDocumentDialogProps = {
 };
 
 type Step = "about" | "theme";
-type ThemeTag = "All" | "Primary" | "Secondary" | "Calm" | "Bold";
 
 /** TeachDeck's list (`components/library/year-groups.ts`): EYFS then Year 1–13; the label is stored. */
 const YEAR_GROUPS = ["EYFS", ...Array.from({ length: 13 }, (_, index) => `Year ${index + 1}`)];
-const THEME_TAGS: ThemeTag[] = ["All", "Primary", "Secondary", "Calm", "Bold"];
 const READING_LEVELS = ["Below year group", "Same as year group", "Above year group"];
 const LANGUAGES = [
   { value: "en-GB", label: "British English" },
   { value: "en-US", label: "American English" },
   { value: "cy", label: "Welsh" },
 ];
-const THEMES_BY_ID = new Map(LIBRARY_THEMES.map((theme) => [theme.id, theme]));
 
 export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentDialogProps) {
   const titleId = useId();
@@ -75,25 +76,15 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
   const [readingLevel, setReadingLevel] = useState("");
   const [language, setLanguage] = useState("en-GB");
   const [themeId, setThemeId] = useState(NEW_DIALOG_DEFAULT_THEME_ID);
-  const [themeTag, setThemeTag] = useState<ThemeTag>("All");
   const [start, setStart] = useState<"starter" | "blank">("starter");
   const [busy, setBusy] = useState(false);
   const noun = "lesson";
   const placeholder = "The water cycle";
 
-  const themes = useMemo(
-    () =>
-      themeTag === "All"
-        ? LIBRARY_THEMES
-        : LIBRARY_THEMES.filter((theme) => theme.tags.includes(themeTag)),
-    [themeTag],
-  );
-
-  function selectThemeTag(value: string): void {
-    const next = value as ThemeTag;
-    setThemeTag(next);
-    if (next !== "All" && !THEMES_BY_ID.get(themeId)?.tags.includes(next)) setThemeId("");
-  }
+  // Fetch the picker's chunk while the teacher fills in the first step.
+  useEffect(() => {
+    void loadPicker().catch(() => undefined);
+  }, []);
 
   async function submit(): Promise<void> {
     if (busy || !themeId) return;
@@ -116,8 +107,8 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        size="lg"
-        className="max-w-[560px]"
+        size={step === "about" ? "lg" : "full"}
+        className={step === "about" ? "max-w-[560px]" : "max-w-[1040px]"}
         dismissible={!busy}
         showCloseButton={!busy}
       >
@@ -184,44 +175,14 @@ export function NewDocumentDialog({ open, onOpenChange, onCreate }: NewDocumentD
             <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true" />
           </form>
         ) : (
-          <div className="flex flex-col gap-4">
-            <Tabs value={themeTag} onValueChange={selectThemeTag}>
-              <TabsList aria-label="Theme category" className="max-w-full overflow-x-auto">
-                {THEME_TAGS.map((tag) => (
-                  <TabsTrigger key={tag} value={tag} onClick={() => selectThemeTag(tag)}>
-                    {tag}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {THEME_TAGS.map((tag) => (
-                <TabsContent key={tag} value={tag} forceMount className="hidden" />
-              ))}
-            </Tabs>
-            <RadioGroup
-              aria-label="Theme"
-              value={themeId}
-              onValueChange={setThemeId}
-              className="grid max-h-[min(52vh,420px)] grid-cols-3 gap-3 overflow-y-auto p-0.5"
-            >
-              {/* `before:hidden`: the radio's 32px round hit area is for an 18px dot; on a tile
-                  it reaches into the next row and takes clicks meant for the tile above. */}
-              {themes.map((theme) => (
-                <RadioGroupItem
-                  key={theme.id}
-                  value={theme.id}
-                  aria-label={theme.name}
-                  className="h-auto w-full aspect-auto rounded-card border p-0 text-left before:hidden data-[state=checked]:ring-2 data-[state=checked]:ring-ring"
-                >
-                  <span
-                    className="block aspect-video w-full rounded-t-card"
-                    style={{ backgroundColor: theme.swatch }}
-                  />
-                  <span className="block truncate px-2 py-1.5 text-body font-medium">
-                    {theme.name}
-                  </span>
-                </RadioGroupItem>
-              ))}
-            </RadioGroup>
+          <div className="flex min-w-0 flex-col gap-4">
+            <Suspense fallback={<Skeleton className="h-[min(66vh,580px)] w-full rounded-card" />}>
+              <ThemeStep
+                selectedId={themeId}
+                onPick={setThemeId}
+                title={title.trim() || `Untitled ${noun}`}
+              />
+            </Suspense>
             <div className="flex flex-col gap-1.5">
               <Label className="!text-foreground">Start from</Label>
               <Tabs value={start} onValueChange={(value) => setStart(value as "starter" | "blank")}>

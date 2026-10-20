@@ -128,8 +128,7 @@ export const LIBRARY_THEMES: LibraryTheme[] = [
 ];
 
 /**
- * The New dialog's preselected theme. Named, not "first in the list": the list follows the
- * catalogue order (round 5 put Paper first, TEACH-215 part c), and the default stays as it was
- * until Greg decides otherwise.
+ * The New dialog's preselected theme: Paper (Greg, decision 35 B, 20 Oct 2026). Only a blank
+ * lesson starts here; a written lesson keeps the theme its writer picked.
  */
-export const NEW_DIALOG_DEFAULT_THEME_ID = "playground";
+export const NEW_DIALOG_DEFAULT_THEME_ID = "paper";
