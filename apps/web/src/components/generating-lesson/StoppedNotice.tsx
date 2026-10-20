@@ -5,7 +5,7 @@ export const STOPPED_NOTICE = "Stopped. The slides written so far are here to ed
 export const FAILED_NOTICE =
   "Something went wrong before the lesson was finished. The slides written so far are here to edit.";
 export const BUDGET_NOTICE =
-  "This lesson used its whole budget before it was finished. The slides written so far are here to edit.";
+  "This lesson reached its writing limit, so it stopped early. The slides written so far are here to edit.";
 export const TRY_AGAIN_LABEL = "Try again";
 export const TRY_AGAIN_FAILED = "That didn’t start. Try again in a moment.";
 
