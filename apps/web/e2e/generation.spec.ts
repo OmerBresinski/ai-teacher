@@ -46,6 +46,9 @@ test.describe("lesson generation over the fake worker", () => {
       timeout: 30_000,
     });
     await expect(banner).toHaveCount(0);
+    // The job's end hands every slide to the teacher: nothing is marked writing and Stop is gone.
+    await expect(page.locator("[data-slide-writing]")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator("[data-filling-stop]")).toHaveCount(0);
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
     const rail = page.getByRole("listbox", { name: "Slides" });
     await expect(rail.getByRole("option").first()).toBeVisible();
