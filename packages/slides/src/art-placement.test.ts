@@ -13,8 +13,10 @@ import { atKeyStage, getTheme, THEMES } from "./themes";
  * slide type (`ART_PLACEMENT` in art.ts), and never over text, a picture or a card.
  */
 const STAGES: Stage[] = ["ks1", "ks2", "ks3"];
-const laid = (themeId: string, input: TemplateInput, stage: Stage = "ks2"): Slide =>
-  ({ id: "s", ...layoutTemplate(input, atKeyStage(getTheme(themeId), stage), stage).slide });
+const laid = (themeId: string, input: TemplateInput, stage: Stage = "ks2"): Slide => ({
+  id: "s",
+  ...layoutTemplate(input, atKeyStage(getTheme(themeId), stage), stage).slide,
+});
 const meets =
   (a: Slide["elements"][number] | { x: number; y: number; w: number; h: number }) =>
   (b: { x: number; y: number; w: number; h: number }) =>
