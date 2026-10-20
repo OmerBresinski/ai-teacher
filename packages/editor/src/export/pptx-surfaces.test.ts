@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
+import { atKeyStage, getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
 import {
   paintSurface,
   SURFACE_TOKEN_SETS,
@@ -8,6 +8,7 @@ import {
   surfaceStyle,
   surfacesOf,
 } from "@tj/slides/surfaces";
+import { layoutTemplate } from "@tj/slides/templates";
 import JSZip from "jszip";
 import { exportLessonPptx } from "./pptx";
 
@@ -230,6 +231,26 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
         expect({ id: t.id, kind, drawn }).toEqual({ id: t.id, kind, drawn: layers.length });
       }
     }
+  });
+
+  it("decision 41 A: the PPTX ground draws the vine where the editor does, cut at the panel", () => {
+    const t = atKeyStage(getTheme("treehouse"), "ks2");
+    const { slide: quick } = layoutTemplate(
+      {
+        template: "question-set",
+        heading: "Quick check: the heart",
+        questions: ["Which organ pumps blood?", "Which vessels carry blood away?"],
+        answers: ["The heart", "Arteries"],
+      },
+      t,
+      "ks2",
+    );
+    const [vine] = slideArtLayers(t, quick);
+    expect(vine && vine.x === 906 && vine.y === 0 && vine.h < 330).toBe(true);
+    const body = decodeURIComponent(
+      (groundArtSvg(t, quick) ?? "").slice("data:image/svg+xml,".length),
+    );
+    expect(body).toContain(`x="906" y="0" width="54" height="${vine?.h}"`);
   });
 
   it("without a DOM to rasterise with, the slide keeps its plain ground and the export still works", async () => {
