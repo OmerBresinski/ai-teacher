@@ -213,7 +213,8 @@ describe("theme samples", () => {
     }
     expect(drawnCount()).toBeLessThanOrEqual(128);
     expect(drawnCount()).toBeGreaterThan(0);
-  });
+    // 12 lessons x every theme overruns the cap on purpose; that many renders takes ~7s on CI.
+  }, 30_000);
 
   test("the drawn slot is tinted in the theme's accent and carries a camera", () => {
     const poster = themeSamples("poster", "Tint")?.theme;
