@@ -98,3 +98,39 @@ test("off by default: no look, the slide is as before", () => {
   );
   expect(r.slide.elements.some((e) => e.name === "Verb")).toBe(false);
 });
+
+// The writer's real text (lab runs build/proof/v46): each look draws as itself, and the one
+// honest fallback (115-character KS2 objectives beside a picture) is pinned.
+const HEART = [
+  "Identify the heart, blood and blood vessels, and describe how blood flows through arteries, capillaries and veins.",
+  "Describe how blood carries oxygen, nutrients and water to cells, and carbon dioxide to the lungs.",
+  "Explain how exercise, diet, smoking and alcohol affect the heart and circulation, using pulse rate changes as evidence.",
+];
+const HEART_SHORT = [
+  "Identify the heart, blood and blood vessels",
+  "Describe how blood carries oxygen to cells",
+  "Explain how exercise and diet affect the heart",
+];
+describe("real writer text (lane OBJ)", () => {
+  for (const theme of THEMES) {
+    const lay = (points: string[], look: "goals" | "picture" | "journey") =>
+      layoutTemplate(
+        { template: "objectives", heading: "Today we are learning to", points, figure: PHOTO },
+        getTheme(theme, "ks2"),
+        "ks2",
+        { objectivesLook: look },
+      ).slide.elements.map((e) => e.name);
+    test(`${theme}: journey draws its route at today's length`, () => {
+      expect(lay(HEART, "journey")).toContain("Flag");
+    });
+    test(`${theme}: goal cards draw verbs at today's length`, () => {
+      expect(lay(HEART, "goals").filter((x) => x === "Verb").length).toBe(3);
+    });
+    test(`${theme}: the picture holds shorter objectives; today's length falls back to goal cards`, () => {
+      expect(lay(HEART_SHORT, "picture")).toContain("Photo");
+      const long = lay(HEART, "picture");
+      expect(long).not.toContain("Photo");
+      expect(long.filter((x) => x === "Verb").length).toBe(3);
+    });
+  }
+});

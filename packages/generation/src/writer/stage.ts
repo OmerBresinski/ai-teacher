@@ -1,7 +1,7 @@
 import { safeErrorWhere } from "@tj/domain";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
-import { listAnswers, modelBodyRect } from "@tj/slides/templates";
+import { listAnswers, modelBodyRect, type ObjectivesLook } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
@@ -102,6 +102,7 @@ import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
+  coverFigure,
   isStableGroupSlide,
   type Materialised,
   materialise,
@@ -206,6 +207,11 @@ export type WriterRun = {
   pilotPack?: PilotPackId;
   /** The pupil-wording call for slide 2; `false` keeps the teacher's wording (the evidence runs). */
   pupilWording?: boolean;
+  /**
+   * Lane OBJ exploration: slide 2's look (`objectivesLook`); "picture" lays it beside the title
+   * slide's own photo once that has settled. Absent: the numbered list, as before.
+   */
+  objectivesLook?: ObjectivesLook;
   /**
    * Draws the writer's diagrams before editable (TEACH-247): its own spec by code, else the drawer
    * call (gpt-6-luna). Absent: every diagram slot stays a placeholder (or `visual`'s state).
@@ -1354,12 +1360,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Slide 2 with the pupil wording, before editable; any line missing keeps the teacher's.
   const pupil = await pupilJob;
   if ("fatal" in pupil) throw pupil.fatal;
-  if (pupil.lines.length) {
+  if (pupil.lines.length || run.objectivesLook) {
     (plan.objectives ?? []).forEach((o, k) => {
       const line = pupil.lines[k];
       if (typeof line === "string" && line.trim()) o.pupil = line.trim();
     });
-    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+    laid.set(
+      1,
+      codeObjectives(
+        { ...base, index: 1, plan },
+        run.objectivesLook
+          ? { look: run.objectivesLook, cover: coverFigure(laid.get(0)?.slide) }
+          : {},
+      ),
+    );
   }
   editable = true;
   await run.onEditable?.(deck());

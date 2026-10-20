@@ -59,6 +59,9 @@ import {
   type ObjectivesLook,
   type StarterLook,
 } from "./list-looks";
+
+export type { ObjectivesLook, StarterLook } from "./list-looks";
+
 // TEACH-75 part ag (G1): myth and fact.
 import { layoutMyth, type MythInput } from "./myth";
 import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";

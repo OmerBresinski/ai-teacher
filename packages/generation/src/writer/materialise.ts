@@ -9,6 +9,7 @@ import {
   isPointKind,
   layoutTemplate,
   motifOf,
+  type ObjectivesLook,
   PLACEHOLDER_ICON,
   REASON_PENDING_ICON,
   type TemplateInput,
@@ -1226,14 +1227,40 @@ function kindByRole(s: S, ctx: MaterialiseCtx, kind: Slide["kind"]): Slide["kind
   return role === "check" ? "open-response" : kind;
 }
 
-/** The objectives slide from the approved objectives (the writer never writes slide 2). */
-export function codeObjectives(ctx: Omit<MaterialiseCtx, "visual">): Materialised {
+/**
+ * The objectives slide from the approved objectives (the writer never writes slide 2). Lane OBJ
+ * exploration: with a `look`, the slide takes that look, and the "picture" look uses `cover` (the
+ * title slide's own picture, `coverFigure`); off by default, so the slide is as before.
+ */
+export function codeObjectives(
+  ctx: Omit<MaterialiseCtx, "visual">,
+  opts: { look?: ObjectivesLook; cover?: Figure } = {},
+): Materialised {
+  const input = toInput(
+    { template: "objectives" },
+    { ...ctx, visual: () => ({ status: "pending" }) },
+  );
   const r = layoutTemplate(
-    toInput({ template: "objectives" }, { ...ctx, visual: () => ({ status: "pending" }) }),
+    opts.cover ? ({ ...input, figure: opts.cover } as TemplateInput) : input,
     ctx.theme,
     ctx.stage,
+    opts.look ? { objectivesLook: opts.look } : {},
   );
   return aiAuthored({ slide: r.slide, over: r.over });
+}
+
+/** The title slide's placed photo as a figure for slide 2 (none while it is a placeholder or failed). */
+export function coverFigure(
+  title: { elements: readonly unknown[] } | undefined,
+): Figure | undefined {
+  const el = title?.elements.find(
+    (e) =>
+      (e as { type?: string; name?: string }).type === "image" &&
+      (e as { name?: string }).name === "Photo",
+  ) as { src?: string; alt?: string; w: number; h: number } | undefined;
+  if (!el?.src || el.src === PLACEHOLDER_IMAGE || el.src.startsWith("data:image/svg"))
+    return undefined;
+  return { photo: el.src, alt: el.alt ?? "", aspect: el.w / el.h };
 }
 
 /** The title slide in code from the brief, before the writer answers. */

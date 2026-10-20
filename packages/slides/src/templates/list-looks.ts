@@ -31,6 +31,12 @@ export type StarterLook = "cards" | "picture";
 
 type Rect = { x: number; y: number; w: number; h: number };
 const FOOT = 500;
+/**
+ * Browser wrapping runs a little wider than the headless ruler in some faces (Lexend: Paper,
+ * Slate), so a block is measured a touch narrower than it is drawn; the extra line of room keeps a
+ * wrapped last line from running under the next block.
+ */
+const SAFE = 0.9;
 
 function paint(c: Ctx, role: SurfaceRole, box: Rect): ShapeElement | null {
   const el = paintSurface({ role, box, id: uid() }, c.t);
@@ -57,17 +63,6 @@ function rungs(c: Ctx) {
   ];
 }
 
-/** Heading in a narrower column (the picture look leaves the right third to the photo). */
-function headingIn(c: Ctx, value: string, w: number) {
-  let size = c.s.heading;
-  while (size > c.s.body && !kit.wordsFit(c, value, "heading", w, size)) size -= 2;
-  const s = c.s;
-  c.s = { ...s, heading: size };
-  const el = kit.text(c, value, "heading", { x: G.margin, y: G.headY, w }, { name: "Heading" });
-  c.s = s;
-  return el;
-}
-
 /* ---------------------------- objectives ---------------------------- */
 
 function goalCards(c: Ctx, items: string[], area: Rect): boolean {
@@ -90,7 +85,7 @@ function goalCards(c: Ctx, items: string[], area: Rect): boolean {
         Math.round(s.body * 0.6) +
         kit.measure(c, verb, "lead", tw) +
         Math.round(s.body * 0.25) +
-        (rest ? kit.measure(c, rest, "body", tw) : 0)
+        (rest ? kit.measure(c, rest, "body", Math.round(tw * SAFE)) : 0)
       );
     });
     const inner = Math.max(...hs);
@@ -134,10 +129,10 @@ function goalCards(c: Ctx, items: string[], area: Rect): boolean {
  */
 function goalRows(c: Ctx, items: string[], area: Rect): boolean {
   const full = c.s;
-  const gap = 16;
+  const gap = 10;
   for (const s of rungs(c)) {
     c.s = s;
-    const pad = Math.round(s.body * 0.6);
+    const pad = Math.round(s.body * 0.4);
     const b = badgeSize(c);
     const verbs = items.map((q) => verbSplit(q)[0]);
     const vw = Math.min(
@@ -150,9 +145,11 @@ function goalRows(c: Ctx, items: string[], area: Rect): boolean {
     );
     const tx = pad + b + Math.round(s.body * 0.7) + vw + Math.round(s.body * 0.8);
     const tw = area.w - tx - pad;
-    const hs = items.map((q) => Math.max(b, kit.measure(c, verbSplit(q)[1], "body", tw)) + 2 * pad);
+    const hs = items.map(
+      (q) => Math.max(b, kit.measure(c, verbSplit(q)[1], "body", Math.round(tw * SAFE))) + 2 * pad,
+    );
     const used = hs.reduce((a, h) => a + h, 0) + gap * (items.length - 1);
-    if (used > area.h + 12) continue;
+    if (used > area.h + 16) continue;
     // Rows share out the body's height when short, up to ~75% of it.
     const grow = Math.max(0, Math.min(area.h * 0.75 - used, items.length * s.body)) / items.length;
     let y = area.y;
@@ -169,7 +166,7 @@ function goalRows(c: Ctx, items: string[], area: Rect): boolean {
         { x: area.x + pad + b + Math.round(s.body * 0.7), y: y + Math.round((h - vh) / 2), w: vw },
         { color: c.t.colors.accent, name: "Verb" },
       );
-      const th = kit.measure(c, rest, "body", tw);
+      const th = kit.measure(c, rest, "body", Math.round(tw * SAFE));
       kit.text(
         c,
         rest,
@@ -194,7 +191,7 @@ function verbRows(c: Ctx, items: string[], area: Rect): boolean {
     const pad = Math.round(s.body * 0.45);
     const hs = items.map((q) => {
       const [verb, rest] = verbSplit(q);
-      return kit.measure(c, `${verb} ${rest}`, "body", area.w, 700);
+      return kit.measure(c, `${verb} ${rest}`, "body", Math.round(area.w * SAFE), 700);
     });
     const total = hs.reduce((a, h) => a + h + 2 * pad, 0);
     if (total > area.h) continue;
@@ -247,21 +244,25 @@ function journey(c: Ctx, items: string[]): boolean {
   const n = items.length;
   if (!n) return false;
   const full = c.s;
-  const flagW = 56;
+  const flagW = 32;
   const x0 = G.margin;
   const w = G.width - flagW;
   const colW = Math.floor(w / n);
   for (const s of rungs(c)) {
     c.s = s;
     const b = Math.round(badgeSize(c) * 1.25);
-    const tw = colW - 28;
+    const tw = colW - 14;
     const lineY = G.band.y + Math.round(b / 2) + 6;
     const hs = items.map((q) => {
       const [verb, rest] = verbSplit(q);
-      return kit.measure(c, verb, "lead", tw) + s.body * 0.3 + kit.measure(c, rest, "body", tw);
+      return (
+        kit.measure(c, verb, "lead", tw) +
+        s.body * 0.3 +
+        kit.measure(c, rest, "body", Math.round(tw * SAFE))
+      );
     });
-    const top = lineY + Math.round(b / 2) + Math.round(s.body * 1.1);
-    if (top + Math.max(...hs) > FOOT) continue;
+    const top = lineY + Math.round(b / 2) + Math.round(s.body * 0.8);
+    if (top + Math.max(...hs) > FOOT + 6) continue;
     // The route: one track from the first stop to the flag.
     paint(c, "track", {
       x: x0 + Math.round(b / 2),
@@ -328,10 +329,14 @@ export function layoutObjectivesLook(c: Ctx, input: TemplateInput, look: Objecti
   const body = { x: G.margin, y: G.band.y, w: G.width, h: FOOT - G.band.y };
   const photo = input.figure && "photo" in input.figure && input.figure.photo ? input.figure : null;
   if (look === "picture" && photo) {
-    const px = 640;
-    headingIn(c, input.heading ?? "", px - G.margin - 32);
-    kit.photoBox(c, photo, { x: px, y: 0, w: 960 - px, h: 540 });
-    if (verbRows(c, items, { x: G.margin, y: G.band.y, w: px - G.margin - 40, h: FOOT - G.band.y }))
+    // The cover in its own shape (no blind crop), top-aligned on the body at the right margin; the
+    // objectives verb-led on the paper beside it.
+    const pw = 300;
+    const ph = Math.min(FOOT - G.band.y, Math.round(pw / (photo.aspect ?? 1.5)));
+    const px = G.right - pw;
+    kit.heading(c, input.heading ?? "");
+    kit.photoBox(c, photo, { x: px, y: G.band.y, w: pw, h: ph });
+    if (verbRows(c, items, { x: G.margin, y: G.band.y, w: px - G.margin - 32, h: FOOT - G.band.y }))
       return true;
     // Too many words beside the picture: the goal cards, full width, without it.
     c.els.splice(0);
@@ -407,7 +412,7 @@ export function layoutStarterLook(c: Ctx, input: TemplateInput, look: StarterLoo
   ok = false;
   if (look === "picture" && photo) {
     kit.heading(c, input.heading ?? "");
-    kit.photoBox(c, photo as never, { x: G.margin, y: G.band.y, w: 392, h: FOOT - G.band.y });
+    kit.photoBox(c, photo as never, { x: G.margin, y: G.band.y, w: CUE_W, h: FOOT - G.band.y });
     ok = redrawCue(c, qs, as);
     if (!ok) c.els.splice(0);
   }
@@ -420,17 +425,19 @@ export function layoutStarterLook(c: Ctx, input: TemplateInput, look: StarterLoo
   return ok;
 }
 
+const CUE_W = 300;
+
 function redrawCue(c: Ctx, qs: string[], as: string[]): boolean {
-  const x = G.margin + 392 + 40;
+  const x = G.margin + CUE_W + 32;
   const w = G.right - x;
   const full = c.s;
   for (const s of rungs(c)) {
     c.s = s;
-    const pad = Math.round(s.body * 0.6);
+    const pad = Math.round(s.body * 0.45);
     const tw = w - 44;
     const hs = qs.map(
       (q, k) =>
-        kit.measure(c, q, "lead", tw) +
+        kit.measure(c, q, "body", Math.round(tw * SAFE), 700) +
         (as[k] ? kit.measure(c, as[k] as string, "body", tw) + 4 : 0),
     );
     const total = hs.reduce((a, h) => a + h + 2 * pad, 0);
@@ -444,9 +451,9 @@ function redrawCue(c: Ctx, qs: string[], as: string[]): boolean {
       const qe = kit.text(
         c,
         q,
-        "lead",
+        "body",
         { x: x + 44, y: y + p, w: tw },
-        { color: c.t.colors.ink, name: "Item" },
+        { color: c.t.colors.ink, weight: 700, name: "Item" },
       );
       const a = as[k];
       if (a) {
@@ -454,7 +461,11 @@ function redrawCue(c: Ctx, qs: string[], as: string[]): boolean {
           c,
           a,
           "body",
-          { x: x + 44, y: qe.y + qe.h + 4, w: tw },
+          {
+            x: x + 44,
+            y: qe.y + Math.max(qe.h, kit.measure(c, q, "body", Math.round(tw * SAFE), 700)) + 4,
+            w: tw,
+          },
           { color: c.t.colors.accent, weight: 700, name: "Answer" },
         );
         ae.revealStep = k + 1;
