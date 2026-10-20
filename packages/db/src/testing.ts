@@ -80,7 +80,7 @@ export async function withTestDb(opts: { max?: number } = {}): Promise<WithTestD
     url,
     truncateTenantTables: async () => {
       await handle.unsafeDb.execute(
-        rawSql`truncate table job_events, documents, sources, workspaces, sessions, accounts, verifications, users, anonymous_signins, magic_link_sends restart identity cascade`,
+        rawSql`truncate table generation_debug, job_events, documents, sources, workspaces, sessions, accounts, verifications, users, anonymous_signins, magic_link_sends restart identity cascade`,
       );
     },
     close: async () => {

@@ -10,6 +10,7 @@ import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
+import { recordDebug } from "../debug";
 import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
   lessonLine,
@@ -598,7 +599,16 @@ export async function findDirected(args: {
       },
       "picture director",
     );
+  // The debug record (Greg, 20 Oct 2026): the director's answer, the plan and the outcome.
+  const debugPicture = (extra: Record<string, unknown>) =>
+    recordDebug(
+      deps.debug,
+      "picture",
+      { ask: ask.subject, mustShow: b.mustShow ?? [], direction: direction ?? null, ...extra },
+      args.index,
+    );
   if (plan.kind === "none") {
+    debugPicture({ plan: "none", outcome: "none" });
     log({ plan: "none" });
     args.onOutcome?.({
       director: direction?.route ?? "failed",
@@ -609,6 +619,7 @@ export async function findDirected(args: {
   }
   // The caller's drawer draws it (with the ask's words); nothing is searched or generated here.
   if (plan.kind === "drawing") {
+    debugPicture({ plan: "drawing", diagram: plan.diagram, outcome: "drawer" });
     log({ plan: "drawing", diagram: plan.diagram });
     args.onOutcome?.({
       director: "code",
@@ -678,6 +689,17 @@ export async function findDirected(args: {
     },
     "picture outcome",
   );
+  debugPicture({
+    plan: plan.kind,
+    request: req,
+    queries: brief.queries ?? [],
+    outcome: out.photo ? "placed" : "empty",
+    via: out.via,
+    attempts: out.attempts,
+    ms: out.ms,
+    ...(out.reason ? { failure: out.reason } : out.photo ? {} : { reason: emptyReason }),
+    ...(out.photo ? { chosen: out.photo.source } : {}),
+  });
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({
     director: direction?.route ?? "failed",
