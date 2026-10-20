@@ -24,6 +24,7 @@ export * from "./fit-report";
 export * from "./fit-slide";
 export * from "./fonts";
 export * from "./geometry";
+export * from "./glyph-centre";
 export * from "./grid";
 export * from "./layout-sizes";
 export * from "./layouts";

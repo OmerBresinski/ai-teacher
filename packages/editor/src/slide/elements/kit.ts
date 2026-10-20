@@ -4,7 +4,7 @@
  */
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerKeyText, answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
-import type { ResolvedText } from "@tj/slides";
+import type { BadgeGlyph, ResolvedText } from "@tj/slides";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
 
@@ -234,3 +234,31 @@ export type LabelParts = {
   bodyRef?: Ref<HTMLDivElement>;
   overflowing: boolean;
 };
+
+/**
+ * Badge glyphs are set `BADGE_GLYPH_SCALE` times larger and scaled back down, so the browser's
+ * whole-pixel rounding of the line's ascent and descent (up to half a slide pixel, 0.75px at
+ * 1440 wide) shrinks to a fraction of that.
+ */
+export const BADGE_GLYPH_SCALE = 8;
+
+/**
+ * The style of a `.tj-badge-glyph` box (slide.css): absolutely centred on its shell at
+ * `BADGE_GLYPH_SCALE` times the size, its line trimmed to the glyph's band where the browser
+ * has `text-box` (else moved by the metric shift), and moved by the glyph's own ink offset.
+ */
+export function badgeGlyphVars(g: BadgeGlyph): CSSProperties {
+  const k = BADGE_GLYPH_SCALE;
+  return {
+    "--glyph-k": k,
+    "--glyph-x": `${(g.shiftX * k).toFixed(2)}px`,
+    "--glyph-y": `${(g.shiftY * k).toFixed(2)}px`,
+    "--glyph-trim-y": `${(g.trimY * k).toFixed(2)}px`,
+    "--glyph-edge": g.edge,
+  } as CSSProperties;
+}
+
+/** A badge glyph's type: `BADGE_GLYPH_SCALE` times the size, line height 1, no tracking. */
+export function badgeGlyphType(css: CSSProperties, fontSize: number): CSSProperties {
+  return { ...css, fontSize: fontSize * BADGE_GLYPH_SCALE, lineHeight: 1, letterSpacing: 0 };
+}
