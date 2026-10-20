@@ -215,6 +215,29 @@ describe("LessonEditorPage", () => {
     expect(fakeApi.requests.filter((request) => request.method === "PUT")).toHaveLength(0);
   });
 
+  it("answer 66 (UX audit J2): a confirmed plan opens the editor at once, every slide read-only and marked writing", async () => {
+    installFakeEventSource();
+    const stored = fakeApi.get("demo-water-cycle");
+    if (!stored) throw new Error("fake api has no demo lesson");
+    const body = stored.body as Lesson;
+    const { slideStates: _states, ...generation } = body.generation ?? ({} as never);
+    stored.body = {
+      ...body,
+      plan: { revision: 1, state: "confirmed", jobId: crypto.randomUUID() },
+      generation: { ...generation, stage: "planned" },
+    } as Lesson;
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    // One bar from Continue on: the editor's, never the generating shell's first.
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
+    const thumbs = document.querySelectorAll("[data-navigator] [data-navigator-thumb]");
+    expect(thumbs.length).toBe(body.slides.length);
+    expect(document.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(
+      body.slides.length,
+    );
+  });
+
   it("a locked lesson shows the generating banner, follows the job and unlocks on completion", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);

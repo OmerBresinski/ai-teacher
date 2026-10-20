@@ -517,6 +517,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // read-only inside it, and the follower folds each newer row into the open document.
   const fillingJobId =
     meta?.generatingJobId && meta.generatingJobId !== completedJobId ? meta.generatingJobId : null;
+  // Greg's answer 66 (UX audit J2): a confirmed plan opens the editor at once, before the job has
+  // marked any slide, so the teacher sees one bar from Continue on rather than the generating
+  // shell's bar giving way to the editor's. Until the job says which slides it owns, it owns them
+  // all: every slide is read-only and marked "Writing" (ruling 189).
+  const starting =
+    !!fillingJobId &&
+    data.plan?.state === "confirmed" &&
+    data.generation?.stage === "planned" &&
+    !data.generation.slideStates &&
+    data.slides.length > 0;
   if (
     fillingJobId &&
     unlocked?.jobId !== fillingJobId &&
@@ -526,7 +536,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       proposed: data.plan?.state === "proposed",
       // Live writing (ADR 0039): the editor opens as soon as the job owns the deck (its slides
       // `writing`), not at the first done slide, so the lesson is watched taking shape in it.
-      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0,
+      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0 || starting,
     })
   ) {
     setUnlocked({ jobId: fillingJobId, base: data });
@@ -552,7 +562,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   else if (followed.current?.until === Infinity)
     followed.current = { jobId: followed.current.jobId, until: Date.now() + FOLD_GRACE_MS };
   const editorOpen = !generatingJobId || filling;
-  const writing = filling ? writingSlideIds(data) : undefined;
+  const writing = filling
+    ? starting
+      ? new Set(data.slides.map((slide) => slide.id))
+      : writingSlideIds(data)
+    : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
   const companionSlot = showStory ? (
     <div ref={setDestination} className="creation-generation-anchor" />
