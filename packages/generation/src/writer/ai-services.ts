@@ -168,13 +168,14 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
       );
       const modelId = sol ? WRITER_MODEL : SMALL_MODEL;
       const call = { name: r.name, model: modelId, stage: c.stage, effort: c.effort ?? "low" };
+      // Always rethrows (never recovers), so it is not one of the stage's non-fatal handlers.
       const result = await generateText({
         model,
         system: r.system,
         ...chatUserTurn(r),
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         ...chatCallOptions(r, deps.signal),
-      }).catch((error: unknown) => {
+      }).then(undefined, (error: unknown) => {
         recordBudgetStop(deps, { ...call, ms: Date.now() - t0 }, error);
         throw error;
       });
