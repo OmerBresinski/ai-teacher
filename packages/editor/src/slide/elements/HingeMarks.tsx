@@ -9,7 +9,7 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { badgeGlyph, contrastRatio, mix } from "@tj/slides";
+import { badgeGlyph, contrastRatio, mix, tickPolygon } from "@tj/slides";
 import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import {
   dimGround,
@@ -506,10 +506,18 @@ export default function HingeMarks({
                 borderRadius: m.tick.d,
                 background: m.ring,
                 color: m.keyInk,
-                fontSize: Math.round(m.tick.d * 0.6),
               }}
             >
-              ✓
+              {/* A drawn tick centred on its disc (`tickPolygon`); a font's ✓ is not. */}
+              <svg
+                width={m.tick.d * 0.6}
+                height={m.tick.d * 0.6}
+                viewBox="0 0 24 24"
+                aria-hidden
+                focusable="false"
+              >
+                <polygon points={TICK_POINTS} fill="currentColor" />
+              </svg>
             </span>
           </div>
         );
@@ -517,6 +525,10 @@ export default function HingeMarks({
     </>
   );
 }
+
+const TICK_POINTS = tickPolygon(3.2)
+  .map((p) => p.join(","))
+  .join(" ");
 
 /** The key's letter, centred on its cap height like every badge glyph (`badgeGlyph`). */
 function KeyLetter({ letter, font, size }: { letter: string; font: string; size: number }) {
@@ -526,6 +538,6 @@ function KeyLetter({ letter, font, size }: { letter: string; font: string; size:
       {letter}
     </span>
   ) : (
-    <>{letter}</>
+    letter
   );
 }
