@@ -1,11 +1,17 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
-import { DIAGRAM_NAME } from "@tj/slides";
+import { badgeGlyph, DIAGRAM_NAME } from "@tj/slides";
 import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import { surfacesOf } from "@tj/slides/surfaces";
-import { lazy, type ReactNode, Suspense } from "react";
+import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
-import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
+import {
+  badgeGlyphType,
+  badgeGlyphVars,
+  type ElementViewProps,
+  resolveTextStyle,
+  textTypeCss,
+} from "./kit";
 import { RichText } from "./RichText";
 import { SlotPlaceholder } from "./SlotPlaceholder";
 import { TextShell } from "./TextView";
@@ -121,6 +127,25 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
     element.textStyle?.preset ?? "body",
   );
 
+  // A badge's numeral or letter centres on its cap height, not its line box (`badgeGlyph`):
+  // no padding, line height 1, an unconditional centre (`safe center` drops an overflowing line
+  // to the top), the line trimmed to the cap band and the glyph's own ink offset.
+  const glyph = label ? badgeGlyph(richDocToPlainText(label), r.fontFamily, r.fontSize) : null;
+  const shellStyle: CSSProperties = glyph
+    ? { position: "relative", padding: 0, justifyContent: "center" }
+    : { position: "relative" };
+  const typeCss = glyph ? badgeGlyphType(textTypeCss(r), r.fontSize) : textTypeCss(r);
+  const glyphWrap = (children: ReactNode, style?: CSSProperties) =>
+    glyph ? (
+      <div className="tj-badge-glyph" style={badgeGlyphVars(glyph)}>
+        {children}
+      </div>
+    ) : style ? (
+      <div style={style}>{children}</div>
+    ) : (
+      children
+    );
+
   /** The shape, drawn either with its label, with the editor in the label's place, or bare. */
   const shape = (editor: ReactNode) => (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -166,14 +191,12 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         />
       ) : null}
       {editor ? (
-        <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
-          {editor}
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle}>
+          {glyphWrap(editor)}
         </TextShell>
       ) : label ? (
-        <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
-          <div style={{ width: "100%", flex: "0 0 auto" }}>
-            <RichText doc={label} style={textTypeCss(r)} />
-          </div>
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle}>
+          {glyphWrap(<RichText doc={label} style={typeCss} />, { width: "100%", flex: "0 0 auto" })}
         </TextShell>
       ) : null}
     </div>
@@ -188,7 +211,7 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         doc={element.doc}
         // A shape can be given a label it never had, so the first edit seeds one.
         seedEmpty={element.doc === undefined}
-        style={{ flex: "0 0 auto", ...textTypeCss(r) }}
+        style={{ flex: "0 0 auto", ...typeCss }}
         render={({ editor }) => shape(editor)}
       />
     </Suspense>

@@ -9,7 +9,7 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { contrastRatio, mix } from "@tj/slides";
+import { badgeGlyph, contrastRatio, mix } from "@tj/slides";
 import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
 import {
   dimGround,
@@ -21,6 +21,7 @@ import {
 } from "@tj/slides/surfaces";
 import { choiceText, HINGE_KEY } from "./choice";
 import { ElementBody } from "./ElementBody";
+import { badgeGlyphType, badgeGlyphVars } from "./kit";
 
 /** The hinge's element names (`@tj/slides` templates/hinge.ts `HINGE_NAMES`). */
 const HINGE_ICON = "Option icon";
@@ -489,7 +490,7 @@ export default function HingeMarks({
                   fontFamily: theme.fonts.title,
                 }}
               >
-                {k.letter}
+                <KeyLetter letter={k.letter} font={theme.fonts.title} size={k.fontSize} />
               </span>
             ) : null}
             <span
@@ -514,5 +515,17 @@ export default function HingeMarks({
         );
       })}
     </>
+  );
+}
+
+/** The key's letter, centred on its cap height like every badge glyph (`badgeGlyph`). */
+function KeyLetter({ letter, font, size }: { letter: string; font: string; size: number }) {
+  const g = badgeGlyph(letter, font, size);
+  return g ? (
+    <span className="tj-badge-glyph" style={{ ...badgeGlyphType({}, size), ...badgeGlyphVars(g) }}>
+      {letter}
+    </span>
+  ) : (
+    <>{letter}</>
   );
 }
