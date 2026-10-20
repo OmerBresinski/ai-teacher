@@ -301,6 +301,10 @@ export function LessonEditor({
   const lead = useDraftLead(drafts);
   // The slide being written now: the streaming slide, while the job still owns it.
   const writingNowId = lead !== undefined && writingSlideIds?.has(lead) ? lead : undefined;
+  // Greg 20 Oct (62 C): the companion waits in the margin only until the first slide has words,
+  // then leaves for good (latched: a later gap between drafts never brings it back).
+  const [companionGone, setCompanionGone] = useState(false);
+  if (!companionGone && lead !== undefined) setCompanionGone(true);
   const proposals = useMemo<ProposalsApi>(
     () =>
       proposalsEnabled
@@ -714,7 +718,7 @@ export function LessonEditor({
                                           text={writingText(lesson.slides, slide.id, writingNowId)}
                                         />
                                       ) : null}
-                                      {companion ? (
+                                      {companion && !companionGone ? (
                                         <div
                                           data-editor-companion="desktop"
                                           aria-hidden
@@ -862,10 +866,10 @@ function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
 function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: Id | undefined) {
   const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
   return writingNowId === slideId
-    ? "Writing this slide… you can edit it as soon as it is done"
+    ? "Writing this slide…"
     : now >= 0
-      ? `Writing slide ${now + 1} of ${slides.length}… you can edit this one soon`
-      : "Planning the slides… you can edit this one soon";
+      ? `Writing slide ${now + 1} of ${slides.length}…`
+      : "Planning the slides…";
 }
 
 /** The visible pill; the editor's one `data-writing-status` live region announces it. */

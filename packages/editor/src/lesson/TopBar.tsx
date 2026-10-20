@@ -164,7 +164,9 @@ export function TopBar({
           <SaveIndicator autosave={autosave} quiet={saveQuiet} />
         </AppBarGroup>
 
-        <AppBarGroup className="ml-auto gap-2">
+        {/* Greg 20 Oct (64 C): the filling job's Stop sits first, before Theme, so when it goes at
+            Ready nothing in the right-aligned group moves and no gap is left. */}
+        <AppBarGroup className="ml-auto gap-2 [&>[data-filling-stop]]:-order-1">
           {/* Ruling 123: the selected theme, named, stays in the bar and never folds into ⋯. */}
           {onOpenTheme ? (
             <ThemeCallout themeId={lesson.themeId} onClick={onOpenTheme} className="shrink-0" />
@@ -222,7 +224,7 @@ export function TopBar({
         />
       </AppBarGroup>
 
-      <AppBarGroup className="ml-auto gap-2">
+      <AppBarGroup className="ml-auto gap-2 [&>[data-filling-stop]]:-order-1">
         <SaveIndicator autosave={autosave} quiet={saveQuiet} />
         {/* Ruling 123: the theme callout is visible on a phone too. */}
         {onOpenTheme ? (
