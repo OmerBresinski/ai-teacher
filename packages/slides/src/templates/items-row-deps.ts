@@ -71,7 +71,14 @@ export function resolveIcons(labels: readonly string[]): IconResolution {
  * The concept as an image `src` for a box of `boxPt`: the library's drawing in the theme's icon
  * slots and age, or the placeholder in `colour`; "" while the library is still loading.
  */
-export function iconSrc(id: string, theme: Theme, boxPt: number, colour: string): string {
+export function iconSrc(
+  id: string,
+  theme: Theme,
+  boxPt: number,
+  colour: string,
+  /** The library's drawing style (`IconStyle`; the icon module loads lazily, so no import). */
+  style?: "soft" | "pilot",
+): string {
   // Until the drawings have loaded (`../icons/loader`) a library concept is "": the medal keeps
   // its face and size with no drawing, and the load starts so the next lay draws it.
   const icons = id === PLACEHOLDER_ICON ? null : iconsLoaded();
@@ -90,6 +97,8 @@ export function iconSrc(id: string, theme: Theme, boxPt: number, colour: string)
             keyStage: keyStageOf(theme) ?? undefined,
           },
           boxPt,
+          undefined,
+          style,
         ) ?? "");
   return svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : "";
 }
@@ -112,12 +121,13 @@ export function iconImage(
   colour: string,
   name: string,
   alt: string,
+  style?: "soft" | "pilot",
 ): ImageElement {
   return {
     id: uid(),
     type: "image",
     ...rect,
-    src: iconSrc(id, theme, rect.w, colour),
+    src: iconSrc(id, theme, rect.w, colour, style),
     alt,
     fit: "contain",
     // Round, so the image view's box never squares off the medal's ring.
