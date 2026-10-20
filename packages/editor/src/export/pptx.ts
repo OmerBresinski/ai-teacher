@@ -57,10 +57,13 @@ import {
   TEACHER_ONLY_MARK,
 } from "@tj/domain/documents";
 import {
+  type BadgeGlyph,
+  badgeGlyph,
   fittedFontSize,
   footStrip,
   growFixedText,
   HIGHLIGHT_FALLBACK_FILLS,
+  isBadgeBox,
   mathFaceOf,
   type PathSegment,
   pathSegments,
@@ -367,6 +370,19 @@ const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
     ? { bulletCode: MARKER_CODES[theme.ornament.marker] }
     : {}),
 });
+
+/**
+ * A badge glyph's insets [left, right, bottom, top] in points (1pt = one slide unit): the
+ * slide's shift as an uneven pair, since a centred text box moves by half their difference.
+ * Line metrics are PowerPoint's own, so this matches the slide closely but not to the pixel.
+ */
+export function glyphInsets(g: BadgeGlyph | null): [number, number, number, number] {
+  if (!g) return [0, 0, 0, 0];
+  const x = 2 * g.shiftX;
+  const y = 2 * g.shiftY;
+  const r1 = (n: number) => Math.round(Math.max(0, n) * 100) / 100;
+  return [r1(x), r1(-x), r1(-y), r1(y)];
+}
 
 /** The box a text-ish element sits in: position, padding, fill, rotation. */
 export function textBoxOptions(
@@ -1016,7 +1032,9 @@ function drawOption(
       h: inches(OPTION_CHIP),
       align: "center",
       valign: "middle",
-      margin: 0,
+      margin: glyphInsets(badgeGlyph(label, theme.fonts.title, 19)),
+      lineSpacingMultiple: 1,
+      wrap: false,
       fontFace: fontFaceFor(theme.fonts.title),
       fontSize: 19,
       bold: true,
@@ -1127,8 +1145,14 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
       theme,
       element.textStyle?.preset ?? "body",
     );
+    // A badge glyph centres as on the slide (`badgeGlyph`): no padding, single spacing, and the
+    // slide's shift carried by uneven insets (PowerPoint has no cap-height anchor).
+    const glyph = isBadgeBox(element.w, element.h)
+      ? badgeGlyph(docToPlainText(element.doc), r.fontFamily, r.fontSize)
+      : null;
     pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
       ...textBoxOptions(element, r),
+      ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
       fill: undefined,
       fit: "none",
     });
