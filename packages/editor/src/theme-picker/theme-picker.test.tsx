@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { demoLibrary } from "../model/starter";
 import { getTheme, THEMES } from "../model/themes";
 import {
   cachedSampleCount,
+  coverWords,
   fontPair,
   groupThemes,
   paletteOf,
@@ -196,5 +198,25 @@ describe("theme samples", () => {
     expect(new Set(palette.map((c) => c.value.toLowerCase())).size).toBe(palette.length);
     expect(palette[0]?.name).toBe("Background");
     expect(suitsOf(getTheme("playground")).who).toBe("Reception and KS1");
+  });
+
+  test("an existing lesson's previews carry its own cover words; none are invented", () => {
+    const lesson = demoLibrary()[0];
+    if (!lesson) throw new Error("no demo lesson");
+    expect(coverWords(lesson)).toEqual({
+      title: "The water cycle",
+      subtitle: "Year 5. Where rain comes from",
+    });
+    const bare = { ...lesson, slides: [], yearGroup: "Year 2", subject: "History" };
+    expect(coverWords(bare)).toEqual({ title: lesson.title, subtitle: "Year 2 · History" });
+    expect(coverWords({ ...bare, yearGroup: undefined, subject: undefined }).subtitle).toBe("");
+    const samples = themeSamples(
+      "poster",
+      "The water cycle",
+      null,
+      "Year 5. Where rain comes from",
+    );
+    expect(JSON.stringify(samples.cover)).toContain("Year 5. Where rain comes from");
+    expect(JSON.stringify(samples.cover)).not.toContain("Year 4");
   });
 });

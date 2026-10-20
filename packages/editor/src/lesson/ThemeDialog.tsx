@@ -1,10 +1,11 @@
 import type { Lesson } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
+import { coverWords } from "../theme-picker/samples";
 import { pickerVariant, ThemePicker } from "../theme-picker/ThemePicker";
 import { useHistory, useLesson } from "./document-context";
 
@@ -155,14 +156,16 @@ function ThemeChoices({
   applying?: boolean;
 }) {
   const [variant] = useState(pickerVariant);
+  // The previews carry this lesson's own cover words: its title, its year and its subject.
+  const words = useMemo(() => coverWords(opening), [opening]);
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <ThemePicker
         selectedId={selectedId}
         onPick={onPick}
-        title={opening.title}
+        title={words.title}
         ageBand={boundAgeBand(opening)}
-        subtitle={[opening.yearGroup, opening.subject].filter(Boolean).join(" · ")}
+        subtitle={words.subtitle}
         variant={variant}
       />
       <div className="flex justify-end gap-2">

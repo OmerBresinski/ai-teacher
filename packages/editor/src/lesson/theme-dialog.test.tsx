@@ -4,6 +4,7 @@ import { useState } from "react";
 import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
+import { coverWords } from "../theme-picker/samples";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -144,7 +145,12 @@ describe("where the theme lives (ruling 123)", () => {
     const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
     expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
     expect(spot.querySelectorAll("[data-slide-root]").length).toBe(2);
-    expect(spot.textContent).toContain(read().title);
+    // The lesson's own cover words, never sample text (coordinator, 20 Oct: a Year 5 lesson's
+    // previews said "Year 4 · Science").
+    const words = coverWords(read());
+    expect(spot.textContent).toContain(words.title);
+    expect(spot.textContent).toContain(words.subtitle);
+    expect(spot.textContent).not.toContain("Year 4");
   });
 });
 

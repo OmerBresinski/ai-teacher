@@ -1,4 +1,4 @@
-import type { Slide, Theme } from "@tj/domain/documents";
+import { type Lesson, richDocToPlainText, type Slide, type Theme } from "@tj/domain/documents";
 import { DEMO_LESSON_SPECS, demoLessonSlides } from "@tj/slides";
 import { FONT_LABELS, FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
@@ -58,6 +58,27 @@ export function themeSamples(
   }
   cache.set(key, samples);
   return samples;
+}
+
+/**
+ * The words an existing lesson's own cover carries, for the previews: its title and its second
+ * line as the teacher sees them ("Year 5. Where rain comes from"), else the lesson's title and its
+ * year and subject. A preview never invents a class the lesson is not for.
+ */
+export function coverWords(lesson: Lesson): { title: string; subtitle: string } {
+  const cover = lesson.slides.find((s) => s.kind === "title");
+  const textAt = (preset: string): string | undefined => {
+    for (const el of cover?.elements ?? []) {
+      if (el.type !== "text" || el.style?.preset !== preset || !el.doc) continue;
+      const text = richDocToPlainText(el.doc).trim();
+      if (text) return text;
+    }
+    return undefined;
+  };
+  return {
+    title: textAt("title") ?? lesson.title,
+    subtitle: textAt("subtitle") ?? [lesson.yearGroup, lesson.subject].filter(Boolean).join(" · "),
+  };
 }
 
 /** Test seam: how many sample sets are cached. */
