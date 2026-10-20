@@ -23,37 +23,23 @@ test.describe("lesson generation over the fake worker", () => {
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
-    // The shell is up while the job runs: the strip, the stage line and one ghost Stop.
+    // The shell is up while the job plans: the strip, the stage line and one ghost Stop.
     const banner = page.getByTestId("generating-shell");
     await expect(banner).toBeVisible();
     await expect(page.getByTestId("generating-strip").locator("li")).toHaveCount(4);
     await expect(banner.getByRole("button", { name: "Stop" })).toBeVisible();
-    // Planning ticks and Writing goes live as the first content slide lands.
-    await expect(page.getByTestId("generating-stage")).toContainText(/Writing the slides/, {
+    // Greg 66 A: once the plan lands the filling editor opens in place, with no second bar. Every
+    // slide the job has not finished is marked writing; the paced fake can finish first, so a
+    // writing slide is not required, only that the editor follows the job to its end.
+    await expect(
+      page
+        .locator("[data-filling-stop]")
+        .or(page.getByRole("button", { name: "Rename lesson" }))
+        .first(),
+    ).toBeVisible({
       timeout: 20_000,
     });
-    // The paced fake can finish before this line runs, and the shell (strip included) unmounts when
-    // the editor takes over, so a shell that is already gone counts as planning done.
-    await expect
-      .poll(async () =>
-        (await banner.count()) === 0
-          ? "done"
-          : page.locator('[data-stage="planning"]').getAttribute("data-status", { timeout: 1_000 }),
-      )
-      .toBe("done");
-
-    // Slides appear one by one: the count grows at least once before the terminal event.
-    const slides = page.locator("[data-slide-root]");
-    await expect.poll(() => slides.count(), { timeout: 20_000 }).toBeGreaterThan(0);
-    const early = await slides.count();
-    await expect
-      .poll(
-        async () => ((await banner.count()) === 0 ? Number.POSITIVE_INFINITY : slides.count()),
-        {
-          timeout: 20_000,
-        },
-      )
-      .toBeGreaterThan(early);
+    await expect(banner).toHaveCount(0);
 
     // The editor takes over in place — same URL, no reload — once the lock is released.
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible({
@@ -92,10 +78,11 @@ test.describe("lesson generation over the fake worker", () => {
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
     const banner = page.getByTestId("generating-shell");
-    // Let the job start before stopping it, so the cancel exercises the running path: the title
-    // slide is the first persist, so its thumb means the worker has the job.
-    await expect(banner.locator("[data-slide-thumb]").first()).toBeVisible({ timeout: 20_000 });
-    await banner.getByRole("button", { name: "Stop" }).click();
+    // Let the job start before stopping it, so the cancel exercises the running path. Greg 66 A:
+    // the filling editor opens once the plan lands, so Stop is the editor's.
+    const stop = page.locator("[data-filling-stop]");
+    await expect(stop).toBeVisible({ timeout: 20_000 });
+    await stop.click();
     // Greg 60 A (UX-A): Stop keeps the teacher in the editor with every slide written so far and a
     // plain notice; nothing more is written, so there is no Try again.
     const notice = page.locator('[data-stopped-notice="cancelled"]');
