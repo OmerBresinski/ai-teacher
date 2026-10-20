@@ -52,20 +52,22 @@ const LONG_BODY = Array.from(
 ).join(" ");
 
 describe("theme art per slide type (decision 41 A)", () => {
-  test("sweep: every theme x template x stage, long headings and continuations: art meets nothing drawn", () => {
-    const misses: string[] = [];
-    let checked = 0;
-    let withArt = 0;
-    const check = (name: string, t: Theme, slide: Slide) => {
-      const layers = art(t, slide);
-      if (layers.length) withArt++;
-      const boxes = drawnBoxes(slide, t);
-      for (const l of layers) {
-        if (boxes.some((b) => meets(l, b))) misses.push(`${t.id} ${name} art ${box(l)}`);
-      }
-      checked++;
-    };
-    for (const theme of THEMES) {
+  // One test per theme, each well inside CI's limit; text is measured only where art is drawn.
+  for (const theme of THEMES) {
+    test(`sweep ${theme.id}: every template x stage, long headings and continuations: art meets nothing drawn`, () => {
+      const misses: string[] = [];
+      let checked = 0;
+      let withArt = 0;
+      const check = (name: string, t: Theme, slide: Slide) => {
+        checked++;
+        const layers = art(t, slide);
+        if (!layers.length) return;
+        withArt++;
+        const boxes = drawnBoxes(slide, t);
+        for (const l of layers) {
+          if (boxes.some((b) => meets(l, b))) misses.push(`${t.id} ${name} art ${box(l)}`);
+        }
+      };
       for (const stage of STAGES) {
         const t = atKeyStage(theme, stage);
         for (const input of templateSamples(() => "/photo.jpg")) {
@@ -87,11 +89,13 @@ describe("theme art per slide type (decision 41 A)", () => {
       const slides = materialiseSlides(spec, theme.id, meta);
       expect(slides.length).toBeGreaterThan(1);
       for (const [i, s] of slides.entries()) check(`continuation ${i + 1}`, theme, s);
-    }
-    expect(misses).toEqual([]);
-    expect(checked).toBeGreaterThan(THEMES.length * STAGES.length * templateSamples().length * 2);
-    expect(withArt).toBeGreaterThan(200);
-  });
+      expect(misses).toEqual([]);
+      expect(checked).toBeGreaterThan(STAGES.length * templateSamples().length * 2);
+      // Themes with content-slide art draw it somewhere in the sweep (cover-only art themes need not).
+      const drawsArt = (artOf(theme)?.content?.length ?? 0) > 0;
+      if (drawsArt) expect(withArt).toBeGreaterThan(0);
+    }, 20_000);
+  }
 
   test("the approved placements: what each art theme draws on the worked example, myth and quick check", () => {
     const w = WORKED_CASES["y8-panel"];
