@@ -652,15 +652,18 @@
 }
 
 @media (max-width: 760px) {
+  /* Greg's answer 67: on a phone the companion is about 120 px tall while the lesson writes, so the
+   * slides being written stay in view under it. */
   .creation-generation-anchor {
-    margin-top: 28px;
-    margin-bottom: 32px;
+    height: 120px;
+    margin-top: 24px;
+    margin-bottom: 8px;
   }
   .creation-generation-status {
-    top: -24px;
+    top: -22px;
   }
   [data-editor-companion="mobile"]:has(.creation-generation-anchor) {
-    height: 250px;
+    height: 152px;
   }
   .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
     height: 0;
