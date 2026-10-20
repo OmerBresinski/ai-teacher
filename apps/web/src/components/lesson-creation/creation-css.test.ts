@@ -1,44 +1,59 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /*
  * The phone's generation companion leaves without a layout shift (UX audit, CLS at 390 was 0.168
- * when the slot collapsed to height 0): the slot keeps its height and fades, and the slide list
- * rises over it by a transform, which the browser does not count as a shift.
+ * when the slot collapsed to height 0). Measured on the computed styles of the real stylesheet at
+ * a phone's width: the slot keeps its height through the exit and fades, and the slide list rises
+ * over it by a transform (not counted as a shift), growing at its foot by the same amount.
  */
-const css = readFileSync(resolve(__dirname, "creation.css"), "utf8");
-const FINISHED =
-  '.creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"]';
+type HappyWindow = Window & {
+  happyDOM?: { setViewport: (v: { width: number; height: number }) => void };
+};
+const view = window as HappyWindow;
+const style = document.createElement("style");
+let width = 1024;
+let height = 768;
 
-function rulesFor(selector: string): string[] {
-  const out: string[] = [];
-  let at = css.indexOf(`${selector} {`);
-  while (at !== -1) {
-    const open = css.indexOf("{", at);
-    out.push(css.slice(open + 1, css.indexOf("}", open)));
-    at = css.indexOf(`${selector} {`, open);
-  }
-  return out;
+beforeAll(() => {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  style.textContent = readFileSync(resolve(__dirname, "creation.css"), "utf8");
+  document.head.append(style);
+  view.happyDOM?.setViewport({ width: 390, height: 844 });
+});
+afterAll(() => {
+  style.remove();
+  view.happyDOM?.setViewport({ width, height });
+  document.body.innerHTML = "";
+});
+
+function page() {
+  document.body.innerHTML = `<div class="creation-editor-preview" data-story-finished="false"><aside data-editor-companion="mobile"><div class="creation-generation-anchor"></div></aside><div data-list></div></div>`;
+  const root = document.querySelector(".creation-editor-preview") as HTMLElement;
+  const slot = document.querySelector("aside") as HTMLElement;
+  const list = document.querySelector("[data-list]") as HTMLElement;
+  return { root, slot, list };
 }
 
 describe("phone companion exit", () => {
-  test("the finished slot fades in place and never collapses its height", () => {
-    const slot = rulesFor(FINISHED);
-    expect(slot.length).toBeGreaterThan(0);
-    for (const body of slot) expect(body).not.toMatch(/height:\s*0/);
-    expect(slot.join("\n")).toMatch(/opacity:\s*0/);
+  test("the slot holds its height through the exit and fades", () => {
+    const { root, slot } = page();
+    expect(window.innerWidth).toBe(390);
+    const before = getComputedStyle(slot).height;
+    expect(before).toBe("152px");
+    root.dataset.storyFinished = "true";
+    expect(getComputedStyle(slot).height).toBe(before);
+    expect(getComputedStyle(slot).opacity).toBe("0");
+    expect(getComputedStyle(slot).visibility).toBe("hidden");
   });
 
-  test("the slide list rises by a transform and grows at its foot by the same amount", () => {
-    const list = rulesFor(`${FINISHED} + *`).join("\n");
-    expect(list).toMatch(/transform:\s*translateY\(calc\(-1 \* var\(--companion-slot, 152px\)\)\)/);
-    expect(list).toMatch(/margin-bottom:\s*calc\(-1 \* var\(--companion-slot, 152px\)\)/);
-  });
-
-  test("the slot the list rises over is the phone companion's height", () => {
-    expect(css).toMatch(
-      /\[data-editor-companion="mobile"\]:has\(\.creation-generation-anchor\) \{\s*height: 152px;/,
-    );
+  test("the list rises by the slot's height as a transform and grows at its foot to match", () => {
+    const { root, list } = page();
+    expect(getComputedStyle(list).transform).toMatch(/^(none|)$/);
+    root.dataset.storyFinished = "true";
+    expect(getComputedStyle(list).transform).toBe("translateY(calc(-1 * 152px))");
+    expect(getComputedStyle(list).marginBottom).toBe("calc(-1 * 152px)");
   });
 });

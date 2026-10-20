@@ -1,7 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import type { Slide } from "@tj/domain/documents";
 import { renderTheme } from "../model/themes";
+import type { FirstSlidesReveal } from "./first-slides-reveal";
 import { createDraftStore } from "./live-draft";
 import { MobileSlideList } from "./MobileSlideList";
 import { NO_PROPOSALS, ProposalsContext } from "./proposals-context";
@@ -100,5 +101,127 @@ describe("MobileSlideList drafts", () => {
     view.unmount();
     const plain = render(<MobileSlideList slides={lesson.slides} theme={theme} />);
     expect(plain.container.querySelector("[data-live-slide]")).toBeNull();
+  });
+});
+
+describe("MobileSlideList review fixes", () => {
+  const doc = (text: string) => ({
+    type: "doc" as const,
+    content: [{ type: "paragraph" as const, content: [{ type: "text" as const, text }] }],
+  });
+  const withText = (slide: Slide, text: string): Slide => ({
+    ...slide,
+    elements: [
+      {
+        id: "d-1",
+        type: "text",
+        x: 64,
+        y: 46,
+        w: 832,
+        h: 120,
+        doc: doc(text),
+        style: { preset: "body", fontSize: 28 },
+      } as Slide["elements"][number],
+    ],
+  });
+  const words = (el: Element | null | undefined) =>
+    (el?.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
+  function scene(reveal?: FirstSlidesReveal) {
+    const lesson = seededLesson();
+    const target = lesson.slides[1];
+    if (!target) throw new Error("seeded lesson has no second slide");
+    const saved = withText(target, "One two three four five six");
+    const slides = lesson.slides.map((s) => (s.id === target.id ? saved : s));
+    const drafts = createDraftStore();
+    const view = render(
+      <ProposalsContext.Provider
+        value={{ ...NO_PROPOSALS, drafts, reveal, writingSlideIds: new Set([target.id]) }}
+      >
+        <MobileSlideList slides={slides} theme={renderTheme(lesson)} />
+      </ProposalsContext.Provider>,
+    );
+    const card = () =>
+      view.container.querySelector(`[data-mobile-slide="${target.id}"] .mobile-lesson-paper`);
+    return { view, drafts, target, saved, card };
+  }
+
+  test("a draft taking over from the first-slides reveal carries on from the typed words", () => {
+    const reveal = {
+      words: () => 3,
+      current: () => undefined,
+      subscribe: () => () => {},
+      arm: () => {},
+      start: () => {},
+    } as unknown as FirstSlidesReveal;
+    const { drafts, target, saved, card } = scene(reveal);
+    // The reveal has typed three words of the saved copy.
+    expect(words(card())).toBe(3);
+    act(() =>
+      drafts.set([
+        {
+          index: 1,
+          slideId: target.id,
+          slide: withText(saved, "One two three four five six seven eight"),
+        },
+      ]),
+    );
+    // The draft does not start again from the first word.
+    expect(words(card())).toBeGreaterThanOrEqual(3);
+    expect(
+      card()?.querySelector("[data-live-slide]") ?? card()?.closest("[data-live-slide]"),
+    ).toBeTruthy();
+  });
+
+  test("with reduced motion a draft shows whole at once", () => {
+    const was = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("reduce"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const { drafts, target, saved, card } = scene();
+      act(() =>
+        drafts.set([
+          {
+            index: 1,
+            slideId: target.id,
+            slide: withText(saved, "One two three four five six seven eight"),
+          },
+        ]),
+      );
+      expect(words(card())).toBe(8);
+    } finally {
+      window.matchMedia = was;
+    }
+  });
+
+  test("a wheel or a swipe on the list ends the follow: it is not pulled back", () => {
+    const lesson = seededLesson();
+    const theme = renderTheme(lesson);
+    const ids = lesson.slides.map((s) => s.id);
+    const scrollTo = mock();
+    const proto = HTMLElement.prototype as unknown as { scrollTo: unknown };
+    const was = proto.scrollTo;
+    proto.scrollTo = scrollTo;
+    try {
+      for (const gesture of ["wheel", "touchMove"] as const) {
+        scrollTo.mockClear();
+        const view = render(
+          <MobileSlideList slides={lesson.slides} theme={theme} followId={ids[0]} />,
+        );
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+        const list = view.container.querySelector("[data-mobile-lesson-list]") as HTMLElement;
+        fireEvent[gesture](list);
+        view.rerender(<MobileSlideList slides={lesson.slides} theme={theme} followId={ids[1]} />);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+        view.unmount();
+      }
+    } finally {
+      proto.scrollTo = was;
+    }
   });
 });

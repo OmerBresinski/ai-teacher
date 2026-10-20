@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { isBudgetStopMessage } from "@tj/domain";
-import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
+import {
+  hasEditableSlides,
+  isStartingJob,
+  type Lesson,
+  startingJobBase,
+  writingSlideIds,
+} from "@tj/domain/documents";
 import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
 import {
@@ -197,7 +203,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       if (!row || !base || !editor || !sessionIsCurrent(queryClient)) return undefined;
       if (row.meta.updatedAt < base.at) return undefined;
       const merged = editor.receiveGenerated(base.body, row.body);
-      folded.current = { jobId: base.jobId, body: row.body, at: row.meta.updatedAt };
+      // A row the job has not marked yet is all the job's (`startingJobBase`).
+      folded.current = {
+        jobId: base.jobId,
+        body: startingJobBase(row.body),
+        at: row.meta.updatedAt,
+      };
       libraryCache.setMetaIfNewer(queryClient, lessonId, row.meta);
       return merged;
     })();
@@ -521,12 +532,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // marked any slide, so the teacher sees one bar from Continue on rather than the generating
   // shell's bar giving way to the editor's. Until the job says which slides it owns, it owns them
   // all: every slide is read-only and marked "Writing" (ruling 189).
-  const starting =
-    !!fillingJobId &&
-    data.plan?.state === "confirmed" &&
-    data.generation?.stage === "planned" &&
-    !data.generation.slideStates &&
-    data.slides.length > 0;
+  const starting = !!fillingJobId && isStartingJob(data);
   if (
     fillingJobId &&
     unlocked?.jobId !== fillingJobId &&
@@ -539,10 +545,10 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0 || starting,
     })
   ) {
-    setUnlocked({ jobId: fillingJobId, base: data });
+    setUnlocked({ jobId: fillingJobId, base: startingJobBase(data) });
     // The first merge's base: the row the editor opens on, unless Try again already read it.
     if (folded.current?.jobId !== fillingJobId)
-      folded.current = { jobId: fillingJobId, body: data, at: meta.updatedAt };
+      folded.current = { jobId: fillingJobId, body: startingJobBase(data), at: meta.updatedAt };
   }
   const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
   if (filling && !handoffFocus.current.done) handoffFocus.current = { pending: true, done: true };

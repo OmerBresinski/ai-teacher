@@ -602,6 +602,11 @@
   }
 }
 
+/* The phone companion's box: a 120 px character with 24 px above and 8 px below (answer 67). The
+ * slot's height and the slide list's rise when the story ends both read it. */
+.creation-editor-preview {
+  --companion-slot: 152px;
+}
 .creation-generation-layer {
   pointer-events: none;
 }
@@ -622,8 +627,8 @@
     visibility 0s 250ms;
 }
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] + * {
-  transform: translateY(calc(-1 * var(--companion-slot, 152px)));
-  margin-bottom: calc(-1 * var(--companion-slot, 152px));
+  transform: translateY(calc(-1 * var(--companion-slot)));
+  margin-bottom: calc(-1 * var(--companion-slot));
 }
 @media (prefers-reduced-motion: reduce) {
   [data-editor-companion="mobile"] + *,
@@ -675,7 +680,7 @@
   /* Greg's answer 67: on a phone the companion is about 120 px tall while the lesson writes, so the
    * slides being written stay in view under it. */
   .creation-generation-anchor {
-    height: 120px;
+    height: calc(var(--companion-slot, 152px) - 32px);
     margin-top: 24px;
     margin-bottom: 8px;
   }
@@ -683,7 +688,7 @@
     top: -22px;
   }
   [data-editor-companion="mobile"]:has(.creation-generation-anchor) {
-    height: 152px;
+    height: var(--companion-slot);
   }
 }
 

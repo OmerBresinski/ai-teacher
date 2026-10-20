@@ -49,9 +49,15 @@ export function MobileSlideList({
       initial.current = undefined;
     } else if (followArrivals && following.current) el.scrollTop = el.scrollHeight;
   }, [count, hidden, followArrivals]);
+  // The teacher's own scroll (a wheel, a swipe, momentum after it) ends the follow on this list for
+  // good: the list is never pulled back to the writing slide under their finger.
+  const taken = useRef(false);
+  const takeOver = () => {
+    taken.current = true;
+  };
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || hidden || !followId) return;
+    if (!el || hidden || !followId || taken.current) return;
     const card = Array.from(el.querySelectorAll<HTMLElement>("[data-mobile-slide]")).find(
       (node) => node.dataset.mobileSlide === followId,
     );
@@ -72,6 +78,9 @@ export function MobileSlideList({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the named scroll region must support keyboard scrolling.
       tabIndex={0}
       className="mobile-lesson-list"
+      onWheel={takeOver}
+      onTouchStart={takeOver}
+      onTouchMove={takeOver}
       onScroll={(event) => {
         const el = event.currentTarget;
         following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
@@ -136,18 +145,19 @@ export function MobileSlideList({
  * until the saved copy catches up, so a card never flashes an older copy at the hand-over.
  */
 function WritingSlideView({ slide, theme }: { slide: Slide; theme: Theme }) {
-  const { drafts, writingSlideIds } = useProposals();
+  const { drafts, reveal, writingSlideIds } = useProposals();
   const pictured = useWritingPicture(slide, false);
   if (!drafts) return <SlideView slide={pictured} theme={theme} mode="view" />;
+  // One `LiveSlide` owns the card's outline, the first-slides reveal and the draft, so a draft that
+  // takes over from the reveal carries on from the words already typed, caret and all.
   return (
     <LiveSlide
       store={drafts}
       slideId={slide.id}
       slide={slide}
       writing={writingSlideIds?.has(slide.id) ?? false}
-      render={(shown, live) => (
-        <SlideView slide={live && shown ? shown : pictured} theme={theme} mode="view" />
-      )}
+      reveal={reveal}
+      render={(shown) => <SlideView slide={shown ?? slide} theme={theme} mode="view" />}
     />
   );
 }
