@@ -1,15 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { ShapeElement, SlideElement, TextElement } from "@tj/domain/documents";
+import { coverDropsQuestion } from "../cover-comps";
 import { coverStepped } from "../fit-check";
 import { coverTypeAt, readingFloorOf } from "../layout-sizes";
 import { resolveTextStyle, snapToScale } from "../text-style";
 import { atKeyStage, getTheme, THEMES, typeScale } from "../themes";
-import {
-  COVER_GROUPS,
-  type CoverGroup,
-  coverCapInput,
-  measureCoverCapacity,
-} from "./cover-capacity";
+import { COVER_GROUPS, type CoverGroup, coverCapacityBinds, coverCapInput } from "./cover-capacity";
 import CAPACITY from "./cover-capacity.json" with { type: "json" };
 import { hingeCapInput } from "./hinge-capacity";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
@@ -147,12 +143,18 @@ describe("worked: the gold's equations and moves", () => {
 });
 
 describe("the cover's caps: the gold's three title lines, two question lines", () => {
-  // Every theme, stage and word mix at 2-char steps: a few seconds.
+  // Every theme, stage and word mix at each cap and two characters past it: the generator's own
+  // stopping rule at its answer. The full 2-character walk runs in `caps:check`.
   test("renderer = table (cover-capacity.json)", () => {
-    expect(measureCoverCapacity()).toEqual(CAPACITY);
+    expect(coverCapacityBinds(CAPACITY)).toEqual([]);
   }, 60_000);
-  const lines = (t: TextElement) =>
-    Math.round(t.h / ((t.style.fontSize as number) * (t.style.lineHeight as number)));
+  // The box less its ink margin (a padded title, TEACH-152 part b), in lines of its size.
+  const lines = (t: TextElement) => {
+    const pad = typeof t.style.padding === "number" ? t.style.padding : 0;
+    return Math.round(
+      (t.h - 2 * pad) / ((t.style.fontSize as number) * (t.style.lineHeight as number)),
+    );
+  };
   for (const group of Object.keys(COVER_GROUPS) as CoverGroup[])
     for (const picture of [true, false])
       test(`${group} ${picture ? "with" : "without"} a picture: at the caps, 3 and 2 lines`, () => {
@@ -166,9 +168,12 @@ describe("the cover's caps: the gold's three title lines, two question lines", (
             );
             expect(at.over).toEqual([]);
             const [title] = named(at.slide.elements, "Title") as TextElement[];
-            const [question] = named(at.slide.elements, "Subtitle") as TextElement[];
+            const question = at.slide.elements.find((e) => e.name === "Subtitle") as TextElement;
             expect(lines(title as TextElement)).toBeLessThanOrEqual(3);
-            expect(lines(question as TextElement)).toBeLessThanOrEqual(2);
+            // Greg's call 36 (TEACH-215 part g): photo-right and Beacon picture covers draw none.
+            if (picture && coverDropsQuestion(atKeyStage(theme, stage)))
+              expect(question).toBeUndefined();
+            else expect(lines(question as TextElement)).toBeLessThanOrEqual(2);
           }
       });
   test("a title past three lines at the floor is over (the old six with a picture are not allowed)", () => {

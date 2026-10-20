@@ -75,6 +75,39 @@ const headingOf = (els: El[]) => {
 };
 
 const DIR = join(import.meta.dir, "fixtures/replay");
+/** The themes whose cover TEACH-215 part g recomposed (every round 5 theme but Geometric). */
+const COMPOSED = new Set([
+  "paper",
+  "poster",
+  "treehouse",
+  "reading-room",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+/** Photo-right and Beacon covers: no question on the picture cover (Greg's call 36, part g). */
+const NO_QUESTION = new Set([
+  "treehouse",
+  "reading-room",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+const themeOf = (b: string): string =>
+  (JSON.parse(readFileSync(join(DIR, b, "brief.json"), "utf8")) as { theme?: string }).theme ?? "";
 const LESSONS = readdirSync(DIR).sort();
 const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const stable = (e: El) => {
@@ -130,6 +163,21 @@ describe.each(LESSONS)("replay %s", (b) => {
       // stage), so the lab's saved hinge is not its geometry; its answer cards are still drawn.
       if (s.kind === "multiple-choice" && want.kind === "multiple-choice") {
         expect(got.some((e) => e.name === "Option")).toBe(true);
+        return;
+      }
+      // TEACH-215 part g (19 Oct 2026): the cover (slide 0) on a theme whose round 5 composition
+      // changed it (every theme but Geometric) is set on the theme's own ground, so the lab's
+      // saved cover is not its geometry or ground; its title, picture and question still are.
+      if (i === 0 && s.kind === "title" && want.kind === "title" && COMPOSED.has(themeOf(b))) {
+        const has = (els: El[], name: string) => els.some((e) => e.name === name);
+        expect({ i, title: has(got, "Title") }).toEqual({ i, title: true });
+        expect({ i, photo: has(got, "Photo") }).toEqual({ i, photo: has(want.elements, "Photo") });
+        // Greg's call 36: a photo-right or Beacon picture cover draws no question.
+        const drops = NO_QUESTION.has(themeOf(b)) && has(got, "Photo");
+        expect({ i, q: has(got, "Subtitle") }).toEqual({
+          i,
+          q: has(want.elements, "Subtitle") && !drops,
+        });
         return;
       }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {

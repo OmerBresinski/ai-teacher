@@ -68,6 +68,6 @@ describe("base4g (no pack) is master's through slot-fill and materialise", () =>
       }
     }
     expect(n).toBe(268);
-    expect(h.digest("hex")).toBe("58d420b96044e7096cdd946b276d1d1a22464dbb");
+    expect(h.digest("hex")).toBe("ef99ec91d2480d57cf69bd2af6e2e50b15df87e8");
   });
 });

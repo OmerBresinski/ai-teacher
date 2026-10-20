@@ -1,4 +1,4 @@
-import { createScorer } from "@mastra/core/evals";
+import { createScorer, notScorable } from "@mastra/core/evals";
 import type { Budget, CreatedAi } from "@tj/ai";
 import {
   checkLesson,
@@ -161,6 +161,22 @@ export function rubricJudgeInput(output: ScorerOutput): RubricJudgeInput {
   };
 }
 
+/**
+ * The judge's output tokens. At 1500 the judge (gpt-6-luna, medium effort) ran out on 9 of 12
+ * lessons and returned no rubric (build/TECH-DEBT-QUEUE.md, 19 Oct 2026); with 8000 it scores,
+ * using about 1800.
+ */
+export const JUDGE_MAX_OUT = 8000;
+
+/**
+ * Whether the lesson came with a worksheet. The eval harness makes none (the worksheet is its own
+ * job, ADR 0030), and rubric v2 (docs/eval/judge-rubric-v2.md) says to ignore worksheets, so
+ * without one `worksheetValueAdd` is unscored rather than a 1 that drags every mean down.
+ */
+export function hasWorksheet(output: Pick<ScorerOutput, "worksheet">): boolean {
+  return (output.worksheet?.blocks.length ?? 0) > 0;
+}
+
 /** Mean of the non-null scores, to one decimal; `null` when none. */
 export function rubricMean(dimensions: Record<RubricDimension, number | null>): number | null {
   const scored = Object.values(dimensions).filter((s): s is number => s !== null);
@@ -169,7 +185,7 @@ export function rubricMean(dimensions: Record<RubricDimension, number | null>): 
 }
 
 type RubricAnalysis =
-  | { ok: true; output: RubricOutput }
+  | { ok: true; output: RubricOutput; worksheet: boolean }
   | { ok: false; reason: "no-judge" | "budget" | "failed" };
 
 /**
@@ -180,55 +196,67 @@ type RubricAnalysis =
  * scores `null` so the eval still finishes and writes its file.
  */
 export function rubricJudgeScorer(judge: JudgeDeps) {
-  return createScorer<string, ScorerOutput>({
-    id: "rubric-judge",
-    description: "eight-dimension rubric scored 1–5 by the frontier model over the whole lesson",
-  })
-    .analyze(async ({ run }): Promise<RubricAnalysis> => {
-      if (judge.budget.exceeded()) return { ok: false, reason: "budget" };
-      try {
-        const result = await callStructured({
-          deps: {
-            ai: judge.ai,
-            budget: judge.budget,
-            signal: judge.signal,
-            logger: pino({ level: "silent" }),
-            context: judge.context,
-          },
-          stage: "evaluate",
-          cls: "frontier",
-          // Judging is thinking work; `medium` rather than `high` keeps Sol's wall time bounded.
-          effort: "medium",
-          prompt: rubricJudgePrompt,
-          input: rubricJudgeInput(run.output),
-          schema: RubricOutputSchema,
-          maxOutputTokens: 1500,
-          images: judgeImages(run.output.lesson),
-        });
-        return { ok: true, output: result.output };
-      } catch (error) {
-        if (error instanceof BudgetExceeded) return { ok: false, reason: "budget" };
-        if (error instanceof StageFailure) return { ok: false, reason: "failed" };
-        return { ok: false, reason: "failed" };
-      }
+  return (
+    createScorer<string, ScorerOutput>({
+      id: "rubric-judge",
+      description: "eight-dimension rubric scored 1–5 by the frontier model over the whole lesson",
     })
-    .generateScore(({ results }) => {
-      const analysis = results.analyzeStepResult;
-      if (!analysis.ok) return 0;
-      return rubricMean(scoresOf(analysis.output)) ?? 0;
-    })
-    .generateReason(({ results }) => {
-      const analysis = results.analyzeStepResult;
-      if (!analysis.ok) return `rubric not scored (${analysis.reason}).`;
-      const scores = scoresOf(analysis.output);
-      const scored = Object.values(scores).filter((s) => s !== null).length;
-      return `${scored} dimensions scored, mean ${rubricMean(scores) ?? "-"}.`;
-    });
+      .analyze(async ({ run }): Promise<RubricAnalysis> => {
+        if (judge.budget.exceeded()) return { ok: false, reason: "budget" };
+        try {
+          const result = await callStructured({
+            deps: {
+              ai: judge.ai,
+              budget: judge.budget,
+              signal: judge.signal,
+              logger: pino({ level: "silent" }),
+              context: judge.context,
+            },
+            stage: "evaluate",
+            cls: "frontier",
+            // Judging is thinking work; `medium` rather than `high` keeps Sol's wall time bounded.
+            effort: "medium",
+            prompt: rubricJudgePrompt,
+            input: rubricJudgeInput(run.output),
+            schema: RubricOutputSchema,
+            maxOutputTokens: JUDGE_MAX_OUT,
+            images: judgeImages(run.output.lesson),
+          });
+          return { ok: true, output: result.output, worksheet: hasWorksheet(run.output) };
+        } catch (error) {
+          if (error instanceof BudgetExceeded) return { ok: false, reason: "budget" };
+          if (error instanceof StageFailure) return { ok: false, reason: "failed" };
+          return { ok: false, reason: "failed" };
+        }
+      })
+      // A lesson with no scored dimension, or no judge answer, is unscored, never a 0 that would
+      // read as the worst lesson (scoreLesson already writes `rubric: null` / `mean: null` there).
+      .generateScore(({ results }) => {
+        const analysis = results.analyzeStepResult;
+        if (!analysis.ok) return notScorable(`rubric not scored (${analysis.reason})`);
+        return (
+          rubricMean(scoresOf(analysis.output, analysis.worksheet)) ??
+          notScorable("no dimension scored")
+        );
+      })
+      .generateReason(({ results }) => {
+        const analysis = results.analyzeStepResult;
+        if (!analysis.ok) return `rubric not scored (${analysis.reason}).`;
+        const scores = scoresOf(analysis.output, analysis.worksheet);
+        const scored = Object.values(scores).filter((s) => s !== null).length;
+        return `${scored} dimensions scored, mean ${rubricMean(scores) ?? "-"}.`;
+      })
+  );
 }
 
-function scoresOf(output: RubricOutput): Record<RubricDimension, number | null> {
+/** The judge's scores, with `worksheetValueAdd` unscored when the lesson has no worksheet. */
+export function scoresOf(
+  output: RubricOutput,
+  worksheet: boolean,
+): Record<RubricDimension, number | null> {
   const scores = {} as Record<RubricDimension, number | null>;
   for (const d of RUBRIC_DIMENSIONS) scores[d] = output.dimensions[d].score;
+  if (!worksheet) scores.worksheetValueAdd = null;
   return scores;
 }
 
@@ -264,7 +292,7 @@ export async function scoreLesson(
   if (!analysis?.ok) {
     return { scores: { schema: schemaScore, modelFindings: modelScore, rubric: null } };
   }
-  const dimensions = scoresOf(analysis.output);
+  const dimensions = scoresOf(analysis.output, analysis.worksheet);
   return {
     scores: {
       schema: schemaScore,
