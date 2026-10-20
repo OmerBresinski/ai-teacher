@@ -326,6 +326,9 @@ export function layoutStages(c: Ctx, input: TemplateInput) {
       col.accent,
       STAGES_NAMES.icon,
       it.name,
+      // As the myth's proof medals: a theme whose gold outlines its icons in ink (every round 5
+      // gold draws the pilot library) draws the outlined style (THEME-AUDIT-r2 #1).
+      surfacesOf(c.t).marks.iconOutline ? "pilot" : undefined,
     );
     if (image.src) c.els.push({ ...image, radius: 0 });
   });

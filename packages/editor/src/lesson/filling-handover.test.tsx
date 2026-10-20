@@ -222,4 +222,45 @@ describe("the filling editor", () => {
     expect(el?.getAttribute("data-save-state")).not.toBe("saved");
     expect(el?.hasAttribute("data-save-quiet")).toBe(true);
   });
+
+  test("the companion leaves once the first slide has words, and does not come back", () => {
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const drafts = createDraftStore();
+    const { container, rerender, tree } = setup(lesson, {
+      companion: <div data-test-companion />,
+    });
+    act(() => rerender(tree(new Set(ids), drafts)));
+    const slot = () => container.querySelector('[data-editor-companion="desktop"]');
+    expect(slot()).not.toBeNull();
+    // A draft with only its layout is not words yet.
+    act(() =>
+      drafts.set([{ index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "") }]),
+    );
+    expect(slot()).not.toBeNull();
+    act(() =>
+      drafts.set([
+        { index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "Find a quarter") },
+      ]),
+    );
+    expect(slot()).toBeNull();
+    act(() => drafts.set([]));
+    expect(slot()).toBeNull();
+  });
+
+  test("the pill says only what the writer is doing", () => {
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const drafts = createDraftStore();
+    const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[2] });
+    act(() => rerender(tree(new Set(ids), drafts)));
+    const pill = () => container.querySelector("[data-slide-writing-overlay]")?.textContent?.trim();
+    expect(pill()).toBe("Planning the slides…");
+    act(() =>
+      drafts.set([
+        { index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "Divide by four") },
+      ]),
+    );
+    expect(pill()).toBe("Writing this slide…");
+  });
 });
