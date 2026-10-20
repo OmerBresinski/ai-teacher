@@ -608,8 +608,28 @@
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="desktop"] {
   display: none;
 }
+/* The phone's companion leaves without moving the slides' layout (UX audit, CLS at 390): its slot
+ * keeps its height and fades, and the slide list rises over it by a transform (not a layout
+ * change), growing at the foot by the same amount so its bottom stays at the screen's edge. */
+[data-editor-companion="mobile"] + * {
+  transition: transform 300ms ease;
+}
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
-  height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 250ms ease,
+    visibility 0s 250ms;
+}
+.creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] + * {
+  transform: translateY(calc(-1 * var(--companion-slot, 152px)));
+  margin-bottom: calc(-1 * var(--companion-slot, 152px));
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-editor-companion="mobile"] + *,
+  .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
+    transition: none;
+  }
 }
 
 /* The receiver cannot appear until the incoming solo character reaches centre. */
@@ -664,9 +684,6 @@
   }
   [data-editor-companion="mobile"]:has(.creation-generation-anchor) {
     height: 152px;
-  }
-  .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
-    height: 0;
   }
 }
 

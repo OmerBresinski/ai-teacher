@@ -568,9 +568,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       : writingSlideIds(data)
     : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
-  const companionSlot = showStory ? (
-    <div ref={setDestination} className="creation-generation-anchor" />
-  ) : undefined;
+  // The slot outlives the story: on a phone it keeps its place (faded) so the companion leaving
+  // moves no slide (creation.css, "The phone's companion leaves…").
+  const companionSlot =
+    showStory || (storyStarted && storyFinished) ? (
+      <div ref={setDestination} className="creation-generation-anchor" />
+    ) : undefined;
   const shownLesson = displayInTheme(data, pickedTheme);
   const content = !editorOpen ? (
     <Suspense fallback={<RoutePendingPage />}>
