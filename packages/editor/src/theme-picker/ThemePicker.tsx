@@ -50,8 +50,13 @@ export type ThemePickerProps = {
   title: string;
   /** The lesson's age band: the previews use its key stage. */
   ageBand?: string | null;
-  /** The cover's second line (the lesson's own, or "Year 4 · Science"); none when empty. */
+  /** The cover's second line ("Year 4 · Science"); none when empty. */
   subtitle?: string;
+  /**
+   * An open lesson's own slides in a theme (the editor): every tile and the large preview draw
+   * these instead of the sample lesson. Cached by the caller.
+   */
+  samplesFor?: (themeId: string) => ThemeSamples;
   className?: string;
 };
 
@@ -203,6 +208,7 @@ type TileProps = {
   title: string;
   ageBand?: string | null;
   subtitle?: string;
+  samplesFor?: (themeId: string) => ThemeSamples;
   kitReady: boolean;
   selected: boolean;
   tabbable: boolean;
@@ -216,6 +222,7 @@ const Tile = memo(function Tile({
   title,
   ageBand,
   subtitle,
+  samplesFor,
   kitReady,
   selected,
   tabbable,
@@ -225,8 +232,15 @@ const Tile = memo(function Tile({
   const descId = useId();
   const [ref, near] = useNearView(`${base.id}|${title}|${ageBand ?? ""}|${subtitle ?? ""}`);
   const samples = useMemo(
-    () => (near && kitReady ? themeSamples(base.id, title, ageBand, subtitle) : null),
-    [near, kitReady, base.id, title, ageBand, subtitle],
+    () =>
+      !near
+        ? null
+        : samplesFor
+          ? samplesFor(base.id)
+          : kitReady
+            ? themeSamples(base.id, title, ageBand, subtitle)
+            : null,
+    [near, kitReady, base.id, title, ageBand, subtitle, samplesFor],
   );
   const theme = samples?.theme ?? base;
   const { who } = suitsOf(theme);
@@ -317,6 +331,7 @@ export function ThemePicker({
   title,
   ageBand,
   subtitle,
+  samplesFor,
   className,
 }: ThemePickerProps) {
   const [tag, setTag] = useState<ThemeTagId | null>(null);
@@ -326,13 +341,13 @@ export function ThemePicker({
   const shownTitle = title.trim() || "Untitled lesson";
 
   useEffect(() => {
-    if (kitReady) return;
+    if (kitReady || samplesFor) return;
     let live = true;
     void loadSampleKit().then(() => live && setKitReady(true));
     return () => {
       live = false;
     };
-  }, [kitReady]);
+  }, [kitReady, samplesFor]);
 
   const themes = useMemo(() => (tag ? THEMES.filter((t) => t.tags.includes(tag)) : THEMES), [tag]);
   const counts = useMemo(() => {
@@ -365,18 +380,11 @@ export function ThemePicker({
   // The large preview follows the pointer or focus, else the chosen theme.
   const shownId = peek ?? selectedId;
   const chosen = shownId === selectedId;
-  const spotlight = useMemo(
-    () =>
-      kitReady
-        ? themeSamples(
-            THEMES.some((t) => t.id === shownId) ? shownId : "paper",
-            shownTitle,
-            ageBand,
-            subtitle,
-          )
-        : null,
-    [kitReady, shownId, shownTitle, ageBand, subtitle],
-  );
+  const spotlight = useMemo(() => {
+    const id = THEMES.some((t) => t.id === shownId) ? shownId : "paper";
+    if (samplesFor) return samplesFor(id);
+    return kitReady ? themeSamples(id, shownTitle, ageBand, subtitle) : null;
+  }, [kitReady, shownId, shownTitle, ageBand, subtitle, samplesFor]);
 
   // Keep the chosen tile in view when the picker opens (on open only, not on every pick).
   // biome-ignore lint/correctness/useExhaustiveDependencies: on open only.
@@ -406,6 +414,7 @@ export function ThemePicker({
               title={shownTitle}
               ageBand={ageBand}
               subtitle={subtitle}
+              samplesFor={samplesFor}
               kitReady={kitReady}
               selected={theme.id === selectedId}
               tabbable={theme.id === tabbableId}

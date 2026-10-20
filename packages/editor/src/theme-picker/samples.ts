@@ -48,11 +48,11 @@ export function setSamplePhotos(fn: (label: string) => string): void {
 
 export type ThemeSamples = {
   theme: Theme;
-  /** The cover, its picture slot filled with a sample photo. */
+  /** The cover: the lesson's own, or the sample's with its picture slot open. */
   cover: Slide;
-  /** The tile's second slide: the theme's stages (its shapes, accent and connectors). */
+  /** The tile's second slide: the most visual one. */
   visual: Slide;
-  /** The large preview's layouts: a picture with text, stages and a hinge question. */
+  /** The large preview's slides after the cover. */
   layouts: Slide[];
 };
 
@@ -64,8 +64,13 @@ function stageOf(ageBand?: string | null): "ks1" | "ks2" | "ks3" | "ks4" | "ks5"
   return ageBand && /^ks[1-5]$/.test(ageBand) ? (ageBand as "ks1") : "ks2";
 }
 
-/** The picker's layouts, in the order the large preview shows them. */
-export const SAMPLE_LAYOUTS = ["picture-text", "stages", "hinge"] as const;
+/**
+ * The sample lesson's layouts with no lesson yet (the blank dialog), in the order the large preview
+ * shows them: one coherent Year 1 lesson, "Animals and their young" (a lamb with its ewe, a hen's
+ * life cycle, a hinge question on which young look like their parents). The tile's second slide is
+ * the life cycle diagram.
+ */
+export const SAMPLE_LAYOUTS = ["picture-text", "diagram-text", "hinge"] as const;
 
 /**
  * The theme's sample slides for a lesson called `title` (with `subtitle` on the cover, or none),
@@ -90,7 +95,12 @@ export function themeSamples(
     const laid = (kit as Kit).layoutTemplate({ ...input, ...patch } as typeof input, theme, stage);
     return { id: `sample-${themeId}-${template}`, ...laid.slide };
   };
-  const cover = lay("title", { heading: title, lead: subtitle || undefined });
+  // The teacher's title on the cover, so its picture slot stays open: no photo of another topic.
+  const cover = lay("title", {
+    heading: title,
+    lead: subtitle || undefined,
+    figure: { photo: "", aspect: 4 / 3, alt: "" },
+  });
   const layouts = SAMPLE_LAYOUTS.map((t) => lay(t));
   const samples = { theme, cover, visual: layouts[1] as Slide, layouts };
   if (cache.size >= MAX_CACHED) {
@@ -99,6 +109,48 @@ export function themeSamples(
   }
   cache.set(key, samples);
   return samples;
+}
+
+/** How much a slide shows of a theme's look: pictures, diagrams, answer cards, shapes. */
+function visualScore(slide: Slide): number {
+  if (["title", "objectives", "starter", "exit-ticket", "plenary"].includes(slide.kind)) return -1;
+  let score = 0;
+  const walk = (els: Slide["elements"]) => {
+    for (const el of els) {
+      if (el.type === "image") score += el.src && !el.src.startsWith("data:image/svg") ? 4 : 2;
+      else if (el.type === "option") score += 1;
+      else if (el.type === "icon" || el.type === "path") score += 0.5;
+      else if (el.type === "table") score += 1;
+      else if (el.type === "shape") score += 0.25;
+      else if (el.type === "group") {
+        score += 1;
+        walk(el.children);
+      }
+    }
+  };
+  walk(slide.elements);
+  if (slide.question) score += 2;
+  return score;
+}
+
+/**
+ * The open lesson's own slides for the picker (TEACH-258 part b, review 20 Oct: "see your lesson in
+ * this theme"): its cover, its most visual slide for the tile, and up to three of its most visual
+ * slides, in deck order, for the large preview. Slides with nothing visual fall back to the slides
+ * after the cover.
+ */
+export function lessonPicks(lesson: Lesson): { cover: Slide; visual: Slide; layouts: Slide[] } {
+  const cover = lesson.slides.find((s) => s.kind === "title") ?? lesson.slides[0];
+  if (!cover) throw new Error("lesson has no slides");
+  const rest = lesson.slides.filter((s) => s !== cover);
+  const ranked = rest
+    .map((slide, at) => ({ slide, at, score: visualScore(slide) }))
+    .sort((a, b) => b.score - a.score || a.at - b.at);
+  const best = ranked.filter((r) => r.score > 0);
+  const chosen = (best.length ? best : ranked).slice(0, 3);
+  const visual = chosen[0]?.slide ?? cover;
+  const layouts = [...chosen].sort((a, b) => a.at - b.at).map((r) => r.slide);
+  return { cover, visual, layouts };
 }
 
 /**

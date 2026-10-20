@@ -8,6 +8,7 @@ import {
   cachedSampleCount,
   coverWords,
   fontPair,
+  lessonPicks,
   loadSampleKit,
   paletteOf,
   SAMPLE_LAYOUTS,
@@ -88,7 +89,7 @@ describe("ThemePicker", () => {
     expect(picked()).toBe("beacon");
   });
 
-  test("a tile draws once in view: the cover with its photo and the stages slide, no colour dots", () => {
+  test("a tile draws once in view: the cover (its picture slot open) and a diagram, no colour dots", () => {
     render(<Harness title="Volcanoes lazy" />);
     expect(preview("poster").dataset.ready).toBe("false");
     expect(preview("poster").querySelector("[data-slide-fluid]")).toBeNull();
@@ -98,7 +99,8 @@ describe("ThemePicker", () => {
     expect(tile.querySelectorAll("[data-slide-fluid]")).toHaveLength(2);
     expect(tile.textContent).toContain("Volcanoes lazy");
     expect(tile.textContent).toContain("Year 5. Rocks");
-    expect(tile.querySelector(`img[src="${PHOTO}"]`)).not.toBeNull();
+    // The teacher's title is on the cover: no photo of another topic beside it.
+    expect(tile.querySelector(`img[src="${PHOTO}"]`)).toBeNull();
     // Decision 72: no palette blobs on the tiles.
     expect(tile.querySelector("[data-palette]")).toBeNull();
     expect(preview("treehouse").dataset.ready).toBe("false");
@@ -175,12 +177,36 @@ describe("theme samples", () => {
     expect(themeSamples("treehouse", "Cache check")).toBe(a);
     expect(cachedSampleCount()).toBe(before + 1);
     expect(a.cover.kind).toBe("title");
-    // A picture with text, stages and a hinge question: no numbered-list slide.
-    expect(a.layouts.map((s) => s.kind)).toEqual(["image-text", "content", "multiple-choice"]);
+    // One coherent sample lesson: a lamb picture, a life cycle diagram, a hinge on young animals.
+    expect(a.layouts).toHaveLength(3);
     expect(a.layouts.some((s) => s.kind === "objectives" || s.kind === "starter")).toBe(false);
-    expect(JSON.stringify(a.cover)).toContain(PHOTO);
+    const words = JSON.stringify(a.layouts);
+    expect(words).toContain("Lambs and ewes");
+    expect(words).toContain("egg to hen");
+    expect(words).not.toContain("river");
+    expect(JSON.stringify(a.cover)).not.toContain(PHOTO);
     expect(JSON.stringify(a.layouts[0])).toContain(PHOTO);
     expect(themeSamples("poster", "Cache check")?.cover).not.toBe(a.cover);
+  });
+
+  test("an open lesson's own slides: its cover, then its most visual slides in deck order", () => {
+    const lesson = demoLibrary()[0];
+    if (!lesson) throw new Error("no demo lesson");
+    const picks = lessonPicks(lesson);
+    expect(picks.cover.kind).toBe("title");
+    expect(picks.layouts.length).toBeGreaterThan(0);
+    expect(picks.layouts.length).toBeLessThanOrEqual(3);
+    for (const s of [picks.visual, ...picks.layouts])
+      expect(["title", "objectives", "starter", "exit-ticket"]).not.toContain(s.kind);
+    const at = picks.layouts.map((s) => lesson.slides.indexOf(s));
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(picks.layouts).toContain(picks.visual);
+    // A deck with nothing visual falls back to its next slides.
+    const plain = {
+      ...lesson,
+      slides: lesson.slides.filter((s) => s.kind === "title" || s.kind === "objectives"),
+    };
+    expect(lessonPicks(plain).visual.kind).toBe("objectives");
   });
 
   test("a blank lesson's cover keeps its picture slot open (the placeholder)", async () => {

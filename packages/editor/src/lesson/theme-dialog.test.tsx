@@ -4,7 +4,7 @@ import { useState } from "react";
 import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
-import { coverWords, SAMPLE_LAYOUTS } from "../theme-picker/samples";
+import { lessonPicks } from "../theme-picker/samples";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -146,13 +146,12 @@ describe("where the theme lives (ruling 123)", () => {
     await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
     const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
     expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
-    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + SAMPLE_LAYOUTS.length);
-    // The lesson's own cover words, never sample text (coordinator, 20 Oct: a Year 5 lesson's
-    // previews said "Year 4 · Science").
-    const words = coverWords(read());
-    expect(spot.textContent).toContain(words.title);
-    expect(spot.textContent).toContain(words.subtitle);
-    expect(spot.textContent).not.toContain("Year 4");
+    // "See your lesson in this theme": the lesson's own cover and its most visual slides, never
+    // the sample lesson (review 20 Oct: a water cycle lesson showed lambs and chicks).
+    const picks = lessonPicks(read());
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + picks.layouts.length);
+    expect(spot.textContent).not.toContain("Animals and their young");
+    expect(spot.textContent).not.toContain("Lambs and ewes");
   });
 });
 

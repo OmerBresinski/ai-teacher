@@ -1,11 +1,11 @@
-import type { Lesson } from "@tj/domain/documents";
+import type { Lesson, Slide } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
-import { coverWords } from "../theme-picker/samples";
+import { lessonPicks, type ThemeSamples } from "../theme-picker/samples";
 import { ThemePicker } from "../theme-picker/ThemePicker";
 import { useHistory, useLesson } from "./document-context";
 
@@ -155,16 +155,36 @@ function ThemeChoices({
   onDone: () => void;
   applying?: boolean;
 }) {
-  // The previews carry this lesson's own cover words: its title, its year and its subject.
-  const words = useMemo(() => coverWords(opening), [opening]);
+  // "See your lesson in this theme" (review 20 Oct): every tile and the large preview draw this
+  // lesson's own cover and its most visual slides, recoloured by role into each theme (as the
+  // canvas is while a lesson is made), built once per theme while the picker is open.
+  const samplesFor = useMemo(() => {
+    const picks = lessonPicks(opening);
+    const from = renderTheme(opening);
+    const built = new Map<string, ThemeSamples>();
+    return (themeId: string): ThemeSamples => {
+      const hit = built.get(themeId);
+      if (hit) return hit;
+      const to = renderTheme(opening, themeId);
+      const inTheme = (slide: Slide) => recolourSlide(slide, from, to);
+      const samples = {
+        theme: to,
+        cover: inTheme(picks.cover),
+        visual: inTheme(picks.visual),
+        layouts: picks.layouts.map(inTheme),
+      };
+      built.set(themeId, samples);
+      return samples;
+    };
+  }, [opening]);
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <ThemePicker
         selectedId={selectedId}
         onPick={onPick}
-        title={words.title}
+        title={opening.title}
         ageBand={boundAgeBand(opening)}
-        subtitle={words.subtitle}
+        samplesFor={samplesFor}
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
