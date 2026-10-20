@@ -163,14 +163,17 @@ describeDb("lesson.plan job", () => {
         flushTimeoutMs: 100,
         fetch: async (_url, options) => {
           const body = options.body as unknown;
-          bodies.push(
+          // A string, or bytes (a Blob or a Uint8Array), gzipped when the header says so.
+          const bytes =
             typeof body === "string"
-              ? body
-              : options.headers["Content-Encoding"] === "gzip"
-                ? new TextDecoder().decode(
-                    Bun.gunzipSync(new Uint8Array(await (body as Blob).arrayBuffer())),
-                  )
-                : await (body as Blob).text(),
+              ? new TextEncoder().encode(body)
+              : body instanceof Blob
+                ? new Uint8Array(await body.arrayBuffer())
+                : new Uint8Array(body as ArrayBuffer);
+          bodies.push(
+            new TextDecoder().decode(
+              options.headers["Content-Encoding"] === "gzip" ? Bun.gunzipSync(bytes) : bytes,
+            ),
           );
           if (mode === "refused") throw new Error("ECONNREFUSED");
           return new Promise(() => {});
