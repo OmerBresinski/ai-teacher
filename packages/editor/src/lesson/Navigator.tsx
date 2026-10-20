@@ -32,7 +32,13 @@ import { SHOW_ANSWERS_LABEL, touchesAnswers, useSetAnswersSlides } from "./answe
 import { useHistory, useLesson } from "./document-context";
 import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
-import { useSlideDraft } from "./live-draft";
+import {
+  isPlannedBlank,
+  revealSlide,
+  skeletonSlide,
+  useRevealed,
+  useSlideDraft,
+} from "./live-draft";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
@@ -909,7 +915,22 @@ const NavigatorRow = memo(function NavigatorRow({
   onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
   // A slide being written shows its newest draft, as the canvas does (UX audit J6).
-  const draft = useSlideDraft(useProposals().drafts, writing ? slide.id : undefined);
+  const { drafts, reveal } = useProposals();
+  const draft = useSlideDraft(drafts, writing ? slide.id : undefined);
+  // Before its words, a planned slide shows its outline, as the canvas does; a new lesson's title and
+  // objectives type out here in step with the canvas (TEACH-202 part f, amended 20 Oct 2026).
+  const paced = useRevealed(reveal, writing && !draft ? slide.id : undefined);
+  const outline = writing && !draft && isPlannedBlank(slide);
+  const pictured = useMemo(
+    () =>
+      draft ??
+      (outline
+        ? skeletonSlide(slide)
+        : paced !== undefined
+          ? revealSlide(slide, paced).slide
+          : slide),
+    [draft, outline, paced, slide],
+  );
   const hasNotes = !!slide.notes?.trim();
   const hasSteps = slideStepCount(slide) > 0;
   // Text fitting engine: a slide whose boxes collide, or whose text has been pushed off the slide,
@@ -997,7 +1018,7 @@ const NavigatorRow = memo(function NavigatorRow({
         }}
       >
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
-          <SlideView slide={draft ?? slide} theme={theme} mode="thumb" />
+          <SlideView slide={pictured} theme={theme} mode="thumb" />
         </SlideScaler>
         {/* Every slide the job still owns keeps the marker (read-only, ADR 0037); only the one being
             written says so, as a chip under its words rather than a veil over them (UX audit J5). */}
