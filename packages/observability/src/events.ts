@@ -1,13 +1,23 @@
 /**
- * Pipeline events from the worker's structured log lines (ADR 0041, `docs/observability.md`).
- * Every lesson-pipeline fact the logs already carry (writer `ev` lines, stage timeline, fact check,
- * pictures, repairs, splits, budget stops, job lifecycle) becomes a `gen_*` PostHog event, with
- * only metadata kept: numbers, booleans and identifier-shaped strings (no spaces, at most 64
- * characters), and never a key that can hold content.
+ * What a PostHog event may carry (ADR 0041, `docs/observability.md`). Every event, `gen_*` and
+ * core alike, goes through `enforce`. The rules:
+ *
+ * - **Key names are fixed.** A `gen_*` event keeps only the property names its `ev` object
+ *   literally has in the source (`catalogue.gen.ts`), plus the names listed here. A name is never
+ *   built from a value, so model text can never become a property name.
+ * - **Numbers and booleans pass.** They cannot carry text.
+ * - **Strings pass only under a key with a rule**: a fixed enum we define (stage, template,
+ *   outcome, via, planner, model id, …), our id shape (UUID), an ISO time or a prompt version.
+ *   A value that fails its rule is dropped. So are strings under any other key, objects and
+ *   arrays that are not all-number or all-enum. The event says how many were dropped
+ *   (`droppedProps`).
+ * - **Content keys are a backstop.** `text`, `title`, `prompt`, `fix`, … never pass, whatever
+ *   their value.
  */
+import { EVENT_KEYS } from "./catalogue.gen";
 
-/** Keys whose values can be lesson text, prompts or model output: never sent, whatever their shape. */
-const CONTENT_KEYS = new Set([
+/** Keys whose values can be lesson text, prompts or model output: never sent with a string. */
+export const CONTENT_KEYS = new Set([
   "alt",
   "answer",
   "answers",
@@ -46,67 +56,290 @@ const CONTENT_KEYS = new Set([
   "where",
   "words",
 ]);
-const KEY = /^[A-Za-z][A-Za-z0-9_]{0,40}$/;
-/** An identifier, a code or an ISO time: no spaces, so never a sentence of lesson text. */
-const TOKEN = /^[A-Za-z0-9_.:/+@-]{1,64}$/;
-const MAX_ARRAY = 20;
-const MAX_DEPTH = 2;
 
-type Scalar = string | number | boolean | null;
+const set = (...values: string[]): ReadonlySet<string> => new Set(values);
 
-function scalar(value: unknown): Scalar | undefined {
-  if (value === null) return null;
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
-  if (typeof value === "string") return TOKEN.test(value) ? value : undefined;
-  return undefined;
-}
+const STAGES = set(
+  "check-input",
+  "objectives",
+  "facts",
+  "plan",
+  "write",
+  "generate",
+  "illustrate",
+  "evaluate",
+  "repair",
+);
+/** `VERIFY_REASONS` and `VERIFY_FIELDS` in `@tj/generation` (the worker's test keeps them equal). */
+export const FACT_REASONS = [
+  "wrong-term",
+  "invented",
+  "wrong-answer",
+  "arithmetic",
+  "false-statement",
+  "off-topic",
+  "ambiguous",
+] as const;
+export const FACT_FIELDS = [
+  "term",
+  "definition",
+  "problem",
+  "steps",
+  "answer",
+  "stem",
+  "reasoning",
+  "distractors",
+  "statement",
+  "explanation",
+  "example",
+  "analogy",
+  "belief",
+  "correction",
+  "figure",
+] as const;
+/** `reason_wrong_term`, `field_answer`, …: fixed names, from the enums above. */
+export const factCountKey = (prefix: "reason" | "field", label: string) =>
+  `${prefix}_${label.replace(/-/g, "_")}`;
+const FACT_COUNT_KEYS = [
+  ...FACT_REASONS.map((r) => factCountKey("reason", r)),
+  ...FACT_FIELDS.map((f) => factCountKey("field", f)),
+];
 
-function isContentKey(key: string): boolean {
-  return CONTENT_KEYS.has(key.toLowerCase());
-}
+/** The enum each string-valued key is checked against. */
+export const ENUMS: Record<string, ReadonlySet<string>> = {
+  stage: STAGES,
+  $ai_span_name: STAGES,
+  stages: STAGES,
+  outcome: set(
+    "success",
+    "failed",
+    "done",
+    "checked",
+    "capped",
+    "dropped",
+    "placed",
+    "empty",
+    "busy",
+  ),
+  status: set(
+    "picked",
+    "started",
+    "completed",
+    "cancelled",
+    "retry",
+    "failed",
+    "skipped",
+    "lock_kept",
+    "diagram",
+    "pending",
+    "photo",
+  ),
+  via: set("none", "drawer", "fetched", "code", "library", "pexels", "commons", "generated"),
+  mode: set(
+    "fit",
+    "groups",
+    "chain",
+    "plot",
+    "reflect",
+    "route",
+    "stand-alone",
+    "translate",
+    "web",
+    "key",
+  ),
+  action: set(
+    "drop",
+    "edit",
+    "escalate",
+    "groups",
+    "kept",
+    "no-change",
+    "none",
+    "redrawn",
+    "refuse",
+    "words",
+  ),
+  planner: set("writer", "objectives-first", "legacy"),
+  template: set(
+    "banner-text",
+    "bar-model",
+    "big-diagram",
+    "big-visual",
+    "cards-grid",
+    "choose",
+    "compare",
+    "diagram-text",
+    "discussion",
+    "energy-profile",
+    "equation-hero",
+    "exit-ticket",
+    "explain",
+    "figure",
+    "hinge",
+    "hook",
+    "items-row",
+    "label",
+    "myth",
+    "objectives",
+    "pair",
+    "panel-list",
+    "photo",
+    "picture-sequence",
+    "picture-text",
+    "practice",
+    "question-set",
+    "reasons",
+    "right-triangle",
+    "sequence",
+    "source",
+    "split-compare",
+    "stages",
+    "steps",
+    "title",
+    "triangle",
+    "visual-text",
+    "worked",
+  ),
+  by: set("usd", "tokens"),
+  level: set("info", "warn", "error"),
+  how: set(
+    "bare",
+    "explain-to-visual-text",
+    "figure-as-points",
+    "figure-dropped",
+    "library",
+    "log-only",
+    "none",
+    "sentences",
+    "sequence-as-steps",
+    "split",
+    "strip",
+    "strip-continued",
+    "title-one-thing",
+  ),
+  try: set("picture", "split"),
+  call: set(
+    "demand",
+    "facts",
+    "label",
+    "objectives",
+    "outline",
+    "question-set",
+    "skeleton",
+    "slide",
+    "teach",
+    "verify",
+  ),
+  kind: set("single", "set", "handler", "infrastructure"),
+  job: set(
+    "ping",
+    "ai.ping",
+    "lesson.plan",
+    "lesson.cascade",
+    "lesson.regenerate",
+    "lesson.generate",
+    "lesson.worksheet",
+  ),
+  source: set(
+    "writer",
+    "job",
+    "job:handler",
+    "job:infrastructure",
+    "uncaughtException",
+    "unhandledRejection",
+  ),
+  modelClass: set("frontier", "standard", "small"),
+  cls: set("frontier", "standard", "small"),
+  effort: set("none", "minimal", "low", "medium", "high", "xhigh"),
+  $ai_stop_reason: set(
+    "stop",
+    "length",
+    "content-filter",
+    "tool-calls",
+    "error",
+    "other",
+    "unknown",
+  ),
+  $ai_provider: set(
+    "openai.chat",
+    "openai.responses",
+    "amazon-bedrock",
+    "bedrock",
+    "gateway",
+    "fake",
+  ),
+  errorType: set(
+    "Error",
+    "TypeError",
+    "RangeError",
+    "SyntaxError",
+    "AbortError",
+    "TimeoutError",
+    "DrizzleQueryError",
+    "PostgresError",
+    "ZodError",
+    "HTTPException",
+    "AiError",
+    "AI_APICallError",
+    "AI_NoObjectGeneratedError",
+    "ExtractError",
+    "StageFailure",
+    "InputRejected",
+    "SourceUnavailable",
+    "BudgetExceeded",
+    "BudgetReservationError",
+    "UnestimableCallError",
+    "NonRetryableError",
+    "ResendSendError",
+    "UnknownError",
+  ),
+  errorCode: set(
+    "22021",
+    "22P05",
+    "23502",
+    "23503",
+    "23505",
+    "23514",
+    "40001",
+    "40P01",
+    "53300",
+    "57014",
+    "ECONNREFUSED",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOENT",
+    "EACCES",
+    "unconfigured",
+    "provider",
+    "invalid_model",
+    "moderated",
+  ),
+  service: set("worker"),
+};
 
-/**
- * The metadata of a log record, flattened: `{ images: { placed: 2 } }` → `images_placed: 2`.
- * Drops content keys, prose strings, objects past two levels and arrays of non-scalars.
- */
-export function metadataOf(
-  record: Record<string, unknown>,
-  prefix = "",
-  depth = 0,
-  out: Record<string, unknown> = {},
-): Record<string, unknown> {
-  for (const [key, value] of Object.entries(record)) {
-    if (!KEY.test(key)) continue;
-    // A number or a boolean cannot carry content, whatever its key (`byField: { answer: 2 }`).
-    if (isContentKey(key) && typeof value !== "number" && typeof value !== "boolean") continue;
-    const name = prefix ? `${prefix}_${key}` : key;
-    if (Array.isArray(value)) {
-      const items = value.slice(0, MAX_ARRAY).map(scalar);
-      if (items.every((v) => v !== undefined)) out[name] = items;
-      else out[`${name}_count`] = value.length;
-      continue;
-    }
-    if (value && typeof value === "object") {
-      if (depth < MAX_DEPTH) metadataOf(value as Record<string, unknown>, name, depth + 1, out);
-      continue;
-    }
-    const v = scalar(value);
-    if (v !== undefined) out[name] = v;
-  }
-  return out;
-}
+/** Our ids: UUIDs (`newId`, v7 or v4). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+/** A prompt version from code (`verify-facts.v8`, `writer-v4.8`): a name, then `v` and digits. */
+const PROMPT_VERSION = /^[a-z][a-z0-9-]{0,40}[.-]v\d{1,3}(\.\d{1,3}){0,2}[a-z]?$/;
+const ID_KEYS = set("jobId", "lessonId", "$ai_trace_id");
 
-/** `picture-outcome` → `gen_picture_outcome`. */
-export function eventNameOf(ev: string): string | undefined {
-  const name = ev
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return name && name.length <= 48 ? `gen_${name}` : undefined;
-}
+/** Property names any event may carry besides its own (context the worker adds). */
+const COMMON_KEYS = [
+  "$ai_trace_id",
+  "jobId",
+  "lessonId",
+  "job",
+  "attempt",
+  "resumed",
+  "usagePriorUsd",
+  "source",
+  "status",
+  "service",
+  "$process_person_profile",
+];
 
-/** Log messages without an `ev` that are pipeline or job facts, and the event and status they become. */
+/** Message-mapped events and the property names their log lines (or the worker) give them. */
 export const MESSAGE_EVENTS: Record<string, { event: string; status?: string }> = {
   "job started": { event: "gen_job", status: "started" },
   "job completed": { event: "gen_job", status: "completed" },
@@ -123,6 +356,124 @@ export const MESSAGE_EVENTS: Record<string, { event: string; status?: string }> 
   "input checked": { event: "gen_input_checked" },
   "plan call": { event: "gen_plan_call" },
 };
+
+/** Property names of the events that are not `ev` lines, and extras the catalogue cannot see. */
+const OWN_KEYS: Record<string, readonly string[]> = {
+  gen_job: ["queueWaitMs", "shutdown", "hasResult"],
+  gen_budget_stop: ["stage", "slideIndex", "spentUsd", "capUsd"],
+  gen_cost_over_target: ["costUsd", "planner"],
+  gen_input_rejected: [],
+  gen_source_unavailable: [],
+  gen_input_checked: ["stage", "findings"],
+  gen_plan_call: ["stage", "call", "cls", "awaited"],
+  gen_fact_check: FACT_COUNT_KEYS,
+  gen_lesson: [
+    "outcome",
+    "planner",
+    "stages",
+    "costUsd",
+    "calls",
+    "inputTokens",
+    "outputTokens",
+    "durationMs",
+    "readableMs",
+    "checkedMs",
+    "findingsError",
+    "findingsWarning",
+    "imagesPhotographable",
+    "imagesRequested",
+    "imagesPlaced",
+    "imagesEmpty",
+    "imagesFailed",
+    "factChecks",
+    "factsChecked",
+    "factsCorrected",
+    "factsChanged",
+    "factWordsChanged",
+    "factChangeRate",
+    "factChecksCapped",
+    "factChecksDropped",
+    "repairs",
+    "repairsReverted",
+    "repairsFailed",
+  ],
+  $ai_generation: [
+    "$ai_span_name",
+    "$ai_model",
+    "$ai_provider",
+    "$ai_input_tokens",
+    "$ai_output_tokens",
+    "$ai_cache_read_input_tokens",
+    "$ai_cache_creation_input_tokens",
+    "$ai_total_cost_usd",
+    "$ai_latency",
+    "$ai_stop_reason",
+    "$ai_is_error",
+    "stage",
+    "promptVersion",
+    "effort",
+    "modelClass",
+  ],
+  $exception: ["stage", "planner", "willRetry", "errorType", "errorCode", "causeType", "modelId"],
+};
+
+/** The property names `event` may carry. Unknown events carry only the common ones. */
+export function allowedKeys(event: string): ReadonlySet<string> {
+  return new Set([...COMMON_KEYS, ...(EVENT_KEYS[event] ?? []), ...(OWN_KEYS[event] ?? [])]);
+}
+
+/** `picture-outcome` → `gen_picture_outcome`. */
+export function eventNameOf(ev: string): string | undefined {
+  const name = ev
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return name && name.length <= 48 ? `gen_${name}` : undefined;
+}
+
+/** A string is kept only when its key has a rule and the value passes it. */
+function stringPasses(key: string, value: string, models: ReadonlySet<string>): boolean {
+  if (ID_KEYS.has(key)) return UUID.test(value);
+  if (key === "startedAt") return ISO_TIME.test(value);
+  if (key === "promptVersion") return PROMPT_VERSION.test(value);
+  if (key === "$ai_model" || key === "modelId") return models.has(value);
+  return ENUMS[key]?.has(value) ?? false;
+}
+
+/**
+ * `record` reduced to what `event` may carry: allowed names only, numbers and booleans freely,
+ * strings and string arrays only when their rule passes. Returns the props and how many were dropped.
+ */
+export function enforce(
+  event: string,
+  record: Record<string, unknown>,
+  models: ReadonlySet<string>,
+): { props: Record<string, unknown>; dropped: number } {
+  const allowed = allowedKeys(event);
+  const props: Record<string, unknown> = {};
+  let dropped = 0;
+  for (const [key, value] of Object.entries(record)) {
+    if (value === undefined) continue;
+    const ok = (() => {
+      if (!allowed.has(key)) return false;
+      if (value === null || typeof value === "boolean") return true;
+      if (typeof value === "number") return Number.isFinite(value);
+      if (CONTENT_KEYS.has(key.toLowerCase())) return false;
+      if (typeof value === "string") return stringPasses(key, value, models);
+      if (Array.isArray(value)) {
+        return (
+          value.length <= 20 &&
+          (value.every((v) => typeof v === "number" && Number.isFinite(v)) ||
+            value.every((v) => typeof v === "string" && stringPasses(key, v, models)))
+        );
+      }
+      return false;
+    })();
+    if (ok) props[key] = value;
+    else dropped += 1;
+  }
+  return { props, dropped };
+}
 
 /** Log lines that are already their own event elsewhere (`$ai_generation`, `gen_lesson`). */
 export const SKIPPED_MESSAGES = new Set(["generation summary"]);

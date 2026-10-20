@@ -1,4 +1,4 @@
-import type { AiCallRecord } from "@tj/ai";
+import { type AiCallRecord, DEFAULT_MODEL_IDS, PRICES } from "@tj/ai";
 import type { GenerationSummary } from "@tj/generation";
 import type { JobFailureReport } from "@tj/jobs";
 import {
@@ -16,12 +16,27 @@ import type { Env } from "./env";
  * `POSTHOG_API_KEY`, so dev, tests and CI send nothing.
  */
 export function createWorkerObservability(
-  env: Pick<Env, "POSTHOG_API_KEY" | "POSTHOG_HOST">,
+  env: Pick<
+    Env,
+    | "POSTHOG_API_KEY"
+    | "POSTHOG_HOST"
+    | "AI_MODEL_FRONTIER"
+    | "AI_MODEL_STANDARD"
+    | "AI_MODEL_SMALL"
+  >,
   logger: Logger,
 ): Observability {
   return createObservability({
     apiKey: env.POSTHOG_API_KEY,
     host: env.POSTHOG_HOST,
+    // The only model ids that may be sent: ours (configured, default or priced), never free text.
+    modelIds: [
+      env.AI_MODEL_FRONTIER,
+      env.AI_MODEL_STANDARD,
+      env.AI_MODEL_SMALL,
+      ...Object.values(DEFAULT_MODEL_IDS),
+      ...Object.keys(PRICES),
+    ],
     logger: logger.child({ component: "posthog" }),
     service: "worker",
   });

@@ -21,14 +21,16 @@ output and lesson content stay in our own database (the generation debug records
 1. **PostHog EU, worker only.** `POSTHOG_API_KEY` (the project API key, `phc_…`) and
    `POSTHOG_HOST` (`https://eu.i.posthog.com`, also the default) on the Railway worker service.
    Without the key the client is a no-op: dev, tests and CI send nothing.
-2. **Metadata only.** Every event's properties are built from an explicit list of fields, never by
-   spreading a caller's object. No `$ai_input`, no `$ai_output_choices`; the client also runs with
-   `privacyMode: true`, so the SDK drops them should one ever be passed. Error messages are sent
-   only for our own error classes (`StageFailure`, `NonRetryableError`, `InputRejected`,
-   `AiError`, budget errors, …) or a known engine fault template; anything else is
-   `<unrecognised>`. Even our own messages are scrubbed: URL credentials, queries and fragments,
-   bearer tokens, key-shaped strings and long opaque tokens. Stacks keep frames only (function,
-   file, line), with the message cut out first. `safeError` and the log lines are unchanged.
+2. **Metadata only, by allowlist.** Every event goes through one gate (`events.ts` `enforce`).
+   Property names come from a fixed list per event; for `gen_*` events, the names its `ev`
+   object literally has in the source (generated, test-checked). Numbers and booleans pass.
+   Strings pass only under a key with a rule: an enum we define, our UUID shape, an ISO time, a
+   prompt version, or a configured or priced model id. Everything else is dropped and counted
+   (`droppedProps`). A content-key denylist stays as a backstop. No name is built from a value.
+   No `$ai_input` or `$ai_output_choices`, and `privacyMode: true` on the client. Errors send
+   their type, code and stack frames, never a message (review of #603: a one-word title, an
+   email or a model-written reason must not get through). `safeError` and the log lines are
+   unchanged.
 3. **Distinct id.** `ws_` plus the first 32 hex of SHA-256 of the Workspace id; `system:worker`
    outside a job. Never an email, a name or our own id. `$process_person_profile: false` on every
    event and GeoIP off: these are not people.
@@ -52,8 +54,8 @@ output and lesson content stay in our own database (the generation debug records
      with an `ev` (the writer's checks, repairs, splits, pictures, diagrams; the stage timeline;
      the fact check) becomes `gen_<ev>`, and job-lifecycle and budget messages map to `gen_job`
      (picked with queue wait, started, retry, cancelled, failed, lock kept) and
-     `gen_budget_stop`. Only numbers, booleans and identifier-shaped strings (no spaces) are kept,
-     content keys are dropped, and a job sends at most 2,000 such events. Every event and property
+     `gen_budget_stop`. They pass the same allowlist gate, and a job sends at most 2,000 such
+     events. Every event and property
      is listed in `docs/observability.md`.
 5. **Never fail or slow a lesson.** Capture only queues. Batches of 20 or every 5 s, a 3 s request
    timeout, no retries; a failed send is logged (`posthog send failed; events dropped`, first and

@@ -7,6 +7,8 @@ import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
   retrievalIndexOf,
+  VERIFY_FIELDS,
+  VERIFY_REASONS,
   type VerifyCorrection,
   type VerifyField,
   type VerifyReason,
@@ -71,8 +73,18 @@ export async function runVerify(
         corrections: patched.applied.length,
         factsChanged: new Set(patched.applied.map((c) => c.factId)).size,
         wordsChanged: wordsChanged(facts, patched.facts),
-        byField: tally(patched.applied.map((c) => c.field)),
-        byReason: tally(patched.applied.map((c) => c.reason ?? "unspecified")),
+        // Counts under fixed names from the enums (`reason_wrong_term`, `field_answer`), never a
+        // name taken from the model's output (ADR 0041).
+        ...countsBy(
+          "reason",
+          VERIFY_REASONS,
+          patched.applied.map((c) => c.reason),
+        ),
+        ...countsBy(
+          "field",
+          VERIFY_FIELDS,
+          patched.applied.map((c) => c.field),
+        ),
         durationMs: Date.now() - startedAt,
       },
       "facts verified",
@@ -270,10 +282,22 @@ function countFacts(facts: LessonFacts): number {
   return n;
 }
 
-/** Counts of each label, for the fact-check line (`{ answer: 2, stem: 1 }`). */
-function tally(labels: readonly string[]): Record<string, number> {
+/**
+ * One count per enum member, under `<prefix>_<member>` (`-` as `_`): the names come from the enum,
+ * never from the labels, so a label outside it is not counted at all.
+ */
+export function countsBy(
+  prefix: "reason" | "field",
+  members: readonly string[],
+  labels: readonly string[],
+): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const l of labels) out[l] = (out[l] ?? 0) + 1;
+  for (const m of members) out[`${prefix}_${m.replace(/-/g, "_")}`] = 0;
+  for (const l of labels) {
+    if (!members.includes(l)) continue;
+    const key = `${prefix}_${l.replace(/-/g, "_")}`;
+    out[key] = (out[key] ?? 0) + 1;
+  }
   return out;
 }
 

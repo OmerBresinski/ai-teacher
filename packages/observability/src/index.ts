@@ -1,4 +1,13 @@
-export { eventNameOf, MESSAGE_EVENTS, metadataOf } from "./events";
+export {
+  allowedKeys,
+  CONTENT_KEYS,
+  ENUMS,
+  enforce,
+  eventNameOf,
+  FACT_FIELDS,
+  FACT_REASONS,
+  MESSAGE_EVENTS,
+} from "./events";
 export {
   type AiGeneration,
   createObservability,
@@ -12,4 +21,4 @@ export {
   type ObservabilityOptions,
   SYSTEM_DISTINCT_ID,
 } from "./observability";
-export { safeMessage, sanitizeError, scrubSecrets, UNRECOGNISED_MESSAGE } from "./scrub";
+export { modelIdIn, safeFrames, sanitizeError } from "./scrub";

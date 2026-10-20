@@ -8,13 +8,13 @@ import {
   type ObservabilityFetch,
   SYSTEM_DISTINCT_ID,
 } from "./observability";
-import { UNRECOGNISED_MESSAGE } from "./scrub";
 
 const PROMPT = "PROMPT-SENTINEL write a lesson about volcanoes";
 const OUTPUT = "OUTPUT-SENTINEL Volcanoes erupt when magma rises";
 const WORKSPACE = "0d9f3c1e-5b7a-4c2d-9e8f-1a2b3c4d5e6f";
 const JOB = "7c1e2d3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f";
-const LESSON = "lesson_1";
+const LESSON = "0192f7a0-0000-7000-8000-000000000042";
+const MODELS = ["openai/gpt-6-luna"];
 
 interface Sent {
   url: string;
@@ -125,6 +125,7 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch, sent } = recordingFetch();
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger: pino({ level: "silent" }),
       service: "worker",
       fetch,
@@ -191,6 +192,7 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch, sent } = recordingFetch();
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger: pino({ level: "silent" }),
       service: "worker",
       fetch,
@@ -223,6 +225,7 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch, sent } = recordingFetch();
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger: pino({ level: "silent" }),
       service: "worker",
       fetch,
@@ -261,7 +264,7 @@ describe("createObservability with a key (mocked transport)", () => {
       stacktrace?: { frames?: unknown[] };
     }>;
     expect(list[0]?.type).toBe("SyntaxError");
-    expect(list[0]?.value).toBe(UNRECOGNISED_MESSAGE);
+    expect(list[0]?.value).toBe("SyntaxError");
     expect(list[0]?.stacktrace?.frames?.length ?? 0).toBeGreaterThan(0);
     expect(exception?.distinct_id).toBe(distinctIdFor(WORKSPACE));
     expect(sent.map((s) => s.text).join("\n")).not.toContain("OUTPUT-SENTINEL");
@@ -272,6 +275,7 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch, sent } = recordingFetch();
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger: pino({ level: "silent" }),
       service: "worker",
       fetch,
@@ -287,9 +291,10 @@ describe("createObservability with a key (mocked transport)", () => {
     const value = (
       exception?.properties.$exception_list as Array<{ value: string }> | undefined
     )?.[0]?.value;
-    expect(value).toContain("https://bucket.example.com/img.png");
-    expect(value).toContain("[redacted-key]");
+    // Not even our own message is sent: the type alone.
+    expect(value).toBe("StageFailure");
     const all = sent.map((s) => s.text).join("\n");
+    expect(all).not.toContain("bucket.example.com");
     expect(all).not.toContain("X-Amz-Signature");
     expect(all).not.toContain("sk-proj-AbCdEf1234567890");
     await obs.shutdown();
@@ -300,7 +305,13 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch } = recordingFetch(async () => {
       throw new Error("ECONNREFUSED eu.i.posthog.com");
     });
-    const obs = createObservability({ apiKey: "phc_test", logger, service: "worker", fetch });
+    const obs = createObservability({
+      apiKey: "phc_test",
+      modelIds: MODELS,
+      logger,
+      service: "worker",
+      fetch,
+    });
     obs.captureAiGeneration(call);
     await obs.flush();
     obs.captureAiGeneration(call);
@@ -315,6 +326,7 @@ describe("createObservability with a key (mocked transport)", () => {
     const { fetch } = recordingFetch(() => new Promise<Response>(() => {}));
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger,
       service: "worker",
       fetch,
@@ -337,11 +349,17 @@ describe("gen_* events from log lines", () => {
     const { fetch, sent } = recordingFetch();
     const obs = createObservability({
       apiKey: "phc_test",
+      modelIds: MODELS,
       logger: pino({ level: "silent" }),
       service: "worker",
       fetch,
     });
-    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    obs.beginJob(JOB, {
+      workspaceId: WORKSPACE,
+      job: "lesson.generate",
+      lessonId: LESSON,
+      capUsd: 0.5,
+    });
     const b = {
       jobId: JOB,
       job: "lesson.generate",
@@ -375,20 +393,18 @@ describe("gen_* events from log lines", () => {
         corrections: 3,
         factsChanged: 2,
         wordsChanged: 7,
-        byField: { answer: 2, stem: 1 },
+        field_answer: 2,
+        field_stem: 1,
+        reason_wrong_term: 3,
       },
       "facts verified",
     );
-    obs.captureLogLine(
-      b,
-      { stage: "illustrate", spentUsd: 0.4, capUsd: 0.5 },
-      "illustrate budget stop",
-    );
+    obs.captureLogLine(b, { stage: "illustrate", slideIndex: 4 }, "illustrate budget stop");
     obs.captureLogLine(
       b,
       {
         ev: "picture-outcome",
-        via: "stock",
+        via: "pexels",
         attempts: 2,
         reason: "nothing fit the slide",
         query: "volcano",
@@ -449,16 +465,18 @@ describe("gen_* events from log lines", () => {
     expect(byName("gen_fact_check")).toMatchObject({
       factsChecked: 10,
       corrections: 3,
-      byField_answer: 2,
-      byField_stem: 1,
+      field_answer: 2,
+      field_stem: 1,
+      reason_wrong_term: 3,
     });
     expect(byName("gen_budget_stop")).toMatchObject({
       stage: "illustrate",
-      spentUsd: 0.4,
+      slideIndex: 4,
+      spentUsd: 0,
       capUsd: 0.5,
     });
     // A sentence is not an identifier: the free-text reason is dropped, the codes stay.
-    expect(byName("gen_picture_outcome")).toMatchObject({ via: "stock", attempts: 2 });
+    expect(byName("gen_picture_outcome")).toMatchObject({ via: "pexels", attempts: 2 });
     expect(byName("gen_picture_outcome")).not.toHaveProperty("reason");
     expect(events.filter((e) => e.event === "gen_job").map((e) => e.properties.status)).toEqual([
       "retry",
@@ -483,6 +501,96 @@ describe("gen_* events from log lines", () => {
       WORKSPACE,
     ]) {
       expect(all).not.toContain(sentinel);
+    }
+    await obs.shutdown();
+  });
+});
+
+describe("content never leaves through a gen_* event (review of #603)", () => {
+  test("a one-word title, an email and a model-written reason appear nowhere in the payload", async () => {
+    const { fetch, sent } = recordingFetch();
+    const obs = createObservability({
+      apiKey: "phc_test",
+      modelIds: MODELS,
+      logger: pino({ level: "silent" }),
+      service: "worker",
+      fetch,
+    });
+    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    const b = { jobId: JOB, job: "lesson.generate", attempt: 0 };
+    const TITLE = "Photosynthesis";
+    const EMAIL = "teacher@school.example";
+    const MODEL_REASON = "the model thinks chlorophyll is blue";
+    // Identifier-shaped strings under keys that are not on the event's list, or whose rule they fail.
+    obs.captureLogLine(
+      b,
+      {
+        writer: {
+          ev: "repair",
+          slide: 2,
+          mode: "fit",
+          ok: true,
+          lessonTitle: TITLE,
+          key: TITLE,
+          fault: EMAIL,
+        },
+      },
+      "writer stage",
+    );
+    obs.captureLogLine(b, { ev: "stage", stage: TITLE, outcome: "done", owner: EMAIL }, "timeline");
+    obs.captureLogLine(
+      b,
+      { ev: "picture-outcome", via: TITLE, outcome: "placed", reason: MODEL_REASON, key: EMAIL },
+      "picture outcome",
+    );
+    // Model text as a property name and as a value.
+    obs.captureLogLine(
+      b,
+      {
+        ev: "fact-check",
+        outcome: "checked",
+        corrections: 1,
+        byReason: { [MODEL_REASON]: 1 },
+        [MODEL_REASON]: 1,
+        reason: MODEL_REASON,
+      },
+      "facts verified",
+    );
+    obs.captureJobEvent(JOB, "gen_job", {
+      status: "picked",
+      queueWaitMs: 5,
+      topic: TITLE,
+      contact: EMAIL,
+    });
+    obs.captureAiGeneration({ ...call, modelId: TITLE, promptVersion: TITLE, stage: TITLE });
+    obs.captureJobFailure({
+      error: new Error(`${TITLE} ${EMAIL} ${MODEL_REASON}`),
+      job: "lesson.generate",
+      jobId: JOB,
+      attempt: 0,
+      willRetry: false,
+      stage: TITLE,
+      planner: EMAIL,
+    });
+    await obs.flush();
+
+    const all = sent.map((s) => s.text).join("\n");
+    expect(sent.flatMap((s) => s.events).length).toBeGreaterThanOrEqual(7);
+    for (const leak of [
+      TITLE,
+      TITLE.toLowerCase(),
+      EMAIL,
+      "school.example",
+      MODEL_REASON,
+      "chlorophyll",
+    ]) {
+      expect(all).not.toContain(leak);
+    }
+    const events = sent.flatMap((s) => s.events);
+    const repair = events.find((e) => e.event === "gen_repair")?.properties ?? {};
+    expect(repair).toMatchObject({ slide: 2, mode: "fit", ok: true, droppedProps: 3 });
+    for (const e of events) {
+      for (const key of Object.keys(e.properties)) expect(key).not.toContain(" ");
     }
     await obs.shutdown();
   });

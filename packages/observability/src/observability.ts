@@ -2,8 +2,15 @@ import { createHash } from "node:crypto";
 import { safeError } from "@tj/domain";
 import type { Logger } from "pino";
 import { PostHog } from "posthog-node";
-import { BINDING_KEYS, eventNameOf, MESSAGE_EVENTS, metadataOf, SKIPPED_MESSAGES } from "./events";
-import { sanitizeError } from "./scrub";
+import {
+  BINDING_KEYS,
+  ENUMS,
+  enforce,
+  eventNameOf,
+  MESSAGE_EVENTS,
+  SKIPPED_MESSAGES,
+} from "./events";
+import { modelIdIn, sanitizeError } from "./scrub";
 
 /**
  * PostHog (EU cloud) error tracking and model-call metrics for the worker (ADR 0041). Metadata
@@ -27,6 +34,8 @@ export interface ObservabilityOptions {
   logger: Logger;
   /** Which app sends (`worker`). */
   service: string;
+  /** Model ids that may be sent (`$ai_model`, `modelId`): the configured and the priced ones. */
+  modelIds?: Iterable<string>;
   /** Test seam: replaces the HTTP transport. */
   fetch?: ObservabilityFetch;
   /** Per request (default 3000 ms). */
@@ -103,6 +112,8 @@ export interface JobScope {
   workspaceId?: string | undefined;
   job: string;
   lessonId?: string | undefined;
+  /** The job's spend cap in USD, for `gen_budget_stop`. */
+  capUsd?: number | undefined;
 }
 
 export interface Observability {
@@ -184,6 +195,7 @@ export function createObservability(options: ObservabilityOptions): Observabilit
   if (!apiKey) return NOOP;
 
   const { logger, service } = options;
+  const models: ReadonlySet<string> = new Set(options.modelIds ?? []);
   const flushTimeoutMs = options.flushTimeoutMs ?? 3000;
   const client = new PostHog(apiKey, {
     host: options.host?.trim() || DEFAULT_POSTHOG_HOST,
@@ -236,7 +248,10 @@ export function createObservability(options: ObservabilityOptions): Observabilit
     repairsFailed: 0,
     events: 0,
   });
-  const jobs = new Map<string, JobScope & { stage?: string; planner?: string; totals: Totals }>();
+  const jobs = new Map<
+    string,
+    JobScope & { stage?: string; planner?: string; spentUsd: number; totals: Totals }
+  >();
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
   /** Per-job totals for `gen_lesson` (the fact checker's change rate, repairs). */
   const tallyInto = (totals: Totals, event: string, props: Record<string, unknown>) => {
@@ -272,19 +287,40 @@ export function createObservability(options: ObservabilityOptions): Observabilit
     event: string,
     properties: Record<string, unknown>,
   ): void => {
-    client.capture({
-      distinctId,
+    // The one gate every event goes through (ADR 0041, `events.ts`). No person profiles: a
+    // distinct id here is a Workspace hash, not a person.
+    const { props, dropped } = enforce(
       event,
-      // No person profiles: a distinct id here is a Workspace hash, not a person.
-      properties: { ...defined(properties), service, $process_person_profile: false },
-    });
+      { ...defined(properties), service, $process_person_profile: false },
+      models,
+    );
+    if (dropped) props.droppedProps = dropped;
+    client.capture({ distinctId, event, properties: props });
+  };
+
+  /** `$exception`: the sanitised error (type and frames), props through the same gate. */
+  const exception = (error: unknown, distinctId: string, extra: Record<string, unknown>) => {
+    const { props, dropped } = enforce(
+      "$exception",
+      {
+        ...defined(extra),
+        service,
+        $process_person_profile: false,
+        errorType: safeError(error).type,
+        errorCode: safeError(error).code,
+        modelId: modelIdIn(error, models),
+      },
+      models,
+    );
+    if (dropped) props.droppedProps = dropped;
+    client.captureException(sanitizeError(error), distinctId, props);
   };
 
   return {
     enabled: true,
 
     beginJob(jobId, scope) {
-      jobs.set(jobId, { ...scope, totals: emptyTotals() });
+      jobs.set(jobId, { ...scope, spentUsd: 0, totals: emptyTotals() });
       return () => {
         jobs.delete(jobId);
       };
@@ -294,42 +330,33 @@ export function createObservability(options: ObservabilityOptions): Observabilit
       safely("job_failed", () => {
         const scope = jobs.get(failure.jobId);
         const workspaceId = failure.workspaceId ?? scope?.workspaceId;
-        client.captureException(
-          sanitizeError(failure.error),
-          distinctIdFor(workspaceId),
-          defined({
-            service,
-            $process_person_profile: false,
-            source: "job",
-            job: failure.job,
-            jobId: failure.jobId,
-            lessonId: failure.lessonId ?? scope?.lessonId,
-            stage: failure.stage ?? scope?.stage,
-            planner: failure.planner ?? scope?.planner,
-            attempt: failure.attempt,
-            willRetry: failure.willRetry,
-            errorType: safeError(failure.error).type,
-            errorCode: safeError(failure.error).code,
-          }),
-        );
+        const cause = (failure.error as { cause?: unknown } | null)?.cause;
+        exception(failure.error, distinctIdFor(workspaceId), {
+          source: "job",
+          job: failure.job,
+          jobId: failure.jobId,
+          $ai_trace_id: failure.jobId,
+          lessonId: failure.lessonId ?? scope?.lessonId,
+          stage: failure.stage ?? scope?.stage,
+          planner: failure.planner ?? scope?.planner,
+          attempt: failure.attempt,
+          willRetry: failure.willRetry,
+          causeType: cause === undefined ? undefined : safeError(cause).type,
+        });
       });
     },
 
     captureException(error, source) {
       safely("exception", () => {
-        client.captureException(sanitizeError(error), SYSTEM_DISTINCT_ID, {
-          service,
-          $process_person_profile: false,
-          source,
-          errorType: safeError(error).type,
-        });
+        exception(error, SYSTEM_DISTINCT_ID, { source });
       });
     },
 
     captureAiGeneration(call) {
       safely("$ai_generation", () => {
         const scope = call.jobId ? jobs.get(call.jobId) : undefined;
-        if (scope && call.stage) scope.stage = call.stage;
+        if (scope && call.stage && ENUMS.stage?.has(call.stage)) scope.stage = call.stage;
+        if (scope && call.costUsd) scope.spentUsd += call.costUsd;
         // Only these fields: never `$ai_input` or `$ai_output_choices` (ADR 0041).
         capture(distinctIdFor(scope?.workspaceId), "$ai_generation", {
           $ai_trace_id: call.jobId,
@@ -428,16 +455,23 @@ export function createObservability(options: ObservabilityOptions): Observabilit
         if (!event) return;
         if (scope.totals.events >= MAX_EVENTS_PER_JOB) return;
         const { ev: _ev, writer: _writer, ...rest } = rec;
-        const props = metadataOf({ ...rest, ...(writer ?? {}) });
+        // Raw here; `capture` keeps only this event's allowlisted names and rule-passing values.
+        const props: Record<string, unknown> = { ...rest, ...(writer ?? {}) };
         delete props.ev;
         if (writer) props.source = "writer";
         if (status) props.status = status;
-        for (const key of BINDING_KEYS) {
-          const v = metadataOf({ [key]: bindings[key] })[key];
-          if (v !== undefined) props[key] = v;
+        for (const key of BINDING_KEYS) if (bindings[key] !== undefined) props[key] = bindings[key];
+        if (event === "gen_budget_stop") {
+          props.spentUsd = scope.spentUsd;
+          props.capUsd = scope.capUsd;
         }
         tallyInto(scope.totals, event, props);
-        if (event === "gen_stage" && typeof props.stage === "string") scope.stage = props.stage;
+        if (
+          event === "gen_stage" &&
+          typeof props.stage === "string" &&
+          ENUMS.stage?.has(props.stage)
+        )
+          scope.stage = props.stage;
         capture(distinctIdFor(scope.workspaceId), event, {
           ...props,
           $ai_trace_id: jobId,
@@ -453,7 +487,7 @@ export function createObservability(options: ObservabilityOptions): Observabilit
         const scope = jobs.get(jobId);
         if (!event.startsWith("gen_")) return;
         capture(distinctIdFor(scope?.workspaceId), event, {
-          ...metadataOf(props),
+          ...props,
           $ai_trace_id: jobId,
           jobId,
           lessonId: scope?.lessonId,

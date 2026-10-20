@@ -83,6 +83,7 @@ for (const name of Object.values(JobName)) {
                 job: name,
                 workspaceId: typeof data.workspaceId === "string" ? data.workspaceId : undefined,
                 lessonId: lessonIdOf(job.data),
+                capUsd: name === "lesson.worksheet" ? deps.worksheetCapUsd : deps.caps.capUsd,
               })
             : undefined;
         if (typeof data?.jobId === "string") {

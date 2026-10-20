@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Observability } from "@tj/observability";
+import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
+import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
 import { parseEnv } from "./env";
 import { createLogger } from "./logger";
@@ -127,5 +128,10 @@ describe("worker observability (ADR 0041)", () => {
       msg: "timeline",
     });
     expect(seen[1]).toMatchObject({ record: {}, msg: "plain message" });
+  });
+
+  test("the fact-check count names are the generation enums, so no name comes from model text", () => {
+    expect([...FACT_REASONS]).toEqual([...VERIFY_REASONS]);
+    expect([...FACT_FIELDS]).toEqual([...VERIFY_FIELDS]);
   });
 });
