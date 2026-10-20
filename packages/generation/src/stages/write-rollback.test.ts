@@ -9,7 +9,7 @@ import { write } from "./write";
 /*
  * TEACH-110 part h: any failure while the writer streams (here a cancel; K3, a budget stop and
  * other throws take the same path) rolls the slides it showed `writing` back to the plan, and no
- * streamed save lands after it.
+ * streamed save lands after it. Slides whose words were done stay (write-resume.test.ts).
  */
 
 const fixture = writerFixture();

@@ -54,17 +54,20 @@ import {
   isUniqueViolation,
   listWorksheetsOfLesson,
   putDocumentAsJob,
+  relockLesson,
   relockWorksheet,
   type ScopableDb,
   type SetPlanRevisionOptions,
   type SetPlanRevisionResult,
   setPlanRevisionAndLock,
+  terminalJobEventFor,
   toSourceRef,
   unbindSource,
   unbindSourcesFromLesson,
   type WorkspaceDb,
 } from "@tj/db";
 import {
+  isBudgetStopMessage,
   type JobId,
   type JobName,
   type JobPayloadInputs,
@@ -72,6 +75,7 @@ import {
   type LessonId,
   LessonRegeneratePayloadSchema,
   newId,
+  safeError,
 } from "@tj/domain";
 import {
   CreateLessonSchema,
@@ -265,6 +269,12 @@ export const CONFIRMED_MESSAGE = "This plan is already confirmed.";
 export const NOT_PLANNED_MESSAGE = "This lesson has no plan to confirm yet.";
 export const NO_OBJECTIVES_MESSAGE = "Keep at least one objective.";
 export const NO_BRIEF_MESSAGE = "This lesson has no brief to plan from.";
+export const RESUME_GENERATING_MESSAGE = "This lesson is still being written.";
+export const RESUME_NOT_CONFIRMED_MESSAGE = "Confirm the plan before writing the slides.";
+export const RESUME_FINISHED_MESSAGE = "This lesson is already finished.";
+export const RESUME_BUDGET_MESSAGE =
+  "This lesson has used its whole generation budget, so the rest cannot be written.";
+const ResumeBodySchema = z.object({ jobId: z.uuid() });
 const JOBS_UNAVAILABLE_MESSAGE = "Background jobs are not available right now.";
 
 /**
@@ -459,406 +469,514 @@ export function lessonRoutes(
   // Anonymous creates run one at a time per Workspace so two parallel briefs cannot both pass
   // the two-lesson count before either inserts.
   const anonymousCreates = createKeyedQueue();
-  return new Hono<AppEnv>()
-    .post(
-      "/lessons",
-      documentBodyLimit(),
-      requireJsonBody(),
-      zValidator("json", CreateLessonSchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const sent = c.req.valid("json");
-        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
-        const themeId = assertKnownTheme(sent.themeId);
-        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const { requestId, skipPlanning = false } = input;
-        if (requestId !== undefined) {
-          const existing = await findLessonByRequestId(ws, requestId);
-          if (existing !== null) {
-            const answer = replayed(existing);
-            c.get("logger")?.info({ ...answer, replayed: true }, "lesson request repeated");
-            return c.json(answer, 202);
+  return (
+    new Hono<AppEnv>()
+      .post(
+        "/lessons",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator("json", CreateLessonSchema, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const rt = requireRuntime(runtime);
+          const sent = c.req.valid("json");
+          // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+          const themeId = assertKnownTheme(sent.themeId);
+          const input = themeId === sent.themeId ? sent : { ...sent, themeId };
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const { requestId, skipPlanning = false } = input;
+          if (requestId !== undefined) {
+            const existing = await findLessonByRequestId(ws, requestId);
+            if (existing !== null) {
+              const answer = replayed(existing);
+              c.get("logger")?.info({ ...answer, replayed: true }, "lesson request repeated");
+              return c.json(answer, 202);
+            }
           }
-        }
-        const lesson = lessonFromBrief(input, newId<LessonId>(), new Date());
-        const sourceIds = input.sourceIds ?? [];
-        const create = async () => {
-          try {
-            return await createLessonAndEnqueue(ws, rt, lesson, sourceIds, {
-              skipPlanning,
-              requestId,
+          const lesson = lessonFromBrief(input, newId<LessonId>(), new Date());
+          const sourceIds = input.sourceIds ?? [];
+          const create = async () => {
+            try {
+              return await createLessonAndEnqueue(ws, rt, lesson, sourceIds, {
+                skipPlanning,
+                requestId,
+              });
+            } catch (error) {
+              // Two requests with one `requestId` raced past the read: the loser answers the winner's.
+              const winner =
+                requestId !== undefined && isUniqueViolation(error, DOCUMENTS_REQUEST_ID_INDEX)
+                  ? await findLessonByRequestId(ws, requestId)
+                  : null;
+              if (winner === null) throw error;
+              return replayed(winner);
+            }
+          };
+          let created: Awaited<ReturnType<typeof createLessonAndEnqueue>>;
+          if (c.get("user")?.isAnonymous === true) {
+            created = await anonymousCreates(workspaceId, async () => {
+              // Re-read under the queue: the same `requestId` may have landed while this waited.
+              const landed =
+                requestId !== undefined ? await findLessonByRequestId(ws, requestId) : null;
+              if (landed !== null) return replayed(landed);
+              await assertAnonymousMayCreate(ws, anonymous);
+              return create();
             });
-          } catch (error) {
-            // Two requests with one `requestId` raced past the read: the loser answers the winner's.
-            const winner =
-              requestId !== undefined && isUniqueViolation(error, DOCUMENTS_REQUEST_ID_INDEX)
-                ? await findLessonByRequestId(ws, requestId)
-                : null;
-            if (winner === null) throw error;
-            return replayed(winner);
+          } else {
+            created = await create();
           }
-        };
-        let created: Awaited<ReturnType<typeof createLessonAndEnqueue>>;
-        if (c.get("user")?.isAnonymous === true) {
-          created = await anonymousCreates(workspaceId, async () => {
-            // Re-read under the queue: the same `requestId` may have landed while this waited.
-            const landed =
-              requestId !== undefined ? await findLessonByRequestId(ws, requestId) : null;
-            if (landed !== null) return replayed(landed);
-            await assertAnonymousMayCreate(ws, anonymous);
-            return create();
-          });
-        } else {
-          created = await create();
-        }
-        c.get("logger")?.info(
-          { ...created, sources: sourceIds.length, skipPlanning },
-          "lesson created from brief",
-        );
-        return c.json(created, 202);
-      },
-    )
-    .post(
-      "/lessons/:id/plan",
-      smallJsonBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", lessonParam, validationHook),
-      zValidator("json", PlanLessonSchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const input = c.req.valid("json");
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const jobId = newId<JobId>();
-        const anonymousUser = c.get("user")?.isAnonymous === true;
-        const {
-          lesson,
-          previous,
-          prepared: change,
-          meta: pinned,
-        } = await changePlan<SourceChange | undefined, boolean>(
-          ws,
-          lessonId,
-          {
-            expectedRevision: input.expectedRevision,
-            jobId,
-            supersedeProposal: true,
-            patch: (stored, sources) => {
-              if (stored.plan?.state === "confirmed") {
-                throw new ConflictError("generating", CONFIRMED_MESSAGE, {
-                  revision: stored.plan.revision,
-                });
-              }
-              // SO-1: an anonymous plan is revision 1 plus one per re-plan; three re-plans, then
-              // sign in. Checked inside the row transaction, so parallel re-plans cannot slip by.
-              if (anonymousUser && (stored.plan?.revision ?? 1) > ANONYMOUS_REPLAN_LIMIT) {
-                throw new AnonymousRefusedError("sign_in_required", REPLAN_LIMIT_MESSAGE);
-              }
-              const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
-              return { lesson: next.lesson, meta: next.pinned };
-            },
-          },
-          (scoped) => changeSources(scoped, lessonId, input.sourceIds),
-        );
-        const revision = lesson.plan?.revision ?? 0;
-        await enqueueForPlan(
-          ws,
-          rt,
-          "lesson.plan",
-          { lessonId, revision, stopAfter: "planned", ...(pinned ? { pinObjectives: true } : {}) },
-          {
-            jobId,
+          c.get("logger")?.info(
+            { ...created, sources: sourceIds.length, skipPlanning },
+            "lesson created from brief",
+          );
+          return c.json(created, 202);
+        },
+      )
+      .post(
+        "/lessons/:id/plan",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", PlanLessonSchema, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const input = c.req.valid("json");
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const jobId = newId<JobId>();
+          const anonymousUser = c.get("user")?.isAnonymous === true;
+          const {
+            lesson,
             previous,
-            ...(change ? { undo: () => restoreSources(ws, lessonId, change) } : {}),
-          },
-        );
-        // The superseded proposal job, if it is still running: its next write is `lost_lock`
-        // whatever happens here, so the cancel only saves its remaining model calls.
-        const superseded = previous.plan?.jobId as JobId | undefined;
-        let cancelled = false;
-        if (superseded !== undefined && superseded !== jobId) {
-          cancelled = await cancel(rt.jobs, superseded, { name: "lesson.plan" })
-            .then((r) => r.status === "cancelled" || r.status === "cancelling")
-            .catch(() => false);
-        }
-        c.get("logger")?.info(
-          {
+            prepared: change,
+            meta: pinned,
+          } = await changePlan<SourceChange | undefined, boolean>(
+            ws,
             lessonId,
-            jobId,
-            revision,
-            pinned,
-            supersededJobId: superseded ?? null,
-            cancelled,
-            sourcesAdded: change?.added.length ?? 0,
-            sourcesRemoved: change?.removed.length ?? 0,
-          },
-          "lesson re-plan queued",
-        );
-        return c.json({ jobId, revision }, 202);
-      },
-    )
-    .post(
-      "/lessons/:id/generate",
-      smallJsonBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", lessonParam, validationHook),
-      zValidator("json", GenerateBodySchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const sent = c.req.valid("json");
-        if (sent.objectives.length === 0) {
-          throw new HTTPException(422, { message: NO_OBJECTIVES_MESSAGE });
-        }
-        // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
-        const themeId = assertKnownTheme(sent.themeId);
-        const input = themeId === sent.themeId ? sent : { ...sent, themeId };
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const jobId = newId<JobId>();
-        const now = new Date();
-        const {
-          lesson,
-          previous,
-          meta: replan,
-        } = await changePlan(
-          ws,
-          lessonId,
-          {
-            expectedRevision: input.expectedRevision,
-            jobId,
-            patch: (stored) => {
-              if (stored.plan?.state === "confirmed") {
-                throw new ConflictError("generating", CONFIRMED_MESSAGE, {
-                  revision: stored.plan.revision,
-                });
-              }
-              const facts = stored.facts;
-              if (facts === undefined || stored.generation?.stage !== "planned") {
-                throw new HTTPException(422, { message: NOT_PLANNED_MESSAGE });
-              }
-              if (!stored.brief) throw new HTTPException(422, { message: NO_BRIEF_MESSAGE });
-              const next = confirmLesson({ ...stored, facts }, input, { jobId, now });
-              return { lesson: next.lesson, meta: next.replan };
+            {
+              expectedRevision: input.expectedRevision,
+              jobId,
+              supersedeProposal: true,
+              patch: (stored, sources) => {
+                if (stored.plan?.state === "confirmed") {
+                  throw new ConflictError("generating", CONFIRMED_MESSAGE, {
+                    revision: stored.plan.revision,
+                  });
+                }
+                // SO-1: an anonymous plan is revision 1 plus one per re-plan; three re-plans, then
+                // sign in. Checked inside the row transaction, so parallel re-plans cannot slip by.
+                if (anonymousUser && (stored.plan?.revision ?? 1) > ANONYMOUS_REPLAN_LIMIT) {
+                  throw new AnonymousRefusedError("sign_in_required", REPLAN_LIMIT_MESSAGE);
+                }
+                const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
+                return { lesson: next.lesson, meta: next.pinned };
+              },
             },
-          },
-          async () => undefined,
-        );
-        const revision = lesson.plan?.revision ?? 0;
-        if (replan) {
-          // A shape change (ADR 0029 item 8): the teacher already confirmed, so no `stopAfter`.
+            (scoped) => changeSources(scoped, lessonId, input.sourceIds),
+          );
+          const revision = lesson.plan?.revision ?? 0;
           await enqueueForPlan(
             ws,
             rt,
             "lesson.plan",
-            { lessonId, revision, pinObjectives: true },
-            { jobId, previous },
+            {
+              lessonId,
+              revision,
+              stopAfter: "planned",
+              ...(pinned ? { pinObjectives: true } : {}),
+            },
+            {
+              jobId,
+              previous,
+              ...(change ? { undo: () => restoreSources(ws, lessonId, change) } : {}),
+            },
           );
-        } else {
-          await enqueueForPlan(
+          // The superseded proposal job, if it is still running: its next write is `lost_lock`
+          // whatever happens here, so the cancel only saves its remaining model calls.
+          const superseded = previous.plan?.jobId as JobId | undefined;
+          let cancelled = false;
+          if (superseded !== undefined && superseded !== jobId) {
+            cancelled = await cancel(rt.jobs, superseded, { name: "lesson.plan" })
+              .then((r) => r.status === "cancelled" || r.status === "cancelling")
+              .catch(() => false);
+          }
+          c.get("logger")?.info(
+            {
+              lessonId,
+              jobId,
+              revision,
+              pinned,
+              supersededJobId: superseded ?? null,
+              cancelled,
+              sourcesAdded: change?.added.length ?? 0,
+              sourcesRemoved: change?.removed.length ?? 0,
+            },
+            "lesson re-plan queued",
+          );
+          return c.json({ jobId, revision }, 202);
+        },
+      )
+      .post(
+        "/lessons/:id/generate",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", GenerateBodySchema, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const sent = c.req.valid("json");
+          if (sent.objectives.length === 0) {
+            throw new HTTPException(422, { message: NO_OBJECTIVES_MESSAGE });
+          }
+          // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
+          const themeId = assertKnownTheme(sent.themeId);
+          const input = themeId === sent.themeId ? sent : { ...sent, themeId };
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const jobId = newId<JobId>();
+          const now = new Date();
+          const {
+            lesson,
+            previous,
+            meta: replan,
+          } = await changePlan(
             ws,
-            rt,
-            "lesson.generate",
-            { lessonId, revision },
-            { jobId, previous },
-          );
-        }
-        c.get("logger")?.info(
-          {
             lessonId,
-            jobId,
-            revision,
-            replan,
-            objectives: lesson.facts?.objectives.length ?? 0,
-          },
-          "lesson plan confirmed",
-        );
-        return c.json({ jobId, revision }, 202);
-      },
-    )
-    .post(
-      "/lessons/:id/cascade",
-      smallJsonBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", lessonParam, validationHook),
-      zValidator("json", cascadeBody, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const { changedFactIds } = c.req.valid("json");
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const jobId = await enqueueProposal(ws, rt, "lesson.cascade", { lessonId, changedFactIds });
-        c.get("logger")?.info({ lessonId, jobId, facts: changedFactIds.length }, "cascade queued");
-        return c.json({ jobId }, 202);
-      },
-    )
-    .post(
-      "/lessons/:id/regenerate",
-      smallJsonBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", lessonParam, validationHook),
-      zValidator("json", regenerateBody, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const body = c.req.valid("json");
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const jobId = await enqueueProposal(ws, rt, "lesson.regenerate", { lessonId, ...body });
-        c.get("logger")?.info(
-          { lessonId, jobId, targets: body.targets.length },
-          "regenerate queued",
-        );
-        return c.json({ jobId }, 202);
-      },
-    )
-    .post(
-      "/lessons/:id/worksheet",
-      smallJsonBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", lessonParam, validationHook),
-      zValidator("json", RequestWorksheetSchema, validationHook),
-      async (c) => {
-        const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-        const input = c.req.valid("json");
-        if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
-          throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
-        }
-        const rt = requireRuntime(runtime);
-        const lessonId = c.req.valid("param").id as LessonId;
-        const ws = forWorkspace(unsafeDb, workspaceId);
-        const row = await getDocument(ws, lessonId);
-        if (row === null || row.kind !== "lesson") {
-          throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
-        }
-        const lesson = row.body as Lesson;
-        const plan = lesson.plan;
-        const holder = row.generatingJobId ?? undefined;
-        // Confirmed and planned: the facts the sheet is built from are verified (ADR 0029 item 2).
-        if (
-          plan?.state !== "confirmed" ||
-          lesson.generation?.stage === undefined ||
-          !lesson.facts
-        ) {
-          throw new ConflictError("planning", WORKSHEET_NOT_CONFIRMED_MESSAGE, {
-            ...(plan ? { revision: plan.revision } : {}),
-            ...(holder ? { jobId: holder } : {}),
-          });
-        }
-        if (plan.revision !== input.expectedRevision) {
-          throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
-        }
-        const recipe = resolveRecipe(
-          input.recipeId === "auto" ? "auto" : input.recipeId,
-          lesson.facts,
-        );
-        const practiceMinutes =
-          input.practiceMinutes === "auto" ? defaultPracticeMinutes(recipe) : input.practiceMinutes;
-        const jobId = newId<JobId>();
-        const found = await findWorksheetForGeneration(ws, lessonId);
-        if (found.kind === "generating") {
-          throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
-            worksheetId: found.row.id,
-            jobId: found.row.generatingJobId as JobId,
-          });
-        }
-        // The row first, then the job (as `POST /lessons`): a worker that picks the job up at
-        // once must find a lock to clear.
-        const reused = found.kind === "reusable";
-        let worksheetId: string;
-        if (found.kind === "reusable") {
-          worksheetId = found.row.id;
-          if (!(await relockWorksheet(ws, worksheetId, jobId))) {
-            // Taken between the read and the lock: answer with the holder's ids.
-            const now = await findWorksheetForGeneration(ws, lessonId);
-            throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
-              worksheetId,
-              ...(now.kind === "generating" ? { jobId: now.row.generatingJobId as JobId } : {}),
+            {
+              expectedRevision: input.expectedRevision,
+              jobId,
+              patch: (stored) => {
+                if (stored.plan?.state === "confirmed") {
+                  throw new ConflictError("generating", CONFIRMED_MESSAGE, {
+                    revision: stored.plan.revision,
+                  });
+                }
+                const facts = stored.facts;
+                if (facts === undefined || stored.generation?.stage !== "planned") {
+                  throw new HTTPException(422, { message: NOT_PLANNED_MESSAGE });
+                }
+                if (!stored.brief) throw new HTTPException(422, { message: NO_BRIEF_MESSAGE });
+                const next = confirmLesson({ ...stored, facts }, input, { jobId, now });
+                return { lesson: next.lesson, meta: next.replan };
+              },
+            },
+            async () => undefined,
+          );
+          const revision = lesson.plan?.revision ?? 0;
+          if (replan) {
+            // A shape change (ADR 0029 item 8): the teacher already confirmed, so no `stopAfter`.
+            await enqueueForPlan(
+              ws,
+              rt,
+              "lesson.plan",
+              { lessonId, revision, pinObjectives: true },
+              { jobId, previous },
+            );
+          } else {
+            await enqueueForPlan(
+              ws,
+              rt,
+              "lesson.generate",
+              { lessonId, revision },
+              { jobId, previous },
+            );
+          }
+          c.get("logger")?.info(
+            {
+              lessonId,
+              jobId,
+              revision,
+              replan,
+              objectives: lesson.facts?.objectives.length ?? 0,
+            },
+            "lesson plan confirmed",
+          );
+          return c.json({ jobId, revision }, 202);
+        },
+      )
+      /**
+       * Try again (UX-A): a confirmed lesson whose `lesson.generate` job failed, and released its
+       * lock, gets a new job that writes the rest. The worker resumes from the row's checkpoint and
+       * keeps every slide already `done` (`write.ts`, TEACH-312 part j). The lock is taken first,
+       * then the job is queued (as `/worksheet`), so a worker that starts at once finds it; if the
+       * queue refuses, the lock is let go. `409 generating` while a job holds the lesson,
+       * `409 planning` before the plan is confirmed or once the lesson is finished.
+       */
+      .post(
+        "/lessons/:id/resume",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", ResumeBodySchema, validationHook),
+        async (c) => {
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          const lesson = row.body as Lesson;
+          if (row.generatingJobId) {
+            throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
+              jobId: row.generatingJobId as JobId,
             });
           }
-        } else {
-          worksheetId = newId();
-          const shell: Worksheet = {
-            ...newWorksheet(lesson.title, lesson.themeId),
-            id: worksheetId,
+          const plan = lesson.plan;
+          if (plan?.state !== "confirmed" || lesson.generation?.stage === undefined) {
+            throw new ConflictError("planning", RESUME_NOT_CONFIRMED_MESSAGE, {
+              ...(plan ? { revision: plan.revision } : {}),
+            });
+          }
+          if (lesson.generation.completedAt !== undefined) {
+            throw new ConflictError("planning", RESUME_FINISHED_MESSAGE, {
+              revision: plan.revision,
+            });
+          }
+          // The job that stopped (the client's `jobId`): a budget stop cannot be finished by trying
+          // again, since a new job starts from the usage the lesson already spent (422).
+          const stoppedBy = await terminalJobEventFor(ws, c.req.valid("json").jobId as JobId);
+          const stopReason =
+            stoppedBy?.type === "failed"
+              ? (stoppedBy.payload as { error?: { message?: string } }).error?.message
+              : undefined;
+          if (isBudgetStopMessage(stopReason)) {
+            throw new HTTPException(422, { message: RESUME_BUDGET_MESSAGE });
+          }
+          const jobId = newId<JobId>();
+          if (!(await relockLesson(ws, lessonId, jobId))) {
+            const now = await getDocument(ws, lessonId);
+            throw new ConflictError("generating", RESUME_GENERATING_MESSAGE, {
+              ...(now?.generatingJobId ? { jobId: now.generatingJobId as JobId } : {}),
+            });
+          }
+          let queued: JobId | null = null;
+          let failure: unknown;
+          try {
+            queued = await enqueue(
+              rt.jobs,
+              "lesson.generate",
+              { lessonId, revision: plan.revision },
+              { workspaceId: ws.workspaceId, id: jobId },
+            );
+          } catch (error) {
+            failure = error;
+          }
+          if (queued === null) {
+            // Let the lock go. Should this fail too (or the process die between the lock and the
+            // queue), no `queued` event exists for the job, so `releaseStaleLock` frees the row on
+            // the next `GET /documents/:id` once it is `STALE_LOCK_AFTER_MS` (10 minutes) untouched.
+            await clearGenerating(ws, lessonId, jobId).catch((error: unknown) =>
+              c
+                .get("logger")
+                ?.warn(
+                  { lessonId, jobId, err: safeError(error) },
+                  "resume: could not release the lock after a failed enqueue",
+                ),
+            );
+            throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: failure });
+          }
+          c.get("logger")?.info({ lessonId, jobId, revision: plan.revision }, "lesson resumed");
+          return c.json({ jobId }, 202);
+        },
+      )
+      .post(
+        "/lessons/:id/cascade",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", cascadeBody, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const { changedFactIds } = c.req.valid("json");
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const jobId = await enqueueProposal(ws, rt, "lesson.cascade", {
             lessonId,
-            ...(lesson.subject !== undefined ? { subject: lesson.subject } : {}),
-            ...(lesson.yearGroup !== undefined ? { yearGroup: lesson.yearGroup } : {}),
+            changedFactIds,
+          });
+          c.get("logger")?.info(
+            { lessonId, jobId, facts: changedFactIds.length },
+            "cascade queued",
+          );
+          return c.json({ jobId }, 202);
+        },
+      )
+      .post(
+        "/lessons/:id/regenerate",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", regenerateBody, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const body = c.req.valid("json");
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const jobId = await enqueueProposal(ws, rt, "lesson.regenerate", { lessonId, ...body });
+          c.get("logger")?.info(
+            { lessonId, jobId, targets: body.targets.length },
+            "regenerate queued",
+          );
+          return c.json({ jobId }, 202);
+        },
+      )
+      .post(
+        "/lessons/:id/worksheet",
+        smallJsonBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", lessonParam, validationHook),
+        zValidator("json", RequestWorksheetSchema, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const input = c.req.valid("json");
+          if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
+            throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
+          }
+          const rt = requireRuntime(runtime);
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          const lesson = row.body as Lesson;
+          const plan = lesson.plan;
+          const holder = row.generatingJobId ?? undefined;
+          // Confirmed and planned: the facts the sheet is built from are verified (ADR 0029 item 2).
+          if (
+            plan?.state !== "confirmed" ||
+            lesson.generation?.stage === undefined ||
+            !lesson.facts
+          ) {
+            throw new ConflictError("planning", WORKSHEET_NOT_CONFIRMED_MESSAGE, {
+              ...(plan ? { revision: plan.revision } : {}),
+              ...(holder ? { jobId: holder } : {}),
+            });
+          }
+          if (plan.revision !== input.expectedRevision) {
+            throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
+          }
+          const recipe = resolveRecipe(
+            input.recipeId === "auto" ? "auto" : input.recipeId,
+            lesson.facts,
+          );
+          const practiceMinutes =
+            input.practiceMinutes === "auto"
+              ? defaultPracticeMinutes(recipe)
+              : input.practiceMinutes;
+          const jobId = newId<JobId>();
+          const found = await findWorksheetForGeneration(ws, lessonId);
+          if (found.kind === "generating") {
+            throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
+              worksheetId: found.row.id,
+              jobId: found.row.generatingJobId as JobId,
+            });
+          }
+          // The row first, then the job (as `POST /lessons`): a worker that picks the job up at
+          // once must find a lock to clear.
+          const reused = found.kind === "reusable";
+          let worksheetId: string;
+          if (found.kind === "reusable") {
+            worksheetId = found.row.id;
+            if (!(await relockWorksheet(ws, worksheetId, jobId))) {
+              // Taken between the read and the lock: answer with the holder's ids.
+              const now = await findWorksheetForGeneration(ws, lessonId);
+              throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
+                worksheetId,
+                ...(now.kind === "generating" ? { jobId: now.row.generatingJobId as JobId } : {}),
+              });
+            }
+          } else {
+            worksheetId = newId();
+            const shell: Worksheet = {
+              ...newWorksheet(lesson.title, lesson.themeId),
+              id: worksheetId,
+              lessonId,
+              ...(lesson.subject !== undefined ? { subject: lesson.subject } : {}),
+              ...(lesson.yearGroup !== undefined ? { yearGroup: lesson.yearGroup } : {}),
+            };
+            await createDocument(ws, "worksheet", shell, {
+              id: worksheetId,
+              generatingJobId: jobId,
+            });
+          }
+          const undo = async () => {
+            if (reused) await clearGenerating(ws, worksheetId, jobId).catch(() => undefined);
+            else await deleteDocument(ws, worksheetId).catch(() => undefined);
           };
-          await createDocument(ws, "worksheet", shell, { id: worksheetId, generatingJobId: jobId });
-        }
-        const undo = async () => {
-          if (reused) await clearGenerating(ws, worksheetId, jobId).catch(() => undefined);
-          else await deleteDocument(ws, worksheetId).catch(() => undefined);
-        };
-        let queued: JobId | null;
-        try {
-          queued = await enqueue(
-            rt.jobs,
-            "lesson.worksheet",
+          let queued: JobId | null;
+          try {
+            queued = await enqueue(
+              rt.jobs,
+              "lesson.worksheet",
+              {
+                lessonId,
+                worksheetId,
+                revision: plan.revision,
+                recipeId: recipe.id,
+                practiceMinutes,
+              },
+              {
+                workspaceId,
+                id: jobId,
+                singletonKey: `${lessonId}:worksheet`,
+                singletonSeconds: worksheetSingletonS,
+              },
+            );
+          } catch (error) {
+            await undo();
+            throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: error });
+          }
+          if (queued === null) {
+            // Inside the throttle slot: another request's job owns this lesson's sheet. Name it
+            // when it is still locked; a finished one has nothing to follow.
+            await undo();
+            const current = await findWorksheetForGeneration(ws, lessonId);
+            throw new ConflictError(
+              "generating",
+              WORKSHEET_QUEUED_MESSAGE,
+              current.kind === "generating"
+                ? { worksheetId: current.row.id, jobId: current.row.generatingJobId as JobId }
+                : {},
+            );
+          }
+          c.get("logger")?.info(
             {
               lessonId,
               worksheetId,
+              jobId,
               revision: plan.revision,
               recipeId: recipe.id,
               practiceMinutes,
+              reused,
             },
-            {
-              workspaceId,
-              id: jobId,
-              singletonKey: `${lessonId}:worksheet`,
-              singletonSeconds: worksheetSingletonS,
-            },
+            "worksheet queued",
           );
-        } catch (error) {
-          await undo();
-          throw new HTTPException(503, { message: JOBS_UNAVAILABLE_MESSAGE, cause: error });
-        }
-        if (queued === null) {
-          // Inside the throttle slot: another request's job owns this lesson's sheet. Name it
-          // when it is still locked; a finished one has nothing to follow.
-          await undo();
-          const current = await findWorksheetForGeneration(ws, lessonId);
-          throw new ConflictError(
-            "generating",
-            WORKSHEET_QUEUED_MESSAGE,
-            current.kind === "generating"
-              ? { worksheetId: current.row.id, jobId: current.row.generatingJobId as JobId }
-              : {},
-          );
-        }
-        c.get("logger")?.info(
-          {
-            lessonId,
-            worksheetId,
-            jobId,
-            revision: plan.revision,
-            recipeId: recipe.id,
-            practiceMinutes,
-            reused,
-          },
-          "worksheet queued",
-        );
-        return c.json({ worksheetId, jobId }, 202);
-      },
-    )
-    .get("/lessons/:id/worksheets", zValidator("param", lessonParam, validationHook), async (c) => {
-      const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-      const lessonId = c.req.valid("param").id as LessonId;
-      const ws = forWorkspace(unsafeDb, workspaceId);
-      const row = await getDocument(ws, lessonId);
-      if (row === null || row.kind !== "lesson") {
-        throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
-      }
-      const rows = await listWorksheetsOfLesson(ws, lessonId);
-      const items = rows.map(({ body, ...summary }) => ({
-        ...toSummaryJson(summary),
-        generation: (body as Worksheet).generation,
-      }));
-      return c.json({ items });
-    });
+          return c.json({ worksheetId, jobId }, 202);
+        },
+      )
+      .get(
+        "/lessons/:id/worksheets",
+        zValidator("param", lessonParam, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          const rows = await listWorksheetsOfLesson(ws, lessonId);
+          const items = rows.map(({ body, ...summary }) => ({
+            ...toSummaryJson(summary),
+            generation: (body as Worksheet).generation,
+          }));
+          return c.json({ items });
+        },
+      )
+  );
 }

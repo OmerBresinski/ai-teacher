@@ -1,13 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import type { Lesson } from "@tj/domain/documents";
-import type { LessonEditorHandle } from "@tj/editor/lesson";
-import { createRef } from "react";
 import { installFakeApi } from "@/test/fake-api";
 import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 import { generationRun } from "@/test/play-run";
-import { FillingFollower, type FillingFollowerHandle, opensFillingEditor } from "./FillingFollower";
+import { FillingFollower, opensFillingEditor } from "./FillingFollower";
 
 afterEach(() => cleanup());
 
@@ -28,38 +25,24 @@ describe("opensFillingEditor (ADR 0037)", () => {
 
 describe("FillingFollower at the job's end", () => {
   for (const type of ["failed", "cancelled"] as const) {
-    it(`a ${type} job hands the page its stopped view; completed does not`, async () => {
-      const { fakeApi, restore } = installFakeApi();
+    it(`a ${type} job folds the last row, then tells the page it stopped`, async () => {
+      const { restore } = installFakeApi();
       installFakeEventSource();
-      const lessonId = generationRun.lesson;
       const jobId = generationRun.jobId;
-      const row = fakeApi.get(lessonId);
-      if (!row) throw new Error("fixture missing");
       const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const editorRef = createRef<LessonEditorHandle | null>() as {
-        current: LessonEditorHandle | null;
-      };
-      const received: Lesson[] = [];
-      editorRef.current = {
-        receiveGenerated: (_base: Lesson, theirs: Lesson) => {
-          received.push(theirs);
-          return theirs;
-        },
-      } as unknown as LessonEditorHandle;
-      const followerRef = createRef<FillingFollowerHandle | null>() as {
-        current: FillingFollowerHandle | null;
+      let folds = 0;
+      const fold = async () => {
+        folds += 1;
+        return undefined;
       };
       const stopped: string[] = [];
       try {
         render(
           <QueryClientProvider client={client}>
             <FillingFollower
-              lessonId={lessonId}
               jobId={jobId}
-              base={row.body as Lesson}
-              editorRef={editorRef}
-              followerRef={followerRef}
-              onStopped={(id) => stopped.push(id)}
+              fold={fold}
+              onStopped={(id, outcome) => stopped.push(`${id}:${outcome}`)}
             />
           </QueryClientProvider>,
         );
@@ -78,8 +61,9 @@ describe("FillingFollower at the job's end", () => {
             "1",
           );
         });
-        await waitFor(() => expect(stopped).toEqual([jobId]));
-        expect(received.length).toBeGreaterThan(0);
+        await waitFor(() => expect(stopped).toEqual([`${jobId}:${type}`]));
+        // The last fold lands the row the job left before the page is told.
+        expect(folds).toBeGreaterThan(0);
       } finally {
         restore();
       }
