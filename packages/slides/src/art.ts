@@ -455,7 +455,8 @@ export const artOf = (t: Theme): Theme["backgrounds"] =>
  * the worked example). A slide is keyed by its kind, the template family a layout stamps.
  *
  * `role`: "content" draws the content art whatever images the slide holds; "auto" keeps ruling
- *   107's rule (a slide with a picture wears the picture motif on the side away from it).
+ *   107's rule (a slide with a picture wears the picture motif on the side away from it), with
+ *   `marks` not counted as pictures.
  * `fit`: "crop" cuts a layer that meets an element back to the rows a panel leaves showing (never
  *   over text, a picture or a card); "drop" leaves the layer out whole, as ruling 107 did.
  * `marks`: image names that are drawn marks, not pictures: they never make a picture slide.
@@ -474,16 +475,23 @@ export type ArtPlacement = {
 export const ART_PLACEMENT_GAP: ArtPlacement = { role: "auto", fit: "drop", gold: "gap" };
 
 export const ART_PLACEMENT: Partial<Record<SlideKind, ArtPlacement>> = {
-  // worked, steps, equation-hero: round 3-5 `worked-*`, final `steps2-*`. The move arrows and the
-  // check tick are marks.
-  "worked-example": { role: "content", fit: "crop", gold: "worked, steps2" },
-  // question-set: round 3-5 `quick-*`.
-  starter: { role: "content", fit: "crop", gold: "quick" },
-  // hinge: round 3-5 `hinge-*`.
-  "multiple-choice": { role: "content", fit: "crop", gold: "hinge" },
+  // worked, steps, equation-hero: round 3-5 `worked-*`, final `steps2-*`. The gold worked example
+  // holds a drawn figure (the algebra tiles in its right panel) and still wears the content art,
+  // so this row draws it whatever the slide holds. The move arrows and check tick are marks.
+  "worked-example": {
+    role: "content",
+    fit: "crop",
+    marks: ["Move arrow", "Check tick"],
+    gold: "worked, steps2",
+  },
+  // question-set: round 3-5 `quick-*` (no picture in the gold, so a picture keeps ruling 107).
+  starter: { role: "auto", fit: "crop", gold: "quick" },
+  // hinge: round 3-5 `hinge-*` (no picture in the gold, so a picture keeps ruling 107).
+  "multiple-choice": { role: "auto", fit: "crop", gold: "hinge" },
   // myth, stages, explain, compare, source, reasons, items-row, panel-list, split-compare: round
   // 3-5 `myth-*`, `stages-*`, `table-*`, final `summary-*`, `venn-*`, `writing-*`. The myth's proof
-  // icons are marks; a real photo (panel-list, split-compare) keeps the picture rule (no gold).
+  // icons are marks; a real photo (panel-list, split-compare, a myth's proof picture) keeps the
+  // picture rule (no gold).
   content: {
     role: "auto",
     fit: "crop",
