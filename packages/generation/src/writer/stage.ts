@@ -23,6 +23,7 @@ import {
   type CheckResult,
   checkSlide,
   duplicateFaults,
+  offSlide,
   referentFault,
   slideNoEmDash,
 } from "./checks";
@@ -247,7 +248,8 @@ export type WriterRun = {
    * still computed and logged ("checks", "repair-skipped" per slide), but nothing acts on a
    * result: no repair call, revert, check-driven relayout, rewrite, strip or visual drop, and a
    * library model or writer spec falls back only when it cannot be drawn at all. Answer hiding
-   * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act.
+   * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act, and so
+   * does the split of a slide whose text or a card runs off the slide (Greg 70 B, 20 Oct).
    */
   checks?: "act" | "log";
   /**
@@ -413,6 +415,12 @@ export type WriterOutput = {
   title: string;
   writer: { usd: number; ms: number; firstTokenMs?: number; finishReason?: string | null };
   summary: { textOnlyTeach: number; dangling: { slide: number; fault: string }[] };
+  /**
+   * Slides whose text or a card still runs off the slide as shipped (no continuation split fits):
+   * the deck slide's id and its off-slide faults, for the saved findings (Greg 71 A: a block past
+   * its room but on the slide is not reported). Each is also logged as `overflow-shipped`.
+   */
+  overflow: { slide: number; id: string; faults: string[] }[];
 };
 
 /**
@@ -423,6 +431,12 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
   const k = promptStage(brief.keyStage);
   return contractSystem(k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5);
 }
+
+/**
+ * A continuation slide's speaker notes (Greg 70 B): the slide's own notes stay on its first part,
+ * and the parts after it say where they come from.
+ */
+export const CONTINUED_NOTE = "Continued from the previous slide: the same content, split to fit.";
 
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
 export const PUPIL_WORDING_DEADLINE_MS = 8_000;
@@ -1364,6 +1378,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
   const continued = new Map<number, Materialised[]>();
+  /** Each continuation slide's own slide JSON, for its answers (a split question list). */
+  const continuedFrom = new Map<number, S[]>();
+  /**
+   * Continuation k of slide i as shown: a split question list's part keeps its own questions'
+   * answers, in order, after those of the slide and the parts before it.
+   */
+  const continuedSlide = (i: number, k: number, c: Materialised) => {
+    const parts = continuedFrom.get(i) ?? [];
+    const qs = (x: S | undefined) => (Array.isArray(x?.questions) ? x.questions.length : 0);
+    const before = qs(plan.slides[i] as S) + parts.slice(0, k).reduce((t, p) => t + qs(p), 0);
+    const answers = notes.get(i)?.answers;
+    const q = answers ? listQuestion(parts[k], { answers: answers.slice(before) }) : undefined;
+    return { ...c.slide, ...(q ? { question: q } : {}) };
+  };
   const deck = (): WriterSlide[] => {
     const slides: WriterSlide[] = [];
     /** Plan slide number (1-based) to its number in the deck, once continuations sit between. */
@@ -1374,7 +1402,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       slides.push(own);
       at.set(i + 1, slides.length);
       for (const [k, c] of (continued.get(i) ?? []).entries())
-        slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
+        slides.push({
+          id: `s${i + 1}c${k + 1}`,
+          ...continuedSlide(i, k, c),
+          notes: CONTINUED_NOTE,
+        });
       for (const [k, q] of (quickRest.get(i) ?? []).entries()) {
         const m = materialise(q, {
           ...base,
@@ -1519,7 +1551,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   if (flags.duplicateLogOnly)
     for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
 
+  /** Slide i's continuation parts dropped: they belong to the version of it being replaced. */
+  const dropContinued = (i: number) => {
+    continued.delete(i);
+    continuedFrom.delete(i);
+  };
+  /** Slide i's text and cards past the slide's edge, as laid now. */
+  const offSlideAt = (i: number) => offSlide(laid.get(i)?.slide.elements ?? []);
   const swapSlide = (i: number, next0: S) => {
+    dropContinued(i);
     states.save(i, plan.slides[i]);
     // figureSync (BAKEOFF base4f, chalkie-gap Y5-B): a figure on a rewritten slide is re-checked
     // against the new words; kept when it agrees, redrawn from the words when it can be, dropped
@@ -1628,6 +1668,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     n0: { notes: string; answers: string[] } | undefined,
     oldAsks: VisualAsk[],
   ) => {
+    dropContinued(i);
     plan.slides[i] = slide;
     states.put(i, slide);
     if (n0) notes.set(i, n0);
@@ -1899,6 +1940,35 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ],
     });
   };
+  /**
+   * Slide i's list split over continuation slides so each part fits (`continueForFit`), measured
+   * with `visual`. True when it split; false (nothing changed) when no split fits.
+   */
+  const continueSlide = (i: number, visual: (key: string) => VisualState): boolean => {
+    const fits = (sl: S) => {
+      const m = materialise(sl, { ...base, index: i, plan, visual });
+      const f = checkSlide({
+        specs: [],
+        index: i,
+        slide: m.slide,
+        over: m.over ?? [],
+        questions: [],
+        answers: undefined,
+        notesChecked: true,
+        words: "",
+      });
+      return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
+    };
+    const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
+    if (!cont) return false;
+    swapSlide(i, cont.first);
+    continued.set(
+      i,
+      cont.rest.map((sl) => fits(sl).m),
+    );
+    continuedFrom.set(i, cont.rest);
+    return true;
+  };
   // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
   // call by the slide it sends, so it sees the same calls in any order.
   // ── pilot layouts: validate at the drawn size and repair (TEACH-110 part s) ──
@@ -2106,36 +2176,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     restore(i, orig, n0, oldAsks);
     swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
     // The last resort never ships overflow: what still does not fit moves to continuation slides.
-    if (over().length) {
-      const fits = (sl: S) => {
-        const m = materialise(sl, {
-          ...base,
-          index: i,
-          plan,
-          visual: () => ({ status: "failed" }),
-        });
-        const f = checkSlide({
-          specs: [],
-          index: i,
-          slide: m.slide,
-          over: m.over ?? [],
-          questions: [],
-          answers: undefined,
-          notesChecked: true,
-          words: "",
-        });
-        return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
-      };
-      const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
-      if (cont) {
-        swapSlide(i, cont.first);
-        continued.set(
-          i,
-          cont.rest.map((sl) => fits(sl).m),
-        );
-        log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
-        return "strip-continued";
-      }
+    if (over().length && continueSlide(i, () => ({ status: "failed" }))) {
+      log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
+      return "strip-continued";
     }
     log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
     return "strip";
@@ -2610,6 +2653,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
+  // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
+  // or with none when checks only log) splits into continuation slides, as the restage's last
+  // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a
+  // block a little past its room but on the slide stays as it is. It runs last, once every slide
+  // is final (gas8, figure checks, restage and the tails), so no later swap of slide i leaves
+  // parts of an older version behind. What cannot split is reported at the end (`overflow` on the
+  // output). Root cause (the writer overfilling the layout) is open.
+  for (let i = 0; i < n; i++) {
+    if (!offSlideAt(i).length || continued.has(i)) continue;
+    if (!repairable(plan.slides[i] as S, i)) continue;
+    const ok = continueSlide(i, visualState(i));
+    log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
+  }
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;
     log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
@@ -2664,8 +2720,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       }).missing
     : [];
   if (unmet.length) log({ ev: "coverage-unmet", level: "warn", missing: unmet });
+  const overflow = Array.from({ length: n }, (_, i) => i).flatMap((i) => {
+    const faults = offSlideAt(i);
+    const id = slideAt(i)?.id;
+    return faults.length && id ? [{ slide: i + 1, id, faults }] : [];
+  });
+  for (const o of overflow) log({ ev: "overflow-shipped", level: "warn", ...o });
   log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
   return {
+    overflow,
     slides: deck(),
     plan,
     checks,
