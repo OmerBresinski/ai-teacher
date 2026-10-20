@@ -19,6 +19,7 @@ import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
 import { withEndAnswers } from "../writer/materialise";
+import { overflowFindings, withOverflowFindings } from "../writer/overflow-findings";
 import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
@@ -428,7 +429,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // stay off. Asking slides hold the answer back (roleAsk). Each switch turns one piece off.
       // Checks only log (Greg, 10 Oct: "turn off the ENTIRE check system... logging what it would
       // have done"): no repair, no check-driven word change, and a model is kept as drawn rather
-      // than falling back for overlapping or split labels (TEACH-312 part i).
+      // than falling back for overlapping or split labels (TEACH-312 part i). One exception (Greg
+      // 70 B, 20 Oct): a slide whose text or a card runs off the slide still splits onto a
+      // continuation slide.
       checks: "log",
       library: true,
       libraryMenuFilter: true,
@@ -625,8 +628,24 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
     stage: keyStage,
   });
+  const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
+  // UX-C J8: a slide the stage could not fit ships with a "things to check" finding, never silently.
+  const overflow = overflowFindings(out.overflow, shipped);
+  if (overflow.length)
+    deps.logger.warn(
+      { stage: "generate", slides: out.overflow.map((o) => o.slide) },
+      "slides shipped overflowing, flagged to check",
+    );
   const done = {
-    ...toLesson(shipped, "generated", allIn(shipped, "done")),
+    ...generated,
+    ...(generated.generation
+      ? {
+          generation: {
+            ...generated.generation,
+            findings: withOverflowFindings(generated.generation.findings, overflow),
+          },
+        }
+      : {}),
     title: writtenTitle(lesson, out.title),
   };
   const { updatedAt } = await deps.persist(done);

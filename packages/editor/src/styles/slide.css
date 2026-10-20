@@ -463,3 +463,30 @@
     animation: none !important;
   }
 }
+
+/*
+ * A badge's numeral or letter (`badgeGlyph` in @tj/slides; Greg, 20 Oct 2026): centred on its
+ * cap height (x-height for lower case), not its line box. Where the browser trims a line box
+ * to a band (`text-box`), the trimmed box is what the flex shell centres; elsewhere the metric
+ * shift moves it. `--glyph-x` is the glyph's own ink offset (a "1" leans on its flag).
+ */
+.tj-badge-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max-content;
+  white-space: nowrap;
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--glyph-k, 1))) translate(-50%, -50%)
+    translate(var(--glyph-x, 0px), var(--glyph-y, 0px));
+}
+@supports (text-box: trim-both cap alphabetic) {
+  .tj-badge-glyph {
+    transform: scale(calc(1 / var(--glyph-k, 1))) translate(-50%, -50%)
+      translate(var(--glyph-x, 0px), var(--glyph-trim-y, 0px));
+  }
+  .tj-badge-glyph,
+  .tj-badge-glyph * {
+    text-box: trim-both var(--glyph-edge, cap alphabetic);
+  }
+}
