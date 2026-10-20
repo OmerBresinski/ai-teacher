@@ -309,10 +309,15 @@ function makePersist(
   return async (lesson: Lesson) => {
     const result = await putDocumentAsJob(ws, lessonId, lesson, jobId, { base });
     if (result.status !== "ok") throw new NonRetryableError(`lesson ${result.status}`);
+    const before = base;
     base = result.jobBody;
-    // A slide the merge kept as the teacher has it (edited or deleted since the job's last write):
-    // Generate flags a fact correction that could not land there instead of writing over it.
-    const teacherKept = slidesNotTaken(result.jobBody as Lesson, result.row.body as Lesson);
+    // A slide the merge kept as the teacher has it (edited since the job's last write): Generate
+    // flags a fact correction that could not land there instead of writing over it.
+    const teacherKept = slidesNotTaken(
+      parseLesson(before),
+      parseLesson(result.jobBody),
+      parseLesson(result.row.body),
+    );
     return {
       updatedAt: result.row.updatedAt.toISOString(),
       ...(teacherKept.length > 0 ? { teacherKept } : {}),

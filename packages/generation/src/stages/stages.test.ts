@@ -60,7 +60,13 @@ import {
 } from "../testing";
 import { StageFailure } from "../types";
 import { evaluate, factConsistencyApplies, verbFitApplies } from "./evaluate";
-import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
+import {
+  GENERATE_CONCURRENCY,
+  generate,
+  isUnverifiedMark,
+  mayBeWrongFinding,
+  PLANNED_SLIDES,
+} from "./generate";
 
 /** A budget that admits four calls: what one batch was before `GENERATE_CONCURRENCY` rose (lab pw). */
 const FOUR_CALLS = 4;
@@ -1556,13 +1562,11 @@ describe("generate", () => {
       const id = result.lesson.slides[touched]?.id as string;
       expect(result.lesson.generation?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
-        {
-          check: "fact-verify",
-          severity: "warning",
-          target: { slideId: id },
-          message: "A fact on this slide was corrected after it was written. Check the slide.",
-        },
+        mayBeWrongFinding(id),
       ]);
+      expect(mayBeWrongFinding(id).severity).toBe("error");
+      expect(mayBeWrongFinding(id).message).toContain("may be wrong");
+      expect(mayBeWrongFinding(id).message).not.toContain("was corrected");
     });
 
     test("row 3: Verify fails twice — the failed-call finding, no regeneration, the lesson completes", async () => {
@@ -1617,33 +1621,125 @@ describe("generate", () => {
       ).toBe(false);
     });
 
-    test("a cap hit on the regeneration call keeps the saved slide, flags it to check and stops there", async () => {
-      const { state, release } = await plannedWithHeldVerify([
-        { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" },
-      ]);
+    /** Plan with a held Verify that corrects v1 (slide 4's vocabulary), and a slide fake. */
+    const v1Correction = { factId: "v1", field: "term", value: "Clan", reason: "wrong-term" };
+    const slideFake = () =>
+      createFakeAi({
+        fallback: (call) => {
+          const version = call.context?.promptVersion ?? "";
+          if (version === PROMPT_VERSIONS["verify-facts"]) {
+            return json({ corrections: [v1Correction] });
+          }
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "";
+          const spec = FIXTURES.slides[kind as keyof typeof FIXTURES.slides];
+          if (!spec) throw new Error(`no fixture for ${kind}`);
+          if (kind === "vocabulary" && call.promptText.includes("Clan")) {
+            const vocab = spec as { entries: { term: string; definition: string }[] };
+            return json({
+              ...spec,
+              entries: vocab.entries.map((e, i) => (i === 0 ? { ...e, term: "Clan" } : e)),
+            });
+          }
+          return json(spec);
+        },
+        usage,
+      });
+    const marked = (lesson: Lesson | undefined) =>
+      (lesson?.generation?.findings ?? []).filter(isUnverifiedMark).map((f) => f.target.slideId);
+
+    test("a cap hit on the correction drops the slide built from unverified facts and every slide after it", async () => {
+      const { state, release } = await plannedWithHeldVerify([v1Correction]);
       const facts = fullFacts();
       const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
       const ai = createFakeAi({ script: generateScript(), usage });
       // Four calls' worth: the first four slide calls go ahead; the vocabulary slide's second
       // call (and every later slide) is refused.
-      const budget = callLimitedBudget(FOUR_CALLS);
-      const deps = recordingDeps(ai, { budget });
+      const deps = recordingDeps(ai, { budget: callLimitedBudget(FOUR_CALLS) });
       const run = generate(state, deps);
-      await new Promise((r) => setTimeout(r, 5));
+      await until(() => deps.persisted.length >= 4);
       release();
       const result = await run;
       expect(result.lesson.generation?.stage).toBe("generated");
-      // The first four slides were saved before Verify answered; the touched one stays as saved
-      // (the teacher has seen it), flagged to check, and nothing after the cap was written.
-      expect(result.lesson.slides).toHaveLength(PLANNED_SLIDES + 4);
-      expect(touched).toBeLessThan(PLANNED_SLIDES + 4);
-      const id = result.lesson.slides[touched]?.id;
+      // Slides before the touched one stay; the touched one and everything after are gone.
+      expect(result.lesson.slides).toHaveLength(touched);
+      expect(deps.persisted.at(-2)?.lesson.slides).toHaveLength(touched);
       expect(result.lesson.generation?.findings).toEqual([
         expect.objectContaining({ check: "fact-verify", target: { factId: "v1" } }),
-        expect.objectContaining({ check: "fact-verify", target: { slideId: id } }),
         expect.objectContaining({ check: "budget" }),
       ]);
       expect(result.lesson.facts?.vocabulary[0]?.term).toBe("Clan");
+    });
+
+    test("a cap hit on the correction of a slide the teacher kept: an error that the fact may be wrong", async () => {
+      const { state, release } = await plannedWithHeldVerify([v1Correction]);
+      const touched = fullFacts().outline.findIndex((e) => e.factRefs.includes("v1"));
+      const ai = createFakeAi({ script: generateScript(), usage });
+      const deps = recordingDeps(ai, { budget: callLimitedBudget(FOUR_CALLS) });
+      const recorded = deps.persist;
+      let id: string | undefined;
+      deps.persist = async (lesson, worksheet) => {
+        const out = await recorded(lesson, worksheet);
+        id ??= lesson.slides[touched]?.id;
+        // The drop's save: the row kept the teacher's edited copy of the touched slide.
+        return id && lesson.slides.length === touched ? { ...out, teacherKept: [id] } : out;
+      };
+      const run = generate(state, deps);
+      await until(() => deps.persisted.length >= 4);
+      release();
+      const result = await run;
+      expect(id).toBeDefined();
+      expect(result.lesson.generation?.findings).toContainEqual(mayBeWrongFinding(id ?? ""));
+    });
+
+    test("Stop mid-Verify: every slide saved so far is marked unverified on the row", async () => {
+      const { state, release } = await plannedWithHeldVerify([]);
+      const deps = recordingDeps(createFakeAi({ script: generateScript(), usage }));
+      const run = generate(state, deps);
+      const written = FIXTURES.planSkeleton.outline.length - PLANNED_SLIDES;
+      await until(() => deps.persisted.length >= written);
+      deps.abort.abort(new DOMException("cancelled", "AbortError"));
+      release();
+      await expect(run).rejects.toThrow();
+      const row = deps.persisted.at(-1)?.lesson;
+      expect(row?.generation?.stage).toBe("planned");
+      expect(marked(row)).toEqual((row?.slides ?? []).slice(PLANNED_SLIDES).map((s) => s.id));
+      const mark = row?.generation?.findings.find(isUnverifiedMark);
+      expect(mark?.severity).toBe("warning");
+      expect(mark?.message).toContain("may be wrong");
+    });
+
+    test("a crash before Verify, then a resume whose Verify corrects saved slide 4: rewritten in place, marks cleared", async () => {
+      const facts = fullFacts();
+      const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
+      expect(touched).toBe(3);
+      const { state, release } = await plannedWithHeldVerify([]);
+      const deps = recordingDeps(createFakeAi({ script: generateScript(), usage }));
+      const recorded = deps.persist;
+      // The worker dies on the fifth save: slides 3 to 6 are on the row, unverified.
+      deps.persist = async (lesson, worksheet) => {
+        if (deps.persisted.length >= 4) throw new Error("worker died");
+        return recorded(lesson, worksheet);
+      };
+      const run = generate(state, deps);
+      await until(() => deps.persisted.length >= 4);
+      release();
+      await expect(run).rejects.toThrow("worker died");
+      const row = deps.persisted.at(-1)?.lesson;
+      if (!row) throw new Error("nothing was saved before the crash");
+      expect(row.slides).toHaveLength(PLANNED_SLIDES + 4);
+      expect(marked(row)).toEqual(row.slides.slice(PLANNED_SLIDES).map((s) => s.id));
+
+      const ai = slideFake();
+      const again = recordingDeps(ai);
+      const result = await generate({ lesson: row }, again);
+      const slide4 = result.lesson.slides[touched];
+      expect(slide4?.id).toBe(row.slides[touched]?.id);
+      expect(slideText(slide4 as never)).toContain("Clan");
+      // Only the touched saved slide was written again; the untouched saved ones stay as saved.
+      for (const i of [2, 4, 5]) expect(result.lesson.slides[i]).toEqual(row.slides[i]);
+      expect(marked(result.lesson)).toEqual([]);
+      for (const p of again.persisted.slice(1)) expect(marked(p.lesson)).toEqual([]);
+      expect(result.lesson.slides).toHaveLength(facts.outline.length);
     });
 
     test("skeleton-only facts (the facts call was refused at the cap) are not verified on resume", async () => {

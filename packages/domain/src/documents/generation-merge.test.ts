@@ -178,14 +178,22 @@ describe("slidesNotTaken (latency L1: a Verify correction after the slide was sa
     const mine = typed(base, "Water evaporates in the sun.");
     const theirs = typed(base, "Water evaporates (corrected).");
     const merged = mergeJobLesson(base, mine, theirs);
-    expect(slidesNotTaken(theirs, merged)).toEqual(["w1"]);
-    expect(slidesNotTaken(theirs, mergeJobLesson(base, base, theirs))).toEqual([]);
+    expect(slidesNotTaken(base, theirs, merged)).toEqual(["w1"]);
+    expect(slidesNotTaken(base, theirs, mergeJobLesson(base, base, theirs))).toEqual([]);
   });
 
-  test("a slide the teacher deleted is not taken either", () => {
+  test("a slide the job dropped but the teacher edited is named", () => {
+    const base = filling();
+    const mine = typed(base, "Water evaporates in the sun.");
+    const theirs: Lesson = { ...base, slides: base.slides.filter((s) => s.id !== "w1") };
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(slidesNotTaken(base, theirs, merged)).toEqual(["w1"]);
+  });
+
+  test("a slide the teacher deleted is not named: there is nothing left to flag", () => {
     const base = filling();
     const mine: Lesson = { ...base, slides: base.slides.filter((s) => s.id !== "w1") };
     const merged = mergeJobLesson(base, mine, base);
-    expect(slidesNotTaken(base, merged)).toEqual(["w1"]);
+    expect(slidesNotTaken(base, base, merged)).toEqual([]);
   });
 });

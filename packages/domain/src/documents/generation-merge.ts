@@ -211,11 +211,19 @@ export function resumeBase(stored: Lesson): Lesson {
 }
 
 /**
- * The ids of the job's slides that the stored row does not hold as the job wrote them: after
- * `mergeJobLesson`, a slide the teacher edited keeps the teacher's words and a slide the teacher
- * deleted stays deleted. The job reads this to know a write did not land on that slide.
+ * The slides the stored row holds as the teacher has them, not as the job wrote them: after
+ * `mergeJobLesson`, a slide the teacher edited keeps the teacher's words, and one the job dropped
+ * but the teacher edited stays. Only slides the job knows (in `base` or in its new copy) and the
+ * row still has are named: a slide the teacher deleted is gone, so there is nothing on it to flag.
  */
-export function slidesNotTaken(job: Pick<Lesson, "slides">, written: Pick<Lesson, "slides">) {
-  const stored = new Map(written.slides.map((s) => [s.id, s]));
-  return job.slides.filter((s) => !sameJson(stored.get(s.id), s)).map((s) => s.id);
+export function slidesNotTaken(
+  base: Pick<Lesson, "slides"> | undefined,
+  job: Pick<Lesson, "slides">,
+  written: Pick<Lesson, "slides">,
+): string[] {
+  const jobOf = new Map(job.slides.map((s) => [s.id, s]));
+  const known = new Set([...(base?.slides ?? []).map((s) => s.id), ...jobOf.keys()]);
+  return written.slides
+    .filter((s) => known.has(s.id) && !sameJson(s, jobOf.get(s.id)))
+    .map((s) => s.id);
 }

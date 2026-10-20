@@ -22,6 +22,7 @@ import {
   StageFailure,
   type VerifyResult,
 } from "../types";
+import { withUnverifiedMarks } from "./generate";
 import { keepId, type PlannerEffortOption, plannerEffort } from "./objectives";
 import { PLANNED_VERSION } from "./objectives-first";
 import { existingTitle, materialiseObjectives, materialiseTitle, withPinnedIds } from "./plan";
@@ -77,16 +78,47 @@ export async function runFactsStep(
   options: FactsStepOptions = {},
 ): Promise<{ state: PipelineState; report: FactsStepReport }> {
   const lesson = state.lesson;
+  if (!lesson.brief) throw new Error("facts: the lesson has no brief");
+  if ((lesson.facts?.objectives ?? []).length === 0) {
+    throw new StageFailure("plan", "facts: the lesson has no objectives");
+  }
+  // Slide 3 before the waves (latency lane L1): see `starterPreview`. It is saved marked
+  // unverified (Verify has not run), and withdrawn again if the step fails or is stopped.
+  const preview = options.preview === false ? undefined : starterPreview(lesson);
+  const shown = preview
+    ? await deps.persist(
+        withUnverifiedMarks(
+          { ...lesson, slides: [...lesson.slides, preview.slide] },
+          new Set([preview.slide.id]),
+        ),
+      )
+    : undefined;
+  await deps.onProgress(PROGRESS_PLANNED, "Planning the slides", "plan", shown?.updatedAt);
+  try {
+    return await factsStep(state, deps, options, preview);
+  } catch (error) {
+    if (shown) {
+      // The row goes back to what it was; a lost lock or a cancelled write leaves the job's own
+      // failure to say what happened.
+      try {
+        await deps.persist(lesson);
+        deps.logger.info({ stage: "plan", call: "outline" }, "starter preview withdrawn");
+      } catch {}
+    }
+    throw error;
+  }
+}
+
+async function factsStep(
+  state: PipelineState,
+  deps: PipelineDeps,
+  options: FactsStepOptions,
+  preview: { slide: Slide; spec: SlideSpec } | undefined,
+): Promise<{ state: PipelineState; report: FactsStepReport }> {
+  const lesson = state.lesson;
   const brief = lesson.brief;
   if (!brief) throw new Error("facts: the lesson has no brief");
   const confirmed = lesson.facts?.objectives ?? [];
-  if (confirmed.length === 0) throw new StageFailure("plan", "facts: the lesson has no objectives");
-  // Slide 3 before the waves (latency lane L1): see `starterPreview`.
-  const preview = options.preview === false ? undefined : starterPreview(lesson);
-  const shown = preview
-    ? await deps.persist({ ...lesson, slides: [...lesson.slides, preview.slide] })
-    : undefined;
-  await deps.onProgress(PROGRESS_PLANNED, "Planning the slides", "plan", shown?.updatedAt);
   const startedAt = lesson.generation?.startedAt ?? deps.now().toISOString();
 
   const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
@@ -259,12 +291,24 @@ export async function runFactsStep(
     },
   };
   const { updatedAt } = await deps.persist(
-    keepPreview && preview ? { ...planned, slides: [...planned.slides, preview.slide] } : planned,
+    keepPreview && preview
+      ? withUnverifiedMarks(
+          { ...planned, slides: [...planned.slides, preview.slide] },
+          new Set([preview.slide.id]),
+        )
+      : planned,
   );
   await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", updatedAt);
 
   return {
-    state: { ...state, lesson: planned, pendingVerify },
+    state: {
+      ...state,
+      lesson: planned,
+      pendingVerify,
+      ...(keepPreview && preview
+        ? { preview: { index: STARTER_INDEX, slideId: preview.slide.id } }
+        : {}),
+    },
     report: {
       factsFailed,
       editorialMisses,
@@ -310,17 +354,21 @@ function starterSpec(facts: LessonFacts, lessonId: string): SlideSpec | undefine
  * the stamp from the wall clock, so the deck Generate writes is the same with or without it.
  */
 function starterPreview(lesson: Lesson): { slide: Slide; spec: SlideSpec } | undefined {
-  const retrieval = lesson.facts?.retrieval ?? [];
-  const first = lesson.facts?.objectives[0];
-  if (retrieval.length === 0 || !first || lesson.slides.length !== STARTER_INDEX) return undefined;
+  const stored = lesson.facts;
+  const retrieval = stored?.retrieval ?? [];
+  const first = stored?.objectives[0];
+  if (!stored || retrieval.length === 0 || !first) return undefined;
+  if (lesson.slides.length !== STARTER_INDEX) return undefined;
   if ((lesson.brief?.classContext?.priorKnowledge?.trim() ?? "") !== "") return undefined;
+  // Only `kind` and `factRefs` reach the printed spec; the id is the outline's own shape.
   const entry: OutlineEntry = {
+    id: `s${STARTER_INDEX + 1}`,
     kind: "starter",
     phase: "starter",
     factRefs: [first.id],
-  } as OutlineEntry;
-  const facts = {
-    ...(lesson.facts as LessonFacts),
+  };
+  const facts: LessonFacts = {
+    ...stored,
     retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })),
   };
   const spec = codedSetSpec(entry, facts, `${lesson.id}:${STARTER_INDEX}`)?.spec;

@@ -245,6 +245,12 @@ export interface PipelineState {
    * but it is never persisted — a resumed lesson has none and Generate starts Verify itself.
    */
   pendingVerify?: Promise<VerifyResult>;
+  /**
+   * A slide the facts step saved before Generate wrote it (latency lane L1: the retrieval starter
+   * at index 2), for Generate to write under the same id so nothing bound to it is lost.
+   * In-process only, like `pendingVerify`; a resumed lesson has the slide on the row instead.
+   */
+  preview?: { index: number; slideId: string };
 }
 
 /** What one Verify call settles to (`stages/verify.ts`); a type here so `PipelineState` can name it. */

@@ -119,7 +119,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // The writers are told the verb and the confidence (TEACH-230); Plan enforced the rest.
   const { verb, confidence } = shapeOf(lesson);
   const shape = { verb, confidence };
-  const findings: Finding[] = [...generation.findings];
+  // An unverified-slide mark (below) is the row's state, never a finding of the run's.
+  const findings: Finding[] = generation.findings.filter((f) => !isUnverifiedMark(f));
   const entries = facts.outline;
   const total = entries.length;
   const meta = (modelId: string): MaterialiseMeta => ({
@@ -163,8 +164,34 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       : undefined;
   const pendingVerify = state.pendingVerify ?? resumedVerify;
   let corrected = new Set<string>();
+  // Slides saved before Verify settled (latency lane L1), by id. Every save writes one
+  // `unverifiedMark` per slide here onto the row, from the slide's first save, so a stop, a crash
+  // or a failure before the check leaves each such slide flagged; a resume reads them back and
+  // rewrites (or clears) them once its own Verify has run.
+  const unverified = new Set<string>(
+    generation.findings.flatMap((f) =>
+      isUnverifiedMark(f) && f.target.slideId ? [f.target.slideId] : [],
+    ),
+  );
   const verified: Promise<void> = pendingVerify
     ? pendingVerify.then((result) => {
+        // Marks settle with the patch, in the same tick, so the next save that carries the
+        // verified stamp also carries exactly the slides still to rewrite: a resume after a stamp
+        // rewrites every slide still marked.
+        const at = new Map(lesson.slides.map((slide, i) => [slide.id, i]));
+        for (const id of [...unverified]) {
+          const i = at.get(id);
+          const slide = i === undefined ? undefined : lesson.slides[i];
+          const entry = i === undefined ? undefined : entries[i];
+          if (
+            result.applied.length === 0 ||
+            !slide ||
+            !entry ||
+            !touchesCorrected(entry, slide, new Set(result.applied.map((c) => c.factId)))
+          ) {
+            unverified.delete(id);
+          }
+        }
         // One budget residual per lesson: a cap already hit by Plan's facts call is the same stop.
         for (const f of result.findings) {
           if (f.check === "budget" && findings.some((g) => g.check === "budget")) continue;
@@ -313,18 +340,26 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   };
 
   // Every write goes through one queue: the ordered appends below and a correction written after
-  // Verify (which replaces a slide already saved) never run `deps.persist` at the same time.
+  // Verify (which replaces or drops a slide already saved) never run `deps.persist` at once.
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(write: () => Promise<T>): Promise<T> => {
     const next = queue.then(write);
     queue = next.catch(() => undefined);
     return next;
   };
+  /** One save: the lesson as it stands, with a mark on every slide still unverified. */
+  const save = (l: Lesson) => deps.persist(withUnverifiedMarks(l, unverified));
   // The progress the strip last showed: a correction's write repeats it with the new `updatedAt`,
   // so the follower refetches without the strip moving.
   let lastProgress: { percent: number; message: string } = {
     percent: PROGRESS_SLIDES_FROM,
     message: "Writing",
+  };
+  const without = (gone: readonly Finding[]) => {
+    for (const f of gone) {
+      const at = findings.indexOf(f);
+      if (at >= 0) findings.splice(at, 1);
+    }
   };
 
   /**
@@ -361,6 +396,75 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     return { slide, added };
   };
 
+  /**
+   * A saved slide built from a fact the patch corrected, written again from the corrected facts
+   * and saved in its place under its own id. The save is a three-way merge (ADR 0037): when the
+   * row kept the teacher's copy, the teacher's words and the first answer's findings stay and the
+   * slide is flagged as possibly wrong. When the cap refuses the call the slide is dropped with
+   * every slide after it, as when the cap stops any slide (a known-wrong slide is never kept); a
+   * cancel or a failure leaves it marked unverified on the row.
+   */
+  const correct = async (
+    i: number,
+    id: string,
+    picked: PickedPhoto | undefined,
+    first: Finding[],
+  ) => {
+    const entry = entries[i] as (typeof entries)[number];
+    const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
+    let next: { slide: Slide; added: Finding[] };
+    try {
+      logRewrite(i);
+      next = finish(i, await writeSlide(i, entry, photo), picked, id);
+    } catch (error) {
+      if (!(error instanceof BudgetExceeded)) {
+        failed = true;
+        throw error;
+      }
+      if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
+      await serial(async () => {
+        const at = lesson.slides.findIndex((slide) => slide.id === id);
+        if (at < 0 || deps.signal.aborted || failed) return;
+        const dropped = new Set(lesson.slides.slice(at).map((slide) => slide.id));
+        for (const gone of dropped) unverified.delete(gone);
+        lesson = withUsage({ ...lesson, slides: lesson.slides.slice(0, at) }, deps);
+        const { updatedAt, teacherKept } = await save(lesson);
+        const kept = new Set(teacherKept ?? []);
+        without(
+          findings.filter(
+            (f) => f.target.slideId && dropped.has(f.target.slideId) && !kept.has(f.target.slideId),
+          ),
+        );
+        if (kept.has(id)) findings.push(mayBeWrongFinding(id));
+        await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
+      });
+      return;
+    }
+    await serial(async () => {
+      if (deps.signal.aborted || failed || !lesson.slides.some((slide) => slide.id === id)) {
+        without(next.added);
+        return;
+      }
+      unverified.delete(id);
+      lesson = withUsage(
+        { ...lesson, slides: lesson.slides.map((slide) => (slide.id === id ? next.slide : slide)) },
+        deps,
+      );
+      const { updatedAt, teacherKept } = await save(lesson);
+      if (teacherKept?.includes(id)) {
+        deps.logger.info(
+          { stage: "generate", call: "slide", index: i, reason: "teacher-edited" },
+          "fact correction not written over the teacher's slide",
+        );
+        without(next.added);
+        findings.push(mayBeWrongFinding(id));
+      } else {
+        without(first);
+      }
+      await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
+    });
+  };
+
   const slideWork = async (i: number) => {
     // A stop or a cancel before this call: nothing starts; the gate still opens so later slides
     // (which also start nothing) do not wait forever.
@@ -373,12 +477,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     let slide: Slide | undefined;
     let added: Finding[] = [];
     let picked: PickedPhoto | undefined;
-    let photo: SlidePhoto | "none" | undefined;
     let written: Awaited<ReturnType<typeof writeSlide>> | undefined;
     try {
       picked = await picks.get(i);
       if (picked && picked.outcome !== "busy") judged = true;
-      photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
+      const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
       written = await writeSlide(i, entry, photo);
       // The patch is already in and corrected a fact this slide was built from: it is written
       // again before it is ever saved (TEACH-233), so the teacher never sees the first answer.
@@ -386,7 +489,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         logRewrite(i);
         written = await writeSlide(i, entry, photo);
       }
-      ({ slide, added } = finish(i, written, picked));
+      // The slide the facts step saved early keeps its id (latency lane L1).
+      const keepId = state.preview?.index === i ? state.preview.slideId : undefined;
+      ({ slide, added } = finish(i, written, picked, keepId));
     } catch (error) {
       if (!(error instanceof BudgetExceeded)) {
         failed = true;
@@ -397,68 +502,70 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
     }
     // Saved as soon as it is written and its turn comes (latency lane L1): the save no longer waits
-    // for Verify. A slide that Verify then corrects is written again below and replaces this one.
+    // for Verify. Until Verify settles the slide is marked unverified on the row.
     await turnOf(i);
     // A slide landing after an earlier one stopped would leave a gap in the outline order; after a
     // cancel or another worker's failure nothing more is written (the stage throws once every
     // worker has settled, so no persist races the job's failure write).
     let saved = false;
-    if (slide && lesson.slides.length === i && !deps.signal.aborted && !failed) {
+    if (slide && written && lesson.slides.length === i && !deps.signal.aborted && !failed) {
       const landed = slide;
-      await serial(async () => {
+      const unchecked = pendingVerify !== undefined && (!verifyDone || stale(entry, written));
+      // A failed write fails the stage, and the gate still opens so no later slide waits forever.
+      const write = serial(async () => {
+        if (unchecked) unverified.add(landed.id);
         lesson = withUsage({ ...lesson, slides: [...lesson.slides, landed] }, deps);
-        const { updatedAt } = await deps.persist(lesson);
+        const { updatedAt } = await save(lesson);
         lastProgress = {
           percent: Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),
           message: `Slide ${i + 1} of ${total}`,
         };
         await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
       });
+      try {
+        await write;
+      } catch (error) {
+        failed = true;
+        release(i);
+        throw error;
+      }
       saved = true;
     }
     release(i);
     if (!saved || !written || !slide) return;
 
-    // The patch landed after this slide was written and corrected a fact it was built from: the
-    // slide is written again from the corrected facts and saved in its place, under its own id.
-    // The write is a three-way merge (ADR 0037), so it never replaces a slide the teacher has
-    // edited since; when the row kept the teacher's copy, the slide is flagged to check instead.
+    // The patch landed after this slide was written and corrected a fact it was built from.
     await verified;
-    if (!stale(entry, written) || deps.signal.aborted || failed) return;
-    const id = slide.id;
-    let next: { slide: Slide; added: Finding[] };
-    try {
-      logRewrite(i);
-      next = finish(i, await writeSlide(i, entry, photo), picked, id);
-    } catch (error) {
-      if (!(error instanceof BudgetExceeded)) {
-        failed = true;
-        throw error;
-      }
-      // The cap refused the correction: the saved slide stays (taking it away would undo what the
-      // teacher has already seen) and says what to check; the lesson stops as for any refusal.
-      if (!stopped) stopped = BUDGET_FINDING(error.by, `slide ${i + 1} of ${total}`);
-      findings.push(uncorrectedFinding(id));
+    if (!stale(entry, written)) {
+      unverified.delete(slide.id);
       return;
     }
-    for (const f of added) findings.splice(findings.indexOf(f), 1);
-    await serial(async () => {
-      if (deps.signal.aborted || failed) return;
-      lesson = withUsage(
-        { ...lesson, slides: lesson.slides.map((s) => (s.id === id ? next.slide : s)) },
-        deps,
-      );
-      const { updatedAt, teacherKept } = await deps.persist(lesson);
-      if (teacherKept?.includes(id)) {
-        deps.logger.info(
-          { stage: "generate", call: "slide", index: i, reason: "teacher-edited" },
-          "fact correction not written over the teacher's slide",
-        );
-        findings.push(uncorrectedFinding(id));
-      }
-      await deps.onProgress(lastProgress.percent, lastProgress.message, "generate", updatedAt);
-    });
+    if (deps.signal.aborted || failed) return;
+    await correct(i, slide.id, picked, added);
   };
+
+  // A resumed lesson: the slides an earlier attempt saved before its Verify settled are still
+  // marked. Its own Verify (awaited above) cleared the marks it did not need; each slide still
+  // marked is rewritten from the verified facts before anything new is written.
+  const resumed = [...unverified].flatMap((id) => {
+    const i = lesson.slides.findIndex((slide) => slide.id === id);
+    return state.pendingVerify === undefined && i >= 0 && i < first ? [{ i, id }] : [];
+  });
+  for (const { i, id } of resumed) {
+    const entry = entries[i];
+    const picked =
+      entry?.kind === "image-text" && entry.imageBrief && deps.images
+        ? await pickPhoto(lesson, i, deps)
+        : undefined;
+    if (picked && picked.outcome !== "busy") judged = true;
+    if (!stopped && !failed && !deps.signal.aborted) await correct(i, id, picked, []);
+  }
+  // Marks of slides that are no longer on the lesson have nothing left to flag.
+  for (const id of [...unverified]) {
+    if (!lesson.slides.some((slide) => slide.id === id) && state.preview?.slideId !== id) {
+      unverified.delete(id);
+    }
+  }
 
   throwIfAborted(deps.signal);
   // `runBounded` settles every worker before it rethrows: a rejection never leaves the others
@@ -468,6 +575,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   await verified;
 
   throwIfAborted(deps.signal);
+  // A slide still unverified here (a stop before its correction could run) keeps its warning.
+  for (const id of unverified) {
+    if (lesson.slides.some((slide) => slide.id === id)) findings.push(unverifiedMark(id));
+  }
   // One budget residual per lesson: when Plan's facts call was already the stop, this is the same
   // stop seen again, not a second one.
   if (stopped && !findings.some((f) => f.check === "budget")) findings.push(stopped);
@@ -491,7 +602,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   );
   const { updatedAt } = await deps.persist(lesson);
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
-  const { pendingVerify: _settled, ...rest } = state;
+  const { pendingVerify: _settled, preview: _saved, ...rest } = state;
   return { ...rest, lesson };
 }
 
@@ -544,17 +655,50 @@ export function touchesCorrected(
   return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
 }
 
+const UNVERIFIED_MESSAGE =
+  "The facts on this slide were not checked before generation ended, so they may be wrong. Check them before teaching.";
+
 /**
- * A slide Verify corrected a fact on, but whose correction did not land: the teacher edited the
- * slide first (the merge keeps the teacher's words), or the cap refused the second call. Unlike an
- * applied correction it names the slide, so the editor lists it as a thing to check.
+ * The mark a slide saved before Verify settled carries on the row (latency lane L1). Written with
+ * the slide's first save and removed once the slide is verified or rewritten, so it stays only on
+ * a slide a stop, a crash or a failure left unchecked; the editor lists it as a thing to check.
  */
-export function uncorrectedFinding(slideId: string): Finding {
+export function unverifiedMark(slideId: string): Finding {
   return {
     check: "fact-verify",
     severity: "warning",
     target: { slideId },
-    message: "A fact on this slide was corrected after it was written. Check the slide.",
+    message: UNVERIFIED_MESSAGE,
+  };
+}
+
+/** Whether a finding is an `unverifiedMark`. */
+export const isUnverifiedMark = (f: Finding): boolean =>
+  f.check === "fact-verify" && f.message === UNVERIFIED_MESSAGE;
+
+/** The lesson with exactly one `unverifiedMark` per id in `ids` among its findings. */
+export function withUnverifiedMarks(lesson: Lesson, ids: ReadonlySet<string>): Lesson {
+  const generation = lesson.generation;
+  if (!generation) return lesson;
+  const kept = generation.findings.filter((f) => !isUnverifiedMark(f));
+  if (kept.length === generation.findings.length && ids.size === 0) return lesson;
+  return {
+    ...lesson,
+    generation: { ...generation, findings: [...kept, ...[...ids].map(unverifiedMark)] },
+  };
+}
+
+/**
+ * A slide whose fact Verify corrected but whose correction could not land, because the teacher
+ * edited the slide first (the merge keeps the teacher's words). An error: the fact may be wrong.
+ */
+export function mayBeWrongFinding(slideId: string): Finding {
+  return {
+    check: "fact-verify",
+    severity: "error",
+    target: { slideId },
+    message:
+      "A fact on this slide may be wrong: a fact check found an error after you edited the slide. Check it before teaching.",
   };
 }
 
