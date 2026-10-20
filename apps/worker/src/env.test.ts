@@ -23,7 +23,7 @@ describe("worker env", () => {
       ANONYMOUS_USER_TTL_DAYS: 14,
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
-      AI_LESSON_PLANNER: "objectives-first",
+      AI_LESSON_PLANNER: "writer",
       AI_LESSON_COST_WARN_USD: 0.03,
       AI_REASONING_EFFORT: "low",
       MASTRA_TELEMETRY_DISABLED: undefined,
@@ -204,9 +204,9 @@ describe("worker env", () => {
   });
 
   describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
-    test("unset: the objectives-first planner and a 0.03 cost target", () => {
+    test("unset: the writer planner and a 0.03 cost target", () => {
       const env = parseEnv({ DATABASE_URL: DB });
-      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
+      expect(env.AI_LESSON_PLANNER).toBe("writer");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0.03);
     });
 
@@ -218,6 +218,11 @@ describe("worker env", () => {
       });
       expect(env.AI_LESSON_PLANNER).toBe("legacy");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0);
+    });
+
+    test("accepts objectives-first, the rollback from the writer default", () => {
+      const env = parseEnv({ DATABASE_URL: DB, AI_LESSON_PLANNER: "objectives-first" });
+      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
     });
 
     test("another planner stops the worker at boot with one line naming the variable", () => {
