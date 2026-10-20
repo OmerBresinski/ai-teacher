@@ -1,5 +1,5 @@
 import { type Lesson, richDocToPlainText, type Slide, type Theme } from "@tj/domain/documents";
-import { uid } from "@tj/slides";
+import { accentTint, isOpenPhotoSlot, uid } from "@tj/slides";
 import { FONT_LABELS, FONT_STACKS, type FontKey } from "@tj/slides/fonts";
 import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
 
@@ -13,10 +13,7 @@ import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
  * and the slides are built once per theme and words and cached for the session.
  */
 
-type Kit = {
-  layoutTemplate: typeof import("@tj/slides/templates").layoutTemplate;
-  templateSamples: typeof import("@tj/slides/templates/samples").templateSamples;
-};
+type Kit = { layoutTemplate: typeof import("@tj/slides/templates").layoutTemplate };
 
 let kit: Kit | null = null;
 let loading: Promise<Kit> | null = null;
@@ -24,27 +21,14 @@ let loading: Promise<Kit> | null = null;
 /** Fetch the template code (once). Resolves when `themeSamples` can build slides. */
 export function loadSampleKit(): Promise<Kit> {
   if (kit) return Promise.resolve(kit);
-  loading ??= Promise.all([
-    import("@tj/slides/templates"),
-    import("@tj/slides/templates/samples"),
-  ]).then(([templates, samples]) => {
-    kit = { layoutTemplate: templates.layoutTemplate, templateSamples: samples.templateSamples };
+  loading ??= import("@tj/slides/templates").then((templates) => {
+    kit = { layoutTemplate: templates.layoutTemplate };
     return kit;
   });
   return loading;
 }
 
 export const sampleKitReady = (): boolean => kit !== null;
-
-/**
- * The sample photographs the previews place in a picture slot: set once by the app (bundled,
- * licence-free files). Unset, a slot draws the theme's picture placeholder.
- */
-let photoFor: (label: string) => string = () => "";
-export function setSamplePhotos(fn: (label: string) => string): void {
-  photoFor = fn;
-  cache.clear();
-}
 
 export type ThemeSamples = {
   theme: Theme;
@@ -65,12 +49,40 @@ function stageOf(ageBand?: string | null): "ks1" | "ks2" | "ks3" | "ks4" | "ks5"
 }
 
 /**
- * The sample lesson's layouts with no lesson yet (the blank dialog), in the order the large preview
- * shows them: one coherent Year 1 lesson, "Animals and their young" (a lamb with its ewe, a hen's
- * life cycle, a hinge question on which young look like their parents). The tile's second slide is
- * the life cycle diagram.
+ * The sample with no lesson yet (the blank dialog, review 20 Oct): topic-free teaching slides with
+ * generic words, so nothing names a topic the teacher did not type, and every picture slot is
+ * the theme's open slot. The tile's second slide is "Think, pair, share" (the theme's stages).
  */
-export const SAMPLE_LAYOUTS = ["picture-text", "diagram-text", "hinge"] as const;
+export const SAMPLE_INPUTS = {
+  "picture-text": {
+    template: "picture-text",
+    heading: "Key words",
+    lead: "Two words for today.",
+    points: [
+      { label: "Word 1", text: "what it means" },
+      { label: "Word 2", text: "what it means" },
+    ],
+    figure: { photo: "", aspect: 4 / 3, alt: "Your picture" },
+  },
+  stages: {
+    template: "stages",
+    heading: "Think, pair, share",
+    stages: [
+      { name: "Think", line: "On your own first.", icon: "work-alone" },
+      { name: "Pair", line: "Talk it over.", icon: "work-pairs" },
+      { name: "Share", line: "Tell the class.", icon: "work-group" },
+    ],
+  },
+  hinge: {
+    template: "hinge",
+    heading: "Quick check",
+    stem: "Which answer is right?",
+    options: ["Answer A", "Answer B", "Answer C", "Answer D"],
+  },
+} as const;
+
+/** The large preview's order for the sample. */
+export const SAMPLE_LAYOUTS = ["picture-text", "stages", "hinge"] as const;
 
 /**
  * The theme's sample slides for a lesson called `title` (with `subtitle` on the cover, or none),
@@ -88,20 +100,12 @@ export function themeSamples(
   if (hit) return hit;
   const theme = getTheme(themeId, ageBand);
   const stage = stageOf(ageBand);
-  const inputs = kit.templateSamples(photoFor);
-  const lay = (template: string, patch: Record<string, unknown> = {}): Slide => {
-    const input = inputs.find((i) => i.template === template);
-    if (!input) throw new Error(`no sample for ${template}`);
-    const laid = (kit as Kit).layoutTemplate({ ...input, ...patch } as typeof input, theme, stage);
-    return { id: `sample-${themeId}-${template}`, ...laid.slide };
+  const lay = (input: Record<string, unknown>): Slide => {
+    const laid = (kit as Kit).layoutTemplate(input as never, theme, stage);
+    return { id: `sample-${themeId}-${String(input.template)}`, ...laid.slide };
   };
-  // The teacher's title on the cover, so its picture slot stays open: no photo of another topic.
-  const cover = lay("title", {
-    heading: title,
-    lead: subtitle || undefined,
-    figure: { photo: "", aspect: 4 / 3, alt: "" },
-  });
-  const layouts = SAMPLE_LAYOUTS.map((t) => lay(t));
+  const cover = withSlotsDrawn(coverIn(theme, stage, title, subtitle, ""), theme);
+  const layouts = SAMPLE_LAYOUTS.map((t) => withSlotsDrawn(lay(SAMPLE_INPUTS[t]), theme));
   const samples = { theme, cover, visual: layouts[1] as Slide, layouts };
   if (cache.size >= MAX_CACHED) {
     const oldest = cache.keys().next().value;
@@ -111,46 +115,130 @@ export function themeSamples(
   return samples;
 }
 
-/** How much a slide shows of a theme's look: pictures, diagrams, answer cards, shapes. */
-function visualScore(slide: Slide): number {
-  if (["title", "objectives", "starter", "exit-ticket", "plenary"].includes(slide.kind)) return -1;
-  let score = 0;
-  const walk = (els: Slide["elements"]) => {
-    for (const el of els) {
-      if (el.type === "image") score += el.src && !el.src.startsWith("data:image/svg") ? 4 : 2;
-      else if (el.type === "option") score += 1;
-      else if (el.type === "icon" || el.type === "path") score += 0.5;
-      else if (el.type === "table") score += 1;
-      else if (el.type === "shape") score += 0.25;
-      else if (el.type === "group") {
-        score += 1;
-        walk(el.children);
-      }
-    }
-  };
-  walk(slide.elements);
-  if (slide.question) score += 2;
-  return score;
+/**
+ * An open picture slot drawn as the editor draws it (`SlotPlaceholder`): the theme's accent tint
+ * with a muted camera. A thumbnail lays an open slot away, so the picker gives it this picture to
+ * show where the photo goes (Greg 75: "where's the photo placeholder?").
+ */
+export function slotPicture(theme: Theme, w: number, h: number): string {
+  const s = Math.max(24, Math.min(w, h) * 0.22);
+  const k = s / 24;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${accentTint(theme)}"/><g transform="translate(${(w - s) / 2} ${(h - s) / 2}) scale(${k})" fill="none" stroke="${theme.colors.muted}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></g></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+type El = Slide["elements"][number];
+function drawElement(el: El, theme: Theme): El {
+  if (el.type === "image" && (el.src === "" || isOpenPhotoSlot(el)))
+    return { ...el, src: slotPicture(theme, Math.round(el.w), Math.round(el.h)), fit: "cover" };
+  if (el.type === "group")
+    return { ...el, children: el.children.map((c) => drawElement(c, theme)) };
+  return el;
+}
+
+/** `slide` with every open picture slot drawn (`slotPicture`), so a thumbnail keeps it. */
+export function withSlotsDrawn(slide: Slide, theme: Theme): Slide {
+  return { ...slide, elements: slide.elements.map((el) => drawElement(el, theme)) };
+}
+
+const RANK: [RegExp, number][] = [
+  [/^(image-text|picture-text|big-picture|picture-sequence)$/, 6],
+  [/^(diagram|diagram-text|big-diagram|figure)$/, 5],
+  [/^(stages|steps|steps-model|worked|worked-example|items-row)$/, 4],
+  [/^(vocabulary|panel-list|cards-grid|split-compare|compare|reasons|myth)$/, 3],
+  [/^(hinge|multiple-choice|question-set|matching|sort)$/, 2],
+];
+
+/** The writer's template behind a slide, when it was laid out by one. */
+function templateOf(slide: Slide): string | undefined {
+  for (const el of slide.elements) if (el.type === "group" && el.layout) return el.layout.template;
+  return undefined;
 }
 
 /**
- * The open lesson's own slides for the picker (TEACH-258 part b, review 20 Oct: "see your lesson in
- * this theme"): its cover, its most visual slide for the tile, and up to three of its most visual
- * slides, in deck order, for the large preview. Slides with nothing visual fall back to the slides
- * after the cover.
+ * How well a slide shows a theme (review 20 Oct): a picture with text, then a diagram, stages or
+ * a process, key-word cards, a hinge question, anything else; true/false only when nothing else.
  */
-export function lessonPicks(lesson: Lesson): { cover: Slide; visual: Slide; layouts: Slide[] } {
-  const cover = lesson.slides.find((s) => s.kind === "title") ?? lesson.slides[0];
-  if (!cover) throw new Error("lesson has no slides");
+export function visualRank(slide: Slide): number {
+  if (["title", "objectives", "starter", "exit-ticket", "plenary"].includes(slide.kind)) return 0;
+  const hasPicture = slide.elements.some((el) => el.type === "image");
+  const names = [templateOf(slide), slide.kind].filter(Boolean) as string[];
+  let rank = slide.kind === "true-false" ? 0.5 : 1;
+  for (const [re, r] of RANK) if (names.some((n) => re.test(n))) rank = Math.max(rank, r);
+  if (hasPicture) rank = Math.max(rank, 6);
+  return rank;
+}
+
+/**
+ * The open lesson's own slides for the picker ("see your lesson in this theme"): its cover's
+ * words and picture, its most visual slide for the tile, and up to three of its most visual slides
+ * (by `visualRank`, kept in deck order) for the large preview.
+ */
+export function lessonPicks(lesson: Lesson): {
+  title: string;
+  subtitle: string;
+  photo: string;
+  /** The lesson's own cover, drawn until the template code has arrived. */
+  cover: Slide;
+  visual: Slide;
+  layouts: Slide[];
+} {
+  const cover = lesson.slides.find((s) => s.kind === "title");
+  const picture = cover?.elements.find(
+    (el) => el.type === "image" && el.src && !el.src.startsWith("data:"),
+  );
   const rest = lesson.slides.filter((s) => s !== cover);
   const ranked = rest
-    .map((slide, at) => ({ slide, at, score: visualScore(slide) }))
-    .sort((a, b) => b.score - a.score || a.at - b.at);
-  const best = ranked.filter((r) => r.score > 0);
-  const chosen = (best.length ? best : ranked).slice(0, 3);
-  const visual = chosen[0]?.slide ?? cover;
-  const layouts = [...chosen].sort((a, b) => a.at - b.at).map((r) => r.slide);
-  return { cover, visual, layouts };
+    .map((slide, at) => ({ slide, at, rank: visualRank(slide) }))
+    .sort((a, b) => b.rank - a.rank || a.at - b.at);
+  const chosen = ranked.slice(0, 3);
+  const first = chosen[0]?.slide ?? cover ?? lesson.slides[0];
+  if (!first) throw new Error("lesson has no slides");
+  const words = coverWords(lesson);
+  return {
+    ...words,
+    photo: picture?.type === "image" ? picture.src : "",
+    cover: cover ?? first,
+    visual: first,
+    layouts: [...chosen].sort((a, b) => a.at - b.at).map((r) => r.slide),
+  };
+}
+
+/**
+ * The theme's own cover (its title template) with `title`, `subtitle` and a picture: `photo`, or
+ * the open slot the editor draws as a tinted box with a camera ("" ).
+ */
+export function coverIn(
+  theme: Theme,
+  stage: "ks1" | "ks2" | "ks3" | "ks4" | "ks5",
+  title: string,
+  subtitle: string | undefined,
+  photo: string,
+): Slide {
+  if (!kit) throw new Error("sample kit not loaded");
+  const input = {
+    template: "title",
+    heading: title,
+    lead: subtitle || undefined,
+    figure: { photo, aspect: 4 / 3, alt: photo ? title : "Your cover photo" },
+  };
+  const laid = kit.layoutTemplate(input as never, theme, stage);
+  return { id: `cover-${theme.id}-${photo ? "photo" : "open"}`, ...laid.slide };
+}
+
+/**
+ * The theme's cover for a lesson (review 20 Oct): its title template with the lesson's words and
+ * cover photo, or the theme's open slot drawn. `null` until `loadSampleKit` has resolved.
+ */
+export function themeCover(
+  theme: Theme,
+  ageBand: string | null | undefined,
+  title: string,
+  subtitle: string | undefined,
+  photo: string,
+): Slide | null {
+  if (!kit) return null;
+  return withSlotsDrawn(coverIn(theme, stageOf(ageBand), title, subtitle, photo), theme);
 }
 
 /**
@@ -162,11 +250,8 @@ export async function blankCover(
   title: string,
   subtitle?: string,
 ): Promise<Slide> {
-  const k = await loadSampleKit();
-  const input = k.templateSamples(() => "").find((i) => i.template === "title");
-  if (!input) throw new Error("no title sample");
-  const patched = { ...input, heading: title, lead: subtitle || undefined } as typeof input;
-  return { id: uid(), ...k.layoutTemplate(patched, getTheme(themeId), "ks2").slide } as Slide;
+  await loadSampleKit();
+  return { ...coverIn(getTheme(themeId), "ks2", title, subtitle, ""), id: uid() };
 }
 
 /**

@@ -1,5 +1,4 @@
 import { ThemePicker } from "@tj/editor/theme-picker";
-import "@/lib/theme-picker-photos";
 // The previews are slides: the theme fonts and slide rules travel with the picker's chunk.
 import "@tj/editor/styles/editor.css";
 

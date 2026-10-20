@@ -5,7 +5,14 @@ import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measu
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
-import { lessonPicks, type ThemeSamples } from "../theme-picker/samples";
+import {
+  lessonPicks,
+  loadSampleKit,
+  sampleKitReady,
+  type ThemeSamples,
+  themeCover,
+  withSlotsDrawn,
+} from "../theme-picker/samples";
 import { ThemePicker } from "../theme-picker/ThemePicker";
 import { useHistory, useLesson } from "./document-context";
 
@@ -155,28 +162,42 @@ function ThemeChoices({
   onDone: () => void;
   applying?: boolean;
 }) {
-  // "See your lesson in this theme" (review 20 Oct): every tile and the large preview draw this
-  // lesson's own cover and its most visual slides, recoloured by role into each theme (as the
-  // canvas is while a lesson is made), built once per theme while the picker is open.
+  // "See your lesson in this theme" (review 20 Oct): every tile and the large preview draw the
+  // theme's own cover (its title template, with this lesson's words and cover photo or the
+  // theme's open slot) and this lesson's most visual slides, recoloured by role into each theme
+  // (as the canvas is while a lesson is made), built once per theme while the picker is open.
+  const [kitReady, setKitReady] = useState(sampleKitReady);
+  useEffect(() => {
+    if (kitReady) return;
+    let live = true;
+    void loadSampleKit().then(() => live && setKitReady(true));
+    return () => {
+      live = false;
+    };
+  }, [kitReady]);
   const samplesFor = useMemo(() => {
     const picks = lessonPicks(opening);
     const from = renderTheme(opening);
+    const ageBand = boundAgeBand(opening);
     const built = new Map<string, ThemeSamples>();
     return (themeId: string): ThemeSamples => {
       const hit = built.get(themeId);
       if (hit) return hit;
       const to = renderTheme(opening, themeId);
-      const inTheme = (slide: Slide) => recolourSlide(slide, from, to);
+      const inTheme = (slide: Slide) => withSlotsDrawn(recolourSlide(slide, from, to), to);
+      const cover = kitReady
+        ? themeCover(to, ageBand, picks.title, picks.subtitle || undefined, picks.photo)
+        : null;
       const samples = {
         theme: to,
-        cover: inTheme(picks.cover),
+        cover: cover ?? inTheme(picks.cover),
         visual: inTheme(picks.visual),
         layouts: picks.layouts.map(inTheme),
       };
       built.set(themeId, samples);
       return samples;
     };
-  }, [opening]);
+  }, [opening, kitReady]);
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <ThemePicker

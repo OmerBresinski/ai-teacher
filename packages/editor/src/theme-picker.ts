@@ -10,7 +10,6 @@ export {
   fontPair,
   loadSampleKit,
   paletteOf,
-  setSamplePhotos,
   suitsOf,
   themeSamples,
 } from "./theme-picker/samples";

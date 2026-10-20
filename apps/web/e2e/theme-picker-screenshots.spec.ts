@@ -47,6 +47,20 @@ async function timePreviews(page: Page, key: string, start: number): Promise<voi
   await tiles.first().scrollIntoViewIfNeeded();
 }
 
+/** Each theme's tile on its own (`tiles/<where>-<n>.png`), for the variety check across themes. */
+async function shootTiles(page: Page, where: string): Promise<void> {
+  const dir = path.join(OUT, "tiles");
+  mkdirSync(dir, { recursive: true });
+  const tiles = page.locator("[data-theme-preview]");
+  const n = await tiles.count();
+  for (let i = 0; i < n; i++) {
+    const tile = tiles.nth(i);
+    await tile.scrollIntoViewIfNeeded();
+    await tile.screenshot({ path: path.join(dir, `${where}-${String(i).padStart(2, "0")}.png`) });
+  }
+  await tiles.first().scrollIntoViewIfNeeded();
+}
+
 {
   for (const width of WIDTHS) {
     const tag = `${LABEL}-${width}`;
@@ -64,6 +78,7 @@ async function timePreviews(page: Page, key: string, start: number): Promise<voi
       await timePreviews(page, `blank ${tag}`, start);
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUT, `blank-${tag}.png`) });
+      if (width > 600) await shootTiles(page, "blank");
       const tile = page.locator("[data-theme-preview]").nth(2);
       if (await tile.count()) {
         await tile.hover();
@@ -83,6 +98,7 @@ async function timePreviews(page: Page, key: string, start: number): Promise<voi
       await timePreviews(page, `editor ${tag}`, start);
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUT, `editor-${tag}.png`) });
+      if (width > 600) await shootTiles(page, "editor");
       const tile = page.locator("[data-theme-tile]").nth(4);
       if (await tile.count()) {
         await tile.focus();

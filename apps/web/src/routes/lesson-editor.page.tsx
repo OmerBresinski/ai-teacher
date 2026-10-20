@@ -87,8 +87,6 @@ const SignInSheet = lazy(() =>
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
-// The theme picker's sample photographs (decision 72).
-import "@/lib/theme-picker-photos";
 
 // The generating view renders the editor's shell geometry with the slide renderer, a chunk most
 // editor loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
