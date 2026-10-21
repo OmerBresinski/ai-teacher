@@ -1,23 +1,26 @@
-import { type Lesson, SLIDE_W, type Slide } from "@tj/domain/documents";
+import type { Lesson, Slide } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
-import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
-import { newSlide } from "../model/factories";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
-import { getTheme, renderTheme, THEMES } from "../model/themes";
-import { SlideScaler } from "../slide/SlideScaler";
-import { SlideView } from "../slide/SlideView";
+import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
+import {
+  lessonPicks,
+  loadSampleKit,
+  sampleKitReady,
+  type ThemeSamples,
+  themeCover,
+  withSlotsDrawn,
+} from "../theme-picker/samples";
+import { ThemePicker } from "../theme-picker/ThemePicker";
 import { useHistory, useLesson } from "./document-context";
-
-const PREVIEW_W = 132;
 
 /*
  * The theme picker (TEACH-258, ruling 116; its entry point is ruling 123). One quiet callout names
  * the selected theme — under the slide stage while the lesson is made, in the editor's top bar once
- * it is editable — and opens a compact set of themes in a modal, each drawn as the teacher's own
- * title slide.
+ * it is editable — and opens the theme picker in a modal (`ThemePicker`, decision 34: each theme's
+ * own cover and slides, fonts, colours and who it suits).
  *
  * The whole browse is one history transaction: it opens when the panel mounts; every tile click
  * re-themes the lesson *from the one it opened with* and re-fits it (`rethemeLesson`), so the
@@ -49,11 +52,6 @@ function themeFacesPending(themeId: string): Promise<unknown> | null {
     Promise.all(faces.map((face) => api.load(face))).catch(() => undefined),
     new Promise((resolve) => setTimeout(resolve, FACES_TIMEOUT_MS)),
   ]);
-}
-
-/** The teacher's own title slide, or a title slide in the lesson's theme when it has none. */
-function coverOf(lesson: Lesson): Slide {
-  return lesson.slides.find((s) => s.kind === "title") ?? newSlide("title", lesson.themeId);
 }
 
 /** The themes, the preview and the transaction. Mounted only while the picker is open. */
@@ -147,7 +145,7 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** The six themes drawn as the lesson's title slide, with Cancel and Done. Stateless. */
+/** The picker (decision 34) with Cancel and Done. Stateless. */
 function ThemeChoices({
   opening,
   selectedId,
@@ -156,7 +154,7 @@ function ThemeChoices({
   onDone,
   applying = false,
 }: {
-  /** The lesson as the picker found it: the tiles draw its cover, recoloured from its theme. */
+  /** The lesson as the picker found it: the previews carry its title at its key stage. */
   opening: Lesson;
   selectedId: string;
   onPick: (themeId: string) => void;
@@ -164,57 +162,53 @@ function ThemeChoices({
   onDone: () => void;
   applying?: boolean;
 }) {
-  const cover = useMemo(() => coverOf(opening), [opening]);
+  // "See your lesson in this theme" (review 20 Oct): every tile and the large preview draw the
+  // theme's own cover (its title template, with this lesson's words and cover photo or the
+  // theme's open slot) and this lesson's most visual slides, recoloured by role into each theme
+  // (as the canvas is while a lesson is made), built once per theme while the picker is open.
+  const [kitReady, setKitReady] = useState(sampleKitReady);
+  useEffect(() => {
+    if (kitReady) return;
+    let live = true;
+    void loadSampleKit().then(() => live && setKitReady(true));
+    return () => {
+      live = false;
+    };
+  }, [kitReady]);
+  const samplesFor = useMemo(() => {
+    const picks = lessonPicks(opening);
+    if (!picks) return undefined;
+    const from = renderTheme(opening);
+    const ageBand = boundAgeBand(opening);
+    const built = new Map<string, ThemeSamples>();
+    return (themeId: string): ThemeSamples => {
+      const hit = built.get(themeId);
+      if (hit) return hit;
+      const to = renderTheme(opening, themeId);
+      const inTheme = (slide: Slide) => withSlotsDrawn(recolourSlide(slide, from, to), to);
+      const cover = kitReady
+        ? themeCover(to, ageBand, picks.title, picks.subtitle || undefined, picks.photo)
+        : null;
+      const samples = {
+        theme: to,
+        cover: cover ?? inTheme(picks.cover),
+        visual: inTheme(picks.visual),
+        layouts: picks.layouts.map(inTheme),
+      };
+      built.set(themeId, samples);
+      return samples;
+    };
+  }, [opening, kitReady]);
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        role="radiogroup"
-        aria-label="Theme"
-        className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2"
-      >
-        {THEMES.map((theme) => {
-          const selected = theme.id === selectedId;
-          return (
-            <Button
-              key={theme.id}
-              variant="ghost"
-              role="radio"
-              aria-checked={selected}
-              aria-label={theme.name}
-              data-theme-tile={theme.id}
-              onClick={() => onPick(theme.id)}
-              className="group/theme h-auto w-full items-stretch justify-start rounded-control p-0 text-left font-normal"
-            >
-              <span className="flex w-full flex-col items-stretch gap-1 self-start">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative block overflow-hidden rounded-chip",
-                    selected
-                      ? "shadow-[0_0_0_1px_var(--background),0_0_0_2.5px_var(--primary)]"
-                      : "shadow-[0_0_0_1px_var(--border)] group-hover/theme:shadow-[0_0_0_1px_var(--border-strong)]",
-                  )}
-                  style={{ width: PREVIEW_W, height: Math.round((PREVIEW_W * 9) / 16) }}
-                >
-                  <SlideScaler zoom={PREVIEW_W / SLIDE_W}>
-                    <SlideView
-                      slide={recolourSlide(cover, getTheme(opening.themeId), theme)}
-                      theme={theme}
-                      mode="thumb"
-                    />
-                  </SlideScaler>
-                  {selected ? (
-                    <span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Check size={12} strokeWidth={2} />
-                    </span>
-                  ) : null}
-                </span>
-                <span className="truncate text-meta text-foreground">{theme.name}</span>
-              </span>
-            </Button>
-          );
-        })}
-      </div>
+    <div className="flex min-w-0 flex-col gap-3">
+      <ThemePicker
+        selectedId={selectedId}
+        onPick={onPick}
+        title={opening.title}
+        ageBand={boundAgeBand(opening)}
+        samplesFor={samplesFor}
+        scope={opening.id}
+      />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
@@ -286,7 +280,7 @@ export function ThemeCallout({
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent size="lg" data-theme-dialog>
+      <DialogContent size="full" className="max-w-[1040px]" data-theme-dialog>
         <DialogHeader>
           <DialogTitle>Theme</DialogTitle>
         </DialogHeader>
@@ -323,7 +317,7 @@ export function GeneratingThemeDialog({
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && cancel()}>
-      <DialogContent size="lg" data-theme-dialog>
+      <DialogContent size="full" className="max-w-[1040px]" data-theme-dialog>
         <DialogHeader>
           <DialogTitle>Theme</DialogTitle>
         </DialogHeader>

@@ -13,11 +13,14 @@ import {
   type ReactNode,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import type { FirstSlidesReveal } from "./first-slides-reveal";
+import { useProposals } from "./proposals-context";
 
 export type LiveDraft = {
   index: number;
@@ -84,6 +87,18 @@ export function createDraftStore(): DraftStore {
 }
 
 const NO_SUBSCRIBE = () => () => {};
+
+/** Words of `slideId` the first-slides reveal shows now; undefined shows the whole slide. */
+export function useRevealed(
+  reveal: FirstSlidesReveal | undefined,
+  slideId: string | undefined,
+): number | undefined {
+  return useSyncExternalStore(
+    reveal?.subscribe ?? NO_SUBSCRIBE,
+    () => reveal?.words(slideId),
+    () => undefined,
+  );
+}
 /**
  * The id of the slide being written now, once it has words to show (a draft with only its layout
  * would open on an empty slide); re-renders only when it moves.
@@ -109,6 +124,30 @@ export function useSlideDraft(
     store?.subscribe ?? NO_SUBSCRIBE,
     () => (slideId ? store?.get(slideId)?.slide : undefined),
     () => undefined,
+  );
+}
+
+/**
+ * What a small picture of `slide` (a strip thumbnail, a mobile card) draws while the job writes it,
+ * as the canvas does: its newest draft (`withDraft`), else its outline while it is only planned,
+ * else, on a new lesson's first two slides, the words the reveal has typed so far. Otherwise the
+ * slide itself (TEACH-202 part f, amended 20 Oct 2026).
+ */
+export function useWritingPicture(slide: Slide, withDraft = true): Slide {
+  const { drafts, reveal, writingSlideIds } = useProposals();
+  const writing = writingSlideIds?.has(slide.id) ?? false;
+  const draft = useSlideDraft(withDraft ? drafts : undefined, writing ? slide.id : undefined);
+  const paced = useRevealed(reveal, writing && !draft ? slide.id : undefined);
+  const outline = writing && !draft && isPlannedBlank(slide);
+  return useMemo(
+    () =>
+      draft ??
+      (outline
+        ? skeletonSlide(slide)
+        : paced !== undefined
+          ? revealSlide(slide, paced).slide
+          : slide),
+    [draft, outline, paced, slide],
   );
 }
 
@@ -390,6 +429,7 @@ export function LiveSlide({
   slideId,
   slide,
   writing,
+  reveal,
   render,
 }: {
   store: DraftStore | undefined;
@@ -398,6 +438,8 @@ export function LiveSlide({
   slide: Slide | undefined;
   /** The slide is still being written: only then can a draft show. */
   writing: boolean;
+  /** A new lesson's title and objectives typing out (presentation only, never the document). */
+  reveal?: FirstSlidesReveal;
   render: (slide: Slide | undefined, live: boolean) => ReactNode;
 }) {
   const [, bump] = useState(0);
@@ -442,14 +484,20 @@ export function LiveSlide({
   // Kept while the draft is off screen, so a released hold never flips back on.
   if (draft) typedNow.current = words;
   const host = useRef<HTMLDivElement | null>(null);
-  // A writing slide with nothing on it yet and no draft: a skeleton, until its layout arrives.
+  // A writing slide with nothing on it yet and no draft: its outline, until its layout arrives.
   const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);
+  // The first two slides of a new lesson type out from their saved copy (first-slides-reveal.ts).
+  const paced = useRevealed(reveal, writing && !draft && !reduced ? slideId : undefined);
   const shown = !draft
-    ? { slide: waiting && slide ? skeletonSlide(slide) : slide }
+    ? waiting && slide
+      ? { slide: skeletonSlide(slide) }
+      : paced !== undefined && slide
+        ? revealSlide(slide, paced)
+        : { slide }
     : reduced
       ? { slide: draft.slide }
       : revealSlide(draft.slide, words);
-  const at = draft && !reduced && "at" in shown ? shown.at : undefined;
+  const at = (draft || paced !== undefined) && !reduced && "at" in shown ? shown.at : undefined;
   // A card or line that joins a slide already on screen slides in gently; a slide's first draft
   // shows at once (fading it in would read as a blank canvas when the view moves on).
   const joined = useRef<{ slide?: string; ids: Set<string> }>({ ids: new Set() });
@@ -476,11 +524,12 @@ export function LiveSlide({
         );
     }
   });
+  const caretWord = draft ? words : (paced ?? 0);
   // One tree whatever is shown, so the canvas never remounts when the saved slide takes over.
   return (
     <div ref={host} data-live-slide={draft ? slideId : undefined} className="contents">
       {render(shown.slide, !!draft)}
-      {at ? <Caret key={word(words)} host={host.current} at={at} word={words} /> : null}
+      {at ? <Caret key={word(caretWord)} host={host.current} at={at} word={caretWord} /> : null}
     </div>
   );
 }
