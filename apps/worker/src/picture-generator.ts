@@ -12,6 +12,7 @@ import {
   countArraySvg,
   directedImagePrompt,
   expectedImageCostUsd,
+  frameCutOf,
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
@@ -56,7 +57,13 @@ export function createDailyImageCap(opts: {
       const ok = spent + expectedImageCostUsd(size) <= opts.capUsd;
       if (!ok)
         opts.logger?.info(
-          { stage: "illustrate", capUsd: opts.capUsd, spentUsd: Number(spent.toFixed(4)), size },
+          {
+            stage: "illustrate",
+            capUsd: opts.capUsd,
+            spentUsd: Number(spent.toFixed(4)),
+            size,
+            expectedUsd: expectedImageCostUsd(size),
+          },
           "image generation daily cap spent: placeholder kept",
         );
       return ok;
@@ -173,6 +180,12 @@ export function createGeneratingBank(opts: {
       const prompt = withRetryLine(directedImagePrompt(req.imagePrompt, faithful), retry);
       const out = await opts.generator.generate({ prompt, size, signal });
       opts.cap.spent(out.costUsd);
+      // FRAME-CUT, measure only (21 Oct 2026): how far the subject runs off the frame, recorded on
+      // the picture's trace and outcome event; nothing is redrawn on it. A decode failure is no
+      // measure, never a failed picture.
+      const f0 = performance.now();
+      const cut = out.mime === "image/png" ? frameCutOf(out.bytes) : undefined;
+      const frame = cut ? { ...cut, ms: performance.now() - f0 } : undefined;
       const saved = await opts.save(out.bytes, out.mime);
       // The picture's own shape (the model returns the size asked; the header is the fact).
       const [sw, sh] = size.split("x").map(Number) as [number, number];
@@ -186,6 +199,9 @@ export function createGeneratingBank(opts: {
           ms: out.ms,
           attempts: out.attempts ?? 1,
           ...(retry ? { retry: retry.reason } : {}),
+          ...(frame
+            ? { frameCut: frame.cut, framePlain: frame.plain, frameMs: Math.round(frame.ms) }
+            : {}),
         },
         "picture generated",
       );
@@ -205,6 +221,10 @@ export function createGeneratingBank(opts: {
         aspect: dims.width / dims.height,
         style: req.style ?? "photo",
         ...(req.palette ? { palette: req.palette } : {}),
+        costUsd: out.costUsd,
+        // For the lesson's debug record (`findPicture`'s trace); never logged or sent.
+        prompt,
+        ...(frame ? { frame } : {}),
         dataUrl: `data:${out.mime};base64,${Buffer.from(out.bytes).toString("base64")}`,
       };
       return made as unknown as MadePicture;

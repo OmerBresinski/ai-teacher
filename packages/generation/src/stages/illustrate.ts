@@ -33,6 +33,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { withUsage } from "./generate";
+import type { JudgeCheck } from "./photo-bank";
 import { audienceOf, generationOf, slideText } from "./shared";
 
 /** Between Generate's last (85) and Evaluate's first (90). */
@@ -590,6 +591,26 @@ export function directedGatePasses(
   // photograph (1923 Germany, a staging of The Tempest) is right with one item in view.
   const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
   return itemsSeen(brief, verdict).length >= need;
+}
+
+/**
+ * Which of `directedGatePasses`' checks a verdict failed, as fixed codes (`JUDGE_CHECKS`), for the
+ * picture's trace: empty when it passes. Never used by the gate itself.
+ */
+export function failedChecks(
+  brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
+  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+): JudgeCheck[] {
+  const out: JudgeCheck[] = [];
+  if (verdict.pick === null) out.push("no-pick");
+  if (!verdict.onSubject) out.push("off-subject");
+  if (verdict.kindMatches === false) out.push("wrong-kind");
+  if (!verdict.clear) out.push("unclear");
+  if (!verdict.fits) out.push("misfit");
+  const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
+  if (brief.mustShow.length > 0 && itemsSeen(brief, verdict).length < need)
+    out.push("items-missing");
+  return out;
 }
 
 async function searchPortraits(

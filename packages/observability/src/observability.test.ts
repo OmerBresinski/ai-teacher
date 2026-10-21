@@ -446,6 +446,8 @@ describe("gen_* events from log lines", () => {
       "gen_job",
       "gen_job",
       "gen_lesson",
+      // The picture line above rolls up into the lesson's pictures row.
+      "gen_lesson_pictures",
     ]);
     for (const e of events) {
       expect(e.distinct_id).toBe(distinctIdFor(WORKSPACE));
@@ -619,4 +621,189 @@ describe("distinctIdFor", () => {
     expect(distinctIdFor(WORKSPACE)).not.toContain(WORKSPACE.slice(0, 8));
     expect(distinctIdFor(undefined)).toBe(SYSTEM_DISTINCT_ID);
   });
+});
+
+describe("lesson pictures (gen_picture_outcome, gen_lesson_pictures)", () => {
+  const PROMPT_TEXT = "IMAGE-PROMPT-SENTINEL a hen beside a chick on straw";
+  const JUDGE_WHY = "JUDGE-WHY-SENTINEL the chick is cut off at the left";
+  const SRC = "/files/ws/images/0192f7a0-0000-7000-8000-00000000abcd.png";
+  /** One slot's outcome line as the pipeline logs it, plus the content a careless caller might add. */
+  const slot = (over: Record<string, unknown> = {}) => ({
+    stage: "illustrate",
+    ev: "picture-outcome",
+    kind: "single",
+    slideIndex: 3,
+    outcome: "placed",
+    via: "generated",
+    attempts: 2,
+    reason: "judge",
+    director: "library-or-generate",
+    route: "generic",
+    sourceKind: "generated",
+    pictureKind: "object",
+    lessonSubject: "science",
+    keyStage: "ks2",
+    promptVersion: "picture-director-batch.v2",
+    framingClause: true,
+    library: "refused",
+    latencyMs: 41_000,
+    retryReasons: ["judge"],
+    failedChecks: ["misfit", "items-missing"],
+    judgeRefusals: 1,
+    pictureCostUsd: 0.08,
+    frameMeasured: true,
+    backdrop: "plain",
+    frameCut: true,
+    cutEdges: 2,
+    frameBleed: 0.41,
+    frameMs: 18.2,
+    cutsSeen: 1,
+    // Content: never sent.
+    imagePrompt: PROMPT_TEXT,
+    why: JUDGE_WHY,
+    src: SRC,
+    tries: [{ result: "judge", why: JUDGE_WHY, src: SRC }],
+    ...over,
+  });
+
+  test("a slot's outcome carries its codes and numbers, and no prompt, judge reason or url", async () => {
+    const { fetch, sent } = recordingFetch();
+    const obs = createObservability({
+      apiKey: "phc_test",
+      modelIds: MODELS,
+      logger: pino({ level: "silent" }),
+      service: "worker",
+      fetch,
+    });
+    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    const b = { jobId: JOB, job: "lesson.generate", attempt: 0 };
+    obs.captureLogLine(b, slot(), "picture outcome");
+    // Free text where a code belongs is dropped, never sent.
+    obs.captureLogLine(
+      b,
+      slot({
+        pictureKind: PROMPT_TEXT,
+        reason: JUDGE_WHY,
+        failedChecks: [JUDGE_WHY],
+        lessonSubject: "Volcanoes of Iceland",
+        sourceKind: SRC,
+      }),
+      "picture outcome",
+    );
+    await obs.flush();
+    const all = sent.map((s) => s.text).join("\n");
+    for (const leak of [
+      PROMPT_TEXT,
+      "IMAGE-PROMPT",
+      JUDGE_WHY,
+      "JUDGE-WHY",
+      SRC,
+      "/files/",
+      "Iceland",
+    ])
+      expect(all).not.toContain(leak);
+    const outs = sent.flatMap((s) => s.events).filter((e) => e.event === "gen_picture_outcome");
+    expect(outs).toHaveLength(2);
+    expect(outs[0]?.properties).toMatchObject({
+      outcome: "placed",
+      via: "generated",
+      reason: "judge",
+      sourceKind: "generated",
+      pictureKind: "object",
+      lessonSubject: "science",
+      keyStage: "ks2",
+      promptVersion: "picture-director-batch.v2",
+      framingClause: true,
+      retryReasons: ["judge"],
+      failedChecks: ["misfit", "items-missing"],
+      frameCut: true,
+      cutEdges: 2,
+      backdrop: "plain",
+      pictureCostUsd: 0.08,
+      droppedProps: 4,
+    });
+    expect(outs[1]?.properties).not.toHaveProperty("pictureKind");
+    expect(outs[1]?.properties).not.toHaveProperty("reason");
+    expect(outs[1]?.properties.droppedProps).toBe(4 + 5);
+    await obs.shutdown();
+  });
+
+  test("the lesson's pictures roll up into one gen_lesson_pictures row", async () => {
+    const { fetch, sent } = recordingFetch();
+    const obs = createObservability({
+      apiKey: "phc_test",
+      modelIds: MODELS,
+      logger: pino({ level: "silent" }),
+      service: "worker",
+      fetch,
+    });
+    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    const b = { jobId: JOB, job: "lesson.generate", attempt: 0 };
+    obs.captureLogLine(b, slot(), "picture outcome");
+    obs.captureLogLine(
+      b,
+      slot({ pictureKind: "portrait", frameCut: undefined, portraitCut: true, attempts: 1 }),
+      "picture outcome",
+    );
+    obs.captureLogLine(
+      b,
+      slot({ outcome: "placed", via: "fetched", sourceKind: "commons", attempts: 0 }),
+      "picture outcome",
+    );
+    obs.captureLogLine(
+      b,
+      slot({ outcome: "empty", via: "none", sourceKind: "none", reason: "declined", attempts: 0 }),
+      "picture outcome",
+    );
+    obs.captureLogLine(
+      b,
+      { ev: "picture-outcome", outcome: "failed", reason: "error", sourceKind: "none" },
+      "picture failed",
+    );
+    obs.captureLessonSummary(summary);
+    await obs.flush();
+    const roll = sent.flatMap((s) => s.events).find((e) => e.event === "gen_lesson_pictures");
+    expect(roll?.properties).toMatchObject({
+      lessonId: LESSON,
+      outcome: "success",
+      planner: "writer",
+      lessonSubject: "science",
+      keyStage: "ks2",
+      pictures: 5,
+      picturesPlaced: 3,
+      picturesEmpty: 1,
+      picturesFailed: 1,
+      fromGenerated: 2,
+      fromCommons: 1,
+      generations: 3,
+      retries: 1,
+      judgeRefusals: 4,
+      framesMeasured: 4,
+      framesCut: 3,
+      portraitsCut: 1,
+    });
+    expect(roll?.properties.pictureCostUsd).toBeCloseTo(0.32, 6);
+    expect(roll?.properties).not.toHaveProperty("droppedProps");
+    await obs.shutdown();
+  });
+});
+
+test("slots the director routed away are counted apart, not as empty pictures", async () => {
+  const { fetch, sent } = recordingFetch();
+  const obs = createObservability({
+    apiKey: "phc_test",
+    modelIds: MODELS,
+    logger: pino({ level: "silent" }),
+    service: "worker",
+    fetch,
+  });
+  obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+  const b = { jobId: JOB, job: "lesson.generate", attempt: 0 };
+  for (const outcome of ["none", "drawer", "none"])
+    obs.captureLogLine(b, { ev: "picture-outcome", outcome, reason: "director-none" }, "x");
+  obs.captureLessonSummary(summary);
+  await obs.flush();
+  const roll = sent.flatMap((s) => s.events).find((e) => e.event === "gen_lesson_pictures");
+  expect(roll?.properties).toMatchObject({ pictures: 0, notWanted: 2, toDrawer: 1 });
+  await obs.shutdown();
 });

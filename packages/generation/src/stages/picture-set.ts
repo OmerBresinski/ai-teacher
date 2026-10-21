@@ -665,7 +665,8 @@ export async function makePictureSet(
         key: a.key,
         outcome: out[k] ? "placed" : "empty",
         attempts: tries[k] ?? 0,
-        ...(why ? { reason: why } : {}),
+        // A literal key (not a spread), so the event catalogue lists it (`docs/observability.md`).
+        reason: why,
       });
     });
   if (tried === "none") {

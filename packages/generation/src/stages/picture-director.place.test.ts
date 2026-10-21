@@ -197,6 +197,21 @@ describe("ruling 163 under strict (placement)", () => {
         reason: "real-miss-no-fallback",
       }),
     ]);
+    // Picture tracing (21 Oct 2026): the line's new codes, and nothing the debug record keeps.
+    const line = lines.find((l) => l.ev === "picture-outcome") ?? {};
+    expect(line).toMatchObject({
+      director: "commons",
+      route: "real",
+      sourceKind: "none",
+      pictureKind: expect.stringMatching(/^(portrait|scene|object)$/),
+      promptVersion: "picture-director-batch.v2",
+      framingClause: true,
+      frameMeasured: false,
+      retryReasons: [],
+      pictureCostUsd: 0,
+    });
+    for (const key of ["tries", "why", "src", "imagePrompt", "request"])
+      expect(line).not.toHaveProperty(key);
   });
 
   test("a historical event is real only: no stock fallback, zero generation calls", async () => {

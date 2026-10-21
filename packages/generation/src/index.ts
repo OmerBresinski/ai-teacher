@@ -121,9 +121,12 @@ export {
 } from "./stages/objectives-first";
 export {
   type BankRequest,
+  type FrameMeasure,
   findPicture,
+  JUDGE_CHECKS,
   type MadePicture,
   type PictureBank,
+  type PictureTrace,
 } from "./stages/photo-bank";
 export {
   directedSetJudges,
@@ -135,6 +138,13 @@ export {
   STRIP_ATTEMPTS,
   setIsGenerated,
 } from "./stages/picture-set";
+export {
+  KEY_STAGES,
+  LESSON_SUBJECTS,
+  PICTURE_FAIL_REASONS,
+  PICTURE_KINDS,
+  SOURCE_KINDS,
+} from "./stages/picture-trace";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
 export {
   type ImpactSet,

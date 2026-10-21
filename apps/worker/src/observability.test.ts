@@ -1,5 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import * as gen from "@tj/generation";
 import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
+import * as obsEnums from "@tj/observability";
 import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
 import { parseEnv } from "./env";
@@ -157,5 +159,17 @@ describe("worker observability (ADR 0041)", () => {
   test("the fact-check count names are the generation enums, so no name comes from model text", () => {
     expect([...FACT_REASONS]).toEqual([...VERIFY_REASONS]);
     expect([...FACT_FIELDS]).toEqual([...VERIFY_FIELDS]);
+  });
+
+  test("the lesson picture codes PostHog accepts are the ones the pipeline logs", () => {
+    for (const name of [
+      "PICTURE_FAIL_REASONS",
+      "JUDGE_CHECKS",
+      "SOURCE_KINDS",
+      "PICTURE_KINDS",
+      "LESSON_SUBJECTS",
+      "KEY_STAGES",
+    ] as const)
+      expect([...obsEnums[name]].sort()).toEqual([...gen[name]].sort());
   });
 });
