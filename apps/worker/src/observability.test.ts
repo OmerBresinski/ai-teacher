@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import * as gen from "@tj/generation";
 import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
-import * as obsEnums from "@tj/observability";
+import * as obs from "@tj/observability";
 import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
 import { parseEnv } from "./env";
@@ -162,14 +162,14 @@ describe("worker observability (ADR 0041)", () => {
   });
 
   test("the lesson picture codes PostHog accepts are the ones the pipeline logs", () => {
-    for (const name of [
-      "PICTURE_FAIL_REASONS",
-      "JUDGE_CHECKS",
-      "SOURCE_KINDS",
-      "PICTURE_KINDS",
-      "LESSON_SUBJECTS",
-      "KEY_STAGES",
-    ] as const)
-      expect([...obsEnums[name]].sort()).toEqual([...gen[name]].sort());
+    const pairs = [
+      [obs.PICTURE_FAIL_REASONS, gen.PICTURE_FAIL_REASONS],
+      [obs.JUDGE_CHECKS, gen.JUDGE_CHECKS],
+      [obs.SOURCE_KINDS, gen.SOURCE_KINDS],
+      [obs.PICTURE_KINDS, gen.PICTURE_KINDS],
+      [obs.LESSON_SUBJECTS, gen.LESSON_SUBJECTS],
+      [obs.KEY_STAGES, gen.KEY_STAGES],
+    ] as const;
+    for (const [sent, logged] of pairs) expect([...sent].sort()).toEqual([...logged].sort());
   });
 });
